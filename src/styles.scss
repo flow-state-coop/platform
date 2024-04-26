@@ -1,0 +1,55 @@
+@import url("https://fonts.googleapis.com/css2?family=Abel&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter&display=swap");
+
+@import "bootstrap/scss/bootstrap";
+@import "bootstrap/scss/utilities";
+
+$utilities: map-merge(
+  $utilities,
+  (
+    "width": (
+      property: width,
+      class: w,
+      responsive: true,
+      values: (
+        10: 10%,
+        20: 20%,
+        25: 25%,
+        33: 33%,
+        50: 50%,
+        66: 66%,
+        75: 75%,
+        90: 90%,
+        100: 100%,
+        auto: auto,
+      ),
+    ),
+  )
+);
+
+@import "bootstrap/scss/utilities/api";
+
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.tooltip-inner {
+  max-width: 300px;
+  text-align: left;
+}
+
+.bs-tooltip-bottom {
+  top: 8px !important;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
