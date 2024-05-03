@@ -1,10 +1,12 @@
 import Stack from "react-bootstrap/Stack";
-import Link from "next/Link";
+import Link from "next/link";
 
 function Sidebar() {
   return (
     <Stack direction="vertical" gap={4} className="h-100 py-4 px-3 fs-5 shadow">
-      <Link href="/" className="fw-bold">Program Selection</Link>
+      <Link href="/" className="fw-bold">
+        Program Selection
+      </Link>
       <Link href="/">Pool Selection</Link>
       <Link href="/">Configuration</Link>
       <Link href="/">Grantee Review</Link>

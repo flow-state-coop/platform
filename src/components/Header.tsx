@@ -12,7 +12,7 @@ export default function Header() {
       direction="horizontal"
       className="justify-content-between w-100 px-5 shadow"
     >
-      <Image src="/logo.png" alt="logo" width={isMobile ? 60 : 80} />
+      <Image src="/logo.svg" alt="logo" width={isMobile ? 60 : 80} />
       <ConnectButton
         accountStatus="address"
         chainStatus="icon"

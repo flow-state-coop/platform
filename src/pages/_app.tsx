@@ -1,4 +1,10 @@
 import type { AppProps } from "next/app";
+import {
+  ApolloClient,
+  InMemoryCache,
+  ApolloProvider,
+  gql,
+} from "@apollo/client";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
 import { sepolia, optimism } from "wagmi/chains";
@@ -15,6 +21,11 @@ const config = getDefaultConfig({
   ssr: true,
 });
 
+const apolloClient = new ApolloClient({
+  uri: "https://grants-stack-indexer-v2.gitcoin.co/graphql",
+  cache: new InMemoryCache(),
+});
+
 export default function App({ Component, pageProps }: AppProps) {
   const queryClient = new QueryClient();
 
@@ -22,9 +33,11 @@ export default function App({ Component, pageProps }: AppProps) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider modalSize="compact">
-          <Layout>
-            <Component {...pageProps} />
-          </Layout>
+          <ApolloProvider client={apolloClient}>
+            <Layout>
+              <Component {...pageProps} />
+            </Layout>
+          </ApolloProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

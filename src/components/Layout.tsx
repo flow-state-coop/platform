@@ -14,7 +14,7 @@ export default function Layout({ children }: LayoutProps) {
     <Stack direction="vertical" style={{ minHeight: "100vh" }}>
       <Header />
       <Stack direction="horizontal" className="flex-grow-1">
-        <Stack direction="vertical" className="w-25" style={{flexGrow:1}}>
+        <Stack direction="vertical" className="w-25" style={{ flexGrow: 1 }}>
           <Sidebar />
         </Stack>
         <Stack direction="vertical" className="w-75">

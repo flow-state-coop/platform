@@ -19,7 +19,7 @@ function useMediaQuery() {
 
       const mobileQuery = window.matchMedia("(max-width: 576px)");
       const tabletQuery = window.matchMedia(
-        "(min-width: 576px) and (max-width: 1200px)"
+        "(min-width: 576px) and (max-width: 1200px)",
       );
       const desktopQuery = window.matchMedia("(min-width: 1200px)");
 
