@@ -1,4 +1,5 @@
 import type { AppProps } from "next/app";
+import { http } from "viem";
 import {
   ApolloClient,
   InMemoryCache,
@@ -7,7 +8,7 @@ import {
 } from "@apollo/client";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
-import { sepolia, optimism } from "wagmi/chains";
+import { optimismSepolia } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import Layout from "@/components/Layout";
 import { WALLET_CONNECT_PROJECT_ID } from "../lib/constants";
@@ -17,12 +18,15 @@ import "@/styles.scss";
 const config = getDefaultConfig({
   appName: "SQF Admin",
   projectId: WALLET_CONNECT_PROJECT_ID,
-  chains: [sepolia, optimism],
+  chains: [optimismSepolia],
   ssr: true,
+  transports: {
+    [optimismSepolia.id]: http("https://optimism-sepolia-rpc.publicnode.com"),
+  },
 });
 
 const apolloClient = new ApolloClient({
-  uri: "https://grants-stack-indexer-v2.gitcoin.co/graphql",
+  uri: "https://api.streaming.fund/graphql",
   cache: new InMemoryCache(),
 });
 
