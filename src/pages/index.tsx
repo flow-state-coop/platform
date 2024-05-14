@@ -49,7 +49,7 @@ export default function Index() {
       chainId: connectedChain?.id ?? chains[0].id,
     },
     skip: !address,
-    pollInterval: 10000,
+    pollInterval: 3000,
   });
   const { isPending, writeContract } = useWriteContract();
   const router = useRouter();
