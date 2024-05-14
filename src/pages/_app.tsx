@@ -1,16 +1,12 @@
 import type { AppProps } from "next/app";
 import { http } from "viem";
-import {
-  ApolloClient,
-  InMemoryCache,
-  ApolloProvider,
-  gql,
-} from "@apollo/client";
+import { ApolloClient, InMemoryCache, ApolloProvider } from "@apollo/client";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
 import { optimismSepolia } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import Layout from "@/components/Layout";
+import { AdminParamsContextProvider } from "@/context/AdminParams";
 import { WALLET_CONNECT_PROJECT_ID } from "../lib/constants";
 import "@rainbow-me/rainbowkit/styles.css";
 import "@/styles.scss";
@@ -38,9 +34,11 @@ export default function App({ Component, pageProps }: AppProps) {
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider modalSize="compact">
           <ApolloProvider client={apolloClient}>
-            <Layout>
-              <Component {...pageProps} />
-            </Layout>
+            <AdminParamsContextProvider>
+              <Layout>
+                <Component {...pageProps} />
+              </Layout>
+            </AdminParamsContextProvider>
           </ApolloProvider>
         </RainbowKitProvider>
       </QueryClientProvider>

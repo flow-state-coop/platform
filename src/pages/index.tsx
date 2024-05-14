@@ -12,8 +12,9 @@ import Card from "react-bootstrap/Card";
 import Dropdown from "react-bootstrap/Dropdown";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
+import useAdminParams from "@/hooks/adminParams";
+import { networks } from "@/lib/networks";
 import { registryAbi } from "@/lib/abi/registry";
-import { ALLO_REGISTRY_ADDRESS } from "@/lib/constants";
 
 const PROGRAMS_QUERY = gql`
   query ProgramsQuery($address: String, $chainId: Int) {
@@ -26,7 +27,12 @@ const PROGRAMS_QUERY = gql`
         tags: { contains: "program" }
       }
     ) {
+      id
       metadata
+      profileRolesByChainIdAndProfileId {
+        address
+        role
+      }
     }
   }
 `;
@@ -35,6 +41,8 @@ export default function Index() {
   const { openConnectModal } = useConnectModal();
   const { address, chain: connectedChain } = useAccount();
   const { chains, switchChain } = useSwitchChain();
+  const { updateProfileId, updateProfileOwner, updateProfileMembers } =
+    useAdminParams();
   const { data: queryRes, loading } = useQuery(PROGRAMS_QUERY, {
     variables: {
       address: address?.toLowerCase() ?? "",
@@ -43,9 +51,13 @@ export default function Index() {
     skip: !address,
     pollInterval: 10000,
   });
-  const { data: hash, isPending, writeContract } = useWriteContract();
+  const { isPending, writeContract } = useWriteContract();
   const router = useRouter();
   const publicClient = usePublicClient();
+
+  const network = networks.filter(
+    (network) => network.id === connectedChain?.id,
+  )[0];
 
   const createProgram = async () => {
     if (!address || !publicClient) {
@@ -67,7 +79,7 @@ export default function Index() {
     const { name, metadata, members } = profile;
 
     writeContract({
-      address: ALLO_REGISTRY_ADDRESS,
+      address: network.alloRegistry,
       abi: registryAbi,
       functionName: "createProfile",
       args: [BigInt(nonce), name, metadata, address, members],
@@ -100,18 +112,43 @@ export default function Index() {
       ) : (
         <Stack direction="horizontal" gap={5} className="flex-wrap">
           {queryRes?.profiles.map(
-            (profile: { metadata: { name: string } }, i: number) => (
+            (
+              profile: {
+                id: string;
+                metadata: { name: string };
+                profileRolesByChainIdAndProfileId: {
+                  address: string;
+                  role: "OWNER" | "MEMBER";
+                }[];
+              },
+              i: number,
+            ) => (
               <Card
                 className="d-flex justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
                 style={{ width: 256, height: 256 }}
-                onClick={() => router.push("/pools")}
+                onClick={() => {
+                  updateProfileId(profile.id);
+                  updateProfileOwner(
+                    profile.profileRolesByChainIdAndProfileId.find(
+                      (p) => p.role === "OWNER",
+                    )?.address ?? null,
+                  );
+                  const members =
+                    profile.profileRolesByChainIdAndProfileId.filter(
+                      (profileRole) => profileRole.role === "MEMBER",
+                    );
+                  updateProfileMembers(
+                    members.map((profileRole) => profileRole.address),
+                  );
+                  router.push("/pools");
+                }}
                 key={i}
               >
                 <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap">
                   {profile.metadata.name}
                 </Card.Text>
               </Card>
-            )
+            ),
           )}
           <Card
             className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
