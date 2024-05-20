@@ -6,7 +6,7 @@ import {
   parseEther,
   parseEventLogs,
 } from "viem";
-import { useAccount, usePublicClient, useSwitchChain, useConfig } from "wagmi";
+import { useAccount, usePublicClient, useConfig } from "wagmi";
 import {
   writeContract,
   getWalletClient,
@@ -61,14 +61,19 @@ export default function Configure() {
       description: "",
     });
 
-  const { profileId, profileOwner, profileMembers, poolId, updatePoolId } =
-    useAdminParams();
   const { chain: connectedChain } = useAccount();
-  const { chains } = useSwitchChain();
+  const {
+    profileId,
+    profileOwner,
+    profileMembers,
+    poolId,
+    chainId,
+    updatePoolId,
+  } = useAdminParams();
   const { data: queryRes, loading } = useQuery(POOL_BY_ID_QUERY, {
     variables: {
       poolId,
-      chainId: connectedChain?.id ?? chains[0].id,
+      chainId,
     },
     skip: !poolId,
     pollInterval: 3000,
@@ -76,9 +81,7 @@ export default function Configure() {
   const wagmiConfig = useConfig();
   const publicClient = usePublicClient();
 
-  const network = networks.filter(
-    (network) => network.id === connectedChain?.id,
-  )[0];
+  const network = networks.filter((network) => network.id === chainId)[0];
   const pool = queryRes?.pools[0] ?? null;
   const totalTransactions = 2;
 
@@ -215,7 +218,7 @@ export default function Configure() {
       });
 
       const txReceipt = await waitForTransactionReceipt(wagmiConfig, {
-        chainId: network.id,
+        chainId: network?.id,
         hash,
       });
       const topics = parseEventLogs({
@@ -238,7 +241,7 @@ export default function Configure() {
   const deployStrategy = async () => {
     try {
       const walletClient = await getWalletClient(wagmiConfig, {
-        chainId: network.id,
+        chainId: network?.id,
       });
       const deploymentTxHash = await walletClient.deployContract({
         abi: strategyAbi,
@@ -246,7 +249,7 @@ export default function Configure() {
         args: [network.allo, "SQFSuperfluidv1"],
       });
       const deploymentTx = await waitForTransactionReceipt(wagmiConfig, {
-        chainId: network.id,
+        chainId: network?.id,
         hash: deploymentTxHash,
       });
 
@@ -262,6 +265,8 @@ export default function Configure() {
         <Spinner className="m-auto" />
       ) : !profileId || !profileOwner ? (
         <>Program not found, please select one from Program Selection</>
+      ) : connectedChain?.id !== network.id ? (
+        <>Wrong network</>
       ) : (
         <Form
           className="d-flex flex-column gap-4"
@@ -368,7 +373,7 @@ export default function Configure() {
             />
           </Form.Group>
           <Button
-            className="w-25 mt-4"
+            className="d-flex gap-2 justify-content-center align-items-center w-25 mt-4"
             disabled={
               !!pool ||
               !poolConfigParameters.minPassportScore ||
@@ -377,14 +382,10 @@ export default function Configure() {
             onClick={handleCreatePool}
           >
             {areTransactionsLoading ? (
-              <Stack
-                direction="horizontal"
-                gap={2}
-                className="justify-content-center"
-              >
+              <>
                 <Spinner size="sm" />
                 {transactionsCompleted + 1}/{totalTransactions}
-              </Stack>
+              </>
             ) : (
               "Launch Pool (2)"
             )}

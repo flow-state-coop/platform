@@ -41,12 +41,16 @@ export default function Index() {
   const { openConnectModal } = useConnectModal();
   const { address, chain: connectedChain } = useAccount();
   const { chains, switchChain } = useSwitchChain();
-  const { updateProfileId, updateProfileOwner, updateProfileMembers } =
-    useAdminParams();
+  const {
+    updateProfileId,
+    updateProfileOwner,
+    updateProfileMembers,
+    updateChainId,
+  } = useAdminParams();
   const { data: queryRes, loading } = useQuery(PROGRAMS_QUERY, {
     variables: {
       address: address?.toLowerCase() ?? "",
-      chainId: connectedChain?.id ?? chains[0].id,
+      chainId: connectedChain?.id,
     },
     skip: !address,
     pollInterval: 3000,
@@ -89,84 +93,93 @@ export default function Index() {
   return (
     <Stack direction="vertical" gap={4} className="px-5 py-4">
       <Card.Text as="h1">Select or create an Allo Program</Card.Text>
-      <Dropdown>
-        <Dropdown.Toggle
-          variant="transparent"
-          className="d-flex justify-content-between align-items-center w-20 border border-2"
-        >
-          {connectedChain?.name ?? chains[0].name}
-        </Dropdown.Toggle>
-        <Dropdown.Menu>
-          {chains.map((chain, i) => (
-            <Dropdown.Item
-              key={i}
-              onClick={() => switchChain({ chainId: chain.id })}
-            >
-              {chain.name}
-            </Dropdown.Item>
-          ))}
-        </Dropdown.Menu>
-      </Dropdown>
-      {loading ? (
-        <Spinner className="m-auto" />
+      {!connectedChain?.id ? (
+        <>Please connect a wallet</>
+      ) : !network ? (
+        <>Network not supported</>
       ) : (
-        <Stack direction="horizontal" gap={5} className="flex-wrap">
-          {queryRes?.profiles.map(
-            (
-              profile: {
-                id: string;
-                metadata: { name: string };
-                profileRolesByChainIdAndProfileId: {
-                  address: string;
-                  role: "OWNER" | "MEMBER";
-                }[];
-              },
-              i: number,
-            ) => (
+        <>
+          <Dropdown>
+            <Dropdown.Toggle
+              variant="transparent"
+              className="d-flex justify-content-between align-items-center w-20 border border-2"
+            >
+              {connectedChain?.name ?? chains[0].name}
+            </Dropdown.Toggle>
+            <Dropdown.Menu>
+              {chains.map((chain, i) => (
+                <Dropdown.Item
+                  key={i}
+                  onClick={() => switchChain({ chainId: chain.id })}
+                >
+                  {chain.name}
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown>
+          {loading ? (
+            <Spinner className="m-auto" />
+          ) : (
+            <Stack direction="horizontal" gap={5} className="flex-wrap">
+              {queryRes?.profiles.map(
+                (
+                  profile: {
+                    id: string;
+                    metadata: { name: string };
+                    profileRolesByChainIdAndProfileId: {
+                      address: string;
+                      role: "OWNER" | "MEMBER";
+                    }[];
+                  },
+                  i: number,
+                ) => (
+                  <Card
+                    className="d-flex justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
+                    style={{ width: 256, height: 256 }}
+                    onClick={() => {
+                      updateProfileId(profile.id);
+                      updateProfileOwner(
+                        profile.profileRolesByChainIdAndProfileId.find(
+                          (p) => p.role === "OWNER",
+                        )?.address ?? null,
+                      );
+                      const members =
+                        profile.profileRolesByChainIdAndProfileId.filter(
+                          (profileRole) => profileRole.role === "MEMBER",
+                        );
+                      updateProfileMembers(
+                        members.map((profileRole) => profileRole.address),
+                      );
+                      updateChainId(network.id);
+                      router.push("/pools");
+                    }}
+                    key={i}
+                  >
+                    <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap">
+                      {profile.metadata.name}
+                    </Card.Text>
+                  </Card>
+                ),
+              )}
               <Card
-                className="d-flex justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
+                className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
                 style={{ width: 256, height: 256 }}
-                onClick={() => {
-                  updateProfileId(profile.id);
-                  updateProfileOwner(
-                    profile.profileRolesByChainIdAndProfileId.find(
-                      (p) => p.role === "OWNER",
-                    )?.address ?? null,
-                  );
-                  const members =
-                    profile.profileRolesByChainIdAndProfileId.filter(
-                      (profileRole) => profileRole.role === "MEMBER",
-                    );
-                  updateProfileMembers(
-                    members.map((profileRole) => profileRole.address),
-                  );
-                  router.push("/pools");
-                }}
-                key={i}
+                onClick={!address ? openConnectModal : createProgram}
               >
-                <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap">
-                  {profile.metadata.name}
-                </Card.Text>
+                {isPending ? (
+                  <Spinner />
+                ) : (
+                  <>
+                    <Image src="/add.svg" alt="add" width={48} />
+                    <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap">
+                      New Program
+                    </Card.Text>
+                  </>
+                )}
               </Card>
-            ),
+            </Stack>
           )}
-          <Card
-            className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
-            style={{ width: 256, height: 256 }}
-            onClick={!address ? openConnectModal : createProgram}
-          >
-            {isPending ? (
-              <Spinner />
-            ) : (
-              <>
-                <Image src="/add.svg" alt="add" width={48} />
-                <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap">
-                  New Program
-                </Card.Text>
-              </>
-            )}
-          </Card>
-        </Stack>
+        </>
       )}
     </Stack>
   );

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { GetServerSideProps } from "next";
 import { encodeAbiParameters, parseAbiParameters } from "viem";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { gql, useQuery } from "@apollo/client";
@@ -11,6 +11,19 @@ import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import { networks } from "@/lib/networks";
 import { alloAbi } from "@/lib/abi/allo";
+
+type IndexProps = {
+  poolId: string;
+  chainId: string;
+};
+
+type Profile = {
+  id: string;
+  anchorAddress: string;
+  metadataCid: string;
+  metadata: { title: string };
+  profileRolesByChainIdAndProfileId: { address: string };
+};
 
 const PROJECTS_QUERY = gql`
   query ProjectsQuery($address: String!, $chainId: Int!, $poolId: String!) {
@@ -43,23 +56,20 @@ const PROJECTS_QUERY = gql`
   }
 `;
 
-type Profile = {
-  id: string;
-  anchorAddress: string;
-  metadataCid: string;
-  metadata: { title: string };
-  profileRolesByChainIdAndProfileId: { address: string };
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const { query } = ctx;
+
+  return { props: { poolId: query.poolid, chainId: query.chainid } };
 };
 
-export default function Index() {
+export default function Index(props: IndexProps) {
+  const { poolId, chainId } = props;
+
   const [selectedProfileIndex, setSelectedProfileIndex] = useState<
     number | null
   >(null);
 
-  const searchParams = useSearchParams();
-  const poolId = searchParams.get("poolid");
-  const chainId = searchParams.get("chainid");
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
   const { data: queryRes, loading } = useQuery(PROJECTS_QUERY, {
     variables: {
       chainId: Number(chainId),
@@ -121,8 +131,10 @@ export default function Index() {
     <Stack direction="vertical" gap={4} className="px-5 py-4">
       {!network ? (
         <>Network not supported</>
-      ) : !poolId || recipientsByProfile === null ? (
+      ) : !poolId || (queryRes && queryRes.pool === null) ? (
         <>Pool not found</>
+      ) : connectedChain?.id !== network.id ? (
+        <>Wrong network</>
       ) : (
         <>
           <Card.Text as="h1">

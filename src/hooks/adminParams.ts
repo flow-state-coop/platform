@@ -6,10 +6,12 @@ export default function useAdminParams() {
     profileOwner,
     profileMembers,
     poolId,
+    chainId,
     updateProfileId,
     updateProfileOwner,
     updateProfileMembers,
     updatePoolId,
+    updateChainId,
   } = useAdminParamsContext();
 
   return {
@@ -17,9 +19,11 @@ export default function useAdminParams() {
     profileOwner,
     profileMembers,
     poolId,
+    chainId,
     updateProfileId,
     updateProfileOwner,
     updateProfileMembers,
     updatePoolId,
+    updateChainId,
   };
 }

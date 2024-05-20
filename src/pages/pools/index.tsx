@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { useAccount, useSwitchChain } from "wagmi";
+import { useAccount } from "wagmi";
 import { gql, useQuery } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
@@ -26,12 +26,11 @@ const POOLS_QUERY = gql`
 `;
 
 export default function Pools() {
-  const { profileId, updatePoolId } = useAdminParams();
-  const { address, chain: connectedChain } = useAccount();
-  const { chains } = useSwitchChain();
+  const { profileId, updatePoolId, chainId } = useAdminParams();
+  const { address } = useAccount();
   const { data: queryRes, loading } = useQuery(POOLS_QUERY, {
     variables: {
-      chainId: connectedChain?.id ?? chains[0].id,
+      chainId,
       profileId,
       address: address?.toLowerCase() ?? "",
     },
