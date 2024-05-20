@@ -9,6 +9,7 @@ import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
+import ProjectCreationModal from "@/components/ProjectCreationModal";
 import { networks } from "@/lib/networks";
 import { alloAbi } from "@/lib/abi/allo";
 
@@ -68,6 +69,8 @@ export default function Index(props: IndexProps) {
   const [selectedProfileIndex, setSelectedProfileIndex] = useState<
     number | null
   >(null);
+  const [showProjectCreationModal, setShowProjectCreationModal] =
+    useState(false);
 
   const { address, chain: connectedChain } = useAccount();
   const { data: queryRes, loading } = useQuery(PROJECTS_QUERY, {
@@ -128,90 +131,95 @@ export default function Index(props: IndexProps) {
   };
 
   return (
-    <Stack direction="vertical" gap={4} className="px-5 py-4">
-      {!network ? (
-        <>Network not supported</>
-      ) : !poolId || (queryRes && queryRes.pool === null) ? (
-        <>Pool not found</>
-      ) : connectedChain?.id !== network.id ? (
-        <>Wrong network</>
-      ) : (
-        <>
-          <Card.Text as="h1">
-            Select or create a project to apply to the pool
-          </Card.Text>
-          <Dropdown>
-            <Dropdown.Toggle
-              variant="transparent"
-              className="d-flex justify-content-between align-items-center w-20 border border-2"
-              disabled
-            >
-              {network.name}
-            </Dropdown.Toggle>
-          </Dropdown>
-          {loading ? (
-            <Spinner className="m-auto" />
-          ) : (
-            <Stack direction="horizontal" gap={5} className="flex-wrap">
-              {profiles?.map((profile: Profile, i: number) => {
-                const recipientStatus = getRecipientStatus(profile);
-
-                return (
-                  <Card
-                    className={`d-flex justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer ${
-                      recipientStatus === "APPROVED"
-                        ? "border-5 border-success"
-                        : recipientStatus === "REJECTED"
-                          ? "border-5 border-danger"
-                          : recipientStatus === "PENDING"
-                            ? "border-5 border-warning"
-                            : selectedProfileIndex === i
-                              ? "border-5 border-primary"
-                              : ""
-                    }
-                    `}
-                    style={{
-                      width: 256,
-                      height: 256,
-                      pointerEvents:
-                        recipientStatus === "APPROVED" ||
-                        recipientStatus === "REJECTED" ||
-                        recipientStatus === "PENDING"
-                          ? "none"
-                          : "auto",
-                    }}
-                    onClick={() => setSelectedProfileIndex(i)}
-                    key={i}
-                  >
-                    <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap">
-                      {profile.metadata.title}
-                    </Card.Text>
-                  </Card>
-                );
-              })}
-              <Card
-                as="a"
-                className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
-                style={{ width: 256, height: 256 }}
-                href="https://builder.gitcoin.co"
-                target="_blank"
+    <>
+      <Stack direction="vertical" gap={4} className="px-5 py-4">
+        {!network ? (
+          <>Network not supported</>
+        ) : !poolId || (queryRes && queryRes.pool === null) ? (
+          <>Pool not found</>
+        ) : connectedChain?.id !== network.id ? (
+          <>Wrong network</>
+        ) : (
+          <>
+            <Card.Text as="h1">
+              Select or create a project to apply to the pool
+            </Card.Text>
+            <Dropdown>
+              <Dropdown.Toggle
+                variant="transparent"
+                className="d-flex justify-content-between align-items-center w-20 border border-2"
+                disabled
               >
-                <Image src="/add.svg" alt="add" width={48} />
-                <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden text-center word-wrap">
-                  Create on builder.gitcoin.co
-                </Card.Text>
-              </Card>
-            </Stack>
-          )}
-          <Button
-            className="w-25 mauto mt-5 py-2"
-            disabled={selectedProfileIndex === null}
-            onClick={registerRecipient}
-          >
-            {isPending ? <Spinner size="sm" className="m-auto" /> : "Apply"}
-          </Button>
-        </>
-      )}
-    </Stack>
+                {network.name}
+              </Dropdown.Toggle>
+            </Dropdown>
+            {loading ? (
+              <Spinner className="m-auto" />
+            ) : (
+              <Stack direction="horizontal" gap={5} className="flex-wrap">
+                {profiles?.map((profile: Profile, i: number) => {
+                  const recipientStatus = getRecipientStatus(profile);
+
+                  return (
+                    <Card
+                      className={`d-flex justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer ${
+                        recipientStatus === "APPROVED"
+                          ? "border-5 border-success"
+                          : recipientStatus === "REJECTED"
+                            ? "border-5 border-danger"
+                            : recipientStatus === "PENDING"
+                              ? "border-5 border-warning"
+                              : selectedProfileIndex === i
+                                ? "border-5 border-primary"
+                                : ""
+                      }
+                    `}
+                      style={{
+                        width: 256,
+                        height: 256,
+                        pointerEvents:
+                          recipientStatus === "APPROVED" ||
+                          recipientStatus === "REJECTED" ||
+                          recipientStatus === "PENDING"
+                            ? "none"
+                            : "auto",
+                      }}
+                      onClick={() => setSelectedProfileIndex(i)}
+                      key={i}
+                    >
+                      <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap">
+                        {profile.metadata.title}
+                      </Card.Text>
+                    </Card>
+                  );
+                })}
+                <Card
+                  className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
+                  style={{ width: 256, height: 256 }}
+                  onClick={() => setShowProjectCreationModal(true)}
+                >
+                  <Image src="/add.svg" alt="add" width={48} />
+                  <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden text-center word-wrap">
+                    Create a new project
+                  </Card.Text>
+                </Card>
+              </Stack>
+            )}
+            <Button
+              className="w-25 mauto mt-5 py-2"
+              disabled={selectedProfileIndex === null}
+              onClick={registerRecipient}
+            >
+              {isPending ? <Spinner size="sm" className="m-auto" /> : "Apply"}
+            </Button>
+          </>
+        )}
+      </Stack>
+      <ProjectCreationModal
+        show={showProjectCreationModal}
+        handleClose={() => setShowProjectCreationModal(false)}
+        registryAddress={network.alloRegistry}
+      />
+    </>
   );
 }

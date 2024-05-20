@@ -24,7 +24,7 @@ import { isNumber } from "@/lib/utils";
 import { strategyBytecode } from "@/lib/strategyBytecode";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { alloAbi } from "@/lib/abi/allo";
-import { pinFileToIPFS } from "@/lib/ipfs";
+import { pinJsonToIpfs } from "@/lib/ipfs";
 
 const POOL_BY_ID_QUERY = gql`
   query PoolByIdQuery($poolId: String, $chainId: Int) {
@@ -135,7 +135,7 @@ export default function Configure() {
 
     setAreTransactionsLoading(true);
 
-    const { IpfsHash: metadataCid } = await pinFileToIPFS({
+    const { IpfsHash: metadataCid } = await pinJsonToIpfs({
       name: poolConfigParameters.name,
       description: poolConfigParameters.description,
     });
