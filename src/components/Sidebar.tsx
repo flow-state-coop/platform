@@ -55,8 +55,8 @@ function Sidebar() {
             Grantee Review
           </Link>
           <Link
-            href="/distribute"
-            className={pathname.startsWith("/distribute") ? "fw-bold" : ""}
+            href="/matching"
+            className={pathname.startsWith("/matching") ? "fw-bold" : ""}
             style={{
               color: poolId ? "" : "gray",
               pointerEvents: poolId ? "auto" : "none",

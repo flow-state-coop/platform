@@ -13,7 +13,7 @@ import ProjectCreationModal from "@/components/ProjectCreationModal";
 import { networks } from "@/lib/networks";
 import { alloAbi } from "@/lib/abi/allo";
 
-type IndexProps = {
+type GranteeProps = {
   poolId: string;
   chainId: string;
 };
@@ -63,7 +63,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
   return { props: { poolId: query.poolid, chainId: query.chainid } };
 };
 
-export default function Index(props: IndexProps) {
+export default function Grantee(props: GranteeProps) {
   const { poolId, chainId } = props;
 
   const [selectedProfileIndex, setSelectedProfileIndex] = useState<
