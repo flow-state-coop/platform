@@ -9,10 +9,10 @@ function Sidebar() {
 
   return (
     <Stack direction="vertical" gap={4} className="h-100 py-4 px-3 fs-5 shadow">
-      {pathname.startsWith("/admin/grantee") ? (
+      {pathname.startsWith("/grantee") ? (
         <Link
           href="/grantee"
-          className={pathname === "/admin/grantee" ? "fw-bold" : ""}
+          className={pathname === "/grantee" ? "fw-bold" : ""}
           style={{
             pointerEvents: "none",
           }}
@@ -21,7 +21,10 @@ function Sidebar() {
         </Link>
       ) : (
         <>
-          <Link href="/admin" className={pathname === "/admin" ? "fw-bold" : ""}>
+          <Link
+            href="/admin"
+            className={pathname === "/admin" ? "fw-bold" : ""}
+          >
             Program Selection
           </Link>
           <Link
