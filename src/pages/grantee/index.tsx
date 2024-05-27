@@ -49,6 +49,7 @@ const PROJECTS_QUERY = gql`
       recipientsByPoolIdAndChainId(
         filter: { recipientAddress: { equalTo: $address } }
       ) {
+        id
         status
         anchorAddress
         recipientAddress
@@ -82,7 +83,7 @@ export default function Grantee(props: GranteeProps) {
     skip: !address || !poolId,
     pollInterval: 3000,
   });
-  const { isPending, writeContract } = useWriteContract();
+  const { isPending, writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
 
   const network = networks.filter(
@@ -96,7 +97,7 @@ export default function Grantee(props: GranteeProps) {
     for (const recipient of recipientsByProfile) {
       if (
         recipient.anchorAddress === profile.anchorAddress ||
-        recipient.recipientAddress === address?.toLowerCase()
+        recipient.id === address?.toLowerCase()
       ) {
         return recipient.status;
       }
@@ -120,7 +121,7 @@ export default function Grantee(props: GranteeProps) {
       [profile.anchorAddress, address, [BigInt(1), profile.metadataCid]],
     );
 
-    await writeContract({
+    await writeContractAsync({
       address: network.allo,
       abi: alloAbi,
       functionName: "registerRecipient",
