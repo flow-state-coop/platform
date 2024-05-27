@@ -225,7 +225,7 @@ export default function Review(props: ReviewProps) {
             <CopyTooltip
               contentClick="Link Copied"
               contentHover="Copy Link"
-              target={<Image src="copy.svg" alt="copy" width={28} />}
+              target={<Image src="/copy.svg" alt="copy" width={28} />}
               handleCopy={() =>
                 navigator.clipboard.writeText(granteeRegistrationLink)
               }
@@ -254,15 +254,15 @@ export default function Review(props: ReviewProps) {
                     <td className="w-33">{recipient.metadata.title}</td>
                     <td className="text-center">
                       {recipient.status === "APPROVED" ? (
-                        <Image src="success.svg" alt="success" width={24} />
+                        <Image src="/success.svg" alt="success" width={24} />
                       ) : recipient.status === "REJECTED" ? (
-                        <Image src="close.svg" alt="fail" width={24} />
+                        <Image src="/close.svg" alt="fail" width={24} />
                       ) : reviewingRecipients.find(
                           (reviewingRecipient) =>
                             recipient.id === reviewingRecipient.id,
                         )?.newStatus === NewStatus.ACCEPTED ? (
                         <Image
-                          src="success.svg"
+                          src="/success.svg"
                           alt="success"
                           width={24}
                           style={{
@@ -275,7 +275,7 @@ export default function Review(props: ReviewProps) {
                             recipient.id === reviewingRecipient.id,
                         )?.newStatus === NewStatus.REJECTED ? (
                         <Image
-                          src="close.svg"
+                          src="/close.svg"
                           alt="fail"
                           width={24}
                           style={{
@@ -381,7 +381,7 @@ export default function Review(props: ReviewProps) {
             </Stack>
           )}
           <Stack direction="horizontal" gap={1} className="mt-4">
-            <Image src="info.svg" alt="info" width={24} />
+            <Image src="/info.svg" alt="info" width={24} />
             <Card.Text className="m-0">
               A small{" "}
               {network?.tokens.find(

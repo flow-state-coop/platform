@@ -212,7 +212,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
                 onClick={() => fileInputRefLogo.current?.click()}
               >
                 <Stack direction="vertical" className="align-items-center">
-                  <Image src="upload.svg" alt="upload" width={32} />
+                  <Image src="/upload.svg" alt="upload" width={32} />
                   Upload a PNG or JPEG
                 </Stack>
               </Button>
@@ -252,7 +252,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
                 onClick={() => fileInputRefBanner.current?.click()}
               >
                 <Stack direction="vertical" className="align-items-center">
-                  <Image src="upload.svg" alt="upload" width={32} />
+                  <Image src="/upload.svg" alt="upload" width={32} />
                   Upload a PNG or JPEG
                 </Stack>
               </Button>

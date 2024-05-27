@@ -61,7 +61,7 @@ export default function Pools() {
                 style={{ width: 256, height: 256 }}
                 onClick={() => {
                   updatePoolId(pool.id);
-                  router.push("/configure");
+                  router.push("/admin/configure");
                 }}
                 key={i}
               >
@@ -79,7 +79,7 @@ export default function Pools() {
             style={{ width: 256, height: 256 }}
             onClick={() => {
               updatePoolId(null);
-              router.push("/configure");
+              router.push("/admin/configure");
             }}
           >
             <Image src="/add.svg" alt="add" width={48} />

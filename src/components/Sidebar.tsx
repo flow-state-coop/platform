@@ -9,10 +9,10 @@ function Sidebar() {
 
   return (
     <Stack direction="vertical" gap={4} className="h-100 py-4 px-3 fs-5 shadow">
-      {pathname.startsWith("/grantee") ? (
+      {pathname.startsWith("/admin/grantee") ? (
         <Link
           href="/grantee"
-          className={pathname === "/grantee" ? "fw-bold" : ""}
+          className={pathname === "/admin/grantee" ? "fw-bold" : ""}
           style={{
             pointerEvents: "none",
           }}
@@ -21,12 +21,12 @@ function Sidebar() {
         </Link>
       ) : (
         <>
-          <Link href="/" className={pathname === "/" ? "fw-bold" : ""}>
+          <Link href="/admin" className={pathname === "/admin" ? "fw-bold" : ""}>
             Program Selection
           </Link>
           <Link
-            href="/pools"
-            className={pathname.startsWith("/pools") ? "fw-bold" : ""}
+            href="/admin/pools"
+            className={pathname.startsWith("/admin/pools") ? "fw-bold" : ""}
             style={{
               color: profileId ? "" : "gray",
               pointerEvents: profileId ? "auto" : "none",
@@ -35,8 +35,8 @@ function Sidebar() {
             Pool Selection
           </Link>
           <Link
-            href="/configure"
-            className={pathname.startsWith("/configure") ? "fw-bold" : ""}
+            href="/admin/configure"
+            className={pathname.startsWith("/admin/configure") ? "fw-bold" : ""}
             style={{
               color: profileId ? "" : "gray",
               pointerEvents: profileId ? "auto" : "none",
@@ -45,8 +45,8 @@ function Sidebar() {
             Configuration
           </Link>
           <Link
-            href="/review"
-            className={pathname.startsWith("/review") ? "fw-bold" : ""}
+            href="/admin/review"
+            className={pathname.startsWith("/admin/review") ? "fw-bold" : ""}
             style={{
               color: poolId ? "" : "gray",
               pointerEvents: poolId ? "auto" : "none",
@@ -55,8 +55,8 @@ function Sidebar() {
             Grantee Review
           </Link>
           <Link
-            href="/matching"
-            className={pathname.startsWith("/matching") ? "fw-bold" : ""}
+            href="/admin/matching"
+            className={pathname.startsWith("/admin/matching") ? "fw-bold" : ""}
             style={{
               color: poolId ? "" : "gray",
               pointerEvents: poolId ? "auto" : "none",
