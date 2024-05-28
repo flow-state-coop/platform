@@ -20,7 +20,7 @@ export async function pinJsonToIpfs(metadata: unknown) {
   }
 }
 
-export async function pinFileToIpfs(file: File) {
+export async function pinFileToIpfs(file: Blob) {
   try {
     const data = new FormData();
 

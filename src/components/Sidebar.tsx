@@ -17,7 +17,7 @@ function Sidebar() {
             pointerEvents: "none",
           }}
         >
-          Grantee
+          Pool Application
         </Link>
       ) : (
         <>

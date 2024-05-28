@@ -178,6 +178,7 @@ export default function Review(props: ReviewProps) {
       await waitForTransactionReceipt(wagmiConfig, {
         chainId: network.id,
         hash: transferHash,
+        confirmations: 2,
       });
 
       setTransactionsCompleted(1);

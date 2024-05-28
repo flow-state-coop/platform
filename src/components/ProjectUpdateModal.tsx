@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Address } from "viem";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import Modal from "react-bootstrap/Modal";
@@ -8,13 +8,17 @@ import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
+import { createVerifiedFetch } from "@helia/verified-fetch";
 import { pinFileToIpfs, pinJsonToIpfs } from "@/lib/ipfs";
+import { Project } from "@/types/project";
 import { registryAbi } from "@/lib/abi/registry";
+import { IPFS_GATEWAYS } from "@/lib/constants";
 
-type ProjectCreationModalProps = {
+type ProjectUpdateModalProps = {
   show: boolean;
   handleClose: () => void;
   registryAddress: string;
+  project: Project;
 };
 
 type MetadataForm = {
@@ -26,16 +30,17 @@ type MetadataForm = {
   projectGithub: string;
 };
 
-export default function ProjectCreationModal(props: ProjectCreationModalProps) {
-  const { show, handleClose, registryAddress } = props;
+export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
+  const { show, handleClose, registryAddress, project } = props;
+  const { metadata: projectMetadata } = project;
 
   const [metadataForm, setMetadataForm] = useState<MetadataForm>({
-    title: "",
-    description: "",
-    website: "",
-    projectTwitter: "",
-    userGithub: "",
-    projectGithub: "",
+    title: projectMetadata.title,
+    description: projectMetadata.description,
+    website: projectMetadata.website,
+    projectTwitter: projectMetadata.projectTwitter,
+    userGithub: projectMetadata.userGithub,
+    projectGithub: projectMetadata.projectGithub,
   });
   const [projectLogoBlob, setProjectLogoBlob] = useState<Blob>();
   const [projectBannerBlob, setProjectBannerBlob] = useState<Blob>();
@@ -47,6 +52,30 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
+
+  useEffect(() => {
+    (async () => {
+      const verifiedFetch = await createVerifiedFetch({
+        gateways: IPFS_GATEWAYS,
+      });
+
+      if (projectMetadata.logoImg) {
+        const logoImgRes = await verifiedFetch(
+          `ipfs://${projectMetadata.logoImg}`,
+        );
+
+        setProjectLogoBlob(await logoImgRes.blob());
+      }
+
+      if (projectMetadata.bannerImg) {
+        const bannerImgRes = await verifiedFetch(
+          `ipfs://${projectMetadata.bannerImg}`,
+        );
+
+        setProjectBannerBlob(await bannerImgRes.blob());
+      }
+    })();
+  }, [projectMetadata.logoImg, projectMetadata.bannerImg]);
 
   const handleFileUploadLogo = () => {
     if (!fileInputRefLogo.current?.files) {
@@ -68,7 +97,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
     setProjectBannerBlob(file);
   };
 
-  const handleCreateProject = async () => {
+  const handleUpdateProject = async () => {
     if (!address || !publicClient) {
       throw Error("Account is not connected");
     }
@@ -103,25 +132,11 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
         createdAt: (Date.now() / 1000) | 0,
       });
 
-      const profile = {
-        name: metadataForm.title,
-        metadata: {
-          protocol: BigInt(1),
-          pointer: metadataCid,
-        },
-        members: [address],
-      };
-
-      const nonce = await publicClient.getTransactionCount({
-        address,
-      });
-      const { name, metadata, members } = profile;
-
       const hash = await writeContractAsync({
         address: registryAddress as Address,
         abi: registryAbi,
-        functionName: "createProfile",
-        args: [BigInt(nonce), name, metadata, address, members],
+        functionName: "updateProfileMetadata",
+        args: [project.id, { protocol: BigInt(1), pointer: metadataCid }],
       });
 
       await publicClient.waitForTransactionReceipt({ hash, confirmations: 5 });
@@ -139,7 +154,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
   return (
     <Modal show={show} size="lg" centered scrollable onHide={handleClose}>
       <Modal.Header closeButton className="border-0">
-        <Modal.Title>Create a Project</Modal.Title>
+        <Modal.Title>Edit Project</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <Form>
@@ -318,9 +333,9 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
             !metadataForm.website
           }
           className="w-25"
-          onClick={handleCreateProject}
+          onClick={handleUpdateProject}
         >
-          {isCreatingProject ? <Spinner size="sm" /> : "Create"}
+          {isCreatingProject ? <Spinner size="sm" /> : "Update"}
         </Button>
       </Modal.Footer>
     </Modal>

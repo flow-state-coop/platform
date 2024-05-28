@@ -15,6 +15,8 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import ProjectCreationModal from "@/components/ProjectCreationModal";
+import ProjectUpdateModal from "@/components/ProjectUpdateModal";
+import { Project } from "@/types/project";
 import { networks } from "@/lib/networks";
 import { alloAbi } from "@/lib/abi/allo";
 import { strategyAbi } from "@/lib/abi/strategy";
@@ -25,13 +27,7 @@ type GranteeProps = {
   chainId: string;
 };
 
-type Profile = {
-  id: string;
-  anchorAddress: string;
-  metadataCid: string;
-  metadata: { title: string };
-  profileRolesByChainIdAndProfileId: { address: string };
-};
+type Status = "PENDING" | "APPROVED" | "REJECTED";
 
 const PROJECTS_QUERY = gql`
   query ProjectsQuery($address: String!, $chainId: Int!, $poolId: String!) {
@@ -77,11 +73,12 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 export default function Grantee(props: GranteeProps) {
   const { poolId, chainId } = props;
 
-  const [selectedProfileIndex, setSelectedProfileIndex] = useState<
+  const [selectedProjectIndex, setSelectedProjectIndex] = useState<
     number | null
   >(null);
   const [showProjectCreationModal, setShowProjectCreationModal] =
     useState(false);
+  const [showProjectUpdateModal, setShowProjectUpdateModal] = useState(false);
 
   const { isMobile } = useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
@@ -110,46 +107,51 @@ export default function Grantee(props: GranteeProps) {
   const network = networks.filter(
     (network) => network.id === Number(chainId),
   )[0];
-  const profiles = queryRes?.profiles ?? null;
   const pool = queryRes?.pool ?? null;
-  const recipientsByProfile = pool?.recipientsByPoolIdAndChainId ?? null;
+  const recipients = pool?.recipientsByPoolIdAndChainId ?? null;
+  const projects =
+    queryRes?.profiles.map((profile: Project) => {
+      let recipientStatus = null;
 
-  const getRecipientStatus = (profile: Profile) => {
-    for (const recipient of recipientsByProfile) {
-      if (
-        recipient.anchorAddress === profile.anchorAddress ||
-        recipient.id === address?.toLowerCase()
-      ) {
-        return recipient.status;
+      for (const recipient of recipients) {
+        if (
+          recipient.anchorAddress === profile.anchorAddress ||
+          recipient.id === address?.toLowerCase()
+        ) {
+          recipientStatus = recipient.status;
+        }
       }
-    }
 
-    return null;
-  };
+      return { ...profile, status: recipientStatus };
+    }) ?? null;
 
   const registerRecipient = async () => {
     if (!address || !publicClient) {
       throw Error("Account is not connected");
     }
 
-    if (selectedProfileIndex === null) {
+    if (selectedProjectIndex === null) {
       throw Error("Invalid profile");
     }
 
-    const profile = profiles[selectedProfileIndex];
+    const project = projects[selectedProjectIndex];
     const recipientData: `0x${string}` = encodeAbiParameters(
       parseAbiParameters("address, address, (uint256, string)"),
-      [profile.anchorAddress, address, [BigInt(1), profile.metadataCid]],
+      [project.anchorAddress, address, [BigInt(1), project.metadataCid]],
     );
 
-    await writeContractAsync({
-      address: network.allo,
-      abi: alloAbi,
-      functionName: "registerRecipient",
-      args: [BigInt(poolId!), recipientData],
-    });
+    try {
+      await writeContractAsync({
+        address: network.allo,
+        abi: alloAbi,
+        functionName: "registerRecipient",
+        args: [BigInt(poolId!), recipientData],
+      });
 
-    setSelectedProfileIndex(null);
+      setSelectedProjectIndex(null);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -159,8 +161,8 @@ export default function Grantee(props: GranteeProps) {
           <>Network not supported</>
         ) : !poolId || (queryRes && queryRes.pool === null) ? (
           <>Pool not found</>
-        ) : connectedChain?.id !== network.id ? (
-          <>Wrong network</>
+        ) : !connectedChain?.id ? (
+          <>Please connect a wallet</>
         ) : (
           <>
             <Card className="border-0">
@@ -212,20 +214,18 @@ export default function Grantee(props: GranteeProps) {
               <Spinner className="m-auto" />
             ) : (
               <Stack direction="horizontal" gap={5} className="flex-wrap">
-                {profiles?.map((profile: Profile, i: number) => {
-                  const recipientStatus = getRecipientStatus(profile);
-
-                  return (
+                {projects?.map(
+                  (project: Project & { status: Status | null }, i: number) => (
                     <Card
                       className={`d-flex justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer ${
-                        recipientStatus === "APPROVED"
-                          ? "border-5 border-success"
-                          : recipientStatus === "REJECTED"
-                            ? "border-5 border-danger"
-                            : recipientStatus === "PENDING"
-                              ? "border-5 border-warning"
-                              : selectedProfileIndex === i
-                                ? "border-5 border-primary"
+                        selectedProjectIndex === i
+                          ? "border-5 border-primary"
+                          : project.status === "APPROVED"
+                            ? "border-5 border-success"
+                            : project.status === "REJECTED"
+                              ? "border-5 border-danger"
+                              : project.status === "PENDING"
+                                ? "border-5 border-warning"
                                 : ""
                       }
                     `}
@@ -233,21 +233,93 @@ export default function Grantee(props: GranteeProps) {
                         width: isMobile ? "100%" : 256,
                         height: 256,
                         pointerEvents:
-                          recipientStatus === "APPROVED" ||
-                          recipientStatus === "REJECTED" ||
-                          recipientStatus === "PENDING"
+                          project.status === "APPROVED" ||
+                          project.status === "REJECTED"
                             ? "none"
                             : "auto",
                       }}
-                      onClick={() => setSelectedProfileIndex(i)}
+                      onClick={() => setSelectedProjectIndex(i)}
                       key={i}
                     >
-                      <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap">
-                        {profile.metadata.title}
-                      </Card.Text>
+                      <Card.Body className="d-flex flex-column w-100 h-75 justify-content-end">
+                        <Card.Text className="d-inline-block w-100 m-0 text-center overflow-hidden word-wrap">
+                          {project.metadata.title}
+                        </Card.Text>
+                      </Card.Body>
+                      <Card.Footer className="position-relative d-flex align-items-bottom justify-content-center w-100 h-50 border-0 bg-transparent pt-0">
+                        {project.status !== null ? (
+                          <Stack
+                            direction="horizontal"
+                            gap={2}
+                            className={`justify-content-center align-items-center fs-4 
+                            ${
+                              project.status === "PENDING"
+                                ? "text-warning"
+                                : project.status === "APPROVED"
+                                  ? "text-success"
+                                  : "text-danger"
+                            }`}
+                            onClick={() =>
+                              setShowProjectUpdateModal(
+                                project.status === "PENDING",
+                              )
+                            }
+                          >
+                            <Image
+                              src={
+                                project.status === "PENDING"
+                                  ? "/pending.svg"
+                                  : project.status === "REJECTED"
+                                    ? "/cancel-circle.svg"
+                                    : "check-circle.svg"
+                              }
+                              alt="status"
+                              width={42}
+                              style={{
+                                filter:
+                                  project.status === "PENDING"
+                                    ? "invert(87%) sepia(40%) saturate(4124%) hue-rotate(348deg) brightness(103%) contrast(110%)"
+                                    : project.status === "REJECTED"
+                                      ? "invert(36%) sepia(58%) saturate(1043%) hue-rotate(313deg) brightness(89%) contrast(116%)"
+                                      : "invert(39%) sepia(10%) saturate(3997%) hue-rotate(103deg) brightness(99%) contrast(80%)",
+                              }}
+                            />
+                            {project.status === "PENDING"
+                              ? "Pending"
+                              : project.status === "REJECTED"
+                                ? "Rejected"
+                                : "Accepted"}
+                            {project.status === "PENDING" && (
+                              <Button
+                                variant="transparent"
+                                className="position-absolute bottom-0 end-0 p-3 border-0"
+                                onClick={() => {
+                                  setShowProjectUpdateModal(true);
+                                }}
+                                style={{
+                                  filter:
+                                    "invert(87%) sepia(40%) saturate(4124%) hue-rotate(348deg) brightness(103%) contrast(110%)",
+                                }}
+                              >
+                                <Image src="/edit.svg" alt="edit" width={24} />
+                              </Button>
+                            )}
+                          </Stack>
+                        ) : (
+                          <Button
+                            variant="transparent"
+                            className="position-absolute bottom-0 end-0 p-3 border-0"
+                            onClick={() => {
+                              setShowProjectUpdateModal(true);
+                            }}
+                          >
+                            <Image src="/edit.svg" alt="edit" width={24} />
+                          </Button>
+                        )}
+                      </Card.Footer>
                     </Card>
-                  );
-                })}
+                  ),
+                )}
                 <Card
                   className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
                   style={{ width: isMobile ? "100%" : 256, height: 256 }}
@@ -262,10 +334,17 @@ export default function Grantee(props: GranteeProps) {
             )}
             <Button
               className={`mt-5 py-2 ${isMobile ? "w-100" : "w-25"}`}
-              disabled={selectedProfileIndex === null}
+              disabled={selectedProjectIndex === null}
               onClick={registerRecipient}
             >
-              {isPending ? <Spinner size="sm" className="m-auto" /> : "Apply"}
+              {isPending ? (
+                <Spinner size="sm" className="m-auto" />
+              ) : selectedProjectIndex !== null &&
+                projects[selectedProjectIndex].status === "PENDING" ? (
+                "Update Application"
+              ) : (
+                "Apply"
+              )}
             </Button>
           </>
         )}
@@ -275,6 +354,14 @@ export default function Grantee(props: GranteeProps) {
         handleClose={() => setShowProjectCreationModal(false)}
         registryAddress={network.alloRegistry}
       />
+      {selectedProjectIndex !== null && (
+        <ProjectUpdateModal
+          show={showProjectUpdateModal}
+          handleClose={() => setShowProjectUpdateModal(false)}
+          registryAddress={network.alloRegistry}
+          project={projects[selectedProjectIndex]}
+        />
+      )}
     </>
   );
 }
