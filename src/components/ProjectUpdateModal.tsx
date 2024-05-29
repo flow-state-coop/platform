@@ -37,7 +37,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
   const [metadataForm, setMetadataForm] = useState<MetadataForm>({
     title: projectMetadata.title,
     description: projectMetadata.description,
-    website: projectMetadata.website,
+    website: projectMetadata.website.replace("https://", ""),
     projectTwitter: projectMetadata.projectTwitter,
     userGithub: projectMetadata.userGithub,
     projectGithub: projectMetadata.projectGithub,

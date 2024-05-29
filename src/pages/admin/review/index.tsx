@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { GetServerSideProps } from "next";
 import { Address } from "viem";
 import { useAccount, useReadContract, useConfig } from "wagmi";
@@ -16,6 +16,7 @@ import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import CopyTooltip from "@/components/CopyTooltip";
 import useAdminParams from "@/hooks/adminParams";
+import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { networks } from "@/lib/networks";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { erc20Abi } from "@/lib/abi/erc20";
@@ -38,6 +39,10 @@ type ReviewingRecipient = {
   newStatus: NewStatus;
 };
 
+type CancelingRecipient = {
+  id: string;
+};
+
 type Metadata = {
   title: string;
   logoImg: string;
@@ -47,9 +52,11 @@ type Metadata = {
   description: string;
   website: string;
   projectTwitter: string;
+  userGithub: string;
+  projectGithub: string;
 };
 
-type Status = "APPROVED" | "REJECTED" | "PENDING";
+type Status = "APPROVED" | "REJECTED" | "PENDING" | "CANCELED";
 
 enum NewStatus {
   ACCEPTED = 2,
@@ -95,14 +102,18 @@ export default function Review(props: ReviewProps) {
   const [reviewingRecipients, setReviewingRecipients] = useState<
     ReviewingRecipient[]
   >([]);
+  const [cancelingRecipients, setCancelingRecipients] = useState<
+    CancelingRecipient[]
+  >([]);
   const [selectedRecipient, setSelectedRecipient] = useState<Recipient | null>(
     null,
   );
-  const [transactionsCompleted, setTransactionsCompleted] = useState(0);
-  const [areTransactionsLoading, setAreTransactionsLoading] = useState(false);
+  const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
 
   const { address, chain: connectedChain } = useAccount();
   const { profileId, poolId, chainId } = useAdminParams();
+  const { areTransactionsLoading, completedTransactions, executeTransactions } =
+    useTransactionsQueue();
   const { data: queryRes, loading } = useQuery(RECIPIENTS_QUERY, {
     variables: {
       poolId,
@@ -124,9 +135,95 @@ export default function Review(props: ReviewProps) {
   });
   const wagmiConfig = useConfig();
 
-  const totalTransactions = 2;
+  const recipients = queryRes?.recipients ?? null;
   const network = networks.filter((network) => network.id === chainId)[0];
   const granteeRegistrationLink = `https://${hostName}/grantee/?poolid=${poolId}&chainid=${chainId}`;
+
+  useMemo(() => {
+    if (!recipients || recipients.length === 0) {
+      return;
+    }
+
+    const strategyAddress = recipients[0].poolChain.strategyAddress as Address;
+    const transactions = [];
+
+    const transferInitialSuperappBalance = async () => {
+      if (!allocationToken) {
+        throw Error("Allocation token not found");
+      }
+
+      if (!initialSuperAppBalance) {
+        throw Error("Initial Superapp Balance not found");
+      }
+
+      const transferHash = await writeContract(wagmiConfig, {
+        address: allocationToken as Address,
+        abi: erc20Abi,
+        functionName: "transfer",
+        args: [
+          strategyAddress,
+          initialSuperAppBalance * BigInt(reviewingRecipients.length),
+        ],
+      });
+
+      await waitForTransactionReceipt(wagmiConfig, {
+        chainId: network.id,
+        hash: transferHash,
+        confirmations: 2,
+      });
+    };
+
+    const reviewRecipients = async () => {
+      const reviewHash = await writeContract(wagmiConfig, {
+        address: strategyAddress,
+        abi: strategyAbi,
+        functionName: "reviewRecipients",
+        args: [
+          reviewingRecipients.map((recipient) => recipient.id as Address),
+          reviewingRecipients.map((recipient) => recipient.newStatus),
+        ],
+      });
+
+      await waitForTransactionReceipt(wagmiConfig, {
+        chainId: network.id,
+        hash: reviewHash,
+      });
+    };
+
+    const cancelRecipients = async () => {
+      const cancelHash = await writeContract(wagmiConfig, {
+        address: strategyAddress,
+        abi: strategyAbi,
+        functionName: "cancelRecipients",
+        args: [
+          cancelingRecipients.map((recipient) => recipient.id as `0x${string}`),
+        ],
+      });
+
+      await waitForTransactionReceipt(wagmiConfig, {
+        chainId: network.id,
+        hash: cancelHash,
+      });
+    };
+
+    if (reviewingRecipients.length > 0) {
+      transactions.push(transferInitialSuperappBalance, reviewRecipients);
+    }
+
+    if (cancelingRecipients.length > 0) {
+      transactions.push(cancelRecipients);
+    }
+
+    setTransactions(transactions);
+  }, [
+    reviewingRecipients,
+    cancelingRecipients,
+    allocationToken,
+    initialSuperAppBalance,
+    network.id,
+    recipients,
+    wagmiConfig,
+  ]);
 
   const handleReviewSelection = (newStatus: NewStatus) => {
     if (!selectedRecipient) {
@@ -148,62 +245,31 @@ export default function Review(props: ReviewProps) {
     }
 
     setReviewingRecipients(_reviewingRecipients);
+    setSelectedRecipient(null);
   };
 
-  const handleReview = async () => {
-    if (!allocationToken) {
-      throw Error("Allocation token not found");
+  const handleCancelSelection = () => {
+    if (!selectedRecipient) {
+      throw Error("No selected recipient");
     }
 
-    if (!initialSuperAppBalance) {
-      throw Error("Initial Superapp Balance not found");
-    }
+    const _cancelingRecipients = [...cancelingRecipients];
 
-    const strategyAddress = queryRes.recipients[0].poolChain
-      .strategyAddress as Address;
+    _cancelingRecipients.push({
+      id: selectedRecipient.id,
+    });
 
-    setAreTransactionsLoading(true);
+    setCancelingRecipients(_cancelingRecipients);
+    setSelectedRecipient(null);
+  };
 
+  const handleSubmit = async () => {
     try {
-      const transferHash = await writeContract(wagmiConfig, {
-        address: allocationToken as Address,
-        abi: erc20Abi,
-        functionName: "transfer",
-        args: [
-          strategyAddress,
-          initialSuperAppBalance * BigInt(reviewingRecipients.length),
-        ],
-      });
+      await executeTransactions(transactions);
 
-      await waitForTransactionReceipt(wagmiConfig, {
-        chainId: network.id,
-        hash: transferHash,
-        confirmations: 2,
-      });
-
-      setTransactionsCompleted(1);
-
-      const reviewHash = await writeContract(wagmiConfig, {
-        address: strategyAddress,
-        abi: strategyAbi,
-        functionName: "reviewRecipients",
-        args: [
-          reviewingRecipients.map((recipient) => recipient.id as Address),
-          reviewingRecipients.map((recipient) => recipient.newStatus),
-        ],
-      });
-
-      await waitForTransactionReceipt(wagmiConfig, {
-        chainId: network.id,
-        hash: reviewHash,
-      });
-
-      setAreTransactionsLoading(false);
       setReviewingRecipients([]);
-      setSelectedRecipient(null);
-      setTransactionsCompleted(0);
+      setCancelingRecipients([]);
     } catch (err) {
-      setAreTransactionsLoading(false);
       console.error(err);
     }
   };
@@ -253,15 +319,11 @@ export default function Review(props: ReviewProps) {
                   <tr key={i}>
                     <td className="w-33">{recipient.recipientAddress}</td>
                     <td className="w-33">{recipient.metadata.title}</td>
-                    <td className="text-center">
-                      {recipient.status === "APPROVED" ? (
-                        <Image src="/success.svg" alt="success" width={24} />
-                      ) : recipient.status === "REJECTED" ? (
-                        <Image src="/close.svg" alt="fail" width={24} />
-                      ) : reviewingRecipients.find(
-                          (reviewingRecipient) =>
-                            recipient.id === reviewingRecipient.id,
-                        )?.newStatus === NewStatus.ACCEPTED ? (
+                    <td className="text-center ps-0">
+                      {reviewingRecipients.find(
+                        (reviewingRecipient) =>
+                          recipient.id === reviewingRecipient.id,
+                      )?.newStatus === NewStatus.ACCEPTED ? (
                         <Image
                           src="/success.svg"
                           alt="success"
@@ -274,7 +336,11 @@ export default function Review(props: ReviewProps) {
                       ) : reviewingRecipients.find(
                           (reviewingRecipient) =>
                             recipient.id === reviewingRecipient.id,
-                        )?.newStatus === NewStatus.REJECTED ? (
+                        )?.newStatus === NewStatus.REJECTED ||
+                        cancelingRecipients.find(
+                          (cancelingRecipient) =>
+                            recipient.id === cancelingRecipient.id,
+                        ) ? (
                         <Image
                           src="/close.svg"
                           alt="fail"
@@ -284,6 +350,11 @@ export default function Review(props: ReviewProps) {
                               "invert(29%) sepia(96%) saturate(1955%) hue-rotate(334deg) brightness(88%) contrast(95%)",
                           }}
                         />
+                      ) : recipient.status === "APPROVED" ? (
+                        <Image src="/success.svg" alt="success" width={24} />
+                      ) : recipient.status === "REJECTED" ||
+                        recipient.status === "CANCELED" ? (
+                        <Image src="/close.svg" alt="fail" width={24} />
                       ) : null}
                     </td>
                     <td className="w-20">
@@ -295,6 +366,16 @@ export default function Review(props: ReviewProps) {
                           }}
                         >
                           Review
+                        </Button>
+                      ) : recipient.status === "APPROVED" ? (
+                        <Button
+                          variant="danger"
+                          className="w-100 p-0"
+                          onClick={() => {
+                            setSelectedRecipient(recipient);
+                          }}
+                        >
+                          Kick from Pool
                         </Button>
                       ) : null}
                     </td>
@@ -343,6 +424,30 @@ export default function Review(props: ReviewProps) {
                 </Row>
                 <Row>
                   <Col>
+                    <Form.Label>Github User URL</Form.Label>
+                    <Form.Control
+                      value={
+                        selectedRecipient.metadata.userGithub
+                          ? `https://github.com/${selectedRecipient.metadata.userGithub}`
+                          : ""
+                      }
+                      disabled
+                    />
+                  </Col>
+                  <Col>
+                    <Form.Label>Github Org URL</Form.Label>
+                    <Form.Control
+                      value={
+                        selectedRecipient.metadata.projectGithub
+                          ? `https://github.com/${selectedRecipient.metadata.projectGithub}`
+                          : ""
+                      }
+                      disabled
+                    />
+                  </Col>
+                </Row>
+                <Row>
+                  <Col>
                     <Form.Label>Logo</Form.Label>
                     <Form.Control
                       value={`https://gateway.pinata.cloud/ipfs/${selectedRecipient.metadata.logoImg}`}
@@ -364,20 +469,32 @@ export default function Review(props: ReviewProps) {
                 </Row>
               </Form>
               <Stack direction="horizontal" gap={2} className="w-50 mt-4">
-                <Button
-                  variant="success"
-                  className="w-50"
-                  onClick={() => handleReviewSelection(NewStatus.ACCEPTED)}
-                >
-                  Accept
-                </Button>
-                <Button
-                  variant="danger"
-                  className="w-50"
-                  onClick={() => handleReviewSelection(NewStatus.REJECTED)}
-                >
-                  Reject
-                </Button>
+                {selectedRecipient.status === "APPROVED" ? (
+                  <Button
+                    variant="danger"
+                    className="w-50"
+                    onClick={handleCancelSelection}
+                  >
+                    Kick from Pool
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="success"
+                      className="w-50"
+                      onClick={() => handleReviewSelection(NewStatus.ACCEPTED)}
+                    >
+                      Accept
+                    </Button>
+                    <Button
+                      variant="danger"
+                      className="w-50"
+                      onClick={() => handleReviewSelection(NewStatus.REJECTED)}
+                    >
+                      Reject
+                    </Button>{" "}
+                  </>
+                )}
               </Stack>
             </Stack>
           )}
@@ -395,16 +512,16 @@ export default function Review(props: ReviewProps) {
           </Stack>
           <Button
             className="d-flex gap-2 align-items-center justify-content-center w-25 mt-2"
-            disabled={reviewingRecipients?.length === 0}
-            onClick={handleReview}
+            disabled={transactions.length === 0}
+            onClick={handleSubmit}
           >
             {areTransactionsLoading ? (
               <>
                 <Spinner size="sm" />
-                {transactionsCompleted + 1}/{totalTransactions}
+                {completedTransactions + 1}/{transactions.length}
               </>
             ) : (
-              "Accept Grantees (2)"
+              `Submit ${transactions.length > 0 ? "(" + transactions.length + ")" : ""}`
             )}
           </Button>
         </Stack>
