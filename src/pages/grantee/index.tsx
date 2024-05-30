@@ -360,6 +360,7 @@ export default function Grantee(props: GranteeProps) {
           handleClose={() => setShowProjectUpdateModal(false)}
           registryAddress={network.alloRegistry}
           project={projects[selectedProjectIndex]}
+          key={selectedProjectIndex}
         />
       )}
     </>

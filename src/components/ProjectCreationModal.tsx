@@ -9,6 +9,7 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import { pinFileToIpfs, pinJsonToIpfs } from "@/lib/ipfs";
+import { extractTwitterHandle, extractGithubUsername } from "@/lib/utils";
 import { registryAbi } from "@/lib/abi/registry";
 
 type ProjectCreationModalProps = {
@@ -94,6 +95,15 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
 
       const { IpfsHash: metadataCid } = await pinJsonToIpfs({
         ...metadataForm,
+        projectTwitter:
+          extractTwitterHandle(metadataForm.projectTwitter) ??
+          metadataForm.projectTwitter,
+        userGithub:
+          extractGithubUsername(metadataForm.userGithub) ??
+          metadataForm.userGithub,
+        projectGithub:
+          extractGithubUsername(metadataForm.projectGithub) ??
+          metadataForm.projectGithub,
         website: `https://${metadataForm.website}`,
         logoImg,
         bannerImg,
@@ -144,7 +154,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
       <Modal.Body>
         <Form>
           <Form.Group className="mb-4">
-            <Form.Label>Project Name</Form.Label>
+            <Form.Label>Project Name*</Form.Label>
             <Form.Control
               type="text"
               value={metadataForm.title}
@@ -155,7 +165,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
             />
           </Form.Group>
           <Form.Group className="mb-4">
-            <Form.Label>Project Description</Form.Label>
+            <Form.Label>Project Description*</Form.Label>
             <Form.Control
               as="textarea"
               rows={4}
@@ -169,23 +179,6 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
                 })
               }
             />
-          </Form.Group>
-          <Form.Group className="mb-4">
-            <Form.Label>Project Website</Form.Label>
-            <InputGroup>
-              <InputGroup.Text>https://</InputGroup.Text>
-              <Form.Control
-                type="text"
-                value={metadataForm.website}
-                placeholder="Your project website"
-                onChange={(e) =>
-                  setMetadataForm({
-                    ...metadataForm,
-                    website: e.target.value,
-                  })
-                }
-              />
-            </InputGroup>
           </Form.Group>
           <Form.Group className="d-flex flex-column mb-4">
             <Form.Label>Project Logo</Form.Label>
@@ -267,13 +260,30 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
             </Stack>
           </Form.Group>
           <Form.Group className="mb-4">
+            <Form.Label>Project Website</Form.Label>
+            <InputGroup>
+              <InputGroup.Text>https://</InputGroup.Text>
+              <Form.Control
+                type="text"
+                value={metadataForm.website}
+                placeholder="Your project website"
+                onChange={(e) =>
+                  setMetadataForm({
+                    ...metadataForm,
+                    website: e.target.value,
+                  })
+                }
+              />
+            </InputGroup>
+          </Form.Group>
+          <Form.Group className="mb-4">
             <Form.Label>Project Twitter</Form.Label>
             <InputGroup>
               <InputGroup.Text>@</InputGroup.Text>
               <Form.Control
                 type="text"
                 value={metadataForm.projectTwitter}
-                placeholder="Your project twitter handle"
+                placeholder="Your project Twitter handle"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -285,38 +295,43 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
           </Form.Group>
           <Form.Group className="mb-4">
             <Form.Label>Your Github Username</Form.Label>
-            <Form.Control
-              type="text"
-              value={metadataForm.userGithub}
-              placeholder="The Github username you use to contribute to the project"
-              onChange={(e) =>
-                setMetadataForm({ ...metadataForm, userGithub: e.target.value })
-              }
-            />
+            <InputGroup>
+              <InputGroup.Text>https://github.com/</InputGroup.Text>
+              <Form.Control
+                type="text"
+                value={metadataForm.userGithub}
+                placeholder="The Github username you use to contribute to the project"
+                onChange={(e) =>
+                  setMetadataForm({
+                    ...metadataForm,
+                    userGithub: e.target.value,
+                  })
+                }
+              />
+            </InputGroup>
           </Form.Group>
           <Form.Group className="mb-4">
             <Form.Label>Github Organization</Form.Label>
-            <Form.Control
-              type="text"
-              value={metadataForm.projectGithub}
-              placeholder="The Github org name your project is part of"
-              onChange={(e) =>
-                setMetadataForm({
-                  ...metadataForm,
-                  projectGithub: e.target.value,
-                })
-              }
-            />
+            <InputGroup>
+              <InputGroup.Text>https://github.com/</InputGroup.Text>
+              <Form.Control
+                type="text"
+                value={metadataForm.projectGithub}
+                placeholder="The Github org name your project is part of"
+                onChange={(e) =>
+                  setMetadataForm({
+                    ...metadataForm,
+                    projectGithub: e.target.value,
+                  })
+                }
+              />
+            </InputGroup>
           </Form.Group>
         </Form>
       </Modal.Body>
       <Modal.Footer className="border-0">
         <Button
-          disabled={
-            !metadataForm.title ||
-            !metadataForm.description ||
-            !metadataForm.website
-          }
+          disabled={!metadataForm.title || !metadataForm.description}
           className="w-25"
           onClick={handleCreateProject}
         >
