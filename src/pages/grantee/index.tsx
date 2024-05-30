@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { GetServerSideProps } from "next";
 import { Address, encodeAbiParameters, parseAbiParameters } from "viem";
 import {
@@ -27,7 +27,7 @@ type GranteeProps = {
   chainId: string;
 };
 
-type Status = "PENDING" | "APPROVED" | "REJECTED";
+type Status = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
 
 const PROJECTS_QUERY = gql`
   query ProjectsQuery($address: String!, $chainId: Int!, $poolId: String!) {
@@ -79,6 +79,7 @@ export default function Grantee(props: GranteeProps) {
   const [showProjectCreationModal, setShowProjectCreationModal] =
     useState(false);
   const [showProjectUpdateModal, setShowProjectUpdateModal] = useState(false);
+  const [newProfileId, setNewProfileId] = useState("");
 
   const { isMobile } = useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
@@ -125,6 +126,21 @@ export default function Grantee(props: GranteeProps) {
       return { ...profile, status: recipientStatus };
     }) ?? null;
 
+  useEffect(() => {
+    if (!newProfileId) {
+      return;
+    }
+
+    const projectIndex = projects
+      .map((project: Project) => project.id)
+      .indexOf(newProfileId);
+
+    if (projectIndex > -1) {
+      setSelectedProjectIndex(projectIndex);
+      setNewProfileId("");
+    }
+  }, [newProfileId, projects]);
+
   const registerRecipient = async () => {
     if (!address || !publicClient) {
       throw Error("Account is not connected");
@@ -161,7 +177,7 @@ export default function Grantee(props: GranteeProps) {
           <>Network not supported</>
         ) : !poolId || (queryRes && queryRes.pool === null) ? (
           <>Pool not found</>
-        ) : !connectedChain?.id ? (
+        ) : !connectedChain?.id || !address ? (
           <>Please connect a wallet</>
         ) : (
           <>
@@ -234,7 +250,8 @@ export default function Grantee(props: GranteeProps) {
                         height: 256,
                         pointerEvents:
                           project.status === "APPROVED" ||
-                          project.status === "REJECTED"
+                          project.status === "REJECTED" ||
+                          project.status === "CANCELED"
                             ? "none"
                             : "auto",
                       }}
@@ -245,6 +262,11 @@ export default function Grantee(props: GranteeProps) {
                         <Card.Text className="d-inline-block w-100 m-0 text-center overflow-hidden word-wrap">
                           {project.metadata.title}
                         </Card.Text>
+                        {selectedProjectIndex === i && (
+                          <Card.Text className="position-absolute top-0 start-50 translate-middle mt-4 fs-6 text-primary">
+                            Submit Below
+                          </Card.Text>
+                        )}
                       </Card.Body>
                       <Card.Footer className="position-relative d-flex align-items-bottom justify-content-center w-100 h-50 border-0 bg-transparent pt-0">
                         {project.status !== null ? (
@@ -269,7 +291,8 @@ export default function Grantee(props: GranteeProps) {
                               src={
                                 project.status === "PENDING"
                                   ? "/pending.svg"
-                                  : project.status === "REJECTED"
+                                  : project.status === "REJECTED" ||
+                                      project.status === "CANCELED"
                                     ? "/cancel-circle.svg"
                                     : "check-circle.svg"
                               }
@@ -279,7 +302,8 @@ export default function Grantee(props: GranteeProps) {
                                 filter:
                                   project.status === "PENDING"
                                     ? "invert(87%) sepia(40%) saturate(4124%) hue-rotate(348deg) brightness(103%) contrast(110%)"
-                                    : project.status === "REJECTED"
+                                    : project.status === "REJECTED" ||
+                                        project.status === "CANCELED"
                                       ? "invert(36%) sepia(58%) saturate(1043%) hue-rotate(313deg) brightness(89%) contrast(116%)"
                                       : "invert(39%) sepia(10%) saturate(3997%) hue-rotate(103deg) brightness(99%) contrast(80%)",
                               }}
@@ -288,7 +312,9 @@ export default function Grantee(props: GranteeProps) {
                               ? "Pending"
                               : project.status === "REJECTED"
                                 ? "Rejected"
-                                : "Accepted"}
+                                : project.status === "CANCELED"
+                                  ? "Canceled"
+                                  : "Accepted"}
                             {project.status === "PENDING" && (
                               <Button
                                 variant="transparent"
@@ -323,7 +349,10 @@ export default function Grantee(props: GranteeProps) {
                 <Card
                   className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
                   style={{ width: isMobile ? "100%" : 256, height: 256 }}
-                  onClick={() => setShowProjectCreationModal(true)}
+                  onClick={() => {
+                    setShowProjectCreationModal(true);
+                    setSelectedProjectIndex(null);
+                  }}
                 >
                   <Image src="/add.svg" alt="add" width={48} />
                   <Card.Text className="d-inline-block m-0 overflow-hidden text-center word-wrap">
@@ -353,6 +382,7 @@ export default function Grantee(props: GranteeProps) {
         show={showProjectCreationModal}
         handleClose={() => setShowProjectCreationModal(false)}
         registryAddress={network.alloRegistry}
+        setNewProfileId={(newProfileId) => setNewProfileId(newProfileId)}
       />
       {selectedProjectIndex !== null && (
         <ProjectUpdateModal

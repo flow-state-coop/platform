@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Address } from "viem";
+import { Address, parseEventLogs } from "viem";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
@@ -16,6 +16,7 @@ type ProjectCreationModalProps = {
   show: boolean;
   handleClose: () => void;
   registryAddress: string;
+  setNewProfileId: (newProfileId: string) => void;
 };
 
 type MetadataForm = {
@@ -28,7 +29,7 @@ type MetadataForm = {
 };
 
 export default function ProjectCreationModal(props: ProjectCreationModalProps) {
-  const { show, handleClose, registryAddress } = props;
+  const { show, handleClose, registryAddress, setNewProfileId } = props;
 
   const [metadataForm, setMetadataForm] = useState<MetadataForm>({
     title: "",
@@ -134,8 +135,17 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
         args: [BigInt(nonce), name, metadata, address, members],
       });
 
-      await publicClient.waitForTransactionReceipt({ hash, confirmations: 5 });
+      const receipt = await publicClient.waitForTransactionReceipt({
+        hash,
+        confirmations: 5,
+      });
+      const logs = parseEventLogs({
+        abi: registryAbi,
+        logs: receipt.logs,
+        eventName: "ProfileCreated",
+      });
 
+      setNewProfileId(logs[0].args.profileId);
       setIsCreatingProject(false);
 
       handleClose();
