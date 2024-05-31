@@ -17,7 +17,9 @@ export function extractGithubUsername(url: string) {
     return null;
   }
 
-  const match = url.match(/^https?:\/\/(www\.)?github.com\/@?(?<username>\w+)/);
+  const match = url.match(
+    /^https?:\/\/(www\.)?github.com\/(?<username>[A-Za-z0-9_-]{1,39})/,
+  );
 
   return match?.groups?.username ? `${match.groups.username}` : null;
 }
