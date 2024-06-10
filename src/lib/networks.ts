@@ -4,6 +4,7 @@ type Network = {
   id: number;
   name: string;
   superfluidConsole: string;
+  superfluidSubgraph: string;
   passportDecoder: Address;
   superfluidHost: Address;
   recipientSuperappFactory: Address;
@@ -23,6 +24,8 @@ const networks: Network[] = [
     id: 11155420,
     name: "OP Sepolia",
     superfluidConsole: "https://console.superfluid.finance/optimism-sepolia",
+    superfluidSubgraph:
+      "https://subgraph-endpoints.superfluid.dev/optimism-sepolia/protocol-v1",
     passportDecoder: "0xe53C60F8069C2f0c3a84F9B3DB5cf56f3100ba56",
     superfluidHost: "0xd399e2Fb5f4cf3722a11F65b88FAB6B2B8621005",
     recipientSuperappFactory: "0xdd023c9c2abf7f2adcedc8be7c688f82f06276de",

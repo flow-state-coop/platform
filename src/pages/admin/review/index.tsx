@@ -17,6 +17,7 @@ import Spinner from "react-bootstrap/Spinner";
 import CopyTooltip from "@/components/CopyTooltip";
 import useAdminParams from "@/hooks/adminParams";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
+import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { erc20Abi } from "@/lib/abi/erc20";
@@ -115,6 +116,7 @@ export default function Review(props: ReviewProps) {
   const { areTransactionsLoading, completedTransactions, executeTransactions } =
     useTransactionsQueue();
   const { data: queryRes, loading } = useQuery(RECIPIENTS_QUERY, {
+    client: getApolloClient("streamingfund"),
     variables: {
       poolId,
       address: address?.toLowerCase() ?? "",

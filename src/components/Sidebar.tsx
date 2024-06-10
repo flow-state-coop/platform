@@ -5,7 +5,7 @@ import useAdminParams from "@/hooks/adminParams";
 
 function Sidebar() {
   const pathname = usePathname();
-  const { profileId, poolId } = useAdminParams();
+  const { profileId, poolId, chainId } = useAdminParams();
 
   return (
     <Stack direction="vertical" gap={4} className="h-100 py-4 px-3 fs-5 shadow">
@@ -66,6 +66,15 @@ function Sidebar() {
             }}
           >
             Matching Funds
+          </Link>
+          <Link
+            href={`/?poolid=${poolId}&chainid=${chainId}`}
+            style={{
+              color: poolId && chainId ? "" : "gray",
+              pointerEvents: poolId && chainId ? "auto" : "none",
+            }}
+          >
+            Pool UI
           </Link>
         </>
       )}

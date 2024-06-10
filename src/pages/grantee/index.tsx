@@ -16,11 +16,12 @@ import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import ProjectCreationModal from "@/components/ProjectCreationModal";
 import ProjectUpdateModal from "@/components/ProjectUpdateModal";
+import { useMediaQuery } from "@/hooks/mediaQuery";
 import { Project } from "@/types/project";
 import { networks } from "@/lib/networks";
 import { alloAbi } from "@/lib/abi/allo";
+import { getApolloClient } from "@/lib/apollo";
 import { strategyAbi } from "@/lib/abi/strategy";
-import { useMediaQuery } from "@/hooks/mediaQuery";
 
 type GranteeProps = {
   poolId: string;
@@ -67,7 +68,9 @@ const PROJECTS_QUERY = gql`
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
   const { query } = ctx;
 
-  return { props: { poolId: query.poolid, chainId: query.chainid } };
+  return {
+    props: { poolId: query.poolid ?? null, chainId: query.chainid ?? null },
+  };
 };
 
 export default function Grantee(props: GranteeProps) {
@@ -84,6 +87,7 @@ export default function Grantee(props: GranteeProps) {
   const { isMobile } = useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { data: queryRes, loading } = useQuery(PROJECTS_QUERY, {
+    client: getApolloClient("streamingfund"),
     variables: {
       chainId: Number(chainId),
       address: address?.toLowerCase() ?? "",

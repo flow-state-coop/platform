@@ -1,6 +1,5 @@
 import type { AppProps } from "next/app";
 import { http } from "viem";
-import { ApolloClient, InMemoryCache, ApolloProvider } from "@apollo/client";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
 import { optimismSepolia } from "wagmi/chains";
@@ -21,11 +20,6 @@ const config = getDefaultConfig({
   },
 });
 
-const apolloClient = new ApolloClient({
-  uri: "https://api.streaming.fund/graphql",
-  cache: new InMemoryCache(),
-});
-
 export default function App({ Component, pageProps }: AppProps) {
   const queryClient = new QueryClient();
 
@@ -33,13 +27,11 @@ export default function App({ Component, pageProps }: AppProps) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider modalSize="compact">
-          <ApolloProvider client={apolloClient}>
-            <AdminParamsContextProvider>
-              <Layout>
-                <Component {...pageProps} />
-              </Layout>
-            </AdminParamsContextProvider>
-          </ApolloProvider>
+          <AdminParamsContextProvider>
+            <Layout>
+              <Component {...pageProps} />
+            </Layout>
+          </AdminParamsContextProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

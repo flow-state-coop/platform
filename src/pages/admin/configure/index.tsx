@@ -19,6 +19,7 @@ import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import useAdminParams from "@/hooks/adminParams";
+import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";
 import { isNumber } from "@/lib/utils";
 import { strategyBytecode } from "@/lib/strategyBytecode";
@@ -71,6 +72,7 @@ export default function Configure() {
     updatePoolId,
   } = useAdminParams();
   const { data: queryRes, loading } = useQuery(POOL_BY_ID_QUERY, {
+    client: getApolloClient("streamingfund"),
     variables: {
       poolId,
       chainId,

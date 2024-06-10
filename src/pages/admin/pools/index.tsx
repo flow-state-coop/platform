@@ -6,6 +6,7 @@ import Card from "react-bootstrap/Card";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import useAdminParams from "@/hooks/adminParams";
+import { getApolloClient } from "@/lib/apollo";
 
 const POOLS_QUERY = gql`
   query PoolsQuery($chainId: Int, $profileId: String, $address: String) {
@@ -29,6 +30,7 @@ export default function Pools() {
   const { profileId, updatePoolId, chainId } = useAdminParams();
   const { address } = useAccount();
   const { data: queryRes, loading } = useQuery(POOLS_QUERY, {
+    client: getApolloClient("streamingfund"),
     variables: {
       chainId,
       profileId,

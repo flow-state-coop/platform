@@ -6,7 +6,8 @@ import {
   useWriteContract,
 } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { gql, useQuery } from "@apollo/client";
+import { useQuery, gql } from "@apollo/client";
+import { getApolloClient } from "@/lib/apollo";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Dropdown from "react-bootstrap/Dropdown";
@@ -48,6 +49,7 @@ export default function Index() {
     updateChainId,
   } = useAdminParams();
   const { data: queryRes, loading } = useQuery(PROGRAMS_QUERY, {
+    client: getApolloClient("streamingfund"),
     variables: {
       address: address?.toLowerCase() ?? "",
       chainId: connectedChain?.id,

@@ -14,10 +14,12 @@ import InputGroup from "react-bootstrap/InputGroup";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import useAdminParams from "@/hooks/adminParams";
+import { getApolloClient } from "@/lib/apollo";
 import { isNumber } from "@/lib/utils";
 import { networks } from "@/lib/networks";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { gdaForwarderAbi } from "@/lib/abi/gdaForwarder";
+import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 const POOL_BY_ID_QUERY = gql`
   query PoolByIdQuery($poolId: String, $chainId: Int) {
@@ -34,8 +36,6 @@ const POOL_BY_ID_QUERY = gql`
   }
 `;
 
-const SECONDS_IN_MONTH = BigInt(2628000);
-
 export default function MatchinPool() {
   const [newFlowRate, setNewFlowRate] = useState("");
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
@@ -46,6 +46,7 @@ export default function MatchinPool() {
   const network = networks.find((network) => network.id === Number(chainId));
   const publicClient = usePublicClient();
   const { data: queryRes, loading } = useQuery(POOL_BY_ID_QUERY, {
+    client: getApolloClient("streamingfund"),
     variables: {
       poolId,
       chainId,
@@ -85,7 +86,7 @@ export default function MatchinPool() {
           queryRes.pools[0].token,
           address,
           gdaPool,
-          parseEther(newFlowRate) / SECONDS_IN_MONTH,
+          parseEther(newFlowRate) / BigInt(SECONDS_IN_MONTH),
           "0x",
         ],
       });
@@ -144,7 +145,9 @@ export default function MatchinPool() {
                         ? "N/A"
                         : parseFloat(
                             Number(
-                              formatEther(currentFlowRate * SECONDS_IN_MONTH),
+                              formatEther(
+                                currentFlowRate * BigInt(SECONDS_IN_MONTH),
+                              ),
                             ).toFixed(8),
                           )
                     }
