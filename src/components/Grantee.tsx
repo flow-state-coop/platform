@@ -74,7 +74,7 @@ export default function Grantee(props: GranteeProps) {
   return (
     <Card
       className="rounded-4 overflow-hidden"
-      style={{ width: "360px", height: "280px" }}
+      style={{ width: "320px", height: "280px" }}
     >
       <Card.Header>
         <Stack direction="horizontal" gap={4}>
@@ -91,7 +91,7 @@ export default function Grantee(props: GranteeProps) {
           <Stack direction="vertical" gap={2} className="">
             <Card.Text
               className="d-inline-block m-0 fs-5 word-wrap text-truncate"
-              style={{ maxWidth: 228 }}
+              style={{ maxWidth: 200 }}
             >
               {name}
             </Card.Text>
@@ -131,7 +131,7 @@ export default function Grantee(props: GranteeProps) {
             /mo
           </Card.Text>
         </Stack>
-        <Button variant="success" className="w-33 p-0">
+        <Button variant="success" className="w-25 p-0">
           <Image
             src="/add.svg"
             alt="donate"

@@ -6,6 +6,7 @@ import { useInView } from "react-intersection-observer";
 import { useReadContract } from "wagmi";
 import Container from "react-bootstrap/Container";
 import Spinner from "react-bootstrap/Spinner";
+import PoolInfo from "@/components/PoolInfo";
 import Grantee from "@/components/Grantee";
 import { Recipient } from "@/types/recipient";
 import { strategyAbi } from "@/lib/abi/strategy";
@@ -101,10 +102,12 @@ export default function Index(props: IndexProps) {
   const { poolId, chainId } = props;
 
   const [grantees, setGrantees] = useState<Grantee[]>([]);
+  const [directTotal, setDirectTotal] = useState(BigInt(0));
 
   const skipGrantees = useRef(0);
   const granteesBatch = useRef(1);
   const hasNextGrantee = useRef(true);
+  const directTotalTimerId = useRef<NodeJS.Timeout>();
 
   const [sentryRef, inView] = useInView();
 
@@ -140,6 +143,7 @@ export default function Index(props: IndexProps) {
     pollInterval: 10000,
   });
 
+  const pool = streamingFundQueryRes?.pool ?? null;
   const network = networks.find(
     (network) => network.id === Number(chainId ?? DEFAULT_CHAIN_ID),
   );
@@ -147,10 +151,8 @@ export default function Index(props: IndexProps) {
     network?.tokens.find((token) => allocationSuperToken === token.address)
       ?.name ?? "N/A";
   const matchingToken =
-    network?.tokens.find(
-      (token) =>
-        streamingFundQueryRes?.pool?.token === token.address.toLowerCase(),
-    )?.name ?? "N/A";
+    network?.tokens.find((token) => pool?.token === token.address.toLowerCase())
+      ?.name ?? "N/A";
 
   const getGrantee = useCallback(
     (recipient: Recipient) => {
@@ -255,14 +257,89 @@ export default function Index(props: IndexProps) {
     });
   }, [streamingFundQueryRes, superfluidQueryRes, inView, getGrantee]);
 
+  useEffect(() => {
+    if (superfluidQueryRes?.accounts.length > 0) {
+      const calcDirectTotal = () => {
+        let directTotal = BigInt(0);
+
+        for (const account of superfluidQueryRes.accounts) {
+          const elapsed = BigInt(
+            Date.now() -
+              account.accountTokenSnapshots[0].updatedAtTimestamp * 1000,
+          );
+          directTotal +=
+            BigInt(
+              account.accountTokenSnapshots[0]
+                .totalAmountStreamedInUntilUpdatedAt,
+            ) +
+            (BigInt(account.accountTokenSnapshots[0].totalInflowRate) *
+              elapsed) /
+              BigInt(1000);
+        }
+
+        return directTotal;
+      };
+
+      clearInterval(directTotalTimerId.current);
+
+      directTotalTimerId.current = setInterval(
+        () => setDirectTotal(calcDirectTotal()),
+        1000,
+      );
+    }
+
+    return () => clearInterval(directTotalTimerId.current);
+  }, [superfluidQueryRes, directTotalTimerId]);
+
   return (
     <>
+      <PoolInfo
+        name={pool?.metadata.name ?? "N/A"}
+        description={pool?.metadata.description ?? "N/A"}
+        matchingFlowRate={BigInt(superfluidQueryRes?.pool?.flowRate ?? 0)}
+        directFlowRate={
+          superfluidQueryRes?.accounts
+            ? superfluidQueryRes?.accounts
+                .map(
+                  (account: {
+                    accountTokenSnapshots: {
+                      totalInflowRate: string;
+                    }[];
+                  }) =>
+                    BigInt(account.accountTokenSnapshots[0].totalInflowRate),
+                )
+                .reduce((a: bigint, b: bigint) => a + b, BigInt(0))
+            : BigInt(0)
+        }
+        directTotal={directTotal}
+        matchingTotalDistributed={BigInt(
+          superfluidQueryRes?.pool
+            ?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
+        )}
+        matchingUpdatedAt={superfluidQueryRes?.pool?.updatedAtTimestamp ?? "0"}
+        donationToken={donationToken}
+        matchingToken={matchingToken}
+        directFunders={
+          superfluidQueryRes?.accounts
+            ? superfluidQueryRes?.accounts
+                .map(
+                  (account: {
+                    accountTokenSnapshots: {
+                      activeIncomingStreamCount: number;
+                    }[];
+                  }) =>
+                    account.accountTokenSnapshots[0].activeIncomingStreamCount,
+                )
+                .reduce((a: number, b: number) => a + b)
+            : 0
+        }
+      />
       <Container
-        className="p-4"
+        className="p-4 mt-3"
         style={{
           display: "grid",
           gap: "2rem",
-          gridTemplateColumns: "repeat(auto-fit, minMax(360px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minMax(320px, 1fr))",
           justifyItems: "center",
         }}
       >
