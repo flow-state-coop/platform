@@ -5,6 +5,8 @@ import { parseEther } from "viem";
 import { useInView } from "react-intersection-observer";
 import { useReadContract } from "wagmi";
 import Container from "react-bootstrap/Container";
+import Stack from "react-bootstrap/Stack";
+import Dropdown from "react-bootstrap/Dropdown";
 import Spinner from "react-bootstrap/Spinner";
 import PoolInfo from "@/components/PoolInfo";
 import Grantee from "@/components/Grantee";
@@ -13,6 +15,7 @@ import { strategyAbi } from "@/lib/abi/strategy";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
+import { shuffle } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 type IndexProps = {
@@ -33,6 +36,12 @@ type Grantee = {
   donationToken: string;
   matchingToken: string;
 };
+
+enum SortingMethod {
+  RANDOM = "Random Order",
+  ALPHABETICAL = "Alphabetical",
+  POPULAR = "Popular",
+}
 
 const POOL_QUERY = gql`
   query PoolQuery($poolId: String!, $chainId: Int!) {
@@ -103,6 +112,7 @@ export default function Index(props: IndexProps) {
 
   const [grantees, setGrantees] = useState<Grantee[]>([]);
   const [directTotal, setDirectTotal] = useState(BigInt(0));
+  const [sortingMethod, setSortingMethod] = useState(SortingMethod.RANDOM);
 
   const skipGrantees = useRef(0);
   const granteesBatch = useRef(1);
@@ -200,6 +210,35 @@ export default function Index(props: IndexProps) {
     [superfluidQueryRes, donationToken, matchingToken],
   );
 
+  const sortGrantees = useCallback(
+    (grantees: Grantee[]) => {
+      if (sortingMethod === SortingMethod.RANDOM) {
+        return shuffle(grantees);
+      }
+
+      if (sortingMethod === SortingMethod.ALPHABETICAL) {
+        return grantees.sort((a, b) => {
+          if (a.name < b.name) {
+            return -1;
+          }
+
+          if (a.name > b.name) {
+            return 1;
+          }
+
+          return 0;
+        });
+      }
+
+      if (sortingMethod === SortingMethod.POPULAR) {
+        return grantees.sort((a, b) => b.allocatorsCount - a.allocatorsCount);
+      }
+
+      return grantees;
+    },
+    [sortingMethod],
+  );
+
   useEffect(() => {
     if (
       !streamingFundQueryRes?.pool ||
@@ -209,9 +248,9 @@ export default function Index(props: IndexProps) {
       return;
     }
 
-    const grantees: Grantee[] = [];
-
     if (inView) {
+      const grantees: Grantee[] = [];
+
       for (
         let i = skipGrantees.current;
         i < GRANTEES_BATCH_SIZE * granteesBatch.current;
@@ -240,22 +279,37 @@ export default function Index(props: IndexProps) {
         granteesBatch.current++;
       }
 
-      setGrantees((prev) => prev.concat(grantees));
-    }
+      setGrantees((prev) =>
+        sortingMethod !== SortingMethod.RANDOM
+          ? sortGrantees(prev.concat(grantees))
+          : prev.concat(grantees),
+      );
+    } else {
+      setGrantees((prev) => {
+        const grantees: Grantee[] = [];
 
-    setGrantees((prev) => {
-      const grantees: Grantee[] = [];
-
-      for (const recipient of streamingFundQueryRes.pool
-        .recipientsByPoolIdAndChainId) {
-        if (prev.find((grantee) => grantee.id === recipient.id)) {
-          grantees.push(getGrantee(recipient));
+        for (const recipient of streamingFundQueryRes.pool
+          .recipientsByPoolIdAndChainId) {
+          if (prev.find((grantee) => grantee.id === recipient.id)) {
+            grantees.push(getGrantee(recipient));
+          }
         }
-      }
 
-      return grantees;
-    });
-  }, [streamingFundQueryRes, superfluidQueryRes, inView, getGrantee]);
+        return grantees;
+      });
+    }
+  }, [
+    streamingFundQueryRes,
+    superfluidQueryRes,
+    inView,
+    getGrantee,
+    sortingMethod,
+    sortGrantees,
+  ]);
+
+  useEffect(() => {
+    setGrantees((prev) => sortGrantees(prev));
+  }, [sortingMethod, sortGrantees]);
 
   useEffect(() => {
     if (superfluidQueryRes?.accounts.length > 0) {
@@ -334,8 +388,38 @@ export default function Index(props: IndexProps) {
             : 0
         }
       />
+      <Stack direction="horizontal" gap={4} className="p-5 pt-4 fs-4">
+        Grantees
+        <Dropdown>
+          <Dropdown.Toggle
+            variant="transparent"
+            className="d-flex justify-content-between align-items-center border border-2 border-gray"
+            style={{ width: 156 }}
+          >
+            {sortingMethod}
+          </Dropdown.Toggle>
+
+          <Dropdown.Menu>
+            <Dropdown.Item
+              onClick={() => setSortingMethod(SortingMethod.RANDOM)}
+            >
+              {SortingMethod.RANDOM}
+            </Dropdown.Item>
+            <Dropdown.Item
+              onClick={() => setSortingMethod(SortingMethod.ALPHABETICAL)}
+            >
+              {SortingMethod.ALPHABETICAL}
+            </Dropdown.Item>
+            <Dropdown.Item
+              onClick={() => setSortingMethod(SortingMethod.POPULAR)}
+            >
+              {SortingMethod.POPULAR}
+            </Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown>
+      </Stack>
       <Container
-        className="p-4 mt-3"
+        className="p-4 pt-0"
         style={{
           display: "grid",
           gap: "2rem",
