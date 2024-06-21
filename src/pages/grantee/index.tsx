@@ -52,7 +52,8 @@ const PROJECTS_QUERY = gql`
     pool(chainId: $chainId, id: $poolId) {
       strategyAddress
       metadata
-      token
+      matchingToken
+      allocationToken
       recipientsByPoolIdAndChainId(
         filter: { recipientAddress: { equalTo: $address } }
       ) {
@@ -101,11 +102,6 @@ export default function Grantee(props: GranteeProps) {
     address: queryRes?.pool.strategyAddress as Address,
     abi: strategyAbi,
     functionName: "minPassportScore",
-  });
-  const { data: allocationSuperToken } = useReadContract({
-    address: queryRes?.pool.strategyAddress as Address,
-    abi: strategyAbi,
-    functionName: "allocationSuperToken",
   });
   const publicClient = usePublicClient();
 
@@ -214,13 +210,14 @@ export default function Grantee(props: GranteeProps) {
                 {network.tokens.find(
                   (token) =>
                     token.address.toLowerCase() ===
-                    allocationSuperToken?.toLowerCase(),
+                    pool?.allocationToken?.toLowerCase(),
                 )?.name ?? "N/A"}
               </Card.Text>
               <Card.Text className="m-0">
                 - Matching Token:{" "}
                 {network.tokens.find(
-                  (token) => token.address.toLowerCase() === pool?.token,
+                  (token) =>
+                    token.address.toLowerCase() === pool?.matchingToken,
                 )?.name ?? "N/A"}
               </Card.Text>
               <Card.Text>

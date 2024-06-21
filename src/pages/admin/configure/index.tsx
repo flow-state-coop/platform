@@ -43,7 +43,7 @@ const POOL_BY_ID_QUERY = gql`
 `;
 
 type PoolConfigParameters = {
-  donationToken: string;
+  allocationToken: string;
   matchingToken: string;
   minPassportScore: string;
   name: string;
@@ -55,7 +55,7 @@ export default function Configure() {
   const [areTransactionsLoading, setAreTransactionsLoading] = useState(false);
   const [poolConfigParameters, setPoolConfigParameters] =
     useState<PoolConfigParameters>({
-      donationToken: "DAIx",
+      allocationToken: "DAIx",
       matchingToken: "ETHx",
       minPassportScore: "",
       name: "",
@@ -108,7 +108,7 @@ export default function Configure() {
         abi: strategyAbi,
         functionName: "poolSuperToken",
       });
-      const donationToken =
+      const allocationToken =
         network.tokens.filter(
           (token) => allocationSuperToken === token.address,
         )[0].name ?? "N/A";
@@ -117,7 +117,7 @@ export default function Configure() {
           .name ?? "N/A";
 
       setPoolConfigParameters({
-        donationToken,
+        allocationToken,
         matchingToken,
         minPassportScore: (Number(minPassportScore) / 10000).toString(),
         name: pool.metadata.name,
@@ -142,7 +142,7 @@ export default function Configure() {
       description: poolConfigParameters.description,
     });
     const allocationSuperToken = network.tokens.find(
-      (token) => token.name === poolConfigParameters.donationToken,
+      (token) => token.name === poolConfigParameters.allocationToken,
     )?.address;
 
     if (!allocationSuperToken) {
@@ -281,7 +281,7 @@ export default function Configure() {
               className="d-flex justify-content-between align-items-center w-20 border border-2"
               disabled={!network || !!pool || !publicClient}
             >
-              {poolConfigParameters.donationToken}
+              {poolConfigParameters.allocationToken}
             </Dropdown.Toggle>
             <Dropdown.Menu>
               {network &&
@@ -291,7 +291,7 @@ export default function Configure() {
                     onClick={() => {
                       setPoolConfigParameters({
                         ...poolConfigParameters,
-                        donationToken: token.name ?? "N/A",
+                        allocationToken: token.name ?? "N/A",
                       });
                     }}
                   >

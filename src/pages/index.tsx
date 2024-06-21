@@ -10,6 +10,7 @@ import Dropdown from "react-bootstrap/Dropdown";
 import Spinner from "react-bootstrap/Spinner";
 import PoolInfo from "@/components/PoolInfo";
 import Grantee from "@/components/Grantee";
+import MatchingPoolFunding from "@/components/MatchingPoolFunding";
 import { Recipient } from "@/types/recipient";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { networks } from "@/lib/networks";
@@ -33,7 +34,7 @@ type Grantee = {
   allocatorsCount: number;
   matchingFlowRate: bigint;
   impactMatchingEstimate: bigint;
-  donationToken: string;
+  allocationToken: string;
   matchingToken: string;
 };
 
@@ -48,7 +49,8 @@ const POOL_QUERY = gql`
     pool(chainId: $chainId, id: $poolId) {
       metadata
       strategyAddress
-      token
+      matchingToken
+      allocationToken
       recipientsByPoolIdAndChainId(condition: { status: APPROVED }) {
         id
         recipientAddress
@@ -87,6 +89,14 @@ const STREAM_QUERY = gql`
         totalAmountClaimed
         updatedAtTimestamp
       }
+      poolDistributors {
+        account {
+          id
+        }
+        flowRate
+        totalAmountFlowedDistributedUntilUpdatedAt
+        updatedAtTimestamp
+      }
     }
   }
 `;
@@ -113,6 +123,13 @@ export default function Index(props: IndexProps) {
   const [grantees, setGrantees] = useState<Grantee[]>([]);
   const [directTotal, setDirectTotal] = useState(BigInt(0));
   const [sortingMethod, setSortingMethod] = useState(SortingMethod.RANDOM);
+  const [transactionPanelState, setTransactionPanelState] = useState<{
+    show: boolean;
+    isFundingMatchingPool: boolean;
+  }>({
+    show: false,
+    isFundingMatchingPool: false,
+  });
 
   const skipGrantees = useRef(0);
   const granteesBatch = useRef(1);
@@ -133,11 +150,6 @@ export default function Index(props: IndexProps) {
     abi: strategyAbi,
     functionName: "gdaPool",
   });
-  const { data: allocationSuperToken } = useReadContract({
-    address: streamingFundQueryRes?.pool?.strategyAddress,
-    abi: strategyAbi,
-    functionName: "allocationSuperToken",
-  });
   const { data: superfluidQueryRes } = useQuery(STREAM_QUERY, {
     client: getApolloClient(
       "superfluid",
@@ -154,15 +166,17 @@ export default function Index(props: IndexProps) {
   });
 
   const pool = streamingFundQueryRes?.pool ?? null;
+  const matchingPool = superfluidQueryRes?.pool ?? null;
   const network = networks.find(
     (network) => network.id === Number(chainId ?? DEFAULT_CHAIN_ID),
   );
-  const donationToken =
-    network?.tokens.find((token) => allocationSuperToken === token.address)
+  const allocationToken =
+    network?.tokens.find((token) => pool?.allocationToken === token.address)
       ?.name ?? "N/A";
   const matchingToken =
-    network?.tokens.find((token) => pool?.token === token.address.toLowerCase())
-      ?.name ?? "N/A";
+    network?.tokens.find(
+      (token) => pool?.matchingToken === token.address.toLowerCase(),
+    )?.name ?? "N/A";
 
   const getGrantee = useCallback(
     (recipient: Recipient) => {
@@ -203,11 +217,11 @@ export default function Index(props: IndexProps) {
           0,
         matchingFlowRate: memberFlowRate ?? BigInt(0),
         impactMatchingEstimate,
-        donationToken,
+        allocationToken,
         matchingToken,
       };
     },
-    [superfluidQueryRes, donationToken, matchingToken],
+    [superfluidQueryRes, allocationToken, matchingToken],
   );
 
   const sortGrantees = useCallback(
@@ -350,7 +364,6 @@ export default function Index(props: IndexProps) {
       <PoolInfo
         name={pool?.metadata.name ?? "N/A"}
         description={pool?.metadata.description ?? "N/A"}
-        matchingFlowRate={BigInt(superfluidQueryRes?.pool?.flowRate ?? 0)}
         directFlowRate={
           superfluidQueryRes?.accounts
             ? superfluidQueryRes?.accounts
@@ -366,12 +379,7 @@ export default function Index(props: IndexProps) {
             : BigInt(0)
         }
         directTotal={directTotal}
-        matchingTotalDistributed={BigInt(
-          superfluidQueryRes?.pool
-            ?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
-        )}
-        matchingUpdatedAt={superfluidQueryRes?.pool?.updatedAtTimestamp ?? "0"}
-        donationToken={donationToken}
+        allocationToken={allocationToken}
         matchingToken={matchingToken}
         directFunders={
           superfluidQueryRes?.accounts
@@ -386,6 +394,10 @@ export default function Index(props: IndexProps) {
                 )
                 .reduce((a: number, b: number) => a + b)
             : 0
+        }
+        matchingPool={matchingPool}
+        showTransactionPanel={() =>
+          setTransactionPanelState({ show: true, isFundingMatchingPool: true })
         }
       />
       <Stack direction="horizontal" gap={4} className="p-5 pt-4 fs-4">
@@ -437,7 +449,7 @@ export default function Index(props: IndexProps) {
             allocationFlowRate={grantee.allocationFlowRate}
             matchingFlowRate={grantee.matchingFlowRate}
             impactMatchingEstimate={grantee.impactMatchingEstimate}
-            donationToken={donationToken}
+            allocationToken={allocationToken}
             matchingToken={matchingToken}
           />
         ))}
@@ -445,6 +457,21 @@ export default function Index(props: IndexProps) {
       {hasNextGrantee.current === true && (
         <Spinner ref={sentryRef} className="m-auto"></Spinner>
       )}
+      {transactionPanelState.show &&
+      transactionPanelState.isFundingMatchingPool ? (
+        <MatchingPoolFunding
+          show={transactionPanelState.show}
+          handleClose={() =>
+            setTransactionPanelState({
+              show: false,
+              isFundingMatchingPool: false,
+            })
+          }
+          name={pool?.metadata.name ?? ""}
+          description={pool?.metadata.description ?? ""}
+          matchingPool={matchingPool}
+        />
+      ) : null}
     </>
   );
 }

@@ -17,7 +17,7 @@ type GranteeProps = {
   allocatorsCount: number;
   matchingFlowRate: bigint;
   impactMatchingEstimate: bigint;
-  donationToken: string;
+  allocationToken: string;
   matchingToken: string;
 };
 
@@ -30,7 +30,7 @@ export default function Grantee(props: GranteeProps) {
     allocatorsCount,
     matchingFlowRate,
     impactMatchingEstimate,
-    donationToken,
+    allocationToken,
     matchingToken,
   } = props;
 
@@ -106,7 +106,7 @@ export default function Grantee(props: GranteeProps) {
               </Stack>
               <Stack direction="vertical" gap={2} className="w-75">
                 <Card.Text className="m-0">
-                  {monthlyAllocation} {donationToken}/mo
+                  {monthlyAllocation} {allocationToken}/mo
                 </Card.Text>
                 <Card.Text className="m-0">
                   {monthlyMatching} {matchingToken}/mo
@@ -127,7 +127,8 @@ export default function Grantee(props: GranteeProps) {
         <Stack direction="vertical" className="w-50">
           <Card.Text className="m-0 fs-6 text-center">Multiplier</Card.Text>
           <Card.Text className="m-0 fs-6 fw-bold text-center">
-            1 {donationToken} = {monthlyImpactMatchingEstimate} {matchingToken}
+            1 {allocationToken} = {monthlyImpactMatchingEstimate}{" "}
+            {matchingToken}
             /mo
           </Card.Text>
         </Stack>

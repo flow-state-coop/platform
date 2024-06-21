@@ -31,7 +31,7 @@ const POOL_BY_ID_QUERY = gql`
       }
     ) {
       strategyAddress
-      token
+      matchingToken
     }
   }
 `;
@@ -63,7 +63,7 @@ export default function MatchinPool() {
     abi: gdaForwarderAbi,
     functionName: "getFlowDistributionFlowRate",
     args: [
-      queryRes?.pools[0].token as Address,
+      queryRes?.pools[0].matchingToken as Address,
       address as Address,
       gdaPool as Address,
     ],
@@ -83,7 +83,7 @@ export default function MatchinPool() {
         abi: gdaForwarderAbi,
         functionName: "distributeFlow",
         args: [
-          queryRes.pools[0].token,
+          queryRes.pools[0].matchingToken,
           address,
           gdaPool,
           parseEther(newFlowRate) / BigInt(SECONDS_IN_MONTH),
@@ -159,7 +159,7 @@ export default function MatchinPool() {
                       network?.tokens.find(
                         (token) =>
                           token.address.toLowerCase() ===
-                          queryRes?.pools[0].token,
+                          queryRes?.pools[0].matchingToken,
                       )?.name
                     }
                     /month
@@ -185,7 +185,7 @@ export default function MatchinPool() {
                       network?.tokens.find(
                         (token) =>
                           token.address.toLowerCase() ===
-                          queryRes?.pools[0].token,
+                          queryRes?.pools[0].matchingToken,
                       )?.name
                     }
                     /month

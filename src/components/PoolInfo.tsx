@@ -6,33 +6,32 @@ import Image from "react-bootstrap/Image";
 import InfoTooltip from "@/components/InfoTooltip";
 import { roundWeiAmount } from "@/lib/utils";
 import { Pool } from "@/types/pool";
+import { MatchingPool } from "@/types/matchingPool";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 type PoolInfoProps = Pool & {
-  donationToken: string;
+  allocationToken: string;
   matchingToken: string;
   directFlowRate: bigint;
   directTotal: bigint;
-  matchingFlowRate: bigint;
-  matchingTotalDistributed: bigint;
-  matchingUpdatedAt: number;
   directFunders: number;
+  matchingPool: MatchingPool;
+  showTransactionPanel: () => void;
 };
 
 export default function PoolInfo(props: PoolInfoProps) {
   const {
     name,
     description,
-    donationToken,
+    allocationToken,
     matchingToken,
     directFlowRate,
     directTotal,
-    matchingFlowRate,
-    matchingTotalDistributed,
-    matchingUpdatedAt,
     directFunders,
+    matchingPool,
+    showTransactionPanel,
   } = props;
 
   const [showFullInfo, setShowFullInfo] = useState(false);
@@ -40,11 +39,12 @@ export default function PoolInfo(props: PoolInfoProps) {
   const { isMobile } = useMediaQuery();
 
   const directMonthly = directFlowRate * BigInt(SECONDS_IN_MONTH);
-  const matchingMonthly = matchingFlowRate * BigInt(SECONDS_IN_MONTH);
+  const matchingMonthly =
+    BigInt(matchingPool?.flowRate ?? 0) * BigInt(SECONDS_IN_MONTH);
   const matchingTotal = useFlowingAmount(
-    matchingTotalDistributed,
-    matchingUpdatedAt,
-    matchingFlowRate,
+    BigInt(matchingPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0),
+    matchingPool?.updatedAtTimestamp ?? 0,
+    BigInt(matchingPool?.flowRate ?? 0),
   );
 
   useLayoutEffect(() => {
@@ -88,7 +88,7 @@ export default function PoolInfo(props: PoolInfoProps) {
               className="align-items-center justify-content-center"
             >
               <Card.Text className="m-0 fs-3">
-                {roundWeiAmount(directTotal, 2)} {donationToken}
+                {roundWeiAmount(directTotal, 2)} {allocationToken}
               </Card.Text>
               <Card.Text className="m-0">Total Direct Funding</Card.Text>
             </Stack>
@@ -97,7 +97,7 @@ export default function PoolInfo(props: PoolInfoProps) {
               className="align-items-center justify-content-center"
             >
               <Card.Text className="m-0 fs-3">
-                {roundWeiAmount(directMonthly, 2)} {donationToken}
+                {roundWeiAmount(directMonthly, 2)} {allocationToken}
               </Card.Text>
               <Card.Text className="m-0 text-nowrap">
                 Monthly Direct Funding
@@ -137,6 +137,7 @@ export default function PoolInfo(props: PoolInfoProps) {
                 variant="success"
                 className="mt-3 p-2"
                 style={{ width: 128 }}
+                onClick={showTransactionPanel}
               >
                 <Image
                   src="/add.svg"

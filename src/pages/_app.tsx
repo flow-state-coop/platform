@@ -2,7 +2,7 @@ import type { AppProps } from "next/app";
 import { http } from "viem";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
-import { optimismSepolia } from "wagmi/chains";
+import { optimismSepolia, base } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import Layout from "@/components/Layout";
 import { AdminParamsContextProvider } from "@/context/AdminParams";
@@ -13,10 +13,11 @@ import "@/styles.scss";
 const config = getDefaultConfig({
   appName: "SQF Admin",
   projectId: WALLET_CONNECT_PROJECT_ID,
-  chains: [optimismSepolia],
+  chains: [optimismSepolia, base],
   ssr: true,
   transports: {
     [optimismSepolia.id]: http("https://optimism-sepolia-rpc.publicnode.com"),
+    [base.id]: http("https://mainnet.base.org/"),
   },
 });
 

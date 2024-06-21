@@ -59,3 +59,21 @@ export function shuffle<T>(arr: T[]) {
 
   return arr;
 }
+
+export function formatNumberWithCommas(n: number) {
+  const parts = (n < 0 ? -n : n).toString().split(".");
+  const whole = parts[0];
+  const fractional = parts[1];
+  let i = whole.length;
+  let result = "";
+
+  while (i--) {
+    result = `${i === 0 ? "" : (whole.length - i) % 3 ? "" : ","}${whole.charAt(
+      i,
+    )}${result}`;
+  }
+
+  return `${n < 0 ? "-" : ""}${result}${fractional ? "." : ""}${
+    fractional ?? ""
+  }`;
+}

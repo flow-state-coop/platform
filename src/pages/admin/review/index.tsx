@@ -86,6 +86,7 @@ const RECIPIENTS_QUERY = gql`
       status
       poolChain {
         strategyAddress
+        allocationToken
       }
     }
   }
@@ -125,11 +126,6 @@ export default function Review(props: ReviewProps) {
     skip: !address || !poolId,
     pollInterval: 3000,
   });
-  const { data: allocationToken } = useReadContract({
-    abi: strategyAbi,
-    address: queryRes?.recipients[0]?.poolChain.strategyAddress,
-    functionName: "allocationSuperToken",
-  });
   const { data: initialSuperAppBalance } = useReadContract({
     abi: strategyAbi,
     address: queryRes?.recipients[0]?.poolChain.strategyAddress,
@@ -138,6 +134,10 @@ export default function Review(props: ReviewProps) {
   const wagmiConfig = useConfig();
 
   const recipients = queryRes?.recipients ?? null;
+  const allocationToken =
+    recipients && recipients.length > 0
+      ? (recipients[0].poolChain.allocationToken as Address)
+      : null;
   const network = networks.filter((network) => network.id === chainId)[0];
   const granteeRegistrationLink = `https://${hostName}/grantee/?poolid=${poolId}&chainid=${chainId}`;
 
@@ -159,7 +159,7 @@ export default function Review(props: ReviewProps) {
       }
 
       const transferHash = await writeContract(wagmiConfig, {
-        address: allocationToken as Address,
+        address: allocationToken,
         abi: erc20Abi,
         functionName: "transfer",
         args: [
@@ -220,9 +220,9 @@ export default function Review(props: ReviewProps) {
   }, [
     reviewingRecipients,
     cancelingRecipients,
-    allocationToken,
     initialSuperAppBalance,
-    network.id,
+    allocationToken,
+    network,
     recipients,
     wagmiConfig,
   ]);
@@ -505,9 +505,7 @@ export default function Review(props: ReviewProps) {
             <Card.Text className="m-0">
               A small{" "}
               {network?.tokens.find(
-                (token) =>
-                  allocationToken?.toLowerCase() ===
-                  token.address.toLowerCase(),
+                (token) => allocationToken === token.address.toLowerCase(),
               )?.name ?? "allocation token"}{" "}
               deposit transaction is required before adding grantees to the pool
             </Card.Text>
