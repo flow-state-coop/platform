@@ -1,5 +1,19 @@
 import { formatEther } from "viem";
 
+export enum TimeInterval {
+  DAY = "/day",
+  WEEK = "/week",
+  MONTH = "/month",
+  YEAR = "/year",
+}
+
+export const unitOfTime = {
+  [TimeInterval.DAY]: "days",
+  [TimeInterval.WEEK]: "weeks",
+  [TimeInterval.MONTH]: "months",
+  [TimeInterval.YEAR]: "years",
+};
+
 export function isNumber(value: string) {
   return !isNaN(Number(value)) && !isNaN(parseFloat(value));
 }
@@ -76,4 +90,62 @@ export function formatNumberWithCommas(n: number) {
   return `${n < 0 ? "-" : ""}${result}${fractional ? "." : ""}${
     fractional ?? ""
   }`;
+}
+
+export function fromTimeUnitsToSeconds(units: number, type: string) {
+  let result = units;
+
+  switch (type) {
+    case "minutes":
+      result = units * 60;
+      break;
+    case "hours":
+      result = units * 3600;
+      break;
+    case "days":
+      result = units * 86400;
+      break;
+    case "weeks":
+      result = units * 604800;
+      break;
+    case "months":
+      result = units * 2628000;
+      break;
+    case "years":
+      result = units * 31536000;
+      break;
+    default:
+      break;
+  }
+
+  return result;
+}
+
+export function convertStreamValueToInterval(
+  amount: bigint,
+  from: TimeInterval,
+  to: TimeInterval,
+) {
+  return roundWeiAmount(
+    (amount / BigInt(fromTimeUnitsToSeconds(1, unitOfTime[from]))) *
+      BigInt(fromTimeUnitsToSeconds(1, unitOfTime[to])),
+    4,
+  );
+}
+
+export function truncateStr(str: string, strLen: number) {
+  if (str.length <= strLen) {
+    return str;
+  }
+
+  const separator = "...";
+
+  const sepLen = separator.length,
+    charsToShow = strLen - sepLen,
+    frontChars = Math.ceil(charsToShow / 2),
+    backChars = Math.floor(charsToShow / 2);
+
+  return (
+    str.substr(0, frontChars) + separator + str.substr(str.length - backChars)
+  );
 }

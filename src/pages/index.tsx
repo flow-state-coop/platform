@@ -1,17 +1,19 @@
-import { useCallback, useState, useRef, useEffect } from "react";
+import { useMemo, useCallback, useState, useRef, useEffect } from "react";
 import { GetServerSideProps } from "next";
 import { useQuery, gql } from "@apollo/client";
 import { parseEther } from "viem";
+import { useAccount, useReadContract } from "wagmi";
 import { useInView } from "react-intersection-observer";
-import { useReadContract } from "wagmi";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Dropdown from "react-bootstrap/Dropdown";
 import Spinner from "react-bootstrap/Spinner";
+import SuperfluidContextProvider from "@/context/Superfluid";
 import PoolInfo from "@/components/PoolInfo";
 import Grantee from "@/components/Grantee";
 import MatchingPoolFunding from "@/components/MatchingPoolFunding";
 import { Recipient } from "@/types/recipient";
+import { Token } from "@/types/token";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
@@ -30,12 +32,13 @@ type Grantee = {
   name: string;
   description: string;
   image: string;
+  twitter: string;
   allocationFlowRate: bigint;
   allocatorsCount: number;
   matchingFlowRate: bigint;
   impactMatchingEstimate: bigint;
-  allocationToken: string;
-  matchingToken: string;
+  allocationTokenInfo: Token;
+  matchingTokenInfo: Token;
 };
 
 enum SortingMethod {
@@ -62,7 +65,11 @@ const POOL_QUERY = gql`
 `;
 
 const STREAM_QUERY = gql`
-  query StreamQuery($superapps: [String], $gdaPool: String) {
+  query StreamQuery(
+    $superapps: [String]
+    $gdaPool: String
+    $userAddress: String
+  ) {
     accounts(where: { id_in: $superapps }) {
       id
       accountTokenSnapshots {
@@ -96,6 +103,19 @@ const STREAM_QUERY = gql`
         flowRate
         totalAmountFlowedDistributedUntilUpdatedAt
         updatedAtTimestamp
+      }
+    }
+    account(id: $userAddress) {
+      accountTokenSnapshots {
+        totalNetFlowRate
+        totalOutflowRate
+        totalDeposit
+        maybeCriticalAtTimestamp
+        balanceUntilUpdatedAt
+        updatedAtTimestamp
+        token {
+          id
+        }
       }
     }
   }
@@ -138,6 +158,7 @@ export default function Index(props: IndexProps) {
 
   const [sentryRef, inView] = useInView();
 
+  const { address } = useAccount();
   const { data: streamingFundQueryRes } = useQuery(POOL_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
@@ -161,8 +182,19 @@ export default function Index(props: IndexProps) {
           (recipient: { superappAddress: string }) => recipient.superappAddress,
         ) ?? [],
       gdaPool: gdaPoolAddress?.toLowerCase(),
+      userAddress: address?.toLowerCase() ?? "0x",
     },
     pollInterval: 10000,
+  });
+  const { data: passportDecoder } = useReadContract({
+    abi: strategyAbi,
+    address: streamingFundQueryRes?.pool?.strategyAddress,
+    functionName: "passportDecoder",
+  });
+  const { data: minPassportScore } = useReadContract({
+    abi: strategyAbi,
+    address: streamingFundQueryRes?.pool?.strategyAddress,
+    functionName: "minPassportScore",
   });
 
   const pool = streamingFundQueryRes?.pool ?? null;
@@ -170,13 +202,20 @@ export default function Index(props: IndexProps) {
   const network = networks.find(
     (network) => network.id === Number(chainId ?? DEFAULT_CHAIN_ID),
   );
-  const allocationToken =
-    network?.tokens.find((token) => pool?.allocationToken === token.address)
-      ?.name ?? "N/A";
-  const matchingToken =
-    network?.tokens.find(
-      (token) => pool?.matchingToken === token.address.toLowerCase(),
-    )?.name ?? "N/A";
+  const allocationTokenInfo = useMemo(
+    () =>
+      network?.tokens.find(
+        (token) => pool?.allocationToken === token.address.toLowerCase(),
+      ) ?? { name: "N/A", address: pool?.allocationToken ?? "", icon: "" },
+    [network, pool],
+  );
+  const matchingTokenInfo = useMemo(
+    () =>
+      network?.tokens.find(
+        (token) => pool?.matchingToken === token.address.toLowerCase(),
+      ) ?? { name: "N/A", address: pool?.matchingToken ?? "", icon: "" },
+    [network, pool],
+  );
 
   const getGrantee = useCallback(
     (recipient: Recipient) => {
@@ -209,6 +248,7 @@ export default function Index(props: IndexProps) {
         name: recipient.metadata.title,
         description: recipient.metadata.description,
         image: recipient.metadata.logoImg,
+        twitter: recipient.metadata.projectTwitter,
         allocationFlowRate: BigInt(
           superappAccount?.accountTokenSnapshots[0].totalInflowRate ?? 0,
         ),
@@ -217,11 +257,11 @@ export default function Index(props: IndexProps) {
           0,
         matchingFlowRate: memberFlowRate ?? BigInt(0),
         impactMatchingEstimate,
-        allocationToken,
-        matchingToken,
+        allocationTokenInfo,
+        matchingTokenInfo,
       };
     },
-    [superfluidQueryRes, allocationToken, matchingToken],
+    [superfluidQueryRes, allocationTokenInfo, matchingTokenInfo],
   );
 
   const sortGrantees = useCallback(
@@ -360,7 +400,11 @@ export default function Index(props: IndexProps) {
   }, [superfluidQueryRes, directTotalTimerId]);
 
   return (
-    <>
+    <SuperfluidContextProvider
+      network={network}
+      matchingTokenInfo={matchingTokenInfo}
+      allocationTokenInfo={allocationTokenInfo}
+    >
       <PoolInfo
         name={pool?.metadata.name ?? "N/A"}
         description={pool?.metadata.description ?? "N/A"}
@@ -379,8 +423,8 @@ export default function Index(props: IndexProps) {
             : BigInt(0)
         }
         directTotal={directTotal}
-        allocationToken={allocationToken}
-        matchingToken={matchingToken}
+        allocationTokenInfo={allocationTokenInfo}
+        matchingTokenInfo={matchingTokenInfo}
         directFunders={
           superfluidQueryRes?.accounts
             ? superfluidQueryRes?.accounts
@@ -449,8 +493,8 @@ export default function Index(props: IndexProps) {
             allocationFlowRate={grantee.allocationFlowRate}
             matchingFlowRate={grantee.matchingFlowRate}
             impactMatchingEstimate={grantee.impactMatchingEstimate}
-            allocationToken={allocationToken}
-            matchingToken={matchingToken}
+            allocationTokenInfo={allocationTokenInfo}
+            matchingTokenInfo={matchingTokenInfo}
           />
         ))}
       </Container>
@@ -470,8 +514,16 @@ export default function Index(props: IndexProps) {
           name={pool?.metadata.name ?? ""}
           description={pool?.metadata.description ?? ""}
           matchingPool={matchingPool}
+          matchingTokenInfo={matchingTokenInfo}
+          network={network}
+          passportDecoder={passportDecoder}
+          minPassportScore={minPassportScore}
+          receiver={gdaPoolAddress ?? ""}
+          userAccountSnapshots={
+            superfluidQueryRes?.account?.accountTokenSnapshots ?? null
+          }
         />
       ) : null}
-    </>
+    </SuperfluidContextProvider>
   );
 }

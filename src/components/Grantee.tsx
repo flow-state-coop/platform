@@ -6,6 +6,7 @@ import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
+import { Token } from "@/types/token";
 import { roundWeiAmount } from "@/lib/utils";
 import { IPFS_GATEWAYS, SECONDS_IN_MONTH } from "@/lib/constants";
 
@@ -17,8 +18,8 @@ type GranteeProps = {
   allocatorsCount: number;
   matchingFlowRate: bigint;
   impactMatchingEstimate: bigint;
-  allocationToken: string;
-  matchingToken: string;
+  allocationTokenInfo: Token;
+  matchingTokenInfo: Token;
 };
 
 export default function Grantee(props: GranteeProps) {
@@ -30,8 +31,8 @@ export default function Grantee(props: GranteeProps) {
     allocatorsCount,
     matchingFlowRate,
     impactMatchingEstimate,
-    allocationToken,
-    matchingToken,
+    allocationTokenInfo,
+    matchingTokenInfo,
   } = props;
 
   const [imageUrl, setImageUrl] = useState("");
@@ -106,10 +107,10 @@ export default function Grantee(props: GranteeProps) {
               </Stack>
               <Stack direction="vertical" gap={2} className="w-75">
                 <Card.Text className="m-0">
-                  {monthlyAllocation} {allocationToken}/mo
+                  {monthlyAllocation} {allocationTokenInfo.name}/mo
                 </Card.Text>
                 <Card.Text className="m-0">
-                  {monthlyMatching} {matchingToken}/mo
+                  {monthlyMatching} {matchingTokenInfo.name}/mo
                 </Card.Text>
               </Stack>
             </Stack>
@@ -127,8 +128,8 @@ export default function Grantee(props: GranteeProps) {
         <Stack direction="vertical" className="w-50">
           <Card.Text className="m-0 fs-6 text-center">Multiplier</Card.Text>
           <Card.Text className="m-0 fs-6 fw-bold text-center">
-            1 {allocationToken} = {monthlyImpactMatchingEstimate}{" "}
-            {matchingToken}
+            1 {allocationTokenInfo.name} = {monthlyImpactMatchingEstimate}{" "}
+            {matchingTokenInfo.name}
             /mo
           </Card.Text>
         </Stack>

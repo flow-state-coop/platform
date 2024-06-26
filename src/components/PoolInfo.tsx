@@ -7,13 +7,14 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { roundWeiAmount } from "@/lib/utils";
 import { Pool } from "@/types/pool";
 import { MatchingPool } from "@/types/matchingPool";
+import { Token } from "@/types/token";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 type PoolInfoProps = Pool & {
-  allocationToken: string;
-  matchingToken: string;
+  allocationTokenInfo: Token;
+  matchingTokenInfo: Token;
   directFlowRate: bigint;
   directTotal: bigint;
   directFunders: number;
@@ -25,8 +26,8 @@ export default function PoolInfo(props: PoolInfoProps) {
   const {
     name,
     description,
-    allocationToken,
-    matchingToken,
+    allocationTokenInfo,
+    matchingTokenInfo,
     directFlowRate,
     directTotal,
     directFunders,
@@ -88,7 +89,7 @@ export default function PoolInfo(props: PoolInfoProps) {
               className="align-items-center justify-content-center"
             >
               <Card.Text className="m-0 fs-3">
-                {roundWeiAmount(directTotal, 2)} {allocationToken}
+                {roundWeiAmount(directTotal, 2)} {allocationTokenInfo.name}
               </Card.Text>
               <Card.Text className="m-0">Total Direct Funding</Card.Text>
             </Stack>
@@ -97,7 +98,7 @@ export default function PoolInfo(props: PoolInfoProps) {
               className="align-items-center justify-content-center"
             >
               <Card.Text className="m-0 fs-3">
-                {roundWeiAmount(directMonthly, 2)} {allocationToken}
+                {roundWeiAmount(directMonthly, 2)} {allocationTokenInfo.name}
               </Card.Text>
               <Card.Text className="m-0 text-nowrap">
                 Monthly Direct Funding
@@ -121,7 +122,7 @@ export default function PoolInfo(props: PoolInfoProps) {
               className="align-self-start align-items-center flex-grow-0 me-0 me-sm-5"
             >
               <Card.Text className="m-0 fs-3">
-                {roundWeiAmount(matchingTotal, 2)} {matchingToken}
+                {roundWeiAmount(matchingTotal, 2)} {matchingTokenInfo.name}
               </Card.Text>
               <Card.Text className="m-0">Total Matching</Card.Text>
             </Stack>
@@ -130,7 +131,7 @@ export default function PoolInfo(props: PoolInfoProps) {
               className="align-items-center flex-grow-0 ms-0 ms-sm-5"
             >
               <Card.Text className="m-0 fs-3">
-                {roundWeiAmount(matchingMonthly, 2)} {matchingToken}
+                {roundWeiAmount(matchingMonthly, 2)} {matchingTokenInfo.name}
               </Card.Text>
               <Card.Text className="m-0">Monthly Matching</Card.Text>
               <Button
