@@ -167,7 +167,7 @@ export default function EditStream(props: EditStreamProps) {
                   <Button
                     disabled={!address || !flowRateToReceiver}
                     variant="white"
-                    className="d-flex align-items-center border-0 rounded-0 fs-4 px-1 py-2"
+                    className="d-flex align-items-center bg-white border-0 rounded-0 fs-4 px-1 py-2"
                     onClick={() => handleAmountStepping({ increment: false })}
                   >
                     <Image src="/remove.svg" alt="remove" width={20} />
@@ -175,7 +175,7 @@ export default function EditStream(props: EditStreamProps) {
                   <Button
                     disabled={!address || !flowRateToReceiver}
                     variant="white"
-                    className="d-flex align-items-center border-0 rounded-0 rounded-end-3 fs-4 px-1 py-2"
+                    className="d-flex align-items-center bg-white border-0 rounded-0 rounded-end-3 fs-4 px-1 py-2"
                     onClick={() => handleAmountStepping({ increment: true })}
                   >
                     <Image src="/add.svg" alt="add" width={20} />

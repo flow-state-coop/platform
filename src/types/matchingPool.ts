@@ -9,7 +9,7 @@ export type MatchingPool = {
       id: `0x${string}`;
     };
     units: `${number}`;
-    totalAmountClaimed: `${number}`;
+    totalAmountReceivedUntilUpdatedAt: `${number}`;
     updatedAtTimestamp: number;
   }[];
   poolDistributors: {

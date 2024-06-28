@@ -393,6 +393,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
           matchingPool={matchingPool}
           name={name}
           description={description}
+          matchingTokenInfo={matchingTokenInfo}
         />
         <Accordion activeKey={step} className="mt-4">
           <EditStream

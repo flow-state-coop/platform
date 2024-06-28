@@ -107,9 +107,9 @@ export default function TopUp(props: TopUpProps) {
               gap={3}
               className="align-items-center w-50 px-2 py-3 rounded-3 m-auto border border-gray"
             >
-              <Card.Text className="m-0 fs-5">ETH Balance:</Card.Text>
+              <Card.Text className="m-0 fs-5">ETH:</Card.Text>
               <Card.Text
-                className={`d-flex align-items-center gap-1 m-0 fs-3 ${
+                className={`d-flex align-items-center gap-1 m-0 fs-4 ${
                   !ethBalance || ethBalance.value === BigInt(0)
                     ? "text-danger"
                     : !hasSuggestedTokenBalance
@@ -136,7 +136,7 @@ export default function TopUp(props: TopUpProps) {
                   />
                 )}
               </Card.Text>
-              <Card.Text className="m-0 fs-6">
+              <Card.Text as="small" className="m-0">
                 Suggested{" "}
                 {formatNumberWithCommas(
                   parseFloat(roundWeiAmount(suggestedTokenBalance, 6)),
@@ -144,7 +144,7 @@ export default function TopUp(props: TopUpProps) {
               </Card.Text>
               <OnRampWidget
                 target={
-                  <Button className="d-flex justify-content-center align-items-center gap-1 rounded-3 text-white fs-5">
+                  <Button className="d-flex justify-content-center align-items-center gap-1 rounded-3 text-white fs-6">
                     <Image
                       src="/credit-card.svg"
                       alt="card"
@@ -162,12 +162,12 @@ export default function TopUp(props: TopUpProps) {
               <Stack
                 direction="vertical"
                 gap={3}
-                className="align-items-center w-50 bg-secondary px-2 py-3 rounded-3"
+                className="align-items-center w-50 px-2 py-3 rounded-3 border border-gray"
               >
-                <Card.Text className="m-0 fs-5">ETH Balance:</Card.Text>
+                <Card.Text className="m-0 fs-5">ETH:</Card.Text>
                 <Card.Text
-                  className={`d-flex align-items-center gap-1 m-0 fs-3 ${
-                    hasSufficientEthBalance ? "text-white" : "text-danger"
+                  className={`d-flex align-items-center gap-1 m-0 fs-4 ${
+                    hasSufficientEthBalance ? "" : "text-danger"
                   }`}
                 >
                   {ethBalance
@@ -184,12 +184,12 @@ export default function TopUp(props: TopUpProps) {
                     />
                   )}
                 </Card.Text>
-                <Card.Text className="m-0 fs-6">
-                  Suggested at least {minEthBalance}
+                <Card.Text as="small" className="m-0">
+                  Suggested {minEthBalance}
                 </Card.Text>
                 <OnRampWidget
                   target={
-                    <Button className="d-flex justify-content-center align-items-center gap-1 rounded-3 text-white fs-5">
+                    <Button className="d-flex justify-content-center align-items-center gap-1 w-100 rounded-3 fs-6">
                       <Image
                         src="/credit-card.svg"
                         width={24}
@@ -204,13 +204,13 @@ export default function TopUp(props: TopUpProps) {
               <Stack
                 direction="vertical"
                 gap={3}
-                className="align-items-center w-50 bg-secondary px-2 py-3 rounded-3 fs-5"
+                className="align-items-center w-50 px-2 py-3 rounded-3 fs-6 border border-gray"
               >
-                <Card.Text className="m-0 fs-5">DAI + DAIx Balance:</Card.Text>
+                <Card.Text className="m-0 fs-5">DAI + DAIx:</Card.Text>
                 <Card.Text
-                  className={`d-flex align-items-center gap-1 m-0 fs-3 text-break ${
+                  className={`d-flex align-items-center gap-1 m-0 fs-4 text-break ${
                     hasSuggestedTokenBalance
-                      ? "text-white"
+                      ? ""
                       : !underlyingTokenBalance ||
                           underlyingTokenBalance.value + superTokenBalance ===
                             BigInt(0)
@@ -236,8 +236,8 @@ export default function TopUp(props: TopUpProps) {
                     />
                   )}
                 </Card.Text>
-                <Card.Text className="m-0 fs-6">
-                  Suggested at least{" "}
+                <Card.Text as="small" className="m-0">
+                  Suggested{" "}
                   {formatNumberWithCommas(
                     parseFloat(roundWeiAmount(suggestedTokenBalance, 6)),
                   )}
@@ -247,9 +247,9 @@ export default function TopUp(props: TopUpProps) {
                   href="https://jumper.exchange/?fromChain=10&fromToken=0x0000000000000000000000000000000000000000&toChain=10&toToken=0x7d342726B69C28D942ad8BfE6Ac81b972349d524"
                   target="_blank"
                   rel="noreferrer"
-                  className="d-flex justify-content-center gap-1 bg-primary text-decoration-none rounded-3 text-white fs-4"
+                  className="d-flex justify-content-center align-items-center w-100 gap-1 bg-primary text-decoration-none rounded-3 text-white fs-6"
                 >
-                  <Image src="/swap.svg" alt="swap" width={18} height={18} />
+                  <Image src="/swap.svg" alt="swap" width={16} height={16} />
                   Get DAIx
                 </Button>
               </Stack>
@@ -264,7 +264,7 @@ export default function TopUp(props: TopUpProps) {
           </Button>
           <Button
             variant="success"
-            className="w-50 mt-4 py-1 rounded-3 text-white float-end"
+            className="w-50 mt-4 py-1 rounded-3 float-end"
             disabled={
               (!isFundingMatchingPool &&
                 (!hasSufficientEthBalance || !hasSufficientTokenBalance)) ||

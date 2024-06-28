@@ -11,9 +11,12 @@ import Spinner from "react-bootstrap/Spinner";
 import SuperfluidContextProvider from "@/context/Superfluid";
 import PoolInfo from "@/components/PoolInfo";
 import Grantee from "@/components/Grantee";
+import GranteeFunding from "@/components/GranteeFunding";
 import MatchingPoolFunding from "@/components/MatchingPoolFunding";
 import { Recipient } from "@/types/recipient";
 import { Token } from "@/types/token";
+import { Inflow } from "@/types/inflow";
+import { Outflow } from "@/types/outflow";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
@@ -24,21 +27,23 @@ import { SECONDS_IN_MONTH } from "@/lib/constants";
 type IndexProps = {
   poolId: string;
   chainId: string;
-  grantee: string;
+  recipientId: string;
 };
 
 type Grantee = {
   id: string;
+  recipientAddress: string;
+  superappAddress: string;
   name: string;
   description: string;
   image: string;
   twitter: string;
-  allocationFlowRate: bigint;
-  allocatorsCount: number;
+  inflow: Inflow;
   matchingFlowRate: bigint;
   impactMatchingEstimate: bigint;
   allocationTokenInfo: Token;
   matchingTokenInfo: Token;
+  userOutflow: Outflow | null;
 };
 
 enum SortingMethod {
@@ -69,6 +74,7 @@ const STREAM_QUERY = gql`
     $superapps: [String]
     $gdaPool: String
     $userAddress: String
+    $token: String
   ) {
     accounts(where: { id_in: $superapps }) {
       id
@@ -93,8 +99,8 @@ const STREAM_QUERY = gql`
           id
         }
         units
-        totalAmountClaimed
         updatedAtTimestamp
+        totalAmountReceivedUntilUpdatedAt
       }
       poolDistributors {
         account {
@@ -117,6 +123,18 @@ const STREAM_QUERY = gql`
           id
         }
       }
+      outflows(
+        where: { token: $token }
+        orderBy: updatedAtTimestamp
+        orderDirection: desc
+      ) {
+        receiver {
+          id
+        }
+        streamedUntilUpdatedAt
+        updatedAtTimestamp
+        currentFlowRate
+      }
     }
   }
 `;
@@ -132,13 +150,13 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     props: {
       poolId: query.poolid ?? null,
       chainId: query.chainid ?? null,
-      grantee: query.grantee ?? null,
+      recipientId: query.recipientid ?? null,
     },
   };
 };
 
 export default function Index(props: IndexProps) {
-  const { poolId, chainId } = props;
+  const { poolId, chainId, recipientId } = props;
 
   const [grantees, setGrantees] = useState<Grantee[]>([]);
   const [directTotal, setDirectTotal] = useState(BigInt(0));
@@ -146,9 +164,11 @@ export default function Index(props: IndexProps) {
   const [transactionPanelState, setTransactionPanelState] = useState<{
     show: boolean;
     isFundingMatchingPool: boolean;
+    selectedGrantee: Grantee | null;
   }>({
     show: false,
     isFundingMatchingPool: false,
+    selectedGrantee: null,
   });
 
   const skipGrantees = useRef(0);
@@ -183,6 +203,7 @@ export default function Index(props: IndexProps) {
         ) ?? [],
       gdaPool: gdaPoolAddress?.toLowerCase(),
       userAddress: address?.toLowerCase() ?? "0x",
+      token: streamingFundQueryRes?.pool?.allocationToken ?? "0x",
     },
     pollInterval: 10000,
   });
@@ -222,6 +243,10 @@ export default function Index(props: IndexProps) {
       const superappAccount = superfluidQueryRes.accounts.find(
         (account: { id: string }) => account.id === recipient.superappAddress,
       );
+      const userOutflow = superfluidQueryRes.account.outflows.find(
+        (outflow: { receiver: { id: string } }) =>
+          outflow.receiver.id === recipient.superappAddress,
+      );
       const matchingPool = superfluidQueryRes.pool;
       const adjustedFlowRate =
         BigInt(matchingPool.flowRate) - BigInt(matchingPool.adjustmentFlowRate);
@@ -245,20 +270,21 @@ export default function Index(props: IndexProps) {
 
       return {
         id: recipient.id,
+        recipientAddress: recipient.recipientAddress,
+        superappAddress: recipient.superappAddress,
         name: recipient.metadata.title,
         description: recipient.metadata.description,
         image: recipient.metadata.logoImg,
         twitter: recipient.metadata.projectTwitter,
-        allocationFlowRate: BigInt(
-          superappAccount?.accountTokenSnapshots[0].totalInflowRate ?? 0,
-        ),
-        allocatorsCount:
-          superappAccount?.accountTokenSnapshots[0].activeIncomingStreamCount ??
-          0,
+        inflow: superappAccount.accountTokenSnapshots[0],
         matchingFlowRate: memberFlowRate ?? BigInt(0),
         impactMatchingEstimate,
         allocationTokenInfo,
         matchingTokenInfo,
+        userOutflow:
+          userOutflow && userOutflow.currentFlowRate !== "0"
+            ? userOutflow
+            : null,
       };
     },
     [superfluidQueryRes, allocationTokenInfo, matchingTokenInfo],
@@ -285,7 +311,11 @@ export default function Index(props: IndexProps) {
       }
 
       if (sortingMethod === SortingMethod.POPULAR) {
-        return grantees.sort((a, b) => b.allocatorsCount - a.allocatorsCount);
+        return grantees.sort(
+          (a, b) =>
+            b.inflow.activeIncomingStreamCount -
+            a.inflow.activeIncomingStreamCount,
+        );
       }
 
       return grantees;
@@ -305,6 +335,24 @@ export default function Index(props: IndexProps) {
     if (inView) {
       const grantees: Grantee[] = [];
 
+      if (recipientId) {
+        const recipient =
+          streamingFundQueryRes.pool.recipientsByPoolIdAndChainId.find(
+            (recipient: { id: string }) => recipient.id === recipientId,
+          );
+
+        if (recipient) {
+          const grantee = getGrantee(recipient);
+          grantees.push(grantee);
+
+          setTransactionPanelState({
+            show: true,
+            isFundingMatchingPool: false,
+            selectedGrantee: grantee,
+          });
+        }
+      }
+
       for (
         let i = skipGrantees.current;
         i < GRANTEES_BATCH_SIZE * granteesBatch.current;
@@ -322,7 +370,9 @@ export default function Index(props: IndexProps) {
         const recipient =
           streamingFundQueryRes.pool.recipientsByPoolIdAndChainId[i];
 
-        if (recipient) {
+        if (recipient && recipient.id === recipientId) {
+          continue;
+        } else if (recipient) {
           grantees.push(getGrantee(recipient));
         } else {
           break;
@@ -359,6 +409,7 @@ export default function Index(props: IndexProps) {
     getGrantee,
     sortingMethod,
     sortGrantees,
+    recipientId,
   ]);
 
   useEffect(() => {
@@ -436,12 +487,16 @@ export default function Index(props: IndexProps) {
                   }) =>
                     account.accountTokenSnapshots[0].activeIncomingStreamCount,
                 )
-                .reduce((a: number, b: number) => a + b)
+                .reduce((a: number, b: number) => a + b, 0)
             : 0
         }
         matchingPool={matchingPool}
         showTransactionPanel={() =>
-          setTransactionPanelState({ show: true, isFundingMatchingPool: true })
+          setTransactionPanelState({
+            show: true,
+            isFundingMatchingPool: true,
+            selectedGrantee: null,
+          })
         }
       />
       <Stack direction="horizontal" gap={4} className="p-5 pt-4 fs-4">
@@ -489,12 +544,27 @@ export default function Index(props: IndexProps) {
             name={grantee.name}
             description={grantee.description}
             image={grantee.image}
-            allocatorsCount={grantee.allocatorsCount}
-            allocationFlowRate={grantee.allocationFlowRate}
+            allocatorsCount={grantee.inflow.activeIncomingStreamCount}
+            allocationFlowRate={BigInt(grantee.inflow.totalInflowRate ?? 0)}
             matchingFlowRate={grantee.matchingFlowRate}
             impactMatchingEstimate={grantee.impactMatchingEstimate}
             allocationTokenInfo={allocationTokenInfo}
             matchingTokenInfo={matchingTokenInfo}
+            userFlowRate={
+              grantee.userOutflow
+                ? BigInt(grantee.userOutflow.currentFlowRate)
+                : null
+            }
+            isSelected={
+              transactionPanelState.selectedGrantee?.id === grantee.id
+            }
+            selectGrantee={() =>
+              setTransactionPanelState({
+                show: true,
+                isFundingMatchingPool: false,
+                selectedGrantee: grantee,
+              })
+            }
           />
         ))}
       </Container>
@@ -509,6 +579,7 @@ export default function Index(props: IndexProps) {
             setTransactionPanelState({
               show: false,
               isFundingMatchingPool: false,
+              selectedGrantee: null,
             })
           }
           name={pool?.metadata.name ?? ""}
@@ -522,6 +593,39 @@ export default function Index(props: IndexProps) {
           userAccountSnapshots={
             superfluidQueryRes?.account?.accountTokenSnapshots ?? null
           }
+        />
+      ) : transactionPanelState.show &&
+        transactionPanelState.selectedGrantee ? (
+        <GranteeFunding
+          show={transactionPanelState.show}
+          handleClose={() =>
+            setTransactionPanelState({
+              show: false,
+              isFundingMatchingPool: false,
+              selectedGrantee: null,
+            })
+          }
+          receiver={transactionPanelState.selectedGrantee.superappAddress}
+          name={transactionPanelState.selectedGrantee.name ?? ""}
+          description={transactionPanelState.selectedGrantee.description ?? ""}
+          twitter={transactionPanelState.selectedGrantee.twitter}
+          recipientAddress={
+            transactionPanelState.selectedGrantee.recipientAddress
+          }
+          inflow={transactionPanelState.selectedGrantee.inflow}
+          userOutflow={transactionPanelState.selectedGrantee.userOutflow}
+          matchingPool={matchingPool}
+          matchingFlowRate={
+            transactionPanelState.selectedGrantee.matchingFlowRate
+          }
+          allocationTokenInfo={allocationTokenInfo}
+          matchingTokenInfo={matchingTokenInfo}
+          userAccountSnapshots={
+            superfluidQueryRes?.account?.accountTokenSnapshots ?? null
+          }
+          network={network}
+          passportDecoder={passportDecoder}
+          minPassportScore={minPassportScore}
         />
       ) : null}
     </SuperfluidContextProvider>

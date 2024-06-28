@@ -20,6 +20,9 @@ type GranteeProps = {
   impactMatchingEstimate: bigint;
   allocationTokenInfo: Token;
   matchingTokenInfo: Token;
+  userFlowRate: bigint | null;
+  isSelected: boolean;
+  selectGrantee: () => void;
 };
 
 export default function Grantee(props: GranteeProps) {
@@ -33,6 +36,9 @@ export default function Grantee(props: GranteeProps) {
     impactMatchingEstimate,
     allocationTokenInfo,
     matchingTokenInfo,
+    userFlowRate,
+    isSelected,
+    selectGrantee,
   } = props;
 
   const [imageUrl, setImageUrl] = useState("");
@@ -75,7 +81,11 @@ export default function Grantee(props: GranteeProps) {
   return (
     <Card
       className="rounded-4 overflow-hidden"
-      style={{ width: "320px", height: "280px" }}
+      style={{
+        width: "330px",
+        height: "300px",
+        border: isSelected ? "4px solid #0d6efd" : "",
+      }}
     >
       <Card.Header>
         <Stack direction="horizontal" gap={4}>
@@ -126,14 +136,29 @@ export default function Grantee(props: GranteeProps) {
       </Card.Body>
       <Card.Footer className="d-flex justify-content-between">
         <Stack direction="vertical" className="w-50">
-          <Card.Text className="m-0 fs-6 text-center">Multiplier</Card.Text>
-          <Card.Text className="m-0 fs-6 fw-bold text-center">
-            1 {allocationTokenInfo.name} = {monthlyImpactMatchingEstimate}{" "}
-            {matchingTokenInfo.name}
-            /mo
-          </Card.Text>
+          {userFlowRate ? (
+            <>
+              <Card.Text className="m-0 fs-6 text-center">
+                Your Stream
+              </Card.Text>
+              <Card.Text className="m-0 fs-6 fw-bold text-center">
+                {roundWeiAmount(userFlowRate * BigInt(SECONDS_IN_MONTH), 2)}{" "}
+                {allocationTokenInfo.name}
+                /mo
+              </Card.Text>
+            </>
+          ) : (
+            <>
+              <Card.Text className="m-0 fs-6 text-center">Multiplier</Card.Text>
+              <Card.Text className="m-0 fs-6 fw-bold text-center">
+                1 {allocationTokenInfo.name} = {monthlyImpactMatchingEstimate}{" "}
+                {matchingTokenInfo.name}
+                /mo
+              </Card.Text>
+            </>
+          )}
         </Stack>
-        <Button variant="success" className="w-25 p-0">
+        <Button variant="success" className="w-25 p-0" onClick={selectGrantee}>
           <Image
             src="/add.svg"
             alt="donate"

@@ -1,5 +1,4 @@
-import { useState, useMemo } from "react";
-import { useAccount } from "wagmi";
+import { useState } from "react";
 import { formatEther } from "viem";
 import { useClampText } from "use-clamp-text";
 import Stack from "react-bootstrap/Stack";
@@ -7,79 +6,62 @@ import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
-import Spinner from "react-bootstrap/Spinner";
 import { MatchingPool } from "@/types/matchingPool";
+import { Inflow } from "@/types/inflow";
+import { Outflow } from "@/types/outflow";
 import { Token } from "@/types/token";
-import useFlowingAmount from "@/hooks/flowingAmount";
+import useFlowingAmount from "../hooks/flowingAmount";
 import { roundWeiAmount, formatNumberWithCommas } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
-interface MatchingPoolDetailsProps {
+interface GranteeDetailsProps {
   name: string;
   description: string;
+  recipientAddress: string;
+  inflow: Inflow;
   matchingPool: MatchingPool;
-  matchingTokenInfo: Token;
+  matchingFlowRate: bigint;
+  userOutflow: Outflow | null;
+  allocationTokenInfo: Token;
 }
 
-export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
-  const { name, description, matchingPool, matchingTokenInfo } = props;
+export default function GranteeDetails(props: GranteeDetailsProps) {
+  const {
+    name,
+    description,
+    recipientAddress,
+    inflow,
+    matchingPool,
+    matchingFlowRate,
+    userOutflow,
+    allocationTokenInfo,
+  } = props;
 
   const [readMore, setReadMore] = useState(true);
 
-  const { address } = useAccount();
   const [descriptionRef, { clampedText }] = useClampText({
     text: description,
     ellipsis: "...",
     expanded: readMore,
   });
 
-  const flowRateToReceiver = useMemo(() => {
-    if (address && matchingPool) {
-      const distributor = matchingPool.poolDistributors.find(
-        (distributor: { account: { id: string } }) =>
-          distributor.account.id === address.toLowerCase(),
-      );
-
-      if (distributor) {
-        return distributor.flowRate;
-      }
-    }
-
-    return "0";
-  }, [address, matchingPool]);
-
-  const userDistributionInfo = useMemo(() => {
-    if (address && matchingPool) {
-      const distributor = matchingPool.poolDistributors.find(
-        (distributor: { account: { id: string } }) =>
-          distributor.account.id === address.toLowerCase(),
-      );
-
-      if (distributor) {
-        return {
-          totalDistributedUserUntilUpdatedAt: BigInt(
-            distributor.totalAmountFlowedDistributedUntilUpdatedAt,
-          ),
-          updatedAtTimestamp: distributor.updatedAtTimestamp,
-          flowRate: BigInt(distributor.flowRate),
-        };
-      }
-    }
-
-    return null;
-  }, [address, matchingPool]);
-
-  const totalDistributedUser = useFlowingAmount(
-    userDistributionInfo?.totalDistributedUserUntilUpdatedAt ?? BigInt(0),
-    userDistributionInfo?.updatedAtTimestamp ?? 0,
-    userDistributionInfo?.flowRate ?? BigInt(0),
+  const matchingPoolMember = matchingPool.poolMembers.find(
+    (member) => member.account.id === recipientAddress,
   );
-  const totalDistributedAll = useFlowingAmount(
-    BigInt(
-      matchingPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? BigInt(0),
-    ),
-    matchingPool?.updatedAtTimestamp ?? 0,
-    BigInt(matchingPool?.flowRate ?? 0),
+  const totalAllocatedUser = useFlowingAmount(
+    BigInt(userOutflow?.streamedUntilUpdatedAt ?? 0),
+    userOutflow?.updatedAtTimestamp ?? 0,
+    BigInt(userOutflow?.currentFlowRate ?? 0),
+  );
+  const totalAllocatedAll = useFlowingAmount(
+    BigInt(inflow?.totalAmountStreamedInUntilUpdatedAt ?? BigInt(0)),
+    inflow?.updatedAtTimestamp ?? 0,
+    BigInt(inflow?.totalInflowRate ?? 0),
+  );
+  const totalMatching = useFlowingAmount(
+    BigInt(matchingPoolMember?.totalAmountReceivedUntilUpdatedAt ?? 0),
+    matchingPoolMember?.updatedAtTimestamp ?? 0,
+    matchingFlowRate,
   );
 
   return (
@@ -98,31 +80,22 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
             Your Current Stream
           </Card.Subtitle>
           <Card.Body className="d-flex align-items-center gap-2 p-0">
-            {address && !flowRateToReceiver ? (
-              <Spinner
-                animation="border"
-                role="status"
-                className="mx-auto mt-3 p-3"
-              ></Spinner>
-            ) : (
-              <>
-                <Card.Text as="span" className="fs-1">
-                  {formatNumberWithCommas(
-                    parseFloat(
-                      roundWeiAmount(
-                        BigInt(flowRateToReceiver) * BigInt(SECONDS_IN_MONTH),
-                        4,
-                      ),
-                    ),
-                  )}
-                </Card.Text>
-                <Card.Text as="small" className="mt-1">
-                  {matchingTokenInfo.name} <br />
-                  per <br />
-                  month
-                </Card.Text>
-              </>
-            )}
+            <Card.Text as="span" className="fs-1">
+              {formatNumberWithCommas(
+                parseFloat(
+                  roundWeiAmount(
+                    BigInt(userOutflow?.currentFlowRate ?? 0) *
+                      BigInt(SECONDS_IN_MONTH),
+                    4,
+                  ),
+                ),
+              )}
+            </Card.Text>
+            <Card.Text as="small" className="mt-1">
+              {allocationTokenInfo.name} <br />
+              per <br />
+              month
+            </Card.Text>
           </Card.Body>
         </Card>
       </Stack>
@@ -152,7 +125,7 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
           <Card.Text className="m-0 pe-0">You</Card.Text>
           <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
-              parseFloat(formatEther(totalDistributedUser).slice(0, 8)),
+              parseFloat(formatEther(totalAllocatedUser).slice(0, 8)),
             )}
           </Badge>
         </Stack>
@@ -160,20 +133,15 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
           <Card.Text className="m-0 pe-0">All</Card.Text>
           <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
-              parseFloat(formatEther(totalDistributedAll).slice(0, 8)),
+              parseFloat(formatEther(totalAllocatedAll).slice(0, 8)),
             )}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
-          <Card.Text className="m-0 pe-0">Others</Card.Text>
+          <Card.Text className="m-0 pe-0">Matching</Card.Text>
           <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
-              parseFloat(
-                formatEther(totalDistributedAll - totalDistributedUser).slice(
-                  0,
-                  8,
-                ),
-              ),
+              parseFloat(formatEther(totalMatching).slice(0, 8)),
             )}
           </Badge>
         </Stack>

@@ -1,8 +1,11 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import Button from "react-bootstrap/Button";
 import Image from "next/image";
+import { useMediaQuery } from "@/hooks/mediaQuery";
 
 export default function ConnectWallet() {
+  const { isMobile } = useMediaQuery();
+
   return (
     <ConnectButton.Custom>
       {({
@@ -47,34 +50,36 @@ export default function ConnectWallet() {
               }
               return (
                 <div style={{ display: "flex", gap: 12 }}>
-                  <Button
-                    variant="transparent"
-                    onClick={openChainModal}
-                    className="d-flex align-items-center border rounded-3"
-                  >
-                    {chain.hasIcon && (
-                      <div
-                        style={{
-                          background: chain.iconBackground,
-                          width: 12,
-                          height: 12,
-                          borderRadius: 999,
-                          overflow: "hidden",
-                          marginRight: 4,
-                        }}
-                      >
-                        {chain.iconUrl && (
-                          <Image
-                            alt={chain.name ?? "Chain icon"}
-                            src={chain.iconUrl}
-                            width={12}
-                            height={12}
-                          />
-                        )}
-                      </div>
-                    )}
-                    {chain.name}
-                  </Button>
+                  {!isMobile && (
+                    <Button
+                      variant="transparent"
+                      onClick={openChainModal}
+                      className="d-flex align-items-center border rounded-3"
+                    >
+                      {chain.hasIcon && (
+                        <div
+                          style={{
+                            background: chain.iconBackground,
+                            width: 12,
+                            height: 12,
+                            borderRadius: 999,
+                            overflow: "hidden",
+                            marginRight: 4,
+                          }}
+                        >
+                          {chain.iconUrl && (
+                            <Image
+                              alt={chain.name ?? "Chain icon"}
+                              src={chain.iconUrl}
+                              width={12}
+                              height={12}
+                            />
+                          )}
+                        </div>
+                      )}
+                      {chain.name}
+                    </Button>
+                  )}
                   <Button
                     variant="transparent"
                     onClick={openAccountModal}

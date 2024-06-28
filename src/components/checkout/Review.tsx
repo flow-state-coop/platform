@@ -324,7 +324,7 @@ export default function Review(props: ReviewProps) {
                   width={22}
                   height={22}
                 />
-                <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-5 text-start overflow-hidden text-truncate">
+                <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
                   {formatNumberWithCommas(
                     parseFloat(
                       convertStreamValueToInterval(
@@ -348,20 +348,20 @@ export default function Review(props: ReviewProps) {
                   direction="horizontal"
                   className="bg-white border-top border-secondary p-2"
                 >
-                  <Card.Text className="m-0 fs-5">Est. Matching</Card.Text>
+                  <Card.Text className="m-0 fs-6">Est. Matching</Card.Text>
                   <Stack
                     direction="horizontal"
                     gap={1}
-                    className="justify-content-end w-50 ms-1 p-2"
+                    className="justify-content-end w-50 p-2"
                   >
                     <Image
                       src={matchingTokenInfo.icon}
                       alt="matching token"
-                      width={14}
-                      height={14}
+                      width={20}
+                      height={20}
                       className="mx-1"
                     />
-                    <Badge className="bg-secondary w-75 ps-2 pe-2 py-2 fs-5 text-start">
+                    <Badge className="bg-secondary w-75 ps-2 pe-2 py-2 fs-6 text-start">
                       {areTransactionsLoading &&
                       transactionDetailsSnapshot?.netImpact
                         ? `${
@@ -386,53 +386,6 @@ export default function Review(props: ReviewProps) {
                     </Badge>
                   </Stack>
                   <Card.Text className="m-0 ms-1 fs-6">/month</Card.Text>
-                </Stack>
-                <Stack
-                  direction="horizontal"
-                  className="bg-white rounded-bottom-4 border-top border-secondary p-2"
-                >
-                  <Card.Text className="m-0 fs-5">QF Multiplier</Card.Text>
-                  <Stack
-                    direction="horizontal"
-                    gap={1}
-                    className="justify-content-end w-50 ms-2 p-2"
-                  >
-                    <Badge
-                      className={`w-75 ps-2 pe-2 py-2 fs-4 text-start ${
-                        BigInt(
-                          areTransactionsLoading && transactionDetailsSnapshot
-                            ? transactionDetailsSnapshot.newFlowRate
-                            : newFlowRate,
-                        ) <
-                        BigInt(
-                          areTransactionsLoading && transactionDetailsSnapshot
-                            ? transactionDetailsSnapshot.flowRateToReceiver
-                            : flowRateToReceiver,
-                        )
-                          ? "bg-danger"
-                          : "bg-secondary"
-                      }`}
-                    >
-                      {areTransactionsLoading &&
-                      transactionDetailsSnapshot?.netImpact &&
-                      transactionDetailsSnapshot.newFlowRate !==
-                        transactionDetailsSnapshot.flowRateToReceiver
-                        ? `${formatEther(
-                            BigInt(transactionDetailsSnapshot.newFlowRate) -
-                              BigInt(
-                                transactionDetailsSnapshot.flowRateToReceiver,
-                              ),
-                          )} = ${formatEther(
-                            transactionDetailsSnapshot.netImpact,
-                          )}`
-                        : netImpact && newFlowRate !== flowRateToReceiver
-                          ? `~${formatEther(
-                              BigInt(newFlowRate) - BigInt(flowRateToReceiver),
-                            )} = ${formatEther(netImpact)}
-                            `
-                          : "N/A"}
-                    </Badge>
-                  </Stack>
                 </Stack>
               </>
             )}
