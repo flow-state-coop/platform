@@ -169,9 +169,11 @@ export default function Configure() {
       registrationEndTime: BigInt(now + 3153600000),
       allocationStartTime: BigInt(now + 300),
       allocationEndTime: BigInt(now + 3153600000),
-      minPassportScore: BigInt(
-        Number(poolConfigParameters.minPassportScore) * 10000,
-      ),
+      minPassportScore:
+        !poolConfigParameters.minPassportScore ||
+        isNaN(Number(poolConfigParameters.minPassportScore))
+          ? BigInt(0)
+          : BigInt(Number(poolConfigParameters.minPassportScore) * 10000),
       initialSuperAppBalance: parseEther("0.0000001"),
     };
     const metadata = { protocol: BigInt(1), pointer: metadataCid };
@@ -333,7 +335,11 @@ export default function Configure() {
               disabled={!!pool}
               placeholder="1"
               onChange={(e) => {
-                if (isNumber(e.target.value) || e.target.value === "") {
+                if (
+                  isNumber(e.target.value) ||
+                  e.target.value === "." ||
+                  e.target.value === ""
+                ) {
                   setPoolConfigParameters({
                     ...poolConfigParameters,
                     minPassportScore: e.target.value,

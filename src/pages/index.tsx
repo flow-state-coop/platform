@@ -243,7 +243,7 @@ export default function Index(props: IndexProps) {
       const superappAccount = superfluidQueryRes.accounts.find(
         (account: { id: string }) => account.id === recipient.superappAddress,
       );
-      const userOutflow = superfluidQueryRes.account.outflows.find(
+      const userOutflow = superfluidQueryRes.account?.outflows?.find(
         (outflow: { receiver: { id: string } }) =>
           outflow.receiver.id === recipient.superappAddress,
       );
