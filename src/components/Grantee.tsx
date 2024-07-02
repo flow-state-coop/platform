@@ -13,7 +13,7 @@ import { IPFS_GATEWAYS, SECONDS_IN_MONTH } from "@/lib/constants";
 type GranteeProps = {
   name: string;
   description: string;
-  image: string;
+  imageCid: string;
   allocationFlowRate: bigint;
   allocatorsCount: number;
   matchingFlowRate: bigint;
@@ -29,7 +29,7 @@ export default function Grantee(props: GranteeProps) {
   const {
     name,
     description,
-    image,
+    imageCid,
     allocationFlowRate,
     allocatorsCount,
     matchingFlowRate,
@@ -67,7 +67,7 @@ export default function Grantee(props: GranteeProps) {
           gateways: IPFS_GATEWAYS,
         });
 
-        const res = await verifiedFetch(`ipfs://${image}`);
+        const res = await verifiedFetch(`ipfs://${imageCid}`);
         const imageBlob = await res.blob();
         const imageUrl = URL.createObjectURL(imageBlob);
 
@@ -76,7 +76,7 @@ export default function Grantee(props: GranteeProps) {
         console.error(err);
       }
     })();
-  }, [image]);
+  }, [imageCid]);
 
   return (
     <Card

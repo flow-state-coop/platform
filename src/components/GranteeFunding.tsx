@@ -46,6 +46,7 @@ type GranteeFundingProps = {
   name: string;
   twitter: string;
   description: string;
+  imageCid: string;
   receiver: string;
   recipientAddress: string;
   inflow: Inflow;
@@ -76,6 +77,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     handleClose,
     name,
     description,
+    imageCid,
     twitter,
     receiver,
     recipientAddress,
@@ -463,6 +465,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
           <GranteeDetails
             name={name}
             description={description}
+            imageCid={imageCid}
             recipientAddress={recipientAddress}
             inflow={inflow}
             matchingPool={matchingPool}

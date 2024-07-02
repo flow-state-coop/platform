@@ -84,6 +84,7 @@ export default function Grantee(props: GranteeProps) {
     useState(false);
   const [showProjectUpdateModal, setShowProjectUpdateModal] = useState(false);
   const [newProfileId, setNewProfileId] = useState("");
+  const [isTransactionConfirming, setIsTransactionConfirming] = useState(false);
 
   const { isMobile } = useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
@@ -97,7 +98,7 @@ export default function Grantee(props: GranteeProps) {
     skip: !address || !poolId,
     pollInterval: 3000,
   });
-  const { isPending, writeContractAsync } = useWriteContract();
+  const { writeContractAsync } = useWriteContract();
   const { data: minPassportScore } = useReadContract({
     address: queryRes?.pool.strategyAddress as Address,
     abi: strategyAbi,
@@ -157,16 +158,26 @@ export default function Grantee(props: GranteeProps) {
     );
 
     try {
-      await writeContractAsync({
+      setIsTransactionConfirming(true);
+
+      const hash = await writeContractAsync({
         address: network.allo,
         abi: alloAbi,
         functionName: "registerRecipient",
         args: [BigInt(poolId!), recipientData],
       });
 
+      await publicClient.waitForTransactionReceipt({
+        hash,
+        confirmations: 5,
+      });
+
       setSelectedProjectIndex(null);
+      setIsTransactionConfirming(false);
     } catch (err) {
       console.error(err);
+
+      setIsTransactionConfirming(false);
     }
   };
 
@@ -259,22 +270,26 @@ export default function Grantee(props: GranteeProps) {
                       onClick={() => setSelectedProjectIndex(i)}
                       key={i}
                     >
-                      <Card.Body className="d-flex flex-column w-100 h-75 justify-content-end">
-                        <Card.Text className="d-inline-block w-100 m-0 text-center overflow-hidden word-wrap">
-                          {project.metadata.title}
-                        </Card.Text>
-                        {selectedProjectIndex === i && (
-                          <Card.Text className="position-absolute top-0 start-50 translate-middle mt-4 fs-6 text-primary">
-                            Submit Below
-                          </Card.Text>
-                        )}
-                      </Card.Body>
-                      <Card.Footer className="position-relative d-flex align-items-bottom justify-content-center w-100 h-50 border-0 bg-transparent pt-0">
-                        {project.status !== null ? (
-                          <Stack
-                            direction="horizontal"
-                            gap={2}
-                            className={`justify-content-center align-items-center fs-4 
+                      {isTransactionConfirming && selectedProjectIndex === i ? (
+                        <Spinner className="m-auto" />
+                      ) : (
+                        <>
+                          <Card.Body className="d-flex flex-column w-100 h-75 justify-content-end">
+                            <Card.Text className="d-inline-block w-100 m-0 text-center overflow-hidden word-wrap">
+                              {project.metadata.title}
+                            </Card.Text>
+                            {selectedProjectIndex === i && (
+                              <Card.Text className="position-absolute top-0 start-50 translate-middle mt-4 fs-6 text-primary">
+                                Submit Below
+                              </Card.Text>
+                            )}
+                          </Card.Body>
+                          <Card.Footer className="position-relative d-flex align-items-bottom justify-content-center w-100 h-50 border-0 bg-transparent pt-0">
+                            {project.status !== null ? (
+                              <Stack
+                                direction="horizontal"
+                                gap={2}
+                                className={`justify-content-center align-items-center fs-4 
                             ${
                               project.status === "PENDING"
                                 ? "text-warning"
@@ -282,68 +297,74 @@ export default function Grantee(props: GranteeProps) {
                                   ? "text-success"
                                   : "text-danger"
                             }`}
-                            onClick={() =>
-                              setShowProjectUpdateModal(
-                                project.status === "PENDING",
-                              )
-                            }
-                          >
-                            <Image
-                              src={
-                                project.status === "PENDING"
-                                  ? "/pending.svg"
-                                  : project.status === "REJECTED" ||
-                                      project.status === "CANCELED"
-                                    ? "/cancel-circle.svg"
-                                    : "check-circle.svg"
-                              }
-                              alt="status"
-                              width={42}
-                              style={{
-                                filter:
-                                  project.status === "PENDING"
-                                    ? "invert(87%) sepia(40%) saturate(4124%) hue-rotate(348deg) brightness(103%) contrast(110%)"
-                                    : project.status === "REJECTED" ||
-                                        project.status === "CANCELED"
-                                      ? "invert(36%) sepia(58%) saturate(1043%) hue-rotate(313deg) brightness(89%) contrast(116%)"
-                                      : "invert(39%) sepia(10%) saturate(3997%) hue-rotate(103deg) brightness(99%) contrast(80%)",
-                              }}
-                            />
-                            {project.status === "PENDING"
-                              ? "Pending"
-                              : project.status === "REJECTED"
-                                ? "Rejected"
-                                : project.status === "CANCELED"
-                                  ? "Canceled"
-                                  : "Accepted"}
-                            {project.status === "PENDING" && (
+                                onClick={() =>
+                                  setShowProjectUpdateModal(
+                                    project.status === "PENDING",
+                                  )
+                                }
+                              >
+                                <Image
+                                  src={
+                                    project.status === "PENDING"
+                                      ? "/pending.svg"
+                                      : project.status === "REJECTED" ||
+                                          project.status === "CANCELED"
+                                        ? "/cancel-circle.svg"
+                                        : "check-circle.svg"
+                                  }
+                                  alt="status"
+                                  width={42}
+                                  style={{
+                                    filter:
+                                      project.status === "PENDING"
+                                        ? "invert(87%) sepia(40%) saturate(4124%) hue-rotate(348deg) brightness(103%) contrast(110%)"
+                                        : project.status === "REJECTED" ||
+                                            project.status === "CANCELED"
+                                          ? "invert(36%) sepia(58%) saturate(1043%) hue-rotate(313deg) brightness(89%) contrast(116%)"
+                                          : "invert(39%) sepia(10%) saturate(3997%) hue-rotate(103deg) brightness(99%) contrast(80%)",
+                                  }}
+                                />
+                                {project.status === "PENDING"
+                                  ? "Pending"
+                                  : project.status === "REJECTED"
+                                    ? "Rejected"
+                                    : project.status === "CANCELED"
+                                      ? "Canceled"
+                                      : "Accepted"}
+                                {project.status === "PENDING" && (
+                                  <Button
+                                    variant="transparent"
+                                    className="position-absolute bottom-0 end-0 p-3 border-0"
+                                    onClick={() => {
+                                      setShowProjectUpdateModal(true);
+                                    }}
+                                    style={{
+                                      filter:
+                                        "invert(87%) sepia(40%) saturate(4124%) hue-rotate(348deg) brightness(103%) contrast(110%)",
+                                    }}
+                                  >
+                                    <Image
+                                      src="/edit.svg"
+                                      alt="edit"
+                                      width={24}
+                                    />
+                                  </Button>
+                                )}
+                              </Stack>
+                            ) : (
                               <Button
                                 variant="transparent"
                                 className="position-absolute bottom-0 end-0 p-3 border-0"
                                 onClick={() => {
                                   setShowProjectUpdateModal(true);
                                 }}
-                                style={{
-                                  filter:
-                                    "invert(87%) sepia(40%) saturate(4124%) hue-rotate(348deg) brightness(103%) contrast(110%)",
-                                }}
                               >
                                 <Image src="/edit.svg" alt="edit" width={24} />
                               </Button>
                             )}
-                          </Stack>
-                        ) : (
-                          <Button
-                            variant="transparent"
-                            className="position-absolute bottom-0 end-0 p-3 border-0"
-                            onClick={() => {
-                              setShowProjectUpdateModal(true);
-                            }}
-                          >
-                            <Image src="/edit.svg" alt="edit" width={24} />
-                          </Button>
-                        )}
-                      </Card.Footer>
+                          </Card.Footer>
+                        </>
+                      )}
                     </Card>
                   ),
                 )}
@@ -367,7 +388,7 @@ export default function Grantee(props: GranteeProps) {
               disabled={selectedProjectIndex === null}
               onClick={registerRecipient}
             >
-              {isPending ? (
+              {isTransactionConfirming ? (
                 <Spinner size="sm" className="m-auto" />
               ) : selectedProjectIndex !== null &&
                 projects[selectedProjectIndex].status === "PENDING" ? (

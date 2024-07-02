@@ -36,7 +36,7 @@ type Grantee = {
   superappAddress: string;
   name: string;
   description: string;
-  image: string;
+  imageCid: string;
   twitter: string;
   inflow: Inflow;
   matchingFlowRate: bigint;
@@ -274,7 +274,7 @@ export default function Index(props: IndexProps) {
         superappAddress: recipient.superappAddress,
         name: recipient.metadata.title,
         description: recipient.metadata.description,
-        image: recipient.metadata.logoImg,
+        imageCid: recipient.metadata.logoImg,
         twitter: recipient.metadata.projectTwitter,
         inflow: superappAccount.accountTokenSnapshots[0],
         matchingFlowRate: memberFlowRate ?? BigInt(0),
@@ -332,7 +332,7 @@ export default function Index(props: IndexProps) {
       return;
     }
 
-    if (inView) {
+    if (inView && hasNextGrantee.current) {
       const grantees: Grantee[] = [];
 
       if (recipientId) {
@@ -543,7 +543,7 @@ export default function Index(props: IndexProps) {
             key={i}
             name={grantee.name}
             description={grantee.description}
-            image={grantee.image}
+            imageCid={grantee.imageCid}
             allocatorsCount={grantee.inflow.activeIncomingStreamCount}
             allocationFlowRate={BigInt(grantee.inflow.totalInflowRate ?? 0)}
             matchingFlowRate={grantee.matchingFlowRate}
@@ -608,6 +608,7 @@ export default function Index(props: IndexProps) {
           receiver={transactionPanelState.selectedGrantee.superappAddress}
           name={transactionPanelState.selectedGrantee.name ?? ""}
           description={transactionPanelState.selectedGrantee.description ?? ""}
+          imageCid={transactionPanelState.selectedGrantee.imageCid}
           twitter={transactionPanelState.selectedGrantee.twitter}
           recipientAddress={
             transactionPanelState.selectedGrantee.recipientAddress

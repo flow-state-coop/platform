@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatEther } from "viem";
 import { useClampText } from "use-clamp-text";
+import { createVerifiedFetch } from "@helia/verified-fetch";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
@@ -12,11 +13,12 @@ import { Outflow } from "@/types/outflow";
 import { Token } from "@/types/token";
 import useFlowingAmount from "../hooks/flowingAmount";
 import { roundWeiAmount, formatNumberWithCommas } from "@/lib/utils";
-import { SECONDS_IN_MONTH } from "@/lib/constants";
+import { SECONDS_IN_MONTH, IPFS_GATEWAYS } from "@/lib/constants";
 
 interface GranteeDetailsProps {
   name: string;
   description: string;
+  imageCid: string;
   recipientAddress: string;
   inflow: Inflow;
   matchingPool: MatchingPool;
@@ -29,6 +31,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
   const {
     name,
     description,
+    imageCid,
     recipientAddress,
     inflow,
     matchingPool,
@@ -38,6 +41,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
   } = props;
 
   const [readMore, setReadMore] = useState(true);
+  const [imageUrl, setImageUrl] = useState("");
 
   const [descriptionRef, { clampedText }] = useClampText({
     text: description,
@@ -64,12 +68,30 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
     matchingFlowRate,
   );
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const verifiedFetch = await createVerifiedFetch({
+          gateways: IPFS_GATEWAYS,
+        });
+
+        const res = await verifiedFetch(`ipfs://${imageCid}`);
+        const imageBlob = await res.blob();
+        const imageUrl = URL.createObjectURL(imageBlob);
+
+        setImageUrl(imageUrl);
+      } catch (err) {
+        console.error(err);
+      }
+    })();
+  }, [imageCid]);
+
   return (
     <Stack direction="vertical" className="bg-light rounded-4 p-2 pt-0">
       <Stack direction="horizontal" gap={2} className="align-items-start mt-3">
         <Image
-          src="/logo.svg"
-          alt="SQF"
+          src={imageUrl ?? "/logo.svg"}
+          alt="logo"
           width={96}
           height={96}
           className="ms-2 rounded-4"

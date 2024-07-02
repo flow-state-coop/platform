@@ -25,7 +25,9 @@ export function calcMatchingImpactEstimate({
     (newGranteeUnitsSquared * newGranteeUnitsSquared) / BigInt(1e5);
   const unitsDelta = newGranteeUnits - granteeUnits;
   const newPoolUnits = unitsDelta + totalUnits;
-  const newGranteeFlowRate = (newGranteeUnits * totalFlowRate) / newPoolUnits;
+  const newGranteeFlowRate = newPoolUnits
+    ? (newGranteeUnits * totalFlowRate) / newPoolUnits
+    : BigInt(0);
 
   return newGranteeFlowRate - granteeFlowRate;
 }

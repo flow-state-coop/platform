@@ -174,7 +174,7 @@ export default function MatchinPool() {
                     value={newFlowRate}
                     onChange={(e) => {
                       const { value } = e.target;
-                      if (isNumber(value) || value === "") {
+                      if (isNumber(value) || value === "" || value === ".") {
                         setNewFlowRate(value);
                       }
                     }}
