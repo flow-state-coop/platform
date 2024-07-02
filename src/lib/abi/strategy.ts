@@ -1,1187 +1,761 @@
 export const strategyAbi = [
   {
+    type: "constructor",
     inputs: [
-      {
-        internalType: "address",
-        name: "_allo",
-        type: "address",
-      },
-      {
-        internalType: "string",
-        name: "_name",
-        type: "string",
-      },
+      { name: "_allo", type: "address", internalType: "address" },
+      { name: "_name", type: "string", internalType: "string" },
     ],
     stateMutability: "nonpayable",
-    type: "constructor",
   },
   {
-    inputs: [],
-    name: "ALLOCATION_ACTIVE",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "ALLOCATION_NOT_ACTIVE",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "ALLOCATION_NOT_ENDED",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "ALREADY_INITIALIZED",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "AMOUNT_MISMATCH",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "ANCHOR_ERROR",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "ARRAY_MISMATCH",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "INVALID",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "INVALID_ADDRESS",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "INVALID_FEE",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "INVALID_METADATA",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "INVALID_REGISTRATION",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "IS_APPROVED_STRATEGY",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "MISMATCH",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "NONCE_NOT_AVAILABLE",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "NOT_APPROVED_STRATEGY",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "NOT_ENOUGH_FUNDS",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "NOT_IMPLEMENTED",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "NOT_INITIALIZED",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "NOT_PENDING_OWNER",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "POOL_ACTIVE",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "POOL_INACTIVE",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "RECIPIENT_ALREADY_ACCEPTED",
-    type: "error",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "recipientId",
-        type: "address",
-      },
-    ],
-    name: "RECIPIENT_ERROR",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "RECIPIENT_NOT_ACCEPTED",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "REGISTRATION_ACTIVE",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "REGISTRATION_NOT_ACTIVE",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "UNAUTHORIZED",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "ZERO_ADDRESS",
-    type: "error",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
-        name: "recipientId",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "token",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "sender",
-        type: "address",
-      },
-    ],
-    name: "Allocated",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
-        name: "recipientId",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "sender",
-        type: "address",
-      },
-    ],
-    name: "Canceled",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
-        name: "sender",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "int96",
-        name: "flowRate",
-        type: "int96",
-      },
-    ],
-    name: "Distributed",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
-        name: "recipientId",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "recipientAddress",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "sender",
-        type: "address",
-      },
-    ],
-    name: "Distributed",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "poolId",
-        type: "uint256",
-      },
-      {
-        indexed: false,
-        internalType: "bytes",
-        name: "data",
-        type: "bytes",
-      },
-    ],
-    name: "Initialized",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "minPassportScore",
-        type: "uint256",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "sender",
-        type: "address",
-      },
-    ],
-    name: "MinPassportScoreUpdated",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: false,
-        internalType: "bool",
-        name: "active",
-        type: "bool",
-      },
-    ],
-    name: "PoolActive",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
-        name: "recipientId",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "bytes",
-        name: "data",
-        type: "bytes",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "sender",
-        type: "address",
-      },
-    ],
-    name: "Registered",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
-        name: "recipientId",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "enum IStrategy.Status",
-        name: "status",
-        type: "uint8",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "sender",
-        type: "address",
-      },
-    ],
-    name: "Reviewed",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: false,
-        internalType: "uint64",
-        name: "registrationStartTime",
-        type: "uint64",
-      },
-      {
-        indexed: false,
-        internalType: "uint64",
-        name: "registrationEndTime",
-        type: "uint64",
-      },
-      {
-        indexed: false,
-        internalType: "uint64",
-        name: "allocationStartTime",
-        type: "uint64",
-      },
-      {
-        indexed: false,
-        internalType: "uint64",
-        name: "allocationEndTime",
-        type: "uint64",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "sender",
-        type: "address",
-      },
-    ],
-    name: "TimestampsUpdated",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
-        name: "recipientId",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "totalUnits",
-        type: "uint256",
-      },
-    ],
-    name: "TotalUnitsUpdated",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
-        name: "recipientId",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "bytes",
-        name: "data",
-        type: "bytes",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "sender",
-        type: "address",
-      },
-    ],
-    name: "UpdatedRegistration",
-    type: "event",
-  },
-  {
-    inputs: [],
-    name: "NATIVE",
-    outputs: [
-      {
-        internalType: "address",
-        name: "",
-        type: "address",
-      },
-    ],
-    stateMutability: "view",
     type: "function",
+    name: "NATIVE",
+    inputs: [],
+    outputs: [{ name: "", type: "address", internalType: "address" }],
+    stateMutability: "view",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "_previousFlowrate",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "_newFlowRate",
-        type: "uint256",
-      },
-    ],
+    type: "function",
     name: "adjustWeightings",
+    inputs: [
+      { name: "_previousFlowRate", type: "uint256", internalType: "uint256" },
+      { name: "_newFlowRate", type: "uint256", internalType: "uint256" },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "bytes",
-        name: "_data",
-        type: "bytes",
-      },
-      {
-        internalType: "address",
-        name: "_sender",
-        type: "address",
-      },
-    ],
+    type: "function",
     name: "allocate",
+    inputs: [
+      { name: "_data", type: "bytes", internalType: "bytes" },
+      { name: "_sender", type: "address", internalType: "address" },
+    ],
     outputs: [],
     stateMutability: "payable",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "allocationEndTime",
-    outputs: [
-      {
-        internalType: "uint64",
-        name: "",
-        type: "uint64",
-      },
-    ],
+    inputs: [],
+    outputs: [{ name: "", type: "uint64", internalType: "uint64" }],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "allocationStartTime",
-    outputs: [
-      {
-        internalType: "uint64",
-        name: "",
-        type: "uint64",
-      },
-    ],
+    inputs: [],
+    outputs: [{ name: "", type: "uint64", internalType: "uint64" }],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "allocationSuperToken",
+    inputs: [],
     outputs: [
-      {
-        internalType: "contract ISuperToken",
-        name: "",
-        type: "address",
-      },
+      { name: "", type: "address", internalType: "contract ISuperToken" },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "address[]",
-        name: "_recipientIds",
-        type: "address[]",
-      },
-    ],
+    type: "function",
     name: "cancelRecipients",
+    inputs: [
+      { name: "_recipientIds", type: "address[]", internalType: "address[]" },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
   },
   {
+    type: "function",
+    name: "checker",
     inputs: [],
+    outputs: [{ name: "", type: "address", internalType: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "closeStream",
+    inputs: [],
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "address[]",
-        name: "_recipientIds",
-        type: "address[]",
-      },
-      {
-        internalType: "bytes",
-        name: "_data",
-        type: "bytes",
-      },
-      {
-        internalType: "address",
-        name: "_sender",
-        type: "address",
-      },
-    ],
+    type: "function",
     name: "distribute",
+    inputs: [
+      { name: "_recipientIds", type: "address[]", internalType: "address[]" },
+      { name: "_data", type: "bytes", internalType: "bytes" },
+      { name: "_sender", type: "address", internalType: "address" },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "gdaPool",
-    outputs: [
-      {
-        internalType: "contract ISuperfluidPool",
-        name: "",
-        type: "address",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [],
+    outputs: [
+      { name: "", type: "address", internalType: "contract ISuperfluidPool" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "getAllo",
+    inputs: [],
+    outputs: [{ name: "", type: "address", internalType: "contract IAllo" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getAllocationEligiblity",
+    inputs: [],
     outputs: [
       {
-        internalType: "contract IAllo",
         name: "",
-        type: "address",
+        type: "uint8",
+        internalType: "enum SQFSuperFluidStrategy.AllocationEligibility",
       },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "address[]",
-        name: "_recipientIds",
-        type: "address[]",
-      },
-      {
-        internalType: "bytes[]",
-        name: "_data",
-        type: "bytes[]",
-      },
-    ],
+    type: "function",
     name: "getPayouts",
+    inputs: [
+      { name: "_recipientIds", type: "address[]", internalType: "address[]" },
+      { name: "_data", type: "bytes[]", internalType: "bytes[]" },
+    ],
     outputs: [
       {
-        components: [
-          {
-            internalType: "address",
-            name: "recipientAddress",
-            type: "address",
-          },
-          {
-            internalType: "uint256",
-            name: "amount",
-            type: "uint256",
-          },
-        ],
-        internalType: "struct IStrategy.PayoutSummary[]",
         name: "",
         type: "tuple[]",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "getPoolAmount",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "getPoolId",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "_recipientId",
-        type: "address",
-      },
-    ],
-    name: "getRecipient",
-    outputs: [
-      {
+        internalType: "struct IStrategy.PayoutSummary[]",
         components: [
           {
-            internalType: "bool",
-            name: "useRegistryAnchor",
-            type: "bool",
-          },
-          {
-            internalType: "address",
             name: "recipientAddress",
             type: "address",
+            internalType: "address",
+          },
+          { name: "amount", type: "uint256", internalType: "uint256" },
+        ],
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getPoolAmount",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getPoolId",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getRecipient",
+    inputs: [
+      { name: "_recipientId", type: "address", internalType: "address" },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        internalType: "struct SQFSuperFluidStrategy.Recipient",
+        components: [
+          { name: "useRegistryAnchor", type: "bool", internalType: "bool" },
+          {
+            name: "recipientAddress",
+            type: "address",
+            internalType: "address",
           },
           {
-            internalType: "enum IStrategy.Status",
             name: "recipientStatus",
             type: "uint8",
+            internalType: "enum IStrategy.Status",
           },
           {
-            components: [
-              {
-                internalType: "uint256",
-                name: "protocol",
-                type: "uint256",
-              },
-              {
-                internalType: "string",
-                name: "pointer",
-                type: "string",
-              },
-            ],
-            internalType: "struct Metadata",
             name: "metadata",
             type: "tuple",
+            internalType: "struct Metadata",
+            components: [
+              { name: "protocol", type: "uint256", internalType: "uint256" },
+              { name: "pointer", type: "string", internalType: "string" },
+            ],
           },
           {
-            internalType: "contract RecipientSuperApp",
             name: "superApp",
             type: "address",
+            internalType: "contract RecipientSuperApp",
           },
         ],
-        internalType: "struct SQFSuperFluidStrategy.Recipient",
-        name: "",
-        type: "tuple",
       },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "_superApp",
-        type: "address",
-      },
-    ],
+    type: "function",
     name: "getRecipientId",
-    outputs: [
-      {
-        internalType: "address",
-        name: "",
-        type: "address",
-      },
-    ],
+    inputs: [{ name: "_superApp", type: "address", internalType: "address" }],
+    outputs: [{ name: "", type: "address", internalType: "address" }],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "_recipientId",
-        type: "address",
-      },
-    ],
+    type: "function",
     name: "getRecipientStatus",
+    inputs: [
+      { name: "_recipientId", type: "address", internalType: "address" },
+    ],
     outputs: [
-      {
-        internalType: "enum IStrategy.Status",
-        name: "",
-        type: "uint8",
-      },
+      { name: "", type: "uint8", internalType: "enum IStrategy.Status" },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "getStrategyId",
-    outputs: [
-      {
-        internalType: "bytes32",
-        name: "",
-        type: "bytes32",
-      },
-    ],
+    inputs: [],
+    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "_recipientId",
-        type: "address",
-      },
-    ],
+    type: "function",
     name: "getSuperApp",
+    inputs: [
+      { name: "_recipientId", type: "address", internalType: "address" },
+    ],
     outputs: [
-      {
-        internalType: "contract RecipientSuperApp",
-        name: "",
-        type: "address",
-      },
+      { name: "", type: "address", internalType: "contract RecipientSuperApp" },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "_amount",
-        type: "uint256",
-      },
-    ],
+    type: "function",
     name: "increasePoolAmount",
+    inputs: [{ name: "_amount", type: "uint256", internalType: "uint256" }],
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "initialSuperAppBalance",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "_poolId",
-        type: "uint256",
-      },
-      {
-        internalType: "bytes",
-        name: "_data",
-        type: "bytes",
-      },
-    ],
+    type: "function",
     name: "initialize",
+    inputs: [
+      { name: "_poolId", type: "uint256", internalType: "uint256" },
+      { name: "_data", type: "bytes", internalType: "bytes" },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "isPoolActive",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
+    inputs: [],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "_allocator",
-        type: "address",
-      },
-    ],
+    type: "function",
     name: "isValidAllocator",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
+    inputs: [{ name: "_allocator", type: "address", internalType: "address" }],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "metadataRequired",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
+    inputs: [],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "minPassportScore",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "passportDecoder",
-    outputs: [
-      {
-        internalType: "contract IGitcoinPassportDecoder",
-        name: "",
-        type: "address",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "address",
+        internalType: "contract IGitcoinPassportDecoder",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "poolSuperToken",
+    inputs: [],
     outputs: [
-      {
-        internalType: "contract ISuperToken",
-        name: "",
-        type: "address",
-      },
+      { name: "", type: "address", internalType: "contract ISuperToken" },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "",
-        type: "address",
-      },
-    ],
+    type: "function",
     name: "recipientFlowRate",
+    inputs: [{ name: "", type: "address", internalType: "address" }],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "recipientSuperAppFactory",
+    inputs: [],
     outputs: [
       {
-        internalType: "uint256",
         name: "",
-        type: "uint256",
+        type: "address",
+        internalType: "contract RecipientSuperAppFactory",
       },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "",
-        type: "address",
-      },
-    ],
+    type: "function",
     name: "recipients",
+    inputs: [{ name: "", type: "address", internalType: "address" }],
     outputs: [
+      { name: "useRegistryAnchor", type: "bool", internalType: "bool" },
+      { name: "recipientAddress", type: "address", internalType: "address" },
       {
-        internalType: "bool",
-        name: "useRegistryAnchor",
-        type: "bool",
-      },
-      {
-        internalType: "address",
-        name: "recipientAddress",
-        type: "address",
-      },
-      {
-        internalType: "enum IStrategy.Status",
         name: "recipientStatus",
         type: "uint8",
+        internalType: "enum IStrategy.Status",
       },
       {
-        components: [
-          {
-            internalType: "uint256",
-            name: "protocol",
-            type: "uint256",
-          },
-          {
-            internalType: "string",
-            name: "pointer",
-            type: "string",
-          },
-        ],
-        internalType: "struct Metadata",
         name: "metadata",
         type: "tuple",
+        internalType: "struct Metadata",
+        components: [
+          { name: "protocol", type: "uint256", internalType: "uint256" },
+          { name: "pointer", type: "string", internalType: "string" },
+        ],
       },
       {
-        internalType: "contract RecipientSuperApp",
         name: "superApp",
         type: "address",
+        internalType: "contract RecipientSuperApp",
       },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "bytes",
-        name: "_data",
-        type: "bytes",
-      },
-      {
-        internalType: "address",
-        name: "_sender",
-        type: "address",
-      },
-    ],
+    type: "function",
     name: "registerRecipient",
+    inputs: [
+      { name: "_data", type: "bytes", internalType: "bytes" },
+      { name: "_sender", type: "address", internalType: "address" },
+    ],
     outputs: [
-      {
-        internalType: "address",
-        name: "recipientId",
-        type: "address",
-      },
+      { name: "recipientId", type: "address", internalType: "address" },
     ],
     stateMutability: "payable",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "registrationEndTime",
-    outputs: [
-      {
-        internalType: "uint64",
-        name: "",
-        type: "uint64",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [],
-    name: "registrationStartTime",
-    outputs: [
-      {
-        internalType: "uint64",
-        name: "",
-        type: "uint64",
-      },
-    ],
+    outputs: [{ name: "", type: "uint64", internalType: "uint64" }],
     stateMutability: "view",
-    type: "function",
   },
   {
+    type: "function",
+    name: "registrationStartTime",
+    inputs: [],
+    outputs: [{ name: "", type: "uint64", internalType: "uint64" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "reviewRecipients",
     inputs: [
+      { name: "_recipientIds", type: "address[]", internalType: "address[]" },
       {
-        internalType: "address[]",
-        name: "_recipientIds",
-        type: "address[]",
-      },
-      {
-        internalType: "enum IStrategy.Status[]",
         name: "_recipientStatuses",
         type: "uint8[]",
+        internalType: "enum IStrategy.Status[]",
       },
     ],
-    name: "reviewRecipients",
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "",
-        type: "address",
-      },
-    ],
+    type: "function",
     name: "superApps",
-    outputs: [
-      {
-        internalType: "address",
-        name: "",
-        type: "address",
-      },
-    ],
+    inputs: [{ name: "", type: "address", internalType: "address" }],
+    outputs: [{ name: "", type: "address", internalType: "address" }],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "superfluidHost",
-    outputs: [
-      {
-        internalType: "address",
-        name: "",
-        type: "address",
-      },
-    ],
+    inputs: [],
+    outputs: [{ name: "", type: "address", internalType: "address" }],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "",
-        type: "address",
-      },
-    ],
+    type: "function",
     name: "totalUnitsByRecipient",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    inputs: [{ name: "", type: "address", internalType: "address" }],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "_minPassportScore",
-        type: "uint256",
-      },
-    ],
+    type: "function",
     name: "updateMinPassportScore",
+    inputs: [
+      { name: "_minPassportScore", type: "uint256", internalType: "uint256" },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
   },
   {
+    type: "function",
+    name: "updatePoolTimestamps",
     inputs: [
       {
-        internalType: "uint64",
         name: "_registrationStartTime",
         type: "uint64",
-      },
-      {
         internalType: "uint64",
-        name: "_registrationEndTime",
-        type: "uint64",
       },
-      {
-        internalType: "uint64",
-        name: "_allocationStartTime",
-        type: "uint64",
-      },
-      {
-        internalType: "uint64",
-        name: "_allocationEndTime",
-        type: "uint64",
-      },
+      { name: "_registrationEndTime", type: "uint64", internalType: "uint64" },
+      { name: "_allocationStartTime", type: "uint64", internalType: "uint64" },
+      { name: "_allocationEndTime", type: "uint64", internalType: "uint64" },
     ],
-    name: "updatePoolTimestamps",
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "useRegistryAnchor",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
+    inputs: [],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
     stateMutability: "view",
-    type: "function",
   },
   {
+    type: "function",
+    name: "withdraw",
+    inputs: [
+      { name: "_token", type: "address", internalType: "address" },
+      { name: "_amount", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "event",
+    name: "Allocated",
     inputs: [
       {
-        internalType: "address",
-        name: "_token",
+        name: "recipientId",
         type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        internalType: "uint256",
-        name: "_amount",
+        name: "amount",
         type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "token",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
+      {
+        name: "sender",
+        type: "address",
+        indexed: false,
+        internalType: "address",
       },
     ],
-    name: "withdraw",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
+    anonymous: false,
   },
+  {
+    type: "event",
+    name: "Canceled",
+    inputs: [
+      {
+        name: "recipientId",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "sender",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "Distributed",
+    inputs: [
+      {
+        name: "sender",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "flowRate",
+        type: "int96",
+        indexed: false,
+        internalType: "int96",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "Distributed",
+    inputs: [
+      {
+        name: "recipientId",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "recipientAddress",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "sender",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "Initialized",
+    inputs: [
+      {
+        name: "poolId",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      { name: "data", type: "bytes", indexed: false, internalType: "bytes" },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "MinPassportScoreUpdated",
+    inputs: [
+      {
+        name: "minPassportScore",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "sender",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "PoolActive",
+    inputs: [
+      { name: "active", type: "bool", indexed: false, internalType: "bool" },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "Registered",
+    inputs: [
+      {
+        name: "recipientId",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      { name: "data", type: "bytes", indexed: false, internalType: "bytes" },
+      {
+        name: "sender",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "Reviewed",
+    inputs: [
+      {
+        name: "recipientId",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "status",
+        type: "uint8",
+        indexed: false,
+        internalType: "enum IStrategy.Status",
+      },
+      {
+        name: "sender",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "TimestampsUpdated",
+    inputs: [
+      {
+        name: "registrationStartTime",
+        type: "uint64",
+        indexed: false,
+        internalType: "uint64",
+      },
+      {
+        name: "registrationEndTime",
+        type: "uint64",
+        indexed: false,
+        internalType: "uint64",
+      },
+      {
+        name: "allocationStartTime",
+        type: "uint64",
+        indexed: false,
+        internalType: "uint64",
+      },
+      {
+        name: "allocationEndTime",
+        type: "uint64",
+        indexed: false,
+        internalType: "uint64",
+      },
+      {
+        name: "sender",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "TotalUnitsUpdated",
+    inputs: [
+      {
+        name: "recipientId",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "totalUnits",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "UpdatedRegistration",
+    inputs: [
+      {
+        name: "recipientId",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      { name: "data", type: "bytes", indexed: false, internalType: "bytes" },
+      {
+        name: "sender",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
+    ],
+    anonymous: false,
+  },
+  { type: "error", name: "ALLOCATION_ACTIVE", inputs: [] },
+  { type: "error", name: "ALLOCATION_NOT_ACTIVE", inputs: [] },
+  { type: "error", name: "ALLOCATION_NOT_ENDED", inputs: [] },
+  { type: "error", name: "ALREADY_INITIALIZED", inputs: [] },
+  { type: "error", name: "AMOUNT_MISMATCH", inputs: [] },
+  { type: "error", name: "ANCHOR_ERROR", inputs: [] },
+  { type: "error", name: "ARRAY_MISMATCH", inputs: [] },
+  { type: "error", name: "INVALID", inputs: [] },
+  { type: "error", name: "INVALID_ADDRESS", inputs: [] },
+  { type: "error", name: "INVALID_FEE", inputs: [] },
+  { type: "error", name: "INVALID_METADATA", inputs: [] },
+  { type: "error", name: "INVALID_REGISTRATION", inputs: [] },
+  { type: "error", name: "IS_APPROVED_STRATEGY", inputs: [] },
+  { type: "error", name: "MISMATCH", inputs: [] },
+  { type: "error", name: "NONCE_NOT_AVAILABLE", inputs: [] },
+  { type: "error", name: "NON_ZERO_VALUE", inputs: [] },
+  { type: "error", name: "NOT_APPROVED_STRATEGY", inputs: [] },
+  { type: "error", name: "NOT_ENOUGH_FUNDS", inputs: [] },
+  { type: "error", name: "NOT_IMPLEMENTED", inputs: [] },
+  { type: "error", name: "NOT_INITIALIZED", inputs: [] },
+  { type: "error", name: "NOT_PENDING_OWNER", inputs: [] },
+  { type: "error", name: "POOL_ACTIVE", inputs: [] },
+  { type: "error", name: "POOL_INACTIVE", inputs: [] },
+  { type: "error", name: "RECIPIENT_ALREADY_ACCEPTED", inputs: [] },
+  {
+    type: "error",
+    name: "RECIPIENT_ERROR",
+    inputs: [{ name: "recipientId", type: "address", internalType: "address" }],
+  },
+  { type: "error", name: "RECIPIENT_NOT_ACCEPTED", inputs: [] },
+  { type: "error", name: "REGISTRATION_ACTIVE", inputs: [] },
+  { type: "error", name: "REGISTRATION_NOT_ACTIVE", inputs: [] },
+  { type: "error", name: "UNAUTHORIZED", inputs: [] },
+  { type: "error", name: "ZERO_ADDRESS", inputs: [] },
 ] as const;
