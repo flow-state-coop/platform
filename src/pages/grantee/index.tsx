@@ -16,6 +16,7 @@ import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import ProjectCreationModal from "@/components/ProjectCreationModal";
 import ProjectUpdateModal from "@/components/ProjectUpdateModal";
+import useAdminParams from "@/hooks/adminParams";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { Project } from "@/types/project";
 import { networks } from "@/lib/networks";
@@ -86,6 +87,7 @@ export default function Grantee(props: GranteeProps) {
   const [newProfileId, setNewProfileId] = useState("");
   const [isTransactionConfirming, setIsTransactionConfirming] = useState(false);
 
+  const { updateChainId, updatePoolId } = useAdminParams();
   const { isMobile } = useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { data: queryRes, loading } = useQuery(PROJECTS_QUERY, {
@@ -126,9 +128,19 @@ export default function Grantee(props: GranteeProps) {
 
       return { ...profile, status: recipientStatus };
     }) ?? null;
+  const statuses = projects?.map(
+    (project: { status: Status }) => project.status,
+  );
+  const hasApplied =
+    statuses?.includes("APPROVED") || statuses?.includes("PENDING");
 
   useEffect(() => {
-    if (!newProfileId) {
+    updateChainId(Number(chainId));
+    updatePoolId(poolId);
+  }, [chainId, updateChainId, poolId, updatePoolId]);
+
+  useEffect(() => {
+    if (!newProfileId || hasApplied) {
       return;
     }
 
@@ -140,7 +152,7 @@ export default function Grantee(props: GranteeProps) {
       setSelectedProjectIndex(projectIndex);
       setNewProfileId("");
     }
-  }, [newProfileId, projects]);
+  }, [newProfileId, projects, hasApplied]);
 
   const registerRecipient = async () => {
     if (!address || !publicClient) {
@@ -261,6 +273,7 @@ export default function Grantee(props: GranteeProps) {
                         width: isMobile ? "100%" : 256,
                         height: 256,
                         pointerEvents:
+                          (hasApplied && project.status !== "PENDING") ||
                           project.status === "APPROVED" ||
                           project.status === "REJECTED" ||
                           project.status === "CANCELED"
