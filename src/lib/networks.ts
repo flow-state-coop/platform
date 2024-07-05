@@ -5,6 +5,7 @@ const networks: Network[] = [
     id: 11155420,
     name: "OP Sepolia",
     icon: "/optimism.svg",
+    blockExplorer: "https://sepolia-optimism.etherscan.io",
     superfluidConsole: "https://console.superfluid.finance/optimism-sepolia",
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/optimism-sepolia/protocol-v1",
@@ -32,6 +33,7 @@ const networks: Network[] = [
     id: 8453,
     name: "Base",
     icon: "/base.svg",
+    blockExplorer: "https://basescan.org/",
     superfluidConsole: "https://console.superfluid.finance/base-mainnet",
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/base-mainnet/protocol-v1",

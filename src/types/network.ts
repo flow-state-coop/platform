@@ -5,6 +5,7 @@ export type Network = {
   id: number;
   name: string;
   icon: string;
+  blockExplorer: string;
   superfluidConsole: string;
   superfluidSubgraph: string;
   passportDecoder: Address;

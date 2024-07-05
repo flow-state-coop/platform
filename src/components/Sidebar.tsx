@@ -10,15 +10,26 @@ function Sidebar() {
   return (
     <Stack direction="vertical" gap={4} className="h-100 py-4 px-3 fs-5 shadow">
       {pathname.startsWith("/grantee") ? (
-        <Link
-          href="/grantee"
-          className={pathname === "/grantee" ? "fw-bold" : ""}
-          style={{
-            pointerEvents: "none",
-          }}
-        >
-          Pool Application
-        </Link>
+        <>
+          <Link
+            href={`/grantee/?chainid=${chainId}&poolid=${poolId}`}
+            className={pathname === "/grantee" ? "fw-bold" : ""}
+            style={{
+              pointerEvents: !chainId || !poolId ? "none" : "auto",
+            }}
+          >
+            Pool Application
+          </Link>
+          <Link
+            href={`/grantee/tools/?chainid=${chainId}&poolid=${poolId}`}
+            className={pathname === "/grantee/tools" ? "fw-bold" : ""}
+            style={{
+              pointerEvents: !chainId || !poolId ? "none" : "auto",
+            }}
+          >
+            Grantee Tools
+          </Link>
+        </>
       ) : (
         <>
           <Link
