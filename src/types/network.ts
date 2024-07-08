@@ -7,6 +7,7 @@ export type Network = {
   icon: string;
   blockExplorer: string;
   superfluidConsole: string;
+  superfluidDashboard: string;
   superfluidSubgraph: string;
   passportDecoder: Address;
   superfluidHost: Address;

@@ -7,6 +7,7 @@ const networks: Network[] = [
     icon: "/optimism.svg",
     blockExplorer: "https://sepolia-optimism.etherscan.io",
     superfluidConsole: "https://console.superfluid.finance/optimism-sepolia",
+    superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/optimism-sepolia/protocol-v1",
     passportDecoder: "0xe53C60F8069C2f0c3a84F9B3DB5cf56f3100ba56",
@@ -35,6 +36,7 @@ const networks: Network[] = [
     icon: "/base.svg",
     blockExplorer: "https://basescan.org/",
     superfluidConsole: "https://console.superfluid.finance/base-mainnet",
+    superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/base-mainnet/protocol-v1",
     passportDecoder: "0x0000000000000000000000000000000000000000",

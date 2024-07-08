@@ -27,6 +27,7 @@ import { truncateStr } from "@/lib/utils";
 type GranteeToolsProps = {
   poolId: string;
   chainId: string;
+  recipientId: string;
   hostName: string;
 };
 
@@ -75,13 +76,14 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     props: {
       poolId: query.poolid ?? null,
       chainId: query.chainid ?? null,
+      recipientId: query.recipientid ?? null,
       hostName: req.headers.host,
     },
   };
 };
 
 export default function GranteeTools(props: GranteeToolsProps) {
-  const { poolId, chainId, hostName } = props;
+  const { poolId, chainId, recipientId, hostName } = props;
 
   const [selectedProject, setSelectedProject] = useState<
     Project & { recipientId: string; status: string }
@@ -148,7 +150,7 @@ export default function GranteeTools(props: GranteeToolsProps) {
 
       return { ...profile, recipientId, status: recipientStatus };
     }) ?? null;
-  const poolUiLink = `https://${hostName}/?poolid=${poolId}&chainid=${chainId}`;
+  const poolUiLink = `https://${hostName}/?poolid=${poolId}&chainid=${chainId}&recipientid=${selectedProject?.recipientId}`;
   const framesLink = `https://sqf-frames.vercel.app/${selectedProject?.recipientId}/${poolId}/${chainId}`;
 
   useEffect(() => {
@@ -161,6 +163,20 @@ export default function GranteeTools(props: GranteeToolsProps) {
       return;
     }
 
+    if (recipientId) {
+      const project = projects.find(
+        (project: { recipientId: string }) =>
+          project.recipientId === recipientId,
+      );
+
+      if (project) {
+        console.log(project);
+        setSelectedProject(project);
+
+        return;
+      }
+    }
+
     for (const project of projects) {
       if (project.status === "APPROVED") {
         setSelectedProject(project);
@@ -168,7 +184,7 @@ export default function GranteeTools(props: GranteeToolsProps) {
         break;
       }
     }
-  }, [projects, selectedProject]);
+  }, [projects, recipientId, selectedProject]);
 
   const handlePoolConnection = async () => {
     if (!network || !address || !gdaPoolAddress || !publicClient) {
@@ -297,7 +313,7 @@ export default function GranteeTools(props: GranteeToolsProps) {
             </Button>
             <Button
               variant="info"
-              href={`${network.superfluidConsole}/accounts/${address}`}
+              href={`${network.superfluidDashboard}/?view=${address}`}
               target="_blank"
               className="text-white"
               style={{ width: 256 }}
@@ -323,28 +339,28 @@ export default function GranteeTools(props: GranteeToolsProps) {
               "Connect to Pool"
             )}
           </Button>
-          <Card.Text className="fs-3 mt-4 mb-2">UI Direct Link</Card.Text>
-          <Stack
-            direction={isMobile ? "vertical" : "horizontal"}
-            gap={isMobile ? 2 : 4}
-          >
-            <Badge
-              className="bg-transparent px-2 py-3 border border-gray text-black text-start text-truncate"
-              style={{ width: isMobile ? "auto" : 400 }}
-            >
-              {poolUiLink}
-            </Badge>
-            <Button
-              variant="info"
-              className="text-white"
-              style={{ width: isMobile ? "auto" : 128 }}
-              onClick={() => navigator.clipboard.writeText(poolUiLink)}
-            >
-              Copy
-            </Button>
-          </Stack>
           {selectedProject && (
             <>
+              <Card.Text className="fs-3 mt-4 mb-2">UI Direct Link</Card.Text>
+              <Stack
+                direction={isMobile ? "vertical" : "horizontal"}
+                gap={isMobile ? 2 : 4}
+              >
+                <Badge
+                  className="bg-transparent px-2 py-3 border border-gray text-black text-start text-truncate"
+                  style={{ width: isMobile ? "auto" : 400 }}
+                >
+                  {poolUiLink}
+                </Badge>
+                <Button
+                  variant="info"
+                  className="text-white"
+                  style={{ width: isMobile ? "auto" : 128 }}
+                  onClick={() => navigator.clipboard.writeText(poolUiLink)}
+                >
+                  Copy
+                </Button>
+              </Stack>
               <Card.Text className="fs-3 mt-4 mb-2">
                 Frame Donation Link
               </Card.Text>

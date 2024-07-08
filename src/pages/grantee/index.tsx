@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { GetServerSideProps } from "next";
+import { useRouter } from "next/router";
 import { Address, encodeAbiParameters, parseAbiParameters } from "viem";
 import {
   useAccount,
@@ -107,6 +108,7 @@ export default function Grantee(props: GranteeProps) {
     functionName: "minPassportScore",
   });
   const publicClient = usePublicClient();
+  const router = useRouter();
 
   const network = networks.filter(
     (network) => network.id === Number(chainId),
@@ -116,6 +118,7 @@ export default function Grantee(props: GranteeProps) {
   const projects =
     queryRes?.profiles.map((profile: Project) => {
       let recipientStatus = null;
+      let recipientId = null;
 
       for (const recipient of recipients) {
         if (
@@ -123,10 +126,11 @@ export default function Grantee(props: GranteeProps) {
           recipient.id === address?.toLowerCase()
         ) {
           recipientStatus = recipient.status;
+          recipientId = recipient.id;
         }
       }
 
-      return { ...profile, status: recipientStatus };
+      return { ...profile, recipientId, status: recipientStatus };
     }) ?? null;
   const statuses = projects?.map(
     (project: { status: Status }) => project.status,
@@ -255,7 +259,13 @@ export default function Grantee(props: GranteeProps) {
             ) : (
               <Stack direction="horizontal" gap={5} className="flex-wrap">
                 {projects?.map(
-                  (project: Project & { status: Status | null }, i: number) => (
+                  (
+                    project: Project & {
+                      status: Status | null;
+                      recipientId: string;
+                    },
+                    i: number,
+                  ) => (
                     <Card
                       className={`d-flex justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer ${
                         selectedProjectIndex === i
@@ -273,14 +283,21 @@ export default function Grantee(props: GranteeProps) {
                         width: isMobile ? "100%" : 256,
                         height: 256,
                         pointerEvents:
-                          (hasApplied && project.status !== "PENDING") ||
-                          project.status === "APPROVED" ||
+                          (hasApplied &&
+                            project.status !== "PENDING" &&
+                            project.status !== "APPROVED") ||
                           project.status === "REJECTED" ||
                           project.status === "CANCELED"
                             ? "none"
                             : "auto",
                       }}
-                      onClick={() => setSelectedProjectIndex(i)}
+                      onClick={() =>
+                        project.status === "APPROVED"
+                          ? router.push(
+                              `/grantee/tools/?chainid=${chainId}&poolid=${poolId}&recipientid=${project.recipientId}`,
+                            )
+                          : setSelectedProjectIndex(i)
+                      }
                       key={i}
                     >
                       {isTransactionConfirming && selectedProjectIndex === i ? (
