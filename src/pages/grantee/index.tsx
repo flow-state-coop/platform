@@ -24,6 +24,8 @@ import { networks } from "@/lib/networks";
 import { alloAbi } from "@/lib/abi/allo";
 import { getApolloClient } from "@/lib/apollo";
 import { strategyAbi } from "@/lib/abi/strategy";
+import { erc721CheckerAbi } from "@/lib/abi/erc721Checker";
+import { ZERO_ADDRESS } from "@/lib/constants";
 
 type GranteeProps = {
   poolId: string;
@@ -31,6 +33,11 @@ type GranteeProps = {
 };
 
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
+
+enum EligibilityMethod {
+  PASSPORT,
+  NFT_GATING,
+}
 
 const PROJECTS_QUERY = gql`
   query ProjectsQuery($address: String!, $chainId: Int!, $poolId: String!) {
@@ -103,9 +110,26 @@ export default function Grantee(props: GranteeProps) {
   });
   const { writeContractAsync, isError } = useWriteContract();
   const { data: minPassportScore } = useReadContract({
-    address: queryRes?.pool.strategyAddress as Address,
+    address: queryRes?.pool?.strategyAddress as Address,
     abi: strategyAbi,
     functionName: "minPassportScore",
+  });
+  const { data: eligibilityMethod } = useReadContract({
+    address: queryRes?.pool?.strategyAddress as Address,
+    abi: strategyAbi,
+    functionName: "getAllocationEligiblity",
+  });
+  const { data: nftChecker } = useReadContract({
+    address: queryRes?.pool?.strategyAddress as Address,
+    abi: strategyAbi,
+    functionName: "checker",
+    query: { enabled: !!eligibilityMethod },
+  });
+  const { data: requiredNftAddress } = useReadContract({
+    address: nftChecker as Address,
+    abi: erc721CheckerAbi,
+    functionName: "erc721",
+    query: { enabled: nftChecker && nftChecker !== ZERO_ADDRESS },
   });
   const publicClient = usePublicClient();
   const router = useRouter();
@@ -120,6 +144,10 @@ export default function Grantee(props: GranteeProps) {
       let recipientStatus = null;
       let recipientId = null;
 
+      if (!recipients) {
+        return null;
+      }
+
       for (const recipient of recipients) {
         if (
           recipient.anchorAddress === profile.anchorAddress ||
@@ -133,7 +161,7 @@ export default function Grantee(props: GranteeProps) {
       return { ...profile, recipientId, status: recipientStatus };
     }) ?? null;
   const statuses = projects?.map(
-    (project: { status: Status }) => project.status,
+    (project: { status: Status }) => project?.status,
   );
   const hasApplied =
     statuses?.includes("APPROVED") || statuses?.includes("PENDING");
@@ -247,12 +275,20 @@ export default function Grantee(props: GranteeProps) {
                     token.address.toLowerCase() === pool?.matchingToken,
                 )?.name ?? "N/A"}
               </Card.Text>
-              <Card.Text>
-                - Gitcoin Passport Threshold:{" "}
-                {minPassportScore
-                  ? parseFloat((Number(minPassportScore) / 10000).toFixed(2))
-                  : "N/A"}
-              </Card.Text>
+              {!eligibilityMethod ||
+              eligibilityMethod === EligibilityMethod.PASSPORT ? (
+                <Card.Text>
+                  - Gitcoin Passport Threshold:{" "}
+                  {minPassportScore
+                    ? parseFloat((Number(minPassportScore) / 10000).toFixed(2))
+                    : "N/A"}
+                </Card.Text>
+              ) : (
+                <Card.Text>
+                  - Voter Eligibility NFT:{" "}
+                  {(requiredNftAddress as Address) ?? "N/A"}
+                </Card.Text>
+              )}
             </Card>
             {loading ? (
               <Spinner className="m-auto" />
