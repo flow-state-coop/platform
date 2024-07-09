@@ -101,7 +101,7 @@ export default function Grantee(props: GranteeProps) {
     skip: !address || !poolId,
     pollInterval: 3000,
   });
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync, isError } = useWriteContract();
   const { data: minPassportScore } = useReadContract({
     address: queryRes?.pool.strategyAddress as Address,
     abi: strategyAbi,
@@ -413,20 +413,27 @@ export default function Grantee(props: GranteeProps) {
                 </Card>
               </Stack>
             )}
-            <Button
-              className={`mt-5 py-2 ${isMobile ? "w-100" : "w-25"}`}
-              disabled={selectedProjectIndex === null}
-              onClick={registerRecipient}
-            >
-              {isTransactionConfirming ? (
-                <Spinner size="sm" className="m-auto" />
-              ) : selectedProjectIndex !== null &&
-                projects[selectedProjectIndex].status === "PENDING" ? (
-                "Update Application"
-              ) : (
-                "Apply"
+            <Stack direction="vertical" gap={2} className="mt-5">
+              <Button
+                className={`py-2 ${isMobile ? "w-100" : "w-25"}`}
+                disabled={selectedProjectIndex === null}
+                onClick={registerRecipient}
+              >
+                {isTransactionConfirming ? (
+                  <Spinner size="sm" className="m-auto" />
+                ) : selectedProjectIndex !== null &&
+                  projects[selectedProjectIndex].status === "PENDING" ? (
+                  "Update Application"
+                ) : (
+                  "Apply"
+                )}
+              </Button>
+              {isError && (
+                <Card.Text className="fs-6 text-danger">
+                  Transaction Failed - Reapply Above.
+                </Card.Text>
               )}
-            </Button>
+            </Stack>
           </>
         )}
       </Stack>
