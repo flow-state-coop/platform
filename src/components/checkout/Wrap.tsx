@@ -20,9 +20,8 @@ export type WrapProps = {
   wrapAmount: string;
   setWrapAmount: (amount: string) => void;
   isFundingMatchingPool: boolean;
+  isEligible?: boolean;
   token: Token;
-  passportScore?: number;
-  minPassportScore: number;
   superTokenBalance: bigint;
   underlyingTokenBalance?: {
     value: bigint;
@@ -40,8 +39,7 @@ export default function Wrap(props: WrapProps) {
     setWrapAmount,
     token,
     isFundingMatchingPool,
-    passportScore,
-    minPassportScore,
+    isEligible,
     superTokenBalance,
     underlyingTokenBalance,
   } = props;
@@ -75,9 +73,7 @@ export default function Wrap(props: WrapProps) {
         onClick={() => setStep(Step.WRAP)}
         style={{
           pointerEvents:
-            step === Step.REVIEW || step === Step.MINT_PASSPORT
-              ? "auto"
-              : "none",
+            step === Step.REVIEW || step === Step.ELIGIBILITY ? "auto" : "none",
         }}
       >
         <Badge
@@ -97,7 +93,7 @@ export default function Wrap(props: WrapProps) {
           }}
         >
           {step === Step.REVIEW ||
-          step === Step.MINT_PASSPORT ||
+          step === Step.ELIGIBILITY ||
           step === Step.SUCCESS ? (
             <Image
               src="/success.svg"
@@ -208,10 +204,9 @@ export default function Wrap(props: WrapProps) {
                 onClick={() => {
                   setWrapAmount("");
                   setStep(
-                    isFundingMatchingPool ||
-                      (passportScore && passportScore >= minPassportScore)
+                    isFundingMatchingPool || isEligible
                       ? Step.REVIEW
-                      : Step.MINT_PASSPORT,
+                      : Step.ELIGIBILITY,
                   );
                 }}
               >
@@ -234,10 +229,9 @@ export default function Wrap(props: WrapProps) {
               className="w-50 py-1 rounded-3 text-white"
               onClick={() =>
                 setStep(
-                  isFundingMatchingPool ||
-                    (passportScore && passportScore >= minPassportScore)
+                  isFundingMatchingPool || isEligible
                     ? Step.REVIEW
-                    : Step.MINT_PASSPORT,
+                    : Step.ELIGIBILITY,
                 )
               }
             >

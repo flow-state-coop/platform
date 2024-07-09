@@ -1,7 +1,7 @@
 import { useMemo, useCallback, useState, useRef, useEffect } from "react";
 import { GetServerSideProps } from "next";
 import { useQuery, gql } from "@apollo/client";
-import { parseEther } from "viem";
+import { parseEther, Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import { useInView } from "react-intersection-observer";
 import Container from "react-bootstrap/Container";
@@ -18,11 +18,14 @@ import { Token } from "@/types/token";
 import { Inflow } from "@/types/inflow";
 import { Outflow } from "@/types/outflow";
 import { strategyAbi } from "@/lib/abi/strategy";
+import { passportDecoderAbi } from "@/lib/abi/passportDecoder";
+import { erc721CheckerAbi } from "@/lib/abi/erc721Checker";
+import { erc721Abi } from "@/lib/abi/erc721";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
 import { shuffle } from "@/lib/utils";
-import { SECONDS_IN_MONTH } from "@/lib/constants";
+import { SECONDS_IN_MONTH, ZERO_ADDRESS } from "@/lib/constants";
 
 type IndexProps = {
   poolId: string;
@@ -50,6 +53,11 @@ enum SortingMethod {
   RANDOM = "Random Order",
   ALPHABETICAL = "Alphabetical",
   POPULAR = "Popular",
+}
+
+enum EligibilityMethod {
+  PASSPORT,
+  NFT_GATING,
 }
 
 const POOL_QUERY = gql`
@@ -208,14 +216,51 @@ export default function Index(props: IndexProps) {
     pollInterval: 10000,
   });
   const { data: passportDecoder } = useReadContract({
-    abi: strategyAbi,
     address: streamingFundQueryRes?.pool?.strategyAddress,
+    abi: strategyAbi,
     functionName: "passportDecoder",
   });
   const { data: minPassportScore } = useReadContract({
-    abi: strategyAbi,
     address: streamingFundQueryRes?.pool?.strategyAddress,
+    abi: strategyAbi,
     functionName: "minPassportScore",
+  });
+  const { data: passportScore, refetch: refetchPassportScore } =
+    useReadContract({
+      abi: passportDecoderAbi,
+      address: passportDecoder ?? "0x",
+      functionName: "getScore",
+      args: [address ?? "0x"],
+      query: {
+        enabled: address && passportDecoder !== ZERO_ADDRESS ? true : false,
+      },
+    });
+  const { data: eligibilityMethod } = useReadContract({
+    address: streamingFundQueryRes?.pool?.strategyAddress,
+    abi: strategyAbi,
+    functionName: "getAllocationEligiblity",
+  });
+  const { data: nftChecker } = useReadContract({
+    address: streamingFundQueryRes?.pool?.strategyAddress,
+    abi: strategyAbi,
+    functionName: "checker",
+    query: { enabled: eligibilityMethod === EligibilityMethod.NFT_GATING },
+  });
+  const { data: requiredNftAddress } = useReadContract({
+    address: nftChecker,
+    abi: erc721CheckerAbi,
+    functionName: "erc721",
+    query: { enabled: nftChecker && nftChecker !== ZERO_ADDRESS },
+  });
+  const { data: nftBalance } = useReadContract({
+    address: requiredNftAddress as Address,
+    abi: erc721Abi,
+    functionName: "balanceOf",
+    args: [address ?? "0x"],
+    query: {
+      enabled: !!address && !!requiredNftAddress,
+      refetchInterval: 10000,
+    },
   });
 
   const pool = streamingFundQueryRes?.pool ?? null;
@@ -223,6 +268,16 @@ export default function Index(props: IndexProps) {
   const network = networks.find(
     (network) => network.id === Number(chainId ?? DEFAULT_CHAIN_ID),
   );
+  const isEligible =
+    eligibilityMethod === EligibilityMethod.NFT_GATING && !!nftBalance
+      ? true
+      : eligibilityMethod === EligibilityMethod.PASSPORT &&
+          passportScore &&
+          minPassportScore &&
+          passportScore >= minPassportScore
+        ? true
+        : false;
+
   const allocationTokenInfo = useMemo(
     () =>
       network?.tokens.find(
@@ -587,8 +642,6 @@ export default function Index(props: IndexProps) {
           matchingPool={matchingPool}
           matchingTokenInfo={matchingTokenInfo}
           network={network}
-          passportDecoder={passportDecoder}
-          minPassportScore={minPassportScore}
           receiver={gdaPoolAddress ?? ""}
           userAccountSnapshots={
             superfluidQueryRes?.account?.accountTokenSnapshots ?? null
@@ -624,9 +677,14 @@ export default function Index(props: IndexProps) {
           userAccountSnapshots={
             superfluidQueryRes?.account?.accountTokenSnapshots ?? null
           }
+          isEligible={isEligible}
           network={network}
+          passportScore={passportScore}
+          refetchPassportScore={refetchPassportScore}
           passportDecoder={passportDecoder}
           minPassportScore={minPassportScore}
+          requiredNftAddress={(requiredNftAddress as Address) ?? null}
+          nftMintUrl={streamingFundQueryRes?.pool.metadata.nftMintUrl ?? null}
         />
       ) : null}
     </SuperfluidContextProvider>

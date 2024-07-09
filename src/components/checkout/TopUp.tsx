@@ -21,8 +21,7 @@ export type TopUpProps = {
   newFlowRate: string;
   wrapAmount: string;
   isFundingMatchingPool: boolean;
-  passportScore?: number;
-  minPassportScore: number;
+  isEligible?: boolean;
   superTokenBalance: bigint;
   minEthBalance: number;
   suggestedTokenBalance: bigint;
@@ -40,8 +39,7 @@ export default function TopUp(props: TopUpProps) {
     newFlowRate,
     wrapAmount,
     isFundingMatchingPool,
-    passportScore,
-    minPassportScore,
+    isEligible,
     superTokenBalance,
     suggestedTokenBalance,
     minEthBalance,
@@ -279,10 +277,9 @@ export default function TopUp(props: TopUpProps) {
                     BigInt(newFlowRate) *
                       BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY))
                   ? Step.WRAP
-                  : isFundingMatchingPool ||
-                      (passportScore && passportScore >= minPassportScore)
+                  : isFundingMatchingPool || isEligible
                     ? Step.REVIEW
-                    : Step.MINT_PASSPORT,
+                    : Step.ELIGIBILITY,
               )
             }
           >

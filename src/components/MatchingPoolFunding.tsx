@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
-import { Address, parseEther, formatEther } from "viem";
-import { useAccount, useReadContract, useBalance } from "wagmi";
+import { parseEther, formatEther } from "viem";
+import { useAccount, useBalance } from "wagmi";
 import dayjs from "dayjs";
 import {
   NativeAssetSuperToken,
@@ -20,7 +20,6 @@ import TopUp from "@/components/checkout/TopUp";
 import Wrap from "@/components/checkout/Wrap";
 import Review from "@/components/checkout/Review";
 import Success from "@/components/checkout/Success";
-import { passportDecoderAbi } from "@/lib/abi/passportDecoder";
 import { useSuperfluidContext } from "@/context/Superfluid";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
@@ -43,8 +42,6 @@ type MatchingPoolFundingProps = {
   matchingPool: MatchingPool;
   matchingTokenInfo: Token;
   network?: Network;
-  passportDecoder?: Address;
-  minPassportScore?: bigint;
   receiver: string;
   userAccountSnapshots:
     | {
@@ -68,8 +65,6 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     description,
     matchingTokenInfo,
     network,
-    passportDecoder,
-    minPassportScore,
     receiver,
     userAccountSnapshots,
   } = props;
@@ -93,15 +88,6 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     transactionError,
     executeTransactions,
   } = useTransactionsQueue();
-  const { data: passportScore } = useReadContract({
-    abi: passportDecoderAbi,
-    address: passportDecoder ?? "0x",
-    functionName: "getScore",
-    args: [address as Address],
-    query: {
-      enabled: address && passportDecoder !== ZERO_ADDRESS ? true : false,
-    },
-  });
   const { data: ethBalance } = useBalance({
     address,
     query: {
@@ -415,10 +401,6 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
               updateWrapAmount(amountPerTimeInterval, timeInterval);
             }}
             isFundingMatchingPool={true}
-            passportScore={passportScore ? Number(passportScore) / 10000 : 0}
-            minPassportScore={
-              minPassportScore ? Number(minPassportScore) / 10000 : 0
-            }
             superTokenBalance={superTokenBalance}
             hasSufficientBalance={
               !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
@@ -430,10 +412,6 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             newFlowRate={newFlowRate}
             wrapAmount={wrapAmount}
             isFundingMatchingPool={true}
-            passportScore={passportScore ? Number(passportScore) / 10000 : 0}
-            minPassportScore={
-              minPassportScore ? Number(minPassportScore) / 10000 : 0
-            }
             superTokenBalance={superTokenBalance}
             minEthBalance={minEthBalance}
             suggestedTokenBalance={suggestedTokenBalance}
@@ -450,10 +428,6 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             setWrapAmount={setWrapAmount}
             token={matchingTokenInfo}
             isFundingMatchingPool={true}
-            passportScore={passportScore ? Number(passportScore) / 10000 : 0}
-            minPassportScore={
-              minPassportScore ? Number(minPassportScore) / 10000 : 0
-            }
             superTokenBalance={superTokenBalance}
             underlyingTokenBalance={underlyingTokenBalance}
           />

@@ -33,12 +33,12 @@ export default function Passport(props: PassportProps) {
         style={{
           pointerEvents: step !== Step.REVIEW ? "none" : "auto",
         }}
-        onClick={() => setStep(Step.MINT_PASSPORT)}
+        onClick={() => setStep(Step.ELIGIBILITY)}
       >
         <Badge
           pill
           className={`d-flex justify-content-center p-0 ${
-            step !== Step.MINT_PASSPORT &&
+            step !== Step.ELIGIBILITY &&
             step !== Step.REVIEW &&
             step !== Step.SUCCESS
               ? "bg-dark"
@@ -63,9 +63,9 @@ export default function Passport(props: PassportProps) {
             <Card.Text className="m-auto text-white">4</Card.Text>
           )}
         </Badge>
-        {Step.MINT_PASSPORT}
+        Mint Gitcoin Passport
       </Button>
-      <Accordion.Collapse eventKey={Step.MINT_PASSPORT} className="p-3 py-0">
+      <Accordion.Collapse eventKey={Step.ELIGIBILITY} className="p-3 py-0">
         <Stack direction="vertical" gap={2}>
           <Card.Text className="m-0 border-bottom border-gray">
             Current Score
@@ -119,7 +119,7 @@ export default function Passport(props: PassportProps) {
           <Button
             variant="success"
             disabled={!passportScore || passportScore < minPassportScore}
-            className="w-100 m-0 ms-auto mt-1 fs-5 text-white fw-bold"
+            className="w-100 m-0 ms-auto mt-1 mb-3 text-white fw-bold"
             onClick={() => setStep(Step.REVIEW)}
           >
             Continue

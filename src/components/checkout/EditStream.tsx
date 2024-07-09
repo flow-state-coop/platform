@@ -33,8 +33,7 @@ export type EditStreamProps = {
   setAmountPerTimeInterval: (amount: string) => void;
   setTimeInterval: (timeInterval: TimeInterval) => void;
   isFundingMatchingPool: boolean;
-  passportScore?: number;
-  minPassportScore: number;
+  isEligible?: boolean;
   superTokenBalance: bigint;
   hasSufficientBalance: boolean;
 };
@@ -53,8 +52,7 @@ export default function EditStream(props: EditStreamProps) {
     timeInterval,
     setTimeInterval,
     isFundingMatchingPool,
-    passportScore,
-    minPassportScore,
+    isEligible,
     superTokenBalance,
     hasSufficientBalance,
   } = props;
@@ -256,10 +254,9 @@ export default function EditStream(props: EditStreamProps) {
                           BigInt(newFlowRate) *
                             BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY))
                       ? Step.WRAP
-                      : isFundingMatchingPool ||
-                          (passportScore && passportScore >= minPassportScore)
+                      : isFundingMatchingPool || isEligible
                         ? Step.REVIEW
-                        : Step.MINT_PASSPORT,
+                        : Step.ELIGIBILITY,
                 )
               }
             >

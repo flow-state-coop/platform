@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Address, parseEther, formatEther } from "viem";
-import { useAccount, useReadContract, useBalance } from "wagmi";
+import { useAccount, useBalance } from "wagmi";
 import dayjs from "dayjs";
 import {
   NativeAssetSuperToken,
@@ -21,10 +21,10 @@ import EditStream from "@/components/checkout/EditStream";
 import TopUp from "@/components/checkout/TopUp";
 import Wrap from "@/components/checkout/Wrap";
 import Passport from "@/components/checkout/Passport";
+import NFTGating from "@/components/checkout/NFTGating";
 import Review from "@/components/checkout/Review";
 import Success from "@/components/checkout/Success";
 import PassportMintingInstructions from "@/components/PassportMintingInstructions";
-import { passportDecoderAbi } from "@/lib/abi/passportDecoder";
 import { useSuperfluidContext } from "@/context/Superfluid";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
@@ -64,8 +64,13 @@ type GranteeFundingProps = {
       }[]
     | null;
   network?: Network;
+  isEligible: boolean;
+  passportScore?: bigint;
+  refetchPassportScore: (args: { throwOnError: boolean }) => void;
   passportDecoder?: Address;
   minPassportScore?: bigint;
+  requiredNftAddress: Address | null;
+  nftMintUrl: string | null;
 };
 
 dayjs().format();
@@ -89,8 +94,12 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     matchingTokenInfo,
     userAccountSnapshots,
     network,
-    passportDecoder,
+    isEligible,
+    passportScore,
+    refetchPassportScore,
     minPassportScore,
+    requiredNftAddress,
+    nftMintUrl,
   } = props;
 
   const [step, setStep] = useState<Step>(Step.SELECT_AMOUNT);
@@ -113,16 +122,6 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     transactionError,
     executeTransactions,
   } = useTransactionsQueue();
-  const { data: passportScore, refetch: refetchPassportScore } =
-    useReadContract({
-      abi: passportDecoderAbi,
-      address: passportDecoder ?? "0x",
-      functionName: "getScore",
-      args: [address as Address],
-      query: {
-        enabled: address && passportDecoder !== ZERO_ADDRESS ? true : false,
-      },
-    });
   const { data: ethBalance } = useBalance({
     address,
     query: {
@@ -493,10 +492,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
                 updateWrapAmount(amountPerTimeInterval, timeInterval);
               }}
               isFundingMatchingPool={false}
-              passportScore={passportScore ? Number(passportScore) / 10000 : 0}
-              minPassportScore={
-                minPassportScore ? Number(minPassportScore) / 10000 : 0
-              }
+              isEligible={isEligible}
               superTokenBalance={superTokenBalance}
               hasSufficientBalance={
                 !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
@@ -508,10 +504,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               newFlowRate={newFlowRate}
               wrapAmount={wrapAmount}
               isFundingMatchingPool={false}
-              passportScore={passportScore ? Number(passportScore) / 10000 : 0}
-              minPassportScore={
-                minPassportScore ? Number(minPassportScore) / 10000 : 0
-              }
+              isEligible={isEligible}
               superTokenBalance={superTokenBalance}
               minEthBalance={minEthBalance}
               suggestedTokenBalance={suggestedTokenBalance}
@@ -521,16 +514,6 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               ethBalance={ethBalance}
               underlyingTokenBalance={underlyingTokenBalance}
             />
-            <Passport
-              step={step}
-              setStep={setStep}
-              passportScore={passportScore ? Number(passportScore) / 10000 : 0}
-              minPassportScore={
-                minPassportScore ? Number(minPassportScore) / 10000 : 0
-              }
-              setShowMintingInstructions={setShowMintingInstructions}
-              refetchPassportScore={refetchPassportScore}
-            />
             <Wrap
               step={step}
               setStep={setStep}
@@ -538,13 +521,33 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               setWrapAmount={setWrapAmount}
               token={allocationTokenInfo}
               isFundingMatchingPool={false}
-              passportScore={passportScore ? Number(passportScore) / 10000 : 0}
-              minPassportScore={
-                minPassportScore ? Number(minPassportScore) / 10000 : 0
-              }
+              isEligible={isEligible}
               superTokenBalance={superTokenBalance}
               underlyingTokenBalance={underlyingTokenBalance}
             />
+            {requiredNftAddress ? (
+              <NFTGating
+                step={step}
+                setStep={setStep}
+                network={network}
+                requiredNftAddress={requiredNftAddress}
+                nftMintUrl={nftMintUrl}
+                isEligible={isEligible}
+              />
+            ) : (
+              <Passport
+                step={step}
+                setStep={setStep}
+                passportScore={
+                  passportScore ? Number(passportScore) / 10000 : 0
+                }
+                minPassportScore={
+                  minPassportScore ? Number(minPassportScore) / 10000 : 0
+                }
+                setShowMintingInstructions={setShowMintingInstructions}
+                refetchPassportScore={refetchPassportScore}
+              />
+            )}
             <Review
               step={step}
               setStep={(step) => setStep(step)}

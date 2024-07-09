@@ -170,7 +170,6 @@ export default function GranteeTools(props: GranteeToolsProps) {
       );
 
       if (project) {
-        console.log(project);
         setSelectedProject(project);
 
         return;

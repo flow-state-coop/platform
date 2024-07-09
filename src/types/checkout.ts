@@ -3,6 +3,6 @@ export enum Step {
   WRAP = "Wrap to Super Token",
   TOP_UP = "Top up required tokens",
   REVIEW = "Review",
-  MINT_PASSPORT = "Mint Gitcoin Passport",
+  ELIGIBILITY = "Voter Eligibility",
   SUCCESS = "Success!",
 }
