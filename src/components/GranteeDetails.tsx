@@ -49,7 +49,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
     expanded: readMore,
   });
 
-  const matchingPoolMember = matchingPool.poolMembers.find(
+  const matchingPoolMember = matchingPool?.poolMembers.find(
     (member) => member.account.id === recipientAddress,
   );
   const totalAllocatedUser = useFlowingAmount(

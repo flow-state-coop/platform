@@ -253,7 +253,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
   ]);
 
   const netImpact = useMemo(() => {
-    const member = matchingPool.poolMembers.find(
+    const member = matchingPool?.poolMembers.find(
       (member) => member.account.id === recipientAddress,
     );
 

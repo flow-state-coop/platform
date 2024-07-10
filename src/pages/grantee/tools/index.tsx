@@ -151,7 +151,7 @@ export default function GranteeTools(props: GranteeToolsProps) {
       return { ...profile, recipientId, status: recipientStatus };
     }) ?? null;
   const poolUiLink = `https://${hostName}/?poolid=${poolId}&chainid=${chainId}&recipientid=${selectedProject?.recipientId}`;
-  const framesLink = `https://sqf-frames.vercel.app/${selectedProject?.recipientId}/${poolId}/${chainId}`;
+  const framesLink = `https://frames.flowstate.network/${selectedProject?.recipientId}/${poolId}/${chainId}`;
 
   useEffect(() => {
     updateChainId(Number(chainId));
