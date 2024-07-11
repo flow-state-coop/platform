@@ -225,7 +225,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
                   alt="logo"
                   width={96}
                   height={96}
-                  className="rounded-circle"
+                  className="rounded-4"
                 />
               )}
             </Stack>
@@ -263,8 +263,8 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
                 <Image
                   src={URL.createObjectURL(projectBannerBlob)}
                   alt="banner"
-                  width={128}
-                  height={64}
+                  width={150}
+                  height={50}
                 />
               )}
             </Stack>

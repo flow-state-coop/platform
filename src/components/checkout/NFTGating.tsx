@@ -57,7 +57,7 @@ export default function NFTGating(props: NFTGatingProps) {
               className="m-auto"
             />
           ) : (
-            <Card.Text className="m-auto text-white">4</Card.Text>
+            <Card.Text className="m-auto text-light">4</Card.Text>
           )}
         </Badge>
         {Step.ELIGIBILITY}
@@ -116,7 +116,7 @@ export default function NFTGating(props: NFTGatingProps) {
               href={nftMintUrl}
               target="_blank"
               disabled={isEligible}
-              className="bg-secondary text-white"
+              className="bg-secondary text-light"
             >
               Get the NFT
             </Button>
@@ -129,7 +129,7 @@ export default function NFTGating(props: NFTGatingProps) {
           <Button
             variant="success"
             disabled={!isEligible}
-            className="w-100 m-0 ms-auto mt-1 mb-3 text-white fw-bold"
+            className="w-100 m-0 ms-auto mt-1 mb-3 text-light fw-bold"
             onClick={() => setStep(Step.REVIEW)}
           >
             Continue

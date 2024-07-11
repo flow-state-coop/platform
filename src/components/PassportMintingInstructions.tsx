@@ -123,7 +123,7 @@ export default function PassportMintingInstructions(
           <Button
             variant="danger"
             onClick={hide}
-            className="float-end px-5 mt-3"
+            className="float-end px-5 mt-3 text-light"
           >
             Close
           </Button>

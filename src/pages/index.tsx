@@ -39,7 +39,8 @@ type Grantee = {
   superappAddress: string;
   name: string;
   description: string;
-  imageCid: string;
+  logoCid: string;
+  bannerCid: string;
   twitter: string;
   inflow: Inflow;
   matchingFlowRate: bigint;
@@ -329,7 +330,8 @@ export default function Index(props: IndexProps) {
         superappAddress: recipient.superappAddress,
         name: recipient.metadata.title,
         description: recipient.metadata.description,
-        imageCid: recipient.metadata.logoImg,
+        logoCid: recipient.metadata.logoImg,
+        bannerCid: recipient.metadata.bannerImg,
         twitter: recipient.metadata.projectTwitter,
         inflow: superappAccount.accountTokenSnapshots[0],
         matchingFlowRate: memberFlowRate ?? BigInt(0),
@@ -589,7 +591,7 @@ export default function Index(props: IndexProps) {
         style={{
           display: "grid",
           gap: "2rem",
-          gridTemplateColumns: "repeat(auto-fit, minMax(320px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minMax(292px, 1fr))",
           justifyItems: "center",
         }}
       >
@@ -598,7 +600,8 @@ export default function Index(props: IndexProps) {
             key={i}
             name={grantee.name}
             description={grantee.description}
-            imageCid={grantee.imageCid}
+            logoCid={grantee.logoCid}
+            bannerCid={grantee.bannerCid}
             allocatorsCount={grantee.inflow.activeIncomingStreamCount}
             allocationFlowRate={BigInt(grantee.inflow.totalInflowRate ?? 0)}
             matchingFlowRate={grantee.matchingFlowRate}
@@ -661,7 +664,7 @@ export default function Index(props: IndexProps) {
           receiver={transactionPanelState.selectedGrantee.superappAddress}
           name={transactionPanelState.selectedGrantee.name ?? ""}
           description={transactionPanelState.selectedGrantee.description ?? ""}
-          imageCid={transactionPanelState.selectedGrantee.imageCid}
+          logoCid={transactionPanelState.selectedGrantee.logoCid}
           twitter={transactionPanelState.selectedGrantee.twitter}
           recipientAddress={
             transactionPanelState.selectedGrantee.recipientAddress

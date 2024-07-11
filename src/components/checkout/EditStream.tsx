@@ -244,7 +244,7 @@ export default function EditStream(props: EditStreamProps) {
                   Number(amountPerTimeInterval.replace(/,/g, "")) === 0) ||
                 newFlowRate === flowRateToReceiver
               }
-              className="py-1 rounded-3"
+              className="py-1 rounded-3 text-light"
               onClick={() =>
                 setStep(
                   !hasSufficientBalance

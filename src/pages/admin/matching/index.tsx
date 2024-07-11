@@ -129,7 +129,7 @@ export default function MatchinPool() {
                     as="a"
                     href={`${network?.superfluidConsole}/pools/${gdaPool}`}
                     target="_blank"
-                    className="rounded-2 text-white"
+                    className="rounded-2 text-light"
                   >
                     View on Console
                   </Button>

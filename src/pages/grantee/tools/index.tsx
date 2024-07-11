@@ -305,7 +305,7 @@ export default function GranteeTools(props: GranteeToolsProps) {
               variant="link"
               href={`${network.superfluidConsole}/pools/${gdaPoolAddress}`}
               target="_blank"
-              className="text-white bg-info"
+              className="text-light bg-info"
               style={{ width: 256 }}
             >
               View Pool Stats
@@ -314,7 +314,7 @@ export default function GranteeTools(props: GranteeToolsProps) {
               variant="info"
               href={`${network.superfluidDashboard}/?view=${address}`}
               target="_blank"
-              className="text-white"
+              className="text-light"
               style={{ width: 256 }}
             >
               View Address Dashboard
@@ -353,7 +353,7 @@ export default function GranteeTools(props: GranteeToolsProps) {
                 </Badge>
                 <Button
                   variant="info"
-                  className="text-white"
+                  className="text-light"
                   style={{ width: isMobile ? "auto" : 128 }}
                   onClick={() => navigator.clipboard.writeText(poolUiLink)}
                 >
@@ -375,7 +375,7 @@ export default function GranteeTools(props: GranteeToolsProps) {
                 </Badge>
                 <Button
                   variant="info"
-                  className="text-white"
+                  className="text-light"
                   style={{ width: isMobile ? "auto" : 128 }}
                   onClick={() => navigator.clipboard.writeText(framesLink)}
                 >

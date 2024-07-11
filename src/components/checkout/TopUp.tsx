@@ -92,7 +92,7 @@ export default function TopUp(props: TopUpProps) {
               className="m-auto"
             />
           ) : (
-            <Card.Text className="m-auto text-white">2</Card.Text>
+            <Card.Text className="m-auto text-light">2</Card.Text>
           )}
         </Badge>
         <Card.Text className="m-0">{Step.TOP_UP}</Card.Text>
@@ -111,7 +111,7 @@ export default function TopUp(props: TopUpProps) {
                   !ethBalance || ethBalance.value === BigInt(0)
                     ? "text-danger"
                     : !hasSuggestedTokenBalance
-                      ? "text-yellow"
+                      ? "text-warning"
                       : "text-dark"
                 }`}
               >
@@ -142,7 +142,7 @@ export default function TopUp(props: TopUpProps) {
               </Card.Text>
               <OnRampWidget
                 target={
-                  <Button className="d-flex justify-content-center align-items-center gap-1 rounded-3 text-white fs-6">
+                  <Button className="d-flex justify-content-center align-items-center gap-1 rounded-3 text-light fs-6">
                     <Image
                       src="/credit-card.svg"
                       alt="card"
@@ -187,7 +187,7 @@ export default function TopUp(props: TopUpProps) {
                 </Card.Text>
                 <OnRampWidget
                   target={
-                    <Button className="d-flex justify-content-center align-items-center gap-1 w-100 rounded-3 fs-6">
+                    <Button className="d-flex justify-content-center align-items-center gap-1 w-100 text-light rounded-3 fs-6">
                       <Image
                         src="/credit-card.svg"
                         width={24}
@@ -213,7 +213,7 @@ export default function TopUp(props: TopUpProps) {
                           underlyingTokenBalance.value + superTokenBalance ===
                             BigInt(0)
                         ? "text-danger"
-                        : "text-yellow"
+                        : "text-warning"
                   }`}
                 >
                   {underlyingTokenBalance
@@ -245,7 +245,7 @@ export default function TopUp(props: TopUpProps) {
                   href="https://jumper.exchange/?fromChain=10&fromToken=0x0000000000000000000000000000000000000000&toChain=10&toToken=0x7d342726B69C28D942ad8BfE6Ac81b972349d524"
                   target="_blank"
                   rel="noreferrer"
-                  className="d-flex justify-content-center align-items-center w-100 gap-1 bg-primary text-decoration-none rounded-3 text-white fs-6"
+                  className="d-flex justify-content-center align-items-center w-100 gap-1 bg-primary text-decoration-none rounded-3 text-light fs-6"
                 >
                   <Image src="/swap.svg" alt="swap" width={16} height={16} />
                   Get DAIx
@@ -262,7 +262,7 @@ export default function TopUp(props: TopUpProps) {
           </Button>
           <Button
             variant="success"
-            className="w-50 mt-4 py-1 rounded-3 float-end"
+            className="w-50 mt-4 py-1 rounded-3 float-end text-light"
             disabled={
               (!isFundingMatchingPool &&
                 (!hasSufficientEthBalance || !hasSufficientTokenBalance)) ||

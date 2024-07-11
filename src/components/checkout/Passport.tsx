@@ -60,7 +60,7 @@ export default function Passport(props: PassportProps) {
               className="m-auto"
             />
           ) : (
-            <Card.Text className="m-auto text-white">4</Card.Text>
+            <Card.Text className="m-auto text-light">4</Card.Text>
           )}
         </Badge>
         Mint Gitcoin Passport
@@ -78,7 +78,7 @@ export default function Passport(props: PassportProps) {
                 ? "text-success"
                 : passportScore
                   ? "text-danger"
-                  : "text-yellow"
+                  : "text-warning"
             }`}
           >
             <Image src="/passport.svg" alt="passport" width={36} height={36} />
@@ -111,7 +111,7 @@ export default function Passport(props: PassportProps) {
           </Stack>
           <Button
             variant="secondary"
-            className="w-100 rounded-3"
+            className="w-100 rounded-3 text-light"
             onClick={() => setShowMintingInstructions(true)}
           >
             Update stamps and mint
@@ -119,7 +119,7 @@ export default function Passport(props: PassportProps) {
           <Button
             variant="success"
             disabled={!passportScore || passportScore < minPassportScore}
-            className="w-100 m-0 ms-auto mt-1 mb-3 text-white fw-bold"
+            className="w-100 m-0 ms-auto mt-1 mb-3 text-light fw-bold"
             onClick={() => setStep(Step.REVIEW)}
           >
             Continue

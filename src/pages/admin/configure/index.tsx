@@ -133,24 +133,6 @@ export default function Configure() {
         abi: strategyAbi,
         functionName: "poolSuperToken",
       });
-      const checker = await publicClient.readContract({
-        address: pool.strategyAddress as Address,
-        abi: strategyAbi,
-        functionName: "checker",
-      });
-
-      let nftAddress = "";
-
-      if (checker !== ZERO_ADDRESS) {
-        nftAddress =
-          ((await publicClient.readContract({
-            address: checker,
-            abi: erc721CheckerAbi,
-            functionName: "erc721",
-          })) as Address) ?? "";
-
-        setEligibilityMethod(EligibilityMethod.NFT_GATING);
-      }
 
       const allocationToken =
         network.tokens.filter(
@@ -159,6 +141,29 @@ export default function Configure() {
       const matchingToken =
         network.tokens.filter((token) => poolSuperToken === token.address)[0]
           .name ?? "N/A";
+
+      let nftAddress = "";
+
+      try {
+        const checker = await publicClient.readContract({
+          address: pool.strategyAddress as Address,
+          abi: strategyAbi,
+          functionName: "checker",
+        });
+
+        if (checker !== ZERO_ADDRESS) {
+          nftAddress =
+            ((await publicClient.readContract({
+              address: checker,
+              abi: erc721CheckerAbi,
+              functionName: "erc721",
+            })) as Address) ?? "";
+
+          setEligibilityMethod(EligibilityMethod.NFT_GATING);
+        }
+      } catch (err) {
+        console.error(err);
+      }
 
       setPoolConfigParameters({
         allocationToken,

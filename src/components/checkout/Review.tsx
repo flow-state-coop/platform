@@ -155,7 +155,7 @@ export default function Review(props: ReviewProps) {
               className="m-auto"
             />
           ) : (
-            <Card.Text className="m-auto text-white">
+            <Card.Text className="m-auto text-light">
               {isFundingMatchingPool ? 4 : 5}
             </Card.Text>
           )}
@@ -425,7 +425,7 @@ export default function Review(props: ReviewProps) {
           <Button
             variant={isDeletingStream ? "danger" : "success"}
             disabled={transactions.length === 0 || step === Step.SUCCESS}
-            className="d-flex justify-content-center mt-2 py-1 rounded-3 fw-bold"
+            className="d-flex justify-content-center mt-2 py-1 rounded-3 fw-bold text-light"
             onClick={handleSubmit}
           >
             {areTransactionsLoading ? (

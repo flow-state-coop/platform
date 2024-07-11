@@ -157,7 +157,7 @@ export default function ProgramCreationModal(props: ProgramCreationModalProps) {
         </Form>
         <Button
           variant="info"
-          className="text-white"
+          className="text-light"
           onClick={() =>
             setProgramForm({
               name: programForm.name,

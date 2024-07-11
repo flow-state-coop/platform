@@ -18,7 +18,7 @@ import { SECONDS_IN_MONTH, IPFS_GATEWAYS } from "@/lib/constants";
 interface GranteeDetailsProps {
   name: string;
   description: string;
-  imageCid: string;
+  logoCid: string;
   recipientAddress: string;
   inflow: Inflow;
   matchingPool: MatchingPool;
@@ -31,7 +31,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
   const {
     name,
     description,
-    imageCid,
+    logoCid,
     recipientAddress,
     inflow,
     matchingPool,
@@ -43,7 +43,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
   const [readMore, setReadMore] = useState(true);
   const [imageUrl, setImageUrl] = useState("");
 
-  const [descriptionRef, { clampedText }] = useClampText({
+  const [descriptionRef, { noClamp, clampedText }] = useClampText({
     text: description,
     ellipsis: "...",
     expanded: readMore,
@@ -75,7 +75,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           gateways: IPFS_GATEWAYS,
         });
 
-        const res = await verifiedFetch(`ipfs://${imageCid}`);
+        const res = await verifiedFetch(`ipfs://${logoCid}`);
         const imageBlob = await res.blob();
         const imageUrl = URL.createObjectURL(imageBlob);
 
@@ -84,13 +84,13 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
         console.error(err);
       }
     })();
-  }, [imageCid]);
+  }, [logoCid]);
 
   return (
     <Stack direction="vertical" className="bg-light rounded-4 p-2 pt-0">
       <Stack direction="horizontal" gap={2} className="align-items-start mt-3">
         <Image
-          src={imageUrl ?? "/logo.svg"}
+          src={imageUrl ?? "/logo.png"}
           alt="logo"
           width={96}
           height={96}
@@ -178,17 +178,19 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
       >
         {clampedText}
       </Card.Text>
-      <Button
-        variant="transparent"
-        className="p-0 border-0 shadow-none"
-        onClick={() => setReadMore(!readMore)}
-      >
-        <Image
-          src={readMore ? "/expand-less.svg" : "/expand-more.svg"}
-          alt="expand"
-          width={18}
-        />
-      </Button>
+      {!noClamp && (
+        <Button
+          variant="transparent"
+          className="p-0 border-0 shadow-none"
+          onClick={() => setReadMore(!readMore)}
+        >
+          <Image
+            src={readMore ? "/expand-less.svg" : "/expand-more.svg"}
+            alt="expand"
+            width={18}
+          />
+        </Button>
+      )}
     </Stack>
   );
 }

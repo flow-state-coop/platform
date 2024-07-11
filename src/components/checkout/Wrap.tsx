@@ -103,7 +103,7 @@ export default function Wrap(props: WrapProps) {
               className="m-auto"
             />
           ) : (
-            <Card.Text className="m-auto text-white">3</Card.Text>
+            <Card.Text className="m-auto text-light">3</Card.Text>
           )}
         </Badge>
         {Step.WRAP}
@@ -200,7 +200,7 @@ export default function Wrap(props: WrapProps) {
               <Button
                 variant="primary"
                 disabled={superTokenBalance <= BigInt(0)}
-                className="w-50 py-1 rounded-3 text-white"
+                className="w-50 py-1 rounded-3 text-light"
                 onClick={() => {
                   setWrapAmount("");
                   setStep(
@@ -226,7 +226,7 @@ export default function Wrap(props: WrapProps) {
                   ),
                 ) < Number(wrapAmount.replace(/,/g, ""))
               }
-              className="w-50 py-1 rounded-3 text-white"
+              className="w-50 py-1 rounded-3 text-light"
               onClick={() =>
                 setStep(
                   isFundingMatchingPool || isEligible

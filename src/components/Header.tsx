@@ -14,7 +14,7 @@ export default function Header() {
       className="justify-content-between w-100 px-5 shadow"
     >
       <Image
-        src="/logo.svg"
+        src="/logo.png"
         alt="logo"
         width={isMobile ? 60 : 80}
         className="cursor-pointer"

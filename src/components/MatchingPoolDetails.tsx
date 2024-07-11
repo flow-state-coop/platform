@@ -86,7 +86,7 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
     <Stack direction="vertical" className="bg-light rounded-4 p-2 pt-0">
       <Stack direction="horizontal" gap={2} className="align-items-start mt-3">
         <Image
-          src="/logo.svg"
+          src="/logo.png"
           alt="SQF"
           width={96}
           height={96}
