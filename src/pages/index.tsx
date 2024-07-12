@@ -28,6 +28,7 @@ import { shuffle } from "@/lib/utils";
 import { SECONDS_IN_MONTH, ZERO_ADDRESS } from "@/lib/constants";
 
 type IndexProps = {
+  hostName: string;
   poolId: string;
   chainId: string;
   recipientId: string;
@@ -153,10 +154,11 @@ const DEFAULT_CHAIN_ID = 11155420;
 const GRANTEES_BATCH_SIZE = 20;
 
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const { query } = ctx;
+  const { req, query } = ctx;
 
   return {
     props: {
+      hostName: req.headers.host,
       poolId: query.poolid ?? null,
       chainId: query.chainid ?? null,
       recipientId: query.recipientid ?? null,
@@ -165,7 +167,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 };
 
 export default function Index(props: IndexProps) {
-  const { poolId, chainId, recipientId } = props;
+  const { hostName, poolId, chainId, recipientId } = props;
 
   const [grantees, setGrantees] = useState<Grantee[]>([]);
   const [directTotal, setDirectTotal] = useState(BigInt(0));
@@ -662,6 +664,7 @@ export default function Index(props: IndexProps) {
             })
           }
           receiver={transactionPanelState.selectedGrantee.superappAddress}
+          poolUiLink={`https://${hostName}/?poolid=${poolId}&chainid=${chainId}&recipientid=${transactionPanelState.selectedGrantee.id}`}
           name={transactionPanelState.selectedGrantee.name ?? ""}
           description={transactionPanelState.selectedGrantee.description ?? ""}
           logoCid={transactionPanelState.selectedGrantee.logoCid}

@@ -7,6 +7,7 @@ import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
+import CopyTooltip from "@/components/CopyTooltip";
 import { MatchingPool } from "@/types/matchingPool";
 import { Inflow } from "@/types/inflow";
 import { Outflow } from "@/types/outflow";
@@ -19,6 +20,7 @@ interface GranteeDetailsProps {
   name: string;
   description: string;
   logoCid: string;
+  poolUiLink: string;
   recipientAddress: string;
   inflow: Inflow;
   matchingPool: MatchingPool;
@@ -32,6 +34,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
     name,
     description,
     logoCid,
+    poolUiLink,
     recipientAddress,
     inflow,
     matchingPool,
@@ -121,26 +124,49 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           </Card.Body>
         </Card>
       </Stack>
-      <Stack direction="horizontal" className="text-secondary fs-5 p-2">
+      <Stack
+        direction="horizontal"
+        gap={1}
+        className="align-items-center text-secondary fs-5 p-2"
+      >
         Details
         <Button
           variant="link"
           href={"https://streaming.fund"}
           target="_blank"
           rel="noreferrer"
-          className="ms-2 p-0"
+          className="ms-1 p-0"
         >
-          <Image src="/web.svg" alt="Web" width={18} />
+          <Image src="/web.svg" alt="Web" width={18} height={18} />
         </Button>
         <Button
           variant="link"
           href="https://twitter.com/thegeoweb"
           target="_blank"
           rel="noreferrer"
-          className="ms-1 p-0"
+          className="p-0"
         >
-          <Image src="/x-logo.svg" alt="X Social Network" width={12} />
+          <Image
+            src="/x-logo.svg"
+            alt="X Social Network"
+            width={13}
+            height={13}
+          />
         </Button>
+        <CopyTooltip
+          contentClick="Link copied"
+          contentHover="Copy link"
+          handleCopy={() => navigator.clipboard.writeText(poolUiLink)}
+          target={
+            <Image
+              src="/link.svg"
+              alt="link"
+              width={24}
+              height={24}
+              style={{ marginTop: 2 }}
+            />
+          }
+        />
       </Stack>
       <Stack direction="horizontal" gap={1} className="fs-6 p-2">
         <Stack direction="vertical" gap={1} className="w-25">

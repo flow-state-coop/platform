@@ -47,6 +47,7 @@ type GranteeFundingProps = {
   twitter: string;
   description: string;
   logoCid: string;
+  poolUiLink: string;
   receiver: string;
   recipientAddress: string;
   inflow: Inflow;
@@ -84,6 +85,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     description,
     logoCid,
     twitter,
+    poolUiLink,
     receiver,
     recipientAddress,
     inflow,
@@ -465,6 +467,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
             name={name}
             description={description}
             logoCid={logoCid}
+            poolUiLink={poolUiLink}
             recipientAddress={recipientAddress}
             inflow={inflow}
             matchingPool={matchingPool}
