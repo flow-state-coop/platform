@@ -60,11 +60,12 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
     userOutflow?.updatedAtTimestamp ?? 0,
     BigInt(userOutflow?.currentFlowRate ?? 0),
   );
-  const totalAllocatedAll = useFlowingAmount(
-    BigInt(inflow?.totalAmountStreamedInUntilUpdatedAt ?? BigInt(0)),
-    inflow?.updatedAtTimestamp ?? 0,
-    BigInt(inflow?.totalInflowRate ?? 0),
-  );
+  const totalAllocatedOthers =
+    useFlowingAmount(
+      BigInt(inflow?.totalAmountStreamedInUntilUpdatedAt ?? BigInt(0)),
+      inflow?.updatedAtTimestamp ?? 0,
+      BigInt(inflow?.totalInflowRate ?? 0),
+    ) - totalAllocatedUser;
   const totalMatching = useFlowingAmount(
     BigInt(matchingPoolMember?.totalAmountReceivedUntilUpdatedAt ?? 0),
     matchingPoolMember?.updatedAtTimestamp ?? 0,
@@ -168,20 +169,31 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           }
         />
       </Stack>
-      <Stack direction="horizontal" gap={1} className="fs-6 p-2">
+      <Stack direction="horizontal" gap={1} className="fs-6 p-2 pb-0">
         <Stack direction="vertical" gap={1} className="w-25">
           <Card.Text className="m-0 pe-0">You</Card.Text>
           <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
-              parseFloat(formatEther(totalAllocatedUser).slice(0, 8)),
+              parseFloat(
+                formatEther(
+                  BigInt(userOutflow?.currentFlowRate ?? 0) *
+                    BigInt(SECONDS_IN_MONTH),
+                ).slice(0, 8),
+              ),
             )}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
-          <Card.Text className="m-0 pe-0">All</Card.Text>
+          <Card.Text className="m-0 pe-0">Others</Card.Text>
           <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
-              parseFloat(formatEther(totalAllocatedAll).slice(0, 8)),
+              parseFloat(
+                formatEther(
+                  (BigInt(inflow?.totalInflowRate ?? 0) -
+                    BigInt(userOutflow?.currentFlowRate ?? 0)) *
+                    BigInt(SECONDS_IN_MONTH),
+                ).slice(0, 8),
+              ),
             )}
           </Badge>
         </Stack>
@@ -189,11 +201,42 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           <Card.Text className="m-0 pe-0">Matching</Card.Text>
           <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
+              parseFloat(
+                formatEther(matchingFlowRate * BigInt(SECONDS_IN_MONTH)).slice(
+                  0,
+                  8,
+                ),
+              ),
+            )}
+          </Badge>
+        </Stack>
+        <Card.Text as="small" className="w-20 mt-4 ms-2">
+          monthly
+        </Card.Text>
+      </Stack>
+      <Stack direction="horizontal" gap={1} className="fs-6 p-2">
+        <Stack direction="vertical" gap={1} className="w-25">
+          <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
+            {formatNumberWithCommas(
+              parseFloat(formatEther(totalAllocatedUser).slice(0, 8)),
+            )}
+          </Badge>
+        </Stack>
+        <Stack direction="vertical" gap={1} className="w-25">
+          <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
+            {formatNumberWithCommas(
+              parseFloat(formatEther(totalAllocatedOthers).slice(0, 8)),
+            )}
+          </Badge>
+        </Stack>
+        <Stack direction="vertical" gap={1} className="w-25">
+          <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
+            {formatNumberWithCommas(
               parseFloat(formatEther(totalMatching).slice(0, 8)),
             )}
           </Badge>
         </Stack>
-        <Card.Text as="small" className="mt-4">
+        <Card.Text as="small" className="w-20 ms-2">
           total
         </Card.Text>
       </Stack>
