@@ -664,7 +664,7 @@ export default function Index(props: IndexProps) {
             })
           }
           receiver={transactionPanelState.selectedGrantee.superappAddress}
-          poolUiLink={`https://${hostName}/?poolid=${poolId}&chainid=${chainId}&recipientid=${transactionPanelState.selectedGrantee.id}`}
+          poolUiLink={`https://${hostName}/?poolid=${poolId ?? DEFAULT_POOL_ID}&chainid=${chainId ?? DEFAULT_CHAIN_ID}&recipientid=${transactionPanelState.selectedGrantee.id}`}
           name={transactionPanelState.selectedGrantee.name ?? ""}
           description={transactionPanelState.selectedGrantee.description ?? ""}
           logoCid={transactionPanelState.selectedGrantee.logoCid}
