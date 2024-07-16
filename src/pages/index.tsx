@@ -18,6 +18,7 @@ import { Token } from "@/types/token";
 import { Inflow } from "@/types/inflow";
 import { Outflow } from "@/types/outflow";
 import { strategyAbi } from "@/lib/abi/strategy";
+import { useMediaQuery } from "@/hooks/mediaQuery";
 import { passportDecoderAbi } from "@/lib/abi/passportDecoder";
 import { erc721CheckerAbi } from "@/lib/abi/erc721Checker";
 import { erc721Abi } from "@/lib/abi/erc721";
@@ -189,6 +190,8 @@ export default function Index(props: IndexProps) {
 
   const [sentryRef, inView] = useInView();
 
+  const { isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
+    useMediaQuery();
   const { address } = useAccount();
   const { data: streamingFundQueryRes } = useQuery(POOL_QUERY, {
     client: getApolloClient("streamingfund"),
@@ -589,11 +592,18 @@ export default function Index(props: IndexProps) {
         </Dropdown>
       </Stack>
       <Container
-        className="p-4 pt-0"
+        className="p-0 pb-5"
         style={{
           display: "grid",
-          gap: "2rem",
-          gridTemplateColumns: "repeat(auto-fit, minMax(292px, 1fr))",
+          columnGap: "1.5rem",
+          rowGap: "3rem",
+          gridTemplateColumns: isTablet
+            ? "repeat(2,minmax(0,1fr))"
+            : isSmallScreen
+              ? "repeat(3,minmax(0,1fr))"
+              : isMediumScreen || isBigScreen
+                ? "repeat(4,minmax(0,1fr))"
+                : "",
           justifyItems: "center",
         }}
       >

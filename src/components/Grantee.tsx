@@ -48,6 +48,7 @@ export default function Grantee(props: GranteeProps) {
   const [descriptionRef, { noClamp, clampedText }] = useClampText({
     text: description,
     ellipsis: "...",
+    lines: 4,
   });
   const monthlyAllocation = roundWeiAmount(
     allocationFlowRate * BigInt(SECONDS_IN_MONTH),
@@ -94,8 +95,7 @@ export default function Grantee(props: GranteeProps) {
     <Card
       className="rounded-4 overflow-hidden cursor-pointer"
       style={{
-        width: 292,
-        height: 380,
+        height: 418,
         border: isSelected ? "1px solid #0d6efd" : "1px solid #212529",
         boxShadow: isSelected ? "0px 0px 0px 2px #0d6efd" : "",
       }}
@@ -104,17 +104,16 @@ export default function Grantee(props: GranteeProps) {
       <Card.Img
         variant="top"
         src={bannerUrl}
-        width={292}
-        height={97}
+        height={102}
         className="bg-light"
       />
       <Image
         src={logoUrl}
         alt=""
-        width={60}
-        height={60}
+        width={52}
+        height={52}
         className="rounded-3 position-absolute border border-2 border-light bg-white"
-        style={{ bottom: 252, left: 16 }}
+        style={{ bottom: 288, left: 16 }}
       />
       <Card.Body className="mt-3 pb-0">
         <Card.Text
@@ -125,13 +124,13 @@ export default function Grantee(props: GranteeProps) {
         </Card.Text>
         <Card.Text
           ref={descriptionRef as React.RefObject<HTMLParagraphElement>}
-          className="m-0 mb-2"
-          style={{ fontSize: "0.9rem", minHeight: noClamp ? "3lh" : "auto" }}
+          className="m-0 mb-3"
+          style={{ fontSize: "0.9rem", minHeight: noClamp ? "4lh" : "auto" }}
         >
           {clampedText}
         </Card.Text>
-        <Stack direction="horizontal" className="justify-content-center">
-          <Stack direction="vertical" gap={1} className="align-items-center">
+        <Stack direction="horizontal" className="me-3">
+          <Stack direction="vertical" className="align-items-center w-33">
             <Card.Text as="small" className="m-0 fw-bold">
               Donors
             </Card.Text>
@@ -139,7 +138,7 @@ export default function Grantee(props: GranteeProps) {
               {allocatorsCount}
             </Card.Text>
           </Stack>
-          <Stack direction="vertical" className="align-items-center">
+          <Stack direction="vertical" className="align-items-center w-33">
             <Card.Text as="small" className="m-0 fw-bold">
               Direct
             </Card.Text>
@@ -150,7 +149,7 @@ export default function Grantee(props: GranteeProps) {
               {allocationTokenInfo.name}/mo
             </Card.Text>
           </Stack>
-          <Stack direction="vertical" className="align-items-center">
+          <Stack direction="vertical" className="align-items-center w-33">
             <Card.Text as="small" className="m-0 fw-bold">
               Matching
             </Card.Text>
