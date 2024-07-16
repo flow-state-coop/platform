@@ -190,7 +190,7 @@ export default function Index(props: IndexProps) {
 
   const [sentryRef, inView] = useInView();
 
-  const { isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
+  const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const { address } = useAccount();
   const { data: streamingFundQueryRes } = useQuery(POOL_QUERY, {
@@ -518,191 +518,209 @@ export default function Index(props: IndexProps) {
       matchingTokenInfo={matchingTokenInfo}
       allocationTokenInfo={allocationTokenInfo}
     >
-      <PoolInfo
-        name={pool?.metadata.name ?? "N/A"}
-        description={pool?.metadata.description ?? "N/A"}
-        directFlowRate={
-          superfluidQueryRes?.accounts
-            ? superfluidQueryRes?.accounts
-                .map(
-                  (account: {
-                    accountTokenSnapshots: {
-                      totalInflowRate: string;
-                    }[];
-                  }) =>
-                    BigInt(account.accountTokenSnapshots[0].totalInflowRate),
-                )
-                .reduce((a: bigint, b: bigint) => a + b, BigInt(0))
-            : BigInt(0)
-        }
-        directTotal={directTotal}
-        allocationTokenInfo={allocationTokenInfo}
-        matchingTokenInfo={matchingTokenInfo}
-        directFunders={
-          superfluidQueryRes?.accounts
-            ? superfluidQueryRes?.accounts
-                .map(
-                  (account: {
-                    accountTokenSnapshots: {
-                      activeIncomingStreamCount: number;
-                    }[];
-                  }) =>
-                    account.accountTokenSnapshots[0].activeIncomingStreamCount,
-                )
-                .reduce((a: number, b: number) => a + b, 0)
-            : 0
-        }
-        matchingPool={matchingPool}
-        showTransactionPanel={() =>
-          setTransactionPanelState({
-            show: true,
-            isFundingMatchingPool: true,
-            selectedGrantee: null,
-          })
-        }
-      />
-      <Stack direction="horizontal" gap={4} className="p-5 pt-4 fs-4">
-        Grantees
-        <Dropdown>
-          <Dropdown.Toggle
-            variant="transparent"
-            className="d-flex justify-content-between align-items-center border border-2 border-gray"
-            style={{ width: 156 }}
-          >
-            {sortingMethod}
-          </Dropdown.Toggle>
-
-          <Dropdown.Menu>
-            <Dropdown.Item
-              onClick={() => setSortingMethod(SortingMethod.RANDOM)}
-            >
-              {SortingMethod.RANDOM}
-            </Dropdown.Item>
-            <Dropdown.Item
-              onClick={() => setSortingMethod(SortingMethod.ALPHABETICAL)}
-            >
-              {SortingMethod.ALPHABETICAL}
-            </Dropdown.Item>
-            <Dropdown.Item
-              onClick={() => setSortingMethod(SortingMethod.POPULAR)}
-            >
-              {SortingMethod.POPULAR}
-            </Dropdown.Item>
-          </Dropdown.Menu>
-        </Dropdown>
-      </Stack>
       <Container
-        className="p-0 pb-5"
+        className="mx-auto p-0"
         style={{
-          display: "grid",
-          columnGap: "1.5rem",
-          rowGap: "3rem",
-          gridTemplateColumns: isTablet
-            ? "repeat(2,minmax(0,1fr))"
-            : isSmallScreen
-              ? "repeat(3,minmax(0,1fr))"
-              : isMediumScreen || isBigScreen
-                ? "repeat(4,minmax(0,1fr))"
-                : "",
-          justifyItems: "center",
+          maxWidth:
+            isMobile || isTablet
+              ? "100%"
+              : isSmallScreen
+                ? 1000
+                : isMediumScreen
+                  ? 1300
+                  : 1600,
         }}
       >
-        {grantees.map((grantee: Grantee, i: number) => (
-          <Grantee
-            key={i}
-            name={grantee.name}
-            description={grantee.description}
-            logoCid={grantee.logoCid}
-            bannerCid={grantee.bannerCid}
-            allocatorsCount={grantee.inflow.activeIncomingStreamCount}
-            allocationFlowRate={BigInt(grantee.inflow.totalInflowRate ?? 0)}
-            matchingFlowRate={grantee.matchingFlowRate}
-            impactMatchingEstimate={grantee.impactMatchingEstimate}
-            allocationTokenInfo={allocationTokenInfo}
-            matchingTokenInfo={matchingTokenInfo}
-            userFlowRate={
-              grantee.userOutflow
-                ? BigInt(grantee.userOutflow.currentFlowRate)
-                : null
-            }
-            isSelected={
-              transactionPanelState.selectedGrantee?.id === grantee.id
-            }
-            selectGrantee={() =>
-              setTransactionPanelState({
-                show: true,
-                isFundingMatchingPool: false,
-                selectedGrantee: grantee,
-              })
-            }
-          />
-        ))}
-      </Container>
-      {hasNextGrantee.current === true && (
-        <Spinner ref={sentryRef} className="m-auto"></Spinner>
-      )}
-      {transactionPanelState.show &&
-      transactionPanelState.isFundingMatchingPool ? (
-        <MatchingPoolFunding
-          show={transactionPanelState.show}
-          handleClose={() =>
-            setTransactionPanelState({
-              show: false,
-              isFundingMatchingPool: false,
-              selectedGrantee: null,
-            })
+        <PoolInfo
+          name={pool?.metadata.name ?? "N/A"}
+          description={pool?.metadata.description ?? "N/A"}
+          directFlowRate={
+            superfluidQueryRes?.accounts
+              ? superfluidQueryRes?.accounts
+                  .map(
+                    (account: {
+                      accountTokenSnapshots: {
+                        totalInflowRate: string;
+                      }[];
+                    }) =>
+                      BigInt(account.accountTokenSnapshots[0].totalInflowRate),
+                  )
+                  .reduce((a: bigint, b: bigint) => a + b, BigInt(0))
+              : BigInt(0)
           }
-          name={pool?.metadata.name ?? ""}
-          description={pool?.metadata.description ?? ""}
-          matchingPool={matchingPool}
-          matchingTokenInfo={matchingTokenInfo}
-          network={network}
-          receiver={gdaPoolAddress ?? ""}
-          userAccountSnapshots={
-            superfluidQueryRes?.account?.accountTokenSnapshots ?? null
-          }
-        />
-      ) : transactionPanelState.show &&
-        transactionPanelState.selectedGrantee ? (
-        <GranteeFunding
-          show={transactionPanelState.show}
-          handleClose={() =>
-            setTransactionPanelState({
-              show: false,
-              isFundingMatchingPool: false,
-              selectedGrantee: null,
-            })
-          }
-          receiver={transactionPanelState.selectedGrantee.superappAddress}
-          poolUiLink={`https://${hostName}/?poolid=${poolId ?? DEFAULT_POOL_ID}&chainid=${chainId ?? DEFAULT_CHAIN_ID}&recipientid=${transactionPanelState.selectedGrantee.id}`}
-          name={transactionPanelState.selectedGrantee.name ?? ""}
-          description={transactionPanelState.selectedGrantee.description ?? ""}
-          logoCid={transactionPanelState.selectedGrantee.logoCid}
-          twitter={transactionPanelState.selectedGrantee.twitter}
-          recipientAddress={
-            transactionPanelState.selectedGrantee.recipientAddress
-          }
-          inflow={transactionPanelState.selectedGrantee.inflow}
-          userOutflow={transactionPanelState.selectedGrantee.userOutflow}
-          matchingPool={matchingPool}
-          matchingFlowRate={
-            transactionPanelState.selectedGrantee.matchingFlowRate
-          }
+          directTotal={directTotal}
           allocationTokenInfo={allocationTokenInfo}
           matchingTokenInfo={matchingTokenInfo}
-          userAccountSnapshots={
-            superfluidQueryRes?.account?.accountTokenSnapshots ?? null
+          directFunders={
+            superfluidQueryRes?.accounts
+              ? superfluidQueryRes?.accounts
+                  .map(
+                    (account: {
+                      accountTokenSnapshots: {
+                        activeIncomingStreamCount: number;
+                      }[];
+                    }) =>
+                      account.accountTokenSnapshots[0]
+                        .activeIncomingStreamCount,
+                  )
+                  .reduce((a: number, b: number) => a + b, 0)
+              : 0
           }
-          isEligible={isEligible}
-          network={network}
-          passportScore={passportScore}
-          refetchPassportScore={refetchPassportScore}
-          passportDecoder={passportDecoder}
-          minPassportScore={minPassportScore}
-          requiredNftAddress={(requiredNftAddress as Address) ?? null}
-          nftMintUrl={streamingFundQueryRes?.pool.metadata.nftMintUrl ?? null}
+          matchingPool={matchingPool}
+          showTransactionPanel={() =>
+            setTransactionPanelState({
+              show: true,
+              isFundingMatchingPool: true,
+              selectedGrantee: null,
+            })
+          }
         />
-      ) : null}
+        <Stack direction="horizontal" gap={4} className="px-4 py-5 pt-4 fs-4">
+          Grantees
+          <Dropdown>
+            <Dropdown.Toggle
+              variant="transparent"
+              className="d-flex justify-content-between align-items-center border border-2 border-gray"
+              style={{ width: 156 }}
+            >
+              {sortingMethod}
+            </Dropdown.Toggle>
+
+            <Dropdown.Menu>
+              <Dropdown.Item
+                onClick={() => setSortingMethod(SortingMethod.RANDOM)}
+              >
+                {SortingMethod.RANDOM}
+              </Dropdown.Item>
+              <Dropdown.Item
+                onClick={() => setSortingMethod(SortingMethod.ALPHABETICAL)}
+              >
+                {SortingMethod.ALPHABETICAL}
+              </Dropdown.Item>
+              <Dropdown.Item
+                onClick={() => setSortingMethod(SortingMethod.POPULAR)}
+              >
+                {SortingMethod.POPULAR}
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
+        </Stack>
+        <div
+          className="px-4 pb-5"
+          style={{
+            display: "grid",
+            columnGap: "1.5rem",
+            rowGap: "3rem",
+            gridTemplateColumns: isTablet
+              ? "repeat(2,minmax(0,1fr))"
+              : isSmallScreen
+                ? "repeat(3,minmax(0,1fr))"
+                : isMediumScreen || isBigScreen
+                  ? "repeat(4,minmax(0,1fr))"
+                  : "",
+          }}
+        >
+          {grantees.map((grantee: Grantee, i: number) => (
+            <Grantee
+              key={i}
+              name={grantee.name}
+              description={grantee.description}
+              logoCid={grantee.logoCid}
+              bannerCid={grantee.bannerCid}
+              allocatorsCount={grantee.inflow.activeIncomingStreamCount}
+              allocationFlowRate={BigInt(grantee.inflow.totalInflowRate ?? 0)}
+              matchingFlowRate={grantee.matchingFlowRate}
+              impactMatchingEstimate={grantee.impactMatchingEstimate}
+              allocationTokenInfo={allocationTokenInfo}
+              matchingTokenInfo={matchingTokenInfo}
+              userFlowRate={
+                grantee.userOutflow
+                  ? BigInt(grantee.userOutflow.currentFlowRate)
+                  : null
+              }
+              isSelected={
+                transactionPanelState.selectedGrantee?.id === grantee.id
+              }
+              selectGrantee={() =>
+                setTransactionPanelState({
+                  show: true,
+                  isFundingMatchingPool: false,
+                  selectedGrantee: grantee,
+                })
+              }
+            />
+          ))}
+        </div>
+        {hasNextGrantee.current === true && (
+          <Stack direction="horizontal" className="justify-content-center">
+            <Spinner ref={sentryRef}></Spinner>
+          </Stack>
+        )}
+        {transactionPanelState.show &&
+        transactionPanelState.isFundingMatchingPool ? (
+          <MatchingPoolFunding
+            show={transactionPanelState.show}
+            handleClose={() =>
+              setTransactionPanelState({
+                show: false,
+                isFundingMatchingPool: false,
+                selectedGrantee: null,
+              })
+            }
+            name={pool?.metadata.name ?? ""}
+            description={pool?.metadata.description ?? ""}
+            matchingPool={matchingPool}
+            matchingTokenInfo={matchingTokenInfo}
+            network={network}
+            receiver={gdaPoolAddress ?? ""}
+            userAccountSnapshots={
+              superfluidQueryRes?.account?.accountTokenSnapshots ?? null
+            }
+          />
+        ) : transactionPanelState.show &&
+          transactionPanelState.selectedGrantee ? (
+          <GranteeFunding
+            show={transactionPanelState.show}
+            handleClose={() =>
+              setTransactionPanelState({
+                show: false,
+                isFundingMatchingPool: false,
+                selectedGrantee: null,
+              })
+            }
+            receiver={transactionPanelState.selectedGrantee.superappAddress}
+            poolUiLink={`https://${hostName}/?poolid=${poolId ?? DEFAULT_POOL_ID}&chainid=${chainId ?? DEFAULT_CHAIN_ID}&recipientid=${transactionPanelState.selectedGrantee.id}`}
+            name={transactionPanelState.selectedGrantee.name ?? ""}
+            description={
+              transactionPanelState.selectedGrantee.description ?? ""
+            }
+            logoCid={transactionPanelState.selectedGrantee.logoCid}
+            twitter={transactionPanelState.selectedGrantee.twitter}
+            recipientAddress={
+              transactionPanelState.selectedGrantee.recipientAddress
+            }
+            inflow={transactionPanelState.selectedGrantee.inflow}
+            userOutflow={transactionPanelState.selectedGrantee.userOutflow}
+            matchingPool={matchingPool}
+            matchingFlowRate={
+              transactionPanelState.selectedGrantee.matchingFlowRate
+            }
+            allocationTokenInfo={allocationTokenInfo}
+            matchingTokenInfo={matchingTokenInfo}
+            userAccountSnapshots={
+              superfluidQueryRes?.account?.accountTokenSnapshots ?? null
+            }
+            isEligible={isEligible}
+            network={network}
+            passportScore={passportScore}
+            refetchPassportScore={refetchPassportScore}
+            passportDecoder={passportDecoder}
+            minPassportScore={minPassportScore}
+            requiredNftAddress={(requiredNftAddress as Address) ?? null}
+            nftMintUrl={streamingFundQueryRes?.pool.metadata.nftMintUrl ?? null}
+          />
+        ) : null}
+      </Container>
     </SuperfluidContextProvider>
   );
 }
