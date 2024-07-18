@@ -3,6 +3,7 @@ import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
+import Table from "react-bootstrap/Table";
 import InfoTooltip from "@/components/InfoTooltip";
 import { roundWeiAmount } from "@/lib/utils";
 import { Pool } from "@/types/pool";
@@ -47,6 +48,10 @@ export default function PoolInfo(props: PoolInfoProps) {
     matchingPool?.updatedAtTimestamp ?? 0,
     BigInt(matchingPool?.flowRate ?? 0),
   );
+  const matchingPoolFunders =
+    matchingPool?.poolDistributors?.filter(
+      (distributor) => distributor.flowRate !== "0",
+    ).length ?? 0;
 
   useLayoutEffect(() => {
     if (!showFullInfo) {
@@ -82,81 +87,49 @@ export default function PoolInfo(props: PoolInfoProps) {
             </Button>
           )}
         </Stack>
+        <Card.Text className="mb-4 fs-6">Streaming Quadratic Funding</Card.Text>
         {(!isMobile || showFullInfo) && (
           <>
-            <Stack
-              direction="horizontal"
-              gap={5}
-              className="flex-wrap m-5 mt-3"
+            <Table borderless>
+              <thead className="border-bottom">
+                <tr>
+                  <th style={{ color: "#dee2e6" }} className="ps-0">
+                    {isMobile ? "Token" : "Funding Types (Token)"}
+                  </th>
+                  <th style={{ color: "#dee2e6" }}>
+                    {isMobile ? "Total" : "Total Flow"}
+                  </th>
+                  <th style={{ color: "#dee2e6" }}>
+                    {isMobile ? "Monthly" : "Monthly Flow"}
+                  </th>
+                  <th style={{ color: "#dee2e6" }}>
+                    {isMobile ? "Funders" : "Active Funders"}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="ps-0">Direct ({allocationTokenInfo.name})</td>
+                  <td>{roundWeiAmount(directTotal, 2)}</td>
+                  <td>{roundWeiAmount(directMonthly, 2)}</td>
+                  <td>{directFunders}</td>
+                </tr>
+                <tr>
+                  <td className="ps-0">Match ({matchingTokenInfo.name})</td>
+                  <td>{roundWeiAmount(matchingTotal, 2)}</td>
+                  <td>{roundWeiAmount(matchingMonthly, 2)}</td>
+                  <td>{matchingPoolFunders}</td>
+                </tr>
+              </tbody>
+            </Table>
+            <Button
+              variant="success"
+              className="mt-3 ms-auto p-2 text-light fs-5"
+              style={{ width: 180 }}
+              onClick={showTransactionPanel}
             >
-              <Stack
-                direction="vertical"
-                className="align-items-center justify-content-center"
-              >
-                <Card.Text className="m-0 fs-3">
-                  {roundWeiAmount(directTotal, 2)} {allocationTokenInfo.name}
-                </Card.Text>
-                <Card.Text className="m-0">Total Direct Funding</Card.Text>
-              </Stack>
-              <Stack
-                direction="vertical"
-                className="align-items-center justify-content-center"
-              >
-                <Card.Text className="m-0 fs-3">
-                  {roundWeiAmount(directMonthly, 2)} {allocationTokenInfo.name}
-                </Card.Text>
-                <Card.Text className="m-0 text-nowrap">
-                  Monthly Direct Funding
-                </Card.Text>
-              </Stack>
-              <Stack
-                direction="vertical"
-                className="align-items-center justify-content-center"
-              >
-                <Card.Text className="m-0 fs-3">{directFunders}</Card.Text>
-                <Card.Text className="m-0">Direct Funders</Card.Text>
-              </Stack>
-            </Stack>
-            <Stack
-              direction="horizontal"
-              gap={5}
-              className="flex-wrap justify-content-center"
-            >
-              <Stack
-                direction="vertical"
-                className="align-self-start align-items-center flex-grow-0 me-0 me-sm-5"
-              >
-                <Card.Text className="m-0 fs-3">
-                  {roundWeiAmount(matchingTotal, 2)} {matchingTokenInfo.name}
-                </Card.Text>
-                <Card.Text className="m-0">Total Matching</Card.Text>
-              </Stack>
-              <Stack
-                direction="vertical"
-                className="align-items-center flex-grow-0 ms-0 ms-sm-5"
-              >
-                <Card.Text className="m-0 fs-3">
-                  {roundWeiAmount(matchingMonthly, 2)} {matchingTokenInfo.name}
-                </Card.Text>
-                <Card.Text className="m-0">Monthly Matching</Card.Text>
-                <Button
-                  variant="success"
-                  className="mt-3 p-2"
-                  style={{ width: 128 }}
-                  onClick={showTransactionPanel}
-                >
-                  <Image
-                    src="/add.svg"
-                    alt="fund"
-                    width={24}
-                    style={{
-                      filter:
-                        "invert(98%) sepia(4%) saturate(112%) hue-rotate(260deg) brightness(118%) contrast(100%)",
-                    }}
-                  />
-                </Button>
-              </Stack>
-            </Stack>
+              Grow the Pie
+            </Button>
           </>
         )}
         {isMobile && showFullInfo && (
