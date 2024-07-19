@@ -1,11 +1,11 @@
 import { useState, useLayoutEffect } from "react";
+import { formatEther } from "viem";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Table from "react-bootstrap/Table";
 import InfoTooltip from "@/components/InfoTooltip";
-import { roundWeiAmount } from "@/lib/utils";
 import { Pool } from "@/types/pool";
 import { MatchingPool } from "@/types/matchingPool";
 import { Token } from "@/types/token";
@@ -110,14 +110,28 @@ export default function PoolInfo(props: PoolInfoProps) {
               <tbody>
                 <tr>
                   <td className="ps-0">Direct ({allocationTokenInfo.name})</td>
-                  <td>{roundWeiAmount(directTotal, 2)}</td>
-                  <td>{roundWeiAmount(directMonthly, 2)}</td>
+                  <td>
+                    {Number(formatEther(directTotal)).toFixed(isMobile ? 2 : 4)}
+                  </td>
+                  <td>
+                    {Number(formatEther(directMonthly)).toFixed(
+                      isMobile ? 2 : 4,
+                    )}
+                  </td>
                   <td>{directFunders}</td>
                 </tr>
                 <tr>
-                  <td className="ps-0">Match ({matchingTokenInfo.name})</td>
-                  <td>{roundWeiAmount(matchingTotal, 2)}</td>
-                  <td>{roundWeiAmount(matchingMonthly, 2)}</td>
+                  <td className="ps-0">Matching ({matchingTokenInfo.name})</td>
+                  <td>
+                    {Number(formatEther(matchingTotal)).toFixed(
+                      isMobile ? 2 : 4,
+                    )}
+                  </td>
+                  <td>
+                    {Number(formatEther(matchingMonthly)).toFixed(
+                      isMobile ? 2 : 4,
+                    )}
+                  </td>
                   <td>{matchingPoolFunders}</td>
                 </tr>
               </tbody>
