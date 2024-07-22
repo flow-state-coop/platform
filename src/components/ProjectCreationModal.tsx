@@ -3,6 +3,7 @@ import { Address, parseEventLogs } from "viem";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
+import Card from "react-bootstrap/Card";
 import InputGroup from "react-bootstrap/InputGroup";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
@@ -42,6 +43,8 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
   const [projectLogoBlob, setProjectLogoBlob] = useState<Blob>();
   const [projectBannerBlob, setProjectBannerBlob] = useState<Blob>();
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [projectLogoError, setProjectLogoError] = useState("");
+  const [projectBannerError, setProjectBannerError] = useState("");
 
   const fileInputRefLogo = useRef<HTMLInputElement>(null);
   const fileInputRefBanner = useRef<HTMLInputElement>(null);
@@ -57,7 +60,12 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
 
     const file = fileInputRefLogo.current.files[0];
 
-    setProjectLogoBlob(file);
+    if (file.size > 256000) {
+      setProjectLogoError("Size too large");
+    } else {
+      setProjectLogoBlob(file);
+      setProjectLogoError("");
+    }
   };
 
   const handleFileUploadBanner = () => {
@@ -67,7 +75,12 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
 
     const file = fileInputRefBanner.current.files[0];
 
-    setProjectBannerBlob(file);
+    if (file.size > 1000000) {
+      setProjectBannerError("Size too large");
+    } else {
+      setProjectBannerBlob(file);
+      setProjectBannerError("");
+    }
   };
 
   const handleCreateProject = async () => {
@@ -191,7 +204,9 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
             />
           </Form.Group>
           <Form.Group className="d-flex flex-column mb-4">
-            <Form.Label>Project Logo (1:1 Aspect Ratio)</Form.Label>
+            <Form.Label>
+              Project Logo (1:1 Aspect Ratio, No larger than 256 KB)
+            </Form.Label>
             <Form.Control
               type="file"
               hidden
@@ -219,19 +234,27 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
                   Upload a PNG or JPEG
                 </Stack>
               </Button>
-              {projectLogoBlob && (
-                <Image
-                  src={URL.createObjectURL(projectLogoBlob)}
-                  alt="logo"
-                  width={96}
-                  height={96}
-                  className="rounded-4"
-                />
+              {projectLogoError ? (
+                <Card.Text className="m-0 text-danger">
+                  {projectLogoError}
+                </Card.Text>
+              ) : (
+                projectLogoBlob && (
+                  <Image
+                    src={URL.createObjectURL(projectLogoBlob)}
+                    alt="logo"
+                    width={96}
+                    height={96}
+                    className="rounded-4"
+                  />
+                )
               )}
             </Stack>
           </Form.Group>
           <Form.Group className="d-flex flex-column mb-4">
-            <Form.Label>Project Banner (3:1 Aspect Ratio)</Form.Label>
+            <Form.Label>
+              Project Banner (3:1 Aspect Ratio, No larger than 1 MB)
+            </Form.Label>
             <Form.Control
               type="file"
               hidden
@@ -259,13 +282,19 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
                   Upload a PNG or JPEG
                 </Stack>
               </Button>
-              {projectBannerBlob && (
-                <Image
-                  src={URL.createObjectURL(projectBannerBlob)}
-                  alt="banner"
-                  width={150}
-                  height={50}
-                />
+              {projectBannerError ? (
+                <Card.Text className="m-0 text-danger">
+                  {projectBannerError}
+                </Card.Text>
+              ) : (
+                projectBannerBlob && (
+                  <Image
+                    src={URL.createObjectURL(projectBannerBlob)}
+                    alt="banner"
+                    width={150}
+                    height={50}
+                  />
+                )
               )}
             </Stack>
           </Form.Group>

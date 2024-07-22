@@ -5,6 +5,7 @@ import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
 import InputGroup from "react-bootstrap/InputGroup";
 import Stack from "react-bootstrap/Stack";
+import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
@@ -45,6 +46,8 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
   });
   const [projectLogoBlob, setProjectLogoBlob] = useState<Blob>();
   const [projectBannerBlob, setProjectBannerBlob] = useState<Blob>();
+  const [projectLogoError, setProjectLogoError] = useState("");
+  const [projectBannerError, setProjectBannerError] = useState("");
   const [isCreatingProject, setIsCreatingProject] = useState(false);
 
   const fileInputRefLogo = useRef<HTMLInputElement>(null);
@@ -85,7 +88,12 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
 
     const file = fileInputRefLogo.current.files[0];
 
-    setProjectLogoBlob(file);
+    if (file.size > 256000) {
+      setProjectLogoError("Size too large");
+    } else {
+      setProjectLogoBlob(file);
+      setProjectLogoError("");
+    }
   };
 
   const handleFileUploadBanner = () => {
@@ -95,7 +103,12 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
 
     const file = fileInputRefBanner.current.files[0];
 
-    setProjectBannerBlob(file);
+    if (file.size > 1000000) {
+      setProjectBannerError("Size too large");
+    } else {
+      setProjectBannerBlob(file);
+      setProjectBannerError("");
+    }
   };
 
   const handleUpdateProject = async () => {
@@ -224,14 +237,20 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
                   Upload a PNG or JPEG
                 </Stack>
               </Button>
-              {projectLogoBlob && (
-                <Image
-                  src={URL.createObjectURL(projectLogoBlob)}
-                  alt="logo"
-                  width={96}
-                  height={96}
-                  className="rounded-4"
-                />
+              {projectLogoError ? (
+                <Card.Text className="m-0 text-danger">
+                  {projectLogoError}
+                </Card.Text>
+              ) : (
+                projectLogoBlob && (
+                  <Image
+                    src={URL.createObjectURL(projectLogoBlob)}
+                    alt="logo"
+                    width={96}
+                    height={96}
+                    className="rounded-4"
+                  />
+                )
               )}
             </Stack>
           </Form.Group>
@@ -264,13 +283,19 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
                   Upload a PNG or JPEG
                 </Stack>
               </Button>
-              {projectBannerBlob && (
-                <Image
-                  src={URL.createObjectURL(projectBannerBlob)}
-                  alt="banner"
-                  width={150}
-                  height={50}
-                />
+              {projectBannerError ? (
+                <Card.Text className="m-0 text-danger">
+                  {projectBannerError}
+                </Card.Text>
+              ) : (
+                projectBannerBlob && (
+                  <Image
+                    src={URL.createObjectURL(projectBannerBlob)}
+                    alt="banner"
+                    width={150}
+                    height={50}
+                  />
+                )
               )}
             </Stack>
           </Form.Group>
