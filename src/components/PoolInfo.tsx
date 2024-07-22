@@ -60,8 +60,8 @@ export default function PoolInfo(props: PoolInfoProps) {
   }, [showFullInfo]);
 
   return (
-    <div className="px-4 pt-5">
-      <Stack direction="vertical" className="pb-4 border-bottom">
+    <div className="px-4 pt-5 pool-info-background">
+      <Stack direction="vertical" className="pb-4">
         <Stack direction="horizontal" className="justify-content-between">
           <Stack direction="horizontal" gap={1}>
             <Card.Text className="m-0 fs-4 fw-bold">{name}</Card.Text>
@@ -71,7 +71,7 @@ export default function PoolInfo(props: PoolInfoProps) {
                 <Image
                   src="/info.svg"
                   alt="description"
-                  width={16}
+                  width={20}
                   className="mb-4"
                 />
               }
@@ -91,48 +91,52 @@ export default function PoolInfo(props: PoolInfoProps) {
         {(!isMobile || showFullInfo) && (
           <>
             <Table borderless>
-              <thead className="border-bottom">
+              <thead className="border-bottom border-dark">
                 <tr>
-                  <th style={{ color: "#dee2e6" }} className="ps-0">
+                  <th className="ps-0 bg-transparent text-dark">
                     {isMobile ? "Token" : "Funding Types (Token)"}
                   </th>
-                  <th style={{ color: "#dee2e6" }}>
+                  <th className="bg-transparent text-dark">
                     {isMobile ? "Total" : "Total Flow"}
                   </th>
-                  <th style={{ color: "#dee2e6" }}>
+                  <th className="bg-transparent text-dark">
                     {isMobile ? "Monthly" : "Monthly Flow"}
                   </th>
-                  <th style={{ color: "#dee2e6" }}>
+                  <th className="bg-transparent text-dark">
                     {isMobile ? "Funders" : "Active Funders"}
                   </th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td className="ps-0">Direct ({allocationTokenInfo.name})</td>
-                  <td>
+                  <td className="ps-0 bg-transparent">
+                    Direct ({allocationTokenInfo.name})
+                  </td>
+                  <td className="bg-transparent">
                     {Number(formatEther(directTotal)).toFixed(isMobile ? 2 : 4)}
                   </td>
-                  <td>
+                  <td className="bg-transparent">
                     {Number(formatEther(directMonthly)).toFixed(
                       isMobile ? 2 : 4,
                     )}
                   </td>
-                  <td>{directFunders}</td>
+                  <td className="bg-transparent">{directFunders}</td>
                 </tr>
                 <tr>
-                  <td className="ps-0">Matching ({matchingTokenInfo.name})</td>
-                  <td>
+                  <td className="ps-0 bg-transparent">
+                    Matching ({matchingTokenInfo.name})
+                  </td>
+                  <td className="bg-transparent">
                     {Number(formatEther(matchingTotal)).toFixed(
                       isMobile ? 2 : 4,
                     )}
                   </td>
-                  <td>
+                  <td className="bg-transparent">
                     {Number(formatEther(matchingMonthly)).toFixed(
                       isMobile ? 2 : 4,
                     )}
                   </td>
-                  <td>{matchingPoolFunders}</td>
+                  <td className="bg-transparent">{matchingPoolFunders}</td>
                 </tr>
               </tbody>
             </Table>
