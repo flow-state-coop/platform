@@ -34,7 +34,8 @@ export default function Header() {
         <Image
           src="/logo.png"
           alt="logo"
-          width={isMobile ? 60 : 80}
+          width={isMobile ? 100 : 120}
+          height={isMobile ? 70 : 80}
           className="cursor-pointer"
           onClick={() => router.push("/")}
         />
