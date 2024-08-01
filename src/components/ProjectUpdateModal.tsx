@@ -209,7 +209,9 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
             />
           </Form.Group>
           <Form.Group className="d-flex flex-column mb-4">
-            <Form.Label>Project Logo (1:1 Aspect Ratio)</Form.Label>
+            <Form.Label>
+              Project Logo (1:1 Aspect Ratio, No larger than 256 KB)
+            </Form.Label>
             <Form.Control
               type="file"
               hidden
@@ -255,7 +257,9 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
             </Stack>
           </Form.Group>
           <Form.Group className="d-flex flex-column mb-4">
-            <Form.Label>Project Banner (3:1 Aspect Ratio)</Form.Label>
+            <Form.Label>
+              Project Banner (3:1 Aspect Ratio, No larger than 1 MB)
+            </Form.Label>
             <Form.Control
               type="file"
               hidden
