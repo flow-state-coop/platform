@@ -70,7 +70,7 @@ export default function Pools() {
                 <Card.Text className="d-inline-block mw-100 overflow-hidden word-wrap">
                   {pool.metadata.name ?? "N/A"}
                 </Card.Text>
-                <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap fs-5">
+                <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap text-center fs-5">
                   {pool.metadata.description ?? ""}
                 </Card.Text>
               </Card>

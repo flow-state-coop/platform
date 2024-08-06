@@ -5,6 +5,7 @@ export type Network = {
   id: number;
   name: string;
   icon: string;
+  rpcUrl: string;
   blockExplorer: string;
   superfluidConsole: string;
   superfluidDashboard: string;

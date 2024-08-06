@@ -136,11 +136,14 @@ export default function Configure() {
 
       const allocationToken =
         network.tokens.filter(
-          (token) => allocationSuperToken === token.address,
+          (token) =>
+            allocationSuperToken.toLowerCase() === token.address.toLowerCase(),
         )[0].name ?? "N/A";
       const matchingToken =
-        network.tokens.filter((token) => poolSuperToken === token.address)[0]
-          .name ?? "N/A";
+        network.tokens.filter(
+          (token) =>
+            poolSuperToken.toLowerCase() === token.address.toLowerCase(),
+        )[0].name ?? "N/A";
 
       let nftAddress = "";
 

@@ -482,7 +482,7 @@ export default function Review(props: ReviewProps) {
                 ) : (
                   <>
                     <Button
-                      variant="success"
+                      variant="success text-light"
                       className="w-50"
                       onClick={() => handleReviewSelection(NewStatus.ACCEPTED)}
                     >

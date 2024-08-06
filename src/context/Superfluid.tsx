@@ -1,8 +1,8 @@
 import { useEffect, useState, createContext, useContext } from "react";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
+import { providers } from "ethers";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
-import { useEthersProvider } from "@/hooks/ethersAdapters";
 
 export const SuperfluidContext = createContext<{
   sfFramework: Framework | null;
@@ -37,34 +37,35 @@ export default function SuperfluidContextProvider({
   const [allocationSuperToken, setAllocationSuperToken] =
     useState<SuperToken | null>(null);
 
-  const ethersProvider = useEthersProvider();
-
   useEffect(() => {
     (async () => {
-      if (
-        ethersProvider &&
-        network &&
-        matchingTokenInfo.address &&
-        allocationTokenInfo.address
-      ) {
-        const sfFramework = await Framework.create({
-          chainId: network.id,
-          resolverAddress: network.superfluidResolver,
-          provider: ethersProvider,
-        });
-        const matchingSuperToken = await sfFramework.loadSuperToken(
-          matchingTokenInfo.address,
-        );
-        const allocationSuperToken = await sfFramework.loadSuperToken(
-          allocationTokenInfo.address,
-        );
+      if (network && matchingTokenInfo.address && allocationTokenInfo.address) {
+        try {
+          const ethersProvider = new providers.JsonRpcProvider(network.rpcUrl, {
+            chainId: network.id,
+            name: network.name,
+          });
+          const sfFramework = await Framework.create({
+            chainId: network.id,
+            resolverAddress: network.superfluidResolver,
+            provider: ethersProvider,
+          });
+          const matchingSuperToken = await sfFramework.loadSuperToken(
+            matchingTokenInfo.address,
+          );
+          const allocationSuperToken = await sfFramework.loadSuperToken(
+            allocationTokenInfo.address,
+          );
 
-        setSfFramework(sfFramework);
-        setMatchingSuperToken(matchingSuperToken);
-        setAllocationSuperToken(allocationSuperToken);
+          setSfFramework(sfFramework);
+          setMatchingSuperToken(matchingSuperToken);
+          setAllocationSuperToken(allocationSuperToken);
+        } catch (err) {
+          console.error(err);
+        }
       }
     })();
-  }, [ethersProvider, network, matchingTokenInfo, allocationTokenInfo]);
+  }, [network, matchingTokenInfo, allocationTokenInfo]);
 
   return (
     <SuperfluidContext.Provider

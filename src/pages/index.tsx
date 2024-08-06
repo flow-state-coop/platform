@@ -204,6 +204,7 @@ export default function Index(props: IndexProps) {
     address: streamingFundQueryRes?.pool?.strategyAddress,
     abi: strategyAbi,
     functionName: "gdaPool",
+    chainId: chainId ? Number(chainId) : DEFAULT_CHAIN_ID,
   });
   const { data: superfluidQueryRes } = useQuery(STREAM_QUERY, {
     client: getApolloClient(
@@ -225,11 +226,13 @@ export default function Index(props: IndexProps) {
     address: streamingFundQueryRes?.pool?.strategyAddress,
     abi: strategyAbi,
     functionName: "passportDecoder",
+    chainId: chainId ? Number(chainId) : DEFAULT_CHAIN_ID,
   });
   const { data: minPassportScore } = useReadContract({
     address: streamingFundQueryRes?.pool?.strategyAddress,
     abi: strategyAbi,
     functionName: "minPassportScore",
+    chainId: chainId ? Number(chainId) : DEFAULT_CHAIN_ID,
   });
   const { data: passportScore, refetch: refetchPassportScore } =
     useReadContract({
@@ -237,6 +240,7 @@ export default function Index(props: IndexProps) {
       address: passportDecoder ?? "0x",
       functionName: "getScore",
       args: [address ?? "0x"],
+      chainId: chainId ? Number(chainId) : DEFAULT_CHAIN_ID,
       query: {
         enabled: address && passportDecoder !== ZERO_ADDRESS ? true : false,
       },
@@ -245,24 +249,28 @@ export default function Index(props: IndexProps) {
     address: streamingFundQueryRes?.pool?.strategyAddress,
     abi: strategyAbi,
     functionName: "getAllocationEligiblity",
+    chainId: chainId ? Number(chainId) : DEFAULT_CHAIN_ID,
   });
   const { data: nftChecker } = useReadContract({
     address: streamingFundQueryRes?.pool?.strategyAddress,
     abi: strategyAbi,
     functionName: "checker",
     query: { enabled: eligibilityMethod === EligibilityMethod.NFT_GATING },
+    chainId: chainId ? Number(chainId) : DEFAULT_CHAIN_ID,
   });
   const { data: requiredNftAddress } = useReadContract({
     address: nftChecker,
     abi: erc721CheckerAbi,
     functionName: "erc721",
     query: { enabled: nftChecker && nftChecker !== ZERO_ADDRESS },
+    chainId: chainId ? Number(chainId) : DEFAULT_CHAIN_ID,
   });
   const { data: nftBalance } = useReadContract({
     address: requiredNftAddress as Address,
     abi: erc721Abi,
     functionName: "balanceOf",
     args: [address ?? "0x"],
+    chainId: chainId ? Number(chainId) : DEFAULT_CHAIN_ID,
     query: {
       enabled: !!address && !!requiredNftAddress,
       refetchInterval: 10000,
@@ -617,7 +625,7 @@ export default function Index(props: IndexProps) {
                 ? "repeat(3,minmax(0,1fr))"
                 : isMediumScreen || isBigScreen
                   ? "repeat(4,minmax(0,1fr))"
-                  : "",
+                  : "repeat(4,minmax(0,1fr))",
           }}
         >
           {grantees.map((grantee: Grantee, i: number) => (
