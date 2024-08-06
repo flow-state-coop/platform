@@ -69,11 +69,10 @@ input[type="number"] {
 
 .pool-info-background {
   background-image: linear-gradient(
-      rgba(255, 255, 255, 0.7),
-      rgba(255, 255, 255, 0.7)
+      rgba(255, 255, 255, 0.5),
+      rgba(255, 255, 255, 0.5)
     ),
-    url("/mycelium.jpg");
+    url("/banner.jpg");
   background-size: cover;
-  background-position: center;
   background-repeat: no-repeat;
 }
