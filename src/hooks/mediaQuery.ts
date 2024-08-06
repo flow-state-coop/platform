@@ -8,7 +8,7 @@ function useMediaQuery() {
   const [isMobile, setIsMobile] = React.useState(false);
   const [isTablet, setIsTablet] = React.useState(false);
   const [isSmallScreen, setIsSmallScreen] = React.useState(false);
-  const [isMediumScreen, setIsMediumScreen] = React.useState(false);
+  const [isMediumScreen, setIsMediumScreen] = React.useState(true);
   const [isBigScreen, setIsBigScreen] = React.useState(false);
 
   React.useLayoutEffect(() => {

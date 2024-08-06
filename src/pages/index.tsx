@@ -625,7 +625,7 @@ export default function Index(props: IndexProps) {
                 ? "repeat(3,minmax(0,1fr))"
                 : isMediumScreen || isBigScreen
                   ? "repeat(4,minmax(0,1fr))"
-                  : "repeat(4,minmax(0,1fr))",
+                  : "",
           }}
         >
           {grantees.map((grantee: Grantee, i: number) => (

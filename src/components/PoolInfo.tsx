@@ -113,12 +113,10 @@ export default function PoolInfo(props: PoolInfoProps) {
                     Direct ({allocationTokenInfo.name})
                   </td>
                   <td className="bg-transparent">
-                    {Number(formatEther(directTotal)).toFixed(isMobile ? 2 : 4)}
+                    {Number(formatEther(directTotal)).toFixed(isMobile ? 4 : 6)}
                   </td>
                   <td className="bg-transparent">
-                    {Number(formatEther(directMonthly)).toFixed(
-                      isMobile ? 2 : 4,
-                    )}
+                    {Number(formatEther(directMonthly)).toFixed(4)}
                   </td>
                   <td className="bg-transparent">{directFunders}</td>
                 </tr>
@@ -128,13 +126,11 @@ export default function PoolInfo(props: PoolInfoProps) {
                   </td>
                   <td className="bg-transparent">
                     {Number(formatEther(matchingTotal)).toFixed(
-                      isMobile ? 2 : 4,
+                      isMobile ? 4 : 6,
                     )}
                   </td>
                   <td className="bg-transparent">
-                    {Number(formatEther(matchingMonthly)).toFixed(
-                      isMobile ? 2 : 4,
-                    )}
+                    {Number(formatEther(matchingMonthly)).toFixed(4)}
                   </td>
                   <td className="bg-transparent">{matchingPoolFunders}</td>
                 </tr>
