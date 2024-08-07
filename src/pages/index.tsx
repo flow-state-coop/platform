@@ -50,6 +50,8 @@ type Grantee = {
   allocationTokenInfo: Token;
   matchingTokenInfo: Token;
   userOutflow: Outflow | null;
+  placeholderLogo: string;
+  placeholderBanner: string;
 };
 
 enum SortingMethod {
@@ -355,6 +357,8 @@ export default function Index(props: IndexProps) {
           userOutflow && userOutflow.currentFlowRate !== "0"
             ? userOutflow
             : null,
+        placeholderLogo: `/placeholders/${Math.floor(Math.random() * (5 - 1 + 1) + 1)}.jpg`,
+        placeholderBanner: `/placeholders/${Math.floor(Math.random() * (5 - 1 + 1) + 1)}.jpg`,
       };
     },
     [superfluidQueryRes, allocationTokenInfo, matchingTokenInfo],
@@ -635,6 +639,8 @@ export default function Index(props: IndexProps) {
               description={grantee.description}
               logoCid={grantee.logoCid}
               bannerCid={grantee.bannerCid}
+              placeholderLogo={grantee.placeholderLogo}
+              placeholderBanner={grantee.placeholderBanner}
               allocatorsCount={grantee.inflow.activeIncomingStreamCount}
               allocationFlowRate={BigInt(grantee.inflow.totalInflowRate ?? 0)}
               matchingFlowRate={grantee.matchingFlowRate}
@@ -703,6 +709,9 @@ export default function Index(props: IndexProps) {
               transactionPanelState.selectedGrantee.description ?? ""
             }
             logoCid={transactionPanelState.selectedGrantee.logoCid}
+            placeholderLogo={
+              transactionPanelState.selectedGrantee.placeholderLogo
+            }
             twitter={transactionPanelState.selectedGrantee.twitter}
             recipientAddress={
               transactionPanelState.selectedGrantee.recipientAddress

@@ -20,6 +20,7 @@ interface GranteeDetailsProps {
   name: string;
   description: string;
   logoCid: string;
+  placeholderLogo: string;
   poolUiLink: string;
   recipientAddress: string;
   inflow: Inflow;
@@ -34,6 +35,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
     name,
     description,
     logoCid,
+    placeholderLogo,
     poolUiLink,
     recipientAddress,
     inflow,
@@ -74,6 +76,10 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
 
   useEffect(() => {
     (async () => {
+      if (!logoCid) {
+        return;
+      }
+
       try {
         const verifiedFetch = await createVerifiedFetch({
           gateways: IPFS_GATEWAYS,
@@ -94,7 +100,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
     <Stack direction="vertical" className="bg-light rounded-4 p-2 pt-0">
       <Stack direction="horizontal" gap={2} className="align-items-start mt-3">
         <Image
-          src={imageUrl ?? "/logo.png"}
+          src={imageUrl === "" ? placeholderLogo : imageUrl}
           alt="logo"
           width={96}
           height={96}

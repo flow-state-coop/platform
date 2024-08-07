@@ -14,6 +14,8 @@ type GranteeProps = {
   description: string;
   logoCid: string;
   bannerCid: string;
+  placeholderLogo: string;
+  placeholderBanner: string;
   allocationFlowRate: bigint;
   allocatorsCount: number;
   matchingFlowRate: bigint;
@@ -31,6 +33,8 @@ export default function Grantee(props: GranteeProps) {
     description,
     logoCid,
     bannerCid,
+    placeholderLogo,
+    placeholderBanner,
     allocationFlowRate,
     allocatorsCount,
     matchingFlowRate,
@@ -69,24 +73,28 @@ export default function Grantee(props: GranteeProps) {
         gateways: IPFS_GATEWAYS,
       });
 
-      try {
-        const logoRes = await verifiedFetch(`ipfs://${logoCid}`);
-        const logoBlob = await logoRes.blob();
-        const logoUrl = URL.createObjectURL(logoBlob);
+      if (logoCid) {
+        try {
+          const logoRes = await verifiedFetch(`ipfs://${logoCid}`);
+          const logoBlob = await logoRes.blob();
+          const logoUrl = URL.createObjectURL(logoBlob);
 
-        setLogoUrl(logoUrl);
-      } catch (err) {
-        console.error(err);
+          setLogoUrl(logoUrl);
+        } catch (err) {
+          console.error(err);
+        }
       }
 
-      try {
-        const bannerRes = await verifiedFetch(`ipfs://${bannerCid}`);
-        const bannerBlob = await bannerRes.blob();
-        const bannerUrl = URL.createObjectURL(bannerBlob);
+      if (bannerCid) {
+        try {
+          const bannerRes = await verifiedFetch(`ipfs://${bannerCid}`);
+          const bannerBlob = await bannerRes.blob();
+          const bannerUrl = URL.createObjectURL(bannerBlob);
 
-        setBannerUrl(bannerUrl);
-      } catch (err) {
-        console.error(err);
+          setBannerUrl(bannerUrl);
+        } catch (err) {
+          console.error(err);
+        }
       }
     })();
   }, [logoCid, bannerCid]);
@@ -103,12 +111,12 @@ export default function Grantee(props: GranteeProps) {
     >
       <Card.Img
         variant="top"
-        src={bannerUrl}
+        src={bannerUrl === "" ? placeholderBanner : bannerUrl}
         height={102}
         className="bg-light"
       />
       <Image
-        src={logoUrl}
+        src={logoUrl === "" ? placeholderLogo : logoUrl}
         alt=""
         width={52}
         height={52}
