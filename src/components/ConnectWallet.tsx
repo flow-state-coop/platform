@@ -48,6 +48,7 @@ export default function ConnectWallet() {
                   </Button>
                 );
               }
+
               return (
                 <div style={{ display: "flex", gap: 12 }}>
                   {!isMobile && (

@@ -6,6 +6,7 @@ import { arbitrum, optimismSepolia, base } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import Layout from "@/components/Layout";
 import { AdminParamsContextProvider } from "@/context/AdminParams";
+import { DonorParamsContextProvider } from "@/context/DonorParams";
 import { WALLET_CONNECT_PROJECT_ID } from "../lib/constants";
 import "@rainbow-me/rainbowkit/styles.css";
 import "@/styles.scss";
@@ -30,9 +31,11 @@ export default function App({ Component, pageProps }: AppProps) {
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider modalSize="compact">
           <AdminParamsContextProvider>
-            <Layout>
-              <Component {...pageProps} />
-            </Layout>
+            <DonorParamsContextProvider>
+              <Layout>
+                <Component {...pageProps} />
+              </Layout>
+            </DonorParamsContextProvider>
           </AdminParamsContextProvider>
         </RainbowKitProvider>
       </QueryClientProvider>

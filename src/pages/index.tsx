@@ -19,6 +19,7 @@ import { Inflow } from "@/types/inflow";
 import { Outflow } from "@/types/outflow";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import useDonorParams from "@/hooks/donorParams";
 import { passportDecoderAbi } from "@/lib/abi/passportDecoder";
 import { erc721CheckerAbi } from "@/lib/abi/erc721Checker";
 import { erc721Abi } from "@/lib/abi/erc721";
@@ -195,6 +196,7 @@ export default function Index(props: IndexProps) {
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const { address } = useAccount();
+  const { updateDonorParams } = useDonorParams();
   const { data: streamingFundQueryRes } = useQuery(POOL_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
@@ -524,6 +526,22 @@ export default function Index(props: IndexProps) {
     return () => clearInterval(directTotalTimerId.current);
   }, [superfluidQueryRes, directTotalTimerId]);
 
+  useEffect(() => {
+    if (!pool) {
+      return;
+    }
+
+    const { strategyAddress, allocationToken, matchingToken, metadata } = pool;
+
+    updateDonorParams({
+      strategyAddress,
+      chainId: chainId ? Number(chainId) : DEFAULT_CHAIN_ID,
+      allocationToken,
+      matchingToken,
+      nftMintUrl: metadata.nftMintUrl ?? null,
+    });
+  }, [pool, chainId, updateDonorParams]);
+
   return (
     <SuperfluidContextProvider
       network={network}
@@ -587,7 +605,11 @@ export default function Index(props: IndexProps) {
             })
           }
         />
-        <Stack direction="horizontal" gap={4} className="px-4 py-5 pt-4 fs-4">
+        <Stack
+          direction="horizontal"
+          gap={4}
+          className="px-4 pt-5 pb-4 pt-4 fs-4"
+        >
           Grantees
           <Dropdown>
             <Dropdown.Toggle
