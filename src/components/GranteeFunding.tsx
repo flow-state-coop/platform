@@ -520,6 +520,8 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               hasSuggestedTokenBalance={hasSuggestedTokenBalance}
               ethBalance={ethBalance}
               underlyingTokenBalance={underlyingTokenBalance}
+              network={network}
+              allocationTokenInfo={allocationTokenInfo}
             />
             <Wrap
               step={step}

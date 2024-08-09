@@ -11,6 +11,7 @@ const networks: Network[] = [
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/optimism-sepolia/protocol-v1",
+    onRampName: "OPTIMISM_ETH",
     passportDecoder: "0xe53C60F8069C2f0c3a84F9B3DB5cf56f3100ba56",
     superfluidHost: "0xd399e2Fb5f4cf3722a11F65b88FAB6B2B8621005",
     superfluidResolver: "0x554c06487bEc8c890A0345eb05a5292C1b1017Bd",
@@ -41,6 +42,7 @@ const networks: Network[] = [
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/base-mainnet/protocol-v1",
+    onRampName: "BASE_ETH",
     passportDecoder: "0x0000000000000000000000000000000000000000",
     superfluidHost: "0x4C073B3baB6d8826b8C5b229f3cfdC1eC6E47E74",
     superfluidResolver: "0x6a214c324553F96F04eFBDd66908685525Da0E0d",
@@ -66,6 +68,7 @@ const networks: Network[] = [
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/arbitrum-one/protocol-v1",
+    onRampName: "ARBITRUM_ETH",
     passportDecoder: "0x2050256A91cbABD7C42465aA0d5325115C1dEB43",
     superfluidHost: "0xCf8Acb4eF033efF16E8080aed4c7D5B9285D2192",
     superfluidResolver: "0x609b9d9d6Ee9C3200745A79B9d3398DBd63d509F",

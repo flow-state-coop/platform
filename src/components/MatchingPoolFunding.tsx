@@ -420,6 +420,8 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             hasSuggestedTokenBalance={hasSuggestedTokenBalance}
             ethBalance={ethBalance}
             underlyingTokenBalance={underlyingTokenBalance}
+            network={network}
+            allocationTokenInfo={matchingTokenInfo}
           />
           <Wrap
             step={step}

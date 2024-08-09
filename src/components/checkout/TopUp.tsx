@@ -1,4 +1,3 @@
-import { useAccount } from "wagmi";
 import { formatEther } from "viem";
 import Image from "next/image";
 import Card from "react-bootstrap/Card";
@@ -7,7 +6,8 @@ import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Badge from "react-bootstrap/Badge";
 import { Step } from "@/types/checkout";
-import OnRampWidget from "@/components/OnRampWidget";
+import { Network } from "@/types/network";
+import { Token } from "@/types/token";
 import {
   TimeInterval,
   fromTimeUnitsToSeconds,
@@ -30,6 +30,8 @@ export type TopUpProps = {
   hasSuggestedTokenBalance: boolean;
   ethBalance?: { value: bigint; formatted: string };
   underlyingTokenBalance?: { value: bigint; formatted: string };
+  network?: Network;
+  allocationTokenInfo: Token;
 };
 
 export default function TopUp(props: TopUpProps) {
@@ -48,9 +50,9 @@ export default function TopUp(props: TopUpProps) {
     hasSuggestedTokenBalance,
     ethBalance,
     underlyingTokenBalance,
+    network,
+    allocationTokenInfo,
   } = props;
-
-  const { address } = useAccount();
 
   return (
     <Card className="bg-light rounded-0 border-0 border-bottom border-secondary">
@@ -140,20 +142,20 @@ export default function TopUp(props: TopUpProps) {
                   parseFloat(roundWeiAmount(suggestedTokenBalance, 6)),
                 )}
               </Card.Text>
-              <OnRampWidget
-                target={
-                  <Button className="d-flex justify-content-center align-items-center gap-1 rounded-3 text-light fs-6">
-                    <Image
-                      src="/credit-card.svg"
-                      alt="card"
-                      width={24}
-                      height={24}
-                    />
-                    Buy ETH
-                  </Button>
-                }
-                accountAddress={address}
-              />
+              <Button
+                variant="link"
+                href={`https://ramp.network/buy?defaultAsset=${network?.onRampName ?? ""}`}
+                target="_blank"
+                className="d-flex justify-content-center align-items-center gap-1 rounded-3 text-light fs-6"
+              >
+                <Image
+                  src="/credit-card.svg"
+                  alt="card"
+                  width={24}
+                  height={24}
+                />
+                Buy ETH
+              </Button>
             </Stack>
           ) : (
             <Stack direction="horizontal" gap={3}>
@@ -185,19 +187,19 @@ export default function TopUp(props: TopUpProps) {
                 <Card.Text as="small" className="m-0">
                   Suggested {minEthBalance}
                 </Card.Text>
-                <OnRampWidget
-                  target={
-                    <Button className="d-flex justify-content-center align-items-center gap-1 w-100 text-light rounded-3 fs-6">
-                      <Image
-                        src="/credit-card.svg"
-                        width={24}
-                        height={24}
-                        alt="card"
-                      />
-                      <Card.Text className="m-0">Buy ETH</Card.Text>
-                    </Button>
-                  }
-                />
+                <Button
+                  className="d-flex justify-content-center align-items-center gap-1 w-100 text-light rounded-3 fs-6"
+                  href={`https://ramp.network/buy?defaultAsset=${network?.onRampName ?? ""}`}
+                  target="_blank"
+                >
+                  <Image
+                    src="/credit-card.svg"
+                    width={24}
+                    height={24}
+                    alt="card"
+                  />
+                  <Card.Text className="m-0">Buy ETH</Card.Text>
+                </Button>
               </Stack>
               <Stack
                 direction="vertical"
@@ -242,7 +244,7 @@ export default function TopUp(props: TopUpProps) {
                 </Card.Text>
                 <Button
                   variant="link"
-                  href="https://jumper.exchange/?fromChain=10&fromToken=0x0000000000000000000000000000000000000000&toChain=10&toToken=0x7d342726B69C28D942ad8BfE6Ac81b972349d524"
+                  href={`https://jumper.exchange/?fromChain=${network?.id ?? ""}&fromToken=0x0000000000000000000000000000000000000000&toChain=${network?.id ?? ""}&toToken=${allocationTokenInfo.address}`}
                   target="_blank"
                   rel="noreferrer"
                   className="d-flex justify-content-center align-items-center w-100 gap-1 bg-primary text-decoration-none rounded-3 text-light fs-6"

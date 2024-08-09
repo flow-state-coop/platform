@@ -10,6 +10,7 @@ export type Network = {
   superfluidConsole: string;
   superfluidDashboard: string;
   superfluidSubgraph: string;
+  onRampName: string;
   passportDecoder: Address;
   superfluidHost: Address;
   superfluidResolver: Address;
