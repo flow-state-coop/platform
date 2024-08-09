@@ -28,6 +28,7 @@ interface GranteeDetailsProps {
   matchingFlowRate: bigint;
   userOutflow: Outflow | null;
   allocationTokenInfo: Token;
+  matchingTokenInfo: Token;
 }
 
 export default function GranteeDetails(props: GranteeDetailsProps) {
@@ -43,6 +44,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
     matchingFlowRate,
     userOutflow,
     allocationTokenInfo,
+    matchingTokenInfo,
   } = props;
 
   const [readMore, setReadMore] = useState(true);
@@ -176,8 +178,10 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
         />
       </Stack>
       <Stack direction="horizontal" gap={1} className="fs-6 p-2 pb-0">
-        <Stack direction="vertical" gap={1} className="w-25">
-          <Card.Text className="m-0 pe-0">You</Card.Text>
+        <Stack direction="vertical" gap={1} className="w-33">
+          <Card.Text className="m-0 pe-0" style={{ fontSize: "0.7rem" }}>
+            You ({allocationTokenInfo.name})
+          </Card.Text>
           <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
               parseFloat(
@@ -189,8 +193,10 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             )}
           </Badge>
         </Stack>
-        <Stack direction="vertical" gap={1} className="w-25">
-          <Card.Text className="m-0 pe-0">Others</Card.Text>
+        <Stack direction="vertical" gap={1} className="w-33">
+          <Card.Text className="m-0 pe-0" style={{ fontSize: "0.7rem" }}>
+            Others ({allocationTokenInfo.name})
+          </Card.Text>
           <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
               parseFloat(
@@ -203,8 +209,10 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             )}
           </Badge>
         </Stack>
-        <Stack direction="vertical" gap={1} className="w-25">
-          <Card.Text className="m-0 pe-0">Matching</Card.Text>
+        <Stack direction="vertical" gap={1} className="w-33">
+          <Card.Text className="m-0 pe-0" style={{ fontSize: "0.7rem" }}>
+            Matching ({matchingTokenInfo.name})
+          </Card.Text>
           <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
               parseFloat(
@@ -216,33 +224,33 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             )}
           </Badge>
         </Stack>
-        <Card.Text as="small" className="w-20 mt-4 ms-2">
+        <Card.Text className="w-20 mt-3 ms-1" style={{ fontSize: "0.7rem" }}>
           monthly
         </Card.Text>
       </Stack>
       <Stack direction="horizontal" gap={1} className="fs-6 p-2">
-        <Stack direction="vertical" gap={1} className="w-25">
+        <Stack direction="vertical" gap={1} className="w-33">
           <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
               parseFloat(formatEther(totalAllocatedUser).slice(0, 8)),
             )}
           </Badge>
         </Stack>
-        <Stack direction="vertical" gap={1} className="w-25">
+        <Stack direction="vertical" gap={1} className="w-33">
           <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
               parseFloat(formatEther(totalAllocatedOthers).slice(0, 8)),
             )}
           </Badge>
         </Stack>
-        <Stack direction="vertical" gap={1} className="w-25">
+        <Stack direction="vertical" gap={1} className="w-33">
           <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
               parseFloat(formatEther(totalMatching).slice(0, 8)),
             )}
           </Badge>
         </Stack>
-        <Card.Text as="small" className="w-20 ms-2">
+        <Card.Text className="w-20 ms-1" style={{ fontSize: "0.7rem" }}>
           total
         </Card.Text>
       </Stack>

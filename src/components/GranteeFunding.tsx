@@ -477,6 +477,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
             matchingFlowRate={matchingFlowRate}
             userOutflow={userOutflow}
             allocationTokenInfo={allocationTokenInfo}
+            matchingTokenInfo={matchingTokenInfo}
           />
           <Accordion activeKey={step} className="mt-4">
             <EditStream
