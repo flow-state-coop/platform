@@ -193,7 +193,9 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
             />
           </Form.Group>
           <Form.Group className="mb-4">
-            <Form.Label>Project Description*</Form.Label>
+            <Form.Label>
+              Project Description (~140 characters will show in previews)
+            </Form.Label>
             <Form.Control
               as="textarea"
               rows={4}
@@ -375,7 +377,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
       </Modal.Body>
       <Modal.Footer className="border-0">
         <Button
-          disabled={!metadataForm.title || !metadataForm.description}
+          disabled={!metadataForm.title}
           className="w-25"
           onClick={handleUpdateProject}
         >
