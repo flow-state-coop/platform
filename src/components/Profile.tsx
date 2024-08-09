@@ -635,6 +635,9 @@ export default function Profile() {
           show={showMintingInstructions}
           hide={() => setShowMintingInstructions(false)}
           network={network}
+          minPassportScore={
+            minPassportScore ? Number(minPassportScore) / 10000 : 0
+          }
         />
       )}
     </>

@@ -9,12 +9,13 @@ type PassportMintingInstructionsProps = {
   show: boolean;
   hide: () => void;
   network: Network;
+  minPassportScore: number;
 };
 
 export default function PassportMintingInstructions(
   props: PassportMintingInstructionsProps,
 ) {
-  const { show, hide, network } = props;
+  const { show, hide, network, minPassportScore } = props;
 
   return (
     <Modal
@@ -45,7 +46,11 @@ export default function PassportMintingInstructions(
             style={{ listStylePosition: "inside" }}
           >
             Open{" "}
-            <Card.Link href="https://passport.gitcoin.co/" target="_blank">
+            <Card.Link
+              href="https://passport.gitcoin.co/"
+              target="_blank"
+              className="text-decoration-underline"
+            >
               https://passport.gitcoin.co/
             </Card.Link>{" "}
             in a new tab
@@ -91,7 +96,8 @@ export default function PassportMintingInstructions(
             className="bg-light border-0 px-0 py-1 fw-bold"
             style={{ listStylePosition: "inside" }}
           >
-            Earn a Unique Humanity Score of at least 3 before continuing
+            Earn a Unique Humanity Score of at least {minPassportScore} before
+            continuing
           </ListGroup.Item>
           <ListGroup.Item as="li" className="bg-light border-0 px-0 py-1">
             Scroll to the bottom of the <i>Dashboard</i> and click{" "}
