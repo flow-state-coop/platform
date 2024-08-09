@@ -466,22 +466,24 @@ export default function Profile() {
           >
             {allocationTokenInfo?.name}
           </Badge>
-          <Badge
-            className={`cursor-pointer rounded-3 ${
-              token === Token.MATCHING
-                ? "bg-success text-success"
-                : "bg-light text-secondary"
-            }`}
-            style={{
-              background:
+          {allocationToken !== matchingToken && (
+            <Badge
+              className={`cursor-pointer rounded-3 ${
                 token === Token.MATCHING
-                  ? "linear-gradient(rgba(0,0,0,.50),rgba(0,0,0,.50))"
-                  : "",
-            }}
-            onClick={() => setToken(Token.MATCHING)}
-          >
-            {matchingTokenInfo?.name}
-          </Badge>
+                  ? "bg-success text-success"
+                  : "bg-light text-secondary"
+              }`}
+              style={{
+                background:
+                  token === Token.MATCHING
+                    ? "linear-gradient(rgba(0,0,0,.50),rgba(0,0,0,.50))"
+                    : "",
+              }}
+              onClick={() => setToken(Token.MATCHING)}
+            >
+              {matchingTokenInfo?.name}
+            </Badge>
+          )}
         </Stack>
         <Stack
           direction="horizontal"
