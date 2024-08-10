@@ -211,7 +211,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
         </Stack>
         <Stack direction="vertical" gap={1} className="w-33">
           <Card.Text className="m-0 pe-0" style={{ fontSize: "0.7rem" }}>
-            Matching ({matchingTokenInfo.name})
+            Match ({matchingTokenInfo.name})
           </Card.Text>
           <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
