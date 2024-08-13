@@ -73,6 +73,7 @@ const POOL_QUERY = gql`
       strategyAddress
       matchingToken
       allocationToken
+      chainId
       recipientsByPoolIdAndChainId(condition: { status: APPROVED }) {
         id
         recipientAddress
@@ -531,16 +532,22 @@ export default function Index(props: IndexProps) {
       return;
     }
 
-    const { strategyAddress, allocationToken, matchingToken, metadata } = pool;
+    const {
+      strategyAddress,
+      allocationToken,
+      matchingToken,
+      metadata,
+      chainId,
+    } = pool;
 
     updateDonorParams({
       strategyAddress,
-      chainId: chainId ? Number(chainId) : DEFAULT_CHAIN_ID,
+      chainId,
       allocationToken,
       matchingToken,
       nftMintUrl: metadata.nftMintUrl ?? null,
     });
-  }, [pool, chainId, updateDonorParams]);
+  }, [pool, updateDonorParams]);
 
   return (
     <SuperfluidContextProvider
@@ -703,7 +710,8 @@ export default function Index(props: IndexProps) {
                 selectedGrantee: null,
               })
             }
-            name={pool?.metadata.name ?? ""}
+            poolName={pool?.metadata.name ?? ""}
+            poolUiLink={`https://${hostName}/?poolid=${poolId ?? DEFAULT_POOL_ID}&chainid=${chainId ?? DEFAULT_CHAIN_ID}`}
             description={pool?.metadata.description ?? ""}
             matchingPool={matchingPool}
             matchingTokenInfo={matchingTokenInfo}
@@ -726,6 +734,8 @@ export default function Index(props: IndexProps) {
             }
             receiver={transactionPanelState.selectedGrantee.superappAddress}
             poolUiLink={`https://${hostName}/?poolid=${poolId ?? DEFAULT_POOL_ID}&chainid=${chainId ?? DEFAULT_CHAIN_ID}&recipientid=${transactionPanelState.selectedGrantee.id}`}
+            framesLink={`https://frames.flowstate.network/frames/grantee/${transactionPanelState.selectedGrantee.id}/${poolId ?? DEFAULT_POOL_ID}/${chainId ?? DEFAULT_CHAIN_ID}`}
+            poolName={pool?.metadata.name ?? ""}
             name={transactionPanelState.selectedGrantee.name ?? ""}
             description={
               transactionPanelState.selectedGrantee.description ?? ""

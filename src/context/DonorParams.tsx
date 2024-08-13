@@ -1,4 +1,4 @@
-import { useState, createContext, useContext } from "react";
+import { useState, createContext, useContext, useCallback } from "react";
 
 type DonorParams = {
   strategyAddress: string | null;
@@ -36,12 +36,16 @@ export function DonorParamsContextProvider({
     nftMintUrl: null,
   });
 
+  const updateDonorParams = useCallback(
+    (donorParams: DonorParams) => setDonorParams(donorParams),
+    [],
+  );
+
   return (
     <DonorParamsContext.Provider
       value={{
         ...donorParams,
-        updateDonorParams: (donorParams: DonorParams) =>
-          setDonorParams(donorParams),
+        updateDonorParams,
       }}
     >
       {children}

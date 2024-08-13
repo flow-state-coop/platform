@@ -37,8 +37,9 @@ import { ZERO_ADDRESS, SECONDS_IN_MONTH } from "@/lib/constants";
 type MatchingPoolFundingProps = {
   show: boolean;
   handleClose: () => void;
-  name: string;
+  poolName: string;
   description: string;
+  poolUiLink: string;
   matchingPool: MatchingPool;
   matchingTokenInfo: Token;
   network?: Network;
@@ -61,8 +62,9 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     show,
     handleClose,
     matchingPool,
-    name,
+    poolName,
     description,
+    poolUiLink,
     matchingTokenInfo,
     network,
     receiver,
@@ -377,7 +379,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       <Offcanvas.Body>
         <MatchingPoolDetails
           matchingPool={matchingPool}
-          name={name}
+          poolName={poolName}
           description={description}
           matchingTokenInfo={matchingTokenInfo}
         />
@@ -458,7 +460,8 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
           <Success
             step={step}
             isFundingMatchingPool={true}
-            matchingPoolName={name}
+            poolName={poolName}
+            poolUiLink={poolUiLink}
             newFlowRate={newFlowRate}
           />
         </Accordion>

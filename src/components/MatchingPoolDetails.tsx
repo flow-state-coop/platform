@@ -15,14 +15,14 @@ import { roundWeiAmount, formatNumberWithCommas } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 interface MatchingPoolDetailsProps {
-  name: string;
+  poolName: string;
   description: string;
   matchingPool: MatchingPool;
   matchingTokenInfo: Token;
 }
 
 export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
-  const { name, description, matchingPool, matchingTokenInfo } = props;
+  const { poolName, description, matchingPool, matchingTokenInfo } = props;
 
   const [readMore, setReadMore] = useState(true);
 
@@ -93,7 +93,7 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
           className="ms-2 rounded-4"
         />
         <Card className="bg-transparent border-0 ms-3">
-          <Card.Title className="fs-6 text-secondary">{name}</Card.Title>
+          <Card.Title className="fs-6 text-secondary">{poolName}</Card.Title>
           <Card.Subtitle className="mb-0 fs-6">
             Your Current Stream
           </Card.Subtitle>

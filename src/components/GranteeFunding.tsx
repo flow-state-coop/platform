@@ -49,6 +49,8 @@ type GranteeFundingProps = {
   logoCid: string;
   placeholderLogo: string;
   poolUiLink: string;
+  framesLink: string;
+  poolName: string;
   receiver: string;
   recipientAddress: string;
   inflow: Inflow;
@@ -88,6 +90,8 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     placeholderLogo,
     twitter,
     poolUiLink,
+    framesLink,
+    poolName,
     receiver,
     recipientAddress,
     inflow,
@@ -584,6 +588,9 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               isFundingMatchingPool={false}
               granteeName={name}
               granteeTwitter={twitter}
+              poolName={poolName}
+              poolUiLink={poolUiLink}
+              framesLink={framesLink}
               newFlowRate={newFlowRate}
             />
           </Accordion>
