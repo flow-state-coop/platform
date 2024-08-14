@@ -587,7 +587,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               step={step}
               isFundingMatchingPool={false}
               granteeName={name}
-              granteeTwitter={twitter}
+              granteeTwitter={twitter ? `@${twitter}` : ""}
               poolName={poolName}
               poolUiLink={poolUiLink}
               framesLink={framesLink}

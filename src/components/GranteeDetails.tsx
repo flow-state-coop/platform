@@ -46,7 +46,6 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
     allocationTokenInfo,
     matchingTokenInfo,
   } = props;
-
   const [readMore, setReadMore] = useState(true);
   const [imageUrl, setImageUrl] = useState("");
 
@@ -261,7 +260,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
       >
         {clampedText}
       </Card.Text>
-      {!noClamp && (
+      {(!noClamp || readMore) && (
         <Button
           variant="transparent"
           className="p-0 border-0 shadow-none"
