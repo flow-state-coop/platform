@@ -125,7 +125,7 @@ export default function MatchinPool() {
                     className="rounded-2"
                   />
                   <Button
-                    variant="info"
+                    variant="secondary"
                     as="a"
                     href={`${network?.superfluidConsole}/pools/${gdaPool}`}
                     target="_blank"
@@ -193,7 +193,7 @@ export default function MatchinPool() {
                 </InputGroup>
               </Form.Group>
               <Button
-                className="w-20"
+                className="w-20 text-light"
                 disabled={
                   !newFlowRate ||
                   !network ||

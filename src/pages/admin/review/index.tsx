@@ -362,7 +362,7 @@ export default function Review(props: ReviewProps) {
                     <td className="w-20">
                       {recipient.status === "PENDING" ? (
                         <Button
-                          className="w-100 p-0"
+                          className="w-100 p-0 text-light"
                           onClick={() => {
                             setSelectedRecipient(recipient);
                           }}
@@ -482,8 +482,7 @@ export default function Review(props: ReviewProps) {
                 ) : (
                   <>
                     <Button
-                      variant="success text-light"
-                      className="w-50"
+                      className="w-50 text-light"
                       onClick={() => handleReviewSelection(NewStatus.ACCEPTED)}
                     >
                       Accept
@@ -511,7 +510,7 @@ export default function Review(props: ReviewProps) {
             </Card.Text>
           </Stack>
           <Button
-            className="d-flex gap-2 align-items-center justify-content-center w-25 mt-2"
+            className="d-flex gap-2 align-items-center justify-content-center w-25 mt-2 text-light"
             disabled={transactions.length === 0}
             onClick={handleSubmit}
           >

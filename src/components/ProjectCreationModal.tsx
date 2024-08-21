@@ -373,7 +373,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
       <Modal.Footer className="border-0">
         <Button
           disabled={!metadataForm.title}
-          className="w-25"
+          className="w-25 text-light"
           onClick={handleCreateProject}
         >
           {isCreatingProject ? <Spinner size="sm" /> : "Create"}

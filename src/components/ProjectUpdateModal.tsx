@@ -378,7 +378,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
       <Modal.Footer className="border-0">
         <Button
           disabled={!metadataForm.title}
-          className="w-25"
+          className="w-25 text-light"
           onClick={handleUpdateProject}
         >
           {isCreatingProject ? <Spinner size="sm" /> : "Update"}

@@ -158,7 +158,7 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
           <Card.Text className="m-0 pe-0">All</Card.Text>
-          <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
               parseFloat(formatEther(totalDistributedAll).slice(0, 8)),
             )}
@@ -166,7 +166,7 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
           <Card.Text className="m-0 pe-0">Others</Card.Text>
-          <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
               parseFloat(
                 formatEther(totalDistributedAll - totalDistributedUser).slice(

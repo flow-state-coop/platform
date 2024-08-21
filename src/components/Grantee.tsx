@@ -104,8 +104,8 @@ export default function Grantee(props: GranteeProps) {
       className="rounded-4 overflow-hidden cursor-pointer"
       style={{
         height: 418,
-        border: isSelected ? "1px solid #0d6efd" : "1px solid #212529",
-        boxShadow: isSelected ? "0px 0px 0px 2px #0d6efd" : "",
+        border: isSelected ? "1px solid #2fc1c1" : "1px solid #212529",
+        boxShadow: isSelected ? "0px 0px 0px 2px #2fc21c1" : "",
       }}
       onClick={selectGrantee}
     >
@@ -196,9 +196,7 @@ export default function Grantee(props: GranteeProps) {
             </>
           )}
         </Stack>
-        <Button variant="success" className="w-33 p-0 text-light">
-          Donate
-        </Button>
+        <Button className="w-33 p-0 text-light">Donate</Button>
       </Card.Footer>
     </Card>
   );

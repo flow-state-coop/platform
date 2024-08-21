@@ -136,10 +136,10 @@ export default function Review(props: ReviewProps) {
           pill
           className={`d-flex justify-content-center p-0 ${
             step !== Step.REVIEW && step !== Step.SUCCESS
-              ? "bg-dark"
+              ? "bg-secondary"
               : step === Step.SUCCESS
                 ? "bg-info"
-                : "bg-secondary"
+                : "bg-primary"
           }`}
           style={{
             width: 28,
@@ -423,7 +423,7 @@ export default function Review(props: ReviewProps) {
             </Stack>
           )}
           <Button
-            variant={isDeletingStream ? "danger" : "success"}
+            variant={isDeletingStream ? "danger" : "primary"}
             disabled={transactions.length === 0 || step === Step.SUCCESS}
             className="d-flex justify-content-center mt-2 py-1 rounded-3 fw-bold text-light"
             onClick={handleSubmit}

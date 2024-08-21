@@ -82,10 +82,10 @@ export default function Wrap(props: WrapProps) {
           className={`d-flex justify-content-center p-0
                     ${
                       step === Step.SELECT_AMOUNT || step === Step.TOP_UP
-                        ? "bg-dark"
+                        ? "bg-secondary"
                         : step === Step.WRAP
-                          ? "bg-info"
-                          : "bg-secondary"
+                          ? "bg-primary"
+                          : "bg-info"
                     }`}
           style={{
             width: 28,
@@ -214,7 +214,6 @@ export default function Wrap(props: WrapProps) {
               </Button>
             </OverlayTrigger>
             <Button
-              variant="success"
               disabled={
                 !underlyingTokenBalance ||
                 !wrapAmount ||

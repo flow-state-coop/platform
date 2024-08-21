@@ -449,9 +449,9 @@ export default function Grantee(props: GranteeProps) {
                 </Card>
               </Stack>
             )}
-            <Stack direction="vertical" gap={2} className="mt-5">
+            <Stack direction="vertical" gap={2} className="mt-5 text-light">
               <Button
-                className={`py-2 ${isMobile ? "w-100" : "w-25"}`}
+                className={`${isMobile ? "w-100" : "w-25"} py-2 text-light`}
                 disabled={selectedProjectIndex === null}
                 onClick={registerRecipient}
               >

@@ -46,6 +46,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
     allocationTokenInfo,
     matchingTokenInfo,
   } = props;
+
   const [readMore, setReadMore] = useState(true);
   const [imageUrl, setImageUrl] = useState("");
 
@@ -196,7 +197,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           <Card.Text className="m-0 pe-0" style={{ fontSize: "0.7rem" }}>
             Others ({allocationTokenInfo.name})
           </Card.Text>
-          <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
               parseFloat(
                 formatEther(
@@ -212,7 +213,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           <Card.Text className="m-0 pe-0" style={{ fontSize: "0.7rem" }}>
             Match ({matchingTokenInfo.name})
           </Card.Text>
-          <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
               parseFloat(
                 formatEther(matchingFlowRate * BigInt(SECONDS_IN_MONTH)).slice(
@@ -236,14 +237,14 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-33">
-          <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
               parseFloat(formatEther(totalAllocatedOthers).slice(0, 8)),
             )}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-33">
-          <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
               parseFloat(formatEther(totalMatching).slice(0, 8)),
             )}

@@ -156,7 +156,7 @@ export default function ProgramCreationModal(props: ProgramCreationModalProps) {
           </Form.Group>
         </Form>
         <Button
-          variant="info"
+          variant="secondary"
           className="text-light"
           onClick={() =>
             setProgramForm({
@@ -171,7 +171,7 @@ export default function ProgramCreationModal(props: ProgramCreationModalProps) {
       <Modal.Footer className="border-0">
         <Button
           disabled={!address || !programForm.name}
-          className="w-25"
+          className="w-25 text-light"
           onClick={handleCreateProgram}
         >
           {isCreatingProgram ? <Spinner size="sm" /> : "Create"}

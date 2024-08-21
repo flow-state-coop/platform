@@ -75,10 +75,10 @@ export default function TopUp(props: TopUpProps) {
           className={`d-flex justify-content-center p-0
                     ${
                       step === Step.SELECT_AMOUNT
-                        ? "bg-dark"
+                        ? "bg-secondary"
                         : step === Step.TOP_UP
-                          ? "bg-info"
-                          : "bg-secondary"
+                          ? "bg-primary"
+                          : "bg-info"
                     }`}
           style={{
             width: 28,
@@ -263,7 +263,6 @@ export default function TopUp(props: TopUpProps) {
             Skip
           </Button>
           <Button
-            variant="success"
             className="w-50 mt-4 py-1 rounded-3 float-end text-light"
             disabled={
               (!isFundingMatchingPool &&

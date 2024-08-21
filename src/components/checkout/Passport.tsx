@@ -41,10 +41,10 @@ export default function Passport(props: PassportProps) {
             step !== Step.ELIGIBILITY &&
             step !== Step.REVIEW &&
             step !== Step.SUCCESS
-              ? "bg-dark"
+              ? "bg-secondary"
               : step === Step.REVIEW || step === Step.SUCCESS
-                ? "bg-secondary"
-                : "bg-info"
+                ? "bg-info"
+                : "bg-primary"
           }`}
           style={{
             width: 28,
@@ -117,7 +117,6 @@ export default function Passport(props: PassportProps) {
             Update stamps and mint
           </Button>
           <Button
-            variant="success"
             disabled={!passportScore || passportScore < minPassportScore}
             className="w-100 m-0 ms-auto mt-1 mb-3 text-light fw-bold"
             onClick={() => setStep(Step.REVIEW)}

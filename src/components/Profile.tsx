@@ -284,7 +284,7 @@ export default function Profile() {
         </Stack>
         {eligibilityMethod === EligibilityMethod.NFT_GATING ? (
           <Card className="bg-light mx-3 p-2 rounded-4 border-0">
-            <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 py-1 text-secondary fs-5">
+            <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 py-1 text-info fs-5">
               NFT Gating
             </Card.Header>
             <Card.Body className="p-2">
@@ -354,7 +354,7 @@ export default function Profile() {
                     href={nftMintUrl}
                     target="_blank"
                     disabled={!!nftBalance && nftBalance > 0 ? true : false}
-                    className="bg-secondary text-light"
+                    className="bg-info text-light"
                   >
                     Get the NFT
                   </Button>
@@ -369,7 +369,7 @@ export default function Profile() {
           </Card>
         ) : (
           <Card className="bg-light mx-3 p-2 rounded-4 border-0">
-            <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 py-1 text-secondary fs-5">
+            <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 py-1 text-info fs-5">
               Current Gitcoin Passport Score
             </Card.Header>
             <Card.Body className="p-2">
@@ -419,7 +419,6 @@ export default function Profile() {
                     </Button>
                   </Stack>
                   <Button
-                    variant="success"
                     className="w-100 mt-2 rounded-3 rounded-3 text-light"
                     onClick={() => setShowMintingInstructions(true)}
                   >
@@ -454,7 +453,7 @@ export default function Profile() {
             className={`cursor-pointer rounded-3 ${
               token === Token.ALLOCATION
                 ? "bg-success text-success"
-                : "bg-light text-secondary"
+                : "bg-light text-info"
             }`}
             style={{
               background:
@@ -471,7 +470,7 @@ export default function Profile() {
               className={`cursor-pointer rounded-3 ${
                 token === Token.MATCHING
                   ? "bg-success text-success"
-                  : "bg-light text-secondary"
+                  : "bg-light text-info"
               }`}
               style={{
                 background:
@@ -489,7 +488,7 @@ export default function Profile() {
           direction="horizontal"
           className="bg-light mx-3 p-2 pb-3 fs-4 border-bottom border-white"
         >
-          <Card.Text className="m-0 text-secondary px-2 w-50">Token</Card.Text>
+          <Card.Text className="m-0 text-info px-2 w-50">Token</Card.Text>
           <Stack direction="horizontal" gap={2} className="align-items-center">
             <Card.Text className="m-0 overflow-hidden text-truncate">
               {truncateStr(
@@ -536,9 +535,7 @@ export default function Profile() {
           direction="horizontal"
           className="bg-light mx-3 p-2 pb-3 fs-4 border-bottom border-white"
         >
-          <Card.Text className="m-0 text-secondary px-2 w-50">
-            Balance
-          </Card.Text>
+          <Card.Text className="m-0 text-info px-2 w-50">Balance</Card.Text>
           <Stack direction="horizontal" gap={2} className="align-items-center">
             <Image
               src={
@@ -566,9 +563,7 @@ export default function Profile() {
           direction="horizontal"
           className="bg-light mx-3 px-2 py-3 fs-4 border-bottom border-white"
         >
-          <Card.Text className="m-0 text-secondary px-2 w-50">
-            Net Stream
-          </Card.Text>
+          <Card.Text className="m-0 text-info px-2 w-50">Net Stream</Card.Text>
           <Stack
             direction="horizontal"
             gap={2}
@@ -597,17 +592,15 @@ export default function Profile() {
                 ),
               )}
             </Card.Text>
-            <Card.Text className="m-0 text-secondary fs-6">monthly</Card.Text>
+            <Card.Text className="m-0 text-info fs-6">monthly</Card.Text>
           </Stack>
         </Stack>
         <Stack
           direction="horizontal"
           className="bg-light mx-3 rounded-bottom-4 px-2 py-3 fs-4 border-bottom border-white"
         >
-          <Card.Text className="m-0 text-secondary px-2 w-50">
-            Liquidation
-          </Card.Text>
-          <Card.Text className="m-0 text-secondary overflow-hidden text-truncate fs-4">
+          <Card.Text className="m-0 text-info px-2 w-50">Liquidation</Card.Text>
+          <Card.Text className="m-0 text-info overflow-hidden text-truncate fs-4">
             {token === Token.MATCHING &&
             accountTokenSnapshotMatching?.maybeCriticalAtTimestamp
               ? dayjs
@@ -626,7 +619,7 @@ export default function Profile() {
         <Card.Link
           href="https://app.superfluid.finance"
           target="_blank"
-          className="mx-3 p-3 text-info text-center text-decoration-underline cursor-pointer"
+          className="mx-3 p-3 text-primary text-center text-decoration-underline cursor-pointer"
         >
           Visit the Superfluid App for advanced management of your Super Token
           balances

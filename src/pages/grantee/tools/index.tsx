@@ -305,13 +305,13 @@ export default function GranteeTools(props: GranteeToolsProps) {
               variant="link"
               href={`${network.superfluidConsole}/pools/${gdaPoolAddress}`}
               target="_blank"
-              className="text-light bg-info"
+              className="text-light bg-secondary"
               style={{ width: 256 }}
             >
               View Pool Stats
             </Button>
             <Button
-              variant="info"
+              variant="secondary"
               href={`${network.superfluidDashboard}/?view=${address}`}
               target="_blank"
               className="text-light"
@@ -326,9 +326,10 @@ export default function GranteeTools(props: GranteeToolsProps) {
             your wallet.
           </Card.Text>
           <Button
-            style={{ width: 256 }}
             disabled={!selectedProject || isConnectedToPool}
             onClick={handlePoolConnection}
+            className="text-light"
+            style={{ width: 256 }}
           >
             {isTransactionConfirming ? (
               <Spinner size="sm" className="m-auto" />

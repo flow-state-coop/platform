@@ -4,8 +4,11 @@
 $link-decoration: none;
 $link-hover-decoration: none;
 $link-color: #000;
-$success: #4bf155;
+$primary: #2fc1c1;
+$secondary: #4b5588;
 $light: #f1f1f1;
+$info: #6c757d;
+$success: #4bf155;
 
 @import "bootstrap/scss/bootstrap";
 @import "bootstrap/scss/utilities";

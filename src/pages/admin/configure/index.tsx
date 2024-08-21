@@ -548,7 +548,7 @@ export default function Configure() {
             </>
           )}
           <Button
-            className="d-flex gap-2 justify-content-center align-items-center w-25 mt-4"
+            className="d-flex gap-2 justify-content-center align-items-center w-25 mt-4 text-light"
             disabled={
               !!pool ||
               !poolConfigParameters.name ||

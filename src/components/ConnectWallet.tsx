@@ -32,7 +32,10 @@ export default function ConnectWallet() {
             {(() => {
               if (!connected) {
                 return (
-                  <Button onClick={openConnectModal} className="rounded-3">
+                  <Button
+                    onClick={openConnectModal}
+                    className="rounded-3 text-light"
+                  >
                     Connect Wallet
                   </Button>
                 );
@@ -42,7 +45,7 @@ export default function ConnectWallet() {
                   <Button
                     variant="danger"
                     onClick={openChainModal}
-                    type="button"
+                    className="text-light"
                   >
                     Wrong network
                   </Button>

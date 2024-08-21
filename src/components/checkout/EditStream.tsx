@@ -111,7 +111,7 @@ export default function EditStream(props: EditStreamProps) {
           pill
           as="div"
           className={`d-flex justify-content-center p-0 ${
-            isSelected ? "bg-info" : "bg-secondary"
+            isSelected ? "bg-primary" : "bg-info"
           }`}
           style={{
             width: 28,
@@ -236,7 +236,7 @@ export default function EditStream(props: EditStreamProps) {
           </Stack>
           {address ? (
             <Button
-              variant={isDeletingStream ? "danger" : "success"}
+              variant={isDeletingStream ? "danger" : "primary"}
               disabled={
                 !amountPerTimeInterval ||
                 Number(amountPerTimeInterval.replace(/,/g, "")) < 0 ||

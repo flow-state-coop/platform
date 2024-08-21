@@ -137,7 +137,6 @@ export default function PoolInfo(props: PoolInfoProps) {
               </tbody>
             </Table>
             <Button
-              variant="success"
               className="mt-3 ms-auto p-2 text-light fs-5"
               style={{ width: 180 }}
               onClick={showTransactionPanel}
