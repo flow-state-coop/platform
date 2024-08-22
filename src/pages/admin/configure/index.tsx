@@ -113,6 +113,16 @@ export default function Configure() {
     eligibilityMethod === EligibilityMethod.PASSPORT ? 2 : 3;
 
   useEffect(() => {
+    if (!network) {
+      return;
+    }
+
+    if (network.passportDecoder === ZERO_ADDRESS) {
+      setEligibilityMethod(EligibilityMethod.NFT_GATING);
+    }
+  }, [network]);
+
+  useEffect(() => {
     (async () => {
       if (!pool || !publicClient || !network) {
         return;
@@ -418,19 +428,25 @@ export default function Configure() {
             </Dropdown.Toggle>
             <Dropdown.Menu>
               {network &&
-                network.tokens.map((token, i) => (
-                  <Dropdown.Item
-                    key={i}
-                    onClick={() => {
-                      setPoolConfigParameters({
-                        ...poolConfigParameters,
-                        allocationToken: token.name ?? "N/A",
-                      });
-                    }}
-                  >
-                    {token.name}
-                  </Dropdown.Item>
-                ))}
+                network.tokens.map((token, i) => {
+                  if (token.name === "ETHx") {
+                    return null;
+                  }
+
+                  return (
+                    <Dropdown.Item
+                      key={i}
+                      onClick={() => {
+                        setPoolConfigParameters({
+                          ...poolConfigParameters,
+                          allocationToken: token.name ?? "N/A",
+                        });
+                      }}
+                    >
+                      {token.name}
+                    </Dropdown.Item>
+                  );
+                })}
             </Dropdown.Menu>
           </Dropdown>
           <Dropdown>
@@ -471,15 +487,28 @@ export default function Configure() {
               {eligibilityMethod}
             </Dropdown.Toggle>
             <Dropdown.Menu>
+              {network && network.passportDecoder !== ZERO_ADDRESS && (
+                <Dropdown.Item
+                  onClick={() => {
+                    setEligibilityMethod(EligibilityMethod.PASSPORT);
+                    setPoolConfigParameters({
+                      ...poolConfigParameters,
+                      nftAddress: "",
+                      nftMintUrl: "",
+                    });
+                  }}
+                >
+                  {EligibilityMethod.PASSPORT}
+                </Dropdown.Item>
+              )}
               <Dropdown.Item
-                onClick={() => setEligibilityMethod(EligibilityMethod.PASSPORT)}
-              >
-                {EligibilityMethod.PASSPORT}
-              </Dropdown.Item>
-              <Dropdown.Item
-                onClick={() =>
-                  setEligibilityMethod(EligibilityMethod.NFT_GATING)
-                }
+                onClick={() => {
+                  setEligibilityMethod(EligibilityMethod.NFT_GATING);
+                  setPoolConfigParameters({
+                    ...poolConfigParameters,
+                    minPassportScore: "",
+                  });
+                }}
               >
                 {EligibilityMethod.NFT_GATING}
               </Dropdown.Item>
@@ -553,7 +582,8 @@ export default function Configure() {
               !!pool ||
               !poolConfigParameters.name ||
               (!poolConfigParameters.minPassportScore &&
-                !poolConfigParameters.nftAddress)
+                !poolConfigParameters.nftAddress) ||
+              (!!poolConfigParameters.nftAddress && !nftName)
             }
             onClick={handleCreatePool}
           >

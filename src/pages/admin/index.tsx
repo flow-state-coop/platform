@@ -39,7 +39,7 @@ export default function Index() {
     useState(false);
   const { openConnectModal } = useConnectModal();
   const { address, chain: connectedChain } = useAccount();
-  const { chains, switchChain } = useSwitchChain();
+  const { switchChain } = useSwitchChain();
   const {
     updateProfileId,
     updateProfileOwner,
@@ -76,15 +76,15 @@ export default function Index() {
                 variant="transparent"
                 className="d-flex justify-content-between align-items-center w-20 border border-2"
               >
-                {connectedChain?.name ?? chains[0].name}
+                {network?.name ?? networks[0].name}
               </Dropdown.Toggle>
               <Dropdown.Menu>
-                {chains.map((chain, i) => (
+                {networks.map((network, i) => (
                   <Dropdown.Item
                     key={i}
-                    onClick={() => switchChain({ chainId: chain.id })}
+                    onClick={() => switchChain({ chainId: network.id })}
                   >
-                    {chain.name}
+                    {network.name}
                   </Dropdown.Item>
                 ))}
               </Dropdown.Menu>
