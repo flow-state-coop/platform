@@ -113,6 +113,11 @@ const networks: Network[] = [
         icon: "/eth.svg",
       },
       {
+        name: "ARBx",
+        address: "0xB3EDb2F90fEc1Bf1F872a9ef143cfd614773Ad04",
+        icon: "/arb.svg",
+      },
+      {
         name: "DAIx",
         address: "0x521677A61D101A80cE0fB903b13cb485232774ee",
         icon: "/dai.svg",
