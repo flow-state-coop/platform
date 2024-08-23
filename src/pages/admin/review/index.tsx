@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { GetServerSideProps } from "next";
-import { Address } from "viem";
+import { Address, formatEther } from "viem";
 import { useAccount, useReadContract, useConfig } from "wagmi";
 import { writeContract, waitForTransactionReceipt } from "@wagmi/core";
 import { gql, useQuery } from "@apollo/client";
@@ -17,6 +17,7 @@ import Spinner from "react-bootstrap/Spinner";
 import CopyTooltip from "@/components/CopyTooltip";
 import useAdminParams from "@/hooks/adminParams";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
+import useFlowingAmount from "@/hooks/flowingAmount";
 import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";
 import { strategyAbi } from "@/lib/abi/strategy";
@@ -92,6 +93,21 @@ const RECIPIENTS_QUERY = gql`
   }
 `;
 
+const SF_ACCOUNT_QUERY = gql`
+  query SFAccountQuery($userAddress: String, $token: String) {
+    account(id: $userAddress) {
+      accountTokenSnapshots(where: { token: $token }) {
+        balanceUntilUpdatedAt
+        updatedAtTimestamp
+        totalNetFlowRate
+        token {
+          id
+        }
+      }
+    }
+  }
+`;
+
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
   const { req } = ctx;
 
@@ -114,8 +130,12 @@ export default function Review(props: ReviewProps) {
 
   const { address, chain: connectedChain } = useAccount();
   const { profileId, poolId, chainId } = useAdminParams();
-  const { areTransactionsLoading, completedTransactions, executeTransactions } =
-    useTransactionsQueue();
+  const {
+    areTransactionsLoading,
+    completedTransactions,
+    transactionError,
+    executeTransactions,
+  } = useTransactionsQueue();
   const { data: queryRes, loading } = useQuery(RECIPIENTS_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
@@ -140,6 +160,28 @@ export default function Review(props: ReviewProps) {
       : null;
   const network = networks.filter((network) => network.id === chainId)[0];
   const granteeRegistrationLink = `https://${hostName}/grantee/?poolid=${poolId}&chainid=${chainId}`;
+
+  const { data: superfluidQueryRes } = useQuery(SF_ACCOUNT_QUERY, {
+    client: getApolloClient("superfluid", chainId ?? 10),
+    variables: {
+      userAddress: address?.toLowerCase() ?? "0x",
+      token: allocationToken,
+    },
+    pollInterval: 10000,
+  });
+
+  const allocationTokenBalance = useFlowingAmount(
+    BigInt(
+      superfluidQueryRes?.account?.accountTokenSnapshots[0]
+        ?.balanceUntilUpdatedAt ?? 0,
+    ),
+    superfluidQueryRes?.account?.accountTokenSnapshots[0]?.updatedAtTimestamp ??
+      0,
+    BigInt(
+      superfluidQueryRes?.account?.accountTokenSnapshots[0]?.totalNetFlowRate ??
+        0,
+    ),
+  );
 
   useMemo(() => {
     if (!recipients || recipients.length === 0) {
@@ -499,15 +541,25 @@ export default function Review(props: ReviewProps) {
               </Stack>
             </Stack>
           )}
-          <Stack direction="horizontal" gap={1} className="mt-4">
+          <Stack
+            direction="horizontal"
+            gap={2}
+            className="align-items-start mt-4"
+          >
             <Image src="/info.svg" alt="info" width={24} />
-            <Card.Text className="m-0">
-              A small{" "}
-              {network?.tokens.find(
-                (token) => allocationToken === token.address.toLowerCase(),
-              )?.name ?? "allocation token"}{" "}
-              deposit transaction is required before adding grantees to the pool
-            </Card.Text>
+            <Stack direction="vertical">
+              <Card.Text className="m-0">
+                A small{" "}
+                {network?.tokens.find(
+                  (token) => allocationToken === token.address.toLowerCase(),
+                )?.name ?? "allocation token"}{" "}
+                deposit transaction is required before adding grantees to the
+                pool.
+              </Card.Text>
+              <Card.Text className="m-0">
+                Your Balance: {formatEther(allocationTokenBalance).slice(0, 8)}
+              </Card.Text>
+            </Stack>
           </Stack>
           <Button
             className="d-flex gap-2 align-items-center justify-content-center w-25 mt-2 text-light"
@@ -523,6 +575,11 @@ export default function Review(props: ReviewProps) {
               `Submit ${transactions.length > 0 ? "(" + transactions.length + ")" : ""}`
             )}
           </Button>
+          {transactionError && (
+            <Card.Text className="m-0 overflow-hidden text-danger text-break">
+              {transactionError}
+            </Card.Text>
+          )}
         </Stack>
       )}
     </Stack>
