@@ -111,6 +111,12 @@ export default function Configure() {
   const pool = queryRes?.pools[0] ?? null;
   const totalTransactions =
     eligibilityMethod === EligibilityMethod.PASSPORT ? 2 : 3;
+  const isNotAllowed =
+    !!pool ||
+    !poolConfigParameters.name ||
+    (!poolConfigParameters.minPassportScore &&
+      !poolConfigParameters.nftAddress) ||
+    (!!poolConfigParameters.nftAddress && !nftName);
 
   useEffect(() => {
     if (!network) {
@@ -578,13 +584,7 @@ export default function Configure() {
           )}
           <Button
             className="d-flex gap-2 justify-content-center align-items-center w-25 mt-4 text-light"
-            disabled={
-              !!pool ||
-              !poolConfigParameters.name ||
-              (!poolConfigParameters.minPassportScore &&
-                !poolConfigParameters.nftAddress) ||
-              (!!poolConfigParameters.nftAddress && !nftName)
-            }
+            disabled={isNotAllowed}
             onClick={handleCreatePool}
           >
             {areTransactionsLoading ? (
@@ -592,6 +592,8 @@ export default function Configure() {
                 <Spinner size="sm" />
                 {transactionsCompleted + 1}/{totalTransactions}
               </>
+            ) : isNotAllowed ? (
+              "Launch Pool"
             ) : (
               `Launch Pool (${totalTransactions})`
             )}

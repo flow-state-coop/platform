@@ -26,7 +26,7 @@ export default function Passport(props: PassportProps) {
   } = props;
 
   return (
-    <Card className="bg-light rounded-0 border-0 border-bottom border-secondary">
+    <Card className="bg-light rounded-0 border-0 border-bottom border-info">
       <Button
         variant="transparent"
         className="d-flex align-items-center gap-2 p-3 border-0 rounded-0 shadow-none"

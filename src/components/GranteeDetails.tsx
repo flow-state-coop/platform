@@ -136,7 +136,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
       <Stack
         direction="horizontal"
         gap={1}
-        className="align-items-center text-secondary fs-5 p-2"
+        className="align-items-center text-info fs-5 p-2"
       >
         Details
         <Button

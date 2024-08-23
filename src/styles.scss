@@ -66,6 +66,11 @@ input[type="number"] {
   top: 8px !important;
 }
 
+.btn.btn-primary[disabled] {
+  background-color: $info;
+  border-color: $info;
+}
+
 .cursor-pointer {
   cursor: pointer;
 }

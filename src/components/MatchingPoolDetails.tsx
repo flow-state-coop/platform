@@ -126,7 +126,7 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
           </Card.Body>
         </Card>
       </Stack>
-      <Stack direction="horizontal" className="text-secondary fs-5 p-2">
+      <Stack direction="horizontal" className="text-info fs-5 p-2">
         Details
         <Button
           variant="link"

@@ -105,8 +105,8 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       refetchInterval: 10000,
     },
   });
-  const ethersProvider = useEthersProvider();
-  const ethersSigner = useEthersSigner();
+  const ethersProvider = useEthersProvider({ chainId: network?.id });
+  const ethersSigner = useEthersSigner({ chainId: network?.id });
   const userAccountSnapshot =
     userAccountSnapshots?.find(
       (snapshot) =>

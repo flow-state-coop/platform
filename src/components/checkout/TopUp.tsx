@@ -55,7 +55,7 @@ export default function TopUp(props: TopUpProps) {
   } = props;
 
   return (
-    <Card className="bg-light rounded-0 border-0 border-bottom border-secondary">
+    <Card className="bg-light rounded-0 border-0 border-bottom border-info">
       <Button
         variant="transparent"
         className="d-flex align-items-center gap-2 p-3 border-0 rounded-0 shadow-none"
@@ -146,7 +146,7 @@ export default function TopUp(props: TopUpProps) {
                 variant="link"
                 href={`https://ramp.network/buy?defaultAsset=${network?.onRampName ?? ""}`}
                 target="_blank"
-                className="d-flex justify-content-center align-items-center gap-1 rounded-3 text-light fs-6"
+                className="d-flex justify-content-center align-items-center gap-1 bg-primary rounded-3 text-light fs-6"
               >
                 <Image
                   src="/credit-card.svg"

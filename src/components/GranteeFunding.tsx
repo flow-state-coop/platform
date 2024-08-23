@@ -145,8 +145,8 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       refetchInterval: 10000,
     },
   });
-  const ethersProvider = useEthersProvider();
-  const ethersSigner = useEthersSigner();
+  const ethersProvider = useEthersProvider({ chainId: network?.id });
+  const ethersSigner = useEthersSigner({ chainId: network?.id });
   const userAccountSnapshot =
     userAccountSnapshots?.find(
       (snapshot) =>
@@ -417,6 +417,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
         const allocationTokenSymbol = await allocationSuperToken?.symbol({
           providerOrSigner: ethersProvider,
         });
+
         setUnderlyingTokenAllowance(underlyingTokenAllowance ?? "0");
         setAllocationTokenSymbol(allocationTokenSymbol ?? "");
       }

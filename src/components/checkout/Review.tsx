@@ -275,7 +275,7 @@ export default function Review(props: ReviewProps) {
             </Card.Text>
           </Stack>
           <Stack direction="horizontal">
-            <Badge className="d-flex justify-content-around align-items-center w-50 bg-white text-secondary py-3 rounded-3 border-0 text-center fs-6">
+            <Badge className="d-flex justify-content-around align-items-center w-50 bg-white text-info py-3 rounded-3 border-0 text-center fs-6">
               {truncateStr(address ?? "", 12)}
               <CopyTooltip
                 contentClick="Address copied"
@@ -293,7 +293,7 @@ export default function Review(props: ReviewProps) {
               width={30}
               height={30}
             />
-            <Badge className="d-flex justify-content-around align-items-center w-50 bg-white px-2 py-3 rounded-3 border-0 text-center text-secondary fs-6">
+            <Badge className="d-flex justify-content-around align-items-center w-50 bg-white px-2 py-3 rounded-3 border-0 text-center text-info fs-6">
               {truncateStr(receiver, 12)}
               <CopyTooltip
                 contentClick="Address copied"
