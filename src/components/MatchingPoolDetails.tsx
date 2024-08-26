@@ -84,12 +84,12 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
 
   return (
     <Stack direction="vertical" className="bg-light rounded-4 p-2 pt-0">
-      <Stack direction="horizontal" gap={2} className="align-items-start mt-3">
+      <Stack direction="horizontal" gap={2} className="align-items-center mt-3">
         <Image
           src="/logo.png"
           alt="SQF"
-          width={96}
-          height={96}
+          width={123}
+          height={50}
           className="ms-2 rounded-4"
         />
         <Card className="bg-transparent border-0 ms-3">

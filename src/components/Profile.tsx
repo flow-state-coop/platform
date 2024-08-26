@@ -224,7 +224,7 @@ export default function Profile() {
         onClick={handleShowProfile}
         className="d-xl-none"
       >
-        <Image width={28} src="/account-circle.svg" alt="Account" />
+        <Image width={32} height={32} src="/account-circle.svg" alt="Account" />
       </Button>
       <Offcanvas
         show={showProfile}
