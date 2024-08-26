@@ -22,6 +22,7 @@ import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { erc20Abi } from "@/lib/abi/erc20";
+import { ZERO_ADDRESS } from "@/lib/constants";
 
 type ReviewProps = {
   hostName: string;
@@ -66,7 +67,7 @@ enum NewStatus {
 }
 
 const RECIPIENTS_QUERY = gql`
-  query RecipientsQuery($chainId: Int, $poolId: String, $address: String) {
+  query RecipientsQuery($chainId: Int!, $poolId: String!, $address: String!) {
     recipients(
       filter: {
         chainId: { equalTo: $chainId }
@@ -85,10 +86,10 @@ const RECIPIENTS_QUERY = gql`
       metadata
       metadataCid
       status
-      poolChain {
-        strategyAddress
-        allocationToken
-      }
+    }
+    pool(chainId: $chainId, id: $poolId) {
+      allocationToken
+      strategyAddress
     }
   }
 `;
@@ -148,18 +149,22 @@ export default function Review(props: ReviewProps) {
   });
   const { data: initialSuperAppBalance } = useReadContract({
     abi: strategyAbi,
-    address: queryRes?.recipients[0]?.poolChain.strategyAddress,
+    address: queryRes?.pool?.strategyAddress,
     functionName: "initialSuperAppBalance",
   });
   const wagmiConfig = useConfig();
 
   const recipients = queryRes?.recipients ?? null;
-  const allocationToken =
-    recipients && recipients.length > 0
-      ? (recipients[0].poolChain.allocationToken as Address)
-      : null;
+  const pool = queryRes?.pool ?? null;
+  const allocationToken = pool ? (pool.allocationToken as Address) : null;
   const network = networks.filter((network) => network.id === chainId)[0];
   const granteeRegistrationLink = `https://${hostName}/grantee/?poolid=${poolId}&chainid=${chainId}`;
+  const allocationTokenSymbol =
+    network?.tokens.find(
+      (token) => allocationToken === token.address.toLowerCase(),
+    )?.name ?? "allocation token";
+  const isAllocationTokenPureSuperToken =
+    allocationTokenSymbol !== "ETHx" && allocationToken === ZERO_ADDRESS;
 
   const { data: superfluidQueryRes } = useQuery(SF_ACCOUNT_QUERY, {
     client: getApolloClient("superfluid", chainId ?? 10),
@@ -184,11 +189,11 @@ export default function Review(props: ReviewProps) {
   );
 
   useMemo(() => {
-    if (!recipients || recipients.length === 0) {
+    if (!pool) {
       return;
     }
 
-    const strategyAddress = recipients[0].poolChain.strategyAddress as Address;
+    const strategyAddress = pool.strategyAddress as Address;
     const transactions = [];
 
     const transferInitialSuperappBalance = async () => {
@@ -265,7 +270,7 @@ export default function Review(props: ReviewProps) {
     initialSuperAppBalance,
     allocationToken,
     network,
-    recipients,
+    pool,
     wagmiConfig,
   ]);
 
@@ -359,7 +364,7 @@ export default function Review(props: ReviewProps) {
                 </tr>
               </thead>
               <tbody>
-                {queryRes?.recipients.map((recipient: Recipient, i: number) => (
+                {recipients?.map((recipient: Recipient, i: number) => (
                   <tr key={i}>
                     <td className="w-33">{recipient.recipientAddress}</td>
                     <td className="w-33">{recipient.metadata.title}</td>
@@ -549,15 +554,36 @@ export default function Review(props: ReviewProps) {
             <Image src="/info.svg" alt="info" width={24} />
             <Stack direction="vertical">
               <Card.Text className="m-0">
-                A small{" "}
-                {network?.tokens.find(
-                  (token) => allocationToken === token.address.toLowerCase(),
-                )?.name ?? "allocation token"}{" "}
-                deposit transaction is required before adding grantees to the
-                pool.
+                A small {allocationTokenSymbol} deposit transaction is required
+                before adding grantees to the pool.
               </Card.Text>
               <Card.Text className="m-0">
-                Your Balance: {formatEther(allocationTokenBalance).slice(0, 8)}
+                Your Balance:{" "}
+                {parseFloat(
+                  Number(formatEther(allocationTokenBalance)).toFixed(6),
+                )}
+              </Card.Text>
+              <Card.Text>
+                <Card.Link
+                  href={`https://jumper.exchange/?fromChain=${chainId}&fromToken=0x0000000000000000000000000000000000000000&toChain=${chainId}&toToken=${allocationToken}`}
+                  target="_blank"
+                  className="text-primary"
+                >
+                  Swap
+                </Card.Link>{" "}
+                {!isAllocationTokenPureSuperToken && (
+                  <>
+                    or{" "}
+                    <Card.Link
+                      href="https://app.superfluid.finance/wrap?upgrade"
+                      target="_blank"
+                      className="text-primary"
+                    >
+                      Wrap
+                    </Card.Link>
+                  </>
+                )}{" "}
+                to {allocationTokenSymbol}
               </Card.Text>
             </Stack>
           </Stack>
