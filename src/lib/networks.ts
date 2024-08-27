@@ -158,6 +158,11 @@ const networks: Network[] = [
         address: "0xD6FAF98BeFA647403cc56bDB598690660D5257d2",
         icon: "/dai.svg",
       },
+      {
+        name: "F(S)",
+        address: "0xf74EB650D8A806b92618d9E90A7E157C255c6406",
+        icon: "/optimism.svg",
+      },
     ],
   },
 ];
