@@ -16,11 +16,19 @@ export type NFTGatingProps = {
   requiredNftAddress: Address;
   isEligible: boolean;
   nftMintUrl: string | null;
+  isPureSuperToken: boolean;
 };
 
 export default function NFTGating(props: NFTGatingProps) {
-  const { step, setStep, network, requiredNftAddress, isEligible, nftMintUrl } =
-    props;
+  const {
+    step,
+    setStep,
+    network,
+    requiredNftAddress,
+    isEligible,
+    nftMintUrl,
+    isPureSuperToken,
+  } = props;
 
   return (
     <Card className="bg-light rounded-0 border-0 border-bottom border-info">
@@ -57,7 +65,9 @@ export default function NFTGating(props: NFTGatingProps) {
               className="m-auto"
             />
           ) : (
-            <Card.Text className="m-auto text-light">4</Card.Text>
+            <Card.Text className="m-auto text-light">
+              {isPureSuperToken ? 3 : 4}
+            </Card.Text>
           )}
         </Badge>
         {Step.ELIGIBILITY}

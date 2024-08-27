@@ -42,6 +42,7 @@ export type ReviewProps = {
   liquidationEstimate: number | null;
   matchingTokenInfo: Token;
   allocationTokenInfo: Token;
+  isPureSuperToken: boolean;
   superTokenBalance: bigint;
   underlyingTokenBalance?: {
     value: bigint;
@@ -84,6 +85,7 @@ export default function Review(props: ReviewProps) {
     matchingTokenInfo,
     allocationTokenInfo,
     isFundingMatchingPool,
+    isPureSuperToken,
     superTokenBalance,
     underlyingTokenBalance,
   } = props;
@@ -156,7 +158,11 @@ export default function Review(props: ReviewProps) {
             />
           ) : (
             <Card.Text className="m-auto text-light">
-              {isFundingMatchingPool ? 4 : 5}
+              {isFundingMatchingPool && isPureSuperToken
+                ? 3
+                : isFundingMatchingPool || isPureSuperToken
+                  ? 4
+                  : 5}
             </Card.Text>
           )}
         </Badge>
@@ -312,17 +318,18 @@ export default function Review(props: ReviewProps) {
                 !isFundingMatchingPool ? "rounded-top-4" : "rounded-4"
               }`}
             >
-              <Card.Text className="m-0 fs-6">New Stream</Card.Text>
+              <Card.Text className="w-33 m-0 fs-6">New Stream</Card.Text>
               <Stack
                 direction="horizontal"
                 gap={1}
-                className="justify-content-end w-50 ms-2 p-2"
+                className="justify-content-end w-50 p-2"
               >
                 <Image
                   src={allocationTokenInfo.icon}
                   alt="token"
                   width={22}
                   height={22}
+                  className="mx-1"
                 />
                 <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
                   {formatNumberWithCommas(
@@ -340,7 +347,7 @@ export default function Review(props: ReviewProps) {
                   )}
                 </Badge>
               </Stack>
-              <Card.Text className="m-0 ms-1 fs-6">/month</Card.Text>
+              <Card.Text className="w-20 m-0 ms-1 fs-6">/month</Card.Text>
             </Stack>
             {!isFundingMatchingPool && (
               <>
@@ -348,7 +355,7 @@ export default function Review(props: ReviewProps) {
                   direction="horizontal"
                   className="bg-white border-top border-secondary p-2"
                 >
-                  <Card.Text className="m-0 fs-6">Est. Matching</Card.Text>
+                  <Card.Text className="w-33 m-0 fs-6">Est. Matching</Card.Text>
                   <Stack
                     direction="horizontal"
                     gap={1}
@@ -357,8 +364,8 @@ export default function Review(props: ReviewProps) {
                     <Image
                       src={matchingTokenInfo.icon}
                       alt="matching token"
-                      width={20}
-                      height={20}
+                      width={22}
+                      height={22}
                       className="mx-1"
                     />
                     <Badge className="bg-secondary w-75 ps-2 pe-2 py-2 fs-6 text-start">
@@ -385,7 +392,7 @@ export default function Review(props: ReviewProps) {
                           : 0}
                     </Badge>
                   </Stack>
-                  <Card.Text className="m-0 ms-1 fs-6">/month</Card.Text>
+                  <Card.Text className="w-20 m-0 ms-1 fs-6">/month</Card.Text>
                 </Stack>
               </>
             )}

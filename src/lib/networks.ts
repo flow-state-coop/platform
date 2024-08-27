@@ -154,7 +154,7 @@ const networks: Network[] = [
         icon: "/eth.svg",
       },
       {
-        name: "DAIx",
+        name: "fDAIx",
         address: "0xD6FAF98BeFA647403cc56bDB598690660D5257d2",
         icon: "/dai.svg",
       },

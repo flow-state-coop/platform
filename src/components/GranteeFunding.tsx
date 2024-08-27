@@ -136,13 +136,16 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       refetchInterval: 10000,
     },
   });
+  const isPureSuperToken =
+    allocationTokenSymbol !== "ETHx" &&
+    allocationSuperToken?.underlyingToken?.address === ZERO_ADDRESS;
   const { data: underlyingTokenBalance } = useBalance({
     address,
-    token: !(allocationSuperToken as NativeAssetSuperToken)?.nativeTokenSymbol
-      ? allocationTokenInfo.address
-      : void 0,
+    token:
+      (allocationSuperToken?.underlyingToken?.address as Address) ?? void 0,
     query: {
       refetchInterval: 10000,
+      enabled: !isPureSuperToken,
     },
   });
   const ethersProvider = useEthersProvider({ chainId: network?.id });
@@ -167,14 +170,15 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       ? true
       : false;
   const hasSufficientTokenBalance =
-    underlyingTokenBalance &&
-    underlyingTokenBalance.value + superTokenBalance > BigInt(0)
+    (underlyingTokenBalance &&
+      underlyingTokenBalance.value + superTokenBalance > BigInt(0)) ||
+    (isPureSuperToken && superTokenBalance > BigInt(0))
       ? true
       : false;
   const hasSuggestedTokenBalance =
-    underlyingTokenBalance &&
-    (underlyingTokenBalance.value > suggestedTokenBalance ||
-      superTokenBalance > suggestedTokenBalance)
+    (underlyingTokenBalance &&
+      underlyingTokenBalance.value > suggestedTokenBalance) ||
+    superTokenBalance > suggestedTokenBalance
       ? true
       : false;
   const flowRateToReceiver = userOutflow?.currentFlowRate ?? "0";
@@ -303,9 +307,6 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     const underlyingToken = allocationSuperToken.underlyingToken;
     const isWrapperSuperToken =
       underlyingToken && underlyingToken.address !== ZERO_ADDRESS;
-    const isPureSuperToken =
-      allocationTokenSymbol !== "ETHx" &&
-      underlyingToken?.address === ZERO_ADDRESS;
     const approvalTransactionsCount =
       isWrapperSuperToken &&
       wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0)
@@ -376,6 +377,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     underlyingTokenAllowance,
     allocationTokenSymbol,
     sfFramework,
+    isPureSuperToken,
     ethersProvider,
     ethersSigner,
     editFlow,
@@ -526,19 +528,21 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               ethBalance={ethBalance}
               underlyingTokenBalance={underlyingTokenBalance}
               network={network}
-              allocationTokenInfo={allocationTokenInfo}
+              superTokenInfo={allocationTokenInfo}
             />
-            <Wrap
-              step={step}
-              setStep={setStep}
-              wrapAmount={wrapAmount}
-              setWrapAmount={setWrapAmount}
-              token={allocationTokenInfo}
-              isFundingMatchingPool={false}
-              isEligible={isEligible}
-              superTokenBalance={superTokenBalance}
-              underlyingTokenBalance={underlyingTokenBalance}
-            />
+            {!isPureSuperToken && (
+              <Wrap
+                step={step}
+                setStep={setStep}
+                wrapAmount={wrapAmount}
+                setWrapAmount={setWrapAmount}
+                token={allocationTokenInfo}
+                isFundingMatchingPool={false}
+                isEligible={isEligible}
+                superTokenBalance={superTokenBalance}
+                underlyingTokenBalance={underlyingTokenBalance}
+              />
+            )}
             {requiredNftAddress ? (
               <NFTGating
                 step={step}
@@ -547,6 +551,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
                 requiredNftAddress={requiredNftAddress}
                 nftMintUrl={nftMintUrl}
                 isEligible={isEligible}
+                isPureSuperToken={isPureSuperToken}
               />
             ) : (
               <Passport
@@ -560,6 +565,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
                 }
                 setShowMintingInstructions={setShowMintingInstructions}
                 refetchPassportScore={refetchPassportScore}
+                isPureSuperToken={isPureSuperToken}
               />
             )}
             <Review
@@ -581,6 +587,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               wrapAmount={wrapAmount}
               timeInterval={timeInterval}
               isFundingMatchingPool={false}
+              isPureSuperToken={isPureSuperToken}
               superTokenBalance={superTokenBalance}
               underlyingTokenBalance={underlyingTokenBalance}
             />

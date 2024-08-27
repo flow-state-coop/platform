@@ -61,6 +61,7 @@ export default function EditStream(props: EditStreamProps) {
 
   const isDeletingStream =
     BigInt(flowRateToReceiver) > 0 && BigInt(newFlowRate) === BigInt(0);
+  const isNativeSuperToken = token.name === "ETHx";
 
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
@@ -69,7 +70,7 @@ export default function EditStream(props: EditStreamProps) {
     if (isNumber(valueWithoutCommas)) {
       setAmountPerTimeInterval(
         `${
-          isFundingMatchingPool && parseFloat(valueWithoutCommas) < 1000
+          isNativeSuperToken && parseFloat(valueWithoutCommas) < 1000
             ? value
             : formatNumberWithCommas(parseFloat(valueWithoutCommas))
         }`,
@@ -77,7 +78,7 @@ export default function EditStream(props: EditStreamProps) {
     } else if (value === "") {
       setAmountPerTimeInterval("");
     } else if (value === ".") {
-      setAmountPerTimeInterval(isFundingMatchingPool ? "0." : "0");
+      setAmountPerTimeInterval(isNativeSuperToken ? "0." : "0");
     }
   };
 
@@ -157,10 +158,10 @@ export default function EditStream(props: EditStreamProps) {
                 value={amountPerTimeInterval}
                 onChange={handleAmountSelection}
                 className={`bg-white border-0 rounded-3 ${
-                  isFundingMatchingPool ? "" : "rounded-end-0"
+                  isNativeSuperToken ? "" : "rounded-end-0"
                 } shadow-none`}
               />
-              {!isFundingMatchingPool && (
+              {!isNativeSuperToken && (
                 <>
                   <Button
                     disabled={!address || !flowRateToReceiver}

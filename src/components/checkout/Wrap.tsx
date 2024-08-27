@@ -184,7 +184,11 @@ export default function Wrap(props: WrapProps) {
                 underlyingTokenBalance.decimals,
               ),
             ) < Number(wrapAmount.replace(/,/g, "")) && (
-              <Alert variant="danger" className="m-0">
+              <Alert
+                variant="danger"
+                className="m-0"
+                style={{ pointerEvents: "none" }}
+              >
                 Insufficient Balance
               </Alert>
             )}

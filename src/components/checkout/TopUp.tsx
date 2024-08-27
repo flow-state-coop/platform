@@ -28,10 +28,10 @@ export type TopUpProps = {
   hasSufficientEthBalance: boolean;
   hasSufficientTokenBalance: boolean;
   hasSuggestedTokenBalance: boolean;
-  ethBalance?: { value: bigint; formatted: string };
-  underlyingTokenBalance?: { value: bigint; formatted: string };
+  ethBalance?: { value: bigint; formatted: string; symbol: string };
+  underlyingTokenBalance?: { value: bigint; formatted: string; symbol: string };
   network?: Network;
-  allocationTokenInfo: Token;
+  superTokenInfo: Token;
 };
 
 export default function TopUp(props: TopUpProps) {
@@ -51,8 +51,10 @@ export default function TopUp(props: TopUpProps) {
     ethBalance,
     underlyingTokenBalance,
     network,
-    allocationTokenInfo,
+    superTokenInfo,
   } = props;
+
+  const isUnderlyingTokenNative = underlyingTokenBalance?.symbol === "ETH";
 
   return (
     <Card className="bg-light rounded-0 border-0 border-bottom border-info">
@@ -101,132 +103,94 @@ export default function TopUp(props: TopUpProps) {
       </Button>
       <Accordion.Collapse eventKey={Step.TOP_UP} className="p-3 pt-0">
         <>
-          {isFundingMatchingPool ? (
+          <Stack
+            direction="horizontal"
+            gap={3}
+            className="justify-content-center"
+          >
             <Stack
               direction="vertical"
               gap={3}
-              className="align-items-center w-50 px-2 py-3 rounded-3 m-auto border border-gray"
+              className="align-items-center flex-grow-0 w-50 px-2 py-3 rounded-3 border border-gray"
             >
-              <Card.Text className="m-0 fs-5">ETH:</Card.Text>
+              <Card.Text className="m-0 fs-5">
+                {ethBalance?.symbol ?? "ETH"}:
+              </Card.Text>
               <Card.Text
                 className={`d-flex align-items-center gap-1 m-0 fs-4 ${
-                  !ethBalance || ethBalance.value === BigInt(0)
-                    ? "text-danger"
-                    : !hasSuggestedTokenBalance
-                      ? "text-warning"
-                      : "text-dark"
+                  hasSufficientEthBalance ? "" : "text-danger"
                 }`}
               >
                 {ethBalance
                   ? formatNumberWithCommas(
-                      parseFloat(
-                        formatEther(ethBalance.value + superTokenBalance).slice(
-                          0,
-                          8,
-                        ),
-                      ),
+                      parseFloat(ethBalance.formatted.slice(0, 8)),
                     )
                   : "0"}
-                {hasSuggestedTokenBalance && (
+                {hasSufficientEthBalance && (
                   <Image
                     src="/success.svg"
                     alt="success"
-                    width={28}
-                    height={28}
+                    width={18}
+                    height={18}
                   />
                 )}
               </Card.Text>
               <Card.Text as="small" className="m-0">
-                Suggested{" "}
-                {formatNumberWithCommas(
-                  parseFloat(roundWeiAmount(suggestedTokenBalance, 6)),
-                )}
+                Suggested {minEthBalance}
               </Card.Text>
               <Button
-                variant="link"
+                className="d-flex justify-content-center align-items-center gap-1 w-100 text-light rounded-3 fs-6"
                 href={`https://ramp.network/buy?defaultAsset=${network?.onRampName ?? ""}`}
                 target="_blank"
-                className="d-flex justify-content-center align-items-center gap-1 bg-primary rounded-3 text-light fs-6"
               >
                 <Image
                   src="/credit-card.svg"
-                  alt="card"
                   width={24}
                   height={24}
+                  alt="card"
                 />
-                Buy ETH
+                <Card.Text className="m-0">
+                  Buy {ethBalance?.symbol ?? "ETH"}
+                </Card.Text>
               </Button>
             </Stack>
-          ) : (
-            <Stack direction="horizontal" gap={3}>
-              <Stack
-                direction="vertical"
-                gap={3}
-                className="align-items-center w-50 px-2 py-3 rounded-3 border border-gray"
-              >
-                <Card.Text className="m-0 fs-5">ETH:</Card.Text>
-                <Card.Text
-                  className={`d-flex align-items-center gap-1 m-0 fs-4 ${
-                    hasSufficientEthBalance ? "" : "text-danger"
-                  }`}
-                >
-                  {ethBalance
-                    ? formatNumberWithCommas(
-                        parseFloat(ethBalance.formatted.slice(0, 8)),
-                      )
-                    : "0"}
-                  {hasSufficientEthBalance && (
-                    <Image
-                      src="/success.svg"
-                      alt="success"
-                      width={18}
-                      height={18}
-                    />
-                  )}
-                </Card.Text>
-                <Card.Text as="small" className="m-0">
-                  Suggested {minEthBalance}
-                </Card.Text>
-                <Button
-                  className="d-flex justify-content-center align-items-center gap-1 w-100 text-light rounded-3 fs-6"
-                  href={`https://ramp.network/buy?defaultAsset=${network?.onRampName ?? ""}`}
-                  target="_blank"
-                >
-                  <Image
-                    src="/credit-card.svg"
-                    width={24}
-                    height={24}
-                    alt="card"
-                  />
-                  <Card.Text className="m-0">Buy ETH</Card.Text>
-                </Button>
-              </Stack>
+            {!isUnderlyingTokenNative && (
               <Stack
                 direction="vertical"
                 gap={3}
                 className="align-items-center w-50 px-2 py-3 rounded-3 fs-6 border border-gray"
               >
-                <Card.Text className="m-0 fs-5">DAI + DAIx:</Card.Text>
+                {!underlyingTokenBalance ? (
+                  <Card.Text className="m-0 fs-5">
+                    {superTokenInfo.name}:
+                  </Card.Text>
+                ) : (
+                  <Card.Text className="m-0 fs-5">
+                    {underlyingTokenBalance?.symbol ?? "N/A"} +{" "}
+                    {superTokenInfo.name}:
+                  </Card.Text>
+                )}
                 <Card.Text
-                  className={`d-flex align-items-center gap-1 m-0 fs-4 text-break ${
+                  className={`d-flex align-items-center gap-1 m-0 fs-4 text-truncate ${
                     hasSuggestedTokenBalance
                       ? ""
-                      : !underlyingTokenBalance ||
-                          underlyingTokenBalance.value + superTokenBalance ===
-                            BigInt(0)
+                      : (underlyingTokenBalance &&
+                            underlyingTokenBalance.value + superTokenBalance ===
+                              BigInt(0)) ||
+                          (!underlyingTokenBalance &&
+                            superTokenBalance === BigInt(0))
                         ? "text-danger"
                         : "text-warning"
                   }`}
                 >
-                  {underlyingTokenBalance
-                    ? formatNumberWithCommas(
-                        parseFloat(
-                          formatEther(
-                            underlyingTokenBalance.value + superTokenBalance,
-                          ).slice(0, 8),
-                        ),
-                      )
-                    : "0"}
+                  {formatNumberWithCommas(
+                    parseFloat(
+                      formatEther(
+                        (underlyingTokenBalance?.value ?? BigInt(0)) +
+                          superTokenBalance,
+                      ).slice(0, 8),
+                    ),
+                  )}
                   {hasSuggestedTokenBalance && (
                     <Image
                       src="/success.svg"
@@ -244,17 +208,17 @@ export default function TopUp(props: TopUpProps) {
                 </Card.Text>
                 <Button
                   variant="link"
-                  href={`https://jumper.exchange/?fromChain=${network?.id ?? ""}&fromToken=0x0000000000000000000000000000000000000000&toChain=${network?.id ?? ""}&toToken=${allocationTokenInfo.address}`}
+                  href={`https://jumper.exchange/?fromChain=${network?.id ?? ""}&fromToken=0x0000000000000000000000000000000000000000&toChain=${network?.id ?? ""}&toToken=${superTokenInfo.address}`}
                   target="_blank"
                   rel="noreferrer"
                   className="d-flex justify-content-center align-items-center w-100 gap-1 bg-primary text-decoration-none rounded-3 text-light fs-6"
                 >
                   <Image src="/swap.svg" alt="swap" width={16} height={16} />
-                  Get DAIx
+                  Get {superTokenInfo.name}
                 </Button>
               </Stack>
-            </Stack>
-          )}
+            )}
+          </Stack>
           <Button
             variant="transparent"
             className="mt-4 text-dark"
@@ -264,13 +228,7 @@ export default function TopUp(props: TopUpProps) {
           </Button>
           <Button
             className="w-50 mt-4 py-1 rounded-3 float-end text-light"
-            disabled={
-              (!isFundingMatchingPool &&
-                (!hasSufficientEthBalance || !hasSufficientTokenBalance)) ||
-              (isFundingMatchingPool &&
-                (!ethBalance ||
-                  ethBalance.value + superTokenBalance === BigInt(0)))
-            }
+            disabled={!hasSufficientEthBalance || !hasSufficientTokenBalance}
             onClick={() =>
               setStep(
                 wrapAmount ||

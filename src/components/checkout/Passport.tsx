@@ -13,6 +13,7 @@ export type PassportProps = {
   minPassportScore: number;
   setShowMintingInstructions: (show: boolean) => void;
   refetchPassportScore: (args: { throwOnError: boolean }) => void;
+  isPureSuperToken: boolean;
 };
 
 export default function Passport(props: PassportProps) {
@@ -23,6 +24,7 @@ export default function Passport(props: PassportProps) {
     minPassportScore,
     setShowMintingInstructions,
     refetchPassportScore,
+    isPureSuperToken,
   } = props;
 
   return (
@@ -60,7 +62,9 @@ export default function Passport(props: PassportProps) {
               className="m-auto"
             />
           ) : (
-            <Card.Text className="m-auto text-light">4</Card.Text>
+            <Card.Text className="m-auto text-light">
+              {isPureSuperToken ? 3 : 4}
+            </Card.Text>
           )}
         </Badge>
         Mint Gitcoin Passport

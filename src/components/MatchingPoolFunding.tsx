@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { parseEther, formatEther } from "viem";
+import { Address, parseEther, formatEther } from "viem";
 import { useAccount, useBalance } from "wagmi";
 import dayjs from "dayjs";
 import {
@@ -96,13 +96,15 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       refetchInterval: 10000,
     },
   });
+  const isPureSuperToken =
+    matchingTokenSymbol !== "ETHx" &&
+    matchingSuperToken?.underlyingToken?.address === ZERO_ADDRESS;
   const { data: underlyingTokenBalance } = useBalance({
     address,
-    token: !(matchingSuperToken as NativeAssetSuperToken)?.nativeTokenSymbol
-      ? matchingTokenInfo.address
-      : void 0,
+    token: (matchingSuperToken?.underlyingToken?.address as Address) ?? void 0,
     query: {
       refetchInterval: 10000,
+      enabled: !isPureSuperToken,
     },
   });
   const ethersProvider = useEthersProvider({ chainId: network?.id });
@@ -215,9 +217,6 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     const underlyingToken = matchingSuperToken.underlyingToken;
     const isWrapperSuperToken =
       underlyingToken && underlyingToken.address !== ZERO_ADDRESS;
-    const isPureSuperToken =
-      matchingTokenSymbol !== "ETHx" &&
-      underlyingToken?.address === ZERO_ADDRESS;
     const approvalTransactionsCount =
       isWrapperSuperToken &&
       wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0)
@@ -288,6 +287,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     sfFramework,
     ethersProvider,
     ethersSigner,
+    isPureSuperToken,
   ]);
 
   useEffect(() => {
@@ -423,18 +423,20 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             ethBalance={ethBalance}
             underlyingTokenBalance={underlyingTokenBalance}
             network={network}
-            allocationTokenInfo={matchingTokenInfo}
+            superTokenInfo={matchingTokenInfo}
           />
-          <Wrap
-            step={step}
-            setStep={setStep}
-            wrapAmount={wrapAmount}
-            setWrapAmount={setWrapAmount}
-            token={matchingTokenInfo}
-            isFundingMatchingPool={true}
-            superTokenBalance={superTokenBalance}
-            underlyingTokenBalance={underlyingTokenBalance}
-          />
+          {!isPureSuperToken && (
+            <Wrap
+              step={step}
+              setStep={setStep}
+              wrapAmount={wrapAmount}
+              setWrapAmount={setWrapAmount}
+              token={matchingTokenInfo}
+              isFundingMatchingPool={true}
+              superTokenBalance={superTokenBalance}
+              underlyingTokenBalance={underlyingTokenBalance}
+            />
+          )}
           <Review
             step={step}
             setStep={(step) => setStep(step)}
@@ -454,6 +456,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             wrapAmount={wrapAmount}
             timeInterval={timeInterval}
             isFundingMatchingPool={true}
+            isPureSuperToken={isPureSuperToken}
             superTokenBalance={superTokenBalance}
             underlyingTokenBalance={underlyingTokenBalance}
           />
