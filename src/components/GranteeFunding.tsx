@@ -137,8 +137,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     },
   });
   const isPureSuperToken =
-    allocationTokenSymbol !== "ETHx" &&
-    allocationSuperToken?.underlyingToken?.address === ZERO_ADDRESS;
+    allocationTokenSymbol !== "ETHx" && !allocationSuperToken?.underlyingToken;
   const { data: underlyingTokenBalance } = useBalance({
     address,
     token:
@@ -170,13 +169,15 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       ? true
       : false;
   const hasSufficientTokenBalance =
-    (underlyingTokenBalance &&
+    (!isPureSuperToken &&
+      underlyingTokenBalance &&
       underlyingTokenBalance.value + superTokenBalance > BigInt(0)) ||
     (isPureSuperToken && superTokenBalance > BigInt(0))
       ? true
       : false;
   const hasSuggestedTokenBalance =
-    (underlyingTokenBalance &&
+    (!isPureSuperToken &&
+      underlyingTokenBalance &&
       underlyingTokenBalance.value > suggestedTokenBalance) ||
     superTokenBalance > suggestedTokenBalance
       ? true
@@ -526,7 +527,9 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               hasSufficientTokenBalance={hasSufficientTokenBalance}
               hasSuggestedTokenBalance={hasSuggestedTokenBalance}
               ethBalance={ethBalance}
-              underlyingTokenBalance={underlyingTokenBalance}
+              underlyingTokenBalance={
+                !isPureSuperToken ? underlyingTokenBalance : void 0
+              }
               network={network}
               superTokenInfo={allocationTokenInfo}
             />

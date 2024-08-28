@@ -97,8 +97,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     },
   });
   const isPureSuperToken =
-    matchingTokenSymbol !== "ETHx" &&
-    matchingSuperToken?.underlyingToken?.address === ZERO_ADDRESS;
+    matchingTokenSymbol !== "ETHx" && !matchingSuperToken?.underlyingToken;
   const { data: underlyingTokenBalance } = useBalance({
     address,
     token: (matchingSuperToken?.underlyingToken?.address as Address) ?? void 0,
@@ -129,14 +128,17 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       ? true
       : false;
   const hasSufficientTokenBalance =
-    underlyingTokenBalance &&
-    underlyingTokenBalance.value + superTokenBalance > BigInt(0)
+    (!isPureSuperToken &&
+      underlyingTokenBalance &&
+      underlyingTokenBalance.value + superTokenBalance > BigInt(0)) ||
+    superTokenBalance > BigInt(0)
       ? true
       : false;
   const hasSuggestedTokenBalance =
-    underlyingTokenBalance &&
-    (underlyingTokenBalance.value > suggestedTokenBalance ||
-      superTokenBalance > suggestedTokenBalance)
+    (isPureSuperToken &&
+      underlyingTokenBalance &&
+      underlyingTokenBalance.value > suggestedTokenBalance) ||
+    superTokenBalance > suggestedTokenBalance
       ? true
       : false;
 
@@ -421,7 +423,9 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             hasSufficientTokenBalance={hasSufficientTokenBalance}
             hasSuggestedTokenBalance={hasSuggestedTokenBalance}
             ethBalance={ethBalance}
-            underlyingTokenBalance={underlyingTokenBalance}
+            underlyingTokenBalance={
+              !isPureSuperToken ? underlyingTokenBalance : void 0
+            }
             network={network}
             superTokenInfo={matchingTokenInfo}
           />

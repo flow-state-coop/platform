@@ -103,6 +103,8 @@ const SF_ACCOUNT_QUERY = gql`
         totalNetFlowRate
         token {
           id
+          isNativeAssetSuperToken
+          underlyingAddress
         }
       }
     }
@@ -163,8 +165,6 @@ export default function Review(props: ReviewProps) {
     network?.tokens.find(
       (token) => allocationToken === token.address.toLowerCase(),
     )?.name ?? "allocation token";
-  const isAllocationTokenPureSuperToken =
-    allocationTokenSymbol !== "ETHx" && allocationToken === ZERO_ADDRESS;
 
   const { data: superfluidQueryRes } = useQuery(SF_ACCOUNT_QUERY, {
     client: getApolloClient("superfluid", chainId ?? 10),
@@ -175,6 +175,9 @@ export default function Review(props: ReviewProps) {
     pollInterval: 10000,
   });
 
+  const isAllocationTokenPureSuperToken =
+    !superfluidQueryRes?.account?.token?.isNativeAssetSuperToken &&
+    superfluidQueryRes?.account?.token?.underlyingAddress === ZERO_ADDRESS;
   const allocationTokenBalance = useFlowingAmount(
     BigInt(
       superfluidQueryRes?.account?.accountTokenSnapshots[0]
