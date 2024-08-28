@@ -33,7 +33,8 @@ export default function Passport(props: PassportProps) {
         variant="transparent"
         className="d-flex align-items-center gap-2 p-3 border-0 rounded-0 shadow-none"
         style={{
-          pointerEvents: step !== Step.REVIEW ? "none" : "auto",
+          pointerEvents:
+            step !== Step.SUPPORT && step !== Step.REVIEW ? "none" : "auto",
         }}
         onClick={() => setStep(Step.ELIGIBILITY)}
       >
@@ -41,10 +42,13 @@ export default function Passport(props: PassportProps) {
           pill
           className={`d-flex justify-content-center p-0 ${
             step !== Step.ELIGIBILITY &&
+            step !== Step.SUPPORT &&
             step !== Step.REVIEW &&
             step !== Step.SUCCESS
               ? "bg-secondary"
-              : step === Step.REVIEW || step === Step.SUCCESS
+              : step === Step.SUPPORT ||
+                  step === Step.REVIEW ||
+                  step === Step.SUCCESS
                 ? "bg-info"
                 : "bg-primary"
           }`}
@@ -53,7 +57,9 @@ export default function Passport(props: PassportProps) {
             height: 28,
           }}
         >
-          {step === Step.REVIEW || step === Step.SUCCESS ? (
+          {step === Step.SUPPORT ||
+          step === Step.REVIEW ||
+          step === Step.SUCCESS ? (
             <Image
               src="/success.svg"
               alt="done"
@@ -123,7 +129,14 @@ export default function Passport(props: PassportProps) {
           <Button
             disabled={!passportScore || passportScore < minPassportScore}
             className="w-100 m-0 ms-auto mt-1 mb-3 text-light fw-bold"
-            onClick={() => setStep(Step.REVIEW)}
+            onClick={() =>
+              setStep(
+                !sessionStorage.getItem("skipSupportFlowState") &&
+                  !localStorage.getItem("skipSupportFlowState")
+                  ? Step.SUPPORT
+                  : Step.REVIEW,
+              )
+            }
           >
             Continue
           </Button>

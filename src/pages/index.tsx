@@ -27,7 +27,11 @@ import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
 import { shuffle } from "@/lib/utils";
-import { SECONDS_IN_MONTH, ZERO_ADDRESS } from "@/lib/constants";
+import {
+  SECONDS_IN_MONTH,
+  ZERO_ADDRESS,
+  FLOW_STATE_RECEIVER,
+} from "@/lib/constants";
 
 type IndexProps = {
   hostName: string;
@@ -281,6 +285,10 @@ export default function Index(props: IndexProps) {
       refetchInterval: 10000,
     },
   });
+  const flowRateToFlowState = superfluidQueryRes?.account?.outflows?.find(
+    (outflow: { receiver: { id: string } }) =>
+      outflow.receiver.id === FLOW_STATE_RECEIVER,
+  );
 
   const pool = streamingFundQueryRes?.pool ?? null;
   const matchingPool = superfluidQueryRes?.pool ?? null;
@@ -750,6 +758,7 @@ export default function Index(props: IndexProps) {
             }
             inflow={transactionPanelState.selectedGrantee.inflow}
             userOutflow={transactionPanelState.selectedGrantee.userOutflow}
+            flowRateToFlowState={flowRateToFlowState?.currentFlowRate ?? "0"}
             matchingPool={matchingPool}
             matchingFlowRate={
               transactionPanelState.selectedGrantee.matchingFlowRate

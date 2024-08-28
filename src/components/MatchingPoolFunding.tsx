@@ -1,7 +1,8 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Address, parseEther, formatEther } from "viem";
 import { useAccount, useBalance } from "wagmi";
 import dayjs from "dayjs";
+import { useQuery, gql } from "@apollo/client";
 import {
   NativeAssetSuperToken,
   WrapperSuperToken,
@@ -18,6 +19,7 @@ import MatchingPoolDetails from "@/components/MatchingPoolDetails";
 import EditStream from "@/components/checkout/EditStream";
 import TopUp from "@/components/checkout/TopUp";
 import Wrap from "@/components/checkout/Wrap";
+import SupportFlowState from "@/components/checkout/SupportFlowState";
 import Review from "@/components/checkout/Review";
 import Success from "@/components/checkout/Success";
 import { useSuperfluidContext } from "@/context/Superfluid";
@@ -25,6 +27,8 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
+import { getApolloClient } from "@/lib/apollo";
+import { suggestedSupportDonationByToken } from "@/lib/suggestedSupportDonationByToken";
 import {
   TimeInterval,
   unitOfTime,
@@ -32,7 +36,11 @@ import {
   formatNumberWithCommas,
   roundWeiAmount,
 } from "@/lib/utils";
-import { ZERO_ADDRESS, SECONDS_IN_MONTH } from "@/lib/constants";
+import {
+  ZERO_ADDRESS,
+  SECONDS_IN_MONTH,
+  FLOW_STATE_RECEIVER,
+} from "@/lib/constants";
 
 type MatchingPoolFundingProps = {
   show: boolean;
@@ -53,6 +61,25 @@ type MatchingPoolFundingProps = {
       }[]
     | null;
 };
+
+const FLOWSTATE_SUPPORT_QUERY = gql`
+  query StreamQuery($userAddress: String, $token: String) {
+    account(id: $userAddress) {
+      outflows(
+        where: { token: $token }
+        orderBy: updatedAtTimestamp
+        orderDirection: desc
+      ) {
+        receiver {
+          id
+        }
+        streamedUntilUpdatedAt
+        updatedAtTimestamp
+        currentFlowRate
+      }
+    }
+  }
+`;
 
 dayjs().format();
 dayjs.extend(duration);
@@ -78,6 +105,10 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
   );
   const [newFlowRate, setNewFlowRate] = useState("");
   const [wrapAmount, setWrapAmount] = useState("");
+  const [newFlowRateToFlowState, setNewFlowRateToFlowState] = useState("");
+  const [supportFlowStateAmount, setSupportFlowStateAmount] = useState("");
+  const [supportFlowStateTimeInterval, setSupportFlowStateTimeInterval] =
+    useState<TimeInterval>(TimeInterval.MONTH);
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("0");
   const [matchingTokenSymbol, setMatchingTokenSymbol] = useState("");
 
@@ -95,6 +126,14 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     query: {
       refetchInterval: 10000,
     },
+  });
+  const { data: superfluidQueryRes } = useQuery(FLOWSTATE_SUPPORT_QUERY, {
+    client: getApolloClient("superfluid", network?.id),
+    variables: {
+      userAddress: address?.toLowerCase() ?? "0x",
+      token: matchingTokenInfo.address.toLowerCase(),
+    },
+    pollInterval: 10000,
   });
   const isPureSuperToken =
     matchingTokenSymbol !== "ETHx" && !matchingSuperToken?.underlyingToken;
@@ -141,6 +180,11 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     superTokenBalance > suggestedTokenBalance
       ? true
       : false;
+  const flowRateToFlowState =
+    superfluidQueryRes?.account?.outflows?.find(
+      (outflow: { receiver: { id: string } }) =>
+        outflow.receiver.id === FLOW_STATE_RECEIVER,
+    )?.currentFlowRate ?? "0";
 
   const flowRateToReceiver = useMemo(() => {
     if (address && matchingPool) {
@@ -157,17 +201,61 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     return "0";
   }, [address, matchingPool]);
 
+  const editFlow = useCallback(
+    (
+      superToken: NativeAssetSuperToken | WrapperSuperToken,
+      receiver: string,
+      oldFlowRate: string,
+      newFlowRate: string,
+    ) => {
+      if (!address) {
+        throw Error("Could not find the account address");
+      }
+
+      let op: Operation;
+
+      if (BigInt(newFlowRate) === BigInt(0)) {
+        op = superToken.deleteFlow({
+          sender: address,
+          receiver,
+        });
+      } else if (BigInt(oldFlowRate) !== BigInt(0)) {
+        op = superToken.updateFlow({
+          sender: address,
+          receiver,
+          flowRate: newFlowRate,
+        });
+      } else {
+        op = superToken.createFlow({
+          sender: address,
+          receiver,
+          flowRate: newFlowRate,
+        });
+      }
+
+      return op;
+    },
+    [address],
+  );
+
   const liquidationEstimate = useMemo(() => {
     if (address) {
       const newFlowRate =
         parseEther(amountPerTimeInterval.replace(/,/g, "")) /
         BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
+      const newFlowRateToFlowState =
+        parseEther(supportFlowStateAmount.replace(/,/g, "")) /
+        BigInt(
+          fromTimeUnitsToSeconds(1, unitOfTime[supportFlowStateTimeInterval]),
+        );
       const accountFlowRate = userAccountSnapshot?.totalNetFlowRate ?? "0";
 
       if (
         BigInt(accountFlowRate) -
-          BigInt(flowRateToReceiver) +
-          BigInt(newFlowRate) >
+          BigInt(flowRateToReceiver) -
+          BigInt(flowRateToFlowState) +
+          BigInt(newFlowRate) +
+          BigInt(newFlowRateToFlowState) >
         BigInt(0)
       ) {
         const updatedAtTimestamp = userAccountSnapshot
@@ -182,8 +270,10 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
                 (BigInt(userAccountSnapshot?.balanceUntilUpdatedAt ?? "0") +
                   parseEther(wrapAmount?.replace(/,/g, "") ?? "0")) /
                   (BigInt(accountFlowRate) -
-                    BigInt(flowRateToReceiver) +
-                    BigInt(newFlowRate)),
+                    BigInt(flowRateToReceiver) -
+                    BigInt(flowRateToFlowState) +
+                    BigInt(newFlowRate) +
+                    BigInt(newFlowRateToFlowState)),
               ),
             }),
           )
@@ -199,6 +289,9 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     flowRateToReceiver,
     amountPerTimeInterval,
     timeInterval,
+    flowRateToFlowState,
+    supportFlowStateAmount,
+    supportFlowStateTimeInterval,
   ]);
 
   const transactions = useMemo(() => {
@@ -271,10 +364,32 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
         requestedFlowRate: newFlowRate,
       }),
     );
+
+    if (
+      newFlowRateToFlowState &&
+      newFlowRateToFlowState !== flowRateToFlowState
+    ) {
+      operations.push(
+        editFlow(
+          matchingSuperToken as WrapperSuperToken,
+          FLOW_STATE_RECEIVER,
+          flowRateToFlowState,
+          newFlowRateToFlowState,
+        ),
+      );
+    }
+
     transactions.push(async () => {
       const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
 
       await tx.wait();
+
+      if (
+        newFlowRateToFlowState &&
+        newFlowRateToFlowState !== flowRateToFlowState
+      ) {
+        sessionStorage.setItem("skipSupportFlowState", "true");
+      }
     });
 
     return transactions;
@@ -283,13 +398,16 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     matchingSuperToken,
     wrapAmount,
     receiver,
+    flowRateToFlowState,
     newFlowRate,
+    newFlowRateToFlowState,
     underlyingTokenAllowance,
     matchingTokenSymbol,
     sfFramework,
     ethersProvider,
     ethersSigner,
     isPureSuperToken,
+    editFlow,
   ]);
 
   useEffect(() => {
@@ -306,6 +424,34 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
   }, [address, flowRateToReceiver, timeInterval]);
 
   useEffect(() => {
+    (async () => {
+      if (step !== Step.SUPPORT) {
+        return;
+      }
+
+      const currentStreamValue = roundWeiAmount(
+        BigInt(flowRateToFlowState) * BigInt(SECONDS_IN_MONTH),
+        4,
+      );
+
+      const suggestedSupportDonation =
+        suggestedSupportDonationByToken[matchingTokenInfo.name] ?? 1;
+
+      setSupportFlowStateAmount(
+        formatNumberWithCommas(
+          parseFloat(currentStreamValue) + suggestedSupportDonation,
+        ),
+      );
+    })();
+  }, [
+    address,
+    flowRateToFlowState,
+    supportFlowStateTimeInterval,
+    matchingTokenInfo.name,
+    step,
+  ]);
+
+  useEffect(() => {
     if (!areTransactionsLoading && amountPerTimeInterval) {
       setNewFlowRate(
         (
@@ -315,6 +461,30 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       );
     }
   }, [areTransactionsLoading, amountPerTimeInterval, timeInterval]);
+
+  useEffect(() => {
+    if (areTransactionsLoading) {
+      return;
+    }
+
+    setNewFlowRateToFlowState(
+      supportFlowStateAmount
+        ? (
+            parseEther(supportFlowStateAmount.replace(/,/g, "")) /
+            BigInt(
+              fromTimeUnitsToSeconds(
+                1,
+                unitOfTime[supportFlowStateTimeInterval],
+              ),
+            )
+          ).toString()
+        : "",
+    );
+  }, [
+    areTransactionsLoading,
+    supportFlowStateAmount,
+    supportFlowStateTimeInterval,
+  ]);
 
   useEffect(() => {
     (async () => {
@@ -441,6 +611,20 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
               underlyingTokenBalance={underlyingTokenBalance}
             />
           )}
+          <SupportFlowState
+            network={network}
+            token={matchingTokenInfo}
+            step={step}
+            setStep={(step) => setStep(step)}
+            supportFlowStateAmount={supportFlowStateAmount}
+            setSupportFlowStateAmount={setSupportFlowStateAmount}
+            supportFlowStateTimeInterval={supportFlowStateTimeInterval}
+            setSupportFlowStateTimeInterval={setSupportFlowStateTimeInterval}
+            newFlowRateToFlowState={newFlowRateToFlowState}
+            flowRateToFlowState={flowRateToFlowState}
+            isFundingMatchingPool={true}
+            isPureSuperToken={isPureSuperToken}
+          />
           <Review
             step={step}
             setStep={(step) => setStep(step)}
@@ -456,9 +640,13 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             allocationTokenInfo={matchingTokenInfo}
             flowRateToReceiver={flowRateToReceiver}
             amountPerTimeInterval={amountPerTimeInterval}
+            newFlowRateToFlowState={newFlowRateToFlowState}
+            flowRateToFlowState={flowRateToFlowState}
             newFlowRate={newFlowRate}
             wrapAmount={wrapAmount}
             timeInterval={timeInterval}
+            supportFlowStateAmount={supportFlowStateAmount}
+            supportFlowStateTimeInterval={supportFlowStateTimeInterval}
             isFundingMatchingPool={true}
             isPureSuperToken={isPureSuperToken}
             superTokenBalance={superTokenBalance}

@@ -169,7 +169,12 @@ export default function EditStream(props: EditStreamProps) {
                     className="d-flex align-items-center bg-white border-0 rounded-0 fs-4 px-1 py-2"
                     onClick={() => handleAmountStepping({ increment: false })}
                   >
-                    <Image src="/remove.svg" alt="remove" width={20} />
+                    <Image
+                      src="/remove.svg"
+                      alt="remove"
+                      width={20}
+                      height={20}
+                    />
                   </Button>
                   <Button
                     disabled={!address || !flowRateToReceiver}
@@ -177,7 +182,7 @@ export default function EditStream(props: EditStreamProps) {
                     className="d-flex align-items-center bg-white border-0 rounded-0 rounded-end-3 fs-4 px-1 py-2"
                     onClick={() => handleAmountStepping({ increment: true })}
                   >
-                    <Image src="/add.svg" alt="add" width={20} />
+                    <Image src="/add.svg" alt="add" width={20} height={20} />
                   </Button>
                 </>
               )}
@@ -255,9 +260,12 @@ export default function EditStream(props: EditStreamProps) {
                           BigInt(newFlowRate) *
                             BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY))
                       ? Step.WRAP
-                      : isFundingMatchingPool || isEligible
-                        ? Step.REVIEW
-                        : Step.ELIGIBILITY,
+                      : !isFundingMatchingPool && !isEligible
+                        ? Step.ELIGIBILITY
+                        : !sessionStorage.getItem("skipSupportFlowState") &&
+                            !localStorage.getItem("skipSupportFlowState")
+                          ? Step.SUPPORT
+                          : Step.REVIEW,
                 )
               }
             >

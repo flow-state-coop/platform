@@ -1,8 +1,9 @@
 export enum Step {
   SELECT_AMOUNT = "Edit stream",
-  WRAP = "Wrap to Super Token",
   TOP_UP = "Top up required tokens",
-  REVIEW = "Review",
+  WRAP = "Wrap to Super Token",
   ELIGIBILITY = "Voter Eligibility",
+  SUPPORT = "Support Flow State",
+  REVIEW = "Review",
   SUCCESS = "Success!",
 }

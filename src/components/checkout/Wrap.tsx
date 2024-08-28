@@ -46,6 +46,8 @@ export default function Wrap(props: WrapProps) {
 
   const { address } = useAccount();
 
+  const isNativeSuperToken = token.name === "ETHx";
+
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
     const valueWithoutCommas = value.replace(/,/g, "");
@@ -53,7 +55,7 @@ export default function Wrap(props: WrapProps) {
     if (isNumber(valueWithoutCommas)) {
       setWrapAmount(
         `${
-          isFundingMatchingPool && parseFloat(valueWithoutCommas) < 1000
+          isNativeSuperToken && parseFloat(valueWithoutCommas) < 1000
             ? value
             : formatNumberWithCommas(parseFloat(valueWithoutCommas))
         }`,
@@ -61,7 +63,7 @@ export default function Wrap(props: WrapProps) {
     } else if (value === "") {
       setWrapAmount("");
     } else if (value === ".") {
-      setWrapAmount(isFundingMatchingPool ? "0." : "0");
+      setWrapAmount(isNativeSuperToken ? "0." : "0");
     }
   };
 
@@ -73,7 +75,11 @@ export default function Wrap(props: WrapProps) {
         onClick={() => setStep(Step.WRAP)}
         style={{
           pointerEvents:
-            step === Step.REVIEW || step === Step.ELIGIBILITY ? "auto" : "none",
+            step === Step.SUPPORT ||
+            step === Step.REVIEW ||
+            step === Step.ELIGIBILITY
+              ? "auto"
+              : "none",
         }}
       >
         <Badge
@@ -92,7 +98,8 @@ export default function Wrap(props: WrapProps) {
             height: 28,
           }}
         >
-          {step === Step.REVIEW ||
+          {step === Step.SUPPORT ||
+          step === Step.REVIEW ||
           step === Step.ELIGIBILITY ||
           step === Step.SUCCESS ? (
             <Image
@@ -208,9 +215,12 @@ export default function Wrap(props: WrapProps) {
                 onClick={() => {
                   setWrapAmount("");
                   setStep(
-                    isFundingMatchingPool || isEligible
-                      ? Step.REVIEW
-                      : Step.ELIGIBILITY,
+                    !isFundingMatchingPool && !isEligible
+                      ? Step.ELIGIBILITY
+                      : !sessionStorage.getItem("skipSupportFlowState") &&
+                          !localStorage.getItem("skipSupportFlowState")
+                        ? Step.SUPPORT
+                        : Step.REVIEW,
                   );
                 }}
               >
@@ -232,9 +242,12 @@ export default function Wrap(props: WrapProps) {
               className="w-50 py-1 rounded-3 text-light"
               onClick={() =>
                 setStep(
-                  isFundingMatchingPool || isEligible
-                    ? Step.REVIEW
-                    : Step.ELIGIBILITY,
+                  !isFundingMatchingPool && !isEligible
+                    ? Step.ELIGIBILITY
+                    : !sessionStorage.getItem("skipSupportFlowState") &&
+                        !localStorage.getItem("skipSupportFlowState")
+                      ? Step.SUPPORT
+                      : Step.REVIEW,
                 )
               }
             >

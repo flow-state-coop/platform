@@ -221,7 +221,7 @@ export default function TopUp(props: TopUpProps) {
           </Stack>
           <Button
             variant="transparent"
-            className="mt-4 text-dark"
+            className="mt-4 text-info"
             onClick={() => setStep(Step.WRAP)}
           >
             Skip
@@ -236,9 +236,12 @@ export default function TopUp(props: TopUpProps) {
                     BigInt(newFlowRate) *
                       BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY))
                   ? Step.WRAP
-                  : isFundingMatchingPool || isEligible
-                    ? Step.REVIEW
-                    : Step.ELIGIBILITY,
+                  : !isFundingMatchingPool && !isEligible
+                    ? Step.ELIGIBILITY
+                    : !sessionStorage.getItem("skipSupportFlowState") &&
+                        !localStorage.getItem("skipSupportFlowState")
+                      ? Step.SUPPORT
+                      : Step.REVIEW,
               )
             }
           >

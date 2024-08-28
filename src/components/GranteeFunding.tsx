@@ -22,6 +22,7 @@ import TopUp from "@/components/checkout/TopUp";
 import Wrap from "@/components/checkout/Wrap";
 import Passport from "@/components/checkout/Passport";
 import NFTGating from "@/components/checkout/NFTGating";
+import SupportFlowState from "@/components/checkout/SupportFlowState";
 import Review from "@/components/checkout/Review";
 import Success from "@/components/checkout/Success";
 import PassportMintingInstructions from "@/components/PassportMintingInstructions";
@@ -31,6 +32,7 @@ import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
+import { suggestedSupportDonationByToken } from "@/lib/suggestedSupportDonationByToken";
 import {
   TimeInterval,
   unitOfTime,
@@ -38,7 +40,11 @@ import {
   formatNumberWithCommas,
   roundWeiAmount,
 } from "@/lib/utils";
-import { ZERO_ADDRESS, SECONDS_IN_MONTH } from "@/lib/constants";
+import {
+  ZERO_ADDRESS,
+  SECONDS_IN_MONTH,
+  FLOW_STATE_RECEIVER,
+} from "@/lib/constants";
 
 type GranteeFundingProps = {
   show: boolean;
@@ -57,6 +63,7 @@ type GranteeFundingProps = {
   matchingPool: MatchingPool;
   matchingFlowRate: bigint;
   userOutflow: Outflow | null;
+  flowRateToFlowState: string;
   allocationTokenInfo: Token;
   matchingTokenInfo: Token;
   userAccountSnapshots:
@@ -98,6 +105,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     matchingPool,
     matchingFlowRate,
     userOutflow,
+    flowRateToFlowState,
     allocationTokenInfo,
     matchingTokenInfo,
     userAccountSnapshots,
@@ -116,8 +124,12 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     TimeInterval.MONTH,
   );
   const [newFlowRate, setNewFlowRate] = useState("");
-  const [wrapAmount, setWrapAmount] = useState("");
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("0");
+  const [wrapAmount, setWrapAmount] = useState("");
+  const [newFlowRateToFlowState, setNewFlowRateToFlowState] = useState("");
+  const [supportFlowStateAmount, setSupportFlowStateAmount] = useState("");
+  const [supportFlowStateTimeInterval, setSupportFlowStateTimeInterval] =
+    useState<TimeInterval>(TimeInterval.MONTH);
   const [allocationTokenSymbol, setAllocationTokenSymbol] = useState("");
   const [showMintingInstructions, setShowMintingInstructions] = useState(false);
 
@@ -226,12 +238,19 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       const newFlowRate =
         parseEther(amountPerTimeInterval.replace(/,/g, "")) /
         BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
+      const newFlowRateToFlowState =
+        parseEther(supportFlowStateAmount.replace(/,/g, "")) /
+        BigInt(
+          fromTimeUnitsToSeconds(1, unitOfTime[supportFlowStateTimeInterval]),
+        );
       const accountFlowRate = userAccountSnapshot?.totalNetFlowRate ?? "0";
 
       if (
         BigInt(accountFlowRate) -
-          BigInt(flowRateToReceiver) +
-          BigInt(newFlowRate) >
+          BigInt(flowRateToReceiver) -
+          BigInt(flowRateToFlowState) +
+          BigInt(newFlowRate) +
+          BigInt(newFlowRateToFlowState) >
         BigInt(0)
       ) {
         const updatedAtTimestamp = userAccountSnapshot
@@ -246,8 +265,10 @@ export default function GranteeFunding(props: GranteeFundingProps) {
                 (BigInt(userAccountSnapshot?.balanceUntilUpdatedAt ?? "0") +
                   parseEther(wrapAmount?.replace(/,/g, "") ?? "0")) /
                   (BigInt(accountFlowRate) -
-                    BigInt(flowRateToReceiver) +
-                    BigInt(newFlowRate)),
+                    BigInt(flowRateToReceiver) -
+                    BigInt(flowRateToFlowState) +
+                    BigInt(newFlowRate) +
+                    BigInt(newFlowRateToFlowState)),
               ),
             }),
           )
@@ -263,6 +284,9 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     flowRateToReceiver,
     amountPerTimeInterval,
     timeInterval,
+    flowRateToFlowState,
+    supportFlowStateAmount,
+    supportFlowStateTimeInterval,
   ]);
 
   const netImpact = useMemo(() => {
@@ -361,20 +385,44 @@ export default function GranteeFunding(props: GranteeFundingProps) {
         newFlowRate,
       ),
     );
+
+    if (
+      newFlowRateToFlowState &&
+      newFlowRateToFlowState !== flowRateToReceiver
+    ) {
+      operations.push(
+        editFlow(
+          allocationSuperToken as WrapperSuperToken,
+          FLOW_STATE_RECEIVER,
+          flowRateToFlowState,
+          newFlowRateToFlowState,
+        ),
+      );
+    }
+
     transactions.push(async () => {
       const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
 
       await tx.wait();
+
+      if (
+        newFlowRateToFlowState &&
+        newFlowRateToFlowState !== flowRateToFlowState
+      ) {
+        sessionStorage.setItem("skipSupportFlowState", "true");
+      }
     });
 
     return transactions;
   }, [
     address,
     flowRateToReceiver,
+    flowRateToFlowState,
     allocationSuperToken,
     wrapAmount,
     receiver,
     newFlowRate,
+    newFlowRateToFlowState,
     underlyingTokenAllowance,
     allocationTokenSymbol,
     sfFramework,
@@ -398,6 +446,34 @@ export default function GranteeFunding(props: GranteeFundingProps) {
   }, [address, flowRateToReceiver, timeInterval]);
 
   useEffect(() => {
+    (async () => {
+      if (step !== Step.SUPPORT) {
+        return;
+      }
+
+      const currentStreamValue = roundWeiAmount(
+        BigInt(flowRateToFlowState) * BigInt(SECONDS_IN_MONTH),
+        4,
+      );
+
+      const suggestedSupportDonation =
+        suggestedSupportDonationByToken[allocationTokenInfo.name] ?? 1;
+
+      setSupportFlowStateAmount(
+        formatNumberWithCommas(
+          parseFloat(currentStreamValue) + suggestedSupportDonation,
+        ),
+      );
+    })();
+  }, [
+    address,
+    flowRateToFlowState,
+    supportFlowStateTimeInterval,
+    step,
+    allocationTokenInfo.name,
+  ]);
+
+  useEffect(() => {
     if (!areTransactionsLoading && amountPerTimeInterval) {
       setNewFlowRate(
         (
@@ -407,6 +483,30 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       );
     }
   }, [areTransactionsLoading, amountPerTimeInterval, timeInterval]);
+
+  useEffect(() => {
+    if (areTransactionsLoading) {
+      return;
+    }
+
+    setNewFlowRateToFlowState(
+      supportFlowStateAmount
+        ? (
+            parseEther(supportFlowStateAmount.replace(/,/g, "")) /
+            BigInt(
+              fromTimeUnitsToSeconds(
+                1,
+                unitOfTime[supportFlowStateTimeInterval],
+              ),
+            )
+          ).toString()
+        : "",
+    );
+  }, [
+    areTransactionsLoading,
+    supportFlowStateAmount,
+    supportFlowStateTimeInterval,
+  ]);
 
   useEffect(() => {
     (async () => {
@@ -571,6 +671,20 @@ export default function GranteeFunding(props: GranteeFundingProps) {
                 isPureSuperToken={isPureSuperToken}
               />
             )}
+            <SupportFlowState
+              network={network}
+              token={allocationTokenInfo}
+              step={step}
+              setStep={(step) => setStep(step)}
+              supportFlowStateAmount={supportFlowStateAmount}
+              setSupportFlowStateAmount={setSupportFlowStateAmount}
+              supportFlowStateTimeInterval={supportFlowStateTimeInterval}
+              setSupportFlowStateTimeInterval={setSupportFlowStateTimeInterval}
+              newFlowRateToFlowState={newFlowRateToFlowState}
+              flowRateToFlowState={flowRateToFlowState}
+              isFundingMatchingPool={false}
+              isPureSuperToken={isPureSuperToken}
+            />
             <Review
               step={step}
               setStep={(step) => setStep(step)}
@@ -588,7 +702,11 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               amountPerTimeInterval={amountPerTimeInterval}
               newFlowRate={newFlowRate}
               wrapAmount={wrapAmount}
+              newFlowRateToFlowState={newFlowRateToFlowState}
+              flowRateToFlowState={flowRateToFlowState}
               timeInterval={timeInterval}
+              supportFlowStateAmount={supportFlowStateAmount}
+              supportFlowStateTimeInterval={supportFlowStateTimeInterval}
               isFundingMatchingPool={false}
               isPureSuperToken={isPureSuperToken}
               superTokenBalance={superTokenBalance}
