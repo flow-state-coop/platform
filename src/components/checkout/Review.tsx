@@ -416,119 +416,124 @@ export default function Review(props: ReviewProps) {
               </>
             )}
           </Stack>
-          {newFlowRateToFlowState &&
-            newFlowRateToFlowState !== flowRateToFlowState && (
-              <>
-                <Stack direction="vertical" gap={1}>
-                  <Card.Text className="border-bottom border-secondary m-0 pb-1">
-                    {Number(
-                      areTransactionsLoading && transactionDetailsSnapshot
-                        ? transactionDetailsSnapshot.wrapAmount
-                        : wrapAmount?.replace(/,/g, ""),
-                    ) > 0
-                      ? "C."
-                      : "B."}{" "}
-                    Edit Flow State Stream
-                  </Card.Text>
-                </Stack>
+          {(areTransactionsLoading &&
+            transactionDetailsSnapshot &&
+            transactionDetailsSnapshot.newFlowRateToFlowState &&
+            transactionDetailsSnapshot.newFlowRateToFlowState !==
+              transactionDetailsSnapshot.flowRateToFlowState) ||
+          (newFlowRateToFlowState &&
+            newFlowRateToFlowState !== flowRateToFlowState) ? (
+            <>
+              <Stack direction="vertical" gap={1}>
+                <Card.Text className="border-bottom border-secondary m-0 pb-1">
+                  {Number(
+                    areTransactionsLoading && transactionDetailsSnapshot
+                      ? transactionDetailsSnapshot.wrapAmount
+                      : wrapAmount?.replace(/,/g, ""),
+                  ) > 0
+                    ? "C."
+                    : "B."}{" "}
+                  Edit Flow State Stream
+                </Card.Text>
+              </Stack>
+              <Stack
+                direction="horizontal"
+                className="justify-content-around px-2"
+              >
+                <Card.Text className="m-0 border-0 text-center fs-4">
+                  Sender
+                </Card.Text>
+                <Card.Text className="m-0 border-0 text-center fs-4">
+                  Receiver
+                </Card.Text>
+              </Stack>
+              <Stack direction="horizontal">
+                <Badge className="d-flex justify-content-around align-items-center w-50 bg-white text-info py-3 rounded-3 border-0 text-center fs-6">
+                  {truncateStr(address ?? "", 12)}
+                  <CopyTooltip
+                    contentClick="Address copied"
+                    contentHover="Copy address"
+                    handleCopy={() =>
+                      navigator.clipboard.writeText(address ?? "")
+                    }
+                    target={
+                      <Image
+                        src="/copy.svg"
+                        alt="copy"
+                        width={18}
+                        height={18}
+                      />
+                    }
+                  />
+                </Badge>
+                <Image
+                  className="bg-transparent"
+                  src="/arrow-right.svg"
+                  alt="forward arrow"
+                  width={18}
+                  height={18}
+                />
+                <Badge className="d-flex justify-content-around align-items-center w-50 bg-white px-2 py-3 rounded-3 border-0 text-center text-info fs-6">
+                  flowstatecoop.eth
+                  <CopyTooltip
+                    contentClick="Address copied"
+                    contentHover="Copy address"
+                    handleCopy={() =>
+                      navigator.clipboard.writeText(FLOW_STATE_RECEIVER)
+                    }
+                    target={
+                      <Image
+                        src="/copy.svg"
+                        alt="copy"
+                        width={18}
+                        height={18}
+                      />
+                    }
+                  />
+                </Badge>
+              </Stack>
+              <Stack direction="vertical">
                 <Stack
                   direction="horizontal"
-                  className="justify-content-around px-2"
+                  className={`mt-2 bg-purple p-2 ${
+                    !isFundingMatchingPool ? "rounded-top-4" : "rounded-4"
+                  }`}
                 >
-                  <Card.Text className="m-0 border-0 text-center fs-4">
-                    Sender
-                  </Card.Text>
-                  <Card.Text className="m-0 border-0 text-center fs-4">
-                    Receiver
-                  </Card.Text>
-                </Stack>
-                <Stack direction="horizontal">
-                  <Badge className="d-flex justify-content-around align-items-center w-50 bg-white text-info py-3 rounded-3 border-0 text-center fs-6">
-                    {truncateStr(address ?? "", 12)}
-                    <CopyTooltip
-                      contentClick="Address copied"
-                      contentHover="Copy address"
-                      handleCopy={() =>
-                        navigator.clipboard.writeText(address ?? "")
-                      }
-                      target={
-                        <Image
-                          src="/copy.svg"
-                          alt="copy"
-                          width={18}
-                          height={18}
-                        />
-                      }
-                    />
-                  </Badge>
-                  <Image
-                    className="bg-transparent"
-                    src="/arrow-right.svg"
-                    alt="forward arrow"
-                    width={18}
-                    height={18}
-                  />
-                  <Badge className="d-flex justify-content-around align-items-center w-50 bg-white px-2 py-3 rounded-3 border-0 text-center text-info fs-6">
-                    flowstatecoop.eth
-                    <CopyTooltip
-                      contentClick="Address copied"
-                      contentHover="Copy address"
-                      handleCopy={() =>
-                        navigator.clipboard.writeText(FLOW_STATE_RECEIVER)
-                      }
-                      target={
-                        <Image
-                          src="/copy.svg"
-                          alt="copy"
-                          width={18}
-                          height={18}
-                        />
-                      }
-                    />
-                  </Badge>
-                </Stack>
-                <Stack direction="vertical">
+                  <Card.Text className="w-33 m-0 fs-6">New Stream</Card.Text>
                   <Stack
                     direction="horizontal"
-                    className={`mt-2 bg-purple p-2 ${
-                      !isFundingMatchingPool ? "rounded-top-4" : "rounded-4"
-                    }`}
+                    gap={1}
+                    className="justify-content-end w-50 p-2"
                   >
-                    <Card.Text className="w-33 m-0 fs-6">New Stream</Card.Text>
-                    <Stack
-                      direction="horizontal"
-                      gap={1}
-                      className="justify-content-end w-50 p-2"
-                    >
-                      <Image
-                        src={allocationTokenInfo.icon}
-                        alt="token"
-                        width={22}
-                        height={22}
-                        className="mx-1"
-                      />
-                      <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
-                        {formatNumberWithCommas(
-                          parseFloat(
-                            convertStreamValueToInterval(
-                              parseEther(
-                                areTransactionsLoading &&
-                                  transactionDetailsSnapshot
-                                  ? transactionDetailsSnapshot.supportFlowStateAmount
-                                  : supportFlowStateAmount.replace(/,/g, ""),
-                              ),
-                              supportFlowStateTimeInterval,
-                              TimeInterval.MONTH,
+                    <Image
+                      src={allocationTokenInfo.icon}
+                      alt="token"
+                      width={22}
+                      height={22}
+                      className="mx-1"
+                    />
+                    <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
+                      {formatNumberWithCommas(
+                        parseFloat(
+                          convertStreamValueToInterval(
+                            parseEther(
+                              areTransactionsLoading &&
+                                transactionDetailsSnapshot
+                                ? transactionDetailsSnapshot.supportFlowStateAmount
+                                : supportFlowStateAmount.replace(/,/g, ""),
                             ),
+                            supportFlowStateTimeInterval,
+                            TimeInterval.MONTH,
                           ),
-                        )}
-                      </Badge>
-                    </Stack>
-                    <Card.Text className="w-20 m-0 ms-1 fs-6">/month</Card.Text>
+                        ),
+                      )}
+                    </Badge>
                   </Stack>
+                  <Card.Text className="w-20 m-0 ms-1 fs-6">/month</Card.Text>
                 </Stack>
-              </>
-            )}
+              </Stack>
+            </>
+          ) : null}
           {!!liquidationEstimate && !isNaN(liquidationEstimate) && (
             <Stack direction="horizontal" gap={1} className="mt-1">
               <Card.Text className="m-0 fs-6">Est. Liquidation</Card.Text>
