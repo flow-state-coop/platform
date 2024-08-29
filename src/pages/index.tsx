@@ -184,7 +184,7 @@ export default function Index(props: IndexProps) {
   const [transactionPanelState, setTransactionPanelState] = useState<{
     show: boolean;
     isFundingMatchingPool: boolean;
-    selectedGrantee: Grantee | null;
+    selectedGrantee: number | null;
   }>({
     show: false,
     isFundingMatchingPool: false,
@@ -425,7 +425,6 @@ export default function Index(props: IndexProps) {
           streamingFundQueryRes.pool.recipientsByPoolIdAndChainId.find(
             (recipient: { id: string }) => recipient.id === recipientId,
           );
-
         if (recipient) {
           const grantee = getGrantee(recipient);
           grantees.push(grantee);
@@ -433,7 +432,7 @@ export default function Index(props: IndexProps) {
           setTransactionPanelState({
             show: true,
             isFundingMatchingPool: false,
-            selectedGrantee: grantee,
+            selectedGrantee: 0,
           });
         }
       }
@@ -689,14 +688,12 @@ export default function Index(props: IndexProps) {
                   ? BigInt(grantee.userOutflow.currentFlowRate)
                   : null
               }
-              isSelected={
-                transactionPanelState.selectedGrantee?.id === grantee.id
-              }
+              isSelected={transactionPanelState.selectedGrantee === i}
               selectGrantee={() =>
                 setTransactionPanelState({
                   show: true,
                   isFundingMatchingPool: false,
-                  selectedGrantee: grantee,
+                  selectedGrantee: i,
                 })
               }
             />
@@ -730,7 +727,7 @@ export default function Index(props: IndexProps) {
             }
           />
         ) : transactionPanelState.show &&
-          transactionPanelState.selectedGrantee ? (
+          transactionPanelState.selectedGrantee !== null ? (
           <GranteeFunding
             show={transactionPanelState.show}
             handleClose={() =>
@@ -740,28 +737,32 @@ export default function Index(props: IndexProps) {
                 selectedGrantee: null,
               })
             }
-            receiver={transactionPanelState.selectedGrantee.superappAddress}
-            poolUiLink={`https://${hostName}/?poolid=${poolId ?? DEFAULT_POOL_ID}&chainid=${chainId ?? DEFAULT_CHAIN_ID}&recipientid=${transactionPanelState.selectedGrantee.id}`}
-            framesLink={`https://frames.flowstate.network/frames/grantee/${transactionPanelState.selectedGrantee.id}/${poolId ?? DEFAULT_POOL_ID}/${chainId ?? DEFAULT_CHAIN_ID}`}
+            receiver={
+              grantees[transactionPanelState.selectedGrantee].superappAddress
+            }
+            poolUiLink={`https://${hostName}/?poolid=${poolId ?? DEFAULT_POOL_ID}&chainid=${chainId ?? DEFAULT_CHAIN_ID}&recipientid=${grantees[transactionPanelState.selectedGrantee].id}`}
+            framesLink={`https://frames.flowstate.network/frames/grantee/${grantees[transactionPanelState.selectedGrantee].id}/${poolId ?? DEFAULT_POOL_ID}/${chainId ?? DEFAULT_CHAIN_ID}`}
             poolName={pool?.metadata.name ?? ""}
-            name={transactionPanelState.selectedGrantee.name ?? ""}
+            name={grantees[transactionPanelState.selectedGrantee].name ?? ""}
             description={
-              transactionPanelState.selectedGrantee.description ?? ""
+              grantees[transactionPanelState.selectedGrantee].description ?? ""
             }
-            logoCid={transactionPanelState.selectedGrantee.logoCid}
+            logoCid={grantees[transactionPanelState.selectedGrantee].logoCid}
             placeholderLogo={
-              transactionPanelState.selectedGrantee.placeholderLogo
+              grantees[transactionPanelState.selectedGrantee].placeholderLogo
             }
-            twitter={transactionPanelState.selectedGrantee.twitter}
+            twitter={grantees[transactionPanelState.selectedGrantee].twitter}
             recipientAddress={
-              transactionPanelState.selectedGrantee.recipientAddress
+              grantees[transactionPanelState.selectedGrantee].recipientAddress
             }
-            inflow={transactionPanelState.selectedGrantee.inflow}
-            userOutflow={transactionPanelState.selectedGrantee.userOutflow}
+            inflow={grantees[transactionPanelState.selectedGrantee].inflow}
+            userOutflow={
+              grantees[transactionPanelState.selectedGrantee].userOutflow
+            }
             flowRateToFlowState={flowRateToFlowState?.currentFlowRate ?? "0"}
             matchingPool={matchingPool}
             matchingFlowRate={
-              transactionPanelState.selectedGrantee.matchingFlowRate
+              grantees[transactionPanelState.selectedGrantee].matchingFlowRate
             }
             allocationTokenInfo={allocationTokenInfo}
             matchingTokenInfo={matchingTokenInfo}
