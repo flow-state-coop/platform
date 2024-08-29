@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { Address, parseEther, formatEther } from "viem";
 import { useAccount, useBalance } from "wagmi";
 import dayjs from "dayjs";
-import { useQuery, gql } from "@apollo/client";
 import {
   NativeAssetSuperToken,
   WrapperSuperToken,
@@ -27,7 +26,6 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
-import { getApolloClient } from "@/lib/apollo";
 import { suggestedSupportDonationByToken } from "@/lib/suggestedSupportDonationByToken";
 import {
   TimeInterval,
@@ -62,25 +60,6 @@ type MatchingPoolFundingProps = {
     | null;
 };
 
-const FLOWSTATE_SUPPORT_QUERY = gql`
-  query StreamQuery($userAddress: String, $token: String) {
-    account(id: $userAddress) {
-      outflows(
-        where: { token: $token }
-        orderBy: updatedAtTimestamp
-        orderDirection: desc
-      ) {
-        receiver {
-          id
-        }
-        streamedUntilUpdatedAt
-        updatedAtTimestamp
-        currentFlowRate
-      }
-    }
-  }
-`;
-
 dayjs().format();
 dayjs.extend(duration);
 
@@ -106,6 +85,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
   const [newFlowRate, setNewFlowRate] = useState("");
   const [wrapAmount, setWrapAmount] = useState("");
   const [newFlowRateToFlowState, setNewFlowRateToFlowState] = useState("");
+  const [flowRateToFlowState, setFlowRateToFlowState] = useState("");
   const [supportFlowStateAmount, setSupportFlowStateAmount] = useState("");
   const [supportFlowStateTimeInterval, setSupportFlowStateTimeInterval] =
     useState<TimeInterval>(TimeInterval.MONTH);
@@ -126,14 +106,6 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     query: {
       refetchInterval: 10000,
     },
-  });
-  const { data: superfluidQueryRes } = useQuery(FLOWSTATE_SUPPORT_QUERY, {
-    client: getApolloClient("superfluid", network?.id),
-    variables: {
-      userAddress: address?.toLowerCase() ?? "0x",
-      token: matchingTokenInfo.address.toLowerCase(),
-    },
-    pollInterval: 10000,
   });
   const isPureSuperToken =
     matchingTokenSymbol !== "ETHx" && !matchingSuperToken?.underlyingToken;
@@ -180,11 +152,6 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     superTokenBalance > suggestedTokenBalance
       ? true
       : false;
-  const flowRateToFlowState =
-    superfluidQueryRes?.account?.outflows?.find(
-      (outflow: { receiver: { id: string } }) =>
-        outflow.receiver.id === FLOW_STATE_RECEIVER,
-    )?.currentFlowRate ?? "0";
 
   const flowRateToReceiver = useMemo(() => {
     if (address && matchingPool) {
@@ -503,6 +470,27 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       }
     })();
   }, [address, ethersProvider, matchingSuperToken]);
+
+  useEffect(() => {
+    (async () => {
+      if (
+        areTransactionsLoading ||
+        !matchingSuperToken ||
+        !address ||
+        !ethersProvider
+      ) {
+        return;
+      }
+
+      const flowInfo = await matchingSuperToken.getFlow({
+        sender: address,
+        receiver: FLOW_STATE_RECEIVER,
+        providerOrSigner: ethersProvider,
+      });
+
+      setFlowRateToFlowState(flowInfo.flowRate);
+    })();
+  }, [areTransactionsLoading, matchingSuperToken, address, ethersProvider]);
 
   const updateWrapAmount = (
     amountPerTimeInterval: string,
