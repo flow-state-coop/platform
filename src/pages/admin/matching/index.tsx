@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { GetServerSideProps } from "next";
+import Link from "next/link";
 import { Address, parseEther, formatEther } from "viem";
 import {
   useAccount,
@@ -21,6 +23,12 @@ import { strategyAbi } from "@/lib/abi/strategy";
 import { gdaForwarderAbi } from "@/lib/abi/gdaForwarder";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
+type MatchingPoolProps = {
+  chainId: number | null;
+  profileId: string | null;
+  poolId: string | null;
+};
+
 const POOL_BY_ID_QUERY = gql`
   query PoolByIdQuery($poolId: String, $chainId: Int) {
     pools(
@@ -36,13 +44,32 @@ const POOL_BY_ID_QUERY = gql`
   }
 `;
 
-export default function MatchinPool() {
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const { query } = ctx;
+
+  return {
+    props: {
+      profileId: query.profileid ?? null,
+      chainId: Number(query.chainid) ?? null,
+      poolId: query.poolid ?? null,
+    },
+  };
+};
+
+export default function MatchinPool(props: MatchingPoolProps) {
   const [newFlowRate, setNewFlowRate] = useState("");
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
 
   const { address, chain: connectedChain } = useAccount();
   const { writeContractAsync } = useWriteContract();
-  const { poolId, chainId } = useAdminParams();
+  const {
+    poolId,
+    chainId,
+    profileId,
+    updateChainId,
+    updateProfileId,
+    updatePoolId,
+  } = useAdminParams();
   const network = networks.find((network) => network.id === Number(chainId));
   const publicClient = usePublicClient();
   const { data: queryRes, loading } = useQuery(POOL_BY_ID_QUERY, {
@@ -69,6 +96,22 @@ export default function MatchinPool() {
     ],
     query: { refetchInterval: 5000 },
   });
+
+  useEffect(() => {
+    if (!chainId || !profileId || !poolId) {
+      updateChainId(props.chainId);
+      updateProfileId(props.profileId);
+      updatePoolId(props.poolId);
+    }
+  }, [
+    props,
+    chainId,
+    poolId,
+    profileId,
+    updateChainId,
+    updateProfileId,
+    updatePoolId,
+  ]);
 
   const handleStreamUpdate = async () => {
     if (!network || !queryRes || !address || !gdaPool || !publicClient) {
@@ -105,7 +148,15 @@ export default function MatchinPool() {
   return (
     <Stack direction="vertical" gap={4} className="px-5 py-4">
       {!poolId ? (
-        <>Pool not found</>
+        <Card.Text>
+          Pool not found, please select one from{" "}
+          <Link
+            href={`/admin/pools/?chainid=${chainId}&profileid=${profileId}`}
+            className="text-decoration-underline"
+          >
+            Pool Selection
+          </Link>
+        </Card.Text>
       ) : connectedChain?.id !== network?.id ? (
         <>Wrong network</>
       ) : (

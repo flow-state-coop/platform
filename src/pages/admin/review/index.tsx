@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { GetServerSideProps } from "next";
+import Link from "next/link";
 import { Address, formatEther } from "viem";
 import { useAccount, useReadContract, useConfig } from "wagmi";
 import { writeContract, waitForTransactionReceipt } from "@wagmi/core";
@@ -26,6 +27,9 @@ import { ZERO_ADDRESS } from "@/lib/constants";
 
 type ReviewProps = {
   hostName: string;
+  chainId: number | null;
+  profileId: string | null;
+  poolId: string | null;
 };
 
 type Recipient = {
@@ -112,9 +116,16 @@ const SF_ACCOUNT_QUERY = gql`
 `;
 
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const { req } = ctx;
+  const { req, query } = ctx;
 
-  return { props: { hostName: req.headers.host } };
+  return {
+    props: {
+      hostName: req.headers.host,
+      profileId: query.profileid ?? null,
+      chainId: Number(query.chainid) ?? null,
+      poolId: query.poolid ?? null,
+    },
+  };
 };
 
 export default function Review(props: ReviewProps) {
@@ -132,7 +143,14 @@ export default function Review(props: ReviewProps) {
   const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
 
   const { address, chain: connectedChain } = useAccount();
-  const { profileId, poolId, chainId } = useAdminParams();
+  const {
+    profileId,
+    poolId,
+    chainId,
+    updateChainId,
+    updateProfileId,
+    updatePoolId,
+  } = useAdminParams();
   const {
     areTransactionsLoading,
     completedTransactions,
@@ -147,7 +165,7 @@ export default function Review(props: ReviewProps) {
       chainId,
     },
     skip: !address || !poolId,
-    pollInterval: 3000,
+    pollInterval: 4000,
   });
   const { data: initialSuperAppBalance } = useReadContract({
     abi: strategyAbi,
@@ -277,6 +295,22 @@ export default function Review(props: ReviewProps) {
     wagmiConfig,
   ]);
 
+  useEffect(() => {
+    if (!chainId || !profileId || !poolId) {
+      updateChainId(props.chainId);
+      updateProfileId(props.profileId);
+      updatePoolId(props.poolId);
+    }
+  }, [
+    props,
+    chainId,
+    profileId,
+    poolId,
+    updateChainId,
+    updateProfileId,
+    updatePoolId,
+  ]);
+
   const handleReviewSelection = (newStatus: NewStatus) => {
     if (!selectedRecipient) {
       throw Error("No selected recipient");
@@ -329,7 +363,22 @@ export default function Review(props: ReviewProps) {
   return (
     <Stack direction="vertical" gap={4} className="px-5 py-4">
       {!profileId ? (
-        <>Program not found, please select one from Program Selection</>
+        <Card.Text>
+          Program not found, please select one from{" "}
+          <Link href="/admin" className="text-decoration-underline">
+            Program Selection
+          </Link>
+        </Card.Text>
+      ) : !poolId ? (
+        <Card.Text>
+          Pool not found, please select one from{" "}
+          <Link
+            href={`/admin/pools/?chainid=${chainId}&profileid=${profileId}`}
+            className="text-decoration-underline"
+          >
+            Pool Selection
+          </Link>
+        </Card.Text>
       ) : connectedChain?.id !== chainId ? (
         <>Wrong network</>
       ) : loading ? (

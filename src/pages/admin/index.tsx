@@ -53,7 +53,7 @@ export default function Index() {
       chainId: connectedChain?.id,
     },
     skip: !address,
-    pollInterval: 3000,
+    pollInterval: 4000,
   });
   const router = useRouter();
 
@@ -74,7 +74,8 @@ export default function Index() {
             <Dropdown>
               <Dropdown.Toggle
                 variant="transparent"
-                className="d-flex justify-content-between align-items-center w-20 border border-2"
+                className="d-flex justify-content-between align-items-center border border-2"
+                style={{ width: 156 }}
               >
                 {network?.name ?? networks[0].name}
               </Dropdown.Toggle>
@@ -123,7 +124,9 @@ export default function Index() {
                           members.map((profileRole) => profileRole.address),
                         );
                         updateChainId(network.id);
-                        router.push("/admin/pools");
+                        router.push(
+                          `/admin/pools/?chainid=${network.id}&profileid=${profile.id}`,
+                        );
                       }}
                       key={i}
                     >

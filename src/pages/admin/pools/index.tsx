@@ -1,4 +1,7 @@
+import { useEffect } from "react";
 import { useRouter } from "next/router";
+import { GetServerSideProps } from "next";
+import Link from "next/link";
 import { useAccount } from "wagmi";
 import { gql, useQuery } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
@@ -8,6 +11,11 @@ import Spinner from "react-bootstrap/Spinner";
 import { useClampText } from "use-clamp-text";
 import useAdminParams from "@/hooks/adminParams";
 import { getApolloClient } from "@/lib/apollo";
+
+type PoolsProps = {
+  profileId: string | null;
+  chainId: number | null;
+};
 
 const POOLS_QUERY = gql`
   query PoolsQuery($chainId: Int, $profileId: String, $address: String) {
@@ -27,8 +35,20 @@ const POOLS_QUERY = gql`
   }
 `;
 
-export default function Pools() {
-  const { profileId, updatePoolId, chainId } = useAdminParams();
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const { query } = ctx;
+
+  return {
+    props: {
+      profileId: query.profileid ?? null,
+      chainId: Number(query.chainid) ?? null,
+    },
+  };
+};
+
+export default function Pools(props: PoolsProps) {
+  const { profileId, chainId, updateProfileId, updatePoolId, updateChainId } =
+    useAdminParams();
   const { address } = useAccount();
   const { data: queryRes, loading } = useQuery(POOLS_QUERY, {
     client: getApolloClient("streamingfund"),
@@ -38,9 +58,16 @@ export default function Pools() {
       address: address?.toLowerCase() ?? "",
     },
     skip: !address || !profileId,
-    pollInterval: 3000,
+    pollInterval: 4000,
   });
   const router = useRouter();
+
+  useEffect(() => {
+    if (!chainId || !profileId) {
+      updateChainId(props.chainId);
+      updateProfileId(props.profileId);
+    }
+  }, [props, chainId, profileId, updateChainId, updateProfileId, updatePoolId]);
 
   const PoolCard = (props: {
     pool: {
@@ -62,7 +89,9 @@ export default function Pools() {
         style={{ width: 256, height: 256 }}
         onClick={() => {
           updatePoolId(pool.id);
-          router.push("/admin/configure");
+          router.push(
+            `/admin/configure/?chainid=${chainId}&profileid=${profileId}&poolid=${pool.id}`,
+          );
         }}
       >
         <Card.Body>
@@ -89,7 +118,12 @@ export default function Pools() {
       {loading ? (
         <Spinner className="m-auto" />
       ) : !profileId ? (
-        <>Program not found, please select one from Program Selection</>
+        <Card.Text>
+          Program not found, please select one from{" "}
+          <Link href="/admin" className="text-decoration-underline">
+            Program Selection
+          </Link>
+        </Card.Text>
       ) : (
         <Stack direction="horizontal" gap={5} className="flex-wrap">
           {queryRes?.pools.map(
@@ -106,7 +140,9 @@ export default function Pools() {
             style={{ width: 256, height: 256 }}
             onClick={() => {
               updatePoolId(null);
-              router.push("/admin/configure");
+              router.push(
+                `/admin/configure/?chainid=${chainId}&profileid=${profileId}`,
+              );
             }}
           >
             <Image src="/add.svg" alt="add" width={48} />

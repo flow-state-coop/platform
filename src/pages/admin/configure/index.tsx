@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import Link from "next/link";
+import { GetServerSideProps } from "next";
 import {
   Address,
   encodeAbiParameters,
@@ -18,6 +20,7 @@ import Form from "react-bootstrap/Form";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
+import Card from "react-bootstrap/Card";
 import useAdminParams from "@/hooks/adminParams";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
@@ -47,6 +50,12 @@ const POOL_BY_ID_QUERY = gql`
   }
 `;
 
+type ConfigureProps = {
+  chainId: number | null;
+  profileId: string | null;
+  poolId: string | null;
+};
+
 type PoolConfigParameters = {
   allocationToken: string;
   matchingToken: string;
@@ -62,13 +71,25 @@ enum EligibilityMethod {
   NFT_GATING = "NFT Gated",
 }
 
-export default function Configure() {
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const { query } = ctx;
+
+  return {
+    props: {
+      profileId: query.profileid ?? null,
+      chainId: Number(query.chainid) ?? null,
+      poolId: query.poolid ?? null,
+    },
+  };
+};
+
+export default function Configure(props: ConfigureProps) {
   const [transactionsCompleted, setTransactionsCompleted] = useState(0);
   const [areTransactionsLoading, setAreTransactionsLoading] = useState(false);
   const [poolConfigParameters, setPoolConfigParameters] =
     useState<PoolConfigParameters>({
-      allocationToken: "DAIx",
-      matchingToken: "ETHx",
+      allocationToken: "N/A",
+      matchingToken: "N/A",
       minPassportScore: "",
       name: "",
       description: "",
@@ -86,6 +107,8 @@ export default function Configure() {
     profileMembers,
     poolId,
     chainId,
+    updateChainId,
+    updateProfileId,
     updatePoolId,
   } = useAdminParams();
   const { data: queryRes, loading } = useQuery(POOL_BY_ID_QUERY, {
@@ -95,7 +118,7 @@ export default function Configure() {
       chainId,
     },
     skip: !poolId,
-    pollInterval: 3000,
+    pollInterval: 4000,
   });
   const { data: nftName } = useReadContract({
     address: (poolConfigParameters.nftAddress as Address) ?? "0x",
@@ -119,6 +142,22 @@ export default function Configure() {
     (!!poolConfigParameters.nftAddress && !nftName);
 
   useEffect(() => {
+    if (!chainId || !profileId || !poolId) {
+      updateChainId(props.chainId);
+      updateProfileId(props.profileId);
+      updatePoolId(props.poolId);
+    }
+  }, [
+    props,
+    chainId,
+    poolId,
+    profileId,
+    updateChainId,
+    updateProfileId,
+    updatePoolId,
+  ]);
+
+  useEffect(() => {
     if (!network) {
       return;
     }
@@ -126,6 +165,14 @@ export default function Configure() {
     if (network.passportDecoder === ZERO_ADDRESS) {
       setEligibilityMethod(EligibilityMethod.NFT_GATING);
     }
+
+    setPoolConfigParameters((prev) => {
+      return {
+        ...prev,
+        allocationToken: network.tokens[1].name,
+        matchingToken: network.tokens[0].name,
+      };
+    });
   }, [network]);
 
   useEffect(() => {
@@ -383,7 +430,12 @@ export default function Configure() {
       {loading || (poolId && !pool) ? (
         <Spinner className="m-auto" />
       ) : !profileId || !profileOwner ? (
-        <>Program not found, please select one from Program Selection</>
+        <Card.Text>
+          Program not found, please select one from{" "}
+          <Link href="/admin" className="text-decoration-underline">
+            Program Selection
+          </Link>
+        </Card.Text>
       ) : connectedChain?.id !== network.id ? (
         <>Wrong network</>
       ) : (

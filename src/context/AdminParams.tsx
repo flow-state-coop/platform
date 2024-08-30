@@ -1,4 +1,4 @@
-import { useState, createContext, useContext } from "react";
+import { useState, useCallback, createContext, useContext } from "react";
 
 export const AdminParamsContext = createContext<{
   profileId: string | null;
@@ -34,6 +34,31 @@ export function AdminParamsContextProvider({
   const [poolId, setPoolId] = useState<string | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
 
+  const updateProfileMembers = useCallback(
+    (profileMembers: string[]) => setProfileMembers(profileMembers),
+    [],
+  );
+
+  const updateProfileOwner = useCallback(
+    (profileOwner: string | null) => setProfileOwner(profileOwner),
+    [],
+  );
+
+  const updateProfileId = useCallback(
+    (profileId: string | null) => setProfileId(profileId),
+    [],
+  );
+
+  const updatePoolId = useCallback(
+    (poolId: string | null) => setPoolId(poolId),
+    [],
+  );
+
+  const updateChainId = useCallback(
+    (chainId: number | null) => setChainId(chainId),
+    [],
+  );
+
   return (
     <AdminParamsContext.Provider
       value={{
@@ -42,13 +67,11 @@ export function AdminParamsContextProvider({
         profileMembers,
         poolId,
         chainId,
-        updateProfileId: (profileId: string | null) => setProfileId(profileId),
-        updateProfileOwner: (profileOwner: string | null) =>
-          setProfileOwner(profileOwner),
-        updateProfileMembers: (profileMembers: string[]) =>
-          setProfileMembers(profileMembers),
-        updatePoolId: (poolId: string | null) => setPoolId(poolId),
-        updateChainId: (chainId: number | null) => setChainId(chainId),
+        updateProfileId,
+        updateProfileOwner,
+        updateProfileMembers,
+        updatePoolId,
+        updateChainId,
       }}
     >
       {children}
