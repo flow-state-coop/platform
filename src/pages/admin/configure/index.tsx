@@ -8,7 +8,13 @@ import {
   parseEther,
   parseEventLogs,
 } from "viem";
-import { useAccount, useReadContract, usePublicClient, useConfig } from "wagmi";
+import {
+  useAccount,
+  useReadContract,
+  usePublicClient,
+  useConfig,
+  useSwitchChain,
+} from "wagmi";
 import {
   writeContract,
   getWalletClient,
@@ -101,6 +107,7 @@ export default function Configure(props: ConfigureProps) {
   );
 
   const { chain: connectedChain } = useAccount();
+  const { switchChain } = useSwitchChain();
   const {
     profileId,
     profileOwner,
@@ -177,7 +184,12 @@ export default function Configure(props: ConfigureProps) {
 
   useEffect(() => {
     (async () => {
-      if (!pool || !publicClient || !network) {
+      if (
+        !pool ||
+        !publicClient ||
+        !network ||
+        connectedChain?.id !== network.id
+      ) {
         return;
       }
 
@@ -241,7 +253,7 @@ export default function Configure(props: ConfigureProps) {
         nftMintUrl: pool.metadata.nftMintUrl ?? "",
       });
     })();
-  }, [pool, publicClient, network]);
+  }, [pool, publicClient, network, connectedChain]);
 
   const handleCreatePool = async () => {
     if (!network) {
@@ -437,7 +449,19 @@ export default function Configure(props: ConfigureProps) {
           </Link>
         </Card.Text>
       ) : connectedChain?.id !== network.id ? (
-        <>Wrong network</>
+        <Card.Text>
+          Wrong network, please connect to{" "}
+          <span
+            className="p-0 text-decoration-underline cursor-pointer"
+            onClick={() => switchChain({ chainId: network?.id ?? 10 })}
+          >
+            {network?.name}
+          </span>{" "}
+          or return to{" "}
+          <Link href="/admin" className="text-decoration-underline">
+            Program Selection
+          </Link>
+        </Card.Text>
       ) : (
         <Form
           className="d-flex flex-column gap-4"

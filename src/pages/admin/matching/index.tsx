@@ -7,6 +7,7 @@ import {
   usePublicClient,
   useWriteContract,
   useReadContract,
+  useSwitchChain,
 } from "wagmi";
 import { gql, useQuery } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
@@ -61,6 +62,7 @@ export default function MatchinPool(props: MatchingPoolProps) {
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
 
   const { address, chain: connectedChain } = useAccount();
+  const { switchChain } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
   const {
     poolId,
@@ -158,7 +160,19 @@ export default function MatchinPool(props: MatchingPoolProps) {
           </Link>
         </Card.Text>
       ) : connectedChain?.id !== network?.id ? (
-        <>Wrong network</>
+        <Card.Text>
+          Wrong network, please connect to{" "}
+          <span
+            className="p-0 text-decoration-underline cursor-pointer"
+            onClick={() => switchChain({ chainId: network?.id ?? 10 })}
+          >
+            {network?.name}
+          </span>{" "}
+          or return to{" "}
+          <Link href="/admin" className="text-decoration-underline">
+            Program Selection
+          </Link>
+        </Card.Text>
       ) : (
         <>
           <Card.Text as="h1">Distribute funds to Matching Pool</Card.Text>

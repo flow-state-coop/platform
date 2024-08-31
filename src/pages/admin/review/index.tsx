@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { GetServerSideProps } from "next";
 import Link from "next/link";
 import { Address, formatEther } from "viem";
-import { useAccount, useReadContract, useConfig } from "wagmi";
+import { useAccount, useReadContract, useConfig, useSwitchChain } from "wagmi";
 import { writeContract, waitForTransactionReceipt } from "@wagmi/core";
 import { gql, useQuery } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
@@ -143,6 +143,7 @@ export default function Review(props: ReviewProps) {
   const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
 
   const { address, chain: connectedChain } = useAccount();
+  const { switchChain } = useSwitchChain();
   const {
     profileId,
     poolId,
@@ -380,7 +381,19 @@ export default function Review(props: ReviewProps) {
           </Link>
         </Card.Text>
       ) : connectedChain?.id !== chainId ? (
-        <>Wrong network</>
+        <Card.Text>
+          Wrong network, please connect to{" "}
+          <span
+            className="p-0 text-decoration-underline cursor-pointer"
+            onClick={() => switchChain({ chainId: network?.id ?? 10 })}
+          >
+            {network?.name}
+          </span>{" "}
+          or return to{" "}
+          <Link href="/admin" className="text-decoration-underline">
+            Program Selection
+          </Link>
+        </Card.Text>
       ) : loading ? (
         <Spinner className="m-auto" />
       ) : (

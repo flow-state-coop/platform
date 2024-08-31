@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useRouter } from "next/router";
 import Stack from "react-bootstrap/Stack";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -60,13 +61,14 @@ function Sidebar() {
     updateProfileMembers,
     updatePoolId,
   } = useAdminParams();
-  const { address, chain: connectedChain } = useAccount();
 
+  const router = useRouter();
+  const { address, chain: connectedChain } = useAccount();
   const { data: programsQueryRes } = useQuery(PROGRAMS_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
       address: address?.toLowerCase() ?? "",
-      chainId: connectedChain?.id,
+      chainId: chainId,
     },
     skip: !address,
     pollInterval: 4000,
@@ -88,6 +90,7 @@ function Sidebar() {
   const selectedPool = poolsQueryRes?.pools.find(
     (pool: { id: string }) => pool.id === poolId,
   );
+  const isWrongNetwork = connectedChain?.id !== chainId;
 
   useEffect(() => {
     if (!selectedProfile) {
@@ -142,14 +145,19 @@ function Sidebar() {
             direction="horizontal"
             gap={2}
             className="justify-content-between w-100"
+            style={{ color: isWrongNetwork ? "#dee2e6" : "" }}
           >
             Program
             <Dropdown className="position-static w-75 overflow-hidden">
               <Dropdown.Toggle
+                disabled={isWrongNetwork}
                 variant="transparent"
                 className="d-flex justify-content-between align-items-center w-100 border border-2 overflow-hidden"
               >
-                <span className="d-inline-block text-truncate">
+                <span
+                  className="d-inline-block text-truncate"
+                  style={{ color: isWrongNetwork ? "#dee2e6" : "" }}
+                >
                   {selectedProfile.metadata.name}
                 </span>
               </Dropdown.Toggle>
@@ -158,7 +166,12 @@ function Sidebar() {
                   (profile: Program, i: number) => (
                     <Dropdown.Item
                       key={i}
-                      onClick={() => updateProfileId(profile.id)}
+                      onClick={() => {
+                        updateProfileId(profile.id);
+                        router.push(
+                          `/admin/pools/?chainid=${chainId}&profileid=${profile.id}`,
+                        );
+                      }}
                     >
                       {profile?.metadata?.name ?? "N/A"}
                     </Dropdown.Item>
@@ -171,18 +184,20 @@ function Sidebar() {
             direction="horizontal"
             gap={2}
             className="justify-content-between w-100"
-            style={{ color: !selectedPool ? "#dee2e6" : "" }}
+            style={{ color: !selectedPool || isWrongNetwork ? "#dee2e6" : "" }}
           >
             Pool
             <Dropdown className="position-static w-75 overflow-hidden">
               <Dropdown.Toggle
-                disabled={!selectedPool}
+                disabled={!selectedPool || isWrongNetwork}
                 variant="transparent"
                 className="d-flex justify-content-between align-items-center w-100 border border-2 overflow-hidden"
               >
                 <span
                   className="d-inline-block text-truncate hidden"
-                  style={{ color: !selectedPool ? "#fff" : "" }}
+                  style={{
+                    color: !selectedPool || isWrongNetwork ? "#fff" : "",
+                  }}
                 >
                   {selectedPool?.metadata?.name ?? "N/A"}
                 </span>
@@ -207,30 +222,36 @@ function Sidebar() {
           <Stack
             direction="vertical"
             gap={3}
-            className={`rounded-4 flex-grow-0 p-3 border ${selectedPool ? "border-black" : ""}`}
-            style={{ color: !selectedPool ? "#dee2e6" : "" }}
+            className={`rounded-4 flex-grow-0 p-3 border ${selectedPool && !isWrongNetwork ? "border-black" : ""}`}
+            style={{ color: !selectedPool || isWrongNetwork ? "#dee2e6" : "" }}
           >
             <Link
               href={`/admin/configure/?chainid=${chainId}&profileid=${profileId}&poolid=${poolId}`}
               className={`d-flex align-items-center gap-1 ${
-                pathname.startsWith("/admin/configure") && !!selectedPool
+                pathname.startsWith("/admin/configure") &&
+                !!selectedPool &&
+                !isWrongNetwork
                   ? "fw-bold"
                   : ""
               }`}
               style={{
                 color: "inherit",
-                pointerEvents: !!profileId && !!selectedPool ? "auto" : "none",
+                pointerEvents:
+                  !!profileId && !!selectedPool && !isWrongNetwork
+                    ? "auto"
+                    : "none",
               }}
             >
               <Image
-                src={`${pathname.startsWith("/admin/configure") && !!selectedPool ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+                src={`${pathname.startsWith("/admin/configure") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
                 alt="Bullet Point"
                 width={24}
                 height={24}
                 style={{
-                  filter: !selectedPool
-                    ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
-                    : "",
+                  filter:
+                    !selectedPool || isWrongNetwork
+                      ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
+                      : "",
                 }}
               />
               Configuration
@@ -238,24 +259,28 @@ function Sidebar() {
             <Link
               href={`/admin/review/?chainid=${chainId}&profileid=${profileId}&poolid=${poolId}`}
               className={`d-flex align-items-center gap-1 ${
-                pathname.startsWith("/admin/review") && !!selectedPool
+                pathname.startsWith("/admin/review") &&
+                !!selectedPool &&
+                !isWrongNetwork
                   ? "fw-bold"
                   : ""
               }`}
               style={{
                 color: "inherit",
-                pointerEvents: selectedPool ? "auto" : "none",
+                pointerEvents:
+                  selectedPool && !isWrongNetwork ? "auto" : "none",
               }}
             >
               <Image
-                src={`${pathname.startsWith("/admin/review") && !!selectedPool ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+                src={`${pathname.startsWith("/admin/review") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
                 alt="Bullet Point"
                 width={24}
                 height={24}
                 style={{
-                  filter: !selectedPool
-                    ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
-                    : "",
+                  filter:
+                    !selectedPool || isWrongNetwork
+                      ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
+                      : "",
                 }}
               />
               Grantee Review
@@ -263,7 +288,9 @@ function Sidebar() {
             <Link
               href={`/admin/matching/?chainid=${chainId}&profileid=${profileId}&poolid=${poolId}`}
               className={`d-flex align-items-center gap-1 ${
-                pathname.startsWith("/admin/matching") && !!selectedPool
+                pathname.startsWith("/admin/matching") &&
+                !!selectedPool &&
+                !isWrongNetwork
                   ? "fw-bold"
                   : ""
               }`}
@@ -273,14 +300,15 @@ function Sidebar() {
               }}
             >
               <Image
-                src={`${pathname.startsWith("/admin/matching") && !!selectedPool ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+                src={`${pathname.startsWith("/admin/matching") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
                 alt="Bullet Point"
                 width={24}
                 height={24}
                 style={{
-                  filter: !selectedPool
-                    ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
-                    : "",
+                  filter:
+                    !selectedPool || isWrongNetwork
+                      ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
+                      : "",
                 }}
               />
               Matching Funds
@@ -289,7 +317,8 @@ function Sidebar() {
               href={`/?poolid=${poolId}&chainid=${chainId}`}
               style={{
                 color: "inherit",
-                pointerEvents: poolId && chainId ? "auto" : "none",
+                pointerEvents:
+                  poolId && chainId && !isWrongNetwork ? "auto" : "none",
               }}
               className="d-flex align-items-center gap-1"
             >
@@ -299,9 +328,10 @@ function Sidebar() {
                 width={24}
                 height={24}
                 style={{
-                  filter: !selectedPool
-                    ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
-                    : "",
+                  filter:
+                    !selectedPool || isWrongNetwork
+                      ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
+                      : "",
                 }}
               />
               Pool UI

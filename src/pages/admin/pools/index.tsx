@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { GetServerSideProps } from "next";
 import Link from "next/link";
-import { useAccount } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import { gql, useQuery } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
@@ -10,6 +10,7 @@ import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import { useClampText } from "use-clamp-text";
 import useAdminParams from "@/hooks/adminParams";
+import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 
 type PoolsProps = {
@@ -49,7 +50,8 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 export default function Pools(props: PoolsProps) {
   const { profileId, chainId, updateProfileId, updatePoolId, updateChainId } =
     useAdminParams();
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
+  const { switchChain } = useSwitchChain();
   const { data: queryRes, loading } = useQuery(POOLS_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
@@ -61,6 +63,8 @@ export default function Pools(props: PoolsProps) {
     pollInterval: 4000,
   });
   const router = useRouter();
+
+  const network = networks.filter((network) => network.id === chainId)[0];
 
   useEffect(() => {
     if (!chainId || !profileId) {
@@ -120,6 +124,20 @@ export default function Pools(props: PoolsProps) {
       ) : !profileId ? (
         <Card.Text>
           Program not found, please select one from{" "}
+          <Link href="/admin" className="text-decoration-underline">
+            Program Selection
+          </Link>
+        </Card.Text>
+      ) : connectedChain?.id !== chainId ? (
+        <Card.Text>
+          Wrong network, please connect to{" "}
+          <span
+            className="p-0 text-decoration-underline cursor-pointer"
+            onClick={() => switchChain({ chainId: network?.id ?? 10 })}
+          >
+            {network?.name}
+          </span>{" "}
+          or return to{" "}
           <Link href="/admin" className="text-decoration-underline">
             Program Selection
           </Link>
