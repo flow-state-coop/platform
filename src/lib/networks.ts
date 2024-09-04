@@ -53,7 +53,7 @@ const networks: Network[] = [
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/base-mainnet/protocol-v1",
     onRampName: "BASE_ETH",
-    passportDecoder: "0x0000000000000000000000000000000000000000",
+    passportDecoder: "0xe819c3FA368e164Da88E76A08a60f65280Af3ed6",
     superfluidHost: "0x4C073B3baB6d8826b8C5b229f3cfdC1eC6E47E74",
     superfluidResolver: "0x6a214c324553F96F04eFBDd66908685525Da0E0d",
     recipientSuperappFactory: "0x552942adAc3f12d078ACEc1922C9Fefc61c6EE6a",

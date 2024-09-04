@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { GetServerSideProps } from "next";
 import Link from "next/link";
 import { Address, formatEther } from "viem";
@@ -210,7 +210,7 @@ export default function Review(props: ReviewProps) {
     ),
   );
 
-  useMemo(() => {
+  useEffect(() => {
     if (!pool) {
       return;
     }
@@ -656,7 +656,10 @@ export default function Review(props: ReviewProps) {
           </Stack>
           <Button
             className="d-flex gap-2 align-items-center justify-content-center w-25 mt-2 text-light"
-            disabled={transactions.length === 0}
+            disabled={
+              transactions.length === 0 ||
+              (transactions.length > 1 && allocationTokenBalance <= 0)
+            }
             onClick={handleSubmit}
           >
             {areTransactionsLoading ? (

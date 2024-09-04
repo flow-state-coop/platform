@@ -90,8 +90,11 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 };
 
 export default function Configure(props: ConfigureProps) {
-  const [transactionsCompleted, setTransactionsCompleted] = useState(0);
   const [areTransactionsLoading, setAreTransactionsLoading] = useState(false);
+  const [transactionsCompleted, setTransactionsCompleted] = useState(0);
+  const [totalTransactions, setTotalTransactions] = useState(0);
+  const [existingStrategyAddress, setExistingStrategyAddress] = useState("");
+  const [existingNftChecker, setExistingNftChecker] = useState("");
   const [poolConfigParameters, setPoolConfigParameters] =
     useState<PoolConfigParameters>({
       allocationToken: "N/A",
@@ -138,14 +141,36 @@ export default function Configure(props: ConfigureProps) {
 
   const network = networks.filter((network) => network.id === chainId)[0];
   const pool = queryRes?.pools[0] ?? null;
-  const totalTransactions =
-    eligibilityMethod === EligibilityMethod.PASSPORT ? 2 : 3;
   const isNotAllowed =
     !!pool ||
     !poolConfigParameters.name ||
     (!poolConfigParameters.minPassportScore &&
       !poolConfigParameters.nftAddress) ||
     (!!poolConfigParameters.nftAddress && !nftName);
+
+  useEffect(() => {
+    if (areTransactionsLoading) {
+      return;
+    }
+
+    setTotalTransactions(
+      eligibilityMethod === EligibilityMethod.PASSPORT &&
+        existingStrategyAddress
+        ? 1
+        : eligibilityMethod === EligibilityMethod.PASSPORT
+          ? 2
+          : existingNftChecker && existingStrategyAddress
+            ? 1
+            : existingNftChecker || existingStrategyAddress
+              ? 2
+              : 3,
+    );
+  }, [
+    eligibilityMethod,
+    existingStrategyAddress,
+    existingNftChecker,
+    areTransactionsLoading,
+  ]);
 
   useEffect(() => {
     if (!chainId || !profileId || !poolId) {
@@ -168,7 +193,7 @@ export default function Configure(props: ConfigureProps) {
       return;
     }
 
-    if (network.passportDecoder === ZERO_ADDRESS) {
+    if (network.name === "Base") {
       setEligibilityMethod(EligibilityMethod.NFT_GATING);
     }
 
@@ -288,17 +313,22 @@ export default function Configure(props: ConfigureProps) {
 
     let nftCheckerAddress;
 
-    if (
+    if (existingNftChecker) {
+      nftCheckerAddress = existingNftChecker;
+    } else if (
       eligibilityMethod === EligibilityMethod.NFT_GATING &&
-      poolConfigParameters.nftAddress
+      poolConfigParameters.nftAddress &&
+      !existingNftChecker
     ) {
       nftCheckerAddress = await deployNftChecker();
 
-      setTransactionsCompleted(1);
+      setTransactionsCompleted(transactionsCompleted + 1);
 
       if (!nftCheckerAddress) {
-        throw Error("Failed to deploy NFT Checker");
+        return;
       }
+
+      setExistingNftChecker(nftCheckerAddress);
     }
 
     const now = (Date.now() / 1000) | 0;
@@ -347,13 +377,19 @@ export default function Configure(props: ConfigureProps) {
     );
 
     try {
-      const strategyAddress = await deployStrategy();
+      const strategyAddress = existingStrategyAddress
+        ? existingStrategyAddress
+        : await deployStrategy();
 
-      setTransactionsCompleted((prev) => prev + 1);
+      if (!existingStrategyAddress) {
+        setTransactionsCompleted((prev) => prev + 1);
+      }
 
       if (!strategyAddress) {
-        throw Error("Failed to deploy strategy");
+        return;
       }
+
+      setExistingStrategyAddress(strategyAddress);
 
       const hash = await writeContract(wagmiConfig, {
         address: network.allo,
@@ -361,7 +397,7 @@ export default function Configure(props: ConfigureProps) {
         functionName: "createPoolWithCustomStrategy",
         args: [
           profileId as `0x${string}`,
-          strategyAddress,
+          strategyAddress as `0x${string}`,
           initData,
           poolSuperToken,
           BigInt(0),
@@ -474,12 +510,13 @@ export default function Configure(props: ConfigureProps) {
               type="text"
               placeholder="SQF"
               disabled={!!pool}
-              onChange={(e) =>
+              onChange={(e) => {
                 setPoolConfigParameters({
                   ...poolConfigParameters,
                   name: e.target.value,
-                })
-              }
+                });
+                setExistingStrategyAddress("");
+              }}
               value={poolConfigParameters.name}
             />
           </Form.Group>
@@ -490,12 +527,13 @@ export default function Configure(props: ConfigureProps) {
               rows={3}
               style={{ resize: "none" }}
               disabled={!!pool}
-              onChange={(e) =>
+              onChange={(e) => {
                 setPoolConfigParameters({
                   ...poolConfigParameters,
                   description: e.target.value,
-                })
-              }
+                });
+                setExistingStrategyAddress("");
+              }}
               value={poolConfigParameters.description}
             />
           </Form.Group>
@@ -570,7 +608,7 @@ export default function Configure(props: ConfigureProps) {
               {eligibilityMethod}
             </Dropdown.Toggle>
             <Dropdown.Menu>
-              {network && network.passportDecoder !== ZERO_ADDRESS && (
+              {network && network.name !== "Base" && (
                 <Dropdown.Item
                   onClick={() => {
                     setEligibilityMethod(EligibilityMethod.PASSPORT);
@@ -614,6 +652,7 @@ export default function Configure(props: ConfigureProps) {
                       ...poolConfigParameters,
                       minPassportScore: e.target.value,
                     });
+                    setExistingStrategyAddress("");
                   }
                 }}
                 value={poolConfigParameters.minPassportScore}
@@ -627,12 +666,14 @@ export default function Configure(props: ConfigureProps) {
                   <Form.Control
                     type="text"
                     disabled={!!pool}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setPoolConfigParameters({
                         ...poolConfigParameters,
                         nftAddress: e.target.value,
-                      })
-                    }
+                      });
+                      setExistingStrategyAddress("");
+                      setExistingNftChecker("");
+                    }}
                     value={poolConfigParameters.nftAddress}
                   />
                 </Form.Group>
@@ -647,12 +688,13 @@ export default function Configure(props: ConfigureProps) {
                   <Form.Control
                     type="text"
                     disabled={!!pool}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setPoolConfigParameters({
                         ...poolConfigParameters,
                         nftMintUrl: e.target.value,
-                      })
-                    }
+                      });
+                      setExistingStrategyAddress("");
+                    }}
                     value={poolConfigParameters.nftMintUrl}
                   />
                 </Form.Group>
