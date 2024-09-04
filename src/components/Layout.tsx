@@ -3,7 +3,6 @@ import Stack from "react-bootstrap/Stack";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import useAdminParams from "@/hooks/adminParams";
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -12,10 +11,9 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const pathname = usePathname();
   const { isMobile } = useMediaQuery();
-  const { profileId } = useAdminParams();
 
   const showSidebar =
-    (!isMobile && pathname.startsWith("/admin") && !!profileId) ||
+    (!isMobile && pathname.startsWith("/admin") && pathname !== "/admin") ||
     (!isMobile && pathname.startsWith("/grantee")) ||
     (!isMobile && pathname === "/");
 

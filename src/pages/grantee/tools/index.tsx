@@ -83,24 +83,24 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 };
 
 export default function GranteeTools(props: GranteeToolsProps) {
-  const { poolId, chainId, recipientId, hostName } = props;
+  const { recipientId, hostName } = props;
 
   const [selectedProject, setSelectedProject] = useState<
     Project & { recipientId: string; status: string }
   >();
   const [isTransactionConfirming, setIsTransactionConfirming] = useState(false);
 
-  const { updateChainId, updatePoolId } = useAdminParams();
+  const { chainId, poolId, updateChainId, updatePoolId } = useAdminParams();
   const { isMobile } = useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { data: queryRes, loading } = useQuery(PROJECTS_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
-      chainId: Number(chainId),
+      chainId: Number(props.chainId),
       address: address?.toLowerCase() ?? "",
       poolId,
     },
-    skip: !address || !poolId,
+    skip: !address || !props.poolId,
     pollInterval: 3000,
   });
   const { writeContractAsync } = useWriteContract();
@@ -112,23 +112,23 @@ export default function GranteeTools(props: GranteeToolsProps) {
   const publicClient = usePublicClient();
 
   const network = networks.filter(
-    (network) => network.id === Number(chainId),
+    (network) => network.id === Number(props.chainId),
   )[0];
   const { data: isConnectedToPool, refetch: refetchIsConnectedToPool } =
     useReadContract({
-      address: network.gdaForwarder,
+      address: network?.gdaForwarder,
       abi: gdaForwarderAbi,
       functionName: "isMemberConnected",
       args: [gdaPoolAddress ?? "0x", address ?? "0x"],
     });
   const pool = queryRes?.pool ?? null;
   const allocationToken =
-    network.tokens.find(
+    network?.tokens.find(
       (token) =>
         token.address.toLowerCase() === pool?.allocationToken?.toLowerCase(),
     ) ?? null;
   const matchingToken =
-    network.tokens.find(
+    network?.tokens.find(
       (token) =>
         token.address.toLowerCase() === pool?.matchingToken?.toLowerCase(),
     ) ?? null;
@@ -150,13 +150,13 @@ export default function GranteeTools(props: GranteeToolsProps) {
 
       return { ...profile, recipientId, status: recipientStatus };
     }) ?? null;
-  const poolUiLink = `https://${hostName}/?poolid=${poolId}&chainid=${chainId}&recipientid=${selectedProject?.recipientId}`;
-  const framesLink = `https://frames.flowstate.network/frames/grantee/${selectedProject?.recipientId}/${poolId}/${chainId}`;
+  const poolUiLink = `https://${hostName}/?poolid=${props.poolId}&chainid=${props.chainId}&recipientid=${selectedProject?.recipientId}`;
+  const framesLink = `https://frames.flowstate.network/frames/grantee/${selectedProject?.recipientId}/${props.poolId}/${props.chainId}`;
 
   useEffect(() => {
-    updateChainId(Number(chainId));
-    updatePoolId(poolId);
-  }, [chainId, updateChainId, poolId, updatePoolId]);
+    updateChainId(Number(props.chainId));
+    updatePoolId(props.poolId);
+  }, [props.chainId, updateChainId, props.poolId, updatePoolId]);
 
   useEffect(() => {
     if (!projects || selectedProject) {
@@ -230,11 +230,15 @@ export default function GranteeTools(props: GranteeToolsProps) {
 
   return (
     <Stack direction="vertical" className="px-5 py-4">
-      {!network ? (
-        <>Network not supported</>
-      ) : !poolId || (queryRes && queryRes.pool === null) ? (
+      {!props.chainId ||
+      !props.poolId ||
+      (queryRes && queryRes.pool === null) ? (
         <>Pool not found</>
-      ) : !connectedChain?.id || !address ? (
+      ) : loading || !chainId || !poolId ? (
+        <Spinner className="m-auto" />
+      ) : !network ? (
+        <>Network not supported</>
+      ) : !connectedChain ? (
         <>Please connect a wallet</>
       ) : (
         <>

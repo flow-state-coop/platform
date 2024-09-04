@@ -149,7 +149,16 @@ export default function MatchinPool(props: MatchingPoolProps) {
 
   return (
     <Stack direction="vertical" gap={4} className="px-5 py-4">
-      {!poolId ? (
+      {(!profileId && !props.profileId) || (!chainId && !props.chainId) ? (
+        <Card.Text>
+          Program not found, please select one from{" "}
+          <Link href="/admin" className="text-decoration-underline">
+            Program Selection
+          </Link>
+        </Card.Text>
+      ) : loading || !chainId ? (
+        <Spinner className="m-auto" />
+      ) : !poolId && !props.poolId ? (
         <Card.Text>
           Pool not found, please select one from{" "}
           <Link
@@ -159,6 +168,8 @@ export default function MatchinPool(props: MatchingPoolProps) {
             Pool Selection
           </Link>
         </Card.Text>
+      ) : !connectedChain ? (
+        <>Please connect a wallet</>
       ) : connectedChain?.id !== network?.id ? (
         <Card.Text>
           Wrong network, please connect to{" "}

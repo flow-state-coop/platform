@@ -118,16 +118,20 @@ export default function Pools(props: PoolsProps) {
 
   return (
     <Stack direction="vertical" gap={4} className="px-5 py-4">
-      <Card.Text as="h1">Launch or Edit an SQF Pool</Card.Text>
-      {loading ? (
-        <Spinner className="m-auto" />
-      ) : !profileId ? (
+      {!loading && chainId && profileId && (
+        <Card.Text as="h1">Launch or Edit an SQF Pool</Card.Text>
+      )}
+      {(!profileId && !props.profileId) || (!chainId && !props.chainId) ? (
         <Card.Text>
           Program not found, please select one from{" "}
           <Link href="/admin" className="text-decoration-underline">
             Program Selection
           </Link>
         </Card.Text>
+      ) : loading || !chainId || !profileId ? (
+        <Spinner className="m-auto" />
+      ) : !connectedChain ? (
+        <>Please connect a wallet</>
       ) : connectedChain?.id !== chainId ? (
         <Card.Text>
           Wrong network, please connect to{" "}

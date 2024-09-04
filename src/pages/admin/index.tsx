@@ -65,94 +65,90 @@ export default function Index() {
     <>
       <Stack direction="vertical" gap={4} className="px-5 py-4">
         <Card.Text as="h1">Select or create an Allo Program</Card.Text>
-        {!connectedChain?.id ? (
-          <>Please connect a wallet</>
-        ) : !network ? (
-          <>Network not supported</>
-        ) : (
-          <>
-            <Dropdown>
-              <Dropdown.Toggle
-                variant="transparent"
-                className="d-flex justify-content-between align-items-center border border-2"
-                style={{ width: 156 }}
+        <Dropdown>
+          <Dropdown.Toggle
+            variant="transparent"
+            className="d-flex justify-content-between align-items-center border border-2"
+            style={{ width: 156 }}
+          >
+            {network?.name ?? networks[0].name}
+          </Dropdown.Toggle>
+          <Dropdown.Menu>
+            {networks.map((network, i) => (
+              <Dropdown.Item
+                key={i}
+                onClick={() =>
+                  !connectedChain && openConnectModal
+                    ? openConnectModal()
+                    : switchChain({ chainId: network.id })
+                }
               >
-                {network?.name ?? networks[0].name}
-              </Dropdown.Toggle>
-              <Dropdown.Menu>
-                {networks.map((network, i) => (
-                  <Dropdown.Item
-                    key={i}
-                    onClick={() => switchChain({ chainId: network.id })}
-                  >
-                    {network.name}
-                  </Dropdown.Item>
-                ))}
-              </Dropdown.Menu>
-            </Dropdown>
-            {loading ? (
-              <Spinner className="m-auto" />
-            ) : (
-              <Stack direction="horizontal" gap={5} className="flex-wrap">
-                {queryRes?.profiles.map(
-                  (
-                    profile: {
-                      id: string;
-                      metadata: { name: string };
-                      profileRolesByChainIdAndProfileId: {
-                        address: string;
-                        role: "OWNER" | "MEMBER";
-                      }[];
-                    },
-                    i: number,
-                  ) => (
-                    <Card
-                      className="d-flex justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
-                      style={{ width: 256, height: 256 }}
-                      onClick={() => {
-                        updateProfileId(profile.id);
-                        updateProfileOwner(
-                          profile.profileRolesByChainIdAndProfileId.find(
-                            (p) => p.role === "OWNER",
-                          )?.address ?? null,
-                        );
-                        const members =
-                          profile.profileRolesByChainIdAndProfileId.filter(
-                            (profileRole) => profileRole.role === "MEMBER",
-                          );
-                        updateProfileMembers(
-                          members.map((profileRole) => profileRole.address),
-                        );
-                        updateChainId(network.id);
-                        router.push(
-                          `/admin/pools/?chainid=${network.id}&profileid=${profile.id}`,
-                        );
-                      }}
-                      key={i}
-                    >
-                      <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap">
-                        {profile.metadata.name}
-                      </Card.Text>
-                    </Card>
-                  ),
-                )}
+                {network.name}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown>
+        {loading ? (
+          <Spinner className="m-auto" />
+        ) : (
+          <Stack direction="horizontal" gap={5} className="flex-wrap">
+            {queryRes?.profiles.map(
+              (
+                profile: {
+                  id: string;
+                  metadata: { name: string };
+                  profileRolesByChainIdAndProfileId: {
+                    address: string;
+                    role: "OWNER" | "MEMBER";
+                  }[];
+                },
+                i: number,
+              ) => (
                 <Card
-                  className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
+                  className="d-flex justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
                   style={{ width: 256, height: 256 }}
-                  onClick={
-                    !address
-                      ? openConnectModal
-                      : () => setShowProgramCreationModal(true)
-                  }
+                  onClick={() => {
+                    updateProfileId(profile.id);
+                    updateProfileOwner(
+                      profile.profileRolesByChainIdAndProfileId.find(
+                        (p) => p.role === "OWNER",
+                      )?.address ?? null,
+                    );
+                    const members =
+                      profile.profileRolesByChainIdAndProfileId.filter(
+                        (profileRole) => profileRole.role === "MEMBER",
+                      );
+                    updateProfileMembers(
+                      members.map((profileRole) => profileRole.address),
+                    );
+                    updateChainId(network?.id);
+                    router.push(
+                      `/admin/pools/?chainid=${network?.id}&profileid=${profile.id}`,
+                    );
+                  }}
+                  key={i}
                 >
-                  <Image src="/add.svg" alt="add" width={48} />
                   <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap">
-                    New Program
+                    {profile.metadata.name}
                   </Card.Text>
                 </Card>
-              </Stack>
+              ),
             )}
-          </>
+            <Card
+              className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
+              style={{ width: 256, height: 256 }}
+              onClick={
+                !address
+                  ? openConnectModal
+                  : () => setShowProgramCreationModal(true)
+              }
+            >
+              <Image src="/add.svg" alt="add" width={48} />
+              <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap">
+                New Program
+              </Card.Text>
+            </Card>
+          </Stack>
         )}
       </Stack>
       <ProgramCreationModal

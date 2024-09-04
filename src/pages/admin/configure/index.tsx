@@ -110,7 +110,6 @@ export default function Configure(props: ConfigureProps) {
   const { switchChain } = useSwitchChain();
   const {
     profileId,
-    profileOwner,
     profileMembers,
     poolId,
     chainId,
@@ -439,16 +438,18 @@ export default function Configure(props: ConfigureProps) {
 
   return (
     <Stack direction="vertical" gap={4} className="px-5 py-4">
-      {loading || (poolId && !pool) ? (
-        <Spinner className="m-auto" />
-      ) : !profileId || !profileOwner ? (
+      {(!profileId && !props.profileId) || (!chainId && !props.chainId) ? (
         <Card.Text>
           Program not found, please select one from{" "}
           <Link href="/admin" className="text-decoration-underline">
             Program Selection
           </Link>
         </Card.Text>
-      ) : connectedChain?.id !== network.id ? (
+      ) : loading || !chainId || (poolId && !pool) ? (
+        <Spinner className="m-auto" />
+      ) : !connectedChain ? (
+        <>Please connect a wallet</>
+      ) : connectedChain?.id !== network?.id ? (
         <Card.Text>
           Wrong network, please connect to{" "}
           <span

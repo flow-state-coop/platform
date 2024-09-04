@@ -84,8 +84,6 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 };
 
 export default function Grantee(props: GranteeProps) {
-  const { poolId, chainId } = props;
-
   const [selectedProjectIndex, setSelectedProjectIndex] = useState<
     number | null
   >(null);
@@ -95,17 +93,17 @@ export default function Grantee(props: GranteeProps) {
   const [newProfileId, setNewProfileId] = useState("");
   const [isTransactionConfirming, setIsTransactionConfirming] = useState(false);
 
-  const { updateChainId, updatePoolId } = useAdminParams();
+  const { chainId, poolId, updateChainId, updatePoolId } = useAdminParams();
   const { isMobile } = useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { data: queryRes, loading } = useQuery(PROJECTS_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
-      chainId: Number(chainId),
+      chainId: Number(props.chainId),
       address: address?.toLowerCase() ?? "",
-      poolId,
+      poolId: props.poolId,
     },
-    skip: !address || !poolId,
+    skip: !address || !props.poolId,
     pollInterval: 3000,
   });
   const { writeContractAsync, isError } = useWriteContract();
@@ -135,7 +133,7 @@ export default function Grantee(props: GranteeProps) {
   const router = useRouter();
 
   const network = networks.filter(
-    (network) => network.id === Number(chainId),
+    (network) => network.id === Number(props.chainId),
   )[0];
   const pool = queryRes?.pool ?? null;
   const recipients = pool?.recipientsByPoolIdAndChainId ?? null;
@@ -167,9 +165,9 @@ export default function Grantee(props: GranteeProps) {
     statuses?.includes("APPROVED") || statuses?.includes("PENDING");
 
   useEffect(() => {
-    updateChainId(Number(chainId));
-    updatePoolId(poolId);
-  }, [chainId, updateChainId, poolId, updatePoolId]);
+    updateChainId(Number(props.chainId));
+    updatePoolId(props.poolId);
+  }, [props.chainId, updateChainId, props.poolId, updatePoolId]);
 
   useEffect(() => {
     if (!newProfileId || hasApplied) {
@@ -208,7 +206,7 @@ export default function Grantee(props: GranteeProps) {
         address: network.allo,
         abi: alloAbi,
         functionName: "registerRecipient",
-        args: [BigInt(poolId!), recipientData],
+        args: [BigInt(props.poolId!), recipientData],
       });
 
       await publicClient.waitForTransactionReceipt({
@@ -228,11 +226,15 @@ export default function Grantee(props: GranteeProps) {
   return (
     <>
       <Stack direction="vertical" gap={4} className="px-5 py-4">
-        {!network ? (
-          <>Network not supported</>
-        ) : !poolId || (queryRes && queryRes.pool === null) ? (
+        {!props.chainId ||
+        !props.poolId ||
+        (queryRes && queryRes.pool === null) ? (
           <>Pool not found</>
-        ) : !connectedChain?.id || !address ? (
+        ) : loading || !chainId || !poolId ? (
+          <Spinner className="m-auto" />
+        ) : !network ? (
+          <>Network not supported</>
+        ) : !connectedChain ? (
           <>Please connect a wallet</>
         ) : (
           <>
@@ -330,7 +332,7 @@ export default function Grantee(props: GranteeProps) {
                       onClick={() =>
                         project.status === "APPROVED"
                           ? router.push(
-                              `/grantee/tools/?chainid=${chainId}&poolid=${poolId}&recipientid=${project.recipientId}`,
+                              `/grantee/tools/?chainid=${props.chainId}&poolid=${props.poolId}&recipientid=${project.recipientId}`,
                             )
                           : setSelectedProjectIndex(i)
                       }

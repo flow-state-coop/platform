@@ -84,7 +84,7 @@ function Sidebar() {
     pollInterval: 4000,
   });
 
-  const selectedProfile = programsQueryRes?.profiles.find(
+  const selectedProfile = programsQueryRes?.profiles?.find(
     (profile: Program) => profile.id === profileId,
   );
   const selectedPool = poolsQueryRes?.pools.find(
@@ -112,7 +112,7 @@ function Sidebar() {
     );
   }, [selectedProfile, updateProfileOwner, updateProfileMembers]);
 
-  if (pathname.startsWith("/admin") && !selectedProfile) {
+  if (pathname === "/admin") {
     return null;
   }
 
@@ -156,13 +156,19 @@ function Sidebar() {
               >
                 <span
                   className="d-inline-block text-truncate"
-                  style={{ color: isWrongNetwork ? "#dee2e6" : "" }}
+                  style={{
+                    color: !selectedProfile
+                      ? "#fff"
+                      : isWrongNetwork
+                        ? "#dee2e6"
+                        : "",
+                  }}
                 >
-                  {selectedProfile.metadata.name}
+                  {selectedProfile?.metadata?.name ?? "N/A"}
                 </span>
               </Dropdown.Toggle>
               <Dropdown.Menu>
-                {programsQueryRes?.profiles.map(
+                {programsQueryRes?.profiles?.map(
                   (profile: Program, i: number) => (
                     <Dropdown.Item
                       key={i}

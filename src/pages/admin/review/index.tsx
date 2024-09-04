@@ -363,23 +363,27 @@ export default function Review(props: ReviewProps) {
 
   return (
     <Stack direction="vertical" gap={4} className="px-5 py-4">
-      {!profileId ? (
+      {(!profileId && !props.profileId) || (!chainId && !props.chainId) ? (
         <Card.Text>
           Program not found, please select one from{" "}
           <Link href="/admin" className="text-decoration-underline">
             Program Selection
           </Link>
         </Card.Text>
-      ) : !poolId ? (
+      ) : loading || !chainId ? (
+        <Spinner className="m-auto" />
+      ) : !poolId && !props.poolId ? (
         <Card.Text>
           Pool not found, please select one from{" "}
           <Link
-            href={`/admin/pools/?chainid=${chainId}&profileid=${profileId}`}
+            href={`/admin/pools/?chainid=${chainId}&profileid=${profileId ?? props.profileId}`}
             className="text-decoration-underline"
           >
             Pool Selection
           </Link>
         </Card.Text>
+      ) : !connectedChain ? (
+        <>Please connect a wallet</>
       ) : connectedChain?.id !== chainId ? (
         <Card.Text>
           Wrong network, please connect to{" "}
@@ -394,8 +398,6 @@ export default function Review(props: ReviewProps) {
             Program Selection
           </Link>
         </Card.Text>
-      ) : loading ? (
-        <Spinner className="m-auto" />
       ) : (
         <Stack direction="vertical" gap={2}>
           <Card.Text className="m-0">Application Link</Card.Text>
