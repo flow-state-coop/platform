@@ -8,6 +8,7 @@ import Badge from "react-bootstrap/Badge";
 import { Step } from "@/types/checkout";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
+import { useMediaQuery } from "@/hooks/mediaQuery";
 import {
   TimeInterval,
   fromTimeUnitsToSeconds,
@@ -53,6 +54,8 @@ export default function TopUp(props: TopUpProps) {
     network,
     superTokenInfo,
   } = props;
+
+  const { isMobile } = useMediaQuery();
 
   const isUnderlyingTokenNative = underlyingTokenBalance?.symbol === "ETH";
 
@@ -104,16 +107,17 @@ export default function TopUp(props: TopUpProps) {
       <Accordion.Collapse eventKey={Step.TOP_UP} className="p-3 pt-0">
         <>
           <Stack
-            direction="horizontal"
+            direction={isMobile ? "vertical" : "horizontal"}
             gap={3}
             className="justify-content-center"
           >
             <Stack
               direction="vertical"
               gap={3}
-              className="align-items-center flex-grow-0 w-50 px-2 py-3 rounded-3 border border-gray"
+              className="align-items-center flex-grow-0 px-2 py-3 rounded-3 border border-gray"
+              style={{ width: isMobile ? "100%" : "50%" }}
             >
-              <Card.Text className="m-0 fs-5">
+              <Card.Text className="m-0 small">
                 {ethBalance?.symbol ?? "ETH"}:
               </Card.Text>
               <Card.Text
@@ -158,14 +162,15 @@ export default function TopUp(props: TopUpProps) {
               <Stack
                 direction="vertical"
                 gap={3}
-                className="align-items-center w-50 px-2 py-3 rounded-3 fs-6 border border-gray"
+                className="align-items-center px-2 py-3 rounded-3 fs-6 border border-gray"
+                style={{ width: isMobile ? "100%" : "50%" }}
               >
                 {!underlyingTokenBalance ? (
-                  <Card.Text className="m-0 fs-5">
+                  <Card.Text className="m-0 small">
                     {superTokenInfo.name}:
                   </Card.Text>
                 ) : (
-                  <Card.Text className="m-0 fs-5">
+                  <Card.Text className="m-0 small">
                     {underlyingTokenBalance?.symbol ?? "N/A"} +{" "}
                     {superTokenInfo.name}:
                   </Card.Text>

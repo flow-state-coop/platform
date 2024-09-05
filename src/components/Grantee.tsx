@@ -64,7 +64,7 @@ export default function Grantee(props: GranteeProps) {
   );
   const monthlyImpactMatchingEstimate = roundWeiAmount(
     impactMatchingEstimate * BigInt(SECONDS_IN_MONTH),
-    3,
+    2,
   );
 
   useEffect(() => {
@@ -170,7 +170,10 @@ export default function Grantee(props: GranteeProps) {
           </Stack>
         </Stack>
       </Card.Body>
-      <Card.Footer className="d-flex justify-content-between bg-light border-0 py-3">
+      <Card.Footer
+        className="d-flex justify-content-between bg-light border-0 py-3"
+        style={{ fontSize: "15px" }}
+      >
         <Stack direction="vertical" className="w-50">
           {userFlowRate ? (
             <>
@@ -188,10 +191,9 @@ export default function Grantee(props: GranteeProps) {
               <Card.Text as="small" className="m-0 fw-bold">
                 Matching Multiplier
               </Card.Text>
-              <Card.Text as="small" className="m-0">
+              <Card.Text as="small" className="m-0 text-truncate">
                 1 {allocationTokenInfo.name} = {monthlyImpactMatchingEstimate}{" "}
                 {matchingTokenInfo.name}
-                /mo
               </Card.Text>
             </>
           )}
