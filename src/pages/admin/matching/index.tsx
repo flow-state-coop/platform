@@ -13,16 +13,18 @@ import { gql, useQuery } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Form from "react-bootstrap/Form";
+import Image from "react-bootstrap/Image";
 import InputGroup from "react-bootstrap/InputGroup";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import useAdminParams from "@/hooks/adminParams";
+import useFlowingAmount from "@/hooks/flowingAmount";
 import { getApolloClient } from "@/lib/apollo";
 import { isNumber } from "@/lib/utils";
 import { networks } from "@/lib/networks";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { gdaForwarderAbi } from "@/lib/abi/gdaForwarder";
-import { SECONDS_IN_MONTH } from "@/lib/constants";
+import { SECONDS_IN_MONTH, ZERO_ADDRESS } from "@/lib/constants";
 
 type MatchingPoolProps = {
   chainId: number | null;
@@ -41,6 +43,24 @@ const POOL_BY_ID_QUERY = gql`
     ) {
       strategyAddress
       matchingToken
+    }
+  }
+`;
+
+const SF_ACCOUNT_QUERY = gql`
+  query SFAccountQuery($userAddress: String, $token: String) {
+    account(id: $userAddress) {
+      id
+      accountTokenSnapshots(where: { token: $token }) {
+        balanceUntilUpdatedAt
+        updatedAtTimestamp
+        totalNetFlowRate
+        token {
+          id
+          isNativeAssetSuperToken
+          underlyingAddress
+        }
+      }
     }
   }
 `;
@@ -74,7 +94,7 @@ export default function MatchinPool(props: MatchingPoolProps) {
   } = useAdminParams();
   const network = networks.find((network) => network.id === Number(chainId));
   const publicClient = usePublicClient();
-  const { data: queryRes, loading } = useQuery(POOL_BY_ID_QUERY, {
+  const { data: streamingFundQueryRes, loading } = useQuery(POOL_BY_ID_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
       poolId,
@@ -82,8 +102,20 @@ export default function MatchinPool(props: MatchingPoolProps) {
     },
     skip: !poolId,
   });
+  const matchingToken = streamingFundQueryRes
+    ? (streamingFundQueryRes.pools[0].matchingToken as Address)
+    : null;
+  const { data: superfluidQueryRes } = useQuery(SF_ACCOUNT_QUERY, {
+    client: getApolloClient("superfluid", chainId ?? 10),
+    variables: {
+      userAddress: address?.toLowerCase() ?? "0x",
+      token: matchingToken,
+    },
+    pollInterval: 10000,
+  });
+
   const { data: gdaPool } = useReadContract({
-    address: queryRes?.pools[0].strategyAddress,
+    address: streamingFundQueryRes?.pools[0].strategyAddress,
     abi: strategyAbi,
     functionName: "gdaPool",
   });
@@ -91,13 +123,28 @@ export default function MatchinPool(props: MatchingPoolProps) {
     address: network?.gdaForwarder,
     abi: gdaForwarderAbi,
     functionName: "getFlowDistributionFlowRate",
-    args: [
-      queryRes?.pools[0].matchingToken as Address,
-      address as Address,
-      gdaPool as Address,
-    ],
-    query: { refetchInterval: 5000 },
+    args: [matchingToken as Address, address as Address, gdaPool as Address],
+    query: { refetchInterval: 5000, enabled: !!matchingToken },
   });
+  const matchingTokenSymbol =
+    network?.tokens.find(
+      (token) => matchingToken === token.address.toLowerCase(),
+    )?.name ?? "matching token";
+  const isMatchingTokenPureSuperToken =
+    !superfluidQueryRes?.account?.token?.isNativeAssetSuperToken &&
+    superfluidQueryRes?.account?.token?.underlyingAddress === ZERO_ADDRESS;
+  const matchingTokenBalance = useFlowingAmount(
+    BigInt(
+      superfluidQueryRes?.account?.accountTokenSnapshots[0]
+        ?.balanceUntilUpdatedAt ?? 0,
+    ),
+    superfluidQueryRes?.account?.accountTokenSnapshots[0]?.updatedAtTimestamp ??
+      0,
+    BigInt(
+      superfluidQueryRes?.account?.accountTokenSnapshots[0]?.totalNetFlowRate ??
+        0,
+    ),
+  );
 
   useEffect(() => {
     if (!chainId || !profileId || !poolId) {
@@ -116,7 +163,13 @@ export default function MatchinPool(props: MatchingPoolProps) {
   ]);
 
   const handleStreamUpdate = async () => {
-    if (!network || !queryRes || !address || !gdaPool || !publicClient) {
+    if (
+      !network ||
+      !streamingFundQueryRes ||
+      !address ||
+      !gdaPool ||
+      !publicClient
+    ) {
       return;
     }
 
@@ -128,7 +181,7 @@ export default function MatchinPool(props: MatchingPoolProps) {
         abi: gdaForwarderAbi,
         functionName: "distributeFlow",
         args: [
-          queryRes.pools[0].matchingToken,
+          streamingFundQueryRes.pools[0].matchingToken,
           address,
           gdaPool,
           parseEther(newFlowRate) / BigInt(SECONDS_IN_MONTH),
@@ -235,14 +288,14 @@ export default function MatchinPool(props: MatchingPoolProps) {
                       network?.tokens.find(
                         (token) =>
                           token.address.toLowerCase() ===
-                          queryRes?.pools[0].matchingToken,
+                          streamingFundQueryRes?.pools[0].matchingToken,
                       )?.name
                     }
                     /month
                   </InputGroup.Text>
                 </InputGroup>
               </Form.Group>
-              <Form.Group className="mb-5">
+              <Form.Group className="mb-4">
                 <Form.Label>New Funding Rate</Form.Label>
                 <InputGroup className="w-50">
                   <Form.Control
@@ -261,22 +314,60 @@ export default function MatchinPool(props: MatchingPoolProps) {
                       network?.tokens.find(
                         (token) =>
                           token.address.toLowerCase() ===
-                          queryRes?.pools[0].matchingToken,
+                          streamingFundQueryRes?.pools[0].matchingToken,
                       )?.name
                     }
                     /month
                   </InputGroup.Text>
                 </InputGroup>
               </Form.Group>
+              <Stack
+                direction="horizontal"
+                gap={2}
+                className="align-items-start mt-4"
+              >
+                <Image src="/info.svg" alt="info" width={24} />
+                <Stack direction="vertical">
+                  <Card.Text className="m-0">
+                    Your Balance:{" "}
+                    {parseFloat(
+                      Number(formatEther(matchingTokenBalance)).toFixed(6),
+                    )}
+                  </Card.Text>
+                  <Card.Text>
+                    <Card.Link
+                      href={`https://jumper.exchange/?fromChain=${chainId}&fromToken=0x0000000000000000000000000000000000000000&toChain=${chainId}&toToken=${matchingToken}`}
+                      target="_blank"
+                      className="text-primary"
+                    >
+                      Swap
+                    </Card.Link>{" "}
+                    {!isMatchingTokenPureSuperToken && (
+                      <>
+                        or{" "}
+                        <Card.Link
+                          href="https://app.superfluid.finance/wrap?upgrade"
+                          target="_blank"
+                          className="text-primary"
+                        >
+                          Wrap
+                        </Card.Link>
+                      </>
+                    )}{" "}
+                    to {matchingTokenSymbol}
+                  </Card.Text>
+                </Stack>
+              </Stack>
               <Button
-                className="w-20 text-light"
+                className="w-20 mt-3 text-light"
                 disabled={
-                  !newFlowRate ||
+                  !isNumber(newFlowRate) ||
                   !network ||
-                  !queryRes ||
+                  !streamingFundQueryRes ||
                   !address ||
                   !gdaPool ||
-                  !publicClient
+                  !publicClient ||
+                  matchingTokenBalance <= 0
                 }
                 onClick={handleStreamUpdate}
               >

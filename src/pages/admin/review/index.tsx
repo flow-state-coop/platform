@@ -101,6 +101,7 @@ const RECIPIENTS_QUERY = gql`
 const SF_ACCOUNT_QUERY = gql`
   query SFAccountQuery($userAddress: String, $token: String) {
     account(id: $userAddress) {
+      id
       accountTokenSnapshots(where: { token: $token }) {
         balanceUntilUpdatedAt
         updatedAtTimestamp
