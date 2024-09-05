@@ -670,7 +670,7 @@ export default function Index(props: IndexProps) {
         >
           {grantees.map((grantee: Grantee, i: number) => (
             <Grantee
-              key={i}
+              key={grantee.id}
               name={grantee.name}
               description={grantee.description}
               logoCid={grantee.logoCid}
