@@ -123,7 +123,7 @@ const networks: Network[] = [
         icon: "/dai.svg",
       },
       {
-        name: "UDSCx",
+        name: "USDCx",
         address: "0xfc55f2854e74b4f42d01a6d3daac4c52d9dfdcff",
         icon: "/usdc.svg",
       },

@@ -177,10 +177,10 @@ export default function Grantee(props: GranteeProps) {
         <Stack direction="vertical" className="w-50">
           {userFlowRate ? (
             <>
-              <Card.Text as="small" className="m-0 fw-bold text-center">
+              <Card.Text as="small" className="m-0 fw-bold">
                 Your Stream
               </Card.Text>
-              <Card.Text as="small" className="m-0 text-center">
+              <Card.Text as="small" className="m-0">
                 {roundWeiAmount(userFlowRate * BigInt(SECONDS_IN_MONTH), 2)}{" "}
                 {allocationTokenInfo.name}
                 /mo
