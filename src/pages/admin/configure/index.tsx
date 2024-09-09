@@ -74,7 +74,12 @@ type PoolConfigParameters = {
 
 enum EligibilityMethod {
   PASSPORT = "Gitcoin Passport",
-  NFT_GATING = "NFT Gated",
+  NFT_GATING = "ERC721 NFT Gated",
+}
+
+enum NFTInterfaceID {
+  ERC721 = "0x80ac58cd",
+  ERC1155 = "0xd9b67a26",
 }
 
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
@@ -135,6 +140,13 @@ export default function Configure(props: ConfigureProps) {
     functionName: "name",
     query: { enabled: !!poolConfigParameters.nftAddress },
   });
+  const { data: isErc721 } = useReadContract({
+    address: (poolConfigParameters.nftAddress as Address) ?? "0x",
+    abi: erc721Abi,
+    functionName: "supportsInterface",
+    args: [NFTInterfaceID.ERC721],
+    query: { enabled: !!poolConfigParameters.nftAddress },
+  });
   const { isMobile } = useMediaQuery();
   const wagmiConfig = useConfig();
   const publicClient = usePublicClient();
@@ -146,7 +158,7 @@ export default function Configure(props: ConfigureProps) {
     !poolConfigParameters.name ||
     (!poolConfigParameters.minPassportScore &&
       !poolConfigParameters.nftAddress) ||
-    (!!poolConfigParameters.nftAddress && !nftName);
+    (!!poolConfigParameters.nftAddress && (!nftName || !isErc721));
 
   useEffect(() => {
     if (areTransactionsLoading) {
@@ -660,7 +672,11 @@ export default function Configure(props: ConfigureProps) {
             </Form.Group>
           ) : (
             <>
-              <Stack direction={isMobile ? "vertical" : "horizontal"} gap={4}>
+              <Stack
+                direction={isMobile ? "vertical" : "horizontal"}
+                gap={4}
+                className="align-items-start"
+              >
                 <Form.Group style={{ width: isMobile ? "auto" : 440 }}>
                   <Form.Label>NFT Contract Address</Form.Label>
                   <Form.Control
@@ -676,6 +692,11 @@ export default function Configure(props: ConfigureProps) {
                     }}
                     value={poolConfigParameters.nftAddress}
                   />
+                  {!!poolConfigParameters.nftAddress && !isErc721 && (
+                    <Card.Text className="m-0 mt-1 text-danger">
+                      This isn't an ERC721 NFT Contract
+                    </Card.Text>
+                  )}
                 </Form.Group>
                 <Form.Group className="w100 flexshrink-1">
                   <Form.Label>NFT Name</Form.Label>
@@ -702,8 +723,9 @@ export default function Configure(props: ConfigureProps) {
             </>
           )}
           <Button
-            className="d-flex gap-2 justify-content-center align-items-center w-25 mt-4 text-light"
             disabled={isNotAllowed}
+            className="d-flex gap-2 justify-content-center align-items-center mt-4 text-light"
+            style={{ width: isMobile ? "100%" : "25%" }}
             onClick={handleCreatePool}
           >
             {areTransactionsLoading ? (
