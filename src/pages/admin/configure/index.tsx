@@ -100,6 +100,7 @@ export default function Configure(props: ConfigureProps) {
   const [totalTransactions, setTotalTransactions] = useState(0);
   const [existingStrategyAddress, setExistingStrategyAddress] = useState("");
   const [existingNftChecker, setExistingNftChecker] = useState("");
+  const [showNextButton, setShowNextButton] = useState(false);
   const [poolConfigParameters, setPoolConfigParameters] =
     useState<PoolConfigParameters>({
       allocationToken: "N/A",
@@ -432,6 +433,7 @@ export default function Configure(props: ConfigureProps) {
 
       setTransactionsCompleted(0);
       setAreTransactionsLoading(false);
+      setShowNextButton(true);
     } catch (err) {
       setTransactionsCompleted(0);
       setAreTransactionsLoading(false);
@@ -722,23 +724,34 @@ export default function Configure(props: ConfigureProps) {
               )}
             </>
           )}
-          <Button
-            disabled={isNotAllowed}
-            className="d-flex gap-2 justify-content-center align-items-center mt-4 text-light"
-            style={{ width: isMobile ? "100%" : "25%" }}
-            onClick={handleCreatePool}
-          >
-            {areTransactionsLoading ? (
-              <>
-                <Spinner size="sm" />
-                {transactionsCompleted + 1}/{totalTransactions}
-              </>
-            ) : isNotAllowed ? (
-              "Launch Pool"
-            ) : (
-              `Launch Pool (${totalTransactions})`
-            )}
-          </Button>
+          <Stack direction={isMobile ? "vertical" : "horizontal"} gap={3}>
+            <Button
+              disabled={isNotAllowed}
+              className="d-flex gap-2 justify-content-center align-items-center mt-4 text-light"
+              style={{ width: isMobile ? "100%" : "25%" }}
+              onClick={handleCreatePool}
+            >
+              {areTransactionsLoading ? (
+                <>
+                  <Spinner size="sm" />
+                  {transactionsCompleted + 1}/{totalTransactions}
+                </>
+              ) : isNotAllowed ? (
+                "Launch Pool"
+              ) : (
+                `Launch Pool (${totalTransactions})`
+              )}
+            </Button>
+            <Button
+              variant="secondary"
+              href={`/admin/review/?chainid=${chainId}&profileid=${profileId}&poolid=${poolId}`}
+              disabled={!showNextButton || !poolId}
+              className="d-flex gap-2 justify-content-center align-items-center mt-4 text-light"
+              style={{ width: isMobile ? "100%" : "25%" }}
+            >
+              Next
+            </Button>
+          </Stack>
         </Form>
       )}
     </Stack>

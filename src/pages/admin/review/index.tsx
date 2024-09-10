@@ -19,6 +19,7 @@ import CopyTooltip from "@/components/CopyTooltip";
 import useAdminParams from "@/hooks/adminParams";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useFlowingAmount from "@/hooks/flowingAmount";
+import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";
 import { strategyAbi } from "@/lib/abi/strategy";
@@ -142,9 +143,11 @@ export default function Review(props: ReviewProps) {
     null,
   );
   const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
+  const [showNextButton, setShowNextButton] = useState(false);
 
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
+  const { isMobile } = useMediaQuery();
   const {
     profileId,
     poolId,
@@ -357,6 +360,7 @@ export default function Review(props: ReviewProps) {
 
       setReviewingRecipients([]);
       setCancelingRecipients([]);
+      setShowNextButton(true);
     } catch (err) {
       console.error(err);
     }
@@ -655,28 +659,40 @@ export default function Review(props: ReviewProps) {
               </Card.Text>
             </Stack>
           </Stack>
-          <Button
-            className="d-flex gap-2 align-items-center justify-content-center w-25 mt-2 text-light"
-            disabled={
-              transactions.length === 0 ||
-              (transactions.length > 1 && allocationTokenBalance <= 0)
-            }
-            onClick={handleSubmit}
-          >
-            {areTransactionsLoading ? (
-              <>
-                <Spinner size="sm" />
-                {completedTransactions + 1}/{transactions.length}
-              </>
-            ) : (
-              `Submit ${transactions.length > 0 ? "(" + transactions.length + ")" : ""}`
+          <Stack direction={isMobile ? "vertical" : "horizontal"} gap={3}>
+            <Button
+              disabled={
+                transactions.length === 0 ||
+                (transactions.length > 1 && allocationTokenBalance <= 0)
+              }
+              className="d-flex gap-2 align-items-center justify-content-center mt-2 text-light"
+              style={{ width: isMobile ? "100%" : "25%" }}
+              onClick={handleSubmit}
+            >
+              {areTransactionsLoading ? (
+                <>
+                  <Spinner size="sm" />
+                  {completedTransactions + 1}/{transactions.length}
+                </>
+              ) : (
+                `Submit ${transactions.length > 0 ? "(" + transactions.length + ")" : ""}`
+              )}
+            </Button>
+            {transactionError && (
+              <Card.Text className="m-0 overflow-hidden text-danger text-break">
+                {transactionError}
+              </Card.Text>
             )}
-          </Button>
-          {transactionError && (
-            <Card.Text className="m-0 overflow-hidden text-danger text-break">
-              {transactionError}
-            </Card.Text>
-          )}
+            <Button
+              variant="secondary"
+              href={`/admin/matching/?chainid=${chainId}&profileid=${profileId}&poolid=${poolId}`}
+              disabled={!showNextButton || !poolId}
+              className="d-flex gap-2 justify-content-center align-items-center mt-2 text-light"
+              style={{ width: isMobile ? "100%" : "25%" }}
+            >
+              Next
+            </Button>
+          </Stack>
         </Stack>
       )}
     </Stack>
