@@ -40,8 +40,8 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
     userGithub: "",
     projectGithub: "",
   });
-  const [projectLogoBlob, setProjectLogoBlob] = useState<Blob>();
-  const [projectBannerBlob, setProjectBannerBlob] = useState<Blob>();
+  const [projectLogoBlob, setProjectLogoBlob] = useState<Blob | null>(null);
+  const [projectBannerBlob, setProjectBannerBlob] = useState<Blob | null>(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [projectLogoError, setProjectLogoError] = useState("");
   const [projectBannerError, setProjectBannerError] = useState("");
@@ -242,13 +242,27 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
                 </Card.Text>
               ) : (
                 projectLogoBlob && (
-                  <Image
-                    src={URL.createObjectURL(projectLogoBlob)}
-                    alt="logo"
-                    width={96}
-                    height={96}
-                    className="rounded-4"
-                  />
+                  <>
+                    <Image
+                      src={URL.createObjectURL(projectLogoBlob)}
+                      alt="logo"
+                      width={96}
+                      height={96}
+                      className="rounded-4"
+                    />
+                    <Button
+                      variant="transparent"
+                      className="p-0"
+                      onClick={() => setProjectLogoBlob(null)}
+                    >
+                      <Image
+                        src="/close.svg"
+                        alt="Cancel"
+                        width={32}
+                        height={32}
+                      />
+                    </Button>
+                  </>
                 )
               )}
             </Stack>
@@ -290,12 +304,26 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
                 </Card.Text>
               ) : (
                 projectBannerBlob && (
-                  <Image
-                    src={URL.createObjectURL(projectBannerBlob)}
-                    alt="banner"
-                    width={150}
-                    height={50}
-                  />
+                  <>
+                    <Image
+                      src={URL.createObjectURL(projectBannerBlob)}
+                      alt="banner"
+                      width={150}
+                      height={50}
+                    />
+                    <Button
+                      variant="transparent"
+                      className="p-0"
+                      onClick={() => setProjectBannerBlob(null)}
+                    >
+                      <Image
+                        src="/close.svg"
+                        alt="Cancel"
+                        width={32}
+                        height={32}
+                      />
+                    </Button>
+                  </>
                 )
               )}
             </Stack>
