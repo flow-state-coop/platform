@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { GetServerSideProps } from "next";
 import Link from "next/link";
@@ -9,7 +8,6 @@ import Card from "react-bootstrap/Card";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import { useClampText } from "use-clamp-text";
-import useAdminParams from "@/hooks/adminParams";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 
@@ -48,8 +46,8 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 };
 
 export default function Pools(props: PoolsProps) {
-  const { profileId, chainId, updateProfileId, updatePoolId, updateChainId } =
-    useAdminParams();
+  const { chainId, profileId } = props;
+
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { data: queryRes, loading } = useQuery(POOLS_QUERY, {
@@ -65,13 +63,6 @@ export default function Pools(props: PoolsProps) {
   const router = useRouter();
 
   const network = networks.filter((network) => network.id === chainId)[0];
-
-  useEffect(() => {
-    if (!chainId || !profileId) {
-      updateChainId(props.chainId);
-      updateProfileId(props.profileId);
-    }
-  }, [props, chainId, profileId, updateChainId, updateProfileId, updatePoolId]);
 
   const PoolCard = (props: {
     pool: {
@@ -92,7 +83,6 @@ export default function Pools(props: PoolsProps) {
         className="border-2 rounded-4 fs-4 cursor-pointer"
         style={{ width: 256, height: 256 }}
         onClick={() => {
-          updatePoolId(pool.id);
           router.push(
             `/admin/configure/?chainid=${chainId}&profileid=${profileId}&poolid=${pool.id}`,
           );
@@ -161,7 +151,6 @@ export default function Pools(props: PoolsProps) {
             className="d-flex flex-column justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
             style={{ width: 256, height: 256 }}
             onClick={() => {
-              updatePoolId(null);
               router.push(
                 `/admin/configure/?chainid=${chainId}&profileid=${profileId}`,
               );

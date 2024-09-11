@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import Link from "next/link";
 import { GetServerSideProps } from "next";
 import {
@@ -27,7 +28,6 @@ import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import Card from "react-bootstrap/Card";
-import useAdminParams from "@/hooks/adminParams";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";
@@ -42,7 +42,7 @@ import { pinJsonToIpfs } from "@/lib/ipfs";
 import { ZERO_ADDRESS } from "@/lib/constants";
 
 const POOL_BY_ID_QUERY = gql`
-  query PoolByIdQuery($poolId: String, $chainId: Int) {
+  query PoolByIdQuery($poolId: String, $chainId: Int!, $profileId: String!) {
     pools(
       filter: {
         chainId: { equalTo: $chainId }
@@ -53,6 +53,11 @@ const POOL_BY_ID_QUERY = gql`
       strategyAddress
       metadata
     }
+    profile(chainId: $chainId, id: $profileId) {
+      profileRolesByChainIdAndProfileId {
+        address
+      }
+    }
   }
 `;
 
@@ -60,6 +65,7 @@ type ConfigureProps = {
   chainId: number | null;
   profileId: string | null;
   poolId: string | null;
+  showNextButton: boolean;
 };
 
 type PoolConfigParameters = {
@@ -90,17 +96,19 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       profileId: query.profileid ?? null,
       chainId: Number(query.chainid) ?? null,
       poolId: query.poolid ?? null,
+      showNextButton: query.new ? true : false,
     },
   };
 };
 
 export default function Configure(props: ConfigureProps) {
+  const { chainId, profileId, poolId, showNextButton } = props;
+
   const [areTransactionsLoading, setAreTransactionsLoading] = useState(false);
   const [transactionsCompleted, setTransactionsCompleted] = useState(0);
   const [totalTransactions, setTotalTransactions] = useState(0);
   const [existingStrategyAddress, setExistingStrategyAddress] = useState("");
   const [existingNftChecker, setExistingNftChecker] = useState("");
-  const [showNextButton, setShowNextButton] = useState(false);
   const [poolConfigParameters, setPoolConfigParameters] =
     useState<PoolConfigParameters>({
       allocationToken: "N/A",
@@ -115,24 +123,17 @@ export default function Configure(props: ConfigureProps) {
     EligibilityMethod.PASSPORT,
   );
 
+  const router = useRouter();
   const { chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
-  const {
-    profileId,
-    profileMembers,
-    poolId,
-    chainId,
-    updateChainId,
-    updateProfileId,
-    updatePoolId,
-  } = useAdminParams();
   const { data: queryRes, loading } = useQuery(POOL_BY_ID_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
       poolId,
       chainId,
+      profileId,
     },
-    skip: !poolId,
+    skip: !poolId && !profileId,
     pollInterval: 4000,
   });
   const { data: nftName } = useReadContract({
@@ -153,7 +154,8 @@ export default function Configure(props: ConfigureProps) {
   const publicClient = usePublicClient();
 
   const network = networks.filter((network) => network.id === chainId)[0];
-  const pool = queryRes?.pools[0] ?? null;
+  const pool = queryRes?.pools ? queryRes?.pools[0] : null;
+  const profile = queryRes?.profile ?? null;
   const isNotAllowed =
     !!pool ||
     !poolConfigParameters.name ||
@@ -183,22 +185,6 @@ export default function Configure(props: ConfigureProps) {
     existingStrategyAddress,
     existingNftChecker,
     areTransactionsLoading,
-  ]);
-
-  useEffect(() => {
-    if (!chainId || !profileId || !poolId) {
-      updateChainId(props.chainId);
-      updateProfileId(props.profileId);
-      updatePoolId(props.poolId);
-    }
-  }, [
-    props,
-    chainId,
-    poolId,
-    profileId,
-    updateChainId,
-    updateProfileId,
-    updatePoolId,
   ]);
 
   useEffect(() => {
@@ -404,6 +390,13 @@ export default function Configure(props: ConfigureProps) {
 
       setExistingStrategyAddress(strategyAddress);
 
+      const profileMembers = Array.from(
+        new Set(
+          profile.profileRolesByChainIdAndProfileId.map(
+            (profile: { address: string }) => profile.address,
+          ),
+        ),
+      );
       const hash = await writeContract(wagmiConfig, {
         address: network.allo,
         abi: alloAbi,
@@ -429,11 +422,12 @@ export default function Configure(props: ConfigureProps) {
         logs: txReceipt.logs,
       });
 
-      updatePoolId(topics[0].args.poolId.toString());
-
       setTransactionsCompleted(0);
       setAreTransactionsLoading(false);
-      setShowNextButton(true);
+
+      router.push(
+        `/admin/configure/?chainid=${chainId}&profileid=${profileId}&poolid=${topics[0].args.poolId.toString()}&new=true`,
+      );
     } catch (err) {
       setTransactionsCompleted(0);
       setAreTransactionsLoading(false);
@@ -744,12 +738,17 @@ export default function Configure(props: ConfigureProps) {
             </Button>
             <Button
               variant="secondary"
-              href={`/admin/review/?chainid=${chainId}&profileid=${profileId}&poolid=${poolId}`}
               disabled={!showNextButton || !poolId}
-              className="d-flex gap-2 justify-content-center align-items-center mt-4 text-light"
+              className="d-flex gap-2 justify-content-center align-items-center mt-4 p-0 border-0 text-light"
               style={{ width: isMobile ? "100%" : "25%" }}
             >
-              Next
+              <Link
+                href={`/admin/review/?chainid=${chainId}&profileid=${profileId}&poolid=${poolId}`}
+                className="w-100 text-light"
+                style={{ paddingTop: 6, paddingBottom: 6 }}
+              >
+                Next
+              </Link>
             </Button>
           </Stack>
         </Form>

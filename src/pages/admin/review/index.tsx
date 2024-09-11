@@ -16,7 +16,6 @@ import Badge from "react-bootstrap/Badge";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import CopyTooltip from "@/components/CopyTooltip";
-import useAdminParams from "@/hooks/adminParams";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -131,7 +130,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 };
 
 export default function Review(props: ReviewProps) {
-  const { hostName } = props;
+  const { hostName, chainId, profileId, poolId } = props;
 
   const [reviewingRecipients, setReviewingRecipients] = useState<
     ReviewingRecipient[]
@@ -148,14 +147,6 @@ export default function Review(props: ReviewProps) {
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { isMobile } = useMediaQuery();
-  const {
-    profileId,
-    poolId,
-    chainId,
-    updateChainId,
-    updateProfileId,
-    updatePoolId,
-  } = useAdminParams();
   const {
     areTransactionsLoading,
     completedTransactions,
@@ -298,22 +289,6 @@ export default function Review(props: ReviewProps) {
     network,
     pool,
     wagmiConfig,
-  ]);
-
-  useEffect(() => {
-    if (!chainId || !profileId || !poolId) {
-      updateChainId(props.chainId);
-      updateProfileId(props.profileId);
-      updatePoolId(props.poolId);
-    }
-  }, [
-    props,
-    chainId,
-    profileId,
-    poolId,
-    updateChainId,
-    updateProfileId,
-    updatePoolId,
   ]);
 
   const handleReviewSelection = (newStatus: NewStatus) => {
@@ -685,12 +660,17 @@ export default function Review(props: ReviewProps) {
             )}
             <Button
               variant="secondary"
-              href={`/admin/matching/?chainid=${chainId}&profileid=${profileId}&poolid=${poolId}`}
               disabled={!showNextButton || !poolId}
-              className="d-flex gap-2 justify-content-center align-items-center mt-2 text-light"
+              className="d-flex gap-2 justify-content-center align-items-center mt-2 p-0 border-0 text-light"
               style={{ width: isMobile ? "100%" : "25%" }}
             >
-              Next
+              <Link
+                href={`/admin/matching/?chainid=${chainId}&profileid=${profileId}&poolid=${poolId}`}
+                className="w-100 text-light"
+                style={{ paddingTop: 6, paddingBottom: 6 }}
+              >
+                Next
+              </Link>
             </Button>
           </Stack>
         </Stack>

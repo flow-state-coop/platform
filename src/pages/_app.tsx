@@ -1,11 +1,11 @@
 import type { AppProps } from "next/app";
+import { useRouter } from "next/router";
 import { http } from "viem";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
 import { optimism, base, arbitrum, optimismSepolia } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import Layout from "@/components/Layout";
-import { AdminParamsContextProvider } from "@/context/AdminParams";
 import { DonorParamsContextProvider } from "@/context/DonorParams";
 import { WALLET_CONNECT_PROJECT_ID } from "../lib/constants";
 import "@rainbow-me/rainbowkit/styles.css";
@@ -25,19 +25,18 @@ const config = getDefaultConfig({
 });
 
 export default function App({ Component, pageProps }: AppProps) {
+  const router = useRouter();
   const queryClient = new QueryClient();
 
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider modalSize="compact">
-          <AdminParamsContextProvider>
-            <DonorParamsContextProvider>
-              <Layout>
-                <Component {...pageProps} />
-              </Layout>
-            </DonorParamsContextProvider>
-          </AdminParamsContextProvider>
+          <DonorParamsContextProvider>
+            <Layout>
+              <Component key={router.asPath} {...pageProps} />
+            </Layout>
+          </DonorParamsContextProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

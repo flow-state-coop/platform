@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useRouter } from "next/router";
 import Stack from "react-bootstrap/Stack";
 import { usePathname } from "next/navigation";
@@ -7,7 +6,6 @@ import { useQuery, gql } from "@apollo/client";
 import { useAccount } from "wagmi";
 import Dropdown from "react-bootstrap/Dropdown";
 import Image from "react-bootstrap/Image";
-import useAdminParams from "@/hooks/adminParams";
 import { Program } from "@/types/program";
 import { getApolloClient } from "@/lib/apollo";
 
@@ -52,23 +50,19 @@ const POOLS_QUERY = gql`
 
 function Sidebar() {
   const pathname = usePathname();
-  const {
-    profileId,
-    poolId,
-    chainId,
-    updateProfileId,
-    updateProfileOwner,
-    updateProfileMembers,
-    updatePoolId,
-  } = useAdminParams();
 
   const router = useRouter();
+  const {
+    chainid: chainId,
+    poolid: poolId,
+    profileid: profileId,
+  } = router.query;
   const { address, chain: connectedChain } = useAccount();
   const { data: programsQueryRes } = useQuery(PROGRAMS_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
       address: address?.toLowerCase() ?? "",
-      chainId: chainId,
+      chainId: Number(chainId),
     },
     skip: !address,
     pollInterval: 4000,
@@ -76,7 +70,7 @@ function Sidebar() {
   const { data: poolsQueryRes } = useQuery(POOLS_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
-      chainId,
+      chainId: Number(chainId),
       profileId,
       address: address?.toLowerCase() ?? "",
     },
@@ -84,33 +78,15 @@ function Sidebar() {
     pollInterval: 4000,
   });
 
+  const isWrongNetwork = connectedChain?.id !== Number(chainId);
   const selectedProfile = programsQueryRes?.profiles?.find(
     (profile: Program) => profile.id === profileId,
   );
   const selectedPool = poolsQueryRes?.pools.find(
     (pool: { id: string }) => pool.id === poolId,
   );
-  const isWrongNetwork = connectedChain?.id !== chainId;
-
-  useEffect(() => {
-    if (!selectedProfile) {
-      return;
-    }
-
-    const members = selectedProfile.profileRolesByChainIdAndProfileId.filter(
-      (profileRole: { role: "MEMBER" | "OWNER" }) =>
-        profileRole.role === "MEMBER",
-    );
-
-    updateProfileMembers(
-      members.map((profileRole: { address: string }) => profileRole.address),
-    );
-    updateProfileOwner(
-      selectedProfile.profileRolesByChainIdAndProfileId.find(
-        (p: { role: "MEMBER" | "OWNER" }) => p.role === "OWNER",
-      )?.address ?? null,
-    );
-  }, [selectedProfile, updateProfileOwner, updateProfileMembers]);
+  const isCreatingNewPool =
+    router.pathname === "/admin/configure" && !selectedPool;
 
   if (pathname === "/admin") {
     return null;
@@ -173,7 +149,6 @@ function Sidebar() {
                     <Dropdown.Item
                       key={i}
                       onClick={() => {
-                        updateProfileId(profile.id);
                         router.push(
                           `/admin/pools/?chainid=${chainId}&profileid=${profile.id}`,
                         );
@@ -183,6 +158,9 @@ function Sidebar() {
                     </Dropdown.Item>
                   ),
                 )}
+                <Dropdown.Item onClick={() => router.push("/admin/?new=true")}>
+                  Create New
+                </Dropdown.Item>
               </Dropdown.Menu>
             </Dropdown>
           </Stack>
@@ -190,22 +168,35 @@ function Sidebar() {
             direction="horizontal"
             gap={2}
             className="justify-content-between w-100"
-            style={{ color: !selectedPool || isWrongNetwork ? "#dee2e6" : "" }}
+            style={{
+              color:
+                (!address || !isCreatingNewPool) &&
+                (!selectedPool || isWrongNetwork)
+                  ? "#dee2e6"
+                  : "",
+            }}
           >
             Pool
             <Dropdown className="position-static w-75 overflow-hidden">
               <Dropdown.Toggle
-                disabled={!selectedPool || isWrongNetwork}
+                disabled={
+                  (!address || !isCreatingNewPool) &&
+                  (!selectedPool || isWrongNetwork)
+                }
                 variant="transparent"
                 className="d-flex justify-content-between align-items-center w-100 border border-2 overflow-hidden"
               >
                 <span
                   className="d-inline-block text-truncate hidden"
                   style={{
-                    color: !selectedPool || isWrongNetwork ? "#fff" : "",
+                    color:
+                      (!address || !isCreatingNewPool) &&
+                      (!selectedPool || isWrongNetwork)
+                        ? "#fff"
+                        : "",
                   }}
                 >
-                  {selectedPool?.metadata?.name ?? "N/A"}
+                  {selectedPool?.metadata?.name ?? "Create New"}
                 </span>
               </Dropdown.Toggle>
               <Dropdown.Menu>
@@ -216,12 +207,25 @@ function Sidebar() {
                   ) => (
                     <Dropdown.Item
                       key={i}
-                      onClick={() => updatePoolId(pool.id)}
+                      onClick={() =>
+                        router.push(
+                          `/admin/configure/?chainid=${chainId}&profileid=${profileId}&poolid=${pool.id}`,
+                        )
+                      }
                     >
                       {pool?.metadata?.name ?? "N/A"}
                     </Dropdown.Item>
                   ),
                 )}
+                <Dropdown.Item
+                  onClick={() => {
+                    router.push(
+                      `/admin/configure/?chainid=${chainId}&profileid=${profileId}`,
+                    );
+                  }}
+                >
+                  Create New
+                </Dropdown.Item>
               </Dropdown.Menu>
             </Dropdown>
           </Stack>

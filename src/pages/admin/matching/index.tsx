@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { GetServerSideProps } from "next";
 import Link from "next/link";
 import { Address, parseEther, formatEther } from "viem";
@@ -17,7 +17,6 @@ import Image from "react-bootstrap/Image";
 import InputGroup from "react-bootstrap/InputGroup";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
-import useAdminParams from "@/hooks/adminParams";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { getApolloClient } from "@/lib/apollo";
 import { isNumber } from "@/lib/utils";
@@ -78,20 +77,14 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 };
 
 export default function MatchinPool(props: MatchingPoolProps) {
+  const { chainId, profileId, poolId } = props;
+
   const [newFlowRate, setNewFlowRate] = useState("");
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
 
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
-  const {
-    poolId,
-    chainId,
-    profileId,
-    updateChainId,
-    updateProfileId,
-    updatePoolId,
-  } = useAdminParams();
   const network = networks.find((network) => network.id === Number(chainId));
   const publicClient = usePublicClient();
   const { data: streamingFundQueryRes, loading } = useQuery(POOL_BY_ID_QUERY, {
@@ -145,22 +138,6 @@ export default function MatchinPool(props: MatchingPoolProps) {
         0,
     ),
   );
-
-  useEffect(() => {
-    if (!chainId || !profileId || !poolId) {
-      updateChainId(props.chainId);
-      updateProfileId(props.profileId);
-      updatePoolId(props.poolId);
-    }
-  }, [
-    props,
-    chainId,
-    poolId,
-    profileId,
-    updateChainId,
-    updateProfileId,
-    updatePoolId,
-  ]);
 
   const handleStreamUpdate = async () => {
     if (

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { GetServerSideProps } from "next";
 import { useRouter } from "next/router";
 import { useAccount, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -10,8 +11,9 @@ import Dropdown from "react-bootstrap/Dropdown";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import ProgramCreationModal from "@/components/ProgramCreationModal";
-import useAdminParams from "@/hooks/adminParams";
 import { networks } from "@/lib/networks";
+
+type AdminProps = { showProgramCreationModal: boolean };
 
 const PROGRAMS_QUERY = gql`
   query ProgramsQuery($address: String, $chainId: Int) {
@@ -34,18 +36,23 @@ const PROGRAMS_QUERY = gql`
   }
 `;
 
-export default function Index() {
-  const [showProgramCreationModal, setShowProgramCreationModal] =
-    useState(false);
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const { query } = ctx;
+
+  return {
+    props: {
+      showProgramCreationModal: query.new ? true : false,
+    },
+  };
+};
+
+export default function Admin(props: AdminProps) {
+  const [showProgramCreationModal, setShowProgramCreationModal] = useState(
+    props.showProgramCreationModal,
+  );
   const { openConnectModal } = useConnectModal();
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
-  const {
-    updateProfileId,
-    updateProfileOwner,
-    updateProfileMembers,
-    updateChainId,
-  } = useAdminParams();
   const { data: queryRes, loading } = useQuery(PROGRAMS_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
@@ -108,20 +115,6 @@ export default function Index() {
                   className="d-flex justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
                   style={{ width: 256, height: 256 }}
                   onClick={() => {
-                    updateProfileId(profile.id);
-                    updateProfileOwner(
-                      profile.profileRolesByChainIdAndProfileId.find(
-                        (p) => p.role === "OWNER",
-                      )?.address ?? null,
-                    );
-                    const members =
-                      profile.profileRolesByChainIdAndProfileId.filter(
-                        (profileRole) => profileRole.role === "MEMBER",
-                      );
-                    updateProfileMembers(
-                      members.map((profileRole) => profileRole.address),
-                    );
-                    updateChainId(network?.id);
                     router.push(
                       `/admin/pools/?chainid=${network?.id}&profileid=${profile.id}`,
                     );

@@ -15,7 +15,6 @@ import Dropdown from "react-bootstrap/Dropdown";
 import Badge from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
-import useAdminParams from "@/hooks/adminParams";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { Project } from "@/types/project";
 import { networks } from "@/lib/networks";
@@ -83,14 +82,13 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 };
 
 export default function GranteeTools(props: GranteeToolsProps) {
-  const { recipientId, hostName } = props;
+  const { hostName, chainId, poolId, recipientId } = props;
 
   const [selectedProject, setSelectedProject] = useState<
     Project & { recipientId: string; status: string }
   >();
   const [isTransactionConfirming, setIsTransactionConfirming] = useState(false);
 
-  const { chainId, poolId, updateChainId, updatePoolId } = useAdminParams();
   const { isMobile } = useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { data: queryRes, loading } = useQuery(PROJECTS_QUERY, {
@@ -152,11 +150,6 @@ export default function GranteeTools(props: GranteeToolsProps) {
     }) ?? null;
   const poolUiLink = `https://${hostName}/?poolid=${props.poolId}&chainid=${props.chainId}&recipientid=${selectedProject?.recipientId}`;
   const framesLink = `https://frames.flowstate.network/frames/grantee/${selectedProject?.recipientId}/${props.poolId}/${props.chainId}`;
-
-  useEffect(() => {
-    updateChainId(Number(props.chainId));
-    updatePoolId(props.poolId);
-  }, [props.chainId, updateChainId, props.poolId, updatePoolId]);
 
   useEffect(() => {
     if (!projects || selectedProject) {
