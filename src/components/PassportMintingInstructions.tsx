@@ -112,7 +112,7 @@ export default function PassportMintingInstructions(
           </ListGroup.Item>
           <ListGroup as="ul">
             <ListGroup.Item as="li" className="bg-light border-0 ms-2 py-1">
-              &#x2022; Bringing your Passport onchain requires a $2 payment in
+              &#x2022; Bringing your Passport onchain requires a $3 payment in
               ETH
             </ListGroup.Item>
           </ListGroup>
