@@ -31,6 +31,7 @@ import {
   SECONDS_IN_MONTH,
   ZERO_ADDRESS,
   FLOW_STATE_RECEIVER,
+  SUPERVISUAL_BASE_URL,
 } from "@/lib/constants";
 
 type IndexProps = {
@@ -305,6 +306,25 @@ export default function Index(props: IndexProps) {
         ? true
         : false;
 
+  const supervisualUrl = useMemo(() => {
+    const url = new URL(SUPERVISUAL_BASE_URL);
+
+    if (streamingFundQueryRes?.pool) {
+      const { matchingToken, allocationToken } = streamingFundQueryRes.pool;
+
+      const accounts = grantees
+        .map((grantee) => grantee.superappAddress)
+        .concat(gdaPoolAddress ?? "");
+      const tokens = [matchingToken, allocationToken];
+
+      url.searchParams.set("chain", chainId ?? DEFAULT_CHAIN_ID);
+      url.searchParams.set("tokens", tokens.toString());
+      url.searchParams.set("accounts", accounts.toString());
+    }
+
+    return url.toString();
+  }, [grantees, streamingFundQueryRes, chainId, gdaPoolAddress]);
+
   const allocationTokenInfo = useMemo(
     () =>
       network?.tokens.find(
@@ -578,6 +598,7 @@ export default function Index(props: IndexProps) {
         <PoolInfo
           name={pool?.metadata.name ?? "N/A"}
           description={pool?.metadata.description ?? "N/A"}
+          supervisualUrl={supervisualUrl}
           directFlowRate={
             superfluidQueryRes?.accounts
               ? superfluidQueryRes?.accounts

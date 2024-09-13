@@ -20,6 +20,7 @@ type PoolInfoProps = Pool & {
   directTotal: bigint;
   directFunders: number;
   matchingPool: MatchingPool;
+  supervisualUrl: string;
   showTransactionPanel: () => void;
 };
 
@@ -33,6 +34,7 @@ export default function PoolInfo(props: PoolInfoProps) {
     directTotal,
     directFunders,
     matchingPool,
+    supervisualUrl,
     showTransactionPanel,
   } = props;
 
@@ -93,56 +95,71 @@ export default function PoolInfo(props: PoolInfoProps) {
             <Table borderless>
               <thead className="border-bottom border-dark">
                 <tr>
-                  <th className="ps-0 bg-transparent text-dark">
+                  <th className="w-33 ps-0 bg-transparent text-dark">
                     {isMobile ? "Token" : "Funding Types (Token)"}
                   </th>
-                  <th className="bg-transparent text-dark">
+                  <th className="w-20 bg-transparent text-dark">
                     {isMobile ? "Total" : "Total Flow"}
                   </th>
-                  <th className="bg-transparent text-dark">
+                  <th className="w-20 bg-transparent text-dark">
                     {isMobile ? "Monthly" : "Monthly Flow"}
                   </th>
-                  <th className="bg-transparent text-dark">
+                  <th className="w-20 bg-transparent text-dark">
                     {isMobile ? "Funders" : "Active Funders"}
                   </th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td className="ps-0 bg-transparent">
+                  <td className="w-33 ps-0 bg-transparent">
                     Direct ({allocationTokenInfo.name})
                   </td>
-                  <td className="bg-transparent">
+                  <td className="w-20 bg-transparent">
                     {Number(formatEther(directTotal)).toFixed(isMobile ? 4 : 6)}
                   </td>
-                  <td className="bg-transparent">
+                  <td className="w-20 bg-transparent">
                     {Number(formatEther(directMonthly)).toFixed(4)}
                   </td>
-                  <td className="bg-transparent">{directFunders}</td>
+                  <td className="w-20 bg-transparent">{directFunders}</td>
                 </tr>
                 <tr>
-                  <td className="ps-0 bg-transparent">
+                  <td className="w-33 ps-0 bg-transparent">
                     Matching ({matchingTokenInfo.name})
                   </td>
-                  <td className="bg-transparent">
+                  <td className="w-20 bg-transparent">
                     {Number(formatEther(matchingTotal)).toFixed(
                       isMobile ? 4 : 6,
                     )}
                   </td>
-                  <td className="bg-transparent">
+                  <td className="w-20 bg-transparent">
                     {Number(formatEther(matchingMonthly)).toFixed(4)}
                   </td>
-                  <td className="bg-transparent">{matchingPoolFunders}</td>
+                  <td className="w-20 bg-transparent">{matchingPoolFunders}</td>
                 </tr>
               </tbody>
             </Table>
-            <Button
-              className="mt-3 ms-auto p-2 text-light fs-5"
-              style={{ width: 180 }}
-              onClick={showTransactionPanel}
+            <Stack
+              direction={isMobile ? "vertical" : "horizontal"}
+              gap={4}
+              className="justify-content-end w-100 mt-3"
             >
-              Grow the Pie
-            </Button>
+              <Button
+                className="p-2 text-light fs-5"
+                style={{ width: isMobile ? "100%" : 180 }}
+                onClick={showTransactionPanel}
+              >
+                Grow the Pie
+              </Button>
+              <Button
+                variant="link"
+                href={supervisualUrl}
+                target="_blank"
+                className="bg-secondary p-2 text-light fs-5"
+                style={{ width: isMobile ? "100%" : 180 }}
+              >
+                View Flow State
+              </Button>
+            </Stack>
           </>
         )}
         {isMobile && showFullInfo && (
