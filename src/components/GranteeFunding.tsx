@@ -22,7 +22,7 @@ import TopUp from "@/components/checkout/TopUp";
 import Wrap from "@/components/checkout/Wrap";
 import Passport from "@/components/checkout/Passport";
 import NFTGating from "@/components/checkout/NFTGating";
-import SupportFlowState from "@/components/checkout/SupportFlowState";
+//import SupportFlowState from "@/components/checkout/SupportFlowState";
 import Review from "@/components/checkout/Review";
 import Success from "@/components/checkout/Success";
 import PassportMintingInstructions from "@/components/PassportMintingInstructions";
@@ -128,6 +128,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
   const [wrapAmount, setWrapAmount] = useState("");
   const [newFlowRateToFlowState, setNewFlowRateToFlowState] = useState("");
   const [supportFlowStateAmount, setSupportFlowStateAmount] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [supportFlowStateTimeInterval, setSupportFlowStateTimeInterval] =
     useState<TimeInterval>(TimeInterval.MONTH);
   const [allocationTokenSymbol, setAllocationTokenSymbol] = useState("");
@@ -671,6 +672,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
                 isPureSuperToken={isPureSuperToken}
               />
             )}
+            {/*
             <SupportFlowState
               network={network}
               token={allocationTokenInfo}
@@ -685,6 +687,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               isFundingMatchingPool={false}
               isPureSuperToken={isPureSuperToken}
             />
+            */}
             <Review
               step={step}
               setStep={(step) => setStep(step)}

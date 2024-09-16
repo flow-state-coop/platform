@@ -264,7 +264,8 @@ export default function EditStream(props: EditStreamProps) {
                         ? Step.ELIGIBILITY
                         : !sessionStorage.getItem("skipSupportFlowState") &&
                             !localStorage.getItem("skipSupportFlowState")
-                          ? Step.SUPPORT
+                          ? //? Step.SUPPORT
+                            Step.REVIEW
                           : Step.REVIEW,
                 )
               }

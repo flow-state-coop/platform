@@ -176,10 +176,10 @@ export default function Review(props: ReviewProps) {
           ) : (
             <Card.Text className="m-auto text-light">
               {isFundingMatchingPool && isPureSuperToken
-                ? 4
+                ? 3
                 : isFundingMatchingPool || isPureSuperToken
-                  ? 5
-                  : 6}
+                  ? 4
+                  : 5}
             </Card.Text>
           )}
         </Badge>

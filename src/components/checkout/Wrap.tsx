@@ -219,7 +219,8 @@ export default function Wrap(props: WrapProps) {
                       ? Step.ELIGIBILITY
                       : !sessionStorage.getItem("skipSupportFlowState") &&
                           !localStorage.getItem("skipSupportFlowState")
-                        ? Step.SUPPORT
+                        ? // ? Step.SUPPORT
+                          Step.REVIEW
                         : Step.REVIEW,
                   );
                 }}
@@ -246,7 +247,8 @@ export default function Wrap(props: WrapProps) {
                     ? Step.ELIGIBILITY
                     : !sessionStorage.getItem("skipSupportFlowState") &&
                         !localStorage.getItem("skipSupportFlowState")
-                      ? Step.SUPPORT
+                      ? //? Step.SUPPORT
+                        Step.REVIEW
                       : Step.REVIEW,
                 )
               }
