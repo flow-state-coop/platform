@@ -88,8 +88,8 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
         <Image
           src="/logo.png"
           alt="SQF"
-          width={123}
-          height={50}
+          width={96}
+          height={96}
           className="ms-2 rounded-4"
         />
         <Card className="bg-transparent border-0 ms-3">
