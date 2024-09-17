@@ -14,7 +14,9 @@ export default function Layout({ children }: LayoutProps) {
 
   const showSidebar =
     (!isMobile && pathname.startsWith("/admin") && pathname !== "/admin") ||
-    (!isMobile && pathname.startsWith("/grantee")) ||
+    (!isMobile &&
+      pathname.startsWith("/grantee") &&
+      pathname !== "/grantee/projects") ||
     (!isMobile && pathname === "/");
 
   return (
