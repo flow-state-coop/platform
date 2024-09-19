@@ -15,4 +15,8 @@ export type ProjectMetadata = {
   projectTwitter: string;
   userGithub: string;
   projectGithub: string;
+  projectTelegram: string;
+  projectWarpcast: string;
+  projectGuild: string;
+  projectDiscord: string;
 };

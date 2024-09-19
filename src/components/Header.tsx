@@ -24,7 +24,8 @@ export default function Header() {
             isMobile ||
             isTablet ||
             pathname.startsWith("/admin") ||
-            pathname.startsWith("/grantee")
+            pathname.startsWith("/grantee") ||
+            pathname.startsWith("/projects")
               ? "100%"
               : isSmallScreen
                 ? 1000
@@ -44,7 +45,8 @@ export default function Header() {
         />
         {!!address &&
         !pathname.startsWith("/admin") &&
-        !pathname.startsWith("/grantee") ? (
+        !pathname.startsWith("/grantee") &&
+        !pathname.startsWith("/projects") ? (
           <Profile />
         ) : (
           <ConnectWallet />

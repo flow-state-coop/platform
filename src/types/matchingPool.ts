@@ -1,4 +1,5 @@
 export type MatchingPool = {
+  id: `0x${string}`;
   flowRate: `${number}`;
   adjustmentFlowRate: `${number}`;
   totalAmountFlowedDistributedUntilUpdatedAt: `${number}`;
@@ -11,6 +12,7 @@ export type MatchingPool = {
     units: `${number}`;
     totalAmountReceivedUntilUpdatedAt: `${number}`;
     updatedAtTimestamp: number;
+    isConnected: boolean;
   }[];
   poolDistributors: {
     account: {

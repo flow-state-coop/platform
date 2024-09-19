@@ -77,7 +77,7 @@ export default function Projects(props: ProjectsProps) {
 
   return (
     <>
-      <Stack direction="vertical" gap={4} className="px-5 py-4">
+      <Stack direction="vertical" gap={4} className="p-4">
         {loading ? (
           <Spinner className="m-auto" />
         ) : (
@@ -130,7 +130,7 @@ export default function Projects(props: ProjectsProps) {
                   }}
                   onClick={() =>
                     router.push(
-                      `/grantee/projects/${project.id}/?chainid=${network?.id}`,
+                      `/projects/${project.id}/?chainid=${network?.id}`,
                     )
                   }
                   key={i}
@@ -147,7 +147,7 @@ export default function Projects(props: ProjectsProps) {
                         className="position-absolute bottom-0 end-0 p-3 border-0"
                         onClick={() => {
                           router.push(
-                            `/grantee/projects/${project.id}/?chainid=${network?.id}&edit=true`,
+                            `/projects/${project.id}/?chainid=${network?.id}&edit=true`,
                           );
                         }}
                       >

@@ -27,6 +27,10 @@ type MetadataForm = {
   projectTwitter: string;
   userGithub: string;
   projectGithub: string;
+  projectTelegram: string;
+  projectWarpcast: string;
+  projectGuild: string;
+  projectDiscord: string;
 };
 
 export default function ProjectCreationModal(props: ProjectCreationModalProps) {
@@ -39,6 +43,10 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
     projectTwitter: "",
     userGithub: "",
     projectGithub: "",
+    projectTelegram: "",
+    projectWarpcast: "",
+    projectGuild: "",
+    projectDiscord: "",
   });
   const [projectLogoBlob, setProjectLogoBlob] = useState<Blob | null>(null);
   const [projectBannerBlob, setProjectBannerBlob] = useState<Blob | null>(null);
@@ -391,6 +399,74 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
                   setMetadataForm({
                     ...metadataForm,
                     projectGithub: e.target.value,
+                  })
+                }
+              />
+            </InputGroup>
+          </Form.Group>
+          <Form.Group className="mb-4">
+            <Form.Label>Your Telegram</Form.Label>
+            <InputGroup>
+              <InputGroup.Text>t.me/</InputGroup.Text>
+              <Form.Control
+                type="text"
+                value={metadataForm.projectTelegram}
+                placeholder="The Telegram of your project"
+                onChange={(e) =>
+                  setMetadataForm({
+                    ...metadataForm,
+                    projectTelegram: e.target.value,
+                  })
+                }
+              />
+            </InputGroup>
+          </Form.Group>
+          <Form.Group className="mb-4">
+            <Form.Label>Your Warpcast</Form.Label>
+            <InputGroup>
+              <InputGroup.Text>warpcast.com/</InputGroup.Text>
+              <Form.Control
+                type="text"
+                value={metadataForm.projectWarpcast}
+                placeholder="The Warpcast of your project"
+                onChange={(e) =>
+                  setMetadataForm({
+                    ...metadataForm,
+                    projectWarpcast: e.target.value,
+                  })
+                }
+              />
+            </InputGroup>
+          </Form.Group>
+          <Form.Group className="mb-4">
+            <Form.Label>Your Guild ID</Form.Label>
+            <InputGroup>
+              <InputGroup.Text>guild.xyz/</InputGroup.Text>
+              <Form.Control
+                type="text"
+                value={metadataForm.projectGuild}
+                placeholder="The Guild ID of your project"
+                onChange={(e) =>
+                  setMetadataForm({
+                    ...metadataForm,
+                    projectGuild: e.target.value,
+                  })
+                }
+              />
+            </InputGroup>
+          </Form.Group>
+          <Form.Group className="mb-4">
+            <Form.Label>Your Discord Invite</Form.Label>
+            <InputGroup>
+              <InputGroup.Text>discord.com/invite/</InputGroup.Text>
+              <Form.Control
+                type="text"
+                value={metadataForm.projectDiscord}
+                placeholder="The Discord invite to your server"
+                onChange={(e) =>
+                  setMetadataForm({
+                    ...metadataForm,
+                    projectDiscord: e.target.value,
                   })
                 }
               />
