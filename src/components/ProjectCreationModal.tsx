@@ -31,6 +31,7 @@ type MetadataForm = {
   projectWarpcast: string;
   projectGuild: string;
   projectDiscord: string;
+  projectLens: string;
 };
 
 export default function ProjectCreationModal(props: ProjectCreationModalProps) {
@@ -47,6 +48,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
     projectWarpcast: "",
     projectGuild: "",
     projectDiscord: "",
+    projectLens: "",
   });
   const [projectLogoBlob, setProjectLogoBlob] = useState<Blob | null>(null);
   const [projectBannerBlob, setProjectBannerBlob] = useState<Blob | null>(null);
@@ -354,17 +356,17 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
             </InputGroup>
           </Form.Group>
           <Form.Group className="mb-4">
-            <Form.Label>Project Twitter</Form.Label>
+            <Form.Label>Github Organization</Form.Label>
             <InputGroup>
-              <InputGroup.Text>@</InputGroup.Text>
+              <InputGroup.Text>https://github.com/</InputGroup.Text>
               <Form.Control
                 type="text"
-                value={metadataForm.projectTwitter}
-                placeholder="Your project Twitter handle"
+                value={metadataForm.projectGithub}
+                placeholder="The Github org name your project is part of"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
-                    projectTwitter: e.target.value,
+                    projectGithub: e.target.value,
                   })
                 }
               />
@@ -388,41 +390,24 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
             </InputGroup>
           </Form.Group>
           <Form.Group className="mb-4">
-            <Form.Label>Github Organization</Form.Label>
+            <Form.Label>Project Twitter</Form.Label>
             <InputGroup>
-              <InputGroup.Text>https://github.com/</InputGroup.Text>
+              <InputGroup.Text>@</InputGroup.Text>
               <Form.Control
                 type="text"
-                value={metadataForm.projectGithub}
-                placeholder="The Github org name your project is part of"
+                value={metadataForm.projectTwitter}
+                placeholder="Your project Twitter handle"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
-                    projectGithub: e.target.value,
+                    projectTwitter: e.target.value,
                   })
                 }
               />
             </InputGroup>
           </Form.Group>
           <Form.Group className="mb-4">
-            <Form.Label>Your Telegram</Form.Label>
-            <InputGroup>
-              <InputGroup.Text>t.me/</InputGroup.Text>
-              <Form.Control
-                type="text"
-                value={metadataForm.projectTelegram}
-                placeholder="The Telegram of your project"
-                onChange={(e) =>
-                  setMetadataForm({
-                    ...metadataForm,
-                    projectTelegram: e.target.value,
-                  })
-                }
-              />
-            </InputGroup>
-          </Form.Group>
-          <Form.Group className="mb-4">
-            <Form.Label>Your Warpcast</Form.Label>
+            <Form.Label>Project Warpcast</Form.Label>
             <InputGroup>
               <InputGroup.Text>warpcast.com/</InputGroup.Text>
               <Form.Control
@@ -439,7 +424,24 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
             </InputGroup>
           </Form.Group>
           <Form.Group className="mb-4">
-            <Form.Label>Your Guild ID</Form.Label>
+            <Form.Label>Project Lens</Form.Label>
+            <InputGroup>
+              <InputGroup.Text>hey.xyz/u/</InputGroup.Text>
+              <Form.Control
+                type="text"
+                value={metadataForm.projectLens}
+                placeholder="The Lens of your project"
+                onChange={(e) =>
+                  setMetadataForm({
+                    ...metadataForm,
+                    projectLens: e.target.value,
+                  })
+                }
+              />
+            </InputGroup>
+          </Form.Group>
+          <Form.Group className="mb-4">
+            <Form.Label>Project Guild</Form.Label>
             <InputGroup>
               <InputGroup.Text>guild.xyz/</InputGroup.Text>
               <Form.Control
@@ -456,7 +458,24 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
             </InputGroup>
           </Form.Group>
           <Form.Group className="mb-4">
-            <Form.Label>Your Discord Invite</Form.Label>
+            <Form.Label>Project Telegram</Form.Label>
+            <InputGroup>
+              <InputGroup.Text>t.me/</InputGroup.Text>
+              <Form.Control
+                type="text"
+                value={metadataForm.projectTelegram}
+                placeholder="The Telegram of your project"
+                onChange={(e) =>
+                  setMetadataForm({
+                    ...metadataForm,
+                    projectTelegram: e.target.value,
+                  })
+                }
+              />
+            </InputGroup>
+          </Form.Group>
+          <Form.Group className="mb-4">
+            <Form.Label>Project Discord</Form.Label>
             <InputGroup>
               <InputGroup.Text>discord.com/invite/</InputGroup.Text>
               <Form.Control

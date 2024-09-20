@@ -3,7 +3,10 @@ export type Project = {
   anchorAddress: string;
   metadataCid: string;
   metadata: ProjectMetadata;
-  profileRolesByChainIdAndProfileId: { address: string };
+  profileRolesByChainIdAndProfileId: {
+    address: string;
+    role: "OWNER" | "MEMBER";
+  }[];
 };
 
 export type ProjectMetadata = {
@@ -19,4 +22,5 @@ export type ProjectMetadata = {
   projectWarpcast: string;
   projectGuild: string;
   projectDiscord: string;
+  projectLens: string;
 };

@@ -1,0 +1,171 @@
+import { useMemo } from "react";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { parseEther } from "viem";
+import { useAccount } from "wagmi";
+import { useClampText } from "use-clamp-text";
+import Stack from "react-bootstrap/Stack";
+import Card from "react-bootstrap/Card";
+import Button from "react-bootstrap/Button";
+import Image from "react-bootstrap/Image";
+import PoolConnectionButton from "@/components/PoolConnectionButton";
+import { MatchingPool } from "@/types/matchingPool";
+import { Project } from "@/types/project";
+import { Network } from "@/types/network";
+import { roundWeiAmount } from "@/lib/utils";
+import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
+import { SECONDS_IN_MONTH } from "@/lib/constants";
+
+type PoolCardProps = {
+  pool: {
+    id: string;
+    allocationToken: string;
+    matchingToken: string;
+    metadata: { name: string };
+    recipientsByPoolIdAndChainId: { id: string; recipientAddress: string }[];
+  };
+  matchingPool: MatchingPool;
+  project: Project;
+  network: Network;
+};
+
+export default function PoolCard(props: PoolCardProps) {
+  const { pool, matchingPool, project, network } = props;
+
+  const router = useRouter();
+  const { address } = useAccount();
+  const [poolNameRef, { clampedText }] = useClampText({
+    text: pool.metadata.name ?? "N/A",
+    ellipsis: "...",
+    lines: 2,
+  });
+
+  const recipientId = pool.recipientsByPoolIdAndChainId.filter(
+    (recipient: { id: string }) => recipient.id === project.anchorAddress,
+  )[0]?.id;
+  const poolUiLink = `https://app.flowstate.network/?poolid=${pool.id}&chainid=${network.id}`;
+  const framesLink = `https://frames.flowstate.network/frames/grantee/${recipientId}/${pool.id}/${network.id}`;
+
+  const matchingImpactEstimate = useMemo(() => {
+    if (!matchingPool || !pool) {
+      return BigInt(0);
+    }
+
+    const recipientAddress = pool.recipientsByPoolIdAndChainId.find(
+      (recipient) => recipient.id === project.anchorAddress,
+    )?.recipientAddress;
+    const adjustedFlowRate =
+      BigInt(matchingPool.flowRate) - BigInt(matchingPool.adjustmentFlowRate);
+    const member = matchingPool.poolMembers.find(
+      (member: { account: { id: string } }) =>
+        member.account.id === recipientAddress,
+    );
+    const memberFlowRate =
+      BigInt(matchingPool.totalUnits) > 0
+        ? (BigInt(member?.units ?? 0) * adjustedFlowRate) /
+          BigInt(matchingPool.totalUnits)
+        : BigInt(0);
+    const matchingImpactEstimate = calcMatchingImpactEstimate({
+      totalFlowRate: BigInt(matchingPool.flowRate ?? 0),
+      totalUnits: BigInt(matchingPool.totalUnits ?? 0),
+      granteeUnits: BigInt(member?.units ?? 0),
+      granteeFlowRate: memberFlowRate,
+      previousFlowRate: BigInt(0),
+      newFlowRate: parseEther("1") / BigInt(SECONDS_IN_MONTH),
+    });
+
+    return matchingImpactEstimate;
+  }, [matchingPool, pool, project]);
+
+  return (
+    <Stack direction="vertical" className="flex-grow-0" style={{ width: 228 }}>
+      <Card className="border-black rounded-4">
+        <Card.Header
+          className="bg-transparent text-info text-center border-0"
+          ref={poolNameRef as React.RefObject<HTMLParagraphElement>}
+        >
+          {clampedText}
+        </Card.Header>
+        <Card.Body className="d-flex flex-column">
+          <Card.Text className="mt-3 mb-1 text-center">
+            Matching Multiplier
+          </Card.Text>
+          <Card.Text className="mb-3 text-center">
+            1{" "}
+            {network?.tokens.find(
+              (token) => pool?.allocationToken === token.address.toLowerCase(),
+            )?.name ?? "N/A"}{" "}
+            ={" "}
+            {roundWeiAmount(
+              matchingImpactEstimate * BigInt(SECONDS_IN_MONTH),
+              4,
+            )}{" "}
+            {network?.tokens.find(
+              (token) => pool?.matchingToken === token.address.toLowerCase(),
+            )?.name ?? "N/A"}
+          </Card.Text>
+        </Card.Body>
+        <Card.Footer className="bg-transparent border-0">
+          <Button className="d-flex justify-content-center mt-auto w-100 p-0">
+            <Link
+              className="w-100 py-1 text-white"
+              href={`/?chainid=${network.id}&poolid=${pool.id}&recipientid=${
+                recipientId
+              }`}
+            >
+              Donate
+            </Link>
+          </Button>
+        </Card.Footer>
+      </Card>
+      <Stack
+        direction="horizontal"
+        className="align-items-start justify-content-around mt-2"
+      >
+        <Button
+          variant="link p-0"
+          target="_blank"
+          href={`https://warpcast.com/~/compose?text=I+just+opened+a+donation+stream+to+${project.metadata.title}+in+the+${pool.metadata.name}+SQF+round%21+Support+public+goods+by+opening+your+stream+with+a+real%2Dtime+matching+multiplier+from+this+frame%3A+%0A%0A${encodeURIComponent(framesLink ?? "")}`}
+        >
+          <Image src="/warpcast.svg" alt="warpcast" width={24} height={24} />
+        </Button>
+        <Button
+          variant="link p-0"
+          target="_blank"
+          href={`https://twitter.com/intent/tweet?text=I%20just%20opened%20a%20donation%20stream%20to%20${
+            project.metadata.title
+          }%20in%20the%20${pool.metadata.name}%20%23streamingqf%20round.%20Support%20public%20goods%20by%20opening%20your%20stream%20with%20a%20real-time%20matching%20multiplier%20here%3A%20${encodeURIComponent(poolUiLink)}`}
+        >
+          <Image src="/x-logo.svg" alt="x" width={20} height={20} />
+        </Button>
+        <Button
+          variant="link p-0"
+          target="_blank"
+          href={`https://hey.xyz/?text=I+just+opened+a+donation+stream+to+${project.metadata.title}+in+the+${pool.metadata.name}+SQF+round%21+Support+public+goods+by+opening+your+stream+with+a+real%2Dtime+matching+multiplier+from+this+frame%3A+%0A%0A${encodeURIComponent(framesLink ?? "")}`}
+        >
+          <Image src="/hey.png" alt="lens" width={24} height={24} />
+        </Button>
+        <Button variant="link p-0" href={poolUiLink}>
+          <Image src="/link.svg" alt="link" width={28} height={28} />
+        </Button>
+      </Stack>
+      {project?.profileRolesByChainIdAndProfileId.find(
+        (profile) => profile.role === "OWNER",
+      )?.address === address?.toLowerCase() && (
+        <>
+          <PoolConnectionButton matchingPool={matchingPool} network={network} />
+          <Button
+            className="w-100 mt-2 text-white"
+            onClick={() =>
+              router.push(
+                `/grantee/tools/?chainid=${network.id}&poolid=${pool.id}`,
+              )
+            }
+          >
+            Grantee Tools
+          </Button>
+        </>
+      )}
+    </Stack>
+  );
+}

@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import { GetServerSideProps } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { parseEther } from "viem";
 import { useAccount, useReadContracts } from "wagmi";
@@ -13,14 +12,13 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import ProjectUpdateModal from "@/components/ProjectUpdateModal";
-import PoolConnectionButton from "@/components/PoolConnectionButton";
+import PoolCard from "@/components/PoolCard";
 import { MatchingPool } from "@/types/matchingPool";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
-import { roundWeiAmount } from "@/lib/utils";
 import { IPFS_GATEWAYS, SECONDS_IN_MONTH } from "@/lib/constants";
 
 type ProjectProps = {
@@ -320,7 +318,7 @@ export default function Project(props: ProjectProps) {
                   variant="link"
                   href={project.metadata.website}
                   target="_blank"
-                  className="d-flex gap-1 align-items-center p-0"
+                  className="d-flex gap-1 align-items-center p-0 text-info"
                   style={{ width: !isMobile ? "33%" : "" }}
                 >
                   <Image src="/link.svg" alt="link" width={18} height={18} />
@@ -334,7 +332,7 @@ export default function Project(props: ProjectProps) {
                   variant="link"
                   href={`https://github.com/${project.metadata.projectGithub}`}
                   target="_blank"
-                  className="d-flex gap-1 align-items-center p-0"
+                  className="d-flex gap-1 align-items-center p-0 text-info"
                   style={{ width: !isMobile ? "33%" : "" }}
                 >
                   <Image
@@ -353,7 +351,7 @@ export default function Project(props: ProjectProps) {
                   variant="link"
                   href={`https://x.com/${project.metadata.projectTwitter}`}
                   target="_blank"
-                  className="d-flex gap-1 align-items-center p-0"
+                  className="d-flex gap-1 align-items-center p-0 text-info"
                   style={{ width: !isMobile ? "33%" : "" }}
                 >
                   <Image src="/x-logo.svg" alt="x" width={14} height={14} />
@@ -362,31 +360,12 @@ export default function Project(props: ProjectProps) {
                   </Card.Text>
                 </Button>
               )}
-              {!!project?.metadata.projectTelegram && (
-                <Button
-                  variant="link"
-                  href={`https://t.me/${project.metadata.projectTelegram}`}
-                  target="_blank"
-                  className="d-flex gap-1 align-items-center p-0"
-                  style={{ width: !isMobile ? "33%" : "" }}
-                >
-                  <Image
-                    src="/telegram.svg"
-                    alt="telegram"
-                    width={16}
-                    height={16}
-                  />
-                  <Card.Text className="text-truncate">
-                    {`t.me/${project.metadata.projectTelegram}`}
-                  </Card.Text>
-                </Button>
-              )}
               {!!project?.metadata.projectWarpcast && (
                 <Button
                   variant="link"
                   href={`https://warpcast.com/${project.metadata.projectWarpcast}`}
                   target="_blank"
-                  className="d-flex gap-1 align-items-center p-0"
+                  className="d-flex gap-1 align-items-center p-0 text-info"
                   style={{ width: !isMobile ? "33%" : "" }}
                 >
                   <Image
@@ -400,12 +379,26 @@ export default function Project(props: ProjectProps) {
                   </Card.Text>
                 </Button>
               )}
+              {!!project?.metadata.projectLens && (
+                <Button
+                  variant="link"
+                  href={`https://hey.xyz/u/${project.metadata.projectLens}`}
+                  target="_blank"
+                  className="d-flex gap-1 align-items-center p-0 text-info"
+                  style={{ width: !isMobile ? "33%" : "" }}
+                >
+                  <Image src="/hey.png" alt="lens" width={16} height={16} />
+                  <Card.Text className="text-truncate">
+                    {`hey.xyz/u/${project.metadata.projectLens}`}
+                  </Card.Text>
+                </Button>
+              )}
               {!!project?.metadata.projectGuild && (
                 <Button
                   variant="link"
                   href={`https://guild.xyz/${project.metadata.projectGuild}`}
                   target="_blank"
-                  className="d-flex gap-1 align-items-center p-0"
+                  className="d-flex gap-1 align-items-center p-0 text-info"
                   style={{ width: !isMobile ? "33%" : "" }}
                 >
                   <Image src="/guild.svg" alt="guild" width={16} height={16} />
@@ -414,12 +407,31 @@ export default function Project(props: ProjectProps) {
                   </Card.Text>
                 </Button>
               )}
+              {!!project?.metadata.projectTelegram && (
+                <Button
+                  variant="link"
+                  href={`https://t.me/${project.metadata.projectTelegram}`}
+                  target="_blank"
+                  className="d-flex gap-1 align-items-center p-0 text-info"
+                  style={{ width: !isMobile ? "33%" : "" }}
+                >
+                  <Image
+                    src="/telegram.svg"
+                    alt="telegram"
+                    width={16}
+                    height={16}
+                  />
+                  <Card.Text className="text-truncate">
+                    {`t.me/${project.metadata.projectTelegram}`}
+                  </Card.Text>
+                </Button>
+              )}
               {!!project?.metadata.projectDiscord && (
                 <Button
                   variant="link"
                   href={`https://discord.com/invite/${project.metadata.projectDiscord}`}
                   target="_blank"
-                  className="d-flex gap-1 align-items-center p-0"
+                  className="d-flex gap-1 align-items-center p-0 text-info"
                   style={{ width: !isMobile ? "33%" : "" }}
                 >
                   <Image
@@ -434,7 +446,7 @@ export default function Project(props: ProjectProps) {
                 </Button>
               )}
             </Stack>
-            <Card.Text className="fw-bold px-3 sm:px-0">
+            <Card.Text className="px-3 sm:px-0">
               {project?.metadata?.description}
             </Card.Text>
             <Stack
@@ -450,117 +462,20 @@ export default function Project(props: ProjectProps) {
                         allocationToken: string;
                         matchingToken: string;
                         metadata: { name: string };
-                        recipientsByPoolIdAndChainId: { id: string }[];
+                        recipientsByPoolIdAndChainId: {
+                          id: string;
+                          recipientAddress: string;
+                        }[];
                       },
                       i: number,
                     ) => (
-                      <Card
-                        className="border-0"
+                      <PoolCard
+                        pool={pool}
+                        matchingPool={superfluidQueryRes?.pools[i]}
+                        project={project}
+                        network={network}
                         key={i}
-                        style={{ width: 228, height: 180 }}
-                      >
-                        <Card.Header className="bg-transparent text-info text-center border-0">
-                          {pool.metadata.name}
-                        </Card.Header>
-                        <Card.Body className="d-flex flex-column border border-black rounded-4">
-                          <Card.Text className="mt-3 text-center">
-                            Matching Multiplier
-                          </Card.Text>
-                          <Card.Text className="my-3 text-center">
-                            1{" "}
-                            {network?.tokens.find(
-                              (token) =>
-                                pool?.allocationToken ===
-                                token.address.toLowerCase(),
-                            )?.name ?? "N/A"}{" "}
-                            ={" "}
-                            {roundWeiAmount(
-                              matchingImpactEstimates[i] *
-                                BigInt(SECONDS_IN_MONTH),
-                              4,
-                            )}{" "}
-                            {network?.tokens.find(
-                              (token) =>
-                                pool?.matchingToken ===
-                                token.address.toLowerCase(),
-                            )?.name ?? "N/A"}
-                          </Card.Text>
-                          <Button className="d-flex justify-content-center mt-auto w-100 p-0">
-                            <Link
-                              className="w-100 py-1 text-white"
-                              href={`/?chainid=${chainId}&poolid=${pool.id}&recipientid=${
-                                pool.recipientsByPoolIdAndChainId.filter(
-                                  (recipient: { id: string }) =>
-                                    recipient.id === project.anchorAddress,
-                                )[0]?.id
-                              }`}
-                            >
-                              Donate
-                            </Link>
-                          </Button>
-                        </Card.Body>
-                        <Card.Footer className="bg-transparent border-0 px-0">
-                          <Stack
-                            direction="horizontal"
-                            className="align-items-start justify-content-around"
-                          >
-                            <Button variant="link p-0">
-                              <Image
-                                src="/warpcast.svg"
-                                alt="warpcast"
-                                width={24}
-                                height={24}
-                              />
-                            </Button>
-                            <Button variant="link p-0">
-                              <Image
-                                src="/x-logo.svg"
-                                alt="x"
-                                width={20}
-                                height={20}
-                              />
-                            </Button>
-                            <Button variant="link p-0">
-                              <Image
-                                src="/lens.svg"
-                                alt="lens"
-                                width={24}
-                                height={24}
-                              />
-                            </Button>
-                            <Button variant="link p-0">
-                              <Image
-                                src="/link.svg"
-                                alt="link"
-                                width={28}
-                                height={28}
-                              />
-                            </Button>
-                          </Stack>
-                          {project?.profileRolesByChainIdAndProfileId.find(
-                            (profile: { role: "OWNER" | "MANAGER" }) =>
-                              profile.role === "OWNER",
-                          )?.address === address?.toLowerCase() && (
-                            <>
-                              <PoolConnectionButton
-                                matchingPool={superfluidQueryRes?.pools[i]}
-                                network={network}
-                                key={i}
-                              />
-                              <Button
-                                className="w-100 mt-2 text-white"
-                                onClick={() =>
-                                  router.push(
-                                    `/grantee/tools/?chainid=${chainId}&poolid=${pool.id}`,
-                                  )
-                                }
-                              >
-                                Grantee Tools
-                              </Button>
-                            </>
-                          )}
-                        </Card.Footer>
-                      </Card>
+                      />
                     ),
                   )
                 : null}
