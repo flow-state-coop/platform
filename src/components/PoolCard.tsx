@@ -9,6 +9,7 @@ import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
+import CopyTooltip from "@/components/CopyTooltip";
 import { MatchingPool } from "@/types/matchingPool";
 import { Project } from "@/types/project";
 import { Network } from "@/types/network";
@@ -43,7 +44,7 @@ export default function PoolCard(props: PoolCardProps) {
   const recipientId = pool.recipientsByPoolIdAndChainId.filter(
     (recipient: { id: string }) => recipient.id === project.anchorAddress,
   )[0]?.id;
-  const poolUiLink = `https://app.flowstate.network/?poolid=${pool.id}&chainid=${network.id}`;
+  const poolUiLink = `https://app.flowstate.network/?poolid=${pool.id}&chainid=${network.id}&recipientid=${recipientId}`;
   const framesLink = `https://frames.flowstate.network/frames/grantee/${recipientId}/${pool.id}/${network.id}`;
 
   const matchingImpactEstimate = useMemo(() => {
@@ -82,12 +83,17 @@ export default function PoolCard(props: PoolCardProps) {
       <Card className="border-black rounded-4">
         <Card.Header
           className="bg-transparent text-info text-center border-0"
-          ref={poolNameRef as React.RefObject<HTMLParagraphElement>}
+          style={{ height: 64 }}
         >
-          {clampedText}
+          <Card.Text
+            className="m-0"
+            ref={poolNameRef as React.RefObject<HTMLParagraphElement>}
+          >
+            {clampedText}
+          </Card.Text>
         </Card.Header>
         <Card.Body className="d-flex flex-column">
-          <Card.Text className="mt-3 mb-1 text-center">
+          <Card.Text className="mb-1 text-center">
             Matching Multiplier
           </Card.Text>
           <Card.Text className="mb-3 text-center">
@@ -145,9 +151,20 @@ export default function PoolCard(props: PoolCardProps) {
         >
           <Image src="/hey.png" alt="lens" width={24} height={24} />
         </Button>
-        <Button variant="link p-0" href={poolUiLink}>
-          <Image src="/link.svg" alt="link" width={28} height={28} />
-        </Button>
+        <CopyTooltip
+          contentClick="Link Copied"
+          contentHover="Copy Link"
+          handleCopy={() => navigator.clipboard.writeText(poolUiLink)}
+          target={
+            <Image
+              src="/link.svg"
+              alt="link"
+              width={28}
+              height={28}
+              style={{ marginTop: 1 }}
+            />
+          }
+        />
       </Stack>
       {project?.profileRolesByChainIdAndProfileId.find(
         (profile) => profile.role === "OWNER",
