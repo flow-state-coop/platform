@@ -199,7 +199,7 @@ export default function Configure(props: ConfigureProps) {
     setPoolConfigParameters((prev) => {
       return {
         ...prev,
-        allocationToken: network.tokens[1].name,
+        allocationToken: network.tokens[0].name,
         matchingToken: network.tokens[0].name,
       };
     });
@@ -294,11 +294,11 @@ export default function Configure(props: ConfigureProps) {
       description: poolConfigParameters.description,
       nftMintUrl: poolConfigParameters.nftMintUrl,
     });
-    const allocationSuperToken = network.tokens.find(
+    const allocationToken = network.tokens.find(
       (token) => token.name === poolConfigParameters.allocationToken,
-    )?.address;
+    );
 
-    if (!allocationSuperToken) {
+    if (!allocationToken) {
       throw Error("Allocation token not found");
     }
 
@@ -336,7 +336,7 @@ export default function Configure(props: ConfigureProps) {
       metadataRequired: true,
       passportDecoder: network.passportDecoder,
       superfluidHost: network.superfluidHost,
-      allocationSuperToken,
+      allocationSuperToken: allocationToken.address,
       recipientSuperAppFactory: network.recipientSuperappFactory,
       registrationStartTime: BigInt(now + 300),
       registrationEndTime: BigInt(now + 3153600000),
@@ -352,11 +352,13 @@ export default function Configure(props: ConfigureProps) {
         eligibilityMethod === EligibilityMethod.NFT_GATING && nftCheckerAddress
           ? (nftCheckerAddress as Address)
           : ZERO_ADDRESS,
+      flowRateScaling:
+        allocationToken.name === "ETHx" ? BigInt(10) : BigInt(1e6),
     };
     const metadata = { protocol: BigInt(1), pointer: metadataCid };
     const initData: `0x${string}` = encodeAbiParameters(
       parseAbiParameters(
-        "bool, bool, address, address, address, address, uint64, uint64, uint64, uint64, uint256, uint256, address",
+        "bool, bool, address, address, address, address, uint64, uint64, uint64, uint64, uint256, uint256, address, uint256",
       ),
       [
         initParams.useRegistryAnchor,
@@ -372,6 +374,7 @@ export default function Configure(props: ConfigureProps) {
         initParams.minPassportScore,
         initParams.initialSuperAppBalance,
         initParams.checker,
+        initParams.flowRateScaling,
       ],
     );
 
@@ -558,10 +561,6 @@ export default function Configure(props: ConfigureProps) {
             <Dropdown.Menu>
               {network &&
                 network.tokens.map((token, i) => {
-                  if (token.name === "ETHx") {
-                    return null;
-                  }
-
                   return (
                     <Dropdown.Item
                       key={i}

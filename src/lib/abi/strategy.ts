@@ -93,6 +93,13 @@ export const strategyAbi = [
   },
   {
     type: "function",
+    name: "flowRateScaling",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "gdaPool",
     inputs: [],
     outputs: [
