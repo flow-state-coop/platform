@@ -324,7 +324,7 @@ function Sidebar() {
               Matching Funds
             </Link>
             <Link
-              href={`/?poolid=${poolId}&chainid=${chainId}`}
+              href={`/pool/?poolid=${poolId}&chainid=${chainId}`}
               style={{
                 color: "inherit",
                 pointerEvents:

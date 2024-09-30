@@ -113,7 +113,11 @@ export default function Projects(props: ProjectsProps) {
                 className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
                 style={{ width: isMobile ? "100%" : 256, height: 256 }}
                 onClick={() => {
-                  setShowProjectCreationModal(true);
+                  if (address) {
+                    setShowProjectCreationModal(true);
+                  } else if (openConnectModal) {
+                    openConnectModal();
+                  }
                 }}
               >
                 <Image src="/add.svg" alt="add" width={48} />

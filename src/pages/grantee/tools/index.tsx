@@ -148,7 +148,7 @@ export default function GranteeTools(props: GranteeToolsProps) {
 
       return { ...profile, recipientId, status: recipientStatus };
     }) ?? null;
-  const poolUiLink = `https://${hostName}/?poolid=${props.poolId}&chainid=${props.chainId}&recipientid=${selectedProject?.recipientId}`;
+  const poolUiLink = `https://${hostName}/pool/?poolid=${props.poolId}&chainid=${props.chainId}&recipientid=${selectedProject?.recipientId}`;
   const framesLink = `https://frames.flowstate.network/frames/grantee/${selectedProject?.recipientId}/${props.poolId}/${props.chainId}`;
 
   useEffect(() => {

@@ -14,14 +14,13 @@ export default function Layout({ children }: LayoutProps) {
 
   const showSidebar =
     (!isMobile && pathname.startsWith("/admin") && pathname !== "/admin") ||
-    (!isMobile && pathname.startsWith("/grantee")) ||
-    (!isMobile && pathname === "/");
+    (!isMobile && pathname.startsWith("/grantee"));
 
   return (
     <Stack direction="vertical" style={{ minHeight: "100vh" }}>
       <Header />
       <Stack direction="horizontal" className="flex-grow-1">
-        {showSidebar && pathname !== "/" && (
+        {showSidebar && (
           <Stack direction="vertical" className="w-25" style={{ flexGrow: 1 }}>
             <Sidebar />
           </Stack>
