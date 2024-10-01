@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
+import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Image from "react-bootstrap/Image";
 import Button from "react-bootstrap/Button";
@@ -7,16 +8,37 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 
 export default function Index() {
   const router = useRouter();
-  const { isMobile, isTablet } = useMediaQuery();
+  const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
 
   return (
-    <>
+    <Container
+      className="mx-auto p-0"
+      style={{
+        maxWidth:
+          isMobile || isTablet
+            ? "100%"
+            : isSmallScreen
+              ? 1000
+              : isMediumScreen
+                ? 1300
+                : 1600,
+      }}
+    >
       <Stack
         direction={isMobile || isTablet ? "vertical" : "horizontal"}
         gap={isMobile || isTablet ? 5 : 0}
         className="justify-content-center p-3 p-sm-5"
       >
         <Stack direction="vertical" className="align-self-center">
+          {(isMobile || isTablet) && (
+            <Image
+              src="/flow-state-diagram.gif"
+              alt="Diagram"
+              width="100%"
+              height="auto"
+              className="mb-3"
+            />
+          )}
           <h1 style={{ fontSize: 64 }}>Find Your Flow State</h1>
           <p className="fs-4 mb-4">
             Creating, sustaining, and rewarding impact.
@@ -24,16 +46,17 @@ export default function Index() {
           <Stack
             direction="horizontal"
             gap={2}
-            className={isMobile || isTablet ? "w-100" : "w-75"}
+            className={`align-items-stretch
+              ${isMobile || isTablet ? "w-100" : "w-75"}`}
           >
             <Button
               className="w-50 text-light fs-5"
               onClick={() => router.push("/projects/?new=true")}
             >
-              Create a Project
+              Create Project
             </Button>
             <Button disabled className="w-50 fs-5">
-              Launch an SQF Round
+              Launch SQF Round
             </Button>
           </Stack>
           <Button
@@ -44,12 +67,14 @@ export default function Index() {
             Fund Public Goods
           </Button>
         </Stack>
-        <Image
-          src="/flow-state-diagram.gif"
-          alt="Diagram"
-          width={isMobile || isTablet ? "100%" : 612}
-          height={isMobile || isTablet ? "auto" : 406}
-        />
+        {!isMobile && !isTablet && (
+          <Image
+            src="/flow-state-diagram.gif"
+            alt="Diagram"
+            width={612}
+            height={406}
+          />
+        )}
       </Stack>
       <Stack
         direction="horizontal"
@@ -158,7 +183,7 @@ export default function Index() {
         <p
           className="position-absolute start-50 translate-middle-x z-1 m-0 fs-3 text-center"
           style={{
-            whiteSpace: !isMobile && !isTablet ? "nowrap" : "",
+            whiteSpace: !isMobile && !isTablet ? "" : "",
             minWidth: "80%",
           }}
         >
@@ -270,6 +295,6 @@ export default function Index() {
           Holon Feed Coming Soon
         </span>
       </Stack>
-    </>
+    </Container>
   );
 }

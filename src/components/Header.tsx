@@ -23,7 +23,6 @@ export default function Header() {
           minWidth:
             isMobile ||
             isTablet ||
-            pathname === "/" ||
             pathname?.startsWith("/admin") ||
             pathname?.startsWith("/grantee") ||
             pathname?.startsWith("/projects")
