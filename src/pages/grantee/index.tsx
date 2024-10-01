@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { GetServerSideProps } from "next";
 import { useRouter } from "next/router";
 import { Address, encodeAbiParameters, parseAbiParameters } from "viem";
 import {
@@ -25,11 +24,6 @@ import { getApolloClient } from "@/lib/apollo";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { erc721CheckerAbi } from "@/lib/abi/erc721Checker";
 import { ZERO_ADDRESS } from "@/lib/constants";
-
-type GranteeProps = {
-  poolId: string;
-  chainId: string;
-};
 
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
 
@@ -74,17 +68,7 @@ const PROJECTS_QUERY = gql`
   }
 `;
 
-export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const { query } = ctx;
-
-  return {
-    props: { poolId: query.poolid ?? null, chainId: query.chainid ?? null },
-  };
-};
-
-export default function Grantee(props: GranteeProps) {
-  const { chainId, poolId } = props;
-
+export default function Grantee() {
   const [selectedProjectIndex, setSelectedProjectIndex] = useState<
     number | null
   >(null);
@@ -94,16 +78,19 @@ export default function Grantee(props: GranteeProps) {
   const [newProfileId, setNewProfileId] = useState("");
   const [isTransactionConfirming, setIsTransactionConfirming] = useState(false);
 
+  const router = useRouter();
+  const { poolId } = router.query;
+  const chainId = Number(router.query.chainId) ?? null;
   const { isMobile } = useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { data: queryRes, loading } = useQuery(PROJECTS_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
-      chainId: Number(props.chainId),
+      chainId,
       address: address?.toLowerCase() ?? "",
-      poolId: props.poolId,
+      poolId,
     },
-    skip: !address || !props.poolId,
+    skip: !address || !poolId,
     pollInterval: 3000,
   });
   const { writeContractAsync, isError } = useWriteContract();
@@ -130,11 +117,8 @@ export default function Grantee(props: GranteeProps) {
     query: { enabled: nftChecker && nftChecker !== ZERO_ADDRESS },
   });
   const publicClient = usePublicClient();
-  const router = useRouter();
 
-  const network = networks.filter(
-    (network) => network.id === Number(props.chainId),
-  )[0];
+  const network = networks.filter((network) => network.id === chainId)[0];
   const pool = queryRes?.pool ?? null;
   const recipients = pool?.recipientsByPoolIdAndChainId ?? null;
   const projects =
@@ -188,6 +172,10 @@ export default function Grantee(props: GranteeProps) {
       throw Error("Invalid profile");
     }
 
+    if (!poolId) {
+      throw Error("Pool not found");
+    }
+
     const project = projects[selectedProjectIndex];
     const recipientData: `0x${string}` = encodeAbiParameters(
       parseAbiParameters("address, address, (uint256, string)"),
@@ -201,7 +189,7 @@ export default function Grantee(props: GranteeProps) {
         address: network.allo,
         abi: alloAbi,
         functionName: "registerRecipient",
-        args: [BigInt(props.poolId!), recipientData],
+        args: [BigInt(poolId.toString()), recipientData],
       });
 
       await publicClient.waitForTransactionReceipt({
@@ -221,9 +209,7 @@ export default function Grantee(props: GranteeProps) {
   return (
     <>
       <Stack direction="vertical" gap={4} className="px-5 py-4">
-        {!props.chainId ||
-        !props.poolId ||
-        (queryRes && queryRes.pool === null) ? (
+        {queryRes && queryRes.pool === null ? (
           <>Pool not found</>
         ) : loading || !chainId || !poolId ? (
           <Spinner className="m-auto" />
@@ -327,7 +313,7 @@ export default function Grantee(props: GranteeProps) {
                       onClick={() =>
                         project.status === "APPROVED"
                           ? router.push(
-                              `/grantee/tools/?chainid=${props.chainId}&poolid=${props.poolId}&recipientid=${project.recipientId}`,
+                              `/grantee/tools/?chainId=${chainId}&poolId=${poolId}&recipientId=${project.recipientId}`,
                             )
                           : setSelectedProjectIndex(i)
                       }
@@ -473,14 +459,14 @@ export default function Grantee(props: GranteeProps) {
       <ProjectCreationModal
         show={showProjectCreationModal}
         handleClose={() => setShowProjectCreationModal(false)}
-        registryAddress={network.alloRegistry}
+        registryAddress={network?.alloRegistry}
         setNewProfileId={(newProfileId) => setNewProfileId(newProfileId)}
       />
       {selectedProjectIndex !== null && (
         <ProjectUpdateModal
           show={showProjectUpdateModal}
           handleClose={() => setShowProjectUpdateModal(false)}
-          registryAddress={network.alloRegistry}
+          registryAddress={network?.alloRegistry}
           project={projects[selectedProjectIndex]}
           key={selectedProjectIndex}
         />

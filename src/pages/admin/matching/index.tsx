@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { GetServerSideProps } from "next";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { Address, parseEther, formatEther } from "viem";
 import {
   useAccount,
@@ -24,12 +24,6 @@ import { networks } from "@/lib/networks";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { gdaForwarderAbi } from "@/lib/abi/gdaForwarder";
 import { SECONDS_IN_MONTH, ZERO_ADDRESS } from "@/lib/constants";
-
-type MatchingPoolProps = {
-  chainId: number | null;
-  profileId: string | null;
-  poolId: string | null;
-};
 
 const POOL_BY_ID_QUERY = gql`
   query PoolByIdQuery($poolId: String, $chainId: Int) {
@@ -64,24 +58,13 @@ const SF_ACCOUNT_QUERY = gql`
   }
 `;
 
-export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const { query } = ctx;
-
-  return {
-    props: {
-      profileId: query.profileid ?? null,
-      chainId: Number(query.chainid) ?? null,
-      poolId: query.poolid ?? null,
-    },
-  };
-};
-
-export default function MatchinPool(props: MatchingPoolProps) {
-  const { chainId, profileId, poolId } = props;
-
+export default function MatchinPool() {
   const [newFlowRate, setNewFlowRate] = useState("");
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
 
+  const router = useRouter();
+  const { profileId, poolId } = router.query;
+  const chainId = Number(router.query.chainId) ?? null;
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
@@ -179,7 +162,7 @@ export default function MatchinPool(props: MatchingPoolProps) {
 
   return (
     <Stack direction="vertical" gap={4} className="px-5 py-4">
-      {(!profileId && !props.profileId) || (!chainId && !props.chainId) ? (
+      {!profileId || !chainId ? (
         <Card.Text>
           Program not found, please select one from{" "}
           <Link href="/admin" className="text-decoration-underline">
@@ -188,11 +171,11 @@ export default function MatchinPool(props: MatchingPoolProps) {
         </Card.Text>
       ) : loading || !chainId ? (
         <Spinner className="m-auto" />
-      ) : !poolId && !props.poolId ? (
+      ) : !poolId ? (
         <Card.Text>
           Pool not found, please select one from{" "}
           <Link
-            href={`/admin/pools/?chainid=${chainId}&profileid=${profileId}`}
+            href={`/admin/pools/?chainId=${chainId}&profileId=${profileId}`}
             className="text-decoration-underline"
           >
             Pool Selection

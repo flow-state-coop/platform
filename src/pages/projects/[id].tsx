@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { GetServerSideProps } from "next";
 import { useRouter } from "next/router";
 import { parseEther } from "viem";
 import { useAccount, useReadContracts } from "wagmi";
@@ -20,11 +19,6 @@ import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
 import { IPFS_GATEWAYS, SECONDS_IN_MONTH } from "@/lib/constants";
-
-type ProjectProps = {
-  chainId: number;
-  edit: boolean;
-};
 
 const PROJECT_QUERY = gql`
   query ProjectQuery($id: String!, $chainId: Int!) {
@@ -96,27 +90,13 @@ const GDA_POOLS = gql`
   }
 `;
 
-export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const { query } = ctx;
-
-  return {
-    props: {
-      chainId: Number(query.chainid) ?? null,
-      edit: query.edit ? true : false,
-    },
-  };
-};
-
-export default function Project(props: ProjectProps) {
-  const { chainId } = props;
-
-  const [showProjectUpdateModal, setShowProjectUpdateModal] = useState(
-    props.edit,
-  );
+export default function Project() {
+  const [showProjectUpdateModal, setShowProjectUpdateModal] = useState(false);
   const [logoUrl, setLogoUrl] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
 
   const router = useRouter();
+  const chainId = Number(router.query.chainId) ?? null;
   const { address } = useAccount();
   const { isMobile, isTablet } = useMediaQuery();
   const { data: projectQueryRes, loading } = useQuery(PROJECT_QUERY, {
@@ -207,6 +187,12 @@ export default function Project(props: ProjectProps) {
 
     return matchingImpactEstimates;
   }, [superfluidQueryRes, pools, project]);
+
+  useEffect(() => {
+    if (router.query.edit) {
+      setShowProjectUpdateModal(true);
+    }
+  }, [router.query]);
 
   useEffect(() => {
     (async () => {

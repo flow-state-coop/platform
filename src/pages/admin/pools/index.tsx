@@ -1,5 +1,4 @@
 import { useRouter } from "next/router";
-import { GetServerSideProps } from "next";
 import Link from "next/link";
 import { useAccount, useSwitchChain } from "wagmi";
 import { gql, useQuery } from "@apollo/client";
@@ -10,11 +9,6 @@ import Spinner from "react-bootstrap/Spinner";
 import { useClampText } from "use-clamp-text";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
-
-type PoolsProps = {
-  profileId: string | null;
-  chainId: number | null;
-};
 
 const POOLS_QUERY = gql`
   query PoolsQuery($chainId: Int, $profileId: String, $address: String) {
@@ -34,20 +28,10 @@ const POOLS_QUERY = gql`
   }
 `;
 
-export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const { query } = ctx;
-
-  return {
-    props: {
-      profileId: query.profileid ?? null,
-      chainId: Number(query.chainid) ?? null,
-    },
-  };
-};
-
-export default function Pools(props: PoolsProps) {
-  const { chainId, profileId } = props;
-
+export default function Pools() {
+  const router = useRouter();
+  const { profileId } = router.query;
+  const chainId = Number(router.query.chainId) ?? null;
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { data: queryRes, loading } = useQuery(POOLS_QUERY, {
@@ -60,7 +44,6 @@ export default function Pools(props: PoolsProps) {
     skip: !address || !profileId,
     pollInterval: 4000,
   });
-  const router = useRouter();
 
   const network = networks.filter((network) => network.id === chainId)[0];
 
@@ -84,7 +67,7 @@ export default function Pools(props: PoolsProps) {
         style={{ width: 256, height: 256 }}
         onClick={() => {
           router.push(
-            `/admin/configure/?chainid=${chainId}&profileid=${profileId}&poolid=${pool.id}`,
+            `/admin/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${pool.id}`,
           );
         }}
       >
@@ -111,7 +94,7 @@ export default function Pools(props: PoolsProps) {
       {!loading && chainId && profileId && (
         <Card.Text as="h1">Launch or Edit an SQF Pool</Card.Text>
       )}
-      {(!profileId && !props.profileId) || (!chainId && !props.chainId) ? (
+      {!profileId || !chainId ? (
         <Card.Text>
           Program not found, please select one from{" "}
           <Link href="/admin" className="text-decoration-underline">
@@ -152,7 +135,7 @@ export default function Pools(props: PoolsProps) {
             style={{ width: 256, height: 256 }}
             onClick={() => {
               router.push(
-                `/admin/configure/?chainid=${chainId}&profileid=${profileId}`,
+                `/admin/configure/?chainId=${chainId}&profileId=${profileId}`,
               );
             }}
           >

@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { GetServerSideProps } from "next";
 import {
   Address,
   encodeAbiParameters,
@@ -61,13 +60,6 @@ const POOL_BY_ID_QUERY = gql`
   }
 `;
 
-type ConfigureProps = {
-  chainId: number | null;
-  profileId: string | null;
-  poolId: string | null;
-  showNextButton: boolean;
-};
-
 type PoolConfigParameters = {
   allocationToken: string;
   matchingToken: string;
@@ -88,22 +80,7 @@ enum NFTInterfaceID {
   ERC1155 = "0xd9b67a26",
 }
 
-export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const { query } = ctx;
-
-  return {
-    props: {
-      profileId: query.profileid ?? null,
-      chainId: Number(query.chainid) ?? null,
-      poolId: query.poolid ?? null,
-      showNextButton: query.new ? true : false,
-    },
-  };
-};
-
-export default function Configure(props: ConfigureProps) {
-  const { chainId, profileId, poolId, showNextButton } = props;
-
+export default function Configure() {
   const [areTransactionsLoading, setAreTransactionsLoading] = useState(false);
   const [transactionsCompleted, setTransactionsCompleted] = useState(0);
   const [totalTransactions, setTotalTransactions] = useState(0);
@@ -124,6 +101,9 @@ export default function Configure(props: ConfigureProps) {
   );
 
   const router = useRouter();
+  const { profileId, poolId } = router.query;
+  const chainId = Number(router.query.chainId) ?? null;
+  const showNextButton = router.query.showNextButton ? true : false;
   const { chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { data: queryRes, loading } = useQuery(POOL_BY_ID_QUERY, {
@@ -429,7 +409,7 @@ export default function Configure(props: ConfigureProps) {
       setAreTransactionsLoading(false);
 
       router.push(
-        `/admin/configure/?chainid=${chainId}&profileid=${profileId}&poolid=${topics[0].args.poolId.toString()}&new=true`,
+        `/admin/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${topics[0].args.poolId.toString()}&new=true`,
       );
     } catch (err) {
       setTransactionsCompleted(0);
@@ -485,7 +465,7 @@ export default function Configure(props: ConfigureProps) {
 
   return (
     <Stack direction="vertical" gap={4} className="px-5 py-4">
-      {(!profileId && !props.profileId) || (!chainId && !props.chainId) ? (
+      {!profileId || !chainId ? (
         <Card.Text>
           Program not found, please select one from{" "}
           <Link href="/admin" className="text-decoration-underline">
@@ -742,7 +722,7 @@ export default function Configure(props: ConfigureProps) {
               style={{ width: isMobile ? "100%" : "25%" }}
             >
               <Link
-                href={`/admin/review/?chainid=${chainId}&profileid=${profileId}&poolid=${poolId}`}
+                href={`/admin/review/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
                 className="w-100 text-light"
                 style={{ paddingTop: 6, paddingBottom: 6 }}
               >

@@ -52,17 +52,14 @@ function Sidebar() {
   const pathname = usePathname();
 
   const router = useRouter();
-  const {
-    chainid: chainId,
-    poolid: poolId,
-    profileid: profileId,
-  } = router.query;
+  const { poolId, profileId } = router.query;
+  const chainId = Number(router.query.chainId) ?? null;
   const { address, chain: connectedChain } = useAccount();
   const { data: programsQueryRes } = useQuery(PROGRAMS_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
       address: address?.toLowerCase() ?? "",
-      chainId: Number(chainId),
+      chainId,
     },
     skip: !address,
     pollInterval: 4000,
@@ -70,7 +67,7 @@ function Sidebar() {
   const { data: poolsQueryRes } = useQuery(POOLS_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
-      chainId: Number(chainId),
+      chainId,
       profileId,
       address: address?.toLowerCase() ?? "",
     },
@@ -78,7 +75,7 @@ function Sidebar() {
     pollInterval: 4000,
   });
 
-  const isWrongNetwork = connectedChain?.id !== Number(chainId);
+  const isWrongNetwork = connectedChain?.id !== chainId;
   const selectedProfile = programsQueryRes?.profiles?.find(
     (profile: Program) => profile.id === profileId,
   );
@@ -94,10 +91,10 @@ function Sidebar() {
 
   return (
     <Stack direction="vertical" gap={4} className="h-100 py-4 px-3 fs-5 shadow">
-      {pathname.startsWith("/grantee") ? (
+      {pathname?.startsWith("/grantee") ? (
         <>
           <Link
-            href={`/grantee/?chainid=${chainId}&poolid=${poolId}`}
+            href={`/grantee/?chainId=${chainId}&poolId=${poolId}`}
             className={pathname === "/grantee" ? "fw-bold" : ""}
             style={{
               pointerEvents: !chainId || !poolId ? "none" : "auto",
@@ -106,7 +103,7 @@ function Sidebar() {
             Pool Application
           </Link>
           <Link
-            href={`/grantee/tools/?chainid=${chainId}&poolid=${poolId}`}
+            href={`/grantee/tools/?chainId=${chainId}&poolId=${poolId}`}
             className={pathname === "/grantee/tools" ? "fw-bold" : ""}
             style={{
               pointerEvents: !chainId || !poolId ? "none" : "auto",
@@ -150,7 +147,7 @@ function Sidebar() {
                       key={i}
                       onClick={() => {
                         router.push(
-                          `/admin/pools/?chainid=${chainId}&profileid=${profile.id}`,
+                          `/admin/pools/?chainId=${chainId}&profileId=${profile.id}`,
                         );
                       }}
                     >
@@ -209,7 +206,7 @@ function Sidebar() {
                       key={i}
                       onClick={() =>
                         router.push(
-                          `/admin/configure/?chainid=${chainId}&profileid=${profileId}&poolid=${pool.id}`,
+                          `/admin/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${pool.id}`,
                         )
                       }
                     >
@@ -220,7 +217,7 @@ function Sidebar() {
                 <Dropdown.Item
                   onClick={() => {
                     router.push(
-                      `/admin/configure/?chainid=${chainId}&profileid=${profileId}`,
+                      `/admin/configure/?chainId=${chainId}&profileId=${profileId}`,
                     );
                   }}
                 >
@@ -236,9 +233,9 @@ function Sidebar() {
             style={{ color: !selectedPool || isWrongNetwork ? "#dee2e6" : "" }}
           >
             <Link
-              href={`/admin/configure/?chainid=${chainId}&profileid=${profileId}&poolid=${poolId}`}
+              href={`/admin/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
               className={`d-flex align-items-center gap-1 ${
-                pathname.startsWith("/admin/configure") &&
+                pathname?.startsWith("/admin/configure") &&
                 !!selectedPool &&
                 !isWrongNetwork
                   ? "fw-bold"
@@ -253,7 +250,7 @@ function Sidebar() {
               }}
             >
               <Image
-                src={`${pathname.startsWith("/admin/configure") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+                src={`${pathname?.startsWith("/admin/configure") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
                 alt="Bullet Point"
                 width={24}
                 height={24}
@@ -267,9 +264,9 @@ function Sidebar() {
               Configuration
             </Link>
             <Link
-              href={`/admin/review/?chainid=${chainId}&profileid=${profileId}&poolid=${poolId}`}
+              href={`/admin/review/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
               className={`d-flex align-items-center gap-1 ${
-                pathname.startsWith("/admin/review") &&
+                pathname?.startsWith("/admin/review") &&
                 !!selectedPool &&
                 !isWrongNetwork
                   ? "fw-bold"
@@ -282,7 +279,7 @@ function Sidebar() {
               }}
             >
               <Image
-                src={`${pathname.startsWith("/admin/review") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+                src={`${pathname?.startsWith("/admin/review") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
                 alt="Bullet Point"
                 width={24}
                 height={24}
@@ -296,9 +293,9 @@ function Sidebar() {
               Grantee Review
             </Link>
             <Link
-              href={`/admin/matching/?chainid=${chainId}&profileid=${profileId}&poolid=${poolId}`}
+              href={`/admin/matching/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
               className={`d-flex align-items-center gap-1 ${
-                pathname.startsWith("/admin/matching") &&
+                pathname?.startsWith("/admin/matching") &&
                 !!selectedPool &&
                 !isWrongNetwork
                   ? "fw-bold"
@@ -310,7 +307,7 @@ function Sidebar() {
               }}
             >
               <Image
-                src={`${pathname.startsWith("/admin/matching") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+                src={`${pathname?.startsWith("/admin/matching") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
                 alt="Bullet Point"
                 width={24}
                 height={24}
@@ -324,7 +321,7 @@ function Sidebar() {
               Matching Funds
             </Link>
             <Link
-              href={`/pool/?poolid=${poolId}&chainid=${chainId}`}
+              href={`/pool/?poolId=${poolId}&chainId=${chainId}`}
               style={{
                 color: "inherit",
                 pointerEvents:

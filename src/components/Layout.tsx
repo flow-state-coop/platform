@@ -13,8 +13,8 @@ export default function Layout({ children }: LayoutProps) {
   const { isMobile } = useMediaQuery();
 
   const showSidebar =
-    (!isMobile && pathname.startsWith("/admin") && pathname !== "/admin") ||
-    (!isMobile && pathname.startsWith("/grantee"));
+    (!isMobile && pathname?.startsWith("/admin") && pathname !== "/admin") ||
+    (!isMobile && pathname?.startsWith("/grantee"));
 
   return (
     <Stack direction="vertical" style={{ minHeight: "100vh" }}>

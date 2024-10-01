@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { GetServerSideProps } from "next";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useAccount, useSwitchChain } from "wagmi";
 import { gql, useQuery } from "@apollo/client";
@@ -15,10 +14,6 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { Project } from "@/types/project";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
-
-type ProjectsProps = {
-  new: boolean;
-};
 
 const PROJECTS_QUERY = gql`
   query ProjectsQuery($address: String!, $chainId: Int!) {
@@ -42,19 +37,11 @@ const PROJECTS_QUERY = gql`
   }
 `;
 
-export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const { query } = ctx;
+export default function Projects() {
+  const [showProjectCreationModal, setShowProjectCreationModal] =
+    useState(false);
 
-  return {
-    props: { new: query.new ? true : false },
-  };
-};
-
-export default function Projects(props: ProjectsProps) {
-  const [showProjectCreationModal, setShowProjectCreationModal] = useState(
-    props.new,
-  );
-
+  const router = useRouter();
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
@@ -68,12 +55,17 @@ export default function Projects(props: ProjectsProps) {
     skip: !address,
     pollInterval: 3000,
   });
-  const router = useRouter();
 
   const projects = queryRes?.profiles;
   const network = networks.filter(
     (network) => network.id === connectedChain?.id,
   )[0];
+
+  useEffect(() => {
+    if (router.query.new) {
+      setShowProjectCreationModal(true);
+    }
+  }, [router.query]);
 
   return (
     <>
@@ -134,7 +126,7 @@ export default function Projects(props: ProjectsProps) {
                   }}
                   onClick={() =>
                     router.push(
-                      `/projects/${project.id}/?chainid=${network?.id}`,
+                      `/projects/${project.id}/?chainId=${network?.id}`,
                     )
                   }
                   key={i}
@@ -151,7 +143,7 @@ export default function Projects(props: ProjectsProps) {
                         className="position-absolute bottom-0 end-0 p-3 border-0"
                         onClick={() => {
                           router.push(
-                            `/projects/${project.id}/?chainid=${network?.id}&edit=true`,
+                            `/projects/${project.id}/?chainId=${network?.id}&edit=true`,
                           );
                         }}
                       >

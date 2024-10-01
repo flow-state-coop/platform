@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { GetServerSideProps } from "next";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useAccount, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -12,8 +11,6 @@ import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import ProgramCreationModal from "@/components/ProgramCreationModal";
 import { networks } from "@/lib/networks";
-
-type AdminProps = { showProgramCreationModal: boolean };
 
 const PROGRAMS_QUERY = gql`
   query ProgramsQuery($address: String, $chainId: Int) {
@@ -36,20 +33,11 @@ const PROGRAMS_QUERY = gql`
   }
 `;
 
-export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const { query } = ctx;
+export default function Admin() {
+  const [showProgramCreationModal, setShowProgramCreationModal] =
+    useState(false);
 
-  return {
-    props: {
-      showProgramCreationModal: query.new ? true : false,
-    },
-  };
-};
-
-export default function Admin(props: AdminProps) {
-  const [showProgramCreationModal, setShowProgramCreationModal] = useState(
-    props.showProgramCreationModal,
-  );
+  const router = useRouter();
   const { openConnectModal } = useConnectModal();
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -62,11 +50,16 @@ export default function Admin(props: AdminProps) {
     skip: !address,
     pollInterval: 4000,
   });
-  const router = useRouter();
 
   const network = networks.filter(
     (network) => network.id === connectedChain?.id,
   )[0];
+
+  useEffect(() => {
+    if (router.query.new) {
+      setShowProgramCreationModal(true);
+    }
+  }, [router.query.new]);
 
   return (
     <>
@@ -116,7 +109,7 @@ export default function Admin(props: AdminProps) {
                   style={{ width: 256, height: 256 }}
                   onClick={() => {
                     router.push(
-                      `/admin/pools/?chainid=${network?.id}&profileid=${profile.id}`,
+                      `/admin/pools/?chainId=${network?.id}&profileId=${profile.id}`,
                     );
                   }}
                   key={i}

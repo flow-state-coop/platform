@@ -24,9 +24,9 @@ export default function Header() {
             isMobile ||
             isTablet ||
             pathname === "/" ||
-            pathname.startsWith("/admin") ||
-            pathname.startsWith("/grantee") ||
-            pathname.startsWith("/projects")
+            pathname?.startsWith("/admin") ||
+            pathname?.startsWith("/grantee") ||
+            pathname?.startsWith("/projects")
               ? "100%"
               : isSmallScreen
                 ? 1000
@@ -44,7 +44,7 @@ export default function Header() {
           className="cursor-pointer"
           onClick={() => router.push("/")}
         />
-        {!!address && pathname.startsWith("/pool") ? (
+        {!!address && pathname?.startsWith("/pool") ? (
           <Profile />
         ) : (
           <ConnectWallet />

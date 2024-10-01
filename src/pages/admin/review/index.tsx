@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { GetServerSideProps } from "next";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { Address, formatEther } from "viem";
 import { useAccount, useReadContract, useConfig, useSwitchChain } from "wagmi";
 import { writeContract, waitForTransactionReceipt } from "@wagmi/core";
@@ -24,13 +24,6 @@ import { networks } from "@/lib/networks";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { erc20Abi } from "@/lib/abi/erc20";
 import { ZERO_ADDRESS } from "@/lib/constants";
-
-type ReviewProps = {
-  hostName: string;
-  chainId: number | null;
-  profileId: string | null;
-  poolId: string | null;
-};
 
 type Recipient = {
   id: string;
@@ -116,22 +109,7 @@ const SF_ACCOUNT_QUERY = gql`
   }
 `;
 
-export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const { req, query } = ctx;
-
-  return {
-    props: {
-      hostName: req.headers.host,
-      profileId: query.profileid ?? null,
-      chainId: Number(query.chainid) ?? null,
-      poolId: query.poolid ?? null,
-    },
-  };
-};
-
-export default function Review(props: ReviewProps) {
-  const { hostName, chainId, profileId, poolId } = props;
-
+export default function Review() {
   const [reviewingRecipients, setReviewingRecipients] = useState<
     ReviewingRecipient[]
   >([]);
@@ -144,6 +122,9 @@ export default function Review(props: ReviewProps) {
   const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
   const [showNextButton, setShowNextButton] = useState(false);
 
+  const router = useRouter();
+  const { profileId, poolId } = router.query;
+  const chainId = Number(router.query.chainId) ?? null;
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { isMobile } = useMediaQuery();
@@ -174,7 +155,11 @@ export default function Review(props: ReviewProps) {
   const pool = queryRes?.pool ?? null;
   const allocationToken = pool ? (pool.allocationToken as Address) : null;
   const network = networks.filter((network) => network.id === chainId)[0];
-  const granteeRegistrationLink = `https://${hostName}/grantee/?poolid=${poolId}&chainid=${chainId}`;
+  const hostName =
+    typeof window !== "undefined" && window.location.origin
+      ? window.location.origin
+      : "";
+  const granteeRegistrationLink = `${hostName}/grantee/?poolId=${poolId}&chainId=${chainId}`;
   const allocationTokenSymbol =
     network?.tokens.find(
       (token) => allocationToken === token.address.toLowerCase(),
@@ -343,7 +328,7 @@ export default function Review(props: ReviewProps) {
 
   return (
     <Stack direction="vertical" gap={4} className="px-5 py-4">
-      {(!profileId && !props.profileId) || (!chainId && !props.chainId) ? (
+      {!profileId || !chainId ? (
         <Card.Text>
           Program not found, please select one from{" "}
           <Link href="/admin" className="text-decoration-underline">
@@ -352,11 +337,11 @@ export default function Review(props: ReviewProps) {
         </Card.Text>
       ) : loading || !chainId ? (
         <Spinner className="m-auto" />
-      ) : !poolId && !props.poolId ? (
+      ) : !poolId ? (
         <Card.Text>
           Pool not found, please select one from{" "}
           <Link
-            href={`/admin/pools/?chainid=${chainId}&profileid=${profileId ?? props.profileId}`}
+            href={`/admin/pools/?chainId=${chainId}&profileId=${profileId}`}
             className="text-decoration-underline"
           >
             Pool Selection
@@ -665,7 +650,7 @@ export default function Review(props: ReviewProps) {
               style={{ width: isMobile ? "100%" : "25%" }}
             >
               <Link
-                href={`/admin/matching/?chainid=${chainId}&profileid=${profileId}&poolid=${poolId}`}
+                href={`/admin/matching/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
                 className="w-100 text-light"
                 style={{ paddingTop: 6, paddingBottom: 6 }}
               >

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { GetServerSideProps } from "next";
+import { useRouter } from "next/router";
 import { Address } from "viem";
 import {
   useAccount,
@@ -22,13 +22,6 @@ import { gdaForwarderAbi } from "@/lib/abi/gdaForwarder";
 import { getApolloClient } from "@/lib/apollo";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { truncateStr } from "@/lib/utils";
-
-type GranteeToolsProps = {
-  poolId: string;
-  chainId: string;
-  recipientId: string;
-  hostName: string;
-};
 
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
 
@@ -68,37 +61,25 @@ const PROJECTS_QUERY = gql`
   }
 `;
 
-export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const { req, query } = ctx;
-
-  return {
-    props: {
-      poolId: query.poolid ?? null,
-      chainId: query.chainid ?? null,
-      recipientId: query.recipientid ?? null,
-      hostName: req.headers.host,
-    },
-  };
-};
-
-export default function GranteeTools(props: GranteeToolsProps) {
-  const { hostName, chainId, poolId, recipientId } = props;
-
+export default function GranteeTools() {
   const [selectedProject, setSelectedProject] = useState<
     Project & { recipientId: string; status: string }
   >();
   const [isTransactionConfirming, setIsTransactionConfirming] = useState(false);
 
+  const router = useRouter();
+  const { poolId, recipientId } = router.query;
+  const chainId = Number(router.query.chainId) ?? null;
   const { isMobile } = useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { data: queryRes, loading } = useQuery(PROJECTS_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
-      chainId: Number(props.chainId),
+      chainId,
       address: address?.toLowerCase() ?? "",
       poolId,
     },
-    skip: !address || !props.poolId,
+    skip: !address || !poolId,
     pollInterval: 3000,
   });
   const { writeContractAsync } = useWriteContract();
@@ -109,9 +90,7 @@ export default function GranteeTools(props: GranteeToolsProps) {
   });
   const publicClient = usePublicClient();
 
-  const network = networks.filter(
-    (network) => network.id === Number(props.chainId),
-  )[0];
+  const network = networks.filter((network) => network.id === chainId)[0];
   const { data: isConnectedToPool, refetch: refetchIsConnectedToPool } =
     useReadContract({
       address: network?.gdaForwarder,
@@ -148,8 +127,14 @@ export default function GranteeTools(props: GranteeToolsProps) {
 
       return { ...profile, recipientId, status: recipientStatus };
     }) ?? null;
-  const poolUiLink = `https://${hostName}/pool/?poolid=${props.poolId}&chainid=${props.chainId}&recipientid=${selectedProject?.recipientId}`;
-  const framesLink = `https://frames.flowstate.network/frames/grantee/${selectedProject?.recipientId}/${props.poolId}/${props.chainId}`;
+  const hostName =
+    typeof window !== "undefined" && window.location.origin
+      ? window.location.origin
+      : "";
+  const poolUiLink = `${
+    hostName
+  }/pool/?poolId=${poolId}&chainId=${chainId}&recipientId=${selectedProject?.recipientId}`;
+  const framesLink = `https://frames.flowstate.network/frames/grantee/${selectedProject?.recipientId}/${poolId}/${chainId}`;
 
   useEffect(() => {
     if (!projects || selectedProject) {
@@ -223,9 +208,7 @@ export default function GranteeTools(props: GranteeToolsProps) {
 
   return (
     <Stack direction="vertical" className="px-5 py-4">
-      {!props.chainId ||
-      !props.poolId ||
-      (queryRes && queryRes.pool === null) ? (
+      {queryRes && queryRes.pool === null ? (
         <>Pool not found</>
       ) : loading || !chainId || !poolId ? (
         <Spinner className="m-auto" />

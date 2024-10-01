@@ -1,5 +1,5 @@
+import { useRouter } from "next/router";
 import { useMemo, useCallback, useState, useRef, useEffect } from "react";
-import { GetServerSideProps } from "next";
 import { useQuery, gql } from "@apollo/client";
 import { parseEther, Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
@@ -33,13 +33,6 @@ import {
   FLOW_STATE_RECEIVER,
   SUPERVISUAL_BASE_URL,
 } from "@/lib/constants";
-
-type PoolProps = {
-  hostName: string;
-  poolId: string;
-  chainId: string;
-  recipientId: string;
-};
 
 type Grantee = {
   id: string;
@@ -163,21 +156,9 @@ const DEFAULT_POOL_ID = "45";
 const DEFAULT_CHAIN_ID = 11155420;
 const GRANTEES_BATCH_SIZE = 20;
 
-export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const { req, query } = ctx;
-
-  return {
-    props: {
-      hostName: req.headers.host,
-      poolId: query.poolid ?? null,
-      chainId: query.chainid ?? null,
-      recipientId: query.recipientid ?? null,
-    },
-  };
-};
-
-export default function Pool(props: PoolProps) {
-  const { hostName, poolId, chainId, recipientId } = props;
+export default function Pool() {
+  const router = useRouter();
+  const { poolId, chainId, recipientId } = router.query;
 
   const [grantees, setGrantees] = useState<Grantee[]>([]);
   const [directTotal, setDirectTotal] = useState(BigInt(0));
@@ -290,6 +271,10 @@ export default function Pool(props: PoolProps) {
     (outflow: { receiver: { id: string } }) =>
       outflow.receiver.id === FLOW_STATE_RECEIVER,
   );
+  const hostName =
+    typeof window !== "undefined" && window.location.origin
+      ? window.location.origin
+      : "";
 
   const pool = streamingFundQueryRes?.pool ?? null;
   const matchingPool = superfluidQueryRes?.pool ?? null;
@@ -317,7 +302,10 @@ export default function Pool(props: PoolProps) {
         .concat(gdaPoolAddress ?? "");
       const tokens = [matchingToken, allocationToken];
 
-      url.searchParams.set("chain", chainId ?? DEFAULT_CHAIN_ID);
+      url.searchParams.set(
+        "chain",
+        chainId ? chainId.toString() : DEFAULT_CHAIN_ID.toString(),
+      );
       url.searchParams.set("tokens", tokens.toString());
       url.searchParams.set("accounts", accounts.toString());
     }
@@ -737,7 +725,7 @@ export default function Pool(props: PoolProps) {
               })
             }
             poolName={pool?.metadata.name ?? ""}
-            poolUiLink={`https://${hostName}/pool/?poolid=${poolId ?? DEFAULT_POOL_ID}&chainid=${chainId ?? DEFAULT_CHAIN_ID}`}
+            poolUiLink={`${hostName}/pool/?poolId=${poolId ?? DEFAULT_POOL_ID}&chainId=${chainId ?? DEFAULT_CHAIN_ID}`}
             description={pool?.metadata.description ?? ""}
             matchingPool={matchingPool}
             matchingTokenInfo={matchingTokenInfo}
@@ -761,7 +749,7 @@ export default function Pool(props: PoolProps) {
             receiver={
               grantees[transactionPanelState.selectedGrantee].superappAddress
             }
-            poolUiLink={`https://${hostName}/pool/?poolid=${poolId ?? DEFAULT_POOL_ID}&chainid=${chainId ?? DEFAULT_CHAIN_ID}&recipientid=${grantees[transactionPanelState.selectedGrantee].id}`}
+            poolUiLink={`${hostName}/pool/?poolId=${poolId ?? DEFAULT_POOL_ID}&chainId=${chainId ?? DEFAULT_CHAIN_ID}&recipientId=${grantees[transactionPanelState.selectedGrantee].id}`}
             framesLink={`https://frames.flowstate.network/frames/grantee/${grantees[transactionPanelState.selectedGrantee].id}/${poolId ?? DEFAULT_POOL_ID}/${chainId ?? DEFAULT_CHAIN_ID}`}
             poolName={pool?.metadata.name ?? ""}
             name={grantees[transactionPanelState.selectedGrantee].name ?? ""}
