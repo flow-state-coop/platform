@@ -465,15 +465,15 @@ export default function Configure() {
 
   return (
     <Stack direction="vertical" gap={4} className="px-5 py-4">
-      {!profileId || !chainId ? (
+      {loading || (poolId && !pool) ? (
+        <Spinner className="m-auto" />
+      ) : !profileId || !chainId ? (
         <Card.Text>
           Program not found, please select one from{" "}
           <Link href="/admin" className="text-decoration-underline">
             Program Selection
           </Link>
         </Card.Text>
-      ) : loading || !chainId || (poolId && !pool) ? (
-        <Spinner className="m-auto" />
       ) : !connectedChain ? (
         <>Please connect a wallet</>
       ) : connectedChain?.id !== network?.id ? (
@@ -545,6 +545,16 @@ export default function Configure() {
                     <Dropdown.Item
                       key={i}
                       onClick={() => {
+                        if (token.name === "ETHx") {
+                          setPoolConfigParameters({
+                            ...poolConfigParameters,
+                            allocationToken: "ETHx",
+                            matchingToken: "ETHx",
+                          });
+
+                          return;
+                        }
+
                         setPoolConfigParameters({
                           ...poolConfigParameters,
                           allocationToken: token.name ?? "N/A",
@@ -568,7 +578,18 @@ export default function Configure() {
               {poolConfigParameters.matchingToken}
             </Dropdown.Toggle>
             <Dropdown.Menu>
-              {network &&
+              {poolConfigParameters.allocationToken === "ETHx" ? (
+                <Dropdown.Item
+                  onClick={() => {
+                    setPoolConfigParameters({
+                      ...poolConfigParameters,
+                      matchingToken: "ETHx",
+                    });
+                  }}
+                >
+                  ETHx
+                </Dropdown.Item>
+              ) : network ? (
                 network.tokens.map((token, i) => (
                   <Dropdown.Item
                     key={i}
@@ -581,7 +602,8 @@ export default function Configure() {
                   >
                     {token.name}
                   </Dropdown.Item>
-                ))}
+                ))
+              ) : null}
             </Dropdown.Menu>
           </Dropdown>
           <Dropdown>
