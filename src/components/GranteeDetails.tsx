@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatEther } from "viem";
+import { useQuery, gql } from "@apollo/client";
 import { useClampText } from "use-clamp-text";
 import { createVerifiedFetch } from "@helia/verified-fetch";
 import Stack from "react-bootstrap/Stack";
@@ -9,17 +10,17 @@ import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
 import CopyTooltip from "@/components/CopyTooltip";
 import { MatchingPool } from "@/types/matchingPool";
+import { getApolloClient } from "@/lib/apollo";
 import { Inflow } from "@/types/inflow";
 import { Outflow } from "@/types/outflow";
+import { ProjectMetadata } from "@/types/project";
 import { Token } from "@/types/token";
 import useFlowingAmount from "../hooks/flowingAmount";
 import { roundWeiAmount, formatNumberWithCommas } from "@/lib/utils";
 import { SECONDS_IN_MONTH, IPFS_GATEWAYS } from "@/lib/constants";
 
 interface GranteeDetailsProps {
-  name: string;
-  description: string;
-  logoCid: string;
+  metadata: ProjectMetadata;
   placeholderLogo: string;
   poolUiLink: string;
   recipientAddress: string;
@@ -29,13 +30,21 @@ interface GranteeDetailsProps {
   userOutflow: Outflow | null;
   allocationTokenInfo: Token;
   matchingTokenInfo: Token;
+  recipientId: string;
+  chainId?: number;
 }
+
+const PROFILE_ID_QUERY = gql`
+  query ProfileIdByAnchor($anchorAddress: String!, $chainId: Int!) {
+    profiles(condition: { anchorAddress: $anchorAddress, chainId: $chainId }) {
+      id
+    }
+  }
+`;
 
 export default function GranteeDetails(props: GranteeDetailsProps) {
   const {
-    name,
-    description,
-    logoCid,
+    metadata,
     placeholderLogo,
     poolUiLink,
     recipientAddress,
@@ -45,17 +54,28 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
     userOutflow,
     allocationTokenInfo,
     matchingTokenInfo,
+    recipientId,
+    chainId,
   } = props;
 
-  const [readMore, setReadMore] = useState(true);
+  const [readMore, setReadMore] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
 
   const [descriptionRef, { noClamp, clampedText }] = useClampText({
-    text: description,
+    text: metadata.description,
     ellipsis: "...",
     expanded: readMore,
   });
+  const { data: streamingFundQueryRes } = useQuery(PROFILE_ID_QUERY, {
+    client: getApolloClient("streamingfund"),
+    variables: {
+      anchorAddress: recipientId,
+      chainId,
+    },
+    skip: !chainId,
+  });
 
+  const profileId = streamingFundQueryRes?.profiles[0]?.id ?? "";
   const matchingPoolMember = matchingPool?.poolMembers.find(
     (member) => member.account.id === recipientAddress,
   );
@@ -78,7 +98,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
 
   useEffect(() => {
     (async () => {
-      if (!logoCid) {
+      if (!metadata.logoImg) {
         return;
       }
 
@@ -87,7 +107,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           gateways: IPFS_GATEWAYS,
         });
 
-        const res = await verifiedFetch(`ipfs://${logoCid}`);
+        const res = await verifiedFetch(`ipfs://${metadata.logoImg}`);
         const imageBlob = await res.blob();
         const imageUrl = URL.createObjectURL(imageBlob);
 
@@ -96,7 +116,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
         console.error(err);
       }
     })();
-  }, [logoCid]);
+  }, [metadata.logoImg]);
 
   return (
     <Stack direction="vertical" className="bg-light rounded-4 p-2 pt-0">
@@ -109,7 +129,13 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           className="ms-2 rounded-4"
         />
         <Card className="bg-transparent border-0 ms-3">
-          <Card.Title className="fs-6 text-secondary">{name}</Card.Title>
+          <Card.Link
+            href={`/projects/${profileId}/?chainId=${chainId}`}
+            target="_blank"
+            className="fs-6 text-secondary mb-2"
+          >
+            {metadata.title}
+          </Card.Link>
           <Card.Subtitle className="mb-0 fs-6">
             Your Current Stream
           </Card.Subtitle>
@@ -136,32 +162,94 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
       <Stack
         direction="horizontal"
         gap={1}
-        className="align-items-center text-info fs-5 p-2"
+        className="align-items-end text-info fs-6 p-2"
       >
         Details
-        <Button
-          variant="link"
-          href={"https://streaming.fund"}
-          target="_blank"
-          rel="noreferrer"
-          className="ms-1 p-0"
-        >
-          <Image src="/web.svg" alt="Web" width={18} height={18} />
-        </Button>
-        <Button
-          variant="link"
-          href="https://twitter.com/thegeoweb"
-          target="_blank"
-          rel="noreferrer"
-          className="p-0"
-        >
-          <Image
-            src="/x-logo.svg"
-            alt="X Social Network"
-            width={13}
-            height={13}
-          />
-        </Button>
+        {!!metadata.website && (
+          <Button
+            variant="link"
+            href={metadata.website}
+            target="_blank"
+            className="ms-1 p-0"
+          >
+            <Image src="/web.svg" alt="Web" width={18} height={18} />
+          </Button>
+        )}
+        {!!metadata.projectGithub && (
+          <Button
+            variant="link"
+            href={`https://github.com/${metadata.projectGithub}`}
+            target="_blank"
+            className="ms-1 p-0"
+          >
+            <Image src="/github.svg" alt="Github" width={18} height={18} />
+          </Button>
+        )}
+        {!!metadata.projectTwitter && (
+          <Button
+            variant="link"
+            href={`https://x.com/${metadata.projectTwitter}`}
+            target="_blank"
+            className="p-0"
+          >
+            <Image
+              src="/x-logo.svg"
+              alt="X Social Network"
+              width={13}
+              height={13}
+            />
+          </Button>
+        )}
+        {!!metadata.projectWarpcast && (
+          <Button
+            variant="link"
+            href={`https://warpcast.com/${metadata.projectWarpcast}`}
+            target="_blank"
+            className="p-0"
+          >
+            <Image src="/warpcast.svg" alt="Warpcast" width={16} height={16} />
+          </Button>
+        )}
+        {!!metadata.projectLens && (
+          <Button
+            variant="link"
+            href={`https://hey.xyz/u/${metadata.projectLens}`}
+            target="_blank"
+            className="p-0"
+          >
+            <Image src="/hey.png" alt="lens" width={16} height={16} />
+          </Button>
+        )}
+        {!!metadata.projectGuild && (
+          <Button
+            variant="link"
+            href={`https://guild.xyz/${metadata.projectGuild}`}
+            target="_blank"
+            className="p-0"
+          >
+            <Image src="/guild.svg" alt="guild" width={18} height={18} />
+          </Button>
+        )}
+        {!!metadata.projectTelegram && (
+          <Button
+            variant="link"
+            href={`https://t.me/${metadata.projectTelegram}`}
+            target="_blank"
+            className="p-0"
+          >
+            <Image src="/telegram.svg" alt="telegram" width={18} height={18} />
+          </Button>
+        )}
+        {!!metadata.projectDiscord && (
+          <Button
+            variant="link"
+            href={`https://discord.com/invite/${metadata.projectDiscord}`}
+            target="_blank"
+            className="p-0"
+          >
+            <Image src="/discord.svg" alt="discord" width={20} height={20} />
+          </Button>
+        )}
         <CopyTooltip
           contentClick="Link copied"
           contentHover="Copy link"
@@ -261,6 +349,26 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
       >
         {clampedText}
       </Card.Text>
+      {readMore && (
+        <Button
+          variant="link"
+          href={`/projects/${profileId}/?chainId=${chainId}`}
+          target="_blank"
+          className="d-flex justify-content-center align-items-center gap-2 bg-primary shadow-none text-light"
+        >
+          Project Page
+          <Image
+            src="/open-new.svg"
+            alt="Open New"
+            width={20}
+            height={20}
+            style={{
+              filter:
+                "invert(99%) sepia(1%) saturate(2877%) hue-rotate(199deg) brightness(123%) contrast(89%)",
+            }}
+          />
+        </Button>
+      )}
       {(!noClamp || readMore) && (
         <Button
           variant="transparent"
@@ -270,7 +378,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           <Image
             src={readMore ? "/expand-less.svg" : "/expand-more.svg"}
             alt="expand"
-            width={18}
+            width={20}
           />
         </Button>
       )}

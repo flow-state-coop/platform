@@ -24,7 +24,7 @@ interface MatchingPoolDetailsProps {
 export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
   const { poolName, description, matchingPool, matchingTokenInfo } = props;
 
-  const [readMore, setReadMore] = useState(true);
+  const [readMore, setReadMore] = useState(false);
 
   const { address } = useAccount();
   const [descriptionRef, { clampedText }] = useClampText({
@@ -125,27 +125,6 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
             )}
           </Card.Body>
         </Card>
-      </Stack>
-      <Stack direction="horizontal" className="text-info fs-5 p-2">
-        Details
-        <Button
-          variant="link"
-          href={"https://streaming.fund"}
-          target="_blank"
-          rel="noreferrer"
-          className="ms-2 p-0"
-        >
-          <Image src="/web.svg" alt="Web" width={18} />
-        </Button>
-        <Button
-          variant="link"
-          href="https://twitter.com/thegeoweb"
-          target="_blank"
-          rel="noreferrer"
-          className="ms-1 p-0"
-        >
-          <Image src="/x-logo.svg" alt="X Social Network" width={12} />
-        </Button>
       </Stack>
       <Stack direction="horizontal" gap={1} className="fs-6 p-2">
         <Stack direction="vertical" gap={1} className="w-25">

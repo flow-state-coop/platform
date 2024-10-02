@@ -27,6 +27,7 @@ import Review from "@/components/checkout/Review";
 import Success from "@/components/checkout/Success";
 import PassportMintingInstructions from "@/components/PassportMintingInstructions";
 import { useSuperfluidContext } from "@/context/Superfluid";
+import { ProjectMetadata } from "@/types/project";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
@@ -49,10 +50,8 @@ import {
 type GranteeFundingProps = {
   show: boolean;
   handleClose: () => void;
-  name: string;
+  metadata: ProjectMetadata;
   twitter: string;
-  description: string;
-  logoCid: string;
   placeholderLogo: string;
   poolUiLink: string;
   framesLink: string;
@@ -82,6 +81,7 @@ type GranteeFundingProps = {
   minPassportScore?: bigint;
   requiredNftAddress: Address | null;
   nftMintUrl: string | null;
+  recipientId: string;
 };
 
 dayjs().format();
@@ -91,9 +91,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
   const {
     show,
     handleClose,
-    name,
-    description,
-    logoCid,
+    metadata,
     placeholderLogo,
     twitter,
     poolUiLink,
@@ -116,6 +114,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     minPassportScore,
     requiredNftAddress,
     nftMintUrl,
+    recipientId,
   } = props;
 
   const [step, setStep] = useState<Step>(Step.SELECT_AMOUNT);
@@ -575,9 +574,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
         </Offcanvas.Header>
         <Offcanvas.Body>
           <GranteeDetails
-            name={name}
-            description={description}
-            logoCid={logoCid}
+            metadata={metadata}
             placeholderLogo={placeholderLogo}
             poolUiLink={poolUiLink}
             recipientAddress={recipientAddress}
@@ -587,6 +584,8 @@ export default function GranteeFunding(props: GranteeFundingProps) {
             userOutflow={userOutflow}
             allocationTokenInfo={allocationTokenInfo}
             matchingTokenInfo={matchingTokenInfo}
+            recipientId={recipientId}
+            chainId={network?.id}
           />
           <Accordion activeKey={step} className="mt-4">
             <EditStream
@@ -718,7 +717,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
             <Success
               step={step}
               isFundingMatchingPool={false}
-              granteeName={name}
+              granteeName={metadata.title}
               granteeTwitter={twitter ? `@${twitter}` : ""}
               poolName={poolName}
               poolUiLink={poolUiLink}

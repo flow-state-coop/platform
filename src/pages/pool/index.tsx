@@ -14,6 +14,7 @@ import Grantee from "@/components/Grantee";
 import GranteeFunding from "@/components/GranteeFunding";
 import MatchingPoolFunding from "@/components/MatchingPoolFunding";
 import { Recipient } from "@/types/recipient";
+import { ProjectMetadata } from "@/types/project";
 import { Token } from "@/types/token";
 import { Inflow } from "@/types/inflow";
 import { Outflow } from "@/types/outflow";
@@ -38,9 +39,7 @@ type Grantee = {
   id: string;
   recipientAddress: string;
   superappAddress: string;
-  name: string;
-  description: string;
-  logoCid: string;
+  metadata: ProjectMetadata;
   bannerCid: string;
   twitter: string;
   inflow: Inflow;
@@ -362,9 +361,7 @@ export default function Pool() {
         id: recipient.id,
         recipientAddress: recipient.recipientAddress,
         superappAddress: recipient.superappAddress,
-        name: recipient.metadata.title,
-        description: recipient.metadata.description,
-        logoCid: recipient.metadata.logoImg,
+        metadata: recipient.metadata,
         bannerCid: recipient.metadata.bannerImg,
         twitter: recipient.metadata.projectTwitter,
         inflow: superappAccount.accountTokenSnapshots[0],
@@ -391,11 +388,11 @@ export default function Pool() {
 
       if (sortingMethod === SortingMethod.ALPHABETICAL) {
         return grantees.sort((a, b) => {
-          if (a.name < b.name) {
+          if (a.metadata.title < b.metadata.title) {
             return -1;
           }
 
-          if (a.name > b.name) {
+          if (a.metadata.title > b.metadata.title) {
             return 1;
           }
 
@@ -680,9 +677,9 @@ export default function Pool() {
           {grantees.map((grantee: Grantee, i: number) => (
             <Grantee
               key={grantee.id}
-              name={grantee.name}
-              description={grantee.description}
-              logoCid={grantee.logoCid}
+              name={grantee.metadata.title}
+              description={grantee.metadata.description}
+              logoCid={grantee.metadata.logoImg}
               bannerCid={grantee.bannerCid}
               placeholderLogo={grantee.placeholderLogo}
               placeholderBanner={grantee.placeholderBanner}
@@ -752,11 +749,7 @@ export default function Pool() {
             poolUiLink={`${hostName}/pool/?poolId=${poolId ?? DEFAULT_POOL_ID}&chainId=${chainId ?? DEFAULT_CHAIN_ID}&recipientId=${grantees[transactionPanelState.selectedGrantee].id}`}
             framesLink={`https://frames.flowstate.network/frames/grantee/${grantees[transactionPanelState.selectedGrantee].id}/${poolId ?? DEFAULT_POOL_ID}/${chainId ?? DEFAULT_CHAIN_ID}`}
             poolName={pool?.metadata.name ?? ""}
-            name={grantees[transactionPanelState.selectedGrantee].name ?? ""}
-            description={
-              grantees[transactionPanelState.selectedGrantee].description ?? ""
-            }
-            logoCid={grantees[transactionPanelState.selectedGrantee].logoCid}
+            metadata={grantees[transactionPanelState.selectedGrantee].metadata}
             placeholderLogo={
               grantees[transactionPanelState.selectedGrantee].placeholderLogo
             }
@@ -786,6 +779,7 @@ export default function Pool() {
             minPassportScore={minPassportScore}
             requiredNftAddress={(requiredNftAddress as Address) ?? null}
             nftMintUrl={streamingFundQueryRes?.pool.metadata.nftMintUrl ?? null}
+            recipientId={grantees[transactionPanelState.selectedGrantee].id}
           />
         ) : null}
       </Container>

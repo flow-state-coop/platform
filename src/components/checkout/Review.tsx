@@ -288,7 +288,7 @@ export default function Review(props: ReviewProps) {
                 : "A."}{" "}
               {isFundingMatchingPool
                 ? "Edit Matching Stream"
-                : "Edit Grante Stream"}
+                : "Edit Grantee Stream"}
             </Card.Text>
           </Stack>
           <Stack direction="horizontal" className="justify-content-around px-2">
