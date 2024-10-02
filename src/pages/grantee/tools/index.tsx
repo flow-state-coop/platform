@@ -283,7 +283,7 @@ export default function GranteeTools() {
           <Stack direction={isMobile ? "vertical" : "horizontal"} gap={4}>
             <Button
               variant="link"
-              href={`${network.superfluidConsole}/pools/${gdaPoolAddress}`}
+              href={`${network.superfluidExplorer}/pools/${gdaPoolAddress}`}
               target="_blank"
               className="text-light bg-secondary"
               style={{ width: 256 }}
@@ -292,12 +292,12 @@ export default function GranteeTools() {
             </Button>
             <Button
               variant="secondary"
-              href={`${network.superfluidDashboard}/?view=${address}`}
+              href={network.superfluidDashboard}
               target="_blank"
               className="text-light"
               style={{ width: 256 }}
             >
-              View Address Dashboard
+              Superfluid Wallet Tools
             </Button>
           </Stack>
           <Card.Text className="m-0 mt-4 fs-3">SQF Pool Connection</Card.Text>
@@ -321,7 +321,11 @@ export default function GranteeTools() {
           </Button>
           {selectedProject && (
             <>
-              <Card.Text className="fs-3 mt-4 mb-2">UI Direct Link</Card.Text>
+              <Card.Text className="fs-3 mt-4 mb-0">Direct Donation</Card.Text>
+              <Card.Text className="fs-6 mb-3">
+                Share a direct link to checkout with your grant with your
+                community on social, newsletters, etc.
+              </Card.Text>
               <Stack
                 direction={isMobile ? "vertical" : "horizontal"}
                 gap={isMobile ? 2 : 4}
@@ -341,8 +345,10 @@ export default function GranteeTools() {
                   Copy
                 </Button>
               </Stack>
-              <Card.Text className="fs-3 mt-4 mb-2">
-                Frame Donation Link
+              <Card.Text className="fs-3 mt-4 mb-0">Farcaster Frame</Card.Text>
+              <Card.Text className="fs-6 mb-3">
+                Share your project-specific Frame on Farcaster for users to
+                check your current matching multiplier & jump to checkout.
               </Card.Text>
               <Stack
                 direction={isMobile ? "vertical" : "horizontal"}

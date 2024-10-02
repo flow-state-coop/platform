@@ -7,7 +7,7 @@ export type Network = {
   icon: string;
   rpcUrl: string;
   blockExplorer: string;
-  superfluidConsole: string;
+  superfluidExplorer: string;
   superfluidDashboard: string;
   superfluidSubgraph: string;
   onRampName: string;

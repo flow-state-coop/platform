@@ -216,11 +216,11 @@ export default function MatchinPool() {
                   <Button
                     variant="secondary"
                     as="a"
-                    href={`${network?.superfluidConsole}/pools/${gdaPool}`}
+                    href={`${network?.superfluidExplorer}/pools/${gdaPool}`}
                     target="_blank"
                     className="rounded-2 text-light"
                   >
-                    View on Console
+                    View on Explorer
                   </Button>
                 </InputGroup>
               </Form.Group>

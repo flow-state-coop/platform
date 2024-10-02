@@ -7,7 +7,7 @@ const networks: Network[] = [
     icon: "/optimism.svg",
     rpcUrl: "https://optimism-rpc.publicnode.com",
     blockExplorer: "https://optimistic.etherscan.io",
-    superfluidConsole: "https://console.superfluid.finance/optimism-mainnet",
+    superfluidExplorer: "https://explorer.superfluid.finance/optimism-mainnet",
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/optimism-mainnet/protocol-v1",
@@ -48,7 +48,7 @@ const networks: Network[] = [
     icon: "/base.svg",
     blockExplorer: "https://basescan.org/",
     rpcUrl: "https://mainnet.base.org/",
-    superfluidConsole: "https://console.superfluid.finance/base-mainnet",
+    superfluidExplorer: "https://explorer.superfluid.finance/base-mainnet",
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/base-mainnet/protocol-v1",
@@ -94,7 +94,7 @@ const networks: Network[] = [
     icon: "/arb.svg",
     rpcUrl: "https://arb1.arbitrum.io/rpc",
     blockExplorer: "https://arbiscan.io/",
-    superfluidConsole: "https://console.superfluid.finance/arbitrum-one",
+    superfluidExplorer: "https://explorer.superfluid.finance/arbitrum-one",
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/arbitrum-one/protocol-v1",
@@ -135,7 +135,7 @@ const networks: Network[] = [
     icon: "/optimism.svg",
     rpcUrl: "https://optimism-sepolia-rpc.publicnode.com",
     blockExplorer: "https://sepolia-optimism.etherscan.io",
-    superfluidConsole: "https://console.superfluid.finance/optimism-sepolia",
+    superfluidExplorer: "https://explorer.superfluid.finance/optimism-sepolia",
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/optimism-sepolia/protocol-v1",
