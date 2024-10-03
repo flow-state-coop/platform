@@ -10,7 +10,6 @@ import Offcanvas from "react-bootstrap/Offcanvas";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
-import ButtonGroup from "react-bootstrap/ButtonGroup";
 import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
 import Spinner from "react-bootstrap/Spinner";
@@ -61,8 +60,8 @@ const ACCOUNT_QUERY = gql`
   }
 `;
 
-export default function Profile() {
-  const [showProfile, setShowProfile] = useState(false);
+export default function WalletBalance() {
+  const [showOffcanvas, setShowOffcanvas] = useState(false);
   const [showMintingInstructions, setShowMintingInstructions] = useState(false);
   const [token, setToken] = useState(Token.ALLOCATION);
 
@@ -186,50 +185,41 @@ export default function Profile() {
     [network, matchingToken],
   );
 
-  const handleCloseProfile = () => setShowProfile(false);
-  const handleShowProfile = () => setShowProfile(true);
+  const handleCloseOffcanvas = () => setShowOffcanvas(false);
+  const handleShowOffcanvas = () => setShowOffcanvas(true);
 
   return (
     <>
-      <ButtonGroup className="d-flex align-items-center">
-        <Button
-          variant="transparent"
-          disabled={showProfile}
-          onClick={handleShowProfile}
-          className="d-none d-xl-block bg-transparent border border-black rounded-start"
-        >
-          {!superfluidQueryRes ? (
-            <Spinner size="sm" animation="border" role="status"></Spinner>
-          ) : (
+      <Button
+        variant="transparent"
+        disabled={showOffcanvas}
+        onClick={handleShowOffcanvas}
+        className="d-none d-sm-block bg-transparent border rounded-start"
+      >
+        {!superfluidQueryRes ? (
+          <Spinner size="sm" animation="border" role="status"></Spinner>
+        ) : (
+          <Stack direction="horizontal" gap={2} className="align-items-center">
+            <Image src="/wallet.svg" alt="Wallet" width={22} height={22} />
             <Card.Text className="m-0">
               {formatEther(superTokenBalanceAllocation).slice(0, 8)}{" "}
               {allocationTokenInfo?.name}
             </Card.Text>
-          )}
-        </Button>
-        <Button
-          variant="link"
-          disabled={showProfile}
-          onClick={handleShowProfile}
-          className="d-none d-xl-flex align-items-center gap-1 border border-black rounded-end"
-        >
-          <Card.Text className="m-0">
-            {truncateStr(address ?? "0x", 14)}{" "}
-          </Card.Text>
-        </Button>
-      </ButtonGroup>
+          </Stack>
+        )}
+      </Button>
       <Button
         variant="transparent"
-        disabled={showProfile}
-        onClick={handleShowProfile}
-        className="d-xl-none"
+        disabled={showOffcanvas}
+        onClick={handleShowOffcanvas}
+        className="d-sm-none border"
       >
-        <Image width={32} height={32} src="/account-circle.svg" alt="Account" />
+        <Image width={22} height={22} src="/wallet.svg" alt="Account" />
       </Button>
       <Offcanvas
-        show={showProfile}
+        show={showOffcanvas}
         scroll
-        onHide={handleCloseProfile}
+        onHide={handleCloseOffcanvas}
         placement="end"
         backdrop={true}
         className="overflow-auto border-0"
@@ -241,7 +231,7 @@ export default function Profile() {
           <Button
             variant="transparent"
             className="float-end"
-            onClick={handleCloseProfile}
+            onClick={handleCloseOffcanvas}
           >
             <Image src="/close.svg" alt="close" width={28} />
           </Button>
@@ -275,7 +265,7 @@ export default function Profile() {
             className="d-flex gap-2 align-items-center bg-light rounded-3 px-3 py-2"
             onClick={() => {
               disconnect();
-              handleCloseProfile();
+              handleCloseOffcanvas();
             }}
           >
             <Card.Text className="m-0">Disconnect</Card.Text>
