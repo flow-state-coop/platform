@@ -183,7 +183,6 @@ export default function Index() {
         <p
           className="position-absolute start-50 translate-middle-x z-1 m-0 fs-3 text-center"
           style={{
-            whiteSpace: !isMobile && !isTablet ? "" : "",
             minWidth: "80%",
           }}
         >

@@ -38,6 +38,7 @@ import { alloAbi } from "@/lib/abi/allo";
 import { erc721Abi } from "@/lib/abi/erc721";
 import { erc721CheckerAbi } from "@/lib/abi/erc721Checker";
 import { pinJsonToIpfs } from "@/lib/ipfs";
+import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import { ZERO_ADDRESS } from "@/lib/constants";
 
 const POOL_BY_ID_QUERY = gql`
@@ -332,8 +333,8 @@ export default function Configure() {
         eligibilityMethod === EligibilityMethod.NFT_GATING && nftCheckerAddress
           ? (nftCheckerAddress as Address)
           : ZERO_ADDRESS,
-      flowRateScaling:
-        allocationToken.name === "ETHx" ? BigInt(10) : BigInt(1e6),
+      flowRateScaling: getPoolFlowRateConfig(allocationToken.name)
+        .flowRateScaling,
     };
     const metadata = { protocol: BigInt(1), pointer: metadataCid };
     const initData: `0x${string}` = encodeAbiParameters(

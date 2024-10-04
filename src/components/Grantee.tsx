@@ -6,6 +6,7 @@ import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import { Token } from "@/types/token";
+import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import { roundWeiAmount } from "@/lib/utils";
 import { IPFS_GATEWAYS, SECONDS_IN_MONTH } from "@/lib/constants";
 
@@ -174,14 +175,17 @@ export default function Grantee(props: GranteeProps) {
         className="d-flex justify-content-between bg-light border-0 py-3"
         style={{ fontSize: "15px" }}
       >
-        <Stack direction="vertical" className="w-50">
+        <Stack direction="vertical" className="flex-grow-0">
           {userFlowRate ? (
             <>
               <Card.Text as="small" className="m-0 fw-bold">
                 Your Stream
               </Card.Text>
               <Card.Text as="small" className="m-0">
-                {roundWeiAmount(userFlowRate * BigInt(SECONDS_IN_MONTH), 2)}{" "}
+                {roundWeiAmount(
+                  userFlowRate * BigInt(SECONDS_IN_MONTH),
+                  allocationTokenInfo.name.startsWith("ETH") ? 4 : 2,
+                )}{" "}
                 {allocationTokenInfo.name}
                 /mo
               </Card.Text>
@@ -191,10 +195,26 @@ export default function Grantee(props: GranteeProps) {
               <Card.Text as="small" className="m-0 fw-bold">
                 Matching Multiplier
               </Card.Text>
-              <Card.Text as="small" className="m-0 text-truncate">
-                1 {allocationTokenInfo.name} = {monthlyImpactMatchingEstimate}{" "}
-                {matchingTokenInfo.name}
-              </Card.Text>
+              {allocationTokenInfo.name === "ETHx" ? (
+                <Card.Text className="m-0 text-center">
+                  x
+                  {parseFloat(
+                    (
+                      Number(
+                        roundWeiAmount(
+                          impactMatchingEstimate * BigInt(SECONDS_IN_MONTH),
+                          18,
+                        ),
+                      ) / getPoolFlowRateConfig("ETHx").minAllocationPerMonth
+                    ).toFixed(2),
+                  )}
+                </Card.Text>
+              ) : (
+                <Card.Text as="small" className="m-0 text-truncate">
+                  1 {allocationTokenInfo.name} = {monthlyImpactMatchingEstimate}{" "}
+                  {matchingTokenInfo.name}
+                </Card.Text>
+              )}
             </>
           )}
         </Stack>

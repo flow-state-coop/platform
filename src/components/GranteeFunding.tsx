@@ -32,6 +32,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
+import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
 import { suggestedSupportDonationByToken } from "@/lib/suggestedSupportDonationByToken";
 import {
@@ -302,6 +303,8 @@ export default function GranteeFunding(props: GranteeFundingProps) {
         granteeFlowRate: BigInt(matchingFlowRate),
         previousFlowRate: BigInt(flowRateToReceiver ?? 0),
         newFlowRate: BigInt(newFlowRate ?? 0),
+        flowRateScaling: getPoolFlowRateConfig(allocationTokenSymbol)
+          .flowRateScaling,
       });
     }
 
@@ -312,6 +315,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     matchingPool,
     matchingFlowRate,
     recipientAddress,
+    allocationTokenSymbol,
   ]);
 
   const transactions = useMemo(() => {

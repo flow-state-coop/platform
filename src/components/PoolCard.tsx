@@ -14,6 +14,7 @@ import { MatchingPool } from "@/types/matchingPool";
 import { Project } from "@/types/project";
 import { Network } from "@/types/network";
 import { roundWeiAmount } from "@/lib/utils";
+import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
@@ -48,7 +49,7 @@ export default function PoolCard(props: PoolCardProps) {
   const framesLink = `https://frames.flowstate.network/frames/grantee/${recipientId}/${pool.id}/${network.id}`;
 
   const matchingImpactEstimate = useMemo(() => {
-    if (!matchingPool || !pool) {
+    if (!matchingPool || !pool || !network) {
       return BigInt(0);
     }
 
@@ -66,17 +67,26 @@ export default function PoolCard(props: PoolCardProps) {
         ? (BigInt(member?.units ?? 0) * adjustedFlowRate) /
           BigInt(matchingPool.totalUnits)
         : BigInt(0);
+    const allocationToken = network.tokens.find(
+      (token) => token.address.toLowerCase() === pool.allocationToken,
+    );
+    const poolFlowRateConfig = getPoolFlowRateConfig(
+      allocationToken?.name ?? "",
+    );
     const matchingImpactEstimate = calcMatchingImpactEstimate({
       totalFlowRate: BigInt(matchingPool.flowRate ?? 0),
       totalUnits: BigInt(matchingPool.totalUnits ?? 0),
       granteeUnits: BigInt(member?.units ?? 0),
       granteeFlowRate: memberFlowRate,
       previousFlowRate: BigInt(0),
-      newFlowRate: parseEther("1") / BigInt(SECONDS_IN_MONTH),
+      newFlowRate:
+        parseEther(poolFlowRateConfig.minAllocationPerMonth.toString()) /
+        BigInt(SECONDS_IN_MONTH),
+      flowRateScaling: poolFlowRateConfig.flowRateScaling,
     });
 
     return matchingImpactEstimate;
-  }, [matchingPool, pool, project]);
+  }, [matchingPool, pool, project, network]);
 
   return (
     <Stack direction="vertical" className="flex-grow-0" style={{ width: 228 }}>

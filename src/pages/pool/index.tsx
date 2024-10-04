@@ -25,6 +25,7 @@ import { passportDecoderAbi } from "@/lib/abi/passportDecoder";
 import { erc721CheckerAbi } from "@/lib/abi/erc721Checker";
 import { erc721Abi } from "@/lib/abi/erc721";
 import { networks } from "@/lib/networks";
+import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import { getApolloClient } from "@/lib/apollo";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
 import { shuffle } from "@/lib/utils";
@@ -348,13 +349,19 @@ export default function Pool() {
           ? (BigInt(member.units) * adjustedFlowRate) /
             BigInt(matchingPool.totalUnits)
           : BigInt(0);
+      const poolFlowRateConfig = getPoolFlowRateConfig(
+        allocationTokenInfo.name,
+      );
       const impactMatchingEstimate = calcMatchingImpactEstimate({
         totalFlowRate: BigInt(matchingPool.flowRate ?? 0),
         totalUnits: BigInt(matchingPool.totalUnits ?? 0),
         granteeUnits: BigInt(member.units),
         granteeFlowRate: memberFlowRate,
         previousFlowRate: BigInt(0),
-        newFlowRate: parseEther("1") / BigInt(SECONDS_IN_MONTH),
+        newFlowRate:
+          parseEther(poolFlowRateConfig.minAllocationPerMonth.toString()) /
+          BigInt(SECONDS_IN_MONTH),
+        flowRateScaling: poolFlowRateConfig.flowRateScaling,
       });
 
       return {

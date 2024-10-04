@@ -17,6 +17,7 @@ import { strategyAbi } from "@/lib/abi/strategy";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
+import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
 import { IPFS_GATEWAYS, SECONDS_IN_MONTH } from "@/lib/constants";
 
@@ -149,7 +150,7 @@ export default function Project() {
   const placeholderBanner = `/placeholders/${Math.floor(Math.random() * (5 - 1 + 1) + 1)}.jpg`;
 
   const matchingImpactEstimates = useMemo(() => {
-    if (!superfluidQueryRes?.pools || !pools) {
+    if (!superfluidQueryRes?.pools || !pools || !network) {
       return [];
     }
 
@@ -173,20 +174,29 @@ export default function Project() {
           ? (BigInt(member?.units ?? 0) * adjustedFlowRate) /
             BigInt(matchingPool.totalUnits)
           : BigInt(0);
+      const allocationToken = network?.tokens.find(
+        (token) => token.address.toLowerCase === pool.allocationToken,
+      );
+      const poolFlowRateConfig = getPoolFlowRateConfig(
+        allocationToken?.name ?? "",
+      );
       const matchingImpactEstimate = calcMatchingImpactEstimate({
         totalFlowRate: BigInt(matchingPool.flowRate ?? 0),
         totalUnits: BigInt(matchingPool.totalUnits ?? 0),
         granteeUnits: BigInt(member?.units ?? 0),
         granteeFlowRate: memberFlowRate,
         previousFlowRate: BigInt(0),
-        newFlowRate: parseEther("1") / BigInt(SECONDS_IN_MONTH),
+        newFlowRate:
+          parseEther(poolFlowRateConfig.minAllocationPerMonth.toString()) /
+          BigInt(SECONDS_IN_MONTH),
+        flowRateScaling: poolFlowRateConfig.flowRateScaling,
       });
 
       matchingImpactEstimates.push(matchingImpactEstimate);
     }
 
     return matchingImpactEstimates;
-  }, [superfluidQueryRes, pools, project]);
+  }, [superfluidQueryRes, pools, project, network]);
 
   useEffect(() => {
     if (router.query.edit) {
