@@ -19,6 +19,7 @@ import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
+import { getPlaceholderImageSrc } from "@/lib/utils";
 import { IPFS_GATEWAYS, SECONDS_IN_MONTH } from "@/lib/constants";
 
 const PROJECT_QUERY = gql`
@@ -99,7 +100,7 @@ export default function Project() {
   const router = useRouter();
   const chainId = Number(router.query.chainId) ?? null;
   const { address } = useAccount();
-  const { isMobile, isTablet } = useMediaQuery();
+  const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
   const { data: projectQueryRes, loading } = useQuery(PROJECT_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
@@ -146,8 +147,8 @@ export default function Project() {
   const project = projectQueryRes?.profile;
   const pools = poolsQueryRes?.pools;
   const network = networks.filter((network) => network.id === chainId)[0];
-  const placeholderLogo = `/placeholders/${Math.floor(Math.random() * (5 - 1 + 1) + 1)}.jpg`;
-  const placeholderBanner = `/placeholders/${Math.floor(Math.random() * (5 - 1 + 1) + 1)}.jpg`;
+  const placeholderLogo = getPlaceholderImageSrc();
+  const placeholderBanner = getPlaceholderImageSrc();
 
   const matchingImpactEstimates = useMemo(() => {
     if (!superfluidQueryRes?.pools || !pools || !network) {
@@ -247,7 +248,14 @@ export default function Project() {
       <Container
         className="mx-auto p-0"
         style={{
-          maxWidth: isMobile || isTablet ? "100%" : 1300,
+          maxWidth:
+            isMobile || isTablet
+              ? "100%"
+              : isSmallScreen
+                ? 1000
+                : isMediumScreen
+                  ? 1300
+                  : 1600,
         }}
       >
         {!network ? (

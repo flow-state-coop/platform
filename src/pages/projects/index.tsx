@@ -3,13 +3,14 @@ import { useRouter } from "next/router";
 import { useAccount, useSwitchChain } from "wagmi";
 import { gql, useQuery } from "@apollo/client";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
+import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Dropdown from "react-bootstrap/Dropdown";
-import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import ProjectCreationModal from "@/components/ProjectCreationModal";
+import ProjectCard from "@/components/ProjectCard";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { Project } from "@/types/project";
 import { networks } from "@/lib/networks";
@@ -45,7 +46,8 @@ export default function Projects() {
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
-  const { isMobile } = useMediaQuery();
+  const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
+    useMediaQuery();
   const { data: queryRes, loading } = useQuery(PROJECTS_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
@@ -68,7 +70,19 @@ export default function Projects() {
   }, [router.query]);
 
   return (
-    <>
+    <Container
+      className="mx-auto p-0"
+      style={{
+        maxWidth:
+          isMobile || isTablet
+            ? "100%"
+            : isSmallScreen
+              ? 1000
+              : isMediumScreen
+                ? 1300
+                : 1600,
+      }}
+    >
       <Stack direction="vertical" gap={4} className="p-4">
         {loading ? (
           <Spinner className="m-auto" />
@@ -100,10 +114,24 @@ export default function Projects() {
                 ))}
               </Dropdown.Menu>
             </Dropdown>
-            <Stack direction="horizontal" gap={5} className="flex-wrap">
+            <div
+              className="pb-5"
+              style={{
+                display: "grid",
+                columnGap: "1.5rem",
+                rowGap: "3rem",
+                gridTemplateColumns: isTablet
+                  ? "repeat(2,minmax(0,1fr))"
+                  : isSmallScreen
+                    ? "repeat(3,minmax(0,1fr))"
+                    : isMediumScreen || isBigScreen
+                      ? "repeat(4,minmax(0,1fr))"
+                      : "",
+              }}
+            >
               <Card
                 className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
-                style={{ width: isMobile ? "100%" : 256, height: 256 }}
+                style={{ height: 418 }}
                 onClick={() => {
                   if (address) {
                     setShowProjectCreationModal(true);
@@ -112,48 +140,31 @@ export default function Projects() {
                   }
                 }}
               >
-                <Image src="/add.svg" alt="add" width={48} />
-                <Card.Text className="d-inline-block m-0 overflow-hidden text-center word-wrap">
+                <Image src="/add.svg" alt="add" width={64} />
+                <Card.Text className="d-inline-block m-0 overflow-hidden fs-2 text-center word-wrap">
                   Create Project
                 </Card.Text>
               </Card>
-              {projects?.map((project: Project, i: number) => (
-                <Card
-                  className={`d-flex justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer`}
-                  style={{
-                    width: isMobile ? "100%" : 256,
-                    height: 256,
-                  }}
-                  onClick={() =>
+              {projects?.map((project: Project) => (
+                <ProjectCard
+                  key={project.id}
+                  name={project.metadata.title}
+                  description={project.metadata.description}
+                  logoCid={project.metadata.logoImg}
+                  bannerCid={project.metadata.bannerImg}
+                  selectProject={() =>
                     router.push(
                       `/projects/${project.id}/?chainId=${network?.id}`,
                     )
                   }
-                  key={i}
-                >
-                  <>
-                    <Card.Body className="d-flex flex-column w-100 h-75 justify-content-end">
-                      <Card.Text className="d-inline-block w-100 m-0 text-center overflow-hidden word-wrap">
-                        {project.metadata.title}
-                      </Card.Text>
-                    </Card.Body>
-                    <Card.Footer className="position-relative d-flex align-items-bottom justify-content-center w-100 h-50 border-0 bg-transparent pt-0">
-                      <Button
-                        variant="transparent"
-                        className="position-absolute bottom-0 end-0 p-3 border-0"
-                        onClick={() => {
-                          router.push(
-                            `/projects/${project.id}/?chainId=${network?.id}&edit=true`,
-                          );
-                        }}
-                      >
-                        <Image src="/edit.svg" alt="edit" width={24} />
-                      </Button>
-                    </Card.Footer>
-                  </>
-                </Card>
+                  editProject={() =>
+                    router.push(
+                      `/projects/${project.id}/?chainId=${network?.id}&edit=true`,
+                    )
+                  }
+                />
               ))}
-            </Stack>
+            </div>
           </>
         )}
       </Stack>
@@ -165,6 +176,6 @@ export default function Projects() {
           setNewProfileId={() => null}
         />
       )}
-    </>
+    </Container>
   );
 }

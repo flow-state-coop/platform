@@ -149,3 +149,7 @@ export function truncateStr(str: string, strLen: number) {
     str.substr(0, frontChars) + separator + str.substr(str.length - backChars)
   );
 }
+
+export function getPlaceholderImageSrc() {
+  return `/placeholders/${Math.floor(Math.random() * 6)}.jpg`;
+}

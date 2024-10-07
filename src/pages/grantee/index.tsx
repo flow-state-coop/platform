@@ -16,6 +16,7 @@ import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import ProjectCreationModal from "@/components/ProjectCreationModal";
 import ProjectUpdateModal from "@/components/ProjectUpdateModal";
+import GranteeApplicationCard from "@/components/GranteeApplicationCard";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { Project } from "@/types/project";
 import { networks } from "@/lib/networks";
@@ -81,7 +82,8 @@ export default function Grantee() {
   const router = useRouter();
   const { poolId } = router.query;
   const chainId = Number(router.query.chainId) ?? null;
-  const { isMobile } = useMediaQuery();
+  const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
+    useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { data: queryRes, loading } = useQuery(PROJECTS_QUERY, {
     client: getApolloClient("streamingfund"),
@@ -236,7 +238,7 @@ export default function Grantee() {
             <Dropdown>
               <Dropdown.Toggle
                 variant="transparent"
-                className={`d-flex justify-content-between align-items-center border border-2 ${isMobile ? "" : "w-20"}`}
+                className={`d-flex justify-content-between align-items-center border border-2 ${isMobile || isTablet ? "" : "w-20"}`}
                 disabled
               >
                 {network.name}
@@ -276,7 +278,20 @@ export default function Grantee() {
             {loading ? (
               <Spinner className="m-auto" />
             ) : (
-              <Stack direction="horizontal" gap={5} className="flex-wrap">
+              <div
+                style={{
+                  display: "grid",
+                  columnGap: "1.5rem",
+                  rowGap: "3rem",
+                  gridTemplateColumns: isTablet
+                    ? "repeat(1,minmax(0,1fr))"
+                    : isSmallScreen
+                      ? "repeat(2,minmax(0,1fr))"
+                      : isMediumScreen || isBigScreen
+                        ? "repeat(3,minmax(0,1fr))"
+                        : "",
+                }}
+              >
                 {projects?.map(
                   (
                     project: Project & {
@@ -285,156 +300,45 @@ export default function Grantee() {
                     },
                     i: number,
                   ) => (
-                    <Card
-                      className={`d-flex justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer ${
-                        selectedProjectIndex === i
-                          ? "border-5 border-primary"
-                          : project.status === "APPROVED"
-                            ? "border-5 border-success"
-                            : project.status === "REJECTED"
-                              ? "border-5 border-danger"
-                              : project.status === "PENDING"
-                                ? "border-5 border-warning"
-                                : ""
-                      }
-                    `}
-                      style={{
-                        width: isMobile ? "100%" : 256,
-                        height: 256,
-                        pointerEvents:
-                          (hasApplied &&
-                            project.status !== "PENDING" &&
-                            project.status !== "APPROVED") ||
-                          project.status === "REJECTED" ||
-                          project.status === "CANCELED"
-                            ? "none"
-                            : "auto",
-                      }}
-                      onClick={() =>
+                    <GranteeApplicationCard
+                      key={project.id}
+                      name={project.metadata.title}
+                      description={project.metadata.description}
+                      logoCid={project.metadata.logoImg}
+                      bannerCid={project.metadata.bannerImg}
+                      status={project.status}
+                      hasApplied={hasApplied}
+                      isSelected={selectedProjectIndex === i}
+                      selectProject={() =>
                         project.status === "APPROVED"
                           ? router.push(
                               `/grantee/tools/?chainId=${chainId}&poolId=${poolId}&recipientId=${project.recipientId}`,
                             )
                           : setSelectedProjectIndex(i)
                       }
-                      key={i}
-                    >
-                      {isTransactionConfirming && selectedProjectIndex === i ? (
-                        <Spinner className="m-auto" />
-                      ) : (
-                        <>
-                          <Card.Body className="d-flex flex-column w-100 h-75 justify-content-end">
-                            <Card.Text className="d-inline-block w-100 m-0 text-center overflow-hidden word-wrap">
-                              {project.metadata.title}
-                            </Card.Text>
-                            {selectedProjectIndex === i && (
-                              <Card.Text className="position-absolute top-0 start-50 translate-middle mt-4 fs-6 text-primary">
-                                Submit Below
-                              </Card.Text>
-                            )}
-                          </Card.Body>
-                          <Card.Footer className="position-relative d-flex align-items-bottom justify-content-center w-100 h-50 border-0 bg-transparent pt-0">
-                            {project.status !== null ? (
-                              <Stack
-                                direction="horizontal"
-                                gap={2}
-                                className={`justify-content-center align-items-center fs-4 
-                            ${
-                              project.status === "PENDING"
-                                ? "text-warning"
-                                : project.status === "APPROVED"
-                                  ? "text-success"
-                                  : "text-danger"
-                            }`}
-                                onClick={() =>
-                                  setShowProjectUpdateModal(
-                                    project.status === "PENDING",
-                                  )
-                                }
-                              >
-                                <Image
-                                  src={
-                                    project.status === "PENDING"
-                                      ? "/pending.svg"
-                                      : project.status === "REJECTED" ||
-                                          project.status === "CANCELED"
-                                        ? "/cancel-circle.svg"
-                                        : "check-circle.svg"
-                                  }
-                                  alt="status"
-                                  width={42}
-                                  style={{
-                                    filter:
-                                      project.status === "PENDING"
-                                        ? "invert(87%) sepia(40%) saturate(4124%) hue-rotate(348deg) brightness(103%) contrast(110%)"
-                                        : project.status === "REJECTED" ||
-                                            project.status === "CANCELED"
-                                          ? "invert(36%) sepia(58%) saturate(1043%) hue-rotate(313deg) brightness(89%) contrast(116%)"
-                                          : "invert(39%) sepia(10%) saturate(3997%) hue-rotate(103deg) brightness(99%) contrast(80%)",
-                                  }}
-                                />
-                                {project.status === "PENDING"
-                                  ? "Pending"
-                                  : project.status === "REJECTED"
-                                    ? "Rejected"
-                                    : project.status === "CANCELED"
-                                      ? "Canceled"
-                                      : "Accepted"}
-                                {project.status === "PENDING" && (
-                                  <Button
-                                    variant="transparent"
-                                    className="position-absolute bottom-0 end-0 p-3 border-0"
-                                    onClick={() => {
-                                      setShowProjectUpdateModal(true);
-                                    }}
-                                    style={{
-                                      filter:
-                                        "invert(87%) sepia(40%) saturate(4124%) hue-rotate(348deg) brightness(103%) contrast(110%)",
-                                    }}
-                                  >
-                                    <Image
-                                      src="/edit.svg"
-                                      alt="edit"
-                                      width={24}
-                                    />
-                                  </Button>
-                                )}
-                              </Stack>
-                            ) : (
-                              <Button
-                                variant="transparent"
-                                className="position-absolute bottom-0 end-0 p-3 border-0"
-                                onClick={() => {
-                                  setShowProjectUpdateModal(true);
-                                }}
-                              >
-                                <Image src="/edit.svg" alt="edit" width={24} />
-                              </Button>
-                            )}
-                          </Card.Footer>
-                        </>
-                      )}
-                    </Card>
+                      updateProject={setShowProjectUpdateModal}
+                      isTransactionConfirming={isTransactionConfirming}
+                    />
                   ),
                 )}
                 <Card
                   className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
-                  style={{ width: isMobile ? "100%" : 256, height: 256 }}
+                  style={{ height: 418 }}
                   onClick={() => {
                     setShowProjectCreationModal(true);
                     setSelectedProjectIndex(null);
                   }}
                 >
-                  <Image src="/add.svg" alt="add" width={48} />
-                  <Card.Text className="d-inline-block m-0 overflow-hidden text-center word-wrap">
+                  <Image src="/add.svg" alt="add" width={52} />
+                  <Card.Text className="d-inline-block m-0 overflow-hidden fs-3 text-center word-wrap">
                     Create a new project
                   </Card.Text>
                 </Card>
-              </Stack>
+              </div>
             )}
             <Stack direction="vertical" gap={2} className="mt-5 text-light">
               <Button
-                className={`${isMobile ? "w-100" : "w-25"} py-2 text-light`}
+                className={`${isMobile || isTablet ? "w-100" : "w-25"} py-2 text-light`}
                 disabled={selectedProjectIndex === null}
                 onClick={registerRecipient}
               >

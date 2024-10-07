@@ -28,7 +28,7 @@ import { networks } from "@/lib/networks";
 import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import { getApolloClient } from "@/lib/apollo";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
-import { shuffle } from "@/lib/utils";
+import { shuffle, getPlaceholderImageSrc } from "@/lib/utils";
 import {
   SECONDS_IN_MONTH,
   ZERO_ADDRESS,
@@ -380,8 +380,8 @@ export default function Pool() {
           userOutflow && userOutflow.currentFlowRate !== "0"
             ? userOutflow
             : null,
-        placeholderLogo: `/placeholders/${Math.floor(Math.random() * (5 - 1 + 1) + 1)}.jpg`,
-        placeholderBanner: `/placeholders/${Math.floor(Math.random() * (5 - 1 + 1) + 1)}.jpg`,
+        placeholderLogo: getPlaceholderImageSrc(),
+        placeholderBanner: getPlaceholderImageSrc(),
       };
     },
     [superfluidQueryRes, allocationTokenInfo, matchingTokenInfo],
