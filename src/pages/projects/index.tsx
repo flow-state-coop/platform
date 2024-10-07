@@ -43,7 +43,11 @@ export default function Projects() {
     useState(false);
 
   const router = useRouter();
+  const { owner } = router.query;
   const { address, chain: connectedChain } = useAccount();
+  const chainId = router.query.chainId
+    ? Number(router.query.chainId)
+    : connectedChain?.id;
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
@@ -51,17 +55,20 @@ export default function Projects() {
   const { data: queryRes, loading } = useQuery(PROJECTS_QUERY, {
     client: getApolloClient("streamingfund"),
     variables: {
-      chainId: connectedChain?.id,
-      address: address?.toLowerCase() ?? "",
+      chainId: chainId ?? connectedChain?.id,
+      address:
+        !!owner && typeof owner === "string"
+          ? owner.toLowerCase()
+          : !!address && typeof address === "string"
+            ? address.toLowerCase()
+            : "",
     },
-    skip: !address,
+    skip: (!address && !owner) || !chainId,
     pollInterval: 3000,
   });
 
   const projects = queryRes?.profiles;
-  const network = networks.filter(
-    (network) => network.id === connectedChain?.id,
-  )[0];
+  const network = networks.filter((network) => network.id === chainId)[0];
 
   useEffect(() => {
     if (router.query.new) {
@@ -91,7 +98,7 @@ export default function Projects() {
             <Card.Text as="h1" className="m-0">
               Projects
             </Card.Text>
-            <Card.Text className="fs-5">{address}</Card.Text>
+            <Card.Text className="fs-5">{owner ?? address}</Card.Text>
             <Dropdown>
               <Dropdown.Toggle
                 variant="transparent"
@@ -103,11 +110,16 @@ export default function Projects() {
                 {networks.map((network, i) => (
                   <Dropdown.Item
                     key={i}
-                    onClick={() =>
-                      !connectedChain && openConnectModal
-                        ? openConnectModal()
-                        : switchChain({ chainId: network.id })
-                    }
+                    onClick={() => {
+                      if (!connectedChain && openConnectModal) {
+                        openConnectModal();
+                      } else {
+                        switchChain({ chainId: network.id });
+                        router.replace(
+                          `/projects/?chainId=${network.id}&owner=${owner ?? address}`,
+                        );
+                      }
+                    }}
                   >
                     {network.name}
                   </Dropdown.Item>
@@ -129,22 +141,31 @@ export default function Projects() {
                       : "",
               }}
             >
-              <Card
-                className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
-                style={{ height: 418 }}
-                onClick={() => {
-                  if (address) {
-                    setShowProjectCreationModal(true);
-                  } else if (openConnectModal) {
-                    openConnectModal();
-                  }
-                }}
-              >
-                <Image src="/add.svg" alt="add" width={64} />
-                <Card.Text className="d-inline-block m-0 overflow-hidden fs-2 text-center word-wrap">
-                  Create Project
-                </Card.Text>
-              </Card>
+              {!owner ||
+              owner.toString().toLowerCase() === address?.toLowerCase() ? (
+                <Card
+                  className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
+                  style={{ height: 418 }}
+                  onClick={() => {
+                    if (
+                      (!!owner &&
+                        !!address &&
+                        owner.toString().toLowerCase() ===
+                          address.toLowerCase()) ||
+                      (!owner && !!address)
+                    ) {
+                      setShowProjectCreationModal(true);
+                    } else if (openConnectModal) {
+                      openConnectModal();
+                    }
+                  }}
+                >
+                  <Image src="/add.svg" alt="add" width={64} />
+                  <Card.Text className="d-inline-block m-0 overflow-hidden fs-2 text-center word-wrap">
+                    Create Project
+                  </Card.Text>
+                </Card>
+              ) : null}
               {projects?.map((project: Project) => (
                 <ProjectCard
                   key={project.id}
@@ -152,15 +173,20 @@ export default function Projects() {
                   description={project.metadata.description}
                   logoCid={project.metadata.logoImg}
                   bannerCid={project.metadata.bannerImg}
-                  selectProject={() =>
-                    router.push(
-                      `/projects/${project.id}/?chainId=${network?.id}`,
-                    )
-                  }
+                  selectProject={() => {
+                    router.push(`/projects/${project.id}/?chainId=${chainId}`);
+                  }}
                   editProject={() =>
                     router.push(
-                      `/projects/${project.id}/?chainId=${network?.id}&edit=true`,
+                      `/projects/${project.id}/?chainId=${chainId}&edit=true`,
                     )
+                  }
+                  canEdit={
+                    (!!owner &&
+                      !!address &&
+                      owner.toString().toLowerCase() ===
+                        address.toLowerCase()) ||
+                    (!owner && !!address)
                   }
                 />
               ))}

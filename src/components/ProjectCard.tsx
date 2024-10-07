@@ -14,11 +14,19 @@ type ProjectCardProps = {
   bannerCid: string;
   selectProject: () => void;
   editProject: () => void;
+  canEdit: boolean;
 };
 
 export default function ProjectCard(props: ProjectCardProps) {
-  const { name, description, logoCid, bannerCid, selectProject, editProject } =
-    props;
+  const {
+    name,
+    description,
+    logoCid,
+    bannerCid,
+    selectProject,
+    editProject,
+    canEdit,
+  } = props;
 
   const [logoUrl, setLogoUrl] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
@@ -106,9 +114,13 @@ export default function ProjectCard(props: ProjectCardProps) {
         <Button
           variant="transparent"
           className="ms-auto p-0 border-0"
-          onClick={editProject}
+          onClick={canEdit ? editProject : void 0}
         >
-          <Image src="/edit.svg" alt="edit" width={24} />
+          <Image
+            src={canEdit ? "/edit.svg" : "/view.svg"}
+            alt="edit"
+            width={24}
+          />
         </Button>
       </Card.Footer>
     </Card>
