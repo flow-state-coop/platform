@@ -175,7 +175,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
 
   const minEthBalance = 0.001;
   const suggestedTokenBalance = newFlowRate
-    ? BigInt(newFlowRate) * BigInt(SECONDS_IN_MONTH) * BigInt(2)
+    ? BigInt(newFlowRate) * BigInt(SECONDS_IN_MONTH) * BigInt(3)
     : BigInt(0);
   const hasSufficientEthBalance =
     ethBalance && ethBalance.value > parseEther(minEthBalance.toString())
@@ -541,13 +541,13 @@ export default function GranteeFunding(props: GranteeFundingProps) {
         liquidationEstimate &&
         dayjs
           .unix(liquidationEstimate)
-          .isBefore(dayjs().add(dayjs.duration({ months: 2 })))
+          .isBefore(dayjs().add(dayjs.duration({ months: 3 })))
       ) {
         setWrapAmount(
           formatNumberWithCommas(
             parseFloat(
               formatEther(
-                parseEther(amountPerTimeInterval.replace(/,/g, "")) * BigInt(2),
+                parseEther(amountPerTimeInterval.replace(/,/g, "")) * BigInt(3),
               ),
             ),
           ),

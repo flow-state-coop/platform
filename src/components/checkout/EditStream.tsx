@@ -247,6 +247,7 @@ export default function EditStream(props: EditStreamProps) {
           </Stack>
           {!isFundingMatchingPool &&
             isNativeSuperToken &&
+            Number(amountPerTimeInterval) > 0 &&
             Number(amountPerTimeInterval) < minAllocationPerMonth && (
               <Alert variant="warning" className="m-0 py-2">
                 Minimum Donation = .0004 ETHx/mo

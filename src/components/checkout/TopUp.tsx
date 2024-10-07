@@ -106,31 +106,45 @@ export default function TopUp(props: TopUpProps) {
       </Button>
       <Accordion.Collapse eventKey={Step.TOP_UP} className="p-3 pt-0">
         <>
-          <Stack
-            direction={isMobile ? "vertical" : "horizontal"}
-            gap={3}
-            className="justify-content-center"
-          >
+          {isUnderlyingTokenNative ? (
             <Stack
               direction="vertical"
               gap={3}
-              className="align-items-center flex-grow-0 px-2 py-3 rounded-3 border border-gray"
+              className="align-items-center m-auto px-2 py-3 rounded-3 fs-6 border border-gray"
               style={{ width: isMobile ? "100%" : "50%" }}
             >
-              <Card.Text className="m-0 small">
-                {ethBalance?.symbol ?? "ETH"}:
-              </Card.Text>
+              {!underlyingTokenBalance ? (
+                <Card.Text className="m-0 small">
+                  {superTokenInfo.name}:
+                </Card.Text>
+              ) : (
+                <Card.Text className="m-0 small">
+                  {underlyingTokenBalance?.symbol ?? "N/A"} +{" "}
+                  {superTokenInfo.name}:
+                </Card.Text>
+              )}
               <Card.Text
-                className={`d-flex align-items-center gap-1 m-0 fs-4 ${
-                  hasSufficientEthBalance ? "" : "text-danger"
+                className={`d-flex align-items-center gap-1 m-0 fs-4 text-truncate ${
+                  hasSuggestedTokenBalance
+                    ? ""
+                    : (underlyingTokenBalance &&
+                          underlyingTokenBalance.value + superTokenBalance ===
+                            BigInt(0)) ||
+                        (!underlyingTokenBalance &&
+                          superTokenBalance === BigInt(0))
+                      ? "text-danger"
+                      : "text-warning"
                 }`}
               >
-                {ethBalance
-                  ? formatNumberWithCommas(
-                      parseFloat(ethBalance.formatted.slice(0, 8)),
-                    )
-                  : "0"}
-                {hasSufficientEthBalance && (
+                {formatNumberWithCommas(
+                  parseFloat(
+                    formatEther(
+                      (underlyingTokenBalance?.value ?? BigInt(0)) +
+                        superTokenBalance,
+                    ).slice(0, 8),
+                  ),
+                )}
+                {hasSuggestedTokenBalance && (
                   <Image
                     src="/success.svg"
                     alt="success"
@@ -140,90 +154,143 @@ export default function TopUp(props: TopUpProps) {
                 )}
               </Card.Text>
               <Card.Text as="small" className="m-0">
-                Suggested {minEthBalance}
+                Suggested{" "}
+                {formatNumberWithCommas(
+                  parseFloat(roundWeiAmount(suggestedTokenBalance, 6)),
+                )}
               </Card.Text>
               <Button
-                className="d-flex justify-content-center align-items-center gap-1 w-100 text-light rounded-3 fs-6"
+                variant="link"
                 href={`https://ramp.network/buy?defaultAsset=${network?.onRampName ?? ""}`}
                 target="_blank"
+                rel="noreferrer"
+                className="d-flex justify-content-center align-items-center w-100 gap-1 bg-primary text-decoration-none rounded-3 text-light fs-6"
               >
-                <Image
-                  src="/credit-card.svg"
-                  width={24}
-                  height={24}
-                  alt="card"
-                />
-                <Card.Text className="m-0">
-                  Buy {ethBalance?.symbol ?? "ETH"}
-                </Card.Text>
+                <Image src="/swap.svg" alt="swap" width={16} height={16} />
+                Buy {ethBalance?.symbol ?? "ETH"}
               </Button>
             </Stack>
-            {!isUnderlyingTokenNative && (
+          ) : (
+            <>
               <Stack
-                direction="vertical"
+                direction={isMobile ? "vertical" : "horizontal"}
                 gap={3}
-                className="align-items-center px-2 py-3 rounded-3 fs-6 border border-gray"
-                style={{ width: isMobile ? "100%" : "50%" }}
+                className="justify-content-center"
               >
-                {!underlyingTokenBalance ? (
-                  <Card.Text className="m-0 small">
-                    {superTokenInfo.name}:
-                  </Card.Text>
-                ) : (
-                  <Card.Text className="m-0 small">
-                    {underlyingTokenBalance?.symbol ?? "N/A"} +{" "}
-                    {superTokenInfo.name}:
-                  </Card.Text>
-                )}
-                <Card.Text
-                  className={`d-flex align-items-center gap-1 m-0 fs-4 text-truncate ${
-                    hasSuggestedTokenBalance
-                      ? ""
-                      : (underlyingTokenBalance &&
-                            underlyingTokenBalance.value + superTokenBalance ===
-                              BigInt(0)) ||
-                          (!underlyingTokenBalance &&
-                            superTokenBalance === BigInt(0))
-                        ? "text-danger"
-                        : "text-warning"
-                  }`}
+                <Stack
+                  direction="vertical"
+                  gap={3}
+                  className="align-items-center flex-grow-0 px-2 py-3 rounded-3 border border-gray"
+                  style={{ width: isMobile ? "100%" : "50%" }}
                 >
-                  {formatNumberWithCommas(
-                    parseFloat(
-                      formatEther(
-                        (underlyingTokenBalance?.value ?? BigInt(0)) +
-                          superTokenBalance,
-                      ).slice(0, 8),
-                    ),
-                  )}
-                  {hasSuggestedTokenBalance && (
+                  <Card.Text className="m-0 small">
+                    {ethBalance?.symbol ?? "ETH"}:
+                  </Card.Text>
+                  <Card.Text
+                    className={`d-flex align-items-center gap-1 m-0 fs-4 ${
+                      hasSufficientEthBalance ? "" : "text-danger"
+                    }`}
+                  >
+                    {ethBalance
+                      ? formatNumberWithCommas(
+                          parseFloat(ethBalance.formatted.slice(0, 8)),
+                        )
+                      : "0"}
+                    {hasSufficientEthBalance && (
+                      <Image
+                        src="/success.svg"
+                        alt="success"
+                        width={18}
+                        height={18}
+                      />
+                    )}
+                  </Card.Text>
+                  <Card.Text as="small" className="m-0">
+                    Suggested {minEthBalance}
+                  </Card.Text>
+                  <Button
+                    className="d-flex justify-content-center align-items-center gap-1 w-100 text-light rounded-3 fs-6"
+                    href={`https://ramp.network/buy?defaultAsset=${network?.onRampName ?? ""}`}
+                    target="_blank"
+                  >
                     <Image
-                      src="/success.svg"
-                      alt="success"
-                      width={18}
-                      height={18}
+                      src="/credit-card.svg"
+                      width={24}
+                      height={24}
+                      alt="card"
                     />
-                  )}
-                </Card.Text>
-                <Card.Text as="small" className="m-0">
-                  Suggested{" "}
-                  {formatNumberWithCommas(
-                    parseFloat(roundWeiAmount(suggestedTokenBalance, 6)),
-                  )}
-                </Card.Text>
-                <Button
-                  variant="link"
-                  href={`https://jumper.exchange/?fromChain=${network?.id ?? ""}&fromToken=0x0000000000000000000000000000000000000000&toChain=${network?.id ?? ""}&toToken=${superTokenInfo.address}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="d-flex justify-content-center align-items-center w-100 gap-1 bg-primary text-decoration-none rounded-3 text-light fs-6"
+                    <Card.Text className="m-0">
+                      Buy {ethBalance?.symbol ?? "ETH"}
+                    </Card.Text>
+                  </Button>
+                </Stack>
+                <Stack
+                  direction="vertical"
+                  gap={3}
+                  className="align-items-center px-2 py-3 rounded-3 fs-6 border border-gray"
+                  style={{ width: isMobile ? "100%" : "50%" }}
                 >
-                  <Image src="/swap.svg" alt="swap" width={16} height={16} />
-                  Get {superTokenInfo.name}
-                </Button>
+                  {!underlyingTokenBalance ? (
+                    <Card.Text className="m-0 small">
+                      {superTokenInfo.name}:
+                    </Card.Text>
+                  ) : (
+                    <Card.Text className="m-0 small">
+                      {underlyingTokenBalance?.symbol ?? "N/A"} +{" "}
+                      {superTokenInfo.name}:
+                    </Card.Text>
+                  )}
+                  <Card.Text
+                    className={`d-flex align-items-center gap-1 m-0 fs-4 text-truncate ${
+                      hasSuggestedTokenBalance
+                        ? ""
+                        : (underlyingTokenBalance &&
+                              underlyingTokenBalance.value +
+                                superTokenBalance ===
+                                BigInt(0)) ||
+                            (!underlyingTokenBalance &&
+                              superTokenBalance === BigInt(0))
+                          ? "text-danger"
+                          : "text-warning"
+                    }`}
+                  >
+                    {formatNumberWithCommas(
+                      parseFloat(
+                        formatEther(
+                          (underlyingTokenBalance?.value ?? BigInt(0)) +
+                            superTokenBalance,
+                        ).slice(0, 8),
+                      ),
+                    )}
+                    {hasSuggestedTokenBalance && (
+                      <Image
+                        src="/success.svg"
+                        alt="success"
+                        width={18}
+                        height={18}
+                      />
+                    )}
+                  </Card.Text>
+                  <Card.Text as="small" className="m-0">
+                    Suggested{" "}
+                    {formatNumberWithCommas(
+                      parseFloat(roundWeiAmount(suggestedTokenBalance, 6)),
+                    )}
+                  </Card.Text>
+                  <Button
+                    variant="link"
+                    href={`https://jumper.exchange/?fromChain=${network?.id ?? ""}&fromToken=0x0000000000000000000000000000000000000000&toChain=${network?.id ?? ""}&toToken=${superTokenInfo.address}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="d-flex justify-content-center align-items-center w-100 gap-1 bg-primary text-decoration-none rounded-3 text-light fs-6"
+                  >
+                    <Image src="/swap.svg" alt="swap" width={16} height={16} />
+                    Get {superTokenInfo.name}
+                  </Button>
+                </Stack>
               </Stack>
-            )}
-          </Stack>
+            </>
+          )}
           <Button
             variant="transparent"
             className="mt-4 text-info"
