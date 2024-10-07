@@ -70,7 +70,7 @@ export default function ConnectWallet() {
                     )}
                   </Button>
                   {pathname?.startsWith("/pool") && <WalletBalance />}
-                  <Dropdown>
+                  <Dropdown align={{ md: "start" }}>
                     <Dropdown.Toggle
                       bsPrefix="dropdown"
                       variant="transparent"
