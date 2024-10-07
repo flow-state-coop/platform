@@ -391,16 +391,16 @@ export default function Review() {
                 <tr>
                   <th>Address</th>
                   <th>Name</th>
-                  <th>Review</th>
+                  <th className="text-center">Review</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 {recipients?.map((recipient: Recipient, i: number) => (
                   <tr key={i}>
-                    <td className="w-33">{recipient.recipientAddress}</td>
-                    <td className="w-33">{recipient.metadata.title}</td>
-                    <td className="text-center ps-0">
+                    <td className="w-25">{recipient.recipientAddress}</td>
+                    <td className="w-25">{recipient.metadata.title}</td>
+                    <td className="w-25 text-center ps-0">
                       {reviewingRecipients.find(
                         (reviewingRecipient) =>
                           recipient.id === reviewingRecipient.id,
@@ -438,7 +438,7 @@ export default function Review() {
                         <Image src="/close.svg" alt="fail" width={24} />
                       ) : null}
                     </td>
-                    <td className="w-20">
+                    <td className="w-25">
                       {recipient.status === "PENDING" ? (
                         <Button
                           className="w-100 p-0 text-light"
