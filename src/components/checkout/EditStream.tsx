@@ -7,11 +7,13 @@ import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import Badge from "react-bootstrap/Badge";
 import Form from "react-bootstrap/Form";
+import Alert from "react-bootstrap/Alert";
 import Image from "react-bootstrap/Image";
 import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
 import { Network } from "@/types/network";
 import ConnectWallet from "@/components/ConnectWallet";
+import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import {
   TimeInterval,
   fromTimeUnitsToSeconds,
@@ -62,6 +64,9 @@ export default function EditStream(props: EditStreamProps) {
   const isDeletingStream =
     BigInt(flowRateToReceiver) > 0 && BigInt(newFlowRate) === BigInt(0);
   const isNativeSuperToken = token.name === "ETHx";
+  const minAllocationPerMonth = getPoolFlowRateConfig(
+    token.name,
+  ).minAllocationPerMonth;
 
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
@@ -240,6 +245,13 @@ export default function EditStream(props: EditStreamProps) {
               </Dropdown.Menu>
             </Dropdown>
           </Stack>
+          {!isFundingMatchingPool &&
+            isNativeSuperToken &&
+            Number(amountPerTimeInterval) < minAllocationPerMonth && (
+              <Alert variant="warning" className="m-0 py-2">
+                Minimum Donation = .0004 ETHx/mo
+              </Alert>
+            )}
           {address ? (
             <Button
               variant={isDeletingStream ? "danger" : "primary"}
@@ -248,6 +260,9 @@ export default function EditStream(props: EditStreamProps) {
                 Number(amountPerTimeInterval.replace(/,/g, "")) < 0 ||
                 (BigInt(flowRateToReceiver) === BigInt(0) &&
                   Number(amountPerTimeInterval.replace(/,/g, "")) === 0) ||
+                (!isFundingMatchingPool &&
+                  isNativeSuperToken &&
+                  Number(amountPerTimeInterval) < minAllocationPerMonth) ||
                 newFlowRate === flowRateToReceiver
               }
               className="py-1 rounded-3 text-light"
