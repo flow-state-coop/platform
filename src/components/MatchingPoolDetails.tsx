@@ -126,12 +126,31 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
           </Card.Body>
         </Card>
       </Stack>
-      <Stack direction="horizontal" gap={1} className="fs-6 p-2">
+      <Stack direction="horizontal" gap={1} className="fs-6 p-2 pb-0">
         <Stack direction="vertical" gap={1} className="w-25">
           <Card.Text className="m-0 pe-0">You</Card.Text>
           <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
-              parseFloat(formatEther(totalDistributedUser).slice(0, 8)),
+              parseFloat(
+                formatEther(
+                  BigInt(userDistributionInfo?.flowRate ?? 0) *
+                    BigInt(SECONDS_IN_MONTH),
+                ).slice(0, 8),
+              ),
+            )}
+          </Badge>
+        </Stack>
+        <Stack direction="vertical" gap={1} className="w-25">
+          <Card.Text className="m-0 pe-0">Others</Card.Text>
+          <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
+            {formatNumberWithCommas(
+              parseFloat(
+                formatEther(
+                  (BigInt(matchingPool.flowRate ?? 0) -
+                    BigInt(userDistributionInfo?.flowRate ?? 0)) *
+                    BigInt(SECONDS_IN_MONTH),
+                ).slice(0, 8),
+              ),
             )}
           </Badge>
         </Stack>
@@ -139,12 +158,28 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
           <Card.Text className="m-0 pe-0">All</Card.Text>
           <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
-              parseFloat(formatEther(totalDistributedAll).slice(0, 8)),
+              parseFloat(
+                formatEther(
+                  BigInt(matchingPool?.flowRate ?? 0) *
+                    BigInt(SECONDS_IN_MONTH),
+                ).slice(0, 8),
+              ),
+            )}
+          </Badge>
+        </Stack>
+        <Card.Text as="small" className="w-20 mt-4">
+          monthly
+        </Card.Text>
+      </Stack>
+      <Stack direction="horizontal" gap={1} className="fs-6 p-2">
+        <Stack direction="vertical" gap={1} className="w-25">
+          <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
+            {formatNumberWithCommas(
+              parseFloat(formatEther(totalDistributedUser).slice(0, 8)),
             )}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
-          <Card.Text className="m-0 pe-0">Others</Card.Text>
           <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
               parseFloat(
@@ -156,7 +191,14 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
             )}
           </Badge>
         </Stack>
-        <Card.Text as="small" className="mt-4">
+        <Stack direction="vertical" gap={1} className="w-25">
+          <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
+            {formatNumberWithCommas(
+              parseFloat(formatEther(totalDistributedAll).slice(0, 8)),
+            )}
+          </Badge>
+        </Stack>
+        <Card.Text as="small" className="w-20">
           total
         </Card.Text>
       </Stack>
@@ -165,7 +207,7 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
         className="m-0 p-2 fs-6"
         style={{ maxWidth: 500 }}
       >
-        {clampedText}
+        {description ? clampedText : ""}
       </Card.Text>
       <Button
         variant="transparent"
