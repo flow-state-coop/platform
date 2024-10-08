@@ -90,7 +90,12 @@ function Sidebar() {
   }
 
   return (
-    <Stack direction="vertical" gap={4} className="h-100 py-4 px-3 fs-5 shadow">
+    <Stack
+      direction="vertical"
+      gap={4}
+      className="h-100 py-4 px-3 fs-5"
+      style={{ boxShadow: "0.5rem 0 0.5rem -2px rgba(0,0,0,0.2)" }}
+    >
       {pathname?.startsWith("/grantee") ? (
         <>
           <Link

@@ -210,7 +210,7 @@ export default function Grantee() {
 
   return (
     <>
-      <Stack direction="vertical" gap={4} className="px-5 py-4">
+      <Stack direction="vertical" gap={4} className="px-5 py-4 mb-5">
         {queryRes && queryRes.pool === null ? (
           <>Pool not found</>
         ) : loading || !chainId || !poolId ? (

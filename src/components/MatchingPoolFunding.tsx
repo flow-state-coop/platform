@@ -257,8 +257,6 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       address,
       wrapAmount,
       flowRateToReceiver,
-      amountPerTimeInterval,
-      timeInterval,
       flowRateToFlowState,
       supportFlowStateAmount,
       supportFlowStateTimeInterval,

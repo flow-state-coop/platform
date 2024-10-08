@@ -2,6 +2,7 @@ import { usePathname } from "next/navigation";
 import Stack from "react-bootstrap/Stack";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
+import Footer from "./Footer";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
 interface LayoutProps {
@@ -17,9 +18,13 @@ export default function Layout({ children }: LayoutProps) {
     (!isMobile && pathname?.startsWith("/grantee"));
 
   return (
-    <Stack direction="vertical" style={{ minHeight: "100vh" }}>
+    <Stack direction="vertical">
       <Header />
-      <Stack direction="horizontal" className="flex-grow-1">
+      <Stack
+        direction="horizontal"
+        className="flex-grow-1"
+        style={{ minHeight: "100vh" }}
+      >
         {showSidebar && (
           <Stack direction="vertical" className="w-25" style={{ flexGrow: 1 }}>
             <Sidebar />
@@ -29,6 +34,7 @@ export default function Layout({ children }: LayoutProps) {
           {children}
         </Stack>
       </Stack>
+      <Footer />
     </Stack>
   );
 }

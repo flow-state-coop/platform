@@ -161,7 +161,7 @@ export default function MatchinPool() {
   };
 
   return (
-    <Stack direction="vertical" gap={4} className="px-5 py-4">
+    <Stack direction="vertical" gap={4} className="px-5 py-4 mb-5">
       {!profileId || !chainId ? (
         <Card.Text>
           Program not found, please select one from{" "}

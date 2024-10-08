@@ -35,7 +35,7 @@ export default function ConnectWallet() {
                 return (
                   <Button
                     onClick={openConnectModal}
-                    className="rounded-3 text-light"
+                    className="rounded-3 text-light shadow"
                   >
                     Connect Wallet
                   </Button>
@@ -46,7 +46,7 @@ export default function ConnectWallet() {
                   <Button
                     variant="danger"
                     onClick={openChainModal}
-                    className="text-light"
+                    className="text-light shadow"
                   >
                     Wrong network
                   </Button>
@@ -58,7 +58,7 @@ export default function ConnectWallet() {
                   <Button
                     variant="transparent"
                     onClick={openChainModal}
-                    className="d-flex align-items-center gap-1 border rounded-3"
+                    className="d-flex align-items-center gap-1 border rounded-3 shadow"
                   >
                     {chain.iconUrl && (
                       <Image
@@ -74,7 +74,7 @@ export default function ConnectWallet() {
                     <Dropdown.Toggle
                       bsPrefix="dropdown"
                       variant="transparent"
-                      className="border rounded-3"
+                      className="border rounded-3 shadow"
                     >
                       <Stack
                         direction="horizontal"

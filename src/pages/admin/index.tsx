@@ -63,7 +63,7 @@ export default function Admin() {
 
   return (
     <>
-      <Stack direction="vertical" gap={4} className="px-5 py-4">
+      <Stack direction="vertical" gap={4} className="px-5 py-4 mb-5">
         <Card.Text as="h1">Select or create an Allo Program</Card.Text>
         <Dropdown>
           <Dropdown.Toggle

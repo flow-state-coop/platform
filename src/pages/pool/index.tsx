@@ -575,7 +575,7 @@ export default function Pool() {
       allocationTokenInfo={allocationTokenInfo}
     >
       <Container
-        className="mx-auto p-0"
+        className="mx-auto p-0 mb-5"
         style={{
           maxWidth:
             isMobile || isTablet

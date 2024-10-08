@@ -194,7 +194,7 @@ export default function WalletBalance() {
         variant="transparent"
         disabled={showOffcanvas}
         onClick={handleShowOffcanvas}
-        className="d-none d-sm-block bg-transparent border rounded-start"
+        className="d-none d-sm-block bg-transparent border rounded-start shadow"
       >
         {!superfluidQueryRes ? (
           <Spinner size="sm" animation="border" role="status"></Spinner>

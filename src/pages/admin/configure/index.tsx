@@ -465,7 +465,7 @@ export default function Configure() {
   };
 
   return (
-    <Stack direction="vertical" gap={4} className="px-5 py-4">
+    <Stack direction="vertical" gap={4} className="px-5 py-4 mb-5">
       {loading || (poolId && !pool) ? (
         <Spinner className="m-auto" />
       ) : !profileId || !chainId ? (

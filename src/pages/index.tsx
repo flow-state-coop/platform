@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Container from "react-bootstrap/Container";
@@ -8,11 +9,17 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 
 export default function Index() {
   const router = useRouter();
+  const poolsRef = useRef<HTMLDivElement>(null);
+
   const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
+
+  const handleScrollToPools = () => {
+    poolsRef?.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
     <Container
-      className="mx-auto p-0"
+      className="mx-auto p-0 mb-5"
       style={{
         maxWidth:
           isMobile || isTablet
@@ -27,7 +34,7 @@ export default function Index() {
       <Stack
         direction={isMobile || isTablet ? "vertical" : "horizontal"}
         gap={isMobile || isTablet ? 5 : 0}
-        className="justify-content-center p-3 p-sm-5"
+        className="justify-content-center mt-3 mt-sm-5 px-4"
       >
         <Stack direction="vertical" className="align-self-center">
           {(isMobile || isTablet) && (
@@ -36,11 +43,13 @@ export default function Index() {
               alt="Diagram"
               width="100%"
               height="auto"
-              className="mb-3"
+              className="my-4"
             />
           )}
-          <h1 style={{ fontSize: 64 }}>Find Your Flow State</h1>
-          <p className="fs-4 mb-4">
+          <h1 style={{ fontSize: 42 }} className="fw-bold">
+            Find Your Flow State
+          </h1>
+          <p className="mb-4 fs-5">
             Creating, sustaining, and rewarding impact.
           </p>
           <Stack
@@ -50,19 +59,25 @@ export default function Index() {
               ${isMobile || isTablet ? "w-100" : "w-75"}`}
           >
             <Button
-              className="w-50 text-light fs-5"
+              className="w-50 text-light fs-5 shadow"
               onClick={() => router.push("/projects/?new=true")}
             >
               Create Project
             </Button>
-            <Button disabled className="w-50 fs-5">
+            <Button
+              variant="link"
+              href="https://forms.gle/M98DjjGaxwFUhDTx5"
+              target="_blank"
+              className="w-50 text-white fs-5 shadow"
+              style={{ background: "#33a8c2" }}
+            >
               Launch SQF Round
             </Button>
           </Stack>
           <Button
-            className="mt-4 text-light fs-5"
+            className="bg-secondary mt-3 text-light fs-5 shadow"
             style={{ width: isMobile || isTablet ? "100%" : "75%" }}
-            onClick={() => router.push("/pool")}
+            onClick={handleScrollToPools}
           >
             Fund Public Goods
           </Button>
@@ -78,27 +93,27 @@ export default function Index() {
       </Stack>
       <Stack
         direction="horizontal"
-        className="position-relative justify-content-start m-auto px-3 px-sm-5 py-3"
-        style={{ height: 325 }}
+        className="position-relative justify-content-center m-auto mt-2 px-3 px-sm-5"
+        style={{ height: isMobile ? 294 : 466 }}
       >
         <Image
           src="/single-person.png"
           alt="Single Person"
-          width={253}
-          height={325}
+          width={isMobile ? 300 : 493}
+          height={isMobile ? 294 : 466}
           className="position-absolute z-0"
         />
         <span
-          className="d-none d-sm-block position-absolute z-1 w-50 border-top border-bottom border-black m-auto p-3 p-sm-5"
+          className="d-none d-sm-block position-absolute z-1 w-50 border-top border-bottom border-black m-auto p-3 p-sm-5 p-lg-4"
           style={{ left: "25%" }}
         />
-        <p className="z-1 m-0 fs-3 text-center">
+        <p className="z-1 m-0 fs-5 text-center">
           flow state - n. (1): a mental state where a person is fully immersed
           in an activity, performing at their peak
         </p>
       </Stack>
-      <p className="px-3 px-sm-5 fs-1">Making Impact Common</p>
-      <p className="px-3 px-sm-5 fs-4 lh-1">
+      <p className="mt-5 px-3 px-sm-5 pt-5 fs-2">Making Impact Common</p>
+      <p className="px-3 px-sm-5 pb-sm-5 fs-5 lh-1">
         Builder-first grants programs are good for impact. That means they're
         good for the supporters & communities that back them.
         <br />
@@ -115,184 +130,124 @@ export default function Index() {
         <Link
           href="/interest-form"
           target="_blank"
-          className="text-decoration-underline p-0 fs-4"
+          className="text-decoration-underline p-0"
         >
           Join us.
         </Link>
       </p>
       <Stack
         direction="horizontal"
-        className="position-relative justify-content-start m-auto my-5 my-sm-0 px-3 px-sm-5 py-3"
-        style={{ height: isMobile ? 158 : 315 }}
+        className="position-relative justify-content-center m-auto my-3 my-sm-5 px-3 px-sm-5 py-3"
+        style={{ height: isMobile ? 294 : 415 }}
       >
         <Image
           src="/small-group.png"
           alt="Small Group"
-          width={isMobile ? 327 : 436}
-          height={isMobile ? 236 : 315}
+          width={isMobile ? 300 : 673}
+          height={isMobile ? 200 : 415}
           className="position-absolute z-0"
         />
         <span
-          className="d-none d-sm-block position-absolute z-1 w-50 border-top border-bottom border-black m-auto p-3 p-sm-5"
+          className="d-none d-sm-block position-absolute z-1 w-50 border-top border-bottom border-black m-auto p-3 p-sm-5 p-lg-4"
           style={{ left: "25%" }}
         />
-        <p className="z-1 m-0 fs-3 text-center">
+        <p className="z-1 m-0 fs-5 text-center">
           flow state - n. (2): onchain collective intelligence that continuously
           & dynamically allocates resources
         </p>
       </Stack>
-      <Stack direction="vertical" className="p-3 p-sm-5">
+      <Stack ref={poolsRef} direction="vertical" className="p-3 p-sm-5 mt-5">
         <Stack
           direction={isMobile ? "vertical" : "horizontal"}
           gap={isMobile ? 3 : 5}
         >
           <Stack
             direction="vertical"
-            className="justify-content-center align-items-center bg-light rounded-4 p-3 p-sm-5 text-center fs-4"
-            style={{ width: isMobile ? "100%" : "66%" }}
+            className="justify-content-center align-items-center rounded-4 p-3 p-sm-4 shadow"
+            style={{
+              width: isMobile ? "100%" : "60%",
+              background: "#A0C7D4",
+              fontFamily: "Helvetica",
+            }}
           >
-            Octant Builder Accelerator
-            <br />
-            Streaming Quadratic Funding Round
+            <p className="m-0 fs-4 fw-bold">Octant Builder Accelerator SQF</p>
+            <p className="m-0 fs-5">Live on October 24 - 16+ ETH Matching</p>
+            <Stack
+              direction="horizontal"
+              gap={isMobile ? 3 : isTablet ? 4 : 5}
+              className="justify-content-center mt-4"
+            >
+              <Image
+                src="/octant.svg"
+                alt="Octant"
+                width={isMobile ? 135 : 180}
+                height={isMobile ? 37 : 50}
+              />
+              <Image
+                src="/superfluid.svg"
+                alt="Superfluid"
+                width={isMobile ? 135 : 180}
+                height={isMobile ? 37 : 50}
+              />
+            </Stack>
           </Stack>
           <Stack
             direction="vertical"
-            className="justify-content-center align-items-center bg-light rounded-4 p-3 p-sm-5 text-center fs-4"
-            style={{ width: isMobile ? "100%" : "33%%" }}
+            className="justify-content-center align-items-center rounded-4 p-2 p-sm-4 pb-sm-3 shadow"
+            style={{
+              width: isMobile ? "100%" : "40%",
+              background: "#33A8C2",
+              fontFamily: "Helvetica",
+            }}
           >
-            Grow Network Regens <br />
-            Streaming Quadratic Funding Round
+            <p className="m-0 fs-4 fw-bold">Flow State Core</p>
+            <p className="m-0 fs-5">Live on October 24</p>
+            <Stack
+              direction="horizontal"
+              className="justify-content-center mt-1"
+            >
+              <Image src="/logo.png" alt="Flow State" width={87} height={84} />
+            </Stack>
           </Stack>
         </Stack>
-        <Link
-          href="/explore"
-          className="ms-auto mt-1 text-decoration-underline fs-4"
-        >
-          Explore More
-        </Link>
       </Stack>
-      <Stack
-        direction="horizontal"
-        className="position-relative justify-content-start m-auto px-3 py-3"
-      >
-        <Image src="/large-group.png" alt="Large Group" className="z-0" fluid />
-        <span
-          className="d-none d-sm-block position-absolute z-1 w-50 border-top border-bottom border-black m-auto p-5"
-          style={{ left: "25%" }}
-        />
-        <p
-          className="position-absolute start-50 translate-middle-x z-1 m-0 fs-3 text-center"
-          style={{
-            minWidth: "80%",
-          }}
-        >
-          Flow State - n. (3): digital coop that retroactively rewards members'
-          labor & capital contributions to the public good
-        </p>
-      </Stack>
-      <Stack
-        direction="vertical"
-        style={{ width: isMobile ? 300 : isTablet ? 600 : 1000 }}
-        className="position-relative m-auto mt-3 mb-5"
-      >
+      <div className="px-0 px-sm-4">
         <Stack
           direction="horizontal"
-          className="w-100 border border-bottom-0 border-black p-3"
-          gap={5}
+          className="position-relative justify-content-center m-auto px-4 py-3 mt-5"
         >
           <Image
-            src="/placeholders/1.jpg"
-            alt="Placeholder"
-            width={64}
-            height={64}
-            className="rounded-circle"
+            src="/coop-group.png"
+            alt="Coop Group"
+            className="z-0"
+            width="100%"
+            height="auto"
           />
-          <Stack direction="vertical">
-            <p className="fs4 text-decoration-underline m-0">0x12..3456</p>{" "}
-            <p className="fs-3 m-0">
-              Opened a 23 DAIx/mo stream to{" "}
-              <span className="text-decoration-underline">RadicalxChange</span>
-            </p>{" "}
-            <p className="align-self-end m-0">1 minute ago</p>{" "}
-          </Stack>
-        </Stack>
-        <Stack
-          direction="horizontal"
-          className="w-100 border border-bottom-0 border-black p-3"
-          gap={5}
-        >
-          <Image
-            src="/placeholders/2.jpg"
-            alt="Placeholder"
-            width={64}
-            height={64}
-            className="rounded-circle"
+          <span
+            className="d-none d-sm-block position-absolute z-1 w-50 border-top border-bottom border-black m-auto p-4 p-sm-5 p-lg-4"
+            style={{ left: "25%" }}
           />
-          <Stack direction="vertical">
-            <p className="fs4 m-0">
-              <span className="text-decoration-underline">
-                Kevin (0x24..2345)
-              </span>{" "}
-              to <span className="text-decoration-underline">Flow State</span>
-            </p>{" "}
-            <p className="fs-3 m-0">Keep up the great work!</p>{" "}
-            <p className="align-self-end m-0">23 hours ago</p>{" "}
-          </Stack>
+          <p
+            className="position-absolute top-50 start-50 translate-middle z-1 m-0 fs-5 text-center"
+            style={{
+              minWidth: "80%",
+            }}
+          >
+            Flow State - n. (3): digital coop that retroactively rewards
+            members' labor & capital contributions to the public good
+          </p>
         </Stack>
-        <Stack
-          direction="horizontal"
-          className="w-100 border border-bottom-0 border-black p-3"
-          gap={5}
+      </div>
+      <Stack direction="horizontal" className="justify-content-center mt-4">
+        <Button
+          variant="link"
+          target="_blank"
+          href="https://forms.gle/VXfRSpAzynTmjvRY9"
+          className="bg-primary my-5 fs-5 text-light"
+          style={{ width: !isMobile ? "25%" : "" }}
         >
-          <Image
-            src="/placeholders/3.jpg"
-            alt="Placeholder"
-            width={64}
-            height={64}
-            className="rounded-circle"
-          />
-          <Stack direction="vertical">
-            <p className="fs-4 m-0 text-decoration-underline">Flow State</p>{" "}
-            <p className="fs-3 m-0">
-              We Launched an SQF round on February 22, 2024
-            </p>{" "}
-            <p className="align-self-end m-0">August 7, 2024</p>{" "}
-          </Stack>
-        </Stack>
-        <Stack
-          direction="horizontal"
-          className="w-100 border border-black p-3"
-          gap={5}
-        >
-          <Image
-            src="/placeholders/4.jpg"
-            alt="Placeholder"
-            width={64}
-            height={64}
-            className="rounded-circle"
-          />
-          <Stack direction="vertical">
-            <p className="fs-3 m-0">
-              <span className="text-decoration-underline">RadicalxChange</span>{" "}
-              was added to the{" "}
-              <span className="text-decoration-underline">
-                Octant Builder Accelerator
-              </span>{" "}
-              round.
-            </p>{" "}
-            <p className="align-self-end m-0">August 7, 2024</p>{" "}
-          </Stack>
-        </Stack>
-        <span
-          className="position-absolute bottom-50 start-50 translate-middle bg-white text-danger fs-1 text-center"
-          style={{
-            width: isMobile ? "75%" : isTablet ? "40%" : "33%",
-            rotate: isMobile ? "" : "-30deg",
-            fontSize: 48,
-          }}
-        >
-          Holon Feed Coming Soon
-        </span>
+          Coop Interest Form
+        </Button>
       </Stack>
     </Container>
   );
