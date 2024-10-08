@@ -1,6 +1,7 @@
 import { Network } from "@/types/network";
 
 const networks: Network[] = [
+  /*
   {
     id: 10,
     name: "Optimism",
@@ -129,6 +130,7 @@ const networks: Network[] = [
       },
     ],
   },
+  */
   {
     id: 11155420,
     name: "OP Sepolia",

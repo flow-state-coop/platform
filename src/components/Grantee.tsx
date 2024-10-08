@@ -105,8 +105,8 @@ export default function Grantee(props: GranteeProps) {
       className="rounded-4 overflow-hidden cursor-pointer"
       style={{
         height: 418,
-        border: isSelected ? "1px solid #2fc1c1" : "1px solid #212529",
-        boxShadow: isSelected ? "0px 0px 0px 2px #2fc21c1" : "",
+        border: isSelected ? "1px solid #247789" : "1px solid #212529",
+        boxShadow: isSelected ? "0px 0px 0px 2px #247789" : "",
       }}
       onClick={selectGrantee}
     >

@@ -92,7 +92,7 @@ export default function Admin() {
           <Spinner className="m-auto" />
         ) : (
           <Stack direction="horizontal" gap={5} className="flex-wrap">
-            {queryRes?.profiles.map(
+            {queryRes?.profiles?.map(
               (
                 profile: {
                   id: string;

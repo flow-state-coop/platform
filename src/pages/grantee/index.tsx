@@ -124,7 +124,7 @@ export default function Grantee() {
   const pool = queryRes?.pool ?? null;
   const recipients = pool?.recipientsByPoolIdAndChainId ?? null;
   const projects =
-    queryRes?.profiles.map((profile: Project) => {
+    queryRes?.profiles?.map((profile: Project) => {
       let recipientStatus = null;
       let recipientId = null;
 

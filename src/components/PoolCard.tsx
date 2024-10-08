@@ -45,7 +45,7 @@ export default function PoolCard(props: PoolCardProps) {
   const recipientId = pool.recipientsByPoolIdAndChainId.filter(
     (recipient: { id: string }) => recipient.id === project.anchorAddress,
   )[0]?.id;
-  const poolUiLink = `https://app.flowstate.network/pool/?poolId=${pool.id}&chainId=${network.id}&recipientId=${recipientId}`;
+  const poolUiLink = `https://flowstate.network/pool/?poolId=${pool.id}&chainId=${network.id}&recipientId=${recipientId}`;
   const framesLink = `https://frames.flowstate.network/frames/grantee/${recipientId}/${pool.id}/${network.id}`;
 
   const matchingImpactEstimate = useMemo(() => {
