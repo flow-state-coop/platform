@@ -133,7 +133,10 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
               className="m-auto"
             />
           ) : (
-            <Card.Text className="m-auto text-light">
+            <Card.Text
+              className="m-auto text-light"
+              style={{ fontFamily: "Helvetica" }}
+            >
               {isFundingMatchingPool && isPureSuperToken
                 ? 3
                 : isFundingMatchingPool || isPureSuperToken

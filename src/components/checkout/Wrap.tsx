@@ -110,7 +110,12 @@ export default function Wrap(props: WrapProps) {
               className="m-auto"
             />
           ) : (
-            <Card.Text className="m-auto text-light">3</Card.Text>
+            <Card.Text
+              className="m-auto text-light"
+              style={{ fontFamily: "Helvetica" }}
+            >
+              3
+            </Card.Text>
           )}
         </Badge>
         {Step.WRAP}

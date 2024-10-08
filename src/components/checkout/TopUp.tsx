@@ -99,7 +99,12 @@ export default function TopUp(props: TopUpProps) {
               className="m-auto"
             />
           ) : (
-            <Card.Text className="m-auto text-light">2</Card.Text>
+            <Card.Text
+              className="m-auto text-light"
+              style={{ fontFamily: "Helvetica" }}
+            >
+              2
+            </Card.Text>
           )}
         </Badge>
         <Card.Text className="m-0">{Step.TOP_UP}</Card.Text>

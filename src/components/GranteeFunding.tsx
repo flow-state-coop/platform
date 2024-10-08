@@ -234,61 +234,67 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     [address],
   );
 
-  const liquidationEstimate = useMemo(() => {
-    if (address) {
-      const newFlowRate =
-        parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-        BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
-      const newFlowRateToFlowState =
-        parseEther(supportFlowStateAmount.replace(/,/g, "")) /
-        BigInt(
-          fromTimeUnitsToSeconds(1, unitOfTime[supportFlowStateTimeInterval]),
-        );
-      const accountFlowRate = userAccountSnapshot?.totalNetFlowRate ?? "0";
+  const calcLiquidationEstimate = useCallback(
+    (amountPerTimeInterval: string, timeInterval: TimeInterval) => {
+      if (address) {
+        const newFlowRate =
+          parseEther(amountPerTimeInterval.replace(/,/g, "")) /
+          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
+        const newFlowRateToFlowState =
+          parseEther(supportFlowStateAmount.replace(/,/g, "")) /
+          BigInt(
+            fromTimeUnitsToSeconds(1, unitOfTime[supportFlowStateTimeInterval]),
+          );
+        const accountFlowRate = userAccountSnapshot?.totalNetFlowRate ?? "0";
 
-      if (
-        BigInt(accountFlowRate) -
-          BigInt(flowRateToReceiver) -
-          BigInt(flowRateToFlowState) +
-          BigInt(newFlowRate) +
-          BigInt(newFlowRateToFlowState) >
-        BigInt(0)
-      ) {
-        const updatedAtTimestamp = userAccountSnapshot
-          ? userAccountSnapshot.updatedAtTimestamp * 1000
-          : Date.now();
-        const date = dayjs(new Date(updatedAtTimestamp));
+        if (
+          BigInt(accountFlowRate) -
+            BigInt(flowRateToReceiver) -
+            BigInt(flowRateToFlowState) +
+            BigInt(newFlowRate) +
+            BigInt(newFlowRateToFlowState) >
+          BigInt(0)
+        ) {
+          const updatedAtTimestamp = userAccountSnapshot
+            ? userAccountSnapshot.updatedAtTimestamp * 1000
+            : Date.now();
+          const date = dayjs(new Date(updatedAtTimestamp));
 
-        return date
-          .add(
-            dayjs.duration({
-              seconds: Number(
-                (BigInt(userAccountSnapshot?.balanceUntilUpdatedAt ?? "0") +
-                  parseEther(wrapAmount?.replace(/,/g, "") ?? "0")) /
-                  (BigInt(accountFlowRate) -
-                    BigInt(flowRateToReceiver) -
-                    BigInt(flowRateToFlowState) +
-                    BigInt(newFlowRate) +
-                    BigInt(newFlowRateToFlowState)),
-              ),
-            }),
-          )
-          .unix();
+          return date
+            .add(
+              dayjs.duration({
+                seconds: Number(
+                  (BigInt(userAccountSnapshot?.balanceUntilUpdatedAt ?? "0") +
+                    parseEther(wrapAmount?.replace(/,/g, "") ?? "0")) /
+                    (BigInt(accountFlowRate) -
+                      BigInt(flowRateToReceiver) -
+                      BigInt(flowRateToFlowState) +
+                      BigInt(newFlowRate) +
+                      BigInt(newFlowRateToFlowState)),
+                ),
+              }),
+            )
+            .unix();
+        }
       }
-    }
 
-    return null;
-  }, [
-    userAccountSnapshot,
-    address,
-    wrapAmount,
-    flowRateToReceiver,
-    amountPerTimeInterval,
-    timeInterval,
-    flowRateToFlowState,
-    supportFlowStateAmount,
-    supportFlowStateTimeInterval,
-  ]);
+      return null;
+    },
+    [
+      userAccountSnapshot,
+      address,
+      wrapAmount,
+      flowRateToReceiver,
+      flowRateToFlowState,
+      supportFlowStateAmount,
+      supportFlowStateTimeInterval,
+    ],
+  );
+
+  const liquidationEstimate = useMemo(
+    () => calcLiquidationEstimate(amountPerTimeInterval, timeInterval),
+    [calcLiquidationEstimate, amountPerTimeInterval, timeInterval],
+  );
 
   const netImpact = useMemo(() => {
     const member = matchingPool?.poolMembers.find(
@@ -534,6 +540,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
   const updateWrapAmount = (
     amountPerTimeInterval: string,
     timeInterval: TimeInterval,
+    liquidationEstimate: number | null,
   ) => {
     if (amountPerTimeInterval) {
       if (
@@ -601,14 +608,22 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               amountPerTimeInterval={amountPerTimeInterval}
               setAmountPerTimeInterval={(amount) => {
                 setAmountPerTimeInterval(amount);
-                updateWrapAmount(amount, timeInterval);
+                updateWrapAmount(
+                  amount,
+                  timeInterval,
+                  calcLiquidationEstimate(amount, timeInterval),
+                );
               }}
               newFlowRate={newFlowRate}
               wrapAmount={wrapAmount}
               timeInterval={timeInterval}
               setTimeInterval={(timeInterval) => {
                 setTimeInterval(timeInterval);
-                updateWrapAmount(amountPerTimeInterval, timeInterval);
+                updateWrapAmount(
+                  amountPerTimeInterval,
+                  timeInterval,
+                  calcLiquidationEstimate(amountPerTimeInterval, timeInterval),
+                );
               }}
               isFundingMatchingPool={false}
               isEligible={isEligible}

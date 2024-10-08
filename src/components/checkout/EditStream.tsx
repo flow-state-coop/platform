@@ -76,7 +76,7 @@ export default function EditStream(props: EditStreamProps) {
       setAmountPerTimeInterval(
         `${
           isNativeSuperToken && parseFloat(valueWithoutCommas) < 1000
-            ? value
+            ? value.replace(/ /g, "")
             : formatNumberWithCommas(parseFloat(valueWithoutCommas))
         }`,
       );
@@ -125,7 +125,12 @@ export default function EditStream(props: EditStreamProps) {
           }}
         >
           {isSelected ? (
-            <Card.Text className="m-auto">1</Card.Text>
+            <Card.Text
+              className="m-auto text-light"
+              style={{ fontFamily: "Helvetica" }}
+            >
+              1
+            </Card.Text>
           ) : (
             <Image src="/success.svg" alt="done" width={16} />
           )}

@@ -68,7 +68,10 @@ export default function Passport(props: PassportProps) {
               className="m-auto"
             />
           ) : (
-            <Card.Text className="m-auto text-light">
+            <Card.Text
+              className="m-auto text-light"
+              style={{ fontFamily: "Helvetica" }}
+            >
               {isPureSuperToken ? 3 : 4}
             </Card.Text>
           )}
