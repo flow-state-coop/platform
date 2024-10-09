@@ -248,7 +248,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
         const accountFlowRate = userAccountSnapshot?.totalNetFlowRate ?? "0";
 
         if (
-          BigInt(accountFlowRate) -
+          BigInt(-accountFlowRate) -
             BigInt(flowRateToReceiver) -
             BigInt(flowRateToFlowState) +
             BigInt(newFlowRate) +
@@ -266,7 +266,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
                 seconds: Number(
                   (BigInt(userAccountSnapshot?.balanceUntilUpdatedAt ?? "0") +
                     parseEther(wrapAmount?.replace(/,/g, "") ?? "0")) /
-                    (BigInt(accountFlowRate) -
+                    (BigInt(-accountFlowRate) -
                       BigInt(flowRateToReceiver) -
                       BigInt(flowRateToFlowState) +
                       BigInt(newFlowRate) +
