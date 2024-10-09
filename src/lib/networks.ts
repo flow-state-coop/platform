@@ -44,6 +44,48 @@ const networks: Network[] = [
     ],
   },
   {
+    id: 42161,
+    name: "Arbitrum One",
+    icon: "/arb.svg",
+    rpcUrl: "https://arb1.arbitrum.io/rpc",
+    blockExplorer: "https://arbiscan.io/",
+    superfluidExplorer: "https://explorer.superfluid.finance/arbitrum-one",
+    superfluidDashboard: "https://app.superfluid.finance",
+    superfluidSubgraph:
+      "https://subgraph-endpoints.superfluid.dev/arbitrum-one/protocol-v1",
+    onRampName: "ARBITRUM_ETH",
+    passportDecoder: "0x2050256A91cbABD7C42465aA0d5325115C1dEB43",
+    superfluidHost: "0xCf8Acb4eF033efF16E8080aed4c7D5B9285D2192",
+    superfluidResolver: "0x609b9d9d6Ee9C3200745A79B9d3398DBd63d509F",
+    recipientSuperappFactory: "0xbb6ecb12a045a84dc5e43fec0fcee53dfa11c878",
+    allo: "0x1133eA7Af70876e64665ecD07C0A0476d09465a1",
+    alloRegistry: "0x4AAcca72145e1dF2aeC137E1f3C5E3D75DB8b5f3",
+    gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
+    tokens: [
+      {
+        name: "ETHx",
+        address: "0xe6c8d111337d0052b9d88bf5d7d55b7f8385acd3",
+        icon: "/eth.svg",
+      },
+      {
+        name: "ARBx",
+        address: "0xB3EDb2F90fEc1Bf1F872a9ef143cfd614773Ad04",
+        icon: "/arb.svg",
+      },
+      {
+        name: "DAIx",
+        address: "0x521677A61D101A80cE0fB903b13cb485232774ee",
+        icon: "/dai.svg",
+      },
+      {
+        name: "USDCx",
+        address: "0xfc55f2854e74b4f42d01a6d3daac4c52d9dfdcff",
+        icon: "/usdc.svg",
+      },
+    ],
+  },
+  */
+  {
     id: 8453,
     name: "Base",
     icon: "/base.svg",
@@ -89,48 +131,6 @@ const networks: Network[] = [
       },
     ],
   },
-  {
-    id: 42161,
-    name: "Arbitrum One",
-    icon: "/arb.svg",
-    rpcUrl: "https://arb1.arbitrum.io/rpc",
-    blockExplorer: "https://arbiscan.io/",
-    superfluidExplorer: "https://explorer.superfluid.finance/arbitrum-one",
-    superfluidDashboard: "https://app.superfluid.finance",
-    superfluidSubgraph:
-      "https://subgraph-endpoints.superfluid.dev/arbitrum-one/protocol-v1",
-    onRampName: "ARBITRUM_ETH",
-    passportDecoder: "0x2050256A91cbABD7C42465aA0d5325115C1dEB43",
-    superfluidHost: "0xCf8Acb4eF033efF16E8080aed4c7D5B9285D2192",
-    superfluidResolver: "0x609b9d9d6Ee9C3200745A79B9d3398DBd63d509F",
-    recipientSuperappFactory: "0xbb6ecb12a045a84dc5e43fec0fcee53dfa11c878",
-    allo: "0x1133eA7Af70876e64665ecD07C0A0476d09465a1",
-    alloRegistry: "0x4AAcca72145e1dF2aeC137E1f3C5E3D75DB8b5f3",
-    gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
-    tokens: [
-      {
-        name: "ETHx",
-        address: "0xe6c8d111337d0052b9d88bf5d7d55b7f8385acd3",
-        icon: "/eth.svg",
-      },
-      {
-        name: "ARBx",
-        address: "0xB3EDb2F90fEc1Bf1F872a9ef143cfd614773Ad04",
-        icon: "/arb.svg",
-      },
-      {
-        name: "DAIx",
-        address: "0x521677A61D101A80cE0fB903b13cb485232774ee",
-        icon: "/dai.svg",
-      },
-      {
-        name: "USDCx",
-        address: "0xfc55f2854e74b4f42d01a6d3daac4c52d9dfdcff",
-        icon: "/usdc.svg",
-      },
-    ],
-  },
-  */
   {
     id: 11155420,
     name: "OP Sepolia",
