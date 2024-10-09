@@ -1,4 +1,5 @@
 import { usePathname } from "next/navigation";
+import Head from "next/head";
 import Stack from "react-bootstrap/Stack";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
@@ -18,23 +19,35 @@ export default function Layout({ children }: LayoutProps) {
     (!isMobile && pathname?.startsWith("/grantee"));
 
   return (
-    <Stack direction="vertical">
-      <Header />
-      <Stack
-        direction="horizontal"
-        className="flex-grow-1"
-        style={{ minHeight: "100vh" }}
-      >
-        {showSidebar && (
-          <Stack direction="vertical" className="w-25" style={{ flexGrow: 1 }}>
-            <Sidebar />
+    <>
+      <Head>
+        <title>Flow State - Making Impact Common</title>
+      </Head>
+      <Stack direction="vertical">
+        <Header />
+        <Stack
+          direction="horizontal"
+          className="flex-grow-1"
+          style={{ minHeight: "100vh" }}
+        >
+          {showSidebar && (
+            <Stack
+              direction="vertical"
+              className="w-25"
+              style={{ flexGrow: 1 }}
+            >
+              <Sidebar />
+            </Stack>
+          )}
+          <Stack
+            direction="vertical"
+            className={showSidebar ? "w-75" : "w-100"}
+          >
+            {children}
           </Stack>
-        )}
-        <Stack direction="vertical" className={showSidebar ? "w-75" : "w-100"}>
-          {children}
         </Stack>
+        <Footer />
       </Stack>
-      <Footer />
-    </Stack>
+    </>
   );
 }
