@@ -268,6 +268,7 @@ export default function EditStream(props: EditStreamProps) {
                   Number(amountPerTimeInterval.replace(/,/g, "")) === 0) ||
                 (!isFundingMatchingPool &&
                   isNativeSuperToken &&
+                  !isDeletingStream &&
                   Number(amountPerTimeInterval) < minAllocationPerMonth) ||
                 newFlowRate === flowRateToReceiver
               }
