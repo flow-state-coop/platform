@@ -34,7 +34,7 @@ export default function Index() {
       <Stack
         direction={isMobile || isTablet ? "vertical" : "horizontal"}
         gap={isMobile || isTablet ? 5 : 0}
-        className="justify-content-center mt-3 mt-sm-5 px-4"
+        className="justify-content-center my-4 mt-sm-5 mb-sm-2 px-4"
       >
         <Stack direction="vertical" className="align-self-center">
           {(isMobile || isTablet) && (
@@ -93,7 +93,7 @@ export default function Index() {
       </Stack>
       <Stack
         direction="horizontal"
-        className="position-relative justify-content-center m-auto mt-2 px-3 px-sm-5"
+        className="position-relative justify-content-center m-auto mt-5 mt-sm-2 px-3 px-sm-5"
         style={{ height: isMobile ? 294 : 466 }}
       >
         <Image
@@ -113,7 +113,7 @@ export default function Index() {
         </p>
       </Stack>
       <p className="mt-5 px-3 px-sm-5 pt-5 fs-2">Making Impact Common</p>
-      <p className="px-3 px-sm-5 pb-sm-5 fs-5 lh-1">
+      <p className="px-3 px-sm-5 pb-sm-5 fs-5">
         Builder-first grants programs are good for impact. That means they're
         good for the supporters & communities that back them.
         <br />
@@ -128,7 +128,7 @@ export default function Index() {
         Audacious breakthroughs are uncommon: they're infrequent and too often
         privatized. At Flow State, we believe we cam make impact common.{" "}
         <Link
-          href="/interest-form"
+          href="https://forms.gle/VXfRSpAzynTmjvRY9"
           target="_blank"
           className="text-decoration-underline p-0"
         >
@@ -137,7 +137,7 @@ export default function Index() {
       </p>
       <Stack
         direction="horizontal"
-        className="position-relative justify-content-center m-auto my-3 my-sm-5 px-3 px-sm-5 py-3"
+        className="position-relative justify-content-center m-auto my-5 px-3 px-sm-5 py-3"
         style={{ height: isMobile ? 294 : 415 }}
       >
         <Image
@@ -157,6 +157,7 @@ export default function Index() {
         </p>
       </Stack>
       <Stack ref={poolsRef} direction="vertical" className="p-3 p-sm-5 mt-5">
+        <p className="fs-2">Live & Upcoming Rounds</p>
         <Stack
           direction={isMobile ? "vertical" : "horizontal"}
           gap={isMobile ? 3 : 5}
@@ -211,7 +212,7 @@ export default function Index() {
           </Stack>
         </Stack>
       </Stack>
-      <div className="px-0 px-sm-4">
+      <div className="py-4 py-sm-0 px-0 px-sm-4">
         <Stack
           direction="horizontal"
           className="position-relative justify-content-center m-auto px-4 py-3 mt-5"
@@ -238,15 +239,20 @@ export default function Index() {
           </p>
         </Stack>
       </div>
-      <Stack direction="horizontal" className="justify-content-center mt-4">
+      <Stack direction="vertical" className="my-5 px-4">
+        <p className="fs-2 mb-0 px-sm-4">Join Flow State</p>
+        <p className="fs-5 mb-4 px-sm-4">
+          Govern the co-op. Earn profit distributions (patronage) for funding,
+          being funded, & contributing to public goods. Make impact common.
+        </p>
         <Button
           variant="link"
           target="_blank"
           href="https://forms.gle/VXfRSpAzynTmjvRY9"
-          className="bg-primary my-5 fs-5 text-light"
-          style={{ width: !isMobile ? "25%" : "" }}
+          className="bg-primary m-auto mb-5 fs-5 text-light"
+          style={{ width: isMobile ? "100%" : isTablet ? "50%" : "25%" }}
         >
-          Coop Interest Form
+          Membership Interest Form
         </Button>
       </Stack>
     </Container>
