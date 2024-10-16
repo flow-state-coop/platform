@@ -99,7 +99,7 @@ const networks: Network[] = [
     passportDecoder: "0xe819c3FA368e164Da88E76A08a60f65280Af3ed6",
     superfluidHost: "0x4C073B3baB6d8826b8C5b229f3cfdC1eC6E47E74",
     superfluidResolver: "0x6a214c324553F96F04eFBDd66908685525Da0E0d",
-    recipientSuperappFactory: "0x552942adAc3f12d078ACEc1922C9Fefc61c6EE6a",
+    recipientSuperappFactory: "0xf29933097dFC1456e8B3d934d89D90e6bbED76e5",
     allo: "0x1133eA7Af70876e64665ecD07C0A0476d09465a1",
     alloRegistry: "0x4AAcca72145e1dF2aeC137E1f3C5E3D75DB8b5f3",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
