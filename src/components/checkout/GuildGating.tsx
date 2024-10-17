@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { useAccount } from "wagmi";
 import { Address } from "viem";
 import Image from "next/image";
 import Card from "react-bootstrap/Card";
@@ -5,11 +7,12 @@ import Accordion from "react-bootstrap/Accordion";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Badge from "react-bootstrap/Badge";
+import Spinner from "react-bootstrap/Spinner";
 import { Step } from "@/types/checkout";
 import { Network } from "@/types/network";
 import { truncateStr } from "@/lib/utils";
 
-export type NFTGatingProps = {
+export type GuildGatingProps = {
   step: Step;
   setStep: (step: Step) => void;
   network?: Network;
@@ -19,7 +22,11 @@ export type NFTGatingProps = {
   isPureSuperToken: boolean;
 };
 
-export default function NFTGating(props: NFTGatingProps) {
+enum MintError {
+  FAIL = "Not yet eligible: Earn the Guild role & try again.",
+}
+
+export default function GuildGating(props: GuildGatingProps) {
   const {
     step,
     setStep,
@@ -29,6 +36,40 @@ export default function NFTGating(props: NFTGatingProps) {
     nftMintUrl,
     isPureSuperToken,
   } = props;
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const { address, chainId } = useAccount();
+
+  const handleNftMintRequest = async () => {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      const res = await fetch("/api/guild-nft", {
+        method: "POST",
+        body: JSON.stringify({ address, chainId }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        setError(MintError.FAIL);
+      }
+
+      setIsLoading(false);
+
+      console.info(data);
+    } catch (err) {
+      setIsLoading(false);
+      setError(MintError.FAIL);
+
+      console.error(err);
+    }
+  };
 
   return (
     <Card className="bg-light rounded-0 border-0 border-bottom border-info">
@@ -84,7 +125,7 @@ export default function NFTGating(props: NFTGatingProps) {
       <Accordion.Collapse eventKey={Step.ELIGIBILITY} className="p-3 py-0">
         <Stack direction="vertical" gap={2}>
           <Card.Text className="m-0 border-bottom border-gray">
-            NFT Gating
+            Guild-Gated NFT
           </Card.Text>
           <Stack
             direction="horizontal"
@@ -129,36 +170,29 @@ export default function NFTGating(props: NFTGatingProps) {
               </Stack>
             </Stack>
           </Stack>
-          {nftMintUrl ? (
-            <Button
-              variant="link"
-              href={nftMintUrl}
-              target="_blank"
-              disabled={isEligible}
-              className="bg-secondary text-light"
-            >
-              Get the NFT
-            </Button>
-          ) : (
-            <Card.Text className="m-0">
-              Double check the wallet you're using or reach out to the pool
-              admins if you think you should be eligible.
-            </Card.Text>
+          <Button
+            variant="link"
+            href={nftMintUrl ?? ""}
+            target="_blank"
+            className="bg-secondary text-light"
+          >
+            {isEligible ? "Check Guild Role" : "1. Earn Guild Role"}
+          </Button>
+          <Button
+            disabled={isEligible}
+            className="d-flex justify-content-center align-items-center gap-2"
+            onClick={!isLoading ? handleNftMintRequest : void 0}
+          >
+            {isEligible ? "Claim Voter NFT" : "2. Claim Voter NFT"}
+            {isLoading && <Spinner size="sm" />}
+          </Button>
+          {error && (
+            <p className="mb-1 small text-center text-danger">{error}</p>
           )}
           <Button
             disabled={!isEligible}
             className="w-100 m-0 ms-auto mt-1 mb-3 text-light fw-bold"
-            onClick={() =>
-              /*
-              setStep(
-                !sessionStorage.getItem("skipSupportFlowState") &&
-                  !localStorage.getItem("skipSupportFlowState")
-                  ? Step.SUPPORT
-                  : Step.REVIEW,
-              )
-               */
-              setStep(Step.REVIEW)
-            }
+            onClick={() => setStep(Step.REVIEW)}
           >
             Continue
           </Button>

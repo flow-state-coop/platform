@@ -90,7 +90,7 @@ const networks: Network[] = [
     name: "Base",
     icon: "/base.svg",
     blockExplorer: "https://basescan.org/",
-    rpcUrl: "https://mainnet.base.org/",
+    rpcUrl: "https://base-rpc.publicnode.com",
     superfluidExplorer: "https://explorer.superfluid.finance/base-mainnet",
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:

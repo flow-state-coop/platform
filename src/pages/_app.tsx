@@ -21,7 +21,7 @@ const config = getDefaultConfig({
     [optimism.id]: http("https://optimism-rpc.publicnode.com"),
     [arbitrum.id]: http("https://arb1.arbitrum.io/rpc"),
      */
-    [base.id]: http("https://mainnet.base.org/"),
+    [base.id]: http("https://base-rpc.publicnode.com"),
     [optimismSepolia.id]: http("https://optimism-sepolia-rpc.publicnode.com"),
   },
 });
