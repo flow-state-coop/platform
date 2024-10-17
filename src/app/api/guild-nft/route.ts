@@ -18,7 +18,7 @@ const GUILD_ID = 76376;
 
 const NftContractAddresses: { [id: number]: `0x${string}` } = {
   11155420: "0x0B43772Df810575F87D4d9ff49403DF25168f993",
-  8453: "0x176bA99b7C94238AF384C2F3891ff67A7e1F7d79",
+  8453: "0xCfdFaCE3A659c1Ca0Dc3052B6a15De28aa01505B",
 };
 
 const chains: { [id: number]: Chain } = {
