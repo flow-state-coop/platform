@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
@@ -46,7 +47,15 @@ export default function Footer() {
           <Image src="/telegram.svg" alt="Telegram" width={28} height={28} />
         </Button>
       </Stack>
-      <p className="m-0 fs-5">Flow State LCA - &#169; 2024</p>
+      <Stack direction="vertical" gap={1} className="mx-auto mt-1 mb-3">
+        <Link href="/terms" className="text-center">
+          Terms of Use
+        </Link>
+        <Link href="/privacy" className="text-center">
+          Privacy Policy
+        </Link>
+      </Stack>
+      <p className="m-0 small">Flow State LCA - &#169; 2024</p>
     </footer>
   );
 }

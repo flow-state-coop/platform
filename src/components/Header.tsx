@@ -21,7 +21,9 @@ export default function Header() {
             isMobile ||
             isTablet ||
             pathname?.startsWith("/admin") ||
-            pathname?.startsWith("/grantee")
+            pathname?.startsWith("/grantee") ||
+            pathname?.startsWith("/terms") ||
+            pathname?.startsWith("/privacy")
               ? "100%"
               : isSmallScreen
                 ? 1000
