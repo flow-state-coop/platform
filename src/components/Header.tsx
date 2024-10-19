@@ -23,7 +23,8 @@ export default function Header() {
             pathname?.startsWith("/admin") ||
             pathname?.startsWith("/grantee") ||
             pathname?.startsWith("/terms") ||
-            pathname?.startsWith("/privacy")
+            pathname?.startsWith("/privacy") ||
+            pathname?.startsWith("/conduct")
               ? "100%"
               : isSmallScreen
                 ? 1000

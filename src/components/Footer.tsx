@@ -47,7 +47,7 @@ export default function Footer() {
           <Image src="/telegram.svg" alt="Telegram" width={28} height={28} />
         </Button>
       </Stack>
-      <Stack direction="vertical" gap={1} className="mx-auto mt-1 mb-3">
+      <Stack direction="horizontal" gap={5} className="mx-auto mt-1 mb-3">
         <Link href="/terms" className="text-center">
           Terms of Use
         </Link>

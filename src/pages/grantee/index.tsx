@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { Address, encodeAbiParameters, parseAbiParameters } from "viem";
 import {
   useAccount,
@@ -13,6 +14,7 @@ import Card from "react-bootstrap/Card";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
+import FormCheck from "react-bootstrap/FormCheck";
 import Spinner from "react-bootstrap/Spinner";
 import ProjectCreationModal from "@/components/ProjectCreationModal";
 import ProjectUpdateModal from "@/components/ProjectUpdateModal";
@@ -78,6 +80,8 @@ export default function Grantee() {
   const [showProjectUpdateModal, setShowProjectUpdateModal] = useState(false);
   const [newProfileId, setNewProfileId] = useState("");
   const [isTransactionConfirming, setIsTransactionConfirming] = useState(false);
+  const [hasAgreedToCodeOfConduct, setHasAgreedToCodeOfConduct] =
+    useState(false);
 
   const router = useRouter();
   const { poolId } = router.query;
@@ -337,9 +341,29 @@ export default function Grantee() {
               </div>
             )}
             <Stack direction="vertical" gap={2} className="mt-5 text-light">
+              <Stack
+                direction="horizontal"
+                gap={2}
+                className="align-items-start text-dark"
+              >
+                <FormCheck
+                  onChange={() =>
+                    setHasAgreedToCodeOfConduct(!hasAgreedToCodeOfConduct)
+                  }
+                />
+                <Card.Text>
+                  I have read and agree to the{" "}
+                  <Link href="/conduct" className="text-decoration-underline">
+                    Flow State Grantee Code of Conduct
+                  </Link>
+                  .
+                </Card.Text>
+              </Stack>
               <Button
                 className={`${isMobile || isTablet ? "w-100" : "w-25"} py-2 text-light`}
-                disabled={selectedProjectIndex === null}
+                disabled={
+                  selectedProjectIndex === null || !hasAgreedToCodeOfConduct
+                }
                 onClick={registerRecipient}
               >
                 {isTransactionConfirming ? (

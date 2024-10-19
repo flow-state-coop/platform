@@ -2,7 +2,7 @@ import Link from "next/link";
 import Container from "react-bootstrap/Container";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
-export default function Terms() {
+export default function Privacy() {
   const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
 
   return (
