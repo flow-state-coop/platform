@@ -23,7 +23,7 @@ export default function Conduct() {
       <p>
         Flow State’s mission is to grow the public goods economy. Public good
         success is synonymous with creating, promoting, and participating in a
-        more **positive-sum** world.
+        more <strong>positive-sum</strong> world.
       </p>
       <p>
         Participation in Flow State funding rounds is an opportunity to embody

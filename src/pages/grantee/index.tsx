@@ -353,7 +353,11 @@ export default function Grantee() {
                 />
                 <Card.Text>
                   I have read and agree to the{" "}
-                  <Link href="/conduct" className="text-decoration-underline">
+                  <Link
+                    href="/conduct"
+                    target="_blank"
+                    className="text-decoration-underline"
+                  >
                     Flow State Grantee Code of Conduct
                   </Link>
                   .
