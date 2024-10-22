@@ -496,7 +496,7 @@ export default function WalletBalance() {
                   navigator.clipboard.writeText(
                     token === Token.ALLOCATION
                       ? allocationTokenInfo.address
-                      : matchingTokenInfo.address ?? "0x",
+                      : (matchingTokenInfo.address ?? "0x"),
                   )
                 }
               >
@@ -574,8 +574,9 @@ export default function WalletBalance() {
                   roundWeiAmount(
                     BigInt(
                       token === Token.MATCHING
-                        ? accountTokenSnapshotMatching?.totalOutflowRate ?? 0
-                        : accountTokenSnapshotAllocation?.totalOutflowRate ?? 0,
+                        ? (accountTokenSnapshotMatching?.totalOutflowRate ?? 0)
+                        : (accountTokenSnapshotAllocation?.totalOutflowRate ??
+                            0),
                     ) * BigInt(SECONDS_IN_MONTH),
                     6,
                   ),

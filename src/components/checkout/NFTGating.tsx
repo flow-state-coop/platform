@@ -139,12 +139,12 @@ export default function NFTGating(props: NFTGatingProps) {
             >
               Get the NFT
             </Button>
-          ) : (
+          ) : !isEligible ? (
             <Card.Text className="m-0">
               Double check the wallet you're using or reach out to the pool
               admins if you think you should be eligible.
             </Card.Text>
-          )}
+          ) : null}
           <Button
             disabled={!isEligible}
             className="w-100 m-0 ms-auto mt-1 mb-3 text-light fw-bold"
