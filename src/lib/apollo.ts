@@ -7,7 +7,7 @@ import {
 } from "@apollo/client";
 import { networks } from "@/lib/networks";
 
-type ApiType = "streamingfund" | "superfluid";
+type ApiType = "flowState" | "superfluid";
 
 const apolloClient: ApolloClientOptions<NormalizedCacheObject> = {
   cache: new InMemoryCache(),
@@ -26,7 +26,7 @@ const superfluidClient = new ApolloClient(apolloClient);
 
 export const getApolloClient = (type: ApiType, chainId?: number) => {
   streamingFundClient.setLink(
-    new HttpLink({ uri: "https://api.streaming.fund/graphql" }),
+    new HttpLink({ uri: "https://api.flowstate.network/graphql" }),
   );
 
   if (chainId) {
@@ -39,8 +39,7 @@ export const getApolloClient = (type: ApiType, chainId?: number) => {
     superfluidClient.setLink(new HttpLink({ uri: network.superfluidSubgraph }));
   }
 
-  const client =
-    type === "streamingfund" ? streamingFundClient : superfluidClient;
+  const client = type === "flowState" ? streamingFundClient : superfluidClient;
 
   return client;
 };

@@ -67,7 +67,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
     expanded: readMore,
   });
   const { data: streamingFundQueryRes } = useQuery(PROFILE_ID_QUERY, {
-    client: getApolloClient("streamingfund"),
+    client: getApolloClient("flowState"),
     variables: {
       anchorAddress: recipientId,
       chainId,

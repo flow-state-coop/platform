@@ -164,12 +164,13 @@ export default function Index() {
         >
           <Stack
             direction="vertical"
-            className="justify-content-center align-items-center rounded-4 p-3 p-sm-4 shadow"
+            className="justify-content-center align-items-center rounded-4 p-3 p-sm-4 shadow cursor-pointer"
             style={{
               width: isMobile ? "100%" : "60%",
               background: "#A0C7D4",
               fontFamily: "Helvetica",
             }}
+            onClick={() => router.push("/octant")}
           >
             <p className="m-0 fs-4 fw-bold">Octant Builder Accelerator SQF</p>
             <p className="m-0 fs-5">Live on October 24 - 16+ ETH Matching</p>

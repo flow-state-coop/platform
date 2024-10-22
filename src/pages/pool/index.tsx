@@ -34,6 +34,8 @@ import {
   ZERO_ADDRESS,
   FLOW_STATE_RECEIVER,
   SUPERVISUAL_BASE_URL,
+  DEFAULT_CHAIN_ID,
+  DEFAULT_POOL_ID,
 } from "@/lib/constants";
 
 type Grantee = {
@@ -152,8 +154,6 @@ const STREAM_QUERY = gql`
   }
 `;
 
-const DEFAULT_POOL_ID = "45";
-const DEFAULT_CHAIN_ID = 11155420;
 const GRANTEES_BATCH_SIZE = 20;
 
 export default function Pool() {
@@ -185,7 +185,7 @@ export default function Pool() {
   const { address } = useAccount();
   const { updateDonorParams } = useDonorParams();
   const { data: streamingFundQueryRes } = useQuery(POOL_QUERY, {
-    client: getApolloClient("streamingfund"),
+    client: getApolloClient("flowState"),
     variables: {
       poolId: poolId ?? DEFAULT_POOL_ID,
       chainId: chainId ? Number(chainId) : DEFAULT_CHAIN_ID,

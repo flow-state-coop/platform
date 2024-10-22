@@ -102,7 +102,7 @@ export default function Project() {
   const { address } = useAccount();
   const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
   const { data: projectQueryRes, loading } = useQuery(PROJECT_QUERY, {
-    client: getApolloClient("streamingfund"),
+    client: getApolloClient("flowState"),
     variables: {
       chainId: chainId,
       id: router.query.id,
@@ -111,7 +111,7 @@ export default function Project() {
     pollInterval: 5000,
   });
   const { data: poolsQueryRes } = useQuery(POOLS_BY_ANCHOR_ADDRESS, {
-    client: getApolloClient("streamingfund"),
+    client: getApolloClient("flowState"),
     variables: {
       chainId: chainId,
       anchorAddress: projectQueryRes?.profile?.anchorAddress,

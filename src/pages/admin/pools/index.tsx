@@ -35,7 +35,7 @@ export default function Pools() {
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { data: queryRes, loading } = useQuery(POOLS_QUERY, {
-    client: getApolloClient("streamingfund"),
+    client: getApolloClient("flowState"),
     variables: {
       chainId,
       profileId,

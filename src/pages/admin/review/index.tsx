@@ -135,7 +135,7 @@ export default function Review() {
     executeTransactions,
   } = useTransactionsQueue();
   const { data: queryRes, loading } = useQuery(RECIPIENTS_QUERY, {
-    client: getApolloClient("streamingfund"),
+    client: getApolloClient("flowState"),
     variables: {
       poolId,
       address: address?.toLowerCase() ?? "",

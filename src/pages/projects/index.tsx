@@ -53,7 +53,7 @@ export default function Projects() {
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const { data: queryRes, loading } = useQuery(PROJECTS_QUERY, {
-    client: getApolloClient("streamingfund"),
+    client: getApolloClient("flowState"),
     variables: {
       chainId: chainId ?? connectedChain?.id,
       address:

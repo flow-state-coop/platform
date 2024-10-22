@@ -12,7 +12,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 import "@/styles.scss";
 
 const config = getDefaultConfig({
-  appName: "SQF Admin",
+  appName: "Flow State",
   projectId: WALLET_CONNECT_PROJECT_ID,
   chains: [/*optimism, arbitrum,*/ base, optimismSepolia],
   ssr: true,

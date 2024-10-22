@@ -71,7 +71,7 @@ export default function MatchinPool() {
   const network = networks.find((network) => network.id === Number(chainId));
   const publicClient = usePublicClient();
   const { data: streamingFundQueryRes, loading } = useQuery(POOL_BY_ID_QUERY, {
-    client: getApolloClient("streamingfund"),
+    client: getApolloClient("flowState"),
     variables: {
       poolId,
       chainId,

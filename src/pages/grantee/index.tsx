@@ -90,7 +90,7 @@ export default function Grantee() {
     useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { data: queryRes, loading } = useQuery(PROJECTS_QUERY, {
-    client: getApolloClient("streamingfund"),
+    client: getApolloClient("flowState"),
     variables: {
       chainId,
       address: address?.toLowerCase() ?? "",

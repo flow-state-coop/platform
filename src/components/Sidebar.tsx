@@ -56,7 +56,7 @@ function Sidebar() {
   const chainId = Number(router.query.chainId) ?? null;
   const { address, chain: connectedChain } = useAccount();
   const { data: programsQueryRes } = useQuery(PROGRAMS_QUERY, {
-    client: getApolloClient("streamingfund"),
+    client: getApolloClient("flowState"),
     variables: {
       address: address?.toLowerCase() ?? "",
       chainId,
@@ -65,7 +65,7 @@ function Sidebar() {
     pollInterval: 4000,
   });
   const { data: poolsQueryRes } = useQuery(POOLS_QUERY, {
-    client: getApolloClient("streamingfund"),
+    client: getApolloClient("flowState"),
     variables: {
       chainId,
       profileId,

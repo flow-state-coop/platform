@@ -8,7 +8,8 @@ export const ZERO_ADDRESS =
 export const PINATA_JWT_KEY = process.env.NEXT_PUBLIC_PINATA_JWT_KEY;
 export const FLOW_STATE_RECEIVER = "0xb3f2b4a0b5f2f99e6b6bfc71d5e18a59b92d5606";
 export const SUPERVISUAL_BASE_URL = "https://graph.flowstate.network";
-//export const SUPERVISUAL_BASE_URL = "https://supervisual-gules.vercel.app/";
+export const DEFAULT_CHAIN_ID = 8453;
+export const DEFAULT_POOL_ID = "63";
 export const IPFS_GATEWAYS = [
   "https://gateway.pinata.cloud",
   "https://nftstorage.link",

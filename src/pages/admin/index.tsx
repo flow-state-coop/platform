@@ -42,7 +42,7 @@ export default function Admin() {
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { data: queryRes, loading } = useQuery(PROGRAMS_QUERY, {
-    client: getApolloClient("streamingfund"),
+    client: getApolloClient("flowState"),
     variables: {
       address: address?.toLowerCase() ?? "",
       chainId: connectedChain?.id,
