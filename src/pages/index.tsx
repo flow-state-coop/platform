@@ -93,8 +93,8 @@ export default function Index() {
       </Stack>
       <Stack
         direction="horizontal"
-        className="position-relative justify-content-center m-auto mt-5 mt-sm-2 px-3 px-sm-5"
-        style={{ height: isMobile ? 294 : 466 }}
+        className="position-relative justify-content-center m-auto mt-sm-5 mt-sm-2 px-3 px-sm-5"
+        style={{ height: 466 }}
       >
         <Image
           src="/single-person.png"
@@ -137,8 +137,8 @@ export default function Index() {
       </p>
       <Stack
         direction="horizontal"
-        className="position-relative justify-content-center m-auto my-5 px-3 px-sm-5 py-3"
-        style={{ height: isMobile ? 294 : 415 }}
+        className="position-relative justify-content-center m-auto my-sm-5 px-3 px-sm-5 py-3"
+        style={{ height: 415 }}
       >
         <Image
           src="/small-group.png"
@@ -213,7 +213,10 @@ export default function Index() {
           </Stack>
         </Stack>
       </Stack>
-      <div className="py-4 py-sm-0 px-0 px-sm-4">
+      <div
+        className="px-0 px-sm-4"
+        style={{ margin: isMobile ? "128px 0 128px 0" : "" }}
+      >
         <Stack
           direction="horizontal"
           className="position-relative justify-content-center m-auto px-4 py-3 mt-5"
