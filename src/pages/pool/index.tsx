@@ -184,7 +184,7 @@ export default function Pool() {
     useMediaQuery();
   const { address } = useAccount();
   const { updateDonorParams } = useDonorParams();
-  const { data: streamingFundQueryRes } = useQuery(POOL_QUERY, {
+  const { data: flowStateQueryRes } = useQuery(POOL_QUERY, {
     client: getApolloClient("flowState"),
     variables: {
       poolId: poolId ?? DEFAULT_POOL_ID,
@@ -192,7 +192,7 @@ export default function Pool() {
     },
   });
   const { data: gdaPoolAddress } = useReadContract({
-    address: streamingFundQueryRes?.pool?.strategyAddress,
+    address: flowStateQueryRes?.pool?.strategyAddress,
     abi: strategyAbi,
     functionName: "gdaPool",
     chainId: chainId ? Number(chainId) : DEFAULT_CHAIN_ID,
@@ -204,23 +204,23 @@ export default function Pool() {
     ),
     variables: {
       superapps:
-        streamingFundQueryRes?.pool?.recipientsByPoolIdAndChainId?.map(
+        flowStateQueryRes?.pool?.recipientsByPoolIdAndChainId?.map(
           (recipient: { superappAddress: string }) => recipient.superappAddress,
         ) ?? [],
       gdaPool: gdaPoolAddress?.toLowerCase(),
       userAddress: address?.toLowerCase() ?? "0x",
-      token: streamingFundQueryRes?.pool?.allocationToken ?? "0x",
+      token: flowStateQueryRes?.pool?.allocationToken ?? "0x",
     },
     pollInterval: 10000,
   });
   const { data: passportDecoder } = useReadContract({
-    address: streamingFundQueryRes?.pool?.strategyAddress,
+    address: flowStateQueryRes?.pool?.strategyAddress,
     abi: strategyAbi,
     functionName: "passportDecoder",
     chainId: chainId ? Number(chainId) : DEFAULT_CHAIN_ID,
   });
   const { data: minPassportScore } = useReadContract({
-    address: streamingFundQueryRes?.pool?.strategyAddress,
+    address: flowStateQueryRes?.pool?.strategyAddress,
     abi: strategyAbi,
     functionName: "minPassportScore",
     chainId: chainId ? Number(chainId) : DEFAULT_CHAIN_ID,
@@ -237,13 +237,13 @@ export default function Pool() {
       },
     });
   const { data: eligibilityMethod } = useReadContract({
-    address: streamingFundQueryRes?.pool?.strategyAddress,
+    address: flowStateQueryRes?.pool?.strategyAddress,
     abi: strategyAbi,
     functionName: "getAllocationEligiblity",
     chainId: chainId ? Number(chainId) : DEFAULT_CHAIN_ID,
   });
   const { data: nftChecker } = useReadContract({
-    address: streamingFundQueryRes?.pool?.strategyAddress,
+    address: flowStateQueryRes?.pool?.strategyAddress,
     abi: strategyAbi,
     functionName: "checker",
     query: { enabled: eligibilityMethod === EligibilityMethod.NFT_GATING },
@@ -276,7 +276,7 @@ export default function Pool() {
       ? window.location.origin
       : "";
 
-  const pool = streamingFundQueryRes?.pool ?? null;
+  const pool = flowStateQueryRes?.pool ?? null;
   const matchingPool = superfluidQueryRes?.pool ?? null;
   const network = networks.find(
     (network) => network.id === Number(chainId ?? DEFAULT_CHAIN_ID),
@@ -294,8 +294,8 @@ export default function Pool() {
   const supervisualUrl = useMemo(() => {
     const url = new URL(SUPERVISUAL_BASE_URL);
 
-    if (streamingFundQueryRes?.pool) {
-      const { matchingToken, allocationToken } = streamingFundQueryRes.pool;
+    if (flowStateQueryRes?.pool) {
+      const { matchingToken, allocationToken } = flowStateQueryRes.pool;
 
       const accounts = grantees
         .map((grantee) => grantee.superappAddress)
@@ -311,7 +311,7 @@ export default function Pool() {
     }
 
     return url.toString();
-  }, [grantees, streamingFundQueryRes, chainId, gdaPoolAddress]);
+  }, [grantees, flowStateQueryRes, chainId, gdaPoolAddress]);
 
   const allocationTokenInfo = useMemo(
     () =>
@@ -422,7 +422,7 @@ export default function Pool() {
 
   useEffect(() => {
     if (
-      !streamingFundQueryRes?.pool ||
+      !flowStateQueryRes?.pool ||
       !superfluidQueryRes?.accounts ||
       !superfluidQueryRes?.pool
     ) {
@@ -434,7 +434,7 @@ export default function Pool() {
 
       if (recipientId) {
         const recipient =
-          streamingFundQueryRes.pool.recipientsByPoolIdAndChainId.find(
+          flowStateQueryRes.pool.recipientsByPoolIdAndChainId.find(
             (recipient: { id: string }) => recipient.id === recipientId,
           );
         if (recipient) {
@@ -452,13 +452,13 @@ export default function Pool() {
 
         if (
           skipGrantees.current ==
-          streamingFundQueryRes.pool.recipientsByPoolIdAndChainId.length
+          flowStateQueryRes.pool.recipientsByPoolIdAndChainId.length
         ) {
           hasNextGrantee.current = false;
         }
 
         const recipient =
-          streamingFundQueryRes.pool.recipientsByPoolIdAndChainId[i];
+          flowStateQueryRes.pool.recipientsByPoolIdAndChainId[i];
 
         if (recipient && recipient.id === recipientId) {
           continue;
@@ -482,7 +482,7 @@ export default function Pool() {
       setGrantees((prev) => {
         const grantees: Grantee[] = [];
 
-        for (const recipient of streamingFundQueryRes.pool
+        for (const recipient of flowStateQueryRes.pool
           .recipientsByPoolIdAndChainId) {
           if (prev.find((grantee) => grantee.id === recipient.id)) {
             grantees.push(getGrantee(recipient));
@@ -493,7 +493,7 @@ export default function Pool() {
       });
     }
   }, [
-    streamingFundQueryRes,
+    flowStateQueryRes,
     superfluidQueryRes,
     inView,
     getGrantee,
@@ -795,7 +795,7 @@ export default function Pool() {
             passportDecoder={passportDecoder}
             minPassportScore={minPassportScore}
             requiredNftAddress={(requiredNftAddress as Address) ?? null}
-            nftMintUrl={streamingFundQueryRes?.pool.metadata.nftMintUrl ?? null}
+            nftMintUrl={flowStateQueryRes?.pool.metadata.nftMintUrl ?? null}
             recipientId={grantees[transactionPanelState.selectedGrantee].id}
           />
         ) : null}

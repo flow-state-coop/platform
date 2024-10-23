@@ -66,7 +66,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
     ellipsis: "...",
     expanded: readMore,
   });
-  const { data: streamingFundQueryRes } = useQuery(PROFILE_ID_QUERY, {
+  const { data: flowStateQueryRes } = useQuery(PROFILE_ID_QUERY, {
     client: getApolloClient("flowState"),
     variables: {
       anchorAddress: recipientId,
@@ -75,7 +75,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
     skip: !chainId,
   });
 
-  const profileId = streamingFundQueryRes?.profiles[0]?.id ?? "";
+  const profileId = flowStateQueryRes?.profiles[0]?.id ?? "";
   const matchingPoolMember = matchingPool?.poolMembers.find(
     (member) => member.account.id === recipientAddress,
   );

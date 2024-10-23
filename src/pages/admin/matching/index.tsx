@@ -70,7 +70,7 @@ export default function MatchinPool() {
   const { writeContractAsync } = useWriteContract();
   const network = networks.find((network) => network.id === Number(chainId));
   const publicClient = usePublicClient();
-  const { data: streamingFundQueryRes, loading } = useQuery(POOL_BY_ID_QUERY, {
+  const { data: flowStateQueryRes, loading } = useQuery(POOL_BY_ID_QUERY, {
     client: getApolloClient("flowState"),
     variables: {
       poolId,
@@ -78,8 +78,8 @@ export default function MatchinPool() {
     },
     skip: !poolId,
   });
-  const matchingToken = streamingFundQueryRes
-    ? (streamingFundQueryRes.pools[0].matchingToken as Address)
+  const matchingToken = flowStateQueryRes
+    ? (flowStateQueryRes.pools[0].matchingToken as Address)
     : null;
   const { data: superfluidQueryRes } = useQuery(SF_ACCOUNT_QUERY, {
     client: getApolloClient("superfluid", chainId ?? 10),
@@ -91,7 +91,7 @@ export default function MatchinPool() {
   });
 
   const { data: gdaPool } = useReadContract({
-    address: streamingFundQueryRes?.pools[0].strategyAddress,
+    address: flowStateQueryRes?.pools[0].strategyAddress,
     abi: strategyAbi,
     functionName: "gdaPool",
   });
@@ -125,7 +125,7 @@ export default function MatchinPool() {
   const handleStreamUpdate = async () => {
     if (
       !network ||
-      !streamingFundQueryRes ||
+      !flowStateQueryRes ||
       !address ||
       !gdaPool ||
       !publicClient
@@ -141,7 +141,7 @@ export default function MatchinPool() {
         abi: gdaForwarderAbi,
         functionName: "distributeFlow",
         args: [
-          streamingFundQueryRes.pools[0].matchingToken,
+          flowStateQueryRes.pools[0].matchingToken,
           address,
           gdaPool,
           parseEther(newFlowRate) / BigInt(SECONDS_IN_MONTH),
@@ -248,7 +248,7 @@ export default function MatchinPool() {
                       network?.tokens.find(
                         (token) =>
                           token.address.toLowerCase() ===
-                          streamingFundQueryRes?.pools[0].matchingToken,
+                          flowStateQueryRes?.pools[0].matchingToken,
                       )?.name
                     }
                     /month
@@ -274,7 +274,7 @@ export default function MatchinPool() {
                       network?.tokens.find(
                         (token) =>
                           token.address.toLowerCase() ===
-                          streamingFundQueryRes?.pools[0].matchingToken,
+                          flowStateQueryRes?.pools[0].matchingToken,
                       )?.name
                     }
                     /month
@@ -323,7 +323,7 @@ export default function MatchinPool() {
                 disabled={
                   !isNumber(newFlowRate) ||
                   !network ||
-                  !streamingFundQueryRes ||
+                  !flowStateQueryRes ||
                   !address ||
                   !gdaPool ||
                   !publicClient ||

@@ -21,11 +21,11 @@ const apolloClient: ApolloClientOptions<NormalizedCacheObject> = {
   },
 };
 
-const streamingFundClient = new ApolloClient(apolloClient);
+const flowStateClient = new ApolloClient(apolloClient);
 const superfluidClient = new ApolloClient(apolloClient);
 
 export const getApolloClient = (type: ApiType, chainId?: number) => {
-  streamingFundClient.setLink(
+  flowStateClient.setLink(
     new HttpLink({ uri: "https://api.flowstate.network/graphql" }),
   );
 
@@ -39,7 +39,7 @@ export const getApolloClient = (type: ApiType, chainId?: number) => {
     superfluidClient.setLink(new HttpLink({ uri: network.superfluidSubgraph }));
   }
 
-  const client = type === "flowState" ? streamingFundClient : superfluidClient;
+  const client = type === "flowState" ? flowStateClient : superfluidClient;
 
   return client;
 };
