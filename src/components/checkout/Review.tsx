@@ -65,6 +65,7 @@ type TransactionDetailsSnapshot = {
   liquidationEstimate: number | null;
   amountPerTimeInterval: string;
   netImpact: bigint;
+  matchingMultiplier: number | null;
   newFlowRate: string;
   newFlowRateToFlowState: string;
   flowRateToFlowState: string;
@@ -120,6 +121,15 @@ export default function Review(props: ReviewProps) {
       superTokenBalance,
       liquidationEstimate,
       amountPerTimeInterval: amountPerTimeInterval.replace(/,/g, ""),
+      matchingMultiplier:
+        matchingTokenInfo.name === "ETHx" && allocationTokenInfo.name === "ETHx"
+          ? parseFloat(
+              (
+                Number(formatEther(BigInt(netImpact))) /
+                Number(formatEther(BigInt(newFlowRate)))
+              ).toFixed(2),
+            )
+          : null,
       netImpact,
       newFlowRate,
       flowRateToReceiver,
@@ -422,8 +432,70 @@ export default function Review(props: ReviewProps) {
                           : 0}
                     </Badge>
                   </Stack>
-                  <Card.Text className="w-20 m-0 ms-1 fs-6">/month</Card.Text>
+                  <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>
                 </Stack>
+                {matchingTokenInfo.name === "ETHx" &&
+                  allocationTokenInfo.name === "ETHx" && (
+                    <Stack
+                      direction="horizontal"
+                      className="bg-light border-top border-secondary p-2"
+                    >
+                      <Card.Text className="w-33 m-0 fs-6">
+                        QF Multiplier
+                      </Card.Text>
+                      <Stack
+                        direction="horizontal"
+                        gap={1}
+                        className="justify-content-end w-50 p-2"
+                      >
+                        <Badge
+                          className={`${
+                            BigInt(
+                              areTransactionsLoading &&
+                                transactionDetailsSnapshot
+                                ? transactionDetailsSnapshot.newFlowRate
+                                : newFlowRate,
+                            ) <
+                            BigInt(
+                              areTransactionsLoading &&
+                                transactionDetailsSnapshot
+                                ? transactionDetailsSnapshot.flowRateToFlowState
+                                : flowRateToReceiver,
+                            )
+                              ? "bg-danger"
+                              : "bg-primary"
+                          } w-75 ps-2 pe-2 py-2 fs-6 text-start`}
+                        >
+                          {parseFloat(
+                            (
+                              Number(
+                                formatEther(
+                                  BigInt(
+                                    areTransactionsLoading &&
+                                      transactionDetailsSnapshot
+                                      ? transactionDetailsSnapshot.netImpact
+                                      : netImpact,
+                                  ),
+                                ),
+                              ) /
+                              Number(
+                                formatEther(
+                                  BigInt(
+                                    areTransactionsLoading &&
+                                      transactionDetailsSnapshot
+                                      ? transactionDetailsSnapshot.newFlowRate
+                                      : newFlowRate,
+                                  ),
+                                ),
+                              )
+                            ).toFixed(2),
+                          )}
+                          x
+                        </Badge>
+                      </Stack>
+                      <span className="w-20 ms-1" />
+                    </Stack>
+                  )}
               </>
             )}
           </Stack>
@@ -542,7 +614,7 @@ export default function Review(props: ReviewProps) {
                       )}
                     </Badge>
                   </Stack>
-                  <Card.Text className="w-20 m-0 ms-1 fs-6">/month</Card.Text>
+                  <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>
                 </Stack>
               </Stack>
             </>
