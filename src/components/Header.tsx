@@ -22,6 +22,7 @@ export default function Header() {
             isTablet ||
             pathname?.startsWith("/admin") ||
             pathname?.startsWith("/grantee") ||
+            pathname?.startsWith("/core") ||
             pathname?.startsWith("/terms") ||
             pathname?.startsWith("/privacy") ||
             pathname?.startsWith("/conduct")

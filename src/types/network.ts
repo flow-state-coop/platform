@@ -11,6 +11,7 @@ export type Network = {
   superfluidDashboard: string;
   superfluidSubgraph: string;
   onRampName: string;
+  flowStateCoreGda: string;
   passportDecoder: Address;
   superfluidHost: Address;
   superfluidResolver: Address;

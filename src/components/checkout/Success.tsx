@@ -5,7 +5,8 @@ import { Step } from "@/types/checkout";
 
 export type SuccessProps = {
   step: Step;
-  isFundingMatchingPool: boolean;
+  isFundingMatchingPool?: boolean;
+  isFundingFlowStateCore?: boolean;
   granteeName?: string;
   granteeTwitter?: string;
   poolName: string;
@@ -18,6 +19,7 @@ export default function Success(props: SuccessProps) {
   const {
     step,
     isFundingMatchingPool,
+    isFundingFlowStateCore,
     granteeName,
     granteeTwitter,
     poolName,
@@ -50,13 +52,17 @@ export default function Success(props: SuccessProps) {
             className="d-flex flex-column align-items-center twitter-share-button text-decoration-none fs-6 m-0 w-50"
             rel="noreferrer"
             target="_blank"
-            href={`https://twitter.com/intent/tweet?text=I%20just%20opened%20a%20donation%20stream%20to%20${
-              isFundingMatchingPool
-                ? "the matching pool"
-                : granteeTwitter
-                  ? granteeTwitter
-                  : granteeName
-            }%20in%20the%20${poolName}%20%23streamingqf%20round.%20Support%20public%20goods%20by%20opening%20your%20stream%20with%20a%20real-time%20matching%20multiplier%20here%3A%20${encodeURIComponent(poolUiLink)}`}
+            href={
+              isFundingFlowStateCore
+                ? `https://twitter.com/intent/tweet?text=I%20just%20opened%20a%20stream%20to%20the%20%40flowstatecoop%20Core%20team%20on%20Flow%20State.%0AJoin%20me%20in%20supporting%20these%20public%20goods%20builders%20at%20${encodeURIComponent(poolUiLink)}`
+                : `https://twitter.com/intent/tweet?text=I%20just%20opened%20a%20donation%20stream%20to%20${
+                    isFundingMatchingPool
+                      ? "the matching pool"
+                      : granteeTwitter
+                        ? granteeTwitter
+                        : granteeName
+                  }%20in%20the%20${poolName}%20%23streamingqf%20round.%20Support%20public%20goods%20by%20opening%20your%20stream%20with%20a%20real-time%20matching%20multiplier%20here%3A%20${encodeURIComponent(poolUiLink)}`
+            }
             data-size="large"
           >
             <Image src="/x-logo.svg" alt="x social" width={28} height={22} />
@@ -66,7 +72,11 @@ export default function Success(props: SuccessProps) {
             className="d-flex flex-column align-items-center text-decoration-none fs-6 m-0 w-50"
             rel="noreferrer"
             target="_blank"
-            href={`https://warpcast.com/~/compose?text=I+just+opened+a+donation+stream+to+${isFundingMatchingPool ? "the matching pool" : granteeName}+in+the+${poolName}+SQF+round%21+Support+public+goods+by+opening+your+stream+with+a+real%2Dtime+matching+multiplier+from+${isFundingMatchingPool ? "here" : "this+frame"}%3A+%0A%0A${isFundingMatchingPool ? encodeURIComponent(poolUiLink) : encodeURIComponent(framesLink ?? "")}`}
+            href={
+              isFundingFlowStateCore
+                ? `https://warpcast.com/~/compose?text=I+just+opened+a+stream+to+the+%40flowstatecoop+Core+team+on+Flow+State.%0AJoin+me+in+supporting+these+public+goods+builders+at+${encodeURIComponent(poolUiLink)}`
+                : `https://warpcast.com/~/compose?text=I+just+opened+a+donation+stream+to+${isFundingMatchingPool ? "the matching pool" : granteeName}+in+the+${poolName}+SQF+round%21+Support+public+goods+by+opening+your+stream+with+a+real%2Dtime+matching+multiplier+from+${isFundingMatchingPool ? "here" : "this+frame"}%3A+%0A%0A${isFundingMatchingPool ? encodeURIComponent(poolUiLink) : encodeURIComponent(framesLink ?? "")}`
+            }
           >
             <Image
               src="/farcaster.svg"
@@ -80,7 +90,11 @@ export default function Success(props: SuccessProps) {
             className="d-flex flex-column align-items-center text-decoration-none fs-6 m-0 w-50"
             rel="noreferrer"
             target="_blank"
-            href={`https://hey.xyz/?text=I+just+opened+a+donation+stream+to+${isFundingMatchingPool ? "the matching pool" : granteeName}+in+the+${poolName}+SQF+round%21+Support+public+goods+by+opening+your+stream+with+a+real%2Dtime+matching+multiplier+from+${isFundingMatchingPool ? "here" : "this+frame"}%3A+%0A%0A${isFundingMatchingPool ? encodeURIComponent(poolUiLink) : encodeURIComponent(framesLink ?? "")}`}
+            href={
+              isFundingFlowStateCore
+                ? `https://hey.xyz/?text=I+just+opened+a+stream+to+the+%40flowstatecoop+Core+team+on+Flow+State.%0AJoin+me+in+supporting+these+public+goods+builders+at+${encodeURIComponent(poolUiLink)}`
+                : `https://hey.xyz/?text=I+just+opened+a+donation+stream+to+${isFundingMatchingPool ? "the matching pool" : granteeName}+in+the+${poolName}+SQF+round%21+Support+public+goods+by+opening+your+stream+with+a+real%2Dtime+matching+multiplier+from+${isFundingMatchingPool ? "here" : "this+frame"}%3A+%0A%0A${isFundingMatchingPool ? encodeURIComponent(poolUiLink) : encodeURIComponent(framesLink ?? "")}`
+            }
           >
             <Image src="/lens.svg" alt="lens" width={28} height={22} />
             <span style={{ fontSize: "10px" }}>Post on Lens</span>

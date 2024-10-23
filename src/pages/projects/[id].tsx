@@ -12,7 +12,7 @@ import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import ProjectUpdateModal from "@/components/ProjectUpdateModal";
 import PoolCard from "@/components/PoolCard";
-import { MatchingPool } from "@/types/matchingPool";
+import { GDAPool } from "@/types/gdaPool";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
@@ -156,7 +156,7 @@ export default function Project() {
     }
 
     const matchingImpactEstimates: bigint[] = [];
-    const matchingPools: MatchingPool[] = superfluidQueryRes?.pools;
+    const matchingPools: GDAPool[] = superfluidQueryRes?.pools;
 
     for (const i in matchingPools) {
       const matchingPool = matchingPools[i];

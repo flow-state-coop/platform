@@ -195,12 +195,13 @@ export default function Index() {
           </Stack>
           <Stack
             direction="vertical"
-            className="justify-content-center align-items-center rounded-4 p-2 p-sm-4 pb-sm-3 shadow"
+            className="justify-content-center align-items-center rounded-4 p-2 p-sm-4 pb-sm-3 shadow cursor-pointer"
             style={{
               width: isMobile ? "100%" : "40%",
               background: "#33A8C2",
               fontFamily: "Helvetica",
             }}
+            onClick={() => router.push("/core")}
           >
             <p className="m-0 fs-4 fw-bold">Flow State Core</p>
             <p className="m-0 fs-5">Live on October 24</p>

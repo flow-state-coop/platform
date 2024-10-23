@@ -1,10 +1,8 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { formatEther } from "viem";
-import { useClampText } from "use-clamp-text";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
-import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
 import Spinner from "react-bootstrap/Spinner";
@@ -14,24 +12,15 @@ import useFlowingAmount from "@/hooks/flowingAmount";
 import { roundWeiAmount, formatNumberWithCommas } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
-interface MatchingPoolDetailsProps {
-  poolName: string;
-  description: string;
+interface FlowStatecoreDetailsProps {
   matchingPool: GDAPool;
-  matchingTokenInfo: Token;
+  token: Token;
 }
 
-export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
-  const { poolName, description, matchingPool, matchingTokenInfo } = props;
-
-  const [readMore, setReadMore] = useState(false);
+export default function FlowStatecoreDetails(props: FlowStatecoreDetailsProps) {
+  const { matchingPool, token } = props;
 
   const { address } = useAccount();
-  const [descriptionRef, { clampedText }] = useClampText({
-    text: description,
-    ellipsis: "...",
-    expanded: readMore,
-  });
 
   const flowRateToReceiver = useMemo(() => {
     if (address && matchingPool) {
@@ -93,7 +82,9 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
           className="ms-2 rounded-4"
         />
         <Card className="bg-transparent border-0 ms-3">
-          <Card.Title className="fs-6 text-secondary">{poolName}</Card.Title>
+          <Card.Title className="fs-6 text-secondary">
+            Flow State Core
+          </Card.Title>
           <Card.Subtitle className="mb-0 fs-6">
             Your Current Stream
           </Card.Subtitle>
@@ -117,7 +108,7 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
                   )}
                 </Card.Text>
                 <Card.Text as="small" className="mt-1">
-                  {matchingTokenInfo.name} <br />
+                  {token.name} <br />
                   per <br />
                   month
                 </Card.Text>
@@ -202,24 +193,21 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
           total
         </Card.Text>
       </Stack>
-      <Card.Text
-        ref={descriptionRef as React.RefObject<HTMLParagraphElement>}
-        className="m-0 p-2 fs-6"
-        style={{ maxWidth: 500 }}
-      >
-        {description ? clampedText : ""}
+      <Card.Text className="m-0 p-2 fs-6" style={{ maxWidth: 500 }}>
+        Support the Flow State Core by opening a stream to the team distribution
+        pool. Funds are split evenly between the contributors.
+        <br />
+        <br />
+        <Card.Link
+          href="https://docs.google.com/forms/d/e/1FAIpQLSdIIt9mUJTvc-4dOtpgYSTg9DMnT-jccfTCWEzyioEF5vXVDQ/viewform"
+          target="_blank"
+          className="text-primary"
+        >
+          Become a coop member
+        </Card.Link>{" "}
+        and start earning patronage for supporting public goods like us on the
+        Flow State platform.
       </Card.Text>
-      <Button
-        variant="transparent"
-        className="p-0 border-0 shadow-none"
-        onClick={() => setReadMore(!readMore)}
-      >
-        <Image
-          src={readMore ? "/expand-less.svg" : "/expand-more.svg"}
-          alt="expand"
-          width={18}
-        />
-      </Button>
     </Stack>
   );
 }

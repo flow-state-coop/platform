@@ -10,7 +10,7 @@ import {
 import duration from "dayjs/plugin/duration";
 import Offcanvas from "react-bootstrap/Offcanvas";
 import Accordion from "react-bootstrap/Accordion";
-import { MatchingPool } from "@/types/matchingPool";
+import { GDAPool } from "@/types/gdaPool";
 import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
 import { Network } from "@/types/network";
@@ -38,6 +38,7 @@ import {
   ZERO_ADDRESS,
   SECONDS_IN_MONTH,
   FLOW_STATE_RECEIVER,
+  DEFAULT_CHAIN_ID,
 } from "@/lib/constants";
 
 type MatchingPoolFundingProps = {
@@ -46,7 +47,7 @@ type MatchingPoolFundingProps = {
   poolName: string;
   description: string;
   poolUiLink: string;
-  matchingPool: MatchingPool;
+  matchingPool: GDAPool;
   matchingTokenInfo: Token;
   network?: Network;
   receiver: string;
@@ -104,6 +105,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
   } = useTransactionsQueue();
   const { data: ethBalance } = useBalance({
     address,
+    chainId: network?.id ?? DEFAULT_CHAIN_ID,
     query: {
       refetchInterval: 10000,
     },
@@ -113,6 +115,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
   const { data: underlyingTokenBalance } = useBalance({
     address,
     token: (matchingSuperToken?.underlyingToken?.address as Address) ?? void 0,
+    chainId: network?.id ?? DEFAULT_CHAIN_ID,
     query: {
       refetchInterval: 10000,
       enabled: !isPureSuperToken,
@@ -220,7 +223,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
         const accountFlowRate = userAccountSnapshot?.totalNetFlowRate ?? "0";
 
         if (
-          BigInt(accountFlowRate) -
+          BigInt(-accountFlowRate) -
             BigInt(flowRateToReceiver) -
             BigInt(flowRateToFlowState) +
             BigInt(newFlowRate) +
@@ -238,7 +241,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
                 seconds: Number(
                   (BigInt(userAccountSnapshot?.balanceUntilUpdatedAt ?? "0") +
                     parseEther(wrapAmount?.replace(/,/g, "") ?? "0")) /
-                    (BigInt(accountFlowRate) -
+                    (BigInt(-accountFlowRate) -
                       BigInt(flowRateToReceiver) -
                       BigInt(flowRateToFlowState) +
                       BigInt(newFlowRate) +

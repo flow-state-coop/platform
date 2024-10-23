@@ -10,7 +10,7 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
 import CopyTooltip from "@/components/CopyTooltip";
-import { MatchingPool } from "@/types/matchingPool";
+import { GDAPool } from "@/types/gdaPool";
 import { Project } from "@/types/project";
 import { Network } from "@/types/network";
 import { roundWeiAmount } from "@/lib/utils";
@@ -26,7 +26,7 @@ type PoolCardProps = {
     metadata: { name: string };
     recipientsByPoolIdAndChainId: { id: string; recipientAddress: string }[];
   };
-  matchingPool: MatchingPool;
+  matchingPool: GDAPool;
   project: Project;
   network: Network;
 };

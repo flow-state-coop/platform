@@ -11,6 +11,7 @@ import Spinner from "react-bootstrap/Spinner";
 import { Step } from "@/types/checkout";
 import { Network } from "@/types/network";
 import { truncateStr } from "@/lib/utils";
+import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
 export type GuildGatingProps = {
   step: Step;
@@ -40,7 +41,7 @@ export default function GuildGating(props: GuildGatingProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const { address, chainId } = useAccount();
+  const { address } = useAccount();
 
   const handleNftMintRequest = async () => {
     try {
@@ -49,7 +50,10 @@ export default function GuildGating(props: GuildGatingProps) {
 
       const res = await fetch("/api/guild-nft", {
         method: "POST",
-        body: JSON.stringify({ address, chainId }),
+        body: JSON.stringify({
+          address,
+          chainId: network?.id ?? DEFAULT_CHAIN_ID,
+        }),
         headers: {
           "Content-Type": "application/json",
         },

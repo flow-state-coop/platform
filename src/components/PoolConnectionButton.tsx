@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
-import { MatchingPool } from "@/types/matchingPool";
+import { GDAPool } from "@/types/gdaPool";
 import { Network } from "@/types/network";
 import { gdaForwarderAbi } from "@/lib/abi/gdaForwarder";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 
 export default function PoolConnectionButton(props: {
-  matchingPool: MatchingPool;
+  matchingPool: GDAPool;
   network?: Network;
 }) {
   const { matchingPool, network } = props;

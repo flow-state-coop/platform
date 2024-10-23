@@ -1,10 +1,11 @@
-export type MatchingPool = {
+export type GDAPool = {
   id: `0x${string}`;
   flowRate: `${number}`;
   adjustmentFlowRate: `${number}`;
   totalAmountFlowedDistributedUntilUpdatedAt: `${number}`;
   updatedAtTimestamp: number;
   totalUnits: `${number}`;
+  token: { id: `0x${string}` };
   poolMembers: {
     account: {
       id: `0x${string}`;

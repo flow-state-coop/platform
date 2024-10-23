@@ -10,7 +10,7 @@ import {
 import duration from "dayjs/plugin/duration";
 import Offcanvas from "react-bootstrap/Offcanvas";
 import Accordion from "react-bootstrap/Accordion";
-import { MatchingPool } from "@/types/matchingPool";
+import { GDAPool } from "@/types/gdaPool";
 import { Inflow } from "@/types/inflow";
 import { Outflow } from "@/types/outflow";
 import { Step } from "@/types/checkout";
@@ -47,6 +47,7 @@ import {
   ZERO_ADDRESS,
   SECONDS_IN_MONTH,
   FLOW_STATE_RECEIVER,
+  DEFAULT_CHAIN_ID,
 } from "@/lib/constants";
 
 type GranteeFundingProps = {
@@ -61,7 +62,7 @@ type GranteeFundingProps = {
   receiver: string;
   recipientAddress: string;
   inflow: Inflow;
-  matchingPool: MatchingPool;
+  matchingPool: GDAPool;
   matchingFlowRate: bigint;
   userOutflow: Outflow | null;
   flowRateToFlowState: string;
@@ -146,6 +147,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
   } = useTransactionsQueue();
   const { data: ethBalance } = useBalance({
     address,
+    chainId: network?.id ?? DEFAULT_CHAIN_ID,
     query: {
       refetchInterval: 10000,
     },
@@ -154,6 +156,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     allocationTokenSymbol !== "ETHx" && !allocationSuperToken?.underlyingToken;
   const { data: underlyingTokenBalance } = useBalance({
     address,
+    chainId: network?.id ?? DEFAULT_CHAIN_ID,
     token:
       (allocationSuperToken?.underlyingToken?.address as Address) ?? void 0,
     query: {

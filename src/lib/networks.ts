@@ -96,6 +96,7 @@ const networks: Network[] = [
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/base-mainnet/protocol-v1",
     onRampName: "BASE_ETH",
+    flowStateCoreGda: "0xDa52BaD6d11f5027c1ee45798c9c7e733b96F43b",
     passportDecoder: "0xe819c3FA368e164Da88E76A08a60f65280Af3ed6",
     superfluidHost: "0x4C073B3baB6d8826b8C5b229f3cfdC1eC6E47E74",
     superfluidResolver: "0x6a214c324553F96F04eFBDd66908685525Da0E0d",
@@ -142,6 +143,7 @@ const networks: Network[] = [
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/optimism-sepolia/protocol-v1",
     onRampName: "OPTIMISM_ETH",
+    flowStateCoreGda: "0xe70150912e11BB4E3A27dBB786DdEDD9783Bc93A",
     passportDecoder: "0xe53C60F8069C2f0c3a84F9B3DB5cf56f3100ba56",
     superfluidHost: "0xd399e2Fb5f4cf3722a11F65b88FAB6B2B8621005",
     superfluidResolver: "0x554c06487bEc8c890A0345eb05a5292C1b1017Bd",

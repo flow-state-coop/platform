@@ -346,7 +346,7 @@ export default function Pool() {
       );
       const memberFlowRate =
         BigInt(matchingPool.totalUnits) > 0
-          ? (BigInt(member.units) * adjustedFlowRate) /
+          ? (BigInt(member?.units ?? 0) * adjustedFlowRate) /
             BigInt(matchingPool.totalUnits)
           : BigInt(0);
       const poolFlowRateConfig = getPoolFlowRateConfig(
@@ -355,7 +355,7 @@ export default function Pool() {
       const impactMatchingEstimate = calcMatchingImpactEstimate({
         totalFlowRate: BigInt(matchingPool.flowRate ?? 0),
         totalUnits: BigInt(matchingPool.totalUnits ?? 0),
-        granteeUnits: BigInt(member.units),
+        granteeUnits: BigInt(member?.units ?? 0),
         granteeFlowRate: memberFlowRate,
         previousFlowRate: BigInt(0),
         newFlowRate:
@@ -440,12 +440,6 @@ export default function Pool() {
         if (recipient) {
           const grantee = getGrantee(recipient);
           grantees.push(grantee);
-
-          setTransactionPanelState({
-            show: true,
-            isFundingMatchingPool: false,
-            selectedGrantee: 0,
-          });
         }
       }
 
@@ -567,6 +561,22 @@ export default function Pool() {
       nftMintUrl: metadata.nftMintUrl ?? null,
     });
   }, [pool, updateDonorParams]);
+
+  useEffect(() => {
+    if (recipientId && grantees.length > 0) {
+      const granteeIndex = grantees.findIndex(
+        (grantee) => grantee.id === recipientId,
+      );
+
+      if (granteeIndex >= 0) {
+        setTransactionPanelState({
+          show: true,
+          isFundingMatchingPool: false,
+          selectedGrantee: granteeIndex,
+        });
+      }
+    }
+  }, [recipientId, grantees]);
 
   return (
     <SuperfluidContextProvider

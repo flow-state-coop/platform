@@ -5,7 +5,7 @@ const nextConfig = {
     return [
       {
         source: "/octant",
-        destination: "/pool",
+        destination: "/pool/?chainId=8453&poolId=63",
         permanent: true,
       },
     ];

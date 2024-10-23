@@ -34,7 +34,8 @@ export type EditStreamProps = {
   timeInterval: TimeInterval;
   setAmountPerTimeInterval: (amount: string) => void;
   setTimeInterval: (timeInterval: TimeInterval) => void;
-  isFundingMatchingPool: boolean;
+  isFundingMatchingPool?: boolean;
+  isFundingFlowStateCore?: boolean;
   isEligible?: boolean;
   superTokenBalance: bigint;
   hasSufficientBalance: boolean;
@@ -54,6 +55,7 @@ export default function EditStream(props: EditStreamProps) {
     timeInterval,
     setTimeInterval,
     isFundingMatchingPool,
+    isFundingFlowStateCore,
     isEligible,
     superTokenBalance,
     hasSufficientBalance,
@@ -251,6 +253,7 @@ export default function EditStream(props: EditStreamProps) {
             </Dropdown>
           </Stack>
           {!isFundingMatchingPool &&
+            !isFundingFlowStateCore &&
             isNativeSuperToken &&
             Number(amountPerTimeInterval) > 0 &&
             Number(amountPerTimeInterval) < minAllocationPerMonth && (
@@ -267,6 +270,7 @@ export default function EditStream(props: EditStreamProps) {
                 (BigInt(flowRateToReceiver) === BigInt(0) &&
                   Number(amountPerTimeInterval.replace(/,/g, "")) === 0) ||
                 (!isFundingMatchingPool &&
+                  !isFundingFlowStateCore &&
                   isNativeSuperToken &&
                   !isDeletingStream &&
                   Number(amountPerTimeInterval) < minAllocationPerMonth) ||
@@ -282,7 +286,9 @@ export default function EditStream(props: EditStreamProps) {
                           BigInt(newFlowRate) *
                             BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY))
                       ? Step.WRAP
-                      : !isFundingMatchingPool && !isEligible
+                      : !isFundingMatchingPool &&
+                          !isFundingFlowStateCore &&
+                          !isEligible
                         ? Step.ELIGIBILITY
                         : !sessionStorage.getItem("skipSupportFlowState") &&
                             !localStorage.getItem("skipSupportFlowState")

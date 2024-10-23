@@ -9,7 +9,7 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
 import CopyTooltip from "@/components/CopyTooltip";
-import { MatchingPool } from "@/types/matchingPool";
+import { GDAPool } from "@/types/gdaPool";
 import { getApolloClient } from "@/lib/apollo";
 import { Inflow } from "@/types/inflow";
 import { Outflow } from "@/types/outflow";
@@ -25,7 +25,7 @@ interface GranteeDetailsProps {
   poolUiLink: string;
   recipientAddress: string;
   inflow: Inflow;
-  matchingPool: MatchingPool;
+  matchingPool: GDAPool;
   matchingFlowRate: bigint;
   userOutflow: Outflow | null;
   allocationTokenInfo: Token;

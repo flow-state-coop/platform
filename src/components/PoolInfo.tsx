@@ -7,7 +7,7 @@ import Image from "react-bootstrap/Image";
 import Table from "react-bootstrap/Table";
 import InfoTooltip from "@/components/InfoTooltip";
 import { Pool } from "@/types/pool";
-import { MatchingPool } from "@/types/matchingPool";
+import { GDAPool } from "@/types/gdaPool";
 import { Token } from "@/types/token";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
@@ -19,7 +19,7 @@ type PoolInfoProps = Pool & {
   directFlowRate: bigint;
   directTotal: bigint;
   directFunders: number;
-  matchingPool: MatchingPool;
+  matchingPool: GDAPool;
   supervisualUrl: string;
   showTransactionPanel: () => void;
 };
