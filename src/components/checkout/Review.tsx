@@ -126,7 +126,9 @@ export default function Review(props: ReviewProps) {
           ? parseFloat(
               (
                 Number(formatEther(BigInt(netImpact))) /
-                Number(formatEther(BigInt(newFlowRate)))
+                Number(
+                  formatEther(BigInt(newFlowRate) - BigInt(flowRateToReceiver)),
+                )
               ).toFixed(2),
             )
           : null,
@@ -459,7 +461,7 @@ export default function Review(props: ReviewProps) {
                             BigInt(
                               areTransactionsLoading &&
                                 transactionDetailsSnapshot
-                                ? transactionDetailsSnapshot.flowRateToFlowState
+                                ? transactionDetailsSnapshot.flowRateToReceiver
                                 : flowRateToReceiver,
                             )
                               ? "bg-danger"
@@ -485,7 +487,13 @@ export default function Review(props: ReviewProps) {
                                       transactionDetailsSnapshot
                                       ? transactionDetailsSnapshot.newFlowRate
                                       : newFlowRate,
-                                  ),
+                                  ) -
+                                    BigInt(
+                                      areTransactionsLoading &&
+                                        transactionDetailsSnapshot
+                                        ? transactionDetailsSnapshot.flowRateToReceiver
+                                        : flowRateToReceiver,
+                                    ),
                                 ),
                               )
                             ).toFixed(2),
