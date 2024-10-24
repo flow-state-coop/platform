@@ -474,7 +474,7 @@ export default function Pool() {
       }
 
       setGrantees((prev) =>
-        sortingMethod !== SortingMethod.RANDOM
+        sortingMethod !== SortingMethod.RANDOM || granteesBatch.current <= 1
           ? sortGrantees(prev.concat(grantees))
           : prev.concat(grantees),
       );
@@ -482,10 +482,14 @@ export default function Pool() {
       setGrantees((prev) => {
         const grantees: Grantee[] = [];
 
-        for (const recipient of flowStateQueryRes.pool
-          .recipientsByPoolIdAndChainId) {
-          if (prev.find((grantee) => grantee.id === recipient.id)) {
-            grantees.push(getGrantee(recipient));
+        for (const i in prev) {
+          const recipient =
+            flowStateQueryRes.pool.recipientsByPoolIdAndChainId.find(
+              (recipient: { id: string }) => recipient.id === prev[i].id,
+            );
+
+          if (recipient) {
+            grantees[i] = getGrantee(recipient);
           }
         }
 
