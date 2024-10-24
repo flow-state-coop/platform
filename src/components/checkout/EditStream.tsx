@@ -1,4 +1,4 @@
-import { useAccount } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import { parseEther } from "viem";
 import Card from "react-bootstrap/Card";
 import Accordion from "react-bootstrap/Accordion";
@@ -61,7 +61,8 @@ export default function EditStream(props: EditStreamProps) {
     hasSufficientBalance,
   } = props;
 
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
+  const { switchChain } = useSwitchChain();
 
   const isDeletingStream =
     BigInt(flowRateToReceiver) > 0 && BigInt(newFlowRate) === BigInt(0);
@@ -261,7 +262,7 @@ export default function EditStream(props: EditStreamProps) {
                 Minimum Donation = .0004 ETHx/mo
               </Alert>
             )}
-          {address ? (
+          {network && address ? (
             <Button
               variant={isDeletingStream ? "danger" : "primary"}
               disabled={
@@ -277,26 +278,32 @@ export default function EditStream(props: EditStreamProps) {
                 newFlowRate === flowRateToReceiver
               }
               className="py-1 rounded-3 text-light"
-              onClick={() =>
-                setStep(
-                  !hasSufficientBalance
-                    ? Step.TOP_UP
-                    : wrapAmount ||
-                        superTokenBalance <
-                          BigInt(newFlowRate) *
-                            BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY))
-                      ? Step.WRAP
-                      : !isFundingMatchingPool &&
-                          !isFundingFlowStateCore &&
-                          !isEligible
-                        ? Step.ELIGIBILITY
-                        : !sessionStorage.getItem("skipSupportFlowState") &&
-                            !localStorage.getItem("skipSupportFlowState")
-                          ? //? Step.SUPPORT
-                            Step.REVIEW
-                          : Step.REVIEW,
-                )
-              }
+              onClick={() => {
+                if (connectedChain?.id !== network.id) {
+                  switchChain({ chainId: network.id });
+                } else {
+                  setStep(
+                    !hasSufficientBalance
+                      ? Step.TOP_UP
+                      : wrapAmount ||
+                          superTokenBalance <
+                            BigInt(newFlowRate) *
+                              BigInt(
+                                fromTimeUnitsToSeconds(1, TimeInterval.DAY),
+                              )
+                        ? Step.WRAP
+                        : !isFundingMatchingPool &&
+                            !isFundingFlowStateCore &&
+                            !isEligible
+                          ? Step.ELIGIBILITY
+                          : !sessionStorage.getItem("skipSupportFlowState") &&
+                              !localStorage.getItem("skipSupportFlowState")
+                            ? //? Step.SUPPORT
+                              Step.REVIEW
+                            : Step.REVIEW,
+                  );
+                }
+              }}
             >
               {isDeletingStream ? "Cancel Stream" : "Continue"}
             </Button>

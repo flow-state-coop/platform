@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import { formatEther, parseEther } from "viem";
 import dayjs from "dayjs";
 import Image from "next/image";
@@ -15,6 +15,7 @@ import Tooltip from "react-bootstrap/Tooltip";
 import CopyTooltip from "@/components/CopyTooltip";
 import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
+import { Network } from "@/types/network";
 import {
   formatNumberWithCommas,
   fromTimeUnitsToSeconds,
@@ -27,6 +28,7 @@ import { FLOW_STATE_RECEIVER } from "@/lib/constants";
 export type ReviewProps = {
   step: Step;
   setStep: (step: Step) => void;
+  network?: Network;
   receiver: string;
   transactions: (() => Promise<void>)[];
   executeTransactions: (transactions: (() => Promise<void>)[]) => Promise<void>;
@@ -80,6 +82,7 @@ export default function Review(props: ReviewProps) {
   const {
     step,
     setStep,
+    network,
     receiver,
     transactions,
     completedTransactions,
@@ -109,7 +112,8 @@ export default function Review(props: ReviewProps) {
   const [transactionDetailsSnapshot, setTransactionDetailsSnapshot] =
     useState<TransactionDetailsSnapshot | null>(null);
 
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
+  const { switchChain } = useSwitchChain();
 
   const isDeletingStream =
     BigInt(flowRateToReceiver) > 0 && BigInt(newFlowRate) === BigInt(0);
@@ -663,7 +667,11 @@ export default function Review(props: ReviewProps) {
             variant={isDeletingStream ? "danger" : "primary"}
             disabled={transactions.length === 0 || step === Step.SUCCESS}
             className="d-flex justify-content-center mt-2 py-1 rounded-3 fw-bold text-light"
-            onClick={handleSubmit}
+            onClick={
+              network && connectedChain?.id !== network.id
+                ? () => switchChain({ chainId: network.id })
+                : handleSubmit
+            }
           >
             {areTransactionsLoading ? (
               <Stack

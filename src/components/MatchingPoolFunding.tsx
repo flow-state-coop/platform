@@ -637,6 +637,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
           <Review
             step={step}
             setStep={(step) => setStep(step)}
+            network={network}
             receiver={receiver}
             transactions={transactions}
             completedTransactions={completedTransactions}

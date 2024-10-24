@@ -430,6 +430,7 @@ export default function FlowStateCore() {
                 <Review
                   step={step}
                   setStep={(step) => setStep(step)}
+                  network={network}
                   receiver={network.flowStateCoreGda}
                   transactions={transactions}
                   completedTransactions={completedTransactions}
