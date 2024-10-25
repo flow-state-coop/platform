@@ -61,7 +61,7 @@ export default function Success(props: SuccessProps) {
                       : granteeTwitter
                         ? granteeTwitter
                         : granteeName
-                  }%20in%20the%20${poolName}%20%23streamingqf%20round.%20Support%20public%20goods%20by%20opening%20your%20stream%20with%20a%20real-time%20matching%20multiplier%20here%3A%20${encodeURIComponent(poolUiLink)}`
+                  }%20in%20the%20${poolName}%20%23streamingqf%20round.%20Join%20me%20here%3A%20${encodeURIComponent(poolUiLink)}&url=https://x.com/flowstatecoop/status/1849499540988231817`
             }
             data-size="large"
           >
