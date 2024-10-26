@@ -74,8 +74,8 @@ export default function Success(props: SuccessProps) {
             target="_blank"
             href={
               isFundingFlowStateCore
-                ? `https://warpcast.com/~/compose?text=I+just+opened+a+stream+to+the+%40flowstatecoop+Core+team+on+Flow+State.%0AJoin+me+in+supporting+these+public+goods+builders+at+${encodeURIComponent(poolUiLink)}`
-                : `https://warpcast.com/~/compose?text=I+just+opened+a+donation+stream+to+${isFundingMatchingPool ? "the matching pool" : granteeName}+in+the+${poolName}+SQF+round%21+Support+public+goods+by+opening+your+stream+with+a+real%2Dtime+matching+multiplier+from+${isFundingMatchingPool ? "here" : "this+frame"}%3A+%0A%0A${isFundingMatchingPool ? encodeURIComponent(poolUiLink) : encodeURIComponent(framesLink ?? "")}`
+                ? `https://warpcast.com/~/compose?text=I+just+opened+a+stream+to+the+%40flowstatecoop+Core+team+on+Flow+State.%0AJoin+me+in+supporting+these+public+goods+builders+at&embeds[]=${encodeURIComponent(poolUiLink)}`
+                : `https://warpcast.com/~/compose?text=I+just+opened+a+donation+stream+to+${isFundingMatchingPool ? "the matching pool" : granteeName}+in+the+${poolName}+SQF+round%21+Support+public+goods+by+opening+your+stream+with+a+real%2Dtime+matching+multiplier+from+${isFundingMatchingPool ? "here" : "this+frame"}%3A&embeds[]=${isFundingMatchingPool ? encodeURIComponent(poolUiLink) : encodeURIComponent(framesLink ?? "")}`
             }
           >
             <Image
