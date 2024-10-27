@@ -126,7 +126,7 @@ export default function Index() {
         <br />
         <br />
         Audacious breakthroughs are uncommon: they're infrequent and too often
-        privatized. At Flow State, we believe we cam make impact common.{" "}
+        privatized. At Flow State, we believe we can make impact common.{" "}
         <Link
           href="https://forms.gle/VXfRSpAzynTmjvRY9"
           target="_blank"
