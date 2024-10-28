@@ -73,7 +73,7 @@ export default function Wrap(props: WrapProps) {
     <Card className="bg-light rounded-0 border-0 border-bottom border-info">
       <Button
         variant="transparent"
-        className="d-flex align-items-center gap-2 p-3 border-0 rounded-0 shadow-none"
+        className="d-flex align-items-center gap-2 p-3 pb-2 border-0 rounded-0 shadow-none"
         onClick={() => setStep(Step.WRAP)}
         style={{
           pointerEvents:
@@ -124,6 +124,12 @@ export default function Wrap(props: WrapProps) {
       </Button>
       <Accordion.Collapse eventKey={Step.WRAP} className="p-3 pt-0">
         <Stack direction="vertical" gap={3}>
+          <Card.Text className="small mb-1">
+            {token.name} is a wrapped version of{" "}
+            {underlyingTokenBalance?.symbol ?? "N/A"} that enables streaming
+            value transfer. After you open a stream, your {token.name} balance
+            will update accordingly every second.
+          </Card.Text>
           <Stack direction="vertical" className="position-relative">
             <Stack
               direction="horizontal"
