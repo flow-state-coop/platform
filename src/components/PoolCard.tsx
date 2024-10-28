@@ -141,7 +141,7 @@ export default function PoolCard(props: PoolCardProps) {
         <Button
           variant="link p-0"
           target="_blank"
-          href={`https://warpcast.com/~/compose?text=I+just+opened+a+donation+stream+to+${project.metadata.title}+in+the+${pool.metadata.name}+SQF+round%21+Support+public+goods+by+opening+your+stream+with+a+real%2Dtime+matching+multiplier+from+this+frame%3A+%0A%0A${encodeURIComponent(framesLink ?? "")}`}
+          href={`https://warpcast.com/~/compose?text=I+just+opened+a+donation+stream+to+${project.metadata.title}+in+the+${pool.metadata.name}+SQF+round%21+Support+public+goods+by+opening+your+stream+with+a+real%2Dtime+matching+multiplier+from+this+frame%3A&embeds[]=${encodeURIComponent(framesLink ?? "")}`}
         >
           <Image src="/warpcast.svg" alt="warpcast" width={24} height={24} />
         </Button>

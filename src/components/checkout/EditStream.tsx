@@ -110,7 +110,7 @@ export default function EditStream(props: EditStreamProps) {
     <Card className="bg-light rounded-0 rounded-top-4 border-0 border-bottom border-info">
       <Button
         variant="transparent"
-        className="d-flex align-items-center gap-2 p-3 border-0 rounded-0 shadow-none"
+        className="d-flex align-items-center gap-2 p-3 pb-2 border-0 rounded-0 shadow-none"
         style={{
           pointerEvents: isSelected ? "none" : "auto",
         }}
@@ -142,6 +142,20 @@ export default function EditStream(props: EditStreamProps) {
       </Button>
       <Accordion.Collapse eventKey={Step.SELECT_AMOUNT} className="p-3 pt-0">
         <Stack gap={3}>
+          <Card.Text className="small mb-1">
+            Flow State donations are implemented as continuous money streams—not
+            one-time or periodic charges. Your support stream will continue at
+            the <strong>rate</strong> you set here until you cancel or modify
+            it.{" "}
+            <Card.Link
+              href="https://docs.flowstate.network/donors-voters"
+              target="_blank"
+              className="text-primary"
+            >
+              Learn more here
+            </Card.Link>
+            .
+          </Card.Text>
           <Stack direction="horizontal" gap={2}>
             <Badge className="d-flex align-items-center gap-1 bg-white text-dark w-50 rounded-3 px-3 py-2 fs-5 fw-normal">
               <Image
