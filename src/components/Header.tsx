@@ -48,7 +48,7 @@ export default function Header() {
         />
         <Stack direction="horizontal" gap={3}>
           <ConnectWallet />
-          {!address && <CreateCoinbaseWallet />}
+          {!address && !isMobile && <CreateCoinbaseWallet />}
         </Stack>
       </Stack>
     </Nav>
