@@ -1,6 +1,8 @@
+import { useAccount } from "wagmi";
 import { useRouter } from "next/router";
 import { usePathname } from "next/navigation";
 import ConnectWallet from "@/components/ConnectWallet";
+import CreateCoinbaseWallet from "@/components/CreateCoinbaseWallet";
 import Nav from "react-bootstrap/Nav";
 import Stack from "react-bootstrap/Stack";
 import Image from "react-bootstrap/Image";
@@ -9,6 +11,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
+  const { address } = useAccount();
   const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
 
   return (
@@ -43,7 +46,10 @@ export default function Header() {
           className="cursor-pointer"
           onClick={() => router.push("/")}
         />
-        <ConnectWallet />
+        <Stack direction="horizontal" gap={3}>
+          <ConnectWallet />
+          {!address && !isMobile && <CreateCoinbaseWallet />}
+        </Stack>
       </Stack>
     </Nav>
   );
