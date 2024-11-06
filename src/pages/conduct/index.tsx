@@ -59,11 +59,6 @@ export default function Conduct() {
           supporter’s funding streams.
         </li>
         <li>
-          Bribes: Builders should build relationships and exchange long-term
-          value with their supporters. Builders should NOT pay for or fund their
-          supporter’s funding streams.
-        </li>
-        <li>
           Deceit, Falsification, Impersonation, & Fraud: Don’t do those things.
           Be yourself. Be forthcoming. Be honest.
         </li>
