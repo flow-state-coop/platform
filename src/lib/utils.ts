@@ -151,5 +151,8 @@ export function truncateStr(str: string, strLen: number) {
 }
 
 export function getPlaceholderImageSrc() {
-  return `/placeholders/${Math.floor(Math.random() * 6)}.jpg`;
+  const min = 1;
+  const max = 5;
+
+  return `/placeholders/${Math.floor(Math.random() * (max - min + 1)) + min}.jpg`;
 }

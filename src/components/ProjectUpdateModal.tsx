@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Address } from "viem";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
 import InputGroup from "react-bootstrap/InputGroup";
@@ -63,6 +64,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
   const fileInputRefLogo = useRef<HTMLInputElement>(null);
   const fileInputRefBanner = useRef<HTMLInputElement>(null);
 
+  const { openConnectModal } = useConnectModal();
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
@@ -502,7 +504,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
         <Button
           disabled={!metadataForm.title}
           className="w-25 text-light"
-          onClick={handleUpdateProject}
+          onClick={address ? handleUpdateProject : openConnectModal}
         >
           {isCreatingProject ? <Spinner size="sm" /> : "Update"}
         </Button>

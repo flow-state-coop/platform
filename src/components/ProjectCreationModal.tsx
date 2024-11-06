@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { Address, parseEventLogs } from "viem";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
 import Card from "react-bootstrap/Card";
@@ -59,6 +60,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
   const fileInputRefLogo = useRef<HTMLInputElement>(null);
   const fileInputRefBanner = useRef<HTMLInputElement>(null);
 
+  const { openConnectModal } = useConnectModal();
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
@@ -497,7 +499,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
         <Button
           disabled={!metadataForm.title}
           className="w-25 text-light"
-          onClick={handleCreateProject}
+          onClick={address ? handleCreateProject : openConnectModal}
         >
           {isCreatingProject ? <Spinner size="sm" /> : "Create"}
         </Button>
