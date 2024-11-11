@@ -752,6 +752,9 @@ export default function Pool() {
             userAccountSnapshots={
               superfluidQueryRes?.account?.accountTokenSnapshots ?? null
             }
+            shouldMintNft={
+              !isEligible && eligibilityMethod === EligibilityMethod.NFT_GATING
+            }
           />
         ) : transactionPanelState.show &&
           transactionPanelState.selectedGrantee !== null ? (
