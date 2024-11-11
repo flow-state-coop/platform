@@ -450,7 +450,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
   useEffect(() => {
     (async () => {
       if (step === Step.SUCCESS) {
-        if (BigInt(newFlowRate) >= MIN_FLOW_RATE_NFT_MINT) {
+        if (shouldMintNft && BigInt(newFlowRate) >= MIN_FLOW_RATE_NFT_MINT) {
           handleNftMint();
         }
       } else if (step === Step.SUPPORT) {
@@ -477,6 +477,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     step,
     newFlowRate,
     handleNftMint,
+    shouldMintNft,
   ]);
 
   useEffect(() => {
