@@ -20,6 +20,7 @@ import TopUp from "@/components/checkout/TopUp";
 import Wrap from "@/components/checkout/Wrap";
 //import SupportFlowState from "@/components/checkout/SupportFlowState";
 import Review from "@/components/checkout/Review";
+import MatchingPoolNft from "@/components/checkout/MatchingPoolNft";
 import Success from "@/components/checkout/Success";
 import { useSuperfluidContext } from "@/context/Superfluid";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -59,10 +60,18 @@ type MatchingPoolFundingProps = {
         token: { id: string };
       }[]
     | null;
+  shouldMintNft: boolean;
 };
+
+enum MintingError {
+  FAIL = "Something went wrong. Please try again.",
+}
 
 dayjs().format();
 dayjs.extend(duration);
+
+const MIN_FLOW_RATE_NFT_MINT = BigInt(380517503);
+const OCTANT_GDA_POOL = "0x8398c030be586c86759c4f1fc9f63df83c99813a";
 
 export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
   const {
@@ -76,6 +85,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     network,
     receiver,
     userAccountSnapshots,
+    shouldMintNft,
   } = props;
 
   const [step, setStep] = useState<Step>(Step.SELECT_AMOUNT);
@@ -93,6 +103,9 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     useState<TimeInterval>(TimeInterval.MONTH);
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("0");
   const [matchingTokenSymbol, setMatchingTokenSymbol] = useState("");
+  const [isMintingNft, setIsMintingNft] = useState(false);
+  const [hasMintedNft, setHasMintedNft] = useState(false);
+  const [mintingError, setMintingError] = useState("");
 
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
@@ -266,6 +279,40 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     ],
   );
 
+  const handleNftMint = useCallback(async () => {
+    try {
+      setIsMintingNft(true);
+      setMintingError("");
+
+      const res = await fetch("/api/matching-pool-nft", {
+        method: "POST",
+        body: JSON.stringify({
+          address,
+          chainId: network?.id ?? DEFAULT_CHAIN_ID,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setHasMintedNft(true);
+      } else {
+        setMintingError(MintingError.FAIL);
+      }
+
+      setIsMintingNft(false);
+
+      console.info(data);
+    } catch (err) {
+      setIsMintingNft(false);
+      setMintingError(MintingError.FAIL);
+
+      console.error(err);
+    }
+  }, [network, address]);
+
   const liquidationEstimate = useMemo(
     () => calcLiquidationEstimate(amountPerTimeInterval, timeInterval),
     [calcLiquidationEstimate, amountPerTimeInterval, timeInterval],
@@ -402,23 +449,25 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
 
   useEffect(() => {
     (async () => {
-      if (step !== Step.SUPPORT) {
-        return;
+      if (step === Step.SUCCESS) {
+        if (BigInt(newFlowRate) >= MIN_FLOW_RATE_NFT_MINT) {
+          handleNftMint();
+        }
+      } else if (step === Step.SUPPORT) {
+        const currentStreamValue = roundWeiAmount(
+          BigInt(flowRateToFlowState) * BigInt(SECONDS_IN_MONTH),
+          4,
+        );
+
+        const suggestedSupportDonation =
+          suggestedSupportDonationByToken[matchingTokenInfo.name] ?? 1;
+
+        setSupportFlowStateAmount(
+          formatNumberWithCommas(
+            parseFloat(currentStreamValue) + suggestedSupportDonation,
+          ),
+        );
       }
-
-      const currentStreamValue = roundWeiAmount(
-        BigInt(flowRateToFlowState) * BigInt(SECONDS_IN_MONTH),
-        4,
-      );
-
-      const suggestedSupportDonation =
-        suggestedSupportDonationByToken[matchingTokenInfo.name] ?? 1;
-
-      setSupportFlowStateAmount(
-        formatNumberWithCommas(
-          parseFloat(currentStreamValue) + suggestedSupportDonation,
-        ),
-      );
     })();
   }, [
     address,
@@ -426,6 +475,8 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     supportFlowStateTimeInterval,
     matchingTokenInfo.name,
     step,
+    newFlowRate,
+    handleNftMint,
   ]);
 
   useEffect(() => {
@@ -662,6 +713,18 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             superTokenBalance={superTokenBalance}
             underlyingTokenBalance={underlyingTokenBalance}
           />
+          {receiver?.toLowerCase() === OCTANT_GDA_POOL &&
+          ((shouldMintNft &&
+            BigInt(flowRateToReceiver) >= MIN_FLOW_RATE_NFT_MINT) ||
+            (step === Step.SUCCESS &&
+              BigInt(newFlowRate) >= MIN_FLOW_RATE_NFT_MINT)) ? (
+            <MatchingPoolNft
+              handleNftMint={handleNftMint}
+              isMinting={isMintingNft}
+              hasMinted={hasMintedNft}
+              error={mintingError}
+            />
+          ) : null}
           <Success
             step={step}
             isFundingMatchingPool={true}
