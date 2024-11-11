@@ -41,7 +41,7 @@ const chains: { [id: number]: Chain } = {
   11155420: optimismSepolia,
 };
 
-const MINIMUM_FLOW_RATE = BigInt(380517503); // 0.001 per month
+const MINIMUM_FLOW_RATE = BigInt(3424657534); // 0.0009 per month
 
 export async function POST(request: Request) {
   try {
