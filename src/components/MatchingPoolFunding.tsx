@@ -70,7 +70,7 @@ enum MintingError {
 dayjs().format();
 dayjs.extend(duration);
 
-const MIN_FLOW_RATE_NFT_MINT = BigInt(3424657534);
+const MIN_FLOW_RATE_NFT_MINT = BigInt(342465753);
 const OCTANT_GDA_POOL = "0x8398c030be586c86759c4f1fc9f63df83c99813a";
 
 export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
