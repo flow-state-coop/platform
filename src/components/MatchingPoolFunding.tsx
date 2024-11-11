@@ -716,7 +716,8 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
           {receiver?.toLowerCase() === OCTANT_GDA_POOL &&
           ((shouldMintNft &&
             BigInt(flowRateToReceiver) >= MIN_FLOW_RATE_NFT_MINT) ||
-            (step === Step.SUCCESS &&
+            ((shouldMintNft || isMinting || hasMintedNft) &&
+              step === Step.SUCCESS &&
               BigInt(newFlowRate) >= MIN_FLOW_RATE_NFT_MINT)) ? (
             <MatchingPoolNft
               handleNftMint={handleNftMint}
