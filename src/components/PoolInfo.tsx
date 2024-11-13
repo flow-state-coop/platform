@@ -38,7 +38,7 @@ export default function PoolInfo(props: PoolInfoProps) {
     showTransactionPanel,
   } = props;
 
-  const [showFullInfo, setShowFullInfo] = useState(false);
+  const [showFullInfo, setShowFullInfo] = useState(true);
 
   const { isMobile } = useMediaQuery();
 
