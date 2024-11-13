@@ -90,9 +90,6 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
 
   const [step, setStep] = useState<Step>(Step.SELECT_AMOUNT);
   const [amountPerTimeInterval, setAmountPerTimeInterval] = useState("");
-  const [timeInterval, setTimeInterval] = useState<TimeInterval>(
-    TimeInterval.MONTH,
-  );
   const [newFlowRate, setNewFlowRate] = useState("");
   const [wrapAmount, setWrapAmount] = useState("");
   const [newFlowRateToFlowState, setNewFlowRateToFlowState] = useState("");
@@ -223,11 +220,11 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
   );
 
   const calcLiquidationEstimate = useCallback(
-    (amountPerTimeInterval: string, timeInterval: TimeInterval) => {
+    (amountPerTimeInterval: string) => {
       if (address) {
         const newFlowRate =
           parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
+          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
         const newFlowRateToFlowState =
           parseEther(supportFlowStateAmount.replace(/,/g, "")) /
           BigInt(
@@ -314,8 +311,8 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
   }, [network, address]);
 
   const liquidationEstimate = useMemo(
-    () => calcLiquidationEstimate(amountPerTimeInterval, timeInterval),
-    [calcLiquidationEstimate, amountPerTimeInterval, timeInterval],
+    () => calcLiquidationEstimate(amountPerTimeInterval),
+    [calcLiquidationEstimate, amountPerTimeInterval],
   );
 
   const transactions = useMemo(() => {
@@ -445,7 +442,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
         formatNumberWithCommas(parseFloat(currentStreamValue)),
       );
     })();
-  }, [address, flowRateToReceiver, timeInterval]);
+  }, [address, flowRateToReceiver]);
 
   useEffect(() => {
     (async () => {
@@ -485,11 +482,11 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       setNewFlowRate(
         (
           parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]))
+          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
         ).toString(),
       );
     }
-  }, [areTransactionsLoading, amountPerTimeInterval, timeInterval]);
+  }, [areTransactionsLoading, amountPerTimeInterval]);
 
   useEffect(() => {
     if (areTransactionsLoading) {
@@ -556,7 +553,6 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
 
   const updateWrapAmount = (
     amountPerTimeInterval: string,
-    timeInterval: TimeInterval,
     liquidationEstimate: number | null,
   ) => {
     if (amountPerTimeInterval) {
@@ -583,7 +579,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       setNewFlowRate(
         (
           parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]))
+          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
         ).toString(),
       );
     }
@@ -616,23 +612,10 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             amountPerTimeInterval={amountPerTimeInterval}
             setAmountPerTimeInterval={(amount) => {
               setAmountPerTimeInterval(amount);
-              updateWrapAmount(
-                amount,
-                timeInterval,
-                calcLiquidationEstimate(amount, timeInterval),
-              );
+              updateWrapAmount(amount, calcLiquidationEstimate(amount));
             }}
             newFlowRate={newFlowRate}
             wrapAmount={wrapAmount}
-            timeInterval={timeInterval}
-            setTimeInterval={(timeInterval) => {
-              setTimeInterval(timeInterval);
-              updateWrapAmount(
-                amountPerTimeInterval,
-                timeInterval,
-                calcLiquidationEstimate(amountPerTimeInterval, timeInterval),
-              );
-            }}
             isFundingMatchingPool={true}
             superTokenBalance={superTokenBalance}
             hasSufficientBalance={
@@ -706,7 +689,6 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             flowRateToFlowState={flowRateToFlowState}
             newFlowRate={newFlowRate}
             wrapAmount={wrapAmount}
-            timeInterval={timeInterval}
             supportFlowStateAmount={supportFlowStateAmount}
             supportFlowStateTimeInterval={supportFlowStateTimeInterval}
             isFundingMatchingPool={true}
