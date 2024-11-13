@@ -96,9 +96,6 @@ dayjs.extend(duration);
 export default function FlowStateCore() {
   const [step, setStep] = useState<Step>(Step.SELECT_AMOUNT);
   const [amountPerTimeInterval, setAmountPerTimeInterval] = useState("");
-  const [timeInterval, setTimeInterval] = useState<TimeInterval>(
-    TimeInterval.MONTH,
-  );
   const [newFlowRate, setNewFlowRate] = useState("");
   const [wrapAmount, setWrapAmount] = useState("");
   const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
@@ -176,11 +173,11 @@ export default function FlowStateCore() {
   }, [address, superfluidQueryRes]);
 
   const calcLiquidationEstimate = useCallback(
-    (amountPerTimeInterval: string, timeInterval: TimeInterval) => {
+    (amountPerTimeInterval: string) => {
       if (address) {
         const newFlowRate =
           parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
+          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
         const accountFlowRate = userAccountSnapshot?.totalNetFlowRate ?? "0";
 
         if (
@@ -216,8 +213,8 @@ export default function FlowStateCore() {
   );
 
   const liquidationEstimate = useMemo(
-    () => calcLiquidationEstimate(amountPerTimeInterval, timeInterval),
-    [calcLiquidationEstimate, amountPerTimeInterval, timeInterval],
+    () => calcLiquidationEstimate(amountPerTimeInterval),
+    [calcLiquidationEstimate, amountPerTimeInterval],
   );
 
   useEffect(() => {
@@ -283,22 +280,21 @@ export default function FlowStateCore() {
         formatNumberWithCommas(parseFloat(currentStreamValue)),
       );
     })();
-  }, [address, flowRateToReceiver, timeInterval]);
+  }, [address, flowRateToReceiver]);
 
   useEffect(() => {
     if (!areTransactionsLoading && amountPerTimeInterval) {
       setNewFlowRate(
         (
           parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]))
+          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
         ).toString(),
       );
     }
-  }, [areTransactionsLoading, amountPerTimeInterval, timeInterval]);
+  }, [areTransactionsLoading, amountPerTimeInterval]);
 
   const updateWrapAmount = (
     amountPerTimeInterval: string,
-    timeInterval: TimeInterval,
     liquidationEstimate: number | null,
   ) => {
     if (amountPerTimeInterval) {
@@ -325,7 +321,7 @@ export default function FlowStateCore() {
       setNewFlowRate(
         (
           parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]))
+          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
         ).toString(),
       );
     }
@@ -374,26 +370,10 @@ export default function FlowStateCore() {
                   amountPerTimeInterval={amountPerTimeInterval}
                   setAmountPerTimeInterval={(amount) => {
                     setAmountPerTimeInterval(amount);
-                    updateWrapAmount(
-                      amount,
-                      timeInterval,
-                      calcLiquidationEstimate(amount, timeInterval),
-                    );
+                    updateWrapAmount(amount, calcLiquidationEstimate(amount));
                   }}
                   newFlowRate={newFlowRate}
                   wrapAmount={wrapAmount}
-                  timeInterval={timeInterval}
-                  setTimeInterval={(timeInterval) => {
-                    setTimeInterval(timeInterval);
-                    updateWrapAmount(
-                      amountPerTimeInterval,
-                      timeInterval,
-                      calcLiquidationEstimate(
-                        amountPerTimeInterval,
-                        timeInterval,
-                      ),
-                    );
-                  }}
                   isFundingFlowStateCore={true}
                   superTokenBalance={superTokenBalance}
                   hasSufficientBalance={
@@ -447,7 +427,6 @@ export default function FlowStateCore() {
                   wrapAmount={wrapAmount}
                   newFlowRateToFlowState={"0"}
                   flowRateToFlowState={"0"}
-                  timeInterval={timeInterval}
                   supportFlowStateAmount={"0"}
                   supportFlowStateTimeInterval={TimeInterval.MONTH}
                   isFundingFlowStateCore={true}

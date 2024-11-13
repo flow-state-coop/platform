@@ -20,6 +20,7 @@ import {
   formatNumberWithCommas,
   fromTimeUnitsToSeconds,
   TimeInterval,
+  roundWeiAmount,
   convertStreamValueToInterval,
   truncateStr,
 } from "@/lib/utils";
@@ -42,7 +43,6 @@ export type ReviewProps = {
   newFlowRateToFlowState: string;
   flowRateToFlowState: string;
   amountPerTimeInterval: string;
-  timeInterval: TimeInterval;
   supportFlowStateAmount: string;
   supportFlowStateTimeInterval: TimeInterval;
   isFundingMatchingPool?: boolean;
@@ -99,7 +99,6 @@ export default function Review(props: ReviewProps) {
     supportFlowStateAmount,
     supportFlowStateTimeInterval,
     amountPerTimeInterval,
-    timeInterval,
     matchingTokenInfo,
     allocationTokenInfo,
     isFundingMatchingPool,
@@ -380,14 +379,13 @@ export default function Review(props: ReviewProps) {
                 <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
                   {formatNumberWithCommas(
                     parseFloat(
-                      convertStreamValueToInterval(
+                      roundWeiAmount(
                         parseEther(
                           areTransactionsLoading && transactionDetailsSnapshot
                             ? transactionDetailsSnapshot.amountPerTimeInterval
                             : amountPerTimeInterval.replace(/,/g, ""),
                         ),
-                        timeInterval,
-                        TimeInterval.MONTH,
+                        4,
                       ),
                     ),
                   )}

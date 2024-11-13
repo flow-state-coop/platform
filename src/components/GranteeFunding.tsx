@@ -122,9 +122,6 @@ export default function GranteeFunding(props: GranteeFundingProps) {
 
   const [step, setStep] = useState<Step>(Step.SELECT_AMOUNT);
   const [amountPerTimeInterval, setAmountPerTimeInterval] = useState("");
-  const [timeInterval, setTimeInterval] = useState<TimeInterval>(
-    TimeInterval.MONTH,
-  );
   const [newFlowRate, setNewFlowRate] = useState("");
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("0");
   const [wrapAmount, setWrapAmount] = useState("");
@@ -239,11 +236,11 @@ export default function GranteeFunding(props: GranteeFundingProps) {
   );
 
   const calcLiquidationEstimate = useCallback(
-    (amountPerTimeInterval: string, timeInterval: TimeInterval) => {
+    (amountPerTimeInterval: string) => {
       if (address) {
         const newFlowRate =
           parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
+          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
         const newFlowRateToFlowState =
           parseEther(supportFlowStateAmount.replace(/,/g, "")) /
           BigInt(
@@ -296,8 +293,8 @@ export default function GranteeFunding(props: GranteeFundingProps) {
   );
 
   const liquidationEstimate = useMemo(
-    () => calcLiquidationEstimate(amountPerTimeInterval, timeInterval),
-    [calcLiquidationEstimate, amountPerTimeInterval, timeInterval],
+    () => calcLiquidationEstimate(amountPerTimeInterval),
+    [calcLiquidationEstimate, amountPerTimeInterval],
   );
 
   const netImpact = useMemo(() => {
@@ -457,7 +454,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
         formatNumberWithCommas(parseFloat(currentStreamValue)),
       );
     })();
-  }, [address, flowRateToReceiver, timeInterval]);
+  }, [address, flowRateToReceiver]);
 
   useEffect(() => {
     (async () => {
@@ -492,11 +489,11 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       setNewFlowRate(
         (
           parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]))
+          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
         ).toString(),
       );
     }
-  }, [areTransactionsLoading, amountPerTimeInterval, timeInterval]);
+  }, [areTransactionsLoading, amountPerTimeInterval]);
 
   useEffect(() => {
     if (areTransactionsLoading) {
@@ -543,7 +540,6 @@ export default function GranteeFunding(props: GranteeFundingProps) {
 
   const updateWrapAmount = (
     amountPerTimeInterval: string,
-    timeInterval: TimeInterval,
     liquidationEstimate: number | null,
   ) => {
     if (amountPerTimeInterval) {
@@ -570,7 +566,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       setNewFlowRate(
         (
           parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]))
+          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
         ).toString(),
       );
     }
@@ -612,23 +608,10 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               amountPerTimeInterval={amountPerTimeInterval}
               setAmountPerTimeInterval={(amount) => {
                 setAmountPerTimeInterval(amount);
-                updateWrapAmount(
-                  amount,
-                  timeInterval,
-                  calcLiquidationEstimate(amount, timeInterval),
-                );
+                updateWrapAmount(amount, calcLiquidationEstimate(amount));
               }}
               newFlowRate={newFlowRate}
               wrapAmount={wrapAmount}
-              timeInterval={timeInterval}
-              setTimeInterval={(timeInterval) => {
-                setTimeInterval(timeInterval);
-                updateWrapAmount(
-                  amountPerTimeInterval,
-                  timeInterval,
-                  calcLiquidationEstimate(amountPerTimeInterval, timeInterval),
-                );
-              }}
               isFundingMatchingPool={false}
               isEligible={isEligible}
               superTokenBalance={superTokenBalance}
@@ -741,7 +724,6 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               wrapAmount={wrapAmount}
               newFlowRateToFlowState={newFlowRateToFlowState}
               flowRateToFlowState={flowRateToFlowState}
-              timeInterval={timeInterval}
               supportFlowStateAmount={supportFlowStateAmount}
               supportFlowStateTimeInterval={supportFlowStateTimeInterval}
               isFundingMatchingPool={false}

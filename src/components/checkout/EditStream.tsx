@@ -1,9 +1,7 @@
 import { useAccount, useSwitchChain } from "wagmi";
-import { parseEther } from "viem";
 import Card from "react-bootstrap/Card";
 import Accordion from "react-bootstrap/Accordion";
 import Stack from "react-bootstrap/Stack";
-import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import Badge from "react-bootstrap/Badge";
 import Form from "react-bootstrap/Form";
@@ -19,7 +17,6 @@ import {
   fromTimeUnitsToSeconds,
   isNumber,
   formatNumberWithCommas,
-  convertStreamValueToInterval,
 } from "@/lib/utils";
 
 export type EditStreamProps = {
@@ -31,9 +28,7 @@ export type EditStreamProps = {
   amountPerTimeInterval: string;
   newFlowRate: string;
   wrapAmount: string;
-  timeInterval: TimeInterval;
   setAmountPerTimeInterval: (amount: string) => void;
-  setTimeInterval: (timeInterval: TimeInterval) => void;
   isFundingMatchingPool?: boolean;
   isFundingFlowStateCore?: boolean;
   isEligible?: boolean;
@@ -52,8 +47,6 @@ export default function EditStream(props: EditStreamProps) {
     setAmountPerTimeInterval,
     newFlowRate,
     wrapAmount,
-    timeInterval,
-    setTimeInterval,
     isFundingMatchingPool,
     isFundingFlowStateCore,
     isEligible,
@@ -144,9 +137,9 @@ export default function EditStream(props: EditStreamProps) {
         <Stack gap={3}>
           <Card.Text className="small mb-1">
             Flow State donations are implemented as continuous money streams—not
-            one-time or periodic charges. Your support stream will continue at
-            the <strong>rate</strong> you set here until you cancel or modify
-            it.{" "}
+            one-time or periodic charges. Think of them like monthly
+            subscriptions where the total cost is spread across and collected
+            every second in the month.{" "}
             <Card.Link
               href="https://docs.flowstate.network/donors-voters"
               target="_blank"
@@ -176,7 +169,7 @@ export default function EditStream(props: EditStreamProps) {
               {token.name}
             </Badge>
           </Stack>
-          <Stack direction="horizontal" gap={2}>
+          <Stack direction="horizontal" gap={2} className="align-items-stretch">
             <Stack direction="horizontal" className="w-50">
               <Form.Control
                 type="text"
@@ -214,58 +207,9 @@ export default function EditStream(props: EditStreamProps) {
                 </>
               )}
             </Stack>
-            <Dropdown className="w-50">
-              <Dropdown.Toggle
-                variant="blue"
-                className="d-flex justify-content-between align-items-center w-100 bg-white border-0 rounded-3 fs-6"
-              >
-                {timeInterval}
-              </Dropdown.Toggle>
-              <Dropdown.Menu>
-                <Dropdown.Item
-                  onClick={() => {
-                    setAmountPerTimeInterval(
-                      convertStreamValueToInterval(
-                        parseEther(amountPerTimeInterval.replace(/,/g, "")),
-                        timeInterval,
-                        TimeInterval.DAY,
-                      ),
-                    );
-                    setTimeInterval(TimeInterval.DAY);
-                  }}
-                >
-                  {TimeInterval.DAY}
-                </Dropdown.Item>
-                <Dropdown.Item
-                  onClick={() => {
-                    setAmountPerTimeInterval(
-                      convertStreamValueToInterval(
-                        parseEther(amountPerTimeInterval.replace(/,/g, "")),
-                        timeInterval,
-                        TimeInterval.WEEK,
-                      ),
-                    );
-                    setTimeInterval(TimeInterval.WEEK);
-                  }}
-                >
-                  {TimeInterval.WEEK}
-                </Dropdown.Item>
-                <Dropdown.Item
-                  onClick={() => {
-                    setAmountPerTimeInterval(
-                      convertStreamValueToInterval(
-                        parseEther(amountPerTimeInterval.replace(/,/g, "")),
-                        timeInterval,
-                        TimeInterval.MONTH,
-                      ),
-                    );
-                    setTimeInterval(TimeInterval.MONTH);
-                  }}
-                >
-                  {TimeInterval.MONTH}
-                </Dropdown.Item>
-              </Dropdown.Menu>
-            </Dropdown>
+            <Badge className="d-flex align-items-center bg-white w-50 rounded-3 px-3 text-dark fs-6 fw-normal">
+              /month
+            </Badge>
           </Stack>
           {!isFundingMatchingPool &&
             !isFundingFlowStateCore &&
