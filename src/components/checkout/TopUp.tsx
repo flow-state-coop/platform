@@ -65,7 +65,7 @@ export default function TopUp(props: TopUpProps) {
     <Card className="bg-light rounded-0 border-0 border-bottom border-info">
       <Button
         variant="transparent"
-        className="d-flex align-items-center gap-2 p-3 border-0 rounded-0 shadow-none"
+        className="d-flex align-items-center gap-2 p-3 pb-2 border-0 rounded-0 shadow-none"
         onClick={() => setStep(Step.TOP_UP)}
         style={{
           pointerEvents:
@@ -113,6 +113,18 @@ export default function TopUp(props: TopUpProps) {
       </Button>
       <Accordion.Collapse eventKey={Step.TOP_UP} className="p-3 pt-0">
         <>
+          <Card.Text className="small mb-4">
+            Make sure you have enough {ethBalance?.symbol}{" "}
+            {!isUnderlyingTokenNative
+              ? `and ${underlyingTokenBalance?.symbol}`
+              : ""}{" "}
+            to pay for gas and to fund your stream. We recommend having at least
+            3 months of{" "}
+            {isUnderlyingTokenNative
+              ? ethBalance?.symbol
+              : underlyingTokenBalance?.symbol}{" "}
+            to stream.
+          </Card.Text>
           {isUnderlyingTokenNative ? (
             <Stack
               direction="vertical"
@@ -160,20 +172,31 @@ export default function TopUp(props: TopUpProps) {
                   />
                 )}
               </Card.Text>
-              <Card.Text as="small" className="m-0">
+              <Card.Text as="small" className="m-0 text-center">
                 Suggested{" "}
                 {formatNumberWithCommas(
                   parseFloat(roundWeiAmount(suggestedTokenBalance, 6)),
                 )}
+                +
+                <br />
+                <span style={{ fontSize: "0.8rem" }}>(3 months stream)</span>
               </Card.Text>
+              <Button
+                variant="link"
+                href="https://app.across.to/bridge"
+                target="_blank"
+                className="w-100 bg-secondary text-decoration-none rounded-3 text-light fs-6 overflow-hidden"
+              >
+                <Card.Text className="m-0 text-truncate">
+                  Bridge to {network?.name}
+                </Card.Text>
+              </Button>
               <Button
                 variant="link"
                 href={`https://ramp.network/buy?defaultAsset=${network?.onRampName ?? ""}`}
                 target="_blank"
-                rel="noreferrer"
-                className="d-flex justify-content-center align-items-center w-100 gap-1 bg-primary text-decoration-none rounded-3 text-light fs-6"
+                className="w-100 bg-primary text-decoration-none rounded-3 text-light fs-6"
               >
-                <Image src="/swap.svg" alt="swap" width={16} height={16} />
                 Buy {ethBalance?.symbol ?? "ETH"}
               </Button>
             </Stack>
@@ -212,23 +235,28 @@ export default function TopUp(props: TopUpProps) {
                       />
                     )}
                   </Card.Text>
-                  <Card.Text as="small" className="m-0">
+                  <Card.Text as="small" className="m-0 text-center">
                     Suggested {minEthBalance}
+                    <br />
+                    <br />
                   </Card.Text>
                   <Button
-                    className="d-flex justify-content-center align-items-center gap-1 w-100 text-light rounded-3 fs-6"
+                    variant="link"
+                    href="https://app.across.to/bridge"
+                    target="_blank"
+                    className="w-100 bg-secondary text-decoration-none rounded-3 text-light fs-6 overflow-hidden"
+                  >
+                    <Card.Text className="m-0 text-truncate">
+                      Bridge to {network?.name}
+                    </Card.Text>
+                  </Button>
+                  <Button
+                    variant="link"
                     href={`https://ramp.network/buy?defaultAsset=${network?.onRampName ?? ""}`}
                     target="_blank"
+                    className="w-100 bg-primary text-decoration-none rounded-3 text-light fs-6"
                   >
-                    <Image
-                      src="/credit-card.svg"
-                      width={24}
-                      height={24}
-                      alt="card"
-                    />
-                    <Card.Text className="m-0">
-                      Buy {ethBalance?.symbol ?? "ETH"}
-                    </Card.Text>
+                    Buy {ethBalance?.symbol ?? "ETH"}
                   </Button>
                 </Stack>
                 <Stack
@@ -278,20 +306,23 @@ export default function TopUp(props: TopUpProps) {
                       />
                     )}
                   </Card.Text>
-                  <Card.Text as="small" className="m-0">
+                  <Card.Text as="small" className="m-0 text-center">
                     Suggested{" "}
                     {formatNumberWithCommas(
                       parseFloat(roundWeiAmount(suggestedTokenBalance, 6)),
                     )}
+                    +
+                    <br />
+                    <span style={{ fontSize: "0.8rem" }}>
+                      (3 months stream)
+                    </span>
                   </Card.Text>
                   <Button
                     variant="link"
                     href={`https://jumper.exchange/?fromChain=${network?.id ?? ""}&fromToken=0x0000000000000000000000000000000000000000&toChain=${network?.id ?? ""}&toToken=${superTokenInfo.address}`}
                     target="_blank"
-                    rel="noreferrer"
-                    className="d-flex justify-content-center align-items-center w-100 gap-1 bg-primary text-decoration-none rounded-3 text-light fs-6"
+                    className="w-100 bg-primary text-decoration-none rounded-3 text-light fs-6"
                   >
-                    <Image src="/swap.svg" alt="swap" width={16} height={16} />
                     Get {superTokenInfo.name}
                   </Button>
                 </Stack>
