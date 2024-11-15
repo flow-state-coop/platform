@@ -5,37 +5,19 @@ import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
-import Spinner from "react-bootstrap/Spinner";
 import { GDAPool } from "@/types/gdaPool";
-import { Token } from "@/types/token";
 import useFlowingAmount from "@/hooks/flowingAmount";
-import { roundWeiAmount, formatNumberWithCommas } from "@/lib/utils";
+import { formatNumberWithCommas } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 interface FlowStatecoreDetailsProps {
   matchingPool: GDAPool;
-  token: Token;
 }
 
 export default function FlowStatecoreDetails(props: FlowStatecoreDetailsProps) {
-  const { matchingPool, token } = props;
+  const { matchingPool } = props;
 
   const { address } = useAccount();
-
-  const flowRateToReceiver = useMemo(() => {
-    if (address && matchingPool) {
-      const distributor = matchingPool.poolDistributors.find(
-        (distributor: { account: { id: string } }) =>
-          distributor.account.id === address.toLowerCase(),
-      );
-
-      if (distributor) {
-        return distributor.flowRate;
-      }
-    }
-
-    return "0";
-  }, [address, matchingPool]);
 
   const userDistributionInfo = useMemo(() => {
     if (address && matchingPool) {
@@ -73,7 +55,7 @@ export default function FlowStatecoreDetails(props: FlowStatecoreDetailsProps) {
 
   return (
     <Stack direction="vertical" className="bg-light rounded-4 p-2 pt-0">
-      <Stack direction="horizontal" gap={2} className="align-items-center mt-3">
+      <Stack direction="horizontal" gap={2} className="align-items-start mt-3">
         <Image
           src="/logo.png"
           alt="SQF"
@@ -81,40 +63,10 @@ export default function FlowStatecoreDetails(props: FlowStatecoreDetailsProps) {
           height={96}
           className="ms-2 rounded-4"
         />
-        <Card className="bg-transparent border-0 ms-3">
-          <Card.Title className="fs-6 text-secondary">
+        <Card className="bg-transparent border-0 ms-2">
+          <Card.Title className="fs-4 text-secondary">
             Flow State Core
           </Card.Title>
-          <Card.Subtitle className="mb-0 fs-6">
-            Your Current Stream
-          </Card.Subtitle>
-          <Card.Body className="d-flex align-items-center gap-2 p-0">
-            {address && !flowRateToReceiver ? (
-              <Spinner
-                animation="border"
-                role="status"
-                className="mx-auto mt-3 p-3"
-              ></Spinner>
-            ) : (
-              <>
-                <Card.Text as="span" className="fs-1">
-                  {formatNumberWithCommas(
-                    parseFloat(
-                      roundWeiAmount(
-                        BigInt(flowRateToReceiver) * BigInt(SECONDS_IN_MONTH),
-                        4,
-                      ),
-                    ),
-                  )}
-                </Card.Text>
-                <Card.Text as="small" className="mt-1">
-                  {token.name} <br />
-                  per <br />
-                  month
-                </Card.Text>
-              </>
-            )}
-          </Card.Body>
         </Card>
       </Stack>
       <Stack direction="horizontal" gap={1} className="fs-6 p-2 pb-0">
