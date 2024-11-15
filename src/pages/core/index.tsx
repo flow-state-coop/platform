@@ -298,29 +298,39 @@ export default function FlowStateCore() {
     liquidationEstimate: number | null,
   ) => {
     if (amountPerTimeInterval) {
+      const weiAmount = parseEther(amountPerTimeInterval.replace(/,/g, ""));
+
       if (
-        Number(amountPerTimeInterval.replace(/,/g, "")) > 0 &&
+        weiAmount > 0 &&
         liquidationEstimate &&
         dayjs
           .unix(liquidationEstimate)
           .isBefore(dayjs().add(dayjs.duration({ months: 3 })))
       ) {
-        setWrapAmount(
-          formatNumberWithCommas(
-            parseFloat(
-              formatEther(
-                parseEther(amountPerTimeInterval.replace(/,/g, "")) * BigInt(3),
+        if (ethBalance?.value && ethBalance.value <= weiAmount * BigInt(3)) {
+          setWrapAmount(
+            formatNumberWithCommas(
+              parseFloat(
+                formatEther(
+                  ethBalance.value - parseEther(minEthBalance.toString()),
+                ),
               ),
             ),
-          ),
-        );
+          );
+        } else {
+          setWrapAmount(
+            formatNumberWithCommas(
+              parseFloat(formatEther(weiAmount * BigInt(3))),
+            ),
+          );
+        }
       } else {
         setWrapAmount("");
       }
 
       setNewFlowRate(
         (
-          parseEther(amountPerTimeInterval.replace(/,/g, "")) /
+          weiAmount /
           BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
         ).toString(),
       );
@@ -402,6 +412,7 @@ export default function FlowStateCore() {
                   setStep={setStep}
                   wrapAmount={wrapAmount}
                   setWrapAmount={setWrapAmount}
+                  newFlowRate={newFlowRate}
                   token={network.tokens[0]}
                   isFundingFlowStateCore={true}
                   superTokenBalance={superTokenBalance}
