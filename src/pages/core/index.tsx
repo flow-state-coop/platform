@@ -356,10 +356,7 @@ export default function FlowStateCore() {
           >
             <p className="m-0 fs-4">Fund Flow State</p>
             <Stack direction="vertical" className="flex-grow-0">
-              <FlowStateCoreDetails
-                matchingPool={superfluidQueryRes?.pool}
-                token={network.tokens[0]}
-              />
+              <FlowStateCoreDetails matchingPool={superfluidQueryRes?.pool} />
               <Accordion activeKey={step} className="mt-4">
                 <EditStream
                   isSelected={step === Step.SELECT_AMOUNT}

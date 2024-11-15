@@ -16,7 +16,7 @@ import { Outflow } from "@/types/outflow";
 import { ProjectMetadata } from "@/types/project";
 import { Token } from "@/types/token";
 import useFlowingAmount from "../hooks/flowingAmount";
-import { roundWeiAmount, formatNumberWithCommas } from "@/lib/utils";
+import { formatNumberWithCommas } from "@/lib/utils";
 import { SECONDS_IN_MONTH, IPFS_GATEWAYS } from "@/lib/constants";
 
 interface GranteeDetailsProps {
@@ -128,35 +128,14 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           height={96}
           className="ms-2 rounded-4"
         />
-        <Card className="bg-transparent border-0 ms-3">
+        <Card className="bg-transparent border-0 ms-2">
           <Card.Link
             href={`/projects/${profileId}/?chainId=${chainId}`}
             target="_blank"
-            className="fs-6 text-secondary mb-2"
+            className="fs-4 text-secondary mb-2"
           >
             {metadata.title}
           </Card.Link>
-          <Card.Subtitle className="mb-0 fs-6">
-            Your Current Stream
-          </Card.Subtitle>
-          <Card.Body className="d-flex align-items-center gap-2 p-0">
-            <Card.Text as="span" className="fs-1">
-              {formatNumberWithCommas(
-                parseFloat(
-                  roundWeiAmount(
-                    BigInt(userOutflow?.currentFlowRate ?? 0) *
-                      BigInt(SECONDS_IN_MONTH),
-                    4,
-                  ),
-                ),
-              )}
-            </Card.Text>
-            <Card.Text as="small" className="mt-1">
-              {allocationTokenInfo.name} <br />
-              per <br />
-              month
-            </Card.Text>
-          </Card.Body>
         </Card>
       </Stack>
       <Stack
@@ -164,7 +143,6 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
         gap={1}
         className="align-items-end text-info fs-6 p-2"
       >
-        Details
         {!!metadata.website && (
           <Button
             variant="link"
