@@ -202,7 +202,7 @@ export default function Wrap(props: WrapProps) {
                     fontSize: "0.7rem",
                   }}
                 >
-                  {"<.1 @ your stream rate"}
+                  {"<.1 months @ your stream rate"}
                 </i>
               ) : wrapDurationEstimate ? (
                 <i
