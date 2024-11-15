@@ -48,8 +48,8 @@ export default function Privacy() {
       </p>
       <p className="fs-5">
         Flow State does not collect and/or store personal data, such as first
-        name, last name, street address, or date of birth, address, in 
-        connection with your use of the Services.
+        name, last name, street address, or date of birth, in connection with 
+        your use of the Services.
       </p>
       <p className="fs-5">
         Flow State collects non-identifiable data, such as public on-chain data,
@@ -57,7 +57,7 @@ export default function Privacy() {
         page interactions, etc. We use an EU-based PostHog service for 
         anonymized web analytics and session replays. We mask all input values 
         and any personally identifying information in session replays because we 
-        have no interest in identifying individual users. These efforts to help 
+        have no interest in identifying individual users. These efforts help 
         drive production vision and optimize user experiences.
       </p>
       <p className="fs-5">
@@ -147,7 +147,7 @@ export default function Privacy() {
       <p className="fs-5 mt-1">
         If you specifically provide us with information (such as your email
         address or other contact information), we may use that information for 
-        the purposes described whenyou provide it to us. You do not need to 
+        the purposes described when you provide it to us. You do not need to 
         provide us with any personal data to use the Services.
       </p>
       <p className="mt-3 fs-4">How We Use Data</p>
