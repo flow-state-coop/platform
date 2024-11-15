@@ -54,9 +54,13 @@ export default function Wrap(props: WrapProps) {
   const isNativeSuperToken = token.name === "ETHx";
   const wrapDurationEstimate =
     BigInt(newFlowRate) > 0
-      ? Number(wrapAmount?.replace(/,/g, "") ?? "0") /
-        Number(formatEther(BigInt(newFlowRate))) /
-        SECONDS_IN_MONTH
+      ? parseFloat(
+          (
+            Number(wrapAmount?.replace(/,/g, "") ?? "0") /
+            Number(formatEther(BigInt(newFlowRate))) /
+            SECONDS_IN_MONTH
+          ).toFixed(2),
+        )
       : null;
 
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -202,7 +206,8 @@ export default function Wrap(props: WrapProps) {
                     fontSize: "0.7rem",
                   }}
                 >
-                  ~{parseFloat(wrapDurationEstimate.toFixed(2))} months @ your
+                  ~{wrapDurationEstimate}{" "}
+                  {wrapDurationEstimate === 1 ? "month" : "months"} @ your
                   stream rate
                 </i>
               )}

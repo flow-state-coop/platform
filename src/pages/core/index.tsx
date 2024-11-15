@@ -142,7 +142,7 @@ export default function FlowStateCore() {
     userAccountSnapshot?.updatedAtTimestamp ?? 0,
     BigInt(userAccountSnapshot?.totalNetFlowRate ?? 0),
   );
-  const minEthBalance = 0.001;
+  const minEthBalance = 0.0005;
   const suggestedTokenBalance = newFlowRate
     ? BigInt(newFlowRate) * BigInt(SECONDS_IN_MONTH) * BigInt(3)
     : BigInt(0);
@@ -308,13 +308,12 @@ export default function FlowStateCore() {
           .isBefore(dayjs().add(dayjs.duration({ months: 3 })))
       ) {
         if (ethBalance?.value && ethBalance.value <= weiAmount * BigInt(3)) {
+          const amount =
+            ethBalance.value - parseEther(minEthBalance.toString());
+
           setWrapAmount(
             formatNumberWithCommas(
-              parseFloat(
-                formatEther(
-                  ethBalance.value - parseEther(minEthBalance.toString()),
-                ),
-              ),
+              parseFloat(formatEther(amount > 0 ? BigInt(amount) : BigInt(0))),
             ),
           );
         } else {

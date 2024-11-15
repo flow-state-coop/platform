@@ -175,7 +175,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     BigInt(userAccountSnapshot?.totalNetFlowRate ?? 0),
   );
 
-  const minEthBalance = 0.001;
+  const minEthBalance = 0.0005;
   const suggestedTokenBalance = newFlowRate
     ? BigInt(newFlowRate) * BigInt(SECONDS_IN_MONTH) * BigInt(3)
     : BigInt(0);
@@ -557,16 +557,14 @@ export default function GranteeFunding(props: GranteeFundingProps) {
           underlyingTokenBalance?.value &&
           underlyingTokenBalance.value <= weiAmount * BigInt(3)
         ) {
+          const amount = isNativeSuperToken
+            ? underlyingTokenBalance.value -
+              parseEther(minEthBalance.toString())
+            : underlyingTokenBalance?.value;
+
           setWrapAmount(
             formatNumberWithCommas(
-              parseFloat(
-                formatEther(
-                  isNativeSuperToken
-                    ? underlyingTokenBalance.value -
-                        parseEther(minEthBalance.toString())
-                    : underlyingTokenBalance.value,
-                ),
-              ),
+              parseFloat(formatEther(amount > 0 ? BigInt(amount) : BigInt(0))),
             ),
           );
         } else {
