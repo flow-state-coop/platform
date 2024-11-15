@@ -54,13 +54,9 @@ export default function Wrap(props: WrapProps) {
   const isNativeSuperToken = token.name === "ETHx";
   const wrapDurationEstimate =
     BigInt(newFlowRate) > 0
-      ? parseFloat(
-          (
-            Number(wrapAmount?.replace(/,/g, "") ?? "0") /
-            Number(formatEther(BigInt(newFlowRate))) /
-            SECONDS_IN_MONTH
-          ).toFixed(2),
-        )
+      ? Number(wrapAmount?.replace(/,/g, "") ?? "0") /
+        Number(formatEther(BigInt(newFlowRate))) /
+        SECONDS_IN_MONTH
       : null;
 
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -197,7 +193,18 @@ export default function Wrap(props: WrapProps) {
                 className="bg-white w-75 border-0 shadow-none"
                 onChange={handleAmountSelection}
               />
-              {wrapDurationEstimate && (
+              {wrapDurationEstimate && wrapDurationEstimate < 0.01 ? (
+                <i
+                  className="ms-2 ps-1 text-danger"
+                  style={{
+                    position: "absolute",
+                    bottom: "34px",
+                    fontSize: "0.7rem",
+                  }}
+                >
+                  {"<.1 @ your stream rate"}
+                </i>
+              ) : wrapDurationEstimate ? (
                 <i
                   className={`ms-2 ps-1 ${wrapDurationEstimate < 3 ? "text-warning" : ""}`}
                   style={{
@@ -206,11 +213,13 @@ export default function Wrap(props: WrapProps) {
                     fontSize: "0.7rem",
                   }}
                 >
-                  ~{wrapDurationEstimate}{" "}
-                  {wrapDurationEstimate === 1 ? "month" : "months"} @ your
-                  stream rate
+                  ~{parseFloat(wrapDurationEstimate.toFixed(2))}{" "}
+                  {parseFloat(wrapDurationEstimate.toFixed(2)) === 1
+                    ? "month"
+                    : "months"}{" "}
+                  @ your stream rate
                 </i>
-              )}
+              ) : null}
               <Badge
                 as="div"
                 className="d-flex justify-content-center align-items-center gap-1 w-25 bg-light text-dark py-2 rounded-3"
