@@ -149,6 +149,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       refetchInterval: 10000,
     },
   });
+  const isNativeSuperToken = allocationTokenSymbol === "ETHx";
   const isPureSuperToken =
     allocationTokenSymbol !== "ETHx" && !allocationSuperToken?.underlyingToken;
   const { data: underlyingTokenBalance } = useBalance({
@@ -174,7 +175,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     BigInt(userAccountSnapshot?.totalNetFlowRate ?? 0),
   );
 
-  const minEthBalance = 0.001;
+  const minEthBalance = 0.0005;
   const suggestedTokenBalance = newFlowRate
     ? BigInt(newFlowRate) * BigInt(SECONDS_IN_MONTH) * BigInt(3)
     : BigInt(0);
@@ -543,29 +544,43 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     liquidationEstimate: number | null,
   ) => {
     if (amountPerTimeInterval) {
+      const weiAmount = parseEther(amountPerTimeInterval.replace(/,/g, ""));
+
       if (
-        Number(amountPerTimeInterval.replace(/,/g, "")) > 0 &&
+        weiAmount > 0 &&
         liquidationEstimate &&
         dayjs
           .unix(liquidationEstimate)
           .isBefore(dayjs().add(dayjs.duration({ months: 3 })))
       ) {
-        setWrapAmount(
-          formatNumberWithCommas(
-            parseFloat(
-              formatEther(
-                parseEther(amountPerTimeInterval.replace(/,/g, "")) * BigInt(3),
-              ),
+        if (
+          underlyingTokenBalance?.value &&
+          underlyingTokenBalance.value <= weiAmount * BigInt(3)
+        ) {
+          const amount = isNativeSuperToken
+            ? underlyingTokenBalance.value -
+              parseEther(minEthBalance.toString())
+            : underlyingTokenBalance?.value;
+
+          setWrapAmount(
+            formatNumberWithCommas(
+              parseFloat(formatEther(amount > 0 ? BigInt(amount) : BigInt(0))),
             ),
-          ),
-        );
+          );
+        } else {
+          setWrapAmount(
+            formatNumberWithCommas(
+              parseFloat(formatEther(weiAmount * BigInt(3))),
+            ),
+          );
+        }
       } else {
         setWrapAmount("");
       }
 
       setNewFlowRate(
         (
-          parseEther(amountPerTimeInterval.replace(/,/g, "")) /
+          weiAmount /
           BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
         ).toString(),
       );
@@ -645,6 +660,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
                 setStep={setStep}
                 wrapAmount={wrapAmount}
                 setWrapAmount={setWrapAmount}
+                newFlowRate={newFlowRate}
                 token={allocationTokenInfo}
                 isFundingMatchingPool={false}
                 isEligible={isEligible}

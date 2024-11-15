@@ -13,12 +13,14 @@ import Tooltip from "react-bootstrap/Tooltip";
 import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
 import { formatNumberWithCommas, isNumber } from "@/lib/utils";
+import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 export type WrapProps = {
   step: Step;
   setStep: (step: Step) => void;
   wrapAmount: string;
   setWrapAmount: (amount: string) => void;
+  newFlowRate: string;
   isFundingMatchingPool?: boolean;
   isFundingFlowStateCore?: boolean;
   isEligible?: boolean;
@@ -38,6 +40,7 @@ export default function Wrap(props: WrapProps) {
     setStep,
     wrapAmount,
     setWrapAmount,
+    newFlowRate,
     token,
     isFundingMatchingPool,
     isFundingFlowStateCore,
@@ -49,6 +52,12 @@ export default function Wrap(props: WrapProps) {
   const { address } = useAccount();
 
   const isNativeSuperToken = token.name === "ETHx";
+  const wrapDurationEstimate =
+    BigInt(newFlowRate) > 0
+      ? Number(wrapAmount?.replace(/,/g, "") ?? "0") /
+        Number(formatEther(BigInt(newFlowRate))) /
+        SECONDS_IN_MONTH
+      : null;
 
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
@@ -154,7 +163,7 @@ export default function Wrap(props: WrapProps) {
                 </Card.Text>
               </Badge>
             </Stack>
-            <Card.Text className="w-100 bg-white m-0 mb-2 px-2 pb-2 rounded-bottom-4 text-end fs-6">
+            <Card.Text className="w-100 bg-white m-0 mb-2 px-2 pb-2 pt-1 rounded-bottom-4 text-end fs-6">
               Balance:{" "}
               {underlyingTokenBalance
                 ? underlyingTokenBalance.formatted.slice(0, 8)
@@ -184,6 +193,33 @@ export default function Wrap(props: WrapProps) {
                 className="bg-white w-75 border-0 shadow-none"
                 onChange={handleAmountSelection}
               />
+              {wrapDurationEstimate && wrapDurationEstimate < 0.01 ? (
+                <i
+                  className="ms-2 ps-1 text-danger"
+                  style={{
+                    position: "absolute",
+                    bottom: "34px",
+                    fontSize: "0.7rem",
+                  }}
+                >
+                  {"<.01 months @ your stream rate"}
+                </i>
+              ) : wrapDurationEstimate ? (
+                <i
+                  className={`ms-2 ps-1 ${wrapDurationEstimate < 3 ? "text-warning" : ""}`}
+                  style={{
+                    position: "absolute",
+                    bottom: "34px",
+                    fontSize: "0.7rem",
+                  }}
+                >
+                  ~{parseFloat(wrapDurationEstimate.toFixed(2))}{" "}
+                  {parseFloat(wrapDurationEstimate.toFixed(2)) === 1
+                    ? "month"
+                    : "months"}{" "}
+                  @ your stream rate
+                </i>
+              ) : null}
               <Badge
                 as="div"
                 className="d-flex justify-content-center align-items-center gap-1 w-25 bg-light text-dark py-2 rounded-3"
@@ -192,7 +228,7 @@ export default function Wrap(props: WrapProps) {
                 <Card.Text className="p-0">{token.name}</Card.Text>
               </Badge>
             </Stack>
-            <Card.Text className="w-100 bg-white m-0 px-2 pb-2 rounded-bottom-4 text-end fs-6">
+            <Card.Text className="w-100 bg-white m-0 px-2 pb-2 pt-1 rounded-bottom-4 text-end fs-6">
               Balance: {formatEther(superTokenBalance).slice(0, 8)}
             </Card.Text>
           </Stack>
