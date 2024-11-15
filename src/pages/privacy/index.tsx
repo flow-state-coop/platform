@@ -21,7 +21,7 @@ export default function Privacy() {
     >
       <h1>Privacy Policy</h1>
       <p className="text-info">Flow State</p>
-      <p className="fs-5">Last Updated: 18 October 2024</p>
+      <p className="fs-5">Last Updated: 15 November 2024</p>
       <p className="fs-5 mt-1">
         This privacy policy (“Policy”) describes how Flow State LCA, a
         Colorado-based limited cooperative association (referred to herein as
@@ -48,8 +48,8 @@ export default function Privacy() {
       </p>
       <p className="fs-5">
         Flow State does not collect and/or store personal data, such as first
-        name, last name, street address, or date of birth, in connection with 
-        your use of the Services.
+        name, last name, street address, date of birth, email address, or IP 
+        address, in connection with your use of the Services.
       </p>
       <p className="fs-5">
         Flow State collects non-identifiable data, such as public on-chain data,
