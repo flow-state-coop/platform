@@ -78,7 +78,10 @@ export default function Projects() {
     }
   }, [router.query]);
 
-  useEffect(() => postHog?.stopSessionRecording(), [postHog]);
+  useEffect(
+    () => postHog.stopSessionRecording(),
+    [postHog, postHog.decideEndpointWasHit],
+  );
 
   return (
     <Container

@@ -297,9 +297,9 @@ export default function FlowStateCore() {
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") {
-      postHog?.startSessionRecording();
+      postHog.startSessionRecording();
     }
-  }, [postHog]);
+  }, [postHog, postHog.decideEndpointWasHit]);
 
   const updateWrapAmount = (
     amountPerTimeInterval: string,

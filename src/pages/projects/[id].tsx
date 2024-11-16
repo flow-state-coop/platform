@@ -207,7 +207,10 @@ export default function Project() {
     }
   }, [router.query]);
 
-  useEffect(() => postHog?.stopSessionRecording(), [postHog]);
+  useEffect(
+    () => postHog.stopSessionRecording(),
+    [postHog, postHog.decideEndpointWasHit],
+  );
 
   useEffect(() => {
     (async () => {

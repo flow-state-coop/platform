@@ -21,9 +21,9 @@ export default function Index() {
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") {
-      postHog?.startSessionRecording();
+      postHog.startSessionRecording();
     }
-  }, [postHog]);
+  }, [postHog, postHog.decideEndpointWasHit]);
 
   return (
     <Container

@@ -41,17 +41,6 @@ export default function App({ Component, pageProps }: AppProps) {
       disable_session_recording: true,
       session_recording: {
         maskTextSelector: ".sensitive",
-        maskCapturedNetworkRequestFn: (request) => {
-          if (
-            request.name.includes("/projects") ||
-            request.name.includes("/admin") ||
-            request.name.includes("/grantee")
-          ) {
-            return null;
-          }
-
-          return request;
-        },
       },
     });
 
