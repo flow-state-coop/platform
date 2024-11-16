@@ -9,6 +9,7 @@ import {
   Operation,
   Framework,
 } from "@superfluid-finance/sdk-core";
+import { usePostHog } from "posthog-js/react";
 import duration from "dayjs/plugin/duration";
 import Accordion from "react-bootstrap/Accordion";
 import Stack from "react-bootstrap/Stack";
@@ -108,6 +109,7 @@ export default function FlowStateCore() {
     networks.find((network) => network.id === chainId) ?? networks[0];
   const { isMobile, isTablet } = useMediaQuery();
   const { address } = useAccount();
+  const postHog = usePostHog();
   const {
     areTransactionsLoading,
     completedTransactions,
@@ -292,6 +294,12 @@ export default function FlowStateCore() {
       );
     }
   }, [areTransactionsLoading, amountPerTimeInterval]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") {
+      postHog.startSessionRecording();
+    }
+  }, [postHog, postHog.decideEndpointWasHit]);
 
   const updateWrapAmount = (
     amountPerTimeInterval: string,

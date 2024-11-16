@@ -325,7 +325,9 @@ export default function Review(props: ReviewProps) {
           </Stack>
           <Stack direction="horizontal">
             <Badge className="d-flex justify-content-around align-items-center w-50 bg-white text-info py-3 rounded-3 border-0 text-center fs-6">
-              {truncateStr(address ?? "", 12)}
+              <Card.Text className="m-0 sensitive">
+                {truncateStr(address ?? "", 12)}
+              </Card.Text>
               <CopyTooltip
                 contentClick="Address copied"
                 contentHover="Copy address"
@@ -542,7 +544,9 @@ export default function Review(props: ReviewProps) {
               </Stack>
               <Stack direction="horizontal">
                 <Badge className="d-flex justify-content-around align-items-center w-50 bg-white text-info py-3 rounded-3 border-0 text-center fs-6">
-                  {truncateStr(address ?? "", 12)}
+                  <Card.Text className="m-0 sensitive">
+                    {truncateStr(address ?? "", 12)}
+                  </Card.Text>
                   <CopyTooltip
                     contentClick="Address copied"
                     contentHover="Copy address"

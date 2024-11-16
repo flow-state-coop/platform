@@ -48,16 +48,16 @@ export default function Privacy() {
       </p>
       <p className="fs-5">
         Flow State does not collect and/or store personal data, such as first
-        name, last name, street address, date of birth, email address, or IP 
+        name, last name, street address, date of birth, email address, or IP
         address, in connection with your use of the Services.
       </p>
       <p className="fs-5">
         Flow State collects non-identifiable data, such as public on-chain data,
-        and off-chain data like device type, browser version, pages you view, 
-        page interactions, etc. We use an EU-based PostHog service for 
-        anonymized web analytics and session replays. We mask all input values 
-        and any personally identifying information in session replays because we 
-        have no interest in identifying individual users. These efforts help 
+        and off-chain data like device type, browser version, pages you view,
+        page interactions, etc. We use an EU-based PostHog service for
+        anonymized web analytics and session replays. We mask all input values
+        and any personally identifying information in session replays because we
+        have no interest in identifying individual users. These efforts help
         drive production vision and optimize user experiences.
       </p>
       <p className="fs-5">
@@ -96,22 +96,23 @@ export default function Privacy() {
       </p>
       <i>Web analytics and browser sessions‍</i>
       <p className="fs-5 mt-1">
-        We do not use cookies or similar technologies to track you across sessions. 
-        We and our third-party services providers (e.g. PostHog) may access and 
-        collect information from localStorage and your browser to track masked 
-        and/or aggregated activity during individual sessions to help improve the 
-        product. For example, we may see that many users are stopping at a specific 
-        step during the donation checkout flow and will use sessions to identify how 
-        to improve it. Information we collect from these technologies may include 
-        things such as browser type, referring/exit pages, operating system, device 
-        or browser language, and interface interactions.
+        We do not use cookies or similar technologies to track you across
+        sessions. We and our third-party services providers (e.g. PostHog) may
+        access and collect information from localStorage and your browser to
+        track masked and/or aggregated activity during individual sessions to
+        help improve the product. For example, we may see that many users are
+        stopping at a specific step during the donation checkout flow and will
+        use sessions to identify how to improve it. Information we collect from
+        these technologies may include things such as browser type,
+        referring/exit pages, operating system, device or browser language, and
+        interface interactions.
       </p>
       <i>Country of origin</i>
       <p className="fs-5 mt-1">
-        We use PostHog to identify the country of origin for sessions based on IP 
-        address. Our data pipeline filters and removes information more granular than 
-        the IP-inferred country of origin before storage. This information is used 
-        to broadly understand our usage demographics.
+        We use PostHog to identify the country of origin for sessions based on
+        IP address. Our data pipeline filters and removes information more
+        granular than the IP-inferred country of origin before storage. This
+        information is used to broadly understand our usage demographics.
       </p>
       <i>Information from other sources</i>
       <p className="fs-5 mt-1">
@@ -146,8 +147,8 @@ export default function Privacy() {
       <i>Information you specifically provide us</i>
       <p className="fs-5 mt-1">
         If you specifically provide us with information (such as your email
-        address or other contact information), we may use that information for 
-        the purposes described when you provide it to us. You do not need to 
+        address or other contact information), we may use that information for
+        the purposes described when you provide it to us. You do not need to
         provide us with any personal data to use the Services.
       </p>
       <p className="mt-3 fs-4">How We Use Data</p>
@@ -187,9 +188,9 @@ export default function Privacy() {
       </p>
       <i>Replay sessions</i>
       <p className="fs-5 mt-1">
-        We may use masked reproductions of single application sessions. 
-        This helps us find product insights by observing natural user behavior 
-        and identifying where we can improve your experience.
+        We may use masked reproductions of single application sessions. This
+        helps us find product insights by observing natural user behavior and
+        identifying where we can improve your experience.
       </p>
       <p className="fs-4 mt-3">How We Share Data</p>
       <p className="fs-5">We may share or disclose the data we collect:</p>

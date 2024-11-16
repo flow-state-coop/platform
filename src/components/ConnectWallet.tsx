@@ -87,7 +87,9 @@ export default function ConnectWallet() {
                           width={isMobile ? 25 : 22}
                           height={isMobile ? 25 : 22}
                         />
-                        {!isMobile && account.displayName}
+                        <span className="sensitive">
+                          {!isMobile && account.displayName}
+                        </span>
                       </Stack>
                     </Dropdown.Toggle>
                     <Dropdown.Menu className="py-0">
