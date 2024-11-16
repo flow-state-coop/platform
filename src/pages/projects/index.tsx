@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useAccount, useSwitchChain } from "wagmi";
 import { gql, useQuery } from "@apollo/client";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { usePostHog } from "posthog-js/react";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
@@ -52,6 +53,7 @@ export default function Projects() {
   const { switchChain } = useSwitchChain();
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
+  const postHog = usePostHog();
   const { data: queryRes, loading } = useQuery(PROJECTS_QUERY, {
     client: getApolloClient("flowState"),
     variables: {
@@ -75,6 +77,8 @@ export default function Projects() {
       setShowProjectCreationModal(true);
     }
   }, [router.query]);
+
+  useEffect(() => postHog?.stopSessionRecording(), [postHog]);
 
   return (
     <Container

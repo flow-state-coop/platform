@@ -1,6 +1,7 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { usePostHog } from "posthog-js/react";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Image from "react-bootstrap/Image";
@@ -12,10 +13,17 @@ export default function Index() {
   const poolsRef = useRef<HTMLDivElement>(null);
 
   const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
+  const postHog = usePostHog();
 
   const handleScrollToPools = () => {
     poolsRef?.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") {
+      postHog?.startSessionRecording();
+    }
+  }, [postHog]);
 
   return (
     <Container

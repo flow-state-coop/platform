@@ -3,6 +3,7 @@ import { useMemo, useCallback, useState, useRef, useEffect } from "react";
 import { useQuery, gql } from "@apollo/client";
 import { parseEther, Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
+import { usePostHog } from "posthog-js/react";
 import { useInView } from "react-intersection-observer";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
@@ -184,6 +185,7 @@ export default function Pool() {
     useMediaQuery();
   const { address } = useAccount();
   const { updateDonorParams } = useDonorParams();
+  const postHog = usePostHog();
   const { data: flowStateQueryRes } = useQuery(POOL_QUERY, {
     client: getApolloClient("flowState"),
     variables: {
@@ -581,6 +583,12 @@ export default function Pool() {
       }
     }
   }, [recipientId, grantees]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") {
+      postHog?.startSessionRecording();
+    }
+  }, [postHog]);
 
   return (
     <SuperfluidContextProvider

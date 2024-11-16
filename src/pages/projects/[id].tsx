@@ -4,6 +4,7 @@ import { parseEther } from "viem";
 import { useAccount, useReadContracts } from "wagmi";
 import { gql, useQuery } from "@apollo/client";
 import { createVerifiedFetch } from "@helia/verified-fetch";
+import { usePostHog } from "posthog-js/react";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
@@ -99,6 +100,7 @@ export default function Project() {
 
   const router = useRouter();
   const chainId = Number(router.query.chainId) ?? null;
+  const postHog = usePostHog();
   const { address } = useAccount();
   const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
   const { data: projectQueryRes, loading } = useQuery(PROJECT_QUERY, {
@@ -204,6 +206,8 @@ export default function Project() {
       setShowProjectUpdateModal(true);
     }
   }, [router.query]);
+
+  useEffect(() => postHog?.stopSessionRecording(), [postHog]);
 
   useEffect(() => {
     (async () => {

@@ -241,7 +241,7 @@ export default function WalletBalance() {
           className="justify-content-between align-items-center p-3"
         >
           <Stack direction="horizontal" className="align-items-center">
-            <Card.Text className="m-0">
+            <Card.Text className="m-0 sensitive">
               {truncateStr(address ?? "0x", 14)}{" "}
             </Card.Text>
             <Button
