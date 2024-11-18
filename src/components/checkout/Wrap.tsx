@@ -1,5 +1,5 @@
 import { useAccount } from "wagmi";
-import { formatEther, formatUnits } from "viem";
+import { formatEther, parseEther, formatUnits } from "viem";
 import Image from "next/image";
 import Card from "react-bootstrap/Card";
 import Accordion from "react-bootstrap/Accordion";
@@ -135,9 +135,11 @@ export default function Wrap(props: WrapProps) {
         <Stack direction="vertical" gap={3}>
           <Card.Text className="small mb-1">
             {token.name} is a wrapped version of{" "}
-            {underlyingTokenBalance?.symbol ?? "N/A"} that enables streaming
-            value transfer. After you open a stream, your {token.name} balance
-            will update accordingly every second.
+            {underlyingTokenBalance?.symbol ?? "N/A"} that enables multiple
+            incoming & outgoing streams from a single token balance. After you
+            open a stream, your {token.name} balance will update accordingly
+            every second as long as it says above 0. You can wrap more & unwrap
+            anytime.
           </Card.Text>
           <Stack direction="vertical" className="position-relative">
             <Stack
@@ -153,6 +155,49 @@ export default function Wrap(props: WrapProps) {
                 className="bg-purple w-75 border-0 shadow-none"
                 onChange={handleAmountSelection}
               />
+              {underlyingTokenBalance &&
+              wrapAmount &&
+              underlyingTokenBalance?.value < parseEther(wrapAmount) ? (
+                <i
+                  className="ms-2 ps-1 text-danger"
+                  style={{
+                    position: "absolute",
+                    top: "38px",
+                    fontSize: "0.7rem",
+                  }}
+                >
+                  Not enough balance
+                </i>
+              ) : isNativeSuperToken &&
+                underlyingTokenBalance &&
+                wrapAmount &&
+                underlyingTokenBalance.value - parseEther(wrapAmount) <
+                  parseEther("0.00002") ? (
+                <i
+                  className="ms-2 ps-1 text-danger"
+                  style={{
+                    position: "absolute",
+                    top: "38px",
+                    fontSize: "0.7rem",
+                  }}
+                >
+                  Leave more for transaction costs
+                </i>
+              ) : underlyingTokenBalance && wrapAmount ? (
+                <i
+                  className="ms-2 ps-1"
+                  style={{
+                    position: "absolute",
+                    top: "38px",
+                    fontSize: "0.7rem",
+                  }}
+                >
+                  Remaining after wrapping{" "}
+                  {formatEther(
+                    underlyingTokenBalance?.value - parseEther(wrapAmount),
+                  ).slice(0, 8)}
+                </i>
+              ) : null}
               <Badge
                 as="div"
                 className="d-flex justify-content-center align-items-center w-25 gap-1 bg-light text-dark py-2 rounded-3"

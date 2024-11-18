@@ -163,7 +163,8 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
   const hasSuggestedTokenBalance =
     (isPureSuperToken &&
       underlyingTokenBalance &&
-      underlyingTokenBalance.value > suggestedTokenBalance) ||
+      underlyingTokenBalance.value + superTokenBalance >
+        suggestedTokenBalance) ||
     superTokenBalance > suggestedTokenBalance
       ? true
       : false;
