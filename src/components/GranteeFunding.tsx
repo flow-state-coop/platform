@@ -187,13 +187,14 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     (!isPureSuperToken &&
       underlyingTokenBalance &&
       underlyingTokenBalance.value + superTokenBalance > BigInt(0)) ||
-    (isPureSuperToken && superTokenBalance > BigInt(0))
+    superTokenBalance > BigInt(0)
       ? true
       : false;
   const hasSuggestedTokenBalance =
     (!isPureSuperToken &&
       underlyingTokenBalance &&
-      underlyingTokenBalance.value > suggestedTokenBalance) ||
+      underlyingTokenBalance.value + superTokenBalance >
+        suggestedTokenBalance) ||
     superTokenBalance > suggestedTokenBalance
       ? true
       : false;
