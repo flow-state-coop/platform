@@ -138,7 +138,7 @@ export default function Wrap(props: WrapProps) {
             {underlyingTokenBalance?.symbol ?? "N/A"} that enables multiple
             incoming & outgoing streams from a single token balance. After you
             open a stream, your {token.name} balance will update accordingly
-            every second as long as it says above 0. You can wrap more & unwrap
+            every second as long as it stays above 0. You can wrap more & unwrap
             anytime.
           </Card.Text>
           <Stack direction="vertical" className="position-relative">
