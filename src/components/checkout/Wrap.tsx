@@ -157,7 +157,8 @@ export default function Wrap(props: WrapProps) {
               />
               {underlyingTokenBalance &&
               wrapAmount &&
-              underlyingTokenBalance?.value < parseEther(wrapAmount) ? (
+              underlyingTokenBalance?.value <
+                parseEther(wrapAmount?.replace(/,/g, "")) ? (
                 <i
                   className="ms-2 ps-1 text-danger"
                   style={{
@@ -171,7 +172,8 @@ export default function Wrap(props: WrapProps) {
               ) : isNativeSuperToken &&
                 underlyingTokenBalance &&
                 wrapAmount &&
-                underlyingTokenBalance.value - parseEther(wrapAmount) <
+                underlyingTokenBalance.value -
+                  parseEther(wrapAmount?.replace(/,/g, "")) <
                   parseEther("0.00002") ? (
                 <i
                   className="ms-2 ps-1 text-danger"
@@ -194,7 +196,8 @@ export default function Wrap(props: WrapProps) {
                 >
                   Remaining after wrapping{" "}
                   {formatEther(
-                    underlyingTokenBalance?.value - parseEther(wrapAmount),
+                    underlyingTokenBalance?.value -
+                      parseEther(wrapAmount?.replace(/,/g, "")),
                   ).slice(0, 8)}
                 </i>
               ) : null}
