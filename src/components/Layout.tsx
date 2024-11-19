@@ -28,14 +28,10 @@ export default function Layout({ children }: LayoutProps) {
         <Stack
           direction="horizontal"
           className="flex-grow-1"
-          style={{ minHeight: "100vh" }}
+          style={{ minHeight: "100svh" }}
         >
           {showSidebar && (
-            <Stack
-              direction="vertical"
-              className="w-25"
-              style={{ flexGrow: 1 }}
-            >
+            <Stack direction="vertical" className="w-25 flex-grow-1">
               <Sidebar />
             </Stack>
           )}
