@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useEnsAvatar, useEnsName } from "wagmi";
 import {
   ReactFlow,
@@ -19,6 +19,7 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Jazzicon, { jsNumberForAddress } from "react-jazzicon";
 import { GDAPool } from "@/types/gdaPool";
+import { useMediaQuery } from "@/hooks/mediaQuery";
 import { truncateStr } from "@/lib/utils";
 import "@xyflow/react/dist/style.css";
 
@@ -205,6 +206,9 @@ function CustomEdge(props: EdgeProps<Edge>) {
 
 export default function FlowStateCoreGraph(props: FlowStateCoreGraphProps) {
   const { pool, chainId } = props;
+  const { isMobile, isTablet } = useMediaQuery();
+
+  const [isMounting, setIsMounting] = useState(true);
 
   const graph = useMemo(() => {
     if (!pool) {
@@ -302,8 +306,15 @@ export default function FlowStateCoreGraph(props: FlowStateCoreGraphProps) {
     return { nodes, edges };
   }, [pool, chainId]);
 
+  useEffect(() => setIsMounting(false), []);
+
   return (
-    <div style={{ width: "75%", height: "100%" }}>
+    <div
+      style={{
+        width: isMobile || isTablet || isMounting ? "100%" : "75%",
+        minHeight: "100%",
+      }}
+    >
       <ReactFlow
         defaultNodes={graph.nodes}
         defaultEdges={graph.edges}

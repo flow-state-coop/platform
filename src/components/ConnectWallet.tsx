@@ -78,7 +78,7 @@ export default function ConnectWallet() {
                     >
                       <Stack
                         direction="horizontal"
-                        gap={2}
+                        gap={isMobile ? 0 : 2}
                         className="align-items-center"
                       >
                         <Image

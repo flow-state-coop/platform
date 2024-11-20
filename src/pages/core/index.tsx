@@ -13,6 +13,9 @@ import { usePostHog } from "posthog-js/react";
 import duration from "dayjs/plugin/duration";
 import Accordion from "react-bootstrap/Accordion";
 import Stack from "react-bootstrap/Stack";
+import Button from "react-bootstrap/Button";
+import Offcanvas from "react-bootstrap/Offcanvas";
+import Image from "react-bootstrap/Image";
 import { Step } from "@/types/checkout";
 import EditStream from "@/components/checkout/EditStream";
 import TopUp from "@/components/checkout/TopUp";
@@ -100,6 +103,7 @@ export default function FlowStateCore() {
   const [newFlowRate, setNewFlowRate] = useState("");
   const [wrapAmount, setWrapAmount] = useState("");
   const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
+  const [showTransactionPanel, setShowTransactionPanel] = useState(false);
 
   const router = useRouter();
   const chainId = router.query.chainId
@@ -344,6 +348,95 @@ export default function FlowStateCore() {
     }
   };
 
+  const TransactionPanelBody = () => (
+    <Stack direction="vertical" className="flex-grow-0">
+      <FlowStateCoreDetails matchingPool={superfluidQueryRes?.pool} />
+      <Accordion activeKey={step} className="mt-4">
+        <EditStream
+          isSelected={step === Step.SELECT_AMOUNT}
+          setStep={(step) => setStep(step)}
+          token={network.tokens[0]}
+          network={network}
+          flowRateToReceiver={flowRateToReceiver}
+          amountPerTimeInterval={amountPerTimeInterval}
+          setAmountPerTimeInterval={(amount) => {
+            setAmountPerTimeInterval(amount);
+            updateWrapAmount(amount, calcLiquidationEstimate(amount));
+          }}
+          newFlowRate={newFlowRate}
+          wrapAmount={wrapAmount}
+          isFundingFlowStateCore={true}
+          superTokenBalance={superTokenBalance}
+          hasSufficientBalance={
+            !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
+          }
+        />
+        <TopUp
+          step={step}
+          setStep={(step) => setStep(step)}
+          newFlowRate={newFlowRate}
+          wrapAmount={wrapAmount}
+          isFundingFlowStateCore={true}
+          superTokenBalance={superTokenBalance}
+          minEthBalance={minEthBalance}
+          suggestedTokenBalance={suggestedTokenBalance}
+          hasSufficientEthBalance={hasSufficientEthBalance}
+          hasSufficientTokenBalance={hasSufficientTokenBalance}
+          hasSuggestedTokenBalance={hasSuggestedTokenBalance}
+          ethBalance={ethBalance}
+          underlyingTokenBalance={ethBalance}
+          network={network}
+          superTokenInfo={network.tokens[0]}
+        />
+        <Wrap
+          step={step}
+          setStep={setStep}
+          wrapAmount={wrapAmount}
+          setWrapAmount={setWrapAmount}
+          newFlowRate={newFlowRate}
+          token={network.tokens[0]}
+          isFundingFlowStateCore={true}
+          superTokenBalance={superTokenBalance}
+          underlyingTokenBalance={ethBalance}
+        />
+        <Review
+          step={step}
+          setStep={(step) => setStep(step)}
+          network={network}
+          receiver={network.flowStateCoreGda}
+          transactions={transactions}
+          completedTransactions={completedTransactions}
+          areTransactionsLoading={areTransactionsLoading}
+          transactionError={transactionError}
+          executeTransactions={executeTransactions}
+          liquidationEstimate={liquidationEstimate}
+          netImpact={BigInt(0)}
+          matchingTokenInfo={network.tokens[0]}
+          allocationTokenInfo={network.tokens[0]}
+          flowRateToReceiver={flowRateToReceiver}
+          amountPerTimeInterval={amountPerTimeInterval}
+          newFlowRate={newFlowRate}
+          wrapAmount={wrapAmount}
+          newFlowRateToFlowState={"0"}
+          flowRateToFlowState={"0"}
+          supportFlowStateAmount={"0"}
+          supportFlowStateTimeInterval={TimeInterval.MONTH}
+          isFundingFlowStateCore={true}
+          isPureSuperToken={false}
+          superTokenBalance={superTokenBalance}
+          underlyingTokenBalance={ethBalance}
+        />
+        <Success
+          step={step}
+          isFundingFlowStateCore={true}
+          poolName="Flow State Core"
+          poolUiLink="https://flowstate.network/core"
+          newFlowRate={newFlowRate}
+        />
+      </Accordion>
+    </Stack>
+  );
+
   return (
     <>
       {!network ? (
@@ -352,115 +445,60 @@ export default function FlowStateCore() {
         </Stack>
       ) : (
         <Stack
-          direction={isTablet ? "vertical" : "horizontal"}
+          direction="horizontal"
           className="align-items-stretch flex-grow-1 overflow-hidden"
           style={{ height: 0 }}
         >
-          {!isMobile && !isTablet && (
-            <FlowStateCoreGraph
-              key={graphComponentKey}
-              pool={superfluidQueryRes?.pool}
-              chainId={chainId}
-            />
-          )}
-          <Stack
-            direction="vertical"
-            className={`${isMobile || isTablet ? "w-100" : "w-25"} p-3 mx-auto me-0 h-100 overflow-y-auto`}
-            style={{
-              minHeight: "100svh",
-              boxShadow: "-0.4rem 0 0.4rem 1px rgba(0,0,0,0.1)",
-            }}
-          >
-            <p className="m-0 fs-4">Fund Flow State</p>
-            <Stack direction="vertical" className="flex-grow-0">
-              <FlowStateCoreDetails matchingPool={superfluidQueryRes?.pool} />
-              <Accordion activeKey={step} className="mt-4">
-                <EditStream
-                  isSelected={step === Step.SELECT_AMOUNT}
-                  setStep={(step) => setStep(step)}
-                  token={network.tokens[0]}
-                  network={network}
-                  flowRateToReceiver={flowRateToReceiver}
-                  amountPerTimeInterval={amountPerTimeInterval}
-                  setAmountPerTimeInterval={(amount) => {
-                    setAmountPerTimeInterval(amount);
-                    updateWrapAmount(amount, calcLiquidationEstimate(amount));
-                  }}
-                  newFlowRate={newFlowRate}
-                  wrapAmount={wrapAmount}
-                  isFundingFlowStateCore={true}
-                  superTokenBalance={superTokenBalance}
-                  hasSufficientBalance={
-                    !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
-                  }
-                />
-                <TopUp
-                  step={step}
-                  setStep={(step) => setStep(step)}
-                  newFlowRate={newFlowRate}
-                  wrapAmount={wrapAmount}
-                  isFundingFlowStateCore={true}
-                  superTokenBalance={superTokenBalance}
-                  minEthBalance={minEthBalance}
-                  suggestedTokenBalance={suggestedTokenBalance}
-                  hasSufficientEthBalance={hasSufficientEthBalance}
-                  hasSufficientTokenBalance={hasSufficientTokenBalance}
-                  hasSuggestedTokenBalance={hasSuggestedTokenBalance}
-                  ethBalance={ethBalance}
-                  underlyingTokenBalance={ethBalance}
-                  network={network}
-                  superTokenInfo={network.tokens[0]}
-                />
-                <Wrap
-                  step={step}
-                  setStep={setStep}
-                  wrapAmount={wrapAmount}
-                  setWrapAmount={setWrapAmount}
-                  newFlowRate={newFlowRate}
-                  token={network.tokens[0]}
-                  isFundingFlowStateCore={true}
-                  superTokenBalance={superTokenBalance}
-                  underlyingTokenBalance={ethBalance}
-                />
-                <Review
-                  step={step}
-                  setStep={(step) => setStep(step)}
-                  network={network}
-                  receiver={network.flowStateCoreGda}
-                  transactions={transactions}
-                  completedTransactions={completedTransactions}
-                  areTransactionsLoading={areTransactionsLoading}
-                  transactionError={transactionError}
-                  executeTransactions={executeTransactions}
-                  liquidationEstimate={liquidationEstimate}
-                  netImpact={BigInt(0)}
-                  matchingTokenInfo={network.tokens[0]}
-                  allocationTokenInfo={network.tokens[0]}
-                  flowRateToReceiver={flowRateToReceiver}
-                  amountPerTimeInterval={amountPerTimeInterval}
-                  newFlowRate={newFlowRate}
-                  wrapAmount={wrapAmount}
-                  newFlowRateToFlowState={"0"}
-                  flowRateToFlowState={"0"}
-                  supportFlowStateAmount={"0"}
-                  supportFlowStateTimeInterval={TimeInterval.MONTH}
-                  isFundingFlowStateCore={true}
-                  isPureSuperToken={false}
-                  superTokenBalance={superTokenBalance}
-                  underlyingTokenBalance={ethBalance}
-                />
-                <Success
-                  step={step}
-                  isFundingFlowStateCore={true}
-                  poolName="Flow State Core"
-                  poolUiLink="https://flowstate.network/core"
-                  newFlowRate={newFlowRate}
-                />
-              </Accordion>
+          <FlowStateCoreGraph
+            key={graphComponentKey}
+            pool={superfluidQueryRes?.pool}
+            chainId={chainId}
+          />
+          {!isMobile && !isTablet ? (
+            <Stack
+              direction="vertical"
+              className="w-25 p-3 mx-auto me-0 overflow-y-auto"
+              style={{
+                minHeight: "100svh",
+                boxShadow: "-0.4rem 0 0.4rem 1px rgba(0,0,0,0.1)",
+              }}
+            >
+              <p className="m-0 fs-4">Fund Flow State</p>
+              <TransactionPanelBody />
             </Stack>
-          </Stack>
+          ) : (
+            <Offcanvas
+              show={showTransactionPanel}
+              placement="bottom"
+              onHide={() => setShowTransactionPanel(false)}
+              className="h-100"
+            >
+              <Offcanvas.Header closeButton className="fs-4 pb-2">
+                Fund Flow State
+              </Offcanvas.Header>
+              <Offcanvas.Body>
+                <TransactionPanelBody />
+              </Offcanvas.Body>
+            </Offcanvas>
+          )}
         </Stack>
       )}
+      <Button
+        onClick={() => setShowTransactionPanel(true)}
+        className="d-lg-none position-absolute bottom-0 end-0 me-4 mb-3 p-0 rounded-circle"
+        style={{ width: 64, height: 64 }}
+      >
+        <Image
+          src="/add.svg"
+          alt="Open"
+          width={38}
+          height={38}
+          style={{
+            filter:
+              "invert(100%) sepia(0%) saturate(0%) hue-rotate(49deg) brightness(103%) contrast(103%)",
+          }}
+        />
+      </Button>
     </>
   );
 }
