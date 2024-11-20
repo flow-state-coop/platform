@@ -15,6 +15,7 @@ import Accordion from "react-bootstrap/Accordion";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Offcanvas from "react-bootstrap/Offcanvas";
+import Image from "react-bootstrap/Image";
 import { Step } from "@/types/checkout";
 import EditStream from "@/components/checkout/EditStream";
 import TopUp from "@/components/checkout/TopUp";
@@ -484,9 +485,19 @@ export default function FlowStateCore() {
       )}
       <Button
         onClick={() => setShowTransactionPanel(true)}
-        className="d-lg-none position-absolute bottom-0 end-0 me-4 mb-3 px-5"
+        className="d-lg-none position-absolute bottom-0 end-0 me-4 mb-3 p-0 rounded-circle"
+        style={{ width: 64, height: 64 }}
       >
-        Start Stream
+        <Image
+          src="/add.svg"
+          alt="Open"
+          width={38}
+          height={38}
+          style={{
+            filter:
+              "invert(100%) sepia(0%) saturate(0%) hue-rotate(49deg) brightness(103%) contrast(103%)",
+          }}
+        />
       </Button>
     </>
   );
