@@ -178,7 +178,7 @@ export default function GuildGating(props: GuildGatingProps) {
             variant="link"
             href={nftMintUrl ?? ""}
             target="_blank"
-            className="bg-secondary text-light"
+            className="bg-secondary text-light text-decoration-none"
           >
             {isEligible ? "Check Guild Role" : "1. Earn Guild Role"}
           </Button>

@@ -153,7 +153,7 @@ export default function FlowStatecoreDetails(props: FlowStatecoreDetailsProps) {
         <Card.Link
           href="https://docs.google.com/forms/d/e/1FAIpQLSdIIt9mUJTvc-4dOtpgYSTg9DMnT-jccfTCWEzyioEF5vXVDQ/viewform"
           target="_blank"
-          className="text-primary"
+          className="text-primary text-decoration-none"
         >
           Become a coop member
         </Card.Link>{" "}

@@ -97,9 +97,7 @@ export default function Pools() {
       {!profileId || !chainId ? (
         <Card.Text>
           Program not found, please select one from{" "}
-          <Link href="/admin" className="text-decoration-underline">
-            Program Selection
-          </Link>
+          <Link href="/admin">Program Selection</Link>
         </Card.Text>
       ) : loading || !chainId || !profileId ? (
         <Spinner className="m-auto" />
@@ -114,10 +112,7 @@ export default function Pools() {
           >
             {network?.name}
           </span>{" "}
-          or return to{" "}
-          <Link href="/admin" className="text-decoration-underline">
-            Program Selection
-          </Link>
+          or return to <Link href="/admin">Program Selection</Link>
         </Card.Text>
       ) : (
         <Stack direction="horizontal" gap={5} className="flex-wrap">

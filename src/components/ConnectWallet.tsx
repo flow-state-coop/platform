@@ -94,7 +94,9 @@ export default function ConnectWallet() {
                     </Dropdown.Toggle>
                     <Dropdown.Menu className="py-0">
                       <Dropdown.Item className="py-3 rounded-top-1 text-dark">
-                        <Link href="/projects">Projects</Link>
+                        <Link href="/projects" className="text-decoration-none">
+                          Projects
+                        </Link>
                       </Dropdown.Item>
                       <Dropdown.Item
                         className="gap-2 py-3 border-top rounded-bottom-1 text-dark"

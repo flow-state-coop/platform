@@ -143,7 +143,7 @@ export default function EditStream(props: EditStreamProps) {
             <Card.Link
               href="https://docs.flowstate.network/donors-voters"
               target="_blank"
-              className="text-primary"
+              className="text-primary text-decoration-none"
             >
               Learn more here
             </Card.Link>

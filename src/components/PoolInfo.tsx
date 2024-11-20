@@ -154,7 +154,7 @@ export default function PoolInfo(props: PoolInfoProps) {
                 variant="link"
                 href={supervisualUrl}
                 target="_blank"
-                className="bg-secondary p-2 text-light fs-5"
+                className="bg-secondary p-2 text-light fs-5 text-decoration-none"
                 style={{ width: isMobile ? "100%" : 180 }}
               >
                 View Flow State

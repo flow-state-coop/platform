@@ -49,7 +49,7 @@ export default function Success(props: SuccessProps) {
         </Card.Text>
         <Stack direction="horizontal" className="justify-content-around">
           <Card.Link
-            className="d-flex flex-column align-items-center twitter-share-button text-decoration-none fs-6 m-0 w-50"
+            className="d-flex flex-column align-items-center twitter-share-button fs-6 m-0 w-50"
             rel="noreferrer"
             target="_blank"
             href={
@@ -69,7 +69,7 @@ export default function Success(props: SuccessProps) {
             <span style={{ fontSize: "10px" }}>Post to X</span>
           </Card.Link>
           <Card.Link
-            className="d-flex flex-column align-items-center text-decoration-none fs-6 m-0 w-50"
+            className="d-flex flex-column align-items-center fs-6 m-0 w-50"
             rel="noreferrer"
             target="_blank"
             href={
@@ -87,7 +87,7 @@ export default function Success(props: SuccessProps) {
             <span style={{ fontSize: "10px" }}>Cast to Farcaster</span>
           </Card.Link>
           <Card.Link
-            className="d-flex flex-column align-items-center text-decoration-none fs-6 m-0 w-50"
+            className="d-flex flex-column align-items-center fs-6 m-0 w-50"
             rel="noreferrer"
             target="_blank"
             href={

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { createVerifiedFetch } from "@helia/verified-fetch";
 import { useClampText } from "use-clamp-text";
+import removeMarkdown from "remove-markdown";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
@@ -51,7 +52,7 @@ export default function Grantee(props: GranteeProps) {
   const [bannerUrl, setBannerUrl] = useState("");
 
   const [descriptionRef, { noClamp, clampedText }] = useClampText({
-    text: description,
+    text: removeMarkdown(description).replace(/\r?\n|\r/g, " "),
     ellipsis: "...",
     lines: 4,
   });
