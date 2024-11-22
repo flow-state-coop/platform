@@ -48,10 +48,10 @@ export default function Footer() {
         </Button>
       </Stack>
       <Stack direction="horizontal" gap={5} className="mx-auto mt-1 mb-3">
-        <Link href="/terms" className="text-center">
+        <Link href="/terms" className="text-center text-decoration-none">
           Terms of Use
         </Link>
-        <Link href="/privacy" className="text-center">
+        <Link href="/privacy" className="text-center text-decoration-none">
           Privacy Policy
         </Link>
       </Stack>

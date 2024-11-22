@@ -34,17 +34,14 @@ export default function Privacy() {
       <p className="mt-3 fs-4">High-Level Summary</p>
       <p className="fs-5">
         By using the Services, you accept the terms of this Policy and our{" "}
-        <Link href="/terms" className="text-decoration-underline">
-          Terms of Use
-        </Link>
-        , and consent to our collection, use, disclosure, and retention of your
-        information as described in this Policy. If you have not done so
-        already, please also review our Terms of Use. The terms of use contain
-        provisions that limit our liability to you and require you to resolve
-        any dispute with us on an individual basis and not as part of any class
-        or representative action. IF YOU DO NOT AGREE WITH ANY PART OF THIS
-        PRIVACY POLICY OR OUR TERMS OF USE, THEN PLEASE DO NOT USE ANY OF THE
-        SERVICES.
+        <Link href="/terms">Terms of Use</Link>, and consent to our collection,
+        use, disclosure, and retention of your information as described in this
+        Policy. If you have not done so already, please also review our Terms of
+        Use. The terms of use contain provisions that limit our liability to you
+        and require you to resolve any dispute with us on an individual basis
+        and not as part of any class or representative action. IF YOU DO NOT
+        AGREE WITH ANY PART OF THIS PRIVACY POLICY OR OUR TERMS OF USE, THEN
+        PLEASE DO NOT USE ANY OF THE SERVICES.
       </p>
       <p className="fs-5">
         Flow State does not collect and/or store personal data, such as first

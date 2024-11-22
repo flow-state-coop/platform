@@ -471,9 +471,7 @@ export default function Configure() {
       ) : !profileId || !chainId ? (
         <Card.Text>
           Program not found, please select one from{" "}
-          <Link href="/admin" className="text-decoration-underline">
-            Program Selection
-          </Link>
+          <Link href="/admin">Program Selection</Link>
         </Card.Text>
       ) : !connectedChain ? (
         <>Please connect a wallet</>
@@ -486,10 +484,7 @@ export default function Configure() {
           >
             {network?.name}
           </span>{" "}
-          or return to{" "}
-          <Link href="/admin" className="text-decoration-underline">
-            Program Selection
-          </Link>
+          or return to <Link href="/admin">Program Selection</Link>
         </Card.Text>
       ) : (
         <Form
@@ -746,7 +741,7 @@ export default function Configure() {
             >
               <Link
                 href={`/admin/review/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
-                className="w-100 text-light"
+                className="w-100 text-light text-decoration-none"
                 style={{ paddingTop: 6, paddingBottom: 6 }}
               >
                 Next

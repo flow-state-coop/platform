@@ -1,8 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Georgia:ital,wght@0,400;0,600;0,700;1,400&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Helvetica:ital,wght@0,400;0,600;0,700;1,400&display=swap");
 
-$link-decoration: none;
-$link-hover-decoration: none;
 $box-shadow: 0 0.5rem 1rem rgba(#000, 0.2);
 $h5-font-size: 1rem * 1.125;
 $link-color: #000;
@@ -57,6 +55,13 @@ input::-webkit-inner-spin-button {
 /* Firefox */
 input[type="number"] {
   -moz-appearance: textfield;
+}
+
+blockquote {
+  margin: 0;
+  padding: 0 1em;
+  color: $info;
+  border-left: 0.25em solid #d0d7de;
 }
 
 .tooltip-inner {

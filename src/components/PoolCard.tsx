@@ -124,7 +124,7 @@ export default function PoolCard(props: PoolCardProps) {
         <Card.Footer className="bg-transparent border-0">
           <Button className="d-flex justify-content-center mt-auto w-100 p-0">
             <Link
-              className="w-100 py-1 text-white"
+              className="w-100 py-1 text-white text-decoration-none"
               href={`/pool/?chainId=${network.id}&poolId=${pool.id}&recipientId=${
                 recipientId
               }`}

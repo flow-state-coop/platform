@@ -9,6 +9,7 @@ import {
 } from "wagmi";
 import { gql, useQuery } from "@apollo/client";
 import { useClampText } from "use-clamp-text";
+import removeMarkdown from "remove-markdown";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Dropdown from "react-bootstrap/Dropdown";
@@ -192,7 +193,7 @@ export default function GranteeTools() {
 
   const Description = ({ description }: { description: string }) => {
     const [descriptionRef, { clampedText }] = useClampText({
-      text: description,
+      text: removeMarkdown(description).replace(/\r?\n|\r/g, " "),
       ellipsis: "...",
     });
 
@@ -228,7 +229,6 @@ export default function GranteeTools() {
               <Card.Link
                 href={`${network.blockExplorer}/address/${queryRes?.pool.allocationToken}`}
                 target="_blank"
-                style={{ textDecoration: "underline" }}
               >
                 {allocationToken?.name ?? "N/A"} (
                 {truncateStr(queryRes?.pool.allocationToken ?? "", 12)})
@@ -239,7 +239,6 @@ export default function GranteeTools() {
               <Card.Link
                 href={`${network.blockExplorer}/address/${queryRes?.pool.matchingToken}`}
                 target="_blank"
-                style={{ textDecoration: "underline" }}
               >
                 {matchingToken?.name ?? "N/A"} (
                 {truncateStr(queryRes?.pool.matchingToken ?? "", 12)})

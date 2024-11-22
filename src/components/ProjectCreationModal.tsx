@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import Link from "next/link";
 import { Address, parseEventLogs } from "viem";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -130,7 +131,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
         projectGithub:
           extractGithubUsername(metadataForm.projectGithub) ??
           metadataForm.projectGithub,
-        website: `https://${metadataForm.website}`,
+        website: metadataForm.website ? `https://${metadataForm.website}` : "",
         logoImg,
         bannerImg,
         logoImgData: {},
@@ -201,12 +202,19 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
           </Form.Group>
           <Form.Group className="mb-4">
             <Form.Label>
-              Project Description (~140 characters will show in previews)
+              Project Description{" "}
+              <Link
+                href="https://docs.flowstate.network/project-markdown"
+                target="_blank"
+              >
+                (Markdown
+              </Link>{" "}
+              is supported in full project views, ~140 characters will show in
+              previews & social shares)
             </Form.Label>
             <Form.Control
               as="textarea"
-              rows={4}
-              style={{ resize: "none" }}
+              rows={6}
               value={metadataForm.description}
               placeholder="Your project description"
               onChange={(e) =>

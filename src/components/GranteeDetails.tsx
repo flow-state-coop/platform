@@ -9,6 +9,10 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
 import CopyTooltip from "@/components/CopyTooltip";
+import removeMarkdown from "remove-markdown";
+import Markdown from "react-markdown";
+import rehyperExternalLinks from "rehype-external-links";
+import remarkGfm from "remark-gfm";
 import { GDAPool } from "@/types/gdaPool";
 import { getApolloClient } from "@/lib/apollo";
 import { Inflow } from "@/types/inflow";
@@ -62,10 +66,11 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
   const [imageUrl, setImageUrl] = useState("");
 
   const [descriptionRef, { noClamp, clampedText }] = useClampText({
-    text: metadata.description,
+    text: removeMarkdown(metadata.description).replace(/\r?\n|\r/g, " "),
     ellipsis: "...",
-    expanded: readMore,
+    lines: 4,
   });
+
   const { data: flowStateQueryRes } = useQuery(PROFILE_ID_QUERY, {
     client: getApolloClient("flowState"),
     variables: {
@@ -132,7 +137,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           <Card.Link
             href={`/projects/${profileId}/?chainId=${chainId}`}
             target="_blank"
-            className="fs-4 text-secondary mb-2"
+            className="fs-4 text-secondary mb-2 text-decoration-none"
           >
             {metadata.title}
           </Card.Link>
@@ -320,32 +325,50 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           total
         </Card.Text>
       </Stack>
-      <Card.Text
-        ref={descriptionRef as React.RefObject<HTMLParagraphElement>}
-        className="m-0 p-2 fs-6"
-        style={{ maxWidth: 500 }}
-      >
-        {clampedText}
-      </Card.Text>
-      {readMore && (
-        <Button
-          variant="link"
-          href={`/projects/${profileId}/?chainId=${chainId}`}
-          target="_blank"
-          className="d-flex justify-content-center align-items-center gap-2 bg-primary shadow-none text-light"
+      {readMore || noClamp ? (
+        <>
+          <div style={{ maxWidth: 500 }}>
+            <Markdown
+              className="p-2"
+              skipHtml={true}
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
+              components={{
+                table: (props) => (
+                  <table className="table table-striped" {...props} />
+                ),
+              }}
+            >
+              {metadata.description}
+            </Markdown>
+          </div>
+          <Button
+            variant="link"
+            href={`/projects/${profileId}/?chainId=${chainId}`}
+            target="_blank"
+            className="d-flex justify-content-center align-items-center gap-2 bg-primary shadow-none text-light"
+          >
+            Project Page
+            <Image
+              src="/open-new.svg"
+              alt="Open New"
+              width={20}
+              height={20}
+              style={{
+                filter:
+                  "invert(99%) sepia(1%) saturate(2877%) hue-rotate(199deg) brightness(123%) contrast(89%)",
+              }}
+            />
+          </Button>
+        </>
+      ) : (
+        <Card.Text
+          ref={descriptionRef as React.RefObject<HTMLParagraphElement>}
+          className="m-0 p-2 fs-6"
+          style={{ maxWidth: 500 }}
         >
-          Project Page
-          <Image
-            src="/open-new.svg"
-            alt="Open New"
-            width={20}
-            height={20}
-            style={{
-              filter:
-                "invert(99%) sepia(1%) saturate(2877%) hue-rotate(199deg) brightness(123%) contrast(89%)",
-            }}
-          />
-        </Button>
+          {clampedText}
+        </Card.Text>
       )}
       {(!noClamp || readMore) && (
         <Button

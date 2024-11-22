@@ -100,7 +100,7 @@ function Sidebar() {
         <>
           <Link
             href={`/grantee/?chainId=${chainId}&poolId=${poolId}`}
-            className={pathname === "/grantee" ? "fw-bold" : ""}
+            className={`${pathname === "/grantee" ? "fw-bold" : ""} text-decoration-none`}
             style={{
               pointerEvents: !chainId || !poolId ? "none" : "auto",
             }}
@@ -109,7 +109,7 @@ function Sidebar() {
           </Link>
           <Link
             href={`/grantee/tools/?chainId=${chainId}&poolId=${poolId}`}
-            className={pathname === "/grantee/tools" ? "fw-bold" : ""}
+            className={`${pathname === "/grantee/tools" ? "fw-bold" : ""} text-decoration-none`}
             style={{
               pointerEvents: !chainId || !poolId ? "none" : "auto",
             }}
@@ -239,7 +239,7 @@ function Sidebar() {
           >
             <Link
               href={`/admin/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
-              className={`d-flex align-items-center gap-1 ${
+              className={`d-flex align-items-center gap-1 text-decoration-none ${
                 pathname?.startsWith("/admin/configure") &&
                 !!selectedPool &&
                 !isWrongNetwork
@@ -270,7 +270,7 @@ function Sidebar() {
             </Link>
             <Link
               href={`/admin/review/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
-              className={`d-flex align-items-center gap-1 ${
+              className={`d-flex align-items-center gap-1 text-decoration-none ${
                 pathname?.startsWith("/admin/review") &&
                 !!selectedPool &&
                 !isWrongNetwork
@@ -299,7 +299,7 @@ function Sidebar() {
             </Link>
             <Link
               href={`/admin/matching/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
-              className={`d-flex align-items-center gap-1 ${
+              className={`d-flex align-items-center gap-1 text-decoration-none ${
                 pathname?.startsWith("/admin/matching") &&
                 !!selectedPool &&
                 !isWrongNetwork
@@ -332,7 +332,7 @@ function Sidebar() {
                 pointerEvents:
                   poolId && chainId && !isWrongNetwork ? "auto" : "none",
               }}
-              className="d-flex align-items-center gap-1"
+              className="d-flex align-items-center gap-1 text-decoration-none"
             >
               <Image
                 src="/dot-unfilled.svg"

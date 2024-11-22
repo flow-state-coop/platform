@@ -46,11 +46,7 @@ export default function PassportMintingInstructions(
             style={{ listStylePosition: "inside" }}
           >
             Open{" "}
-            <Card.Link
-              href="https://passport.gitcoin.co/"
-              target="_blank"
-              className="text-decoration-underline"
-            >
+            <Card.Link href="https://passport.gitcoin.co/" target="_blank">
               https://passport.gitcoin.co/
             </Card.Link>{" "}
             in a new tab

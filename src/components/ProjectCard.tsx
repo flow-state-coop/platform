@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { createVerifiedFetch } from "@helia/verified-fetch";
 import { useClampText } from "use-clamp-text";
+import removeMarkdown from "remove-markdown";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
@@ -32,7 +33,7 @@ export default function ProjectCard(props: ProjectCardProps) {
   const [bannerUrl, setBannerUrl] = useState("");
 
   const [descriptionRef, { noClamp, clampedText }] = useClampText({
-    text: description,
+    text: removeMarkdown(description).replace(/\r?\n|\r/g, " "),
     ellipsis: "...",
     lines: 8,
   });

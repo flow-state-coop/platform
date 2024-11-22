@@ -344,7 +344,7 @@ export default function WalletBalance() {
                     href={nftMintUrl}
                     target="_blank"
                     disabled={!!nftBalance && nftBalance > 0 ? true : false}
-                    className="bg-info text-light"
+                    className="bg-info text-light text-decoration-none"
                   >
                     Get the NFT
                   </Button>
@@ -610,7 +610,7 @@ export default function WalletBalance() {
         <Card.Link
           href="https://app.superfluid.finance"
           target="_blank"
-          className="mx-3 p-3 text-primary text-center text-decoration-underline cursor-pointer"
+          className="mx-3 p-3 text-primary text-center cursor-pointer"
         >
           Visit the Superfluid App for advanced management of your Super Token
           balances

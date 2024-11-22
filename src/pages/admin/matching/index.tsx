@@ -165,9 +165,7 @@ export default function MatchinPool() {
       {!profileId || !chainId ? (
         <Card.Text>
           Program not found, please select one from{" "}
-          <Link href="/admin" className="text-decoration-underline">
-            Program Selection
-          </Link>
+          <Link href="/admin">Program Selection</Link>
         </Card.Text>
       ) : loading || !chainId ? (
         <Spinner className="m-auto" />
@@ -176,7 +174,6 @@ export default function MatchinPool() {
           Pool not found, please select one from{" "}
           <Link
             href={`/admin/pools/?chainId=${chainId}&profileId=${profileId}`}
-            className="text-decoration-underline"
           >
             Pool Selection
           </Link>
@@ -192,10 +189,7 @@ export default function MatchinPool() {
           >
             {network?.name}
           </span>{" "}
-          or return to{" "}
-          <Link href="/admin" className="text-decoration-underline">
-            Program Selection
-          </Link>
+          or return to <Link href="/admin">Program Selection</Link>
         </Card.Text>
       ) : (
         <>
@@ -298,7 +292,7 @@ export default function MatchinPool() {
                     <Card.Link
                       href={`https://jumper.exchange/?fromChain=${chainId}&fromToken=0x0000000000000000000000000000000000000000&toChain=${chainId}&toToken=${matchingToken}`}
                       target="_blank"
-                      className="text-primary"
+                      className="text-primary text-decoration-none"
                     >
                       Swap
                     </Card.Link>{" "}
@@ -308,7 +302,7 @@ export default function MatchinPool() {
                         <Card.Link
                           href="https://app.superfluid.finance/wrap?upgrade"
                           target="_blank"
-                          className="text-primary"
+                          className="text-primary text-decoration-none"
                         >
                           Wrap
                         </Card.Link>

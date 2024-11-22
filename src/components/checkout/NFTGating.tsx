@@ -135,7 +135,7 @@ export default function NFTGating(props: NFTGatingProps) {
               href={nftMintUrl}
               target="_blank"
               disabled={isEligible}
-              className="bg-secondary text-light"
+              className="bg-secondary text-light text-decoration-none"
             >
               Get the NFT
             </Button>

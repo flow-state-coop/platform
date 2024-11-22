@@ -76,7 +76,7 @@ export default function Index() {
               variant="link"
               href="https://forms.gle/M98DjjGaxwFUhDTx5"
               target="_blank"
-              className="w-50 text-white fs-5 shadow"
+              className="w-50 text-white fs-5 shadow text-decoration-none"
               style={{ background: "#33a8c2" }}
             >
               Launch SQF Round
@@ -138,7 +138,7 @@ export default function Index() {
         <Link
           href="https://forms.gle/VXfRSpAzynTmjvRY9"
           target="_blank"
-          className="text-decoration-underline p-0"
+          className="p-0"
         >
           Join us.
         </Link>
@@ -262,7 +262,7 @@ export default function Index() {
           variant="link"
           target="_blank"
           href="https://forms.gle/VXfRSpAzynTmjvRY9"
-          className="bg-primary m-auto mb-5 fs-5 text-light"
+          className="bg-primary m-auto mb-5 fs-5 text-light text-decoration-none"
           style={{ width: isMobile ? "100%" : isTablet ? "50%" : "25%" }}
         >
           Membership Interest Form

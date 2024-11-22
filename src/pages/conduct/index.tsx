@@ -66,12 +66,9 @@ export default function Conduct() {
       </ol>
       <p className="mb-5">
         This Code of Conduct is applied in addition to the Flow State platform’s
-        standard{" "}
-        <Link href="/terms" className="text-decoration-underline">
-          Terms of Use
-        </Link>
-        . Operators may choose to enforce additional criteria and rules for
-        grantee/voter participation in their rounds.
+        standard <Link href="/terms">Terms of Use</Link>. Operators may choose
+        to enforce additional criteria and rules for grantee/voter participation
+        in their rounds.
       </p>
     </Container>
   );

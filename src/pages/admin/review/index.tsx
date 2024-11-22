@@ -331,9 +331,7 @@ export default function Review() {
       {!profileId || !chainId ? (
         <Card.Text>
           Program not found, please select one from{" "}
-          <Link href="/admin" className="text-decoration-underline">
-            Program Selection
-          </Link>
+          <Link href="/admin">Program Selection</Link>
         </Card.Text>
       ) : loading || !chainId ? (
         <Spinner className="m-auto" />
@@ -342,7 +340,6 @@ export default function Review() {
           Pool not found, please select one from{" "}
           <Link
             href={`/admin/pools/?chainId=${chainId}&profileId=${profileId}`}
-            className="text-decoration-underline"
           >
             Pool Selection
           </Link>
@@ -358,10 +355,7 @@ export default function Review() {
           >
             {network?.name}
           </span>{" "}
-          or return to{" "}
-          <Link href="/admin" className="text-decoration-underline">
-            Program Selection
-          </Link>
+          or return to <Link href="/admin">Program Selection</Link>
         </Card.Text>
       ) : (
         <Stack direction="vertical" gap={2}>
@@ -599,7 +593,7 @@ export default function Review() {
                 <Card.Link
                   href={`https://jumper.exchange/?fromChain=${chainId}&fromToken=0x0000000000000000000000000000000000000000&toChain=${chainId}&toToken=${allocationToken}`}
                   target="_blank"
-                  className="text-primary"
+                  className="text-primary text-decoration-none"
                 >
                   Swap
                 </Card.Link>{" "}
@@ -609,7 +603,7 @@ export default function Review() {
                     <Card.Link
                       href="https://app.superfluid.finance/wrap?upgrade"
                       target="_blank"
-                      className="text-primary"
+                      className="text-primary text-decoration-none"
                     >
                       Wrap
                     </Card.Link>
@@ -651,7 +645,7 @@ export default function Review() {
             >
               <Link
                 href={`/admin/matching/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
-                className="w-100 text-light"
+                className="w-100 text-light text-decoration-none"
                 style={{ paddingTop: 6, paddingBottom: 6 }}
               >
                 Next

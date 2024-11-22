@@ -4,6 +4,9 @@ import { parseEther } from "viem";
 import { useAccount, useReadContracts } from "wagmi";
 import { gql, useQuery } from "@apollo/client";
 import { createVerifiedFetch } from "@helia/verified-fetch";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehyperExternalLinks from "rehype-external-links";
 import { usePostHog } from "posthog-js/react";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
@@ -329,7 +332,7 @@ export default function Project() {
                   variant="link"
                   href={project.metadata.website}
                   target="_blank"
-                  className="d-flex gap-1 align-items-center p-0 text-info"
+                  className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
                   style={{ width: !isMobile ? "33%" : "" }}
                 >
                   <Image src="/link.svg" alt="link" width={18} height={18} />
@@ -343,7 +346,7 @@ export default function Project() {
                   variant="link"
                   href={`https://github.com/${project.metadata.projectGithub}`}
                   target="_blank"
-                  className="d-flex gap-1 align-items-center p-0 text-info"
+                  className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
                   style={{ width: !isMobile ? "33%" : "" }}
                 >
                   <Image
@@ -362,7 +365,7 @@ export default function Project() {
                   variant="link"
                   href={`https://x.com/${project.metadata.projectTwitter}`}
                   target="_blank"
-                  className="d-flex gap-1 align-items-center p-0 text-info"
+                  className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
                   style={{ width: !isMobile ? "33%" : "" }}
                 >
                   <Image src="/x-logo.svg" alt="x" width={14} height={14} />
@@ -376,7 +379,7 @@ export default function Project() {
                   variant="link"
                   href={`https://warpcast.com/${project.metadata.projectWarpcast}`}
                   target="_blank"
-                  className="d-flex gap-1 align-items-center p-0 text-info"
+                  className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
                   style={{ width: !isMobile ? "33%" : "" }}
                 >
                   <Image
@@ -395,7 +398,7 @@ export default function Project() {
                   variant="link"
                   href={`https://hey.xyz/u/${project.metadata.projectLens}`}
                   target="_blank"
-                  className="d-flex gap-1 align-items-center p-0 text-info"
+                  className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
                   style={{ width: !isMobile ? "33%" : "" }}
                 >
                   <Image src="/hey.png" alt="lens" width={16} height={16} />
@@ -409,7 +412,7 @@ export default function Project() {
                   variant="link"
                   href={`https://guild.xyz/${project.metadata.projectGuild}`}
                   target="_blank"
-                  className="d-flex gap-1 align-items-center p-0 text-info"
+                  className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
                   style={{ width: !isMobile ? "33%" : "" }}
                 >
                   <Image src="/guild.svg" alt="guild" width={16} height={16} />
@@ -423,7 +426,7 @@ export default function Project() {
                   variant="link"
                   href={`https://t.me/${project.metadata.projectTelegram}`}
                   target="_blank"
-                  className="d-flex gap-1 align-items-center p-0 text-info"
+                  className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
                   style={{ width: !isMobile ? "33%" : "" }}
                 >
                   <Image
@@ -442,7 +445,7 @@ export default function Project() {
                   variant="link"
                   href={`https://discord.com/invite/${project.metadata.projectDiscord}`}
                   target="_blank"
-                  className="d-flex gap-1 align-items-center p-0 text-info"
+                  className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
                   style={{ width: !isMobile ? "33%" : "" }}
                 >
                   <Image
@@ -457,9 +460,19 @@ export default function Project() {
                 </Button>
               )}
             </Stack>
-            <Card.Text className="px-3 sm:px-0">
-              {project?.metadata?.description}
-            </Card.Text>
+            <Markdown
+              className="px-3 sm:px-0"
+              skipHtml={true}
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
+              components={{
+                table: (props) => (
+                  <table className="table table-striped" {...props} />
+                ),
+              }}
+            >
+              {project?.metadata.description}
+            </Markdown>
             <Stack
               direction="horizontal"
               gap={5}

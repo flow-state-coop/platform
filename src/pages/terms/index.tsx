@@ -43,12 +43,9 @@ export default function Terms() {
         clicking to accept or agree to these Terms where that option is made
         available, you accept and agree to these Terms, consent to the
         collection, use, disclosure and other handling of information as
-        described in our{" "}
-        <Link href="/privacy" className="text-decoration-underline">
-          Privacy Policy
-        </Link>{" "}
-        and any additional terms, rules and conditions of participation issued
-        by Flow State from time to time.
+        described in our <Link href="/privacy">Privacy Policy</Link> and any
+        additional terms, rules and conditions of participation issued by Flow
+        State from time to time.
       </p>
       <i>Modifications of Terms of Use</i>
       <p className="fs-5 mt-1">
