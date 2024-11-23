@@ -2,6 +2,10 @@ import { useState, useMemo } from "react";
 import { useAccount } from "wagmi";
 import { formatEther } from "viem";
 import { useClampText } from "use-clamp-text";
+import removeMarkdown from "remove-markdown";
+import Markdown from "react-markdown";
+import rehyperExternalLinks from "rehype-external-links";
+import remarkGfm from "remark-gfm";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
@@ -24,10 +28,10 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
   const [readMore, setReadMore] = useState(false);
 
   const { address } = useAccount();
-  const [descriptionRef, { clampedText }] = useClampText({
-    text: description,
+  const [descriptionRef, { clampedText, noClamp }] = useClampText({
+    text: removeMarkdown(description).replace(/\r?\n|\r/g, " "),
     ellipsis: "...",
-    expanded: readMore,
+    lines: 4,
   });
 
   const userDistributionInfo = useMemo(() => {
@@ -154,13 +158,31 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
           total
         </Card.Text>
       </Stack>
-      <Card.Text
-        ref={descriptionRef as React.RefObject<HTMLParagraphElement>}
-        className="m-0 p-2 fs-6"
-        style={{ maxWidth: 500 }}
-      >
-        {description ? clampedText : ""}
-      </Card.Text>
+      {readMore || noClamp ? (
+        <div style={{ maxWidth: 500 }}>
+          <Markdown
+            className="p-2"
+            skipHtml={true}
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
+            components={{
+              table: (props) => (
+                <table className="table table-striped" {...props} />
+              ),
+            }}
+          >
+            {description}
+          </Markdown>
+        </div>
+      ) : (
+        <Card.Text
+          ref={descriptionRef as React.RefObject<HTMLParagraphElement>}
+          className="m-0 p-2 fs-6"
+          style={{ maxWidth: 500 }}
+        >
+          {clampedText}
+        </Card.Text>
+      )}
       <Button
         variant="transparent"
         className="p-0 border-0 shadow-none"

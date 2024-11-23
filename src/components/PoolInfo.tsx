@@ -6,6 +6,9 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Table from "react-bootstrap/Table";
 import InfoTooltip from "@/components/InfoTooltip";
+import Markdown from "react-markdown";
+import rehyperExternalLinks from "rehype-external-links";
+import remarkGfm from "remark-gfm";
 import { Pool } from "@/types/pool";
 import { GDAPool } from "@/types/gdaPool";
 import { Token } from "@/types/token";
@@ -68,7 +71,21 @@ export default function PoolInfo(props: PoolInfoProps) {
           <Stack direction="horizontal" gap={1}>
             <Card.Text className="m-0 fs-4 fw-bold">{name}</Card.Text>
             <InfoTooltip
-              content=<>{description}</>
+              content={
+                <Markdown
+                  className="p-2"
+                  skipHtml={true}
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[
+                    [
+                      rehyperExternalLinks,
+                      { target: "_blank", properties: { class: "text-light" } },
+                    ],
+                  ]}
+                >
+                  {description}
+                </Markdown>
+              }
               target={
                 <Image
                   src="/info.svg"

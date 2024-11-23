@@ -64,6 +64,10 @@ blockquote {
   border-left: 0.25em solid #d0d7de;
 }
 
+.tooltip {
+  opacity: 1 !important;
+}
+
 .tooltip-inner {
   max-width: 300px;
   text-align: left;

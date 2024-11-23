@@ -339,7 +339,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
                 ),
               }}
             >
-              {metadata.description}
+              {metadata.description.replaceAll("•", "-")}
             </Markdown>
           </div>
           <Button
