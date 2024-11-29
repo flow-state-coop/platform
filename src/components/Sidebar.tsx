@@ -1,7 +1,8 @@
-import { useRouter } from "next/router";
-import Stack from "react-bootstrap/Stack";
-import { usePathname } from "next/navigation";
+"use client";
+
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Stack from "react-bootstrap/Stack";
 import { useQuery, gql } from "@apollo/client";
 import { useAccount } from "wagmi";
 import Dropdown from "react-bootstrap/Dropdown";
@@ -50,10 +51,11 @@ const POOLS_QUERY = gql`
 
 function Sidebar() {
   const pathname = usePathname();
-
   const router = useRouter();
-  const { poolId, profileId } = router.query;
-  const chainId = Number(router.query.chainId) ?? null;
+  const searchParams = useSearchParams();
+  const poolId = searchParams?.get("poolId");
+  const profileId = searchParams?.get("profileId");
+  const chainId = Number(searchParams?.get("chainId")) ?? null;
   const { address, chain: connectedChain } = useAccount();
   const { data: programsQueryRes } = useQuery(PROGRAMS_QUERY, {
     client: getApolloClient("flowState"),
@@ -82,8 +84,7 @@ function Sidebar() {
   const selectedPool = poolsQueryRes?.pools.find(
     (pool: { id: string }) => pool.id === poolId,
   );
-  const isCreatingNewPool =
-    router.pathname === "/admin/configure" && !selectedPool;
+  const isCreatingNewPool = pathname === "/admin/configure" && !selectedPool;
 
   if (pathname === "/admin") {
     return null;

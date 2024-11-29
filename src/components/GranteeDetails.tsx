@@ -346,7 +346,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             variant="link"
             href={`/projects/${profileId}/?chainId=${chainId}`}
             target="_blank"
-            className="d-flex justify-content-center align-items-center gap-2 bg-primary shadow-none text-light"
+            className="d-flex justify-content-center align-items-center gap-2 bg-primary shadow-none text-light text-decoration-none"
           >
             Project Page
             <Image

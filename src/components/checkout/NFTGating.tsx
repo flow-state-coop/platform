@@ -99,7 +99,7 @@ export default function NFTGating(props: NFTGatingProps) {
                 height={48}
                 style={{
                   filter: isEligible
-                    ? "invert(65%) sepia(44%) saturate(6263%) hue-rotate(103deg) brightness(95%) contrast(97%)"
+                    ? "invert(40%) sepia(14%) saturate(2723%) hue-rotate(103deg) brightness(97%) contrast(80%)"
                     : "invert(27%) sepia(47%) saturate(3471%) hue-rotate(336deg) brightness(93%) contrast(85%)",
                 }}
               />

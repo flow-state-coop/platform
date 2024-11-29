@@ -1,6 +1,7 @@
+"use client";
+
 import { useAccount } from "wagmi";
-import { useRouter } from "next/router";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import ConnectWallet from "@/components/ConnectWallet";
 import CreateCoinbaseWallet from "@/components/CreateCoinbaseWallet";
 import Nav from "react-bootstrap/Nav";

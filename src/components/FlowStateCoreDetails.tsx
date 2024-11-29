@@ -1,3 +1,5 @@
+"use client";
+
 import { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { formatEther } from "viem";

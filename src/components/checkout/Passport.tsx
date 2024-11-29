@@ -114,10 +114,10 @@ export default function Passport(props: PassportProps) {
                 style={{
                   filter:
                     passportScore && passportScore > minPassportScore
-                      ? "invert(65%) sepia(44%) saturate(6263%) hue-rotate(103deg) brightness(95%) contrast(97%)"
+                      ? "invert(40%) sepia(14%) saturate(2723%) hue-rotate(103deg) brightness(97%) contrast(80%)"
                       : passportScore
                         ? "invert(27%) sepia(47%) saturate(3471%) hue-rotate(336deg) brightness(93%) contrast(85%)"
-                        : "invert(88%) sepia(26%) saturate(4705%) hue-rotate(2deg) brightness(109%) contrast(102%)",
+                        : "invert(86%) sepia(44%) saturate(4756%) hue-rotate(353deg) brightness(109%) contrast(103%)",
                 }}
               />
             </Button>

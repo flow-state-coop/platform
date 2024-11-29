@@ -1,4 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
+"use client";
+
+import { useMemo } from "react";
 import { useEnsAvatar, useEnsName } from "wagmi";
 import {
   ReactFlow,
@@ -136,7 +138,11 @@ function CustomNode(props: NodeProps<Node>) {
 
   return (
     <>
-      <Stack direction="vertical" gap={1} className="align-items-center">
+      <Stack
+        direction="vertical"
+        gap={1}
+        className="align-items-center cursor-pointer"
+      >
         {ensAvatar ? (
           <Image
             src={ensAvatar}
@@ -207,8 +213,6 @@ function CustomEdge(props: EdgeProps<Edge>) {
 export default function FlowStateCoreGraph(props: FlowStateCoreGraphProps) {
   const { pool, chainId } = props;
   const { isMobile, isTablet } = useMediaQuery();
-
-  const [isMounting, setIsMounting] = useState(true);
 
   const graph = useMemo(() => {
     if (!pool) {
@@ -306,12 +310,10 @@ export default function FlowStateCoreGraph(props: FlowStateCoreGraphProps) {
     return { nodes, edges };
   }, [pool, chainId]);
 
-  useEffect(() => setIsMounting(false), []);
-
   return (
     <div
       style={{
-        width: isMobile || isTablet || isMounting ? "100%" : "75%",
+        width: !isMobile && !isTablet ? "75%" : "100%",
         minHeight: "100%",
       }}
     >
