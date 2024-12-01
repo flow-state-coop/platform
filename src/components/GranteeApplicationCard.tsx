@@ -177,7 +177,7 @@ export default function GranteeApplicationCard(
                         ? "invert(87%) sepia(40%) saturate(4124%) hue-rotate(348deg) brightness(103%) contrast(110%)"
                         : status === "REJECTED" || status === "CANCELED"
                           ? "invert(36%) sepia(58%) saturate(1043%) hue-rotate(313deg) brightness(89%) contrast(116%)"
-                          : "invert(68%) sepia(92%) saturate(404%) hue-rotate(66deg) brightness(103%) contrast(89%)",
+                          : "invert(40%) sepia(14%) saturate(2723%) hue-rotate(103deg) brightness(97%) contrast(80%)",
                   }}
                 />
                 {status === "PENDING"

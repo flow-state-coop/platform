@@ -1,6 +1,8 @@
+"use client";
+
 import { useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 import { parseEther } from "viem";
 import { useAccount } from "wagmi";
 import { useClampText } from "use-clamp-text";

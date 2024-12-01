@@ -106,7 +106,7 @@ export default function ProgramCreationModal(props: ProgramCreationModalProps) {
             <Form.Control
               type="text"
               value={programForm.name}
-              placeholder="Your project name"
+              placeholder="Your program name"
               onChange={(e) =>
                 setProgramForm({ ...programForm, name: e.target.value })
               }
