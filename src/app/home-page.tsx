@@ -183,7 +183,7 @@ export default function HomePage() {
             }}
           >
             <p className="m-0 fs-4 fw-bold">Octant Builder Accelerator SQF</p>
-            <p className="m-0 fs-5">Live on October 24 - 16+ ETH Matching</p>
+            <p className="m-0 fs-5">16+ ETH Matching</p>
             <Stack
               direction="horizontal"
               gap={isMobile ? 3 : isTablet ? 4 : 5}
@@ -214,7 +214,7 @@ export default function HomePage() {
             }}
           >
             <p className="m-0 fs-4 fw-bold">Flow State Core</p>
-            <p className="m-0 fs-5">Live on October 24</p>
+            <p className="m-0 fs-5">Direct Streaming Funding</p>
             <Stack
               direction="horizontal"
               className="justify-content-center mt-1"

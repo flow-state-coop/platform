@@ -47,6 +47,13 @@ export default function PoolCard(props: PoolCardProps) {
   const recipientId = pool.recipientsByPoolIdAndChainId.filter(
     (recipient: { id: string }) => recipient.id === project.anchorAddress,
   )[0]?.id;
+  const allocationToken = network?.tokens.find(
+    (token) => token.address.toLowerCase() === pool.allocationToken,
+  );
+  const matchingToken = network?.tokens.find(
+    (token) => token.address.toLowerCase() === pool.matchingToken,
+  );
+  const poolFlowRateConfig = getPoolFlowRateConfig(allocationToken?.name ?? "");
   const poolUiLink = `https://flowstate.network/pool/?poolId=${pool.id}&chainId=${network.id}&recipientId=${recipientId}`;
   const framesLink = `https://frames.flowstate.network/frames/grantee/${recipientId}/${pool.id}/${network.id}`;
 
@@ -69,12 +76,6 @@ export default function PoolCard(props: PoolCardProps) {
         ? (BigInt(member?.units ?? 0) * adjustedFlowRate) /
           BigInt(matchingPool.totalUnits)
         : BigInt(0);
-    const allocationToken = network.tokens.find(
-      (token) => token.address.toLowerCase() === pool.allocationToken,
-    );
-    const poolFlowRateConfig = getPoolFlowRateConfig(
-      allocationToken?.name ?? "",
-    );
     const matchingImpactEstimate = calcMatchingImpactEstimate({
       totalFlowRate: BigInt(matchingPool.flowRate ?? 0),
       totalUnits: BigInt(matchingPool.totalUnits ?? 0),
@@ -88,7 +89,7 @@ export default function PoolCard(props: PoolCardProps) {
     });
 
     return matchingImpactEstimate;
-  }, [matchingPool, pool, project, network]);
+  }, [matchingPool, pool, project, network, poolFlowRateConfig]);
 
   return (
     <Stack direction="vertical" className="flex-grow-0" style={{ width: 228 }}>
@@ -109,18 +110,31 @@ export default function PoolCard(props: PoolCardProps) {
             Matching Multiplier
           </Card.Text>
           <Card.Text className="mb-3 text-center">
-            1{" "}
-            {network?.tokens.find(
-              (token) => pool?.allocationToken === token.address.toLowerCase(),
-            )?.name ?? "N/A"}{" "}
-            ={" "}
-            {roundWeiAmount(
-              matchingImpactEstimate * BigInt(SECONDS_IN_MONTH),
-              4,
-            )}{" "}
-            {network?.tokens.find(
-              (token) => pool?.matchingToken === token.address.toLowerCase(),
-            )?.name ?? "N/A"}
+            {allocationToken?.name === matchingToken?.name ? (
+              <>
+                x
+                {parseFloat(
+                  (
+                    Number(
+                      roundWeiAmount(
+                        matchingImpactEstimate * BigInt(SECONDS_IN_MONTH),
+                        18,
+                      ),
+                    ) / poolFlowRateConfig.minAllocationPerMonth
+                  ).toFixed(2),
+                )}
+              </>
+            ) : (
+              <>
+                {poolFlowRateConfig.minAllocationPerMonth}{" "}
+                {allocationToken?.name ?? "N/A"} ={" "}
+                {roundWeiAmount(
+                  matchingImpactEstimate * BigInt(SECONDS_IN_MONTH),
+                  4,
+                )}{" "}
+                {matchingToken?.name ?? "N/A"}
+              </>
+            )}
           </Card.Text>
         </Card.Body>
         <Card.Footer className="bg-transparent border-0">
