@@ -1,4 +1,6 @@
 import { formatEther } from "viem";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useAccount } from "wagmi";
 import Image from "next/image";
 import Card from "react-bootstrap/Card";
 import Accordion from "react-bootstrap/Accordion";
@@ -57,6 +59,8 @@ export default function TopUp(props: TopUpProps) {
     superTokenInfo,
   } = props;
 
+  const { address } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const { isMobile } = useMediaQuery();
 
   const isUnderlyingTokenNative = underlyingTokenBalance?.symbol === "ETH";
@@ -193,7 +197,16 @@ export default function TopUp(props: TopUpProps) {
               </Button>
               <Button
                 variant="link"
-                href={`https://ramp.network/buy?defaultAsset=${network?.onRampName ?? ""}`}
+                onClick={(e) => {
+                  if (!address) {
+                    e.preventDefault();
+
+                    if (openConnectModal) {
+                      openConnectModal();
+                    }
+                  }
+                }}
+                href={`https://pay.coinbase.com/buy/select-asset?appId=f6629a74-b96c-47f0-90b3-b7608ed406ee&addresses={"${address}":["${network?.onRampLabel ?? "base"}"]}&assets=["ETH"]&presetFiatAmount=25`}
                 target="_blank"
                 className="w-100 bg-primary text-decoration-none rounded-3 text-light fs-6"
               >
@@ -252,7 +265,16 @@ export default function TopUp(props: TopUpProps) {
                   </Button>
                   <Button
                     variant="link"
-                    href={`https://ramp.network/buy?defaultAsset=${network?.onRampName ?? ""}`}
+                    onClick={(e) => {
+                      if (!address) {
+                        e.preventDefault();
+
+                        if (openConnectModal) {
+                          openConnectModal();
+                        }
+                      }
+                    }}
+                    href={`https://pay.coinbase.com/buy/select-asset?appId=f6629a74-b96c-47f0-90b3-b7608ed406ee&addresses={"${address}":["${network?.onRampLabel ?? "base"}"]}&assets=["ETH"]&presetFiatAmount=25`}
                     target="_blank"
                     className="w-100 bg-primary text-decoration-none rounded-3 text-light fs-6"
                   >

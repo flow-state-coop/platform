@@ -12,7 +12,7 @@ const networks: Network[] = [
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/optimism-mainnet/protocol-v1",
-    onRampName: "OPTIMISM_ETH",
+    onRampLabel: "optimism",
     passportDecoder: "0x5558D441779Eca04A329BcD6b47830D2C6607769",
     superfluidHost: "0x567c4B141ED61923967cA25Ef4906C8781069a10",
     superfluidResolver: "0x743B5f46BC86caF41bE4956d9275721E0531B186",
@@ -53,7 +53,7 @@ const networks: Network[] = [
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/arbitrum-one/protocol-v1",
-    onRampName: "ARBITRUM_ETH",
+    onRampLabel: "arbitrum",
     passportDecoder: "0x2050256A91cbABD7C42465aA0d5325115C1dEB43",
     superfluidHost: "0xCf8Acb4eF033efF16E8080aed4c7D5B9285D2192",
     superfluidResolver: "0x609b9d9d6Ee9C3200745A79B9d3398DBd63d509F",
@@ -95,7 +95,7 @@ const networks: Network[] = [
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/base-mainnet/protocol-v1",
-    onRampName: "BASE_ETH",
+    onRampLabel: "base",
     flowStateCoreGda: "0xDa52BaD6d11f5027c1ee45798c9c7e733b96F43b",
     passportDecoder: "0xe819c3FA368e164Da88E76A08a60f65280Af3ed6",
     superfluidHost: "0x4C073B3baB6d8826b8C5b229f3cfdC1eC6E47E74",
@@ -142,7 +142,7 @@ const networks: Network[] = [
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/optimism-sepolia/protocol-v1",
-    onRampName: "OPTIMISM_ETH",
+    onRampLabel: "optimism",
     flowStateCoreGda: "0xe70150912e11BB4E3A27dBB786DdEDD9783Bc93A",
     passportDecoder: "0xe53C60F8069C2f0c3a84F9B3DB5cf56f3100ba56",
     superfluidHost: "0xd399e2Fb5f4cf3722a11F65b88FAB6B2B8621005",
