@@ -92,7 +92,7 @@ export default function PoolCard(props: PoolCardProps) {
   }, [matchingPool, pool, project, network, poolFlowRateConfig]);
 
   return (
-    <Stack direction="vertical" className="flex-grow-0" style={{ width: 228 }}>
+    <Stack direction="vertical" className="flex-grow-0" style={{ width: 256 }}>
       <Card className="border-black rounded-4">
         <Card.Header
           className="bg-transparent text-info text-center border-0"
@@ -105,7 +105,7 @@ export default function PoolCard(props: PoolCardProps) {
             {clampedText}
           </Card.Text>
         </Card.Header>
-        <Card.Body className="d-flex flex-column">
+        <Card.Body className="d-flex flex-column" style={{ height: 96 }}>
           <Card.Text className="mb-1 text-center">
             Matching Multiplier
           </Card.Text>
@@ -138,7 +138,7 @@ export default function PoolCard(props: PoolCardProps) {
           </Card.Text>
         </Card.Body>
         <Card.Footer className="bg-transparent border-0">
-          <Button className="d-flex justify-content-center mt-auto w-100 p-0">
+          <Button className="d-flex justify-content-center mt-auto mb-1 w-100 p-0">
             <Link
               className="w-100 py-1 text-white text-decoration-none"
               href={`/pool/?chainId=${network.id}&poolId=${pool.id}&recipientId=${
