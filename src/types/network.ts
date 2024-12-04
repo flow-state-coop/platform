@@ -10,7 +10,7 @@ export type Network = {
   superfluidExplorer: string;
   superfluidDashboard: string;
   superfluidSubgraph: string;
-  onRampName: string;
+  onRampLabel: string;
   flowStateCoreGda: string;
   passportDecoder: Address;
   superfluidHost: Address;
