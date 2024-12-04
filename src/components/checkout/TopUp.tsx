@@ -206,7 +206,7 @@ export default function TopUp(props: TopUpProps) {
                     }
                   }
                 }}
-                href={`https://pay.coinbase.com/buy/select-asset?appId=f6629a74-b96c-47f0-90b3-b7608ed406ee&addresses={"${address}":["${network?.onRampLabel ?? "base"}"]}&assets=["ETH"]&presetFiatAmount=25`}
+                href={`https://pay.coinbase.com/buy/select-asset?appId=36e18bf4-7c5c-416f-a0a1-7eab5d8453e7&addresses={"${address}":["${network?.onRampLabel ?? "base"}"]}&assets=["ETH"]&presetFiatAmount=25`}
                 target="_blank"
                 className="w-100 bg-primary text-decoration-none rounded-3 text-light fs-6"
               >
@@ -274,7 +274,7 @@ export default function TopUp(props: TopUpProps) {
                         }
                       }
                     }}
-                    href={`https://pay.coinbase.com/buy/select-asset?appId=f6629a74-b96c-47f0-90b3-b7608ed406ee&addresses={"${address}":["${network?.onRampLabel ?? "base"}"]}&assets=["ETH"]&presetFiatAmount=25`}
+                    href={`https://pay.coinbase.com/buy/select-asset?appId=36e18bf4-7c5c-416f-a0a1-7eab5d8453e7&addresses={"${address}":["${network?.onRampLabel ?? "base"}"]}&assets=["ETH"]&presetFiatAmount=25`}
                     target="_blank"
                     className="w-100 bg-primary text-decoration-none rounded-3 text-light fs-6"
                   >
