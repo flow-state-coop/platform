@@ -1,4 +1,4 @@
-# SQF Admin
+# Flow State Platform
 
 ### Getting Started
 
