@@ -60,8 +60,8 @@ importers:
         specifier: 14.2.4
         version: 14.2.4(@babel/core@7.26.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.81.0)
       posthog-js:
-        specifier: ^1.186.1
-        version: 1.188.0
+        specifier: ^1.201.0
+        version: 1.201.0
       react:
         specifier: ^18
         version: 18.3.1
@@ -6140,8 +6140,8 @@ packages:
     resolution: {integrity: sha512-PS08Iboia9mts/2ygV3eLpY5ghnUcfLV/EXTOW1E2qYxJKGGBUtNjN76FYHnMs36RmARn41bC0AZmn+rR0OVpQ==}
     engines: {node: ^10 || ^12 || >=14}
 
-  posthog-js@1.188.0:
-    resolution: {integrity: sha512-FdNCZcgM5sjADxES7VWbRntD39V2fvHunZry6Rrsp8VDG20TcAWc+koAuCMfEoU5jKxm/Ua37QnI9Xqfwg2fow==}
+  posthog-js@1.201.0:
+    resolution: {integrity: sha512-5LG4i36eYykIj5FYaQQ1vmSOriVeiswCNPUAPkpnq4ccmavu8y5L+QIxaX98ACmDAW7DkUDS05yUjYWmd84tzQ==}
 
   preact@10.25.0:
     resolution: {integrity: sha512-6bYnzlLxXV3OSpUxLdaxBmE7PMOu0aR3pG6lryK/0jmvcDFPlcXGQAt5DpK3RITWiDrfYZRI0druyaK/S9kYLg==}
@@ -16368,7 +16368,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  posthog-js@1.188.0:
+  posthog-js@1.201.0:
     dependencies:
       core-js: 3.39.0
       fflate: 0.4.8
