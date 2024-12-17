@@ -343,8 +343,7 @@ export default function WalletBalance() {
                     variant="link"
                     href={nftMintUrl}
                     target="_blank"
-                    disabled={!!nftBalance && nftBalance > 0 ? true : false}
-                    className="bg-info text-light text-decoration-none"
+                    className="bg-primary text-light text-decoration-none"
                   >
                     Get the NFT
                   </Button>
