@@ -24,7 +24,7 @@ const networks: Network[] = [
       {
         name: "ETHx",
         address: "0x4ac8bD1bDaE47beeF2D1c6Aa62229509b962Aa0d",
-        icon: "/eth.svg",
+        icon: "/eth.png",
       },
       {
         name: "OPx",
@@ -34,12 +34,12 @@ const networks: Network[] = [
       {
         name: "DAIx",
         address: "0x7d342726B69C28D942ad8BfE6Ac81b972349d524",
-        icon: "/dai.svg",
+        icon: "/dai.png",
       },
       {
         name: "USDC.ex",
         address: "0x8430F084B939208E2eDEd1584889C9A66B90562f",
-        icon: "/usdc.svg",
+        icon: "/usdc.png",
       },
     ],
   },
@@ -65,7 +65,7 @@ const networks: Network[] = [
       {
         name: "ETHx",
         address: "0xe6c8d111337d0052b9d88bf5d7d55b7f8385acd3",
-        icon: "/eth.svg",
+        icon: "/eth.png",
       },
       {
         name: "ARBx",
@@ -75,12 +75,12 @@ const networks: Network[] = [
       {
         name: "DAIx",
         address: "0x521677A61D101A80cE0fB903b13cb485232774ee",
-        icon: "/dai.svg",
+        icon: "/dai.png",
       },
       {
         name: "USDCx",
         address: "0xfc55f2854e74b4f42d01a6d3daac4c52d9dfdcff",
-        icon: "/usdc.svg",
+        icon: "/usdc.png",
       },
     ],
   },
@@ -100,6 +100,7 @@ const networks: Network[] = [
     flowStateCoreGda: "0xDa52BaD6d11f5027c1ee45798c9c7e733b96F43b",
     pay16zPool: "0x7B0d808456100a6015423C8BF8759509c1252129",
     flowSplitter: "0x",
+    flowSplitterSubgraph: "",
     passportDecoder: "0xe819c3FA368e164Da88E76A08a60f65280Af3ed6",
     superfluidHost: "0x4C073B3baB6d8826b8C5b229f3cfdC1eC6E47E74",
     superfluidResolver: "0x6a214c324553F96F04eFBDd66908685525Da0E0d",
@@ -111,17 +112,17 @@ const networks: Network[] = [
       {
         name: "ETHx",
         address: "0x46fd5cfB4c12D87acD3a13e92BAa53240C661D93",
-        icon: "/eth.svg",
+        icon: "/eth.png",
       },
       {
         name: "DAIx",
         address: "0x708169c8C87563Ce904E0a7F3BFC1F3b0b767f41",
-        icon: "/dai.svg",
+        icon: "/dai.png",
       },
       {
         name: "USDCx",
         address: "0xD04383398dD2426297da660F9CCA3d439AF9ce1b",
-        icon: "/usdc.svg",
+        icon: "/usdc.png",
       },
       {
         name: "HIGHERx",
@@ -142,6 +143,19 @@ const networks: Network[] = [
         name: "TESTx",
         address: "0xB1bE9A812222c75564c08D860f063D27911F3adc",
         icon: "/base.svg",
+        name: "ONCHAINx",
+        address: "0xfef2d7b013b88fec2bfe4d2fee0aeb719af73481",
+        icon: "/onchain.png",
+      },
+      {
+        name: "AF",
+        address: "0x6c90A582C166F59dE91f97fA7Aef7315A968B342",
+        icon: "/alphafrens.png",
+      },
+      {
+        name: "$mferx",
+        address: "0x9097e4a4d75a611b65ab21d98a7d5b1177c050f7",
+        icon: "/mfercoin.png",
       },
     ],
   },
@@ -160,6 +174,8 @@ const networks: Network[] = [
     flowStateCoreGda: "0xe70150912e11BB4E3A27dBB786DdEDD9783Bc93A",
     pay16zPool: "0x1f4c05f5a7900d4cfbc9dd892e8ce61d9727ce8c",
     flowSplitter: "0xd53B8Bed28E122eA20dCC90d3991a614EC163a21",
+    flowSplitterSubgraph:
+      "https://api.goldsky.com/api/public/project_cm2vlxq9s82qo01xtc11y9stm/subgraphs/flow-splitter-optimism-sepolia/0.0.1/gn",
     passportDecoder: "0xe53C60F8069C2f0c3a84F9B3DB5cf56f3100ba56",
     superfluidHost: "0xd399e2Fb5f4cf3722a11F65b88FAB6B2B8621005",
     superfluidResolver: "0x554c06487bEc8c890A0345eb05a5292C1b1017Bd",
@@ -171,12 +187,12 @@ const networks: Network[] = [
       {
         name: "ETHx",
         address: "0x0043d7c85C8b96a49A72A92C0B48CdC4720437d7",
-        icon: "/eth.svg",
+        icon: "/eth.png",
       },
       {
         name: "fDAIx",
         address: "0xD6FAF98BeFA647403cc56bDB598690660D5257d2",
-        icon: "/dai.svg",
+        icon: "/dai.png",
       },
       {
         name: "F(S)",

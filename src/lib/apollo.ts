@@ -7,7 +7,7 @@ import {
 } from "@apollo/client";
 import { networks } from "@/lib/networks";
 
-type ApiType = "flowState" | "superfluid";
+type ApiType = "flowState" | "flowSplitter" | "superfluid";
 
 const apolloClient: ApolloClientOptions<NormalizedCacheObject> = {
   cache: new InMemoryCache(),
@@ -22,24 +22,35 @@ const apolloClient: ApolloClientOptions<NormalizedCacheObject> = {
 };
 
 const flowStateClient = new ApolloClient(apolloClient);
+const flowSplitterClient = new ApolloClient(apolloClient);
 const superfluidClient = new ApolloClient(apolloClient);
 
 export const getApolloClient = (type: ApiType, chainId?: number) => {
-  flowStateClient.setLink(
-    new HttpLink({ uri: "https://api.flowstate.network/graphql" }),
-  );
+  if (type === "flowState") {
+    flowStateClient.setLink(
+      new HttpLink({ uri: "https://api.flowstate.network/graphql" }),
+    );
 
-  if (chainId) {
+    return flowStateClient;
+  } else if (type === "flowSplitter") {
     const network = networks.find((network) => network.id === chainId);
 
-    if (!network) {
-      throw Error("Network not found");
+    if (network) {
+      flowSplitterClient.setLink(
+        new HttpLink({ uri: network.flowSplitterSubgraph }),
+      );
     }
 
-    superfluidClient.setLink(new HttpLink({ uri: network.superfluidSubgraph }));
+    return flowSplitterClient;
+  } else if (type === "superfluid") {
+    const network = networks.find((network) => network.id === chainId);
+
+    if (network) {
+      superfluidClient.setLink(
+        new HttpLink({ uri: network.superfluidSubgraph }),
+      );
+    }
+
+    return superfluidClient;
   }
-
-  const client = type === "flowState" ? flowStateClient : superfluidClient;
-
-  return client;
 };

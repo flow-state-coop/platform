@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Address, parseEventLogs, isAddress } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Papa from "papaparse";
 import { writeContract } from "@wagmi/core";
 import { useLazyQuery, gql } from "@apollo/client";
@@ -20,16 +21,19 @@ import FormCheck from "react-bootstrap/FormCheck";
 import Form from "react-bootstrap/Form";
 import InfoTooltip from "@/components/InfoTooltip";
 import { Token } from "@/types/token";
+import { pinJsonToIpfs } from "@/lib/ipfs";
 import { getApolloClient } from "@/lib/apollo";
 import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
-import { isNumber, truncateStr } from "@/lib/utils";
+import { isNumber } from "@/lib/utils";
 
 type PoolConfig = {
   transferableUnits: boolean;
   immutable: boolean;
 };
+
+type Metadata = { name: string };
 
 type CustomTokenEntry = {
   address: string;
@@ -66,6 +70,7 @@ export default function FlowSplitter() {
   const [membersEntry, setMembersEntry] = useState<MemberEntry[]>([
     { address: "", units: "", validationError: "" },
   ]);
+  const [metadata, setMetadata] = useState<Metadata>({ name: "" });
   const [customTokenSelection, setCustomTokenSelection] = useState(false);
   const [transactionerror, setTransactionError] = useState("");
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
@@ -73,6 +78,7 @@ export default function FlowSplitter() {
   const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
+  const { openConnectModal } = useConnectModal();
   const [checkSuperToken] = useLazyQuery(SUPERTOKEN_QUERY, {
     client: getApolloClient("superfluid", networks[1].id),
   });
@@ -81,19 +87,17 @@ export default function FlowSplitter() {
   const publicClient = usePublicClient();
   const postHog = usePostHog();
 
-  const isValidAdminsEntry =
-    adminsEntry.filter(
-      (adminEntry) =>
-        adminEntry.validationError === "" && adminEntry.address !== "",
-    ).length > 0;
-  const isValidMembersEntry =
-    membersEntry.filter(
-      (memberEntry) =>
-        memberEntry.validationError === "" &&
-        memberEntry.address !== "" &&
-        memberEntry.units !== "" &&
-        memberEntry.units !== "0",
-    ).length > 0;
+  const isValidAdminsEntry = adminsEntry.every(
+    (adminEntry) =>
+      adminEntry.validationError === "" && adminEntry.address !== "",
+  );
+  const isValidMembersEntry = membersEntry.every(
+    (memberEntry) =>
+      memberEntry.validationError === "" &&
+      memberEntry.address !== "" &&
+      memberEntry.units !== "" &&
+      memberEntry.units !== "0",
+  );
 
   const totalUnits = useMemo(
     () =>
@@ -107,13 +111,9 @@ export default function FlowSplitter() {
 
   useEffect(() => {
     if (address) {
-      const prevAdminsEntry = [...adminsEntry];
-
-      prevAdminsEntry[0] = { address, validationError: "" };
-
-      setAdminsEntry(prevAdminsEntry);
+      setAdminsEntry([{ address, validationError: "" }]);
     }
-  }, [address, adminsEntry]);
+  }, [address]);
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") {
@@ -142,6 +142,9 @@ export default function FlowSplitter() {
         (memberEntry) =>
           memberEntry.validationError === "" && memberEntry.address !== "",
       );
+      const { IpfsHash: metadataCid } = await pinJsonToIpfs({
+        name: metadata.name,
+      });
 
       const hash = await writeContract(wagmiConfig, {
         address: networks[1].flowSplitter,
@@ -162,7 +165,7 @@ export default function FlowSplitter() {
           poolConfig.immutable
             ? []
             : validAdmins.map((admin) => admin.address as Address),
-          "",
+          metadataCid,
         ],
       });
 
@@ -170,13 +173,13 @@ export default function FlowSplitter() {
         hash,
         confirmations: 3,
       });
-      const poolAddress = parseEventLogs({
+      const poolId = parseEventLogs({
         abi: flowSplitterAbi,
         eventName: ["PoolCreated"],
         logs: receipt.logs,
-      })[0].args.poolAddress;
+      })[0].args.poolId;
 
-      router.push(`/flow-splitter/11155420/${poolAddress}/manager`);
+      router.push(`/flow-splitter/11155420/${poolId}/admin`);
     } catch (err) {
       console.error(err);
 
@@ -205,13 +208,13 @@ export default function FlowSplitter() {
           A Flow Splitter allocates one or more incoming Superfluid token
           streams to recipients proportional to their unit share in real time.
         </h2>
-        <Card className="bg-light rounded-4 border-0 mt-4 px-4 py-4">
+        <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-3 py-4">
           <Card.Header className="bg-transparent border-0 rounded-4 p-0 fs-4">
-            Configuration
+            Core Configuration
           </Card.Header>
           <Card.Body className="p-0">
             <Card.Text className="text-info">
-              These settings cannot be edited after deployment.
+              Configuration in this section cannot be edited after deployment.
             </Card.Text>
             <Dropdown>
               <Dropdown.Toggle
@@ -233,7 +236,17 @@ export default function FlowSplitter() {
                 </Stack>
               </Dropdown.Toggle>
               <Dropdown.Menu>
-                <Dropdown.Item>{networks[1].name}</Dropdown.Item>
+                <Dropdown.Item>
+                  <Stack direction="horizontal" gap={1}>
+                    <Image
+                      src={networks[1].icon}
+                      alt="Network Icon"
+                      width={16}
+                      height={16}
+                    />
+                    {networks[1].name}
+                  </Stack>
+                </Dropdown.Item>
               </Dropdown.Menu>
             </Dropdown>
             <Stack
@@ -275,7 +288,15 @@ export default function FlowSplitter() {
                         setSelectedToken(token);
                       }}
                     >
-                      {token.name}
+                      <Stack direction="horizontal" gap={1}>
+                        <Image
+                          src={token.icon}
+                          alt="Token Icon"
+                          width={16}
+                          height={16}
+                        />
+                        {token.name}
+                      </Stack>
                     </Dropdown.Item>
                   ))}
                   <Dropdown.Item onClick={() => setCustomTokenSelection(true)}>
@@ -326,10 +347,11 @@ export default function FlowSplitter() {
                 </Stack>
               )}
             </Stack>
-            <Form.Group className="mt-4">
-              <Form.Label className="d-flex gap-1 fs-5">
-                Distribution Units Update
+            <Stack direction="vertical" className="mt-4">
+              <Form.Label className="d-flex gap-1 mb-2 fs-5">
+                Distribution Unit Transferability
                 <InfoTooltip
+                  position={{ top: true }}
                   target={
                     <Image
                       src="/info.svg"
@@ -341,18 +363,95 @@ export default function FlowSplitter() {
                   }
                   content={
                     <>
-                      Set the address(es), including multisigs, that should be
-                      able to update the distribution units of your Flow
-                      Splitter for your use case.
+                      Should recipients be able to transfer (or trade) their
+                      distribution units?
                       <br />
                       <br />
-                      Admins can relinquish, transfer, or add others to the
-                      admin role. If there are no admins, your Flow Splitter
-                      contract is immutable.
+                      Carefully consider the implications with your Contract
+                      Admin selection below and your particular use case before
+                      choosing to enable transferability. This is not editable
+                      after launch.
                     </>
                   }
                 />
               </Form.Label>
+              <Stack direction="horizontal" gap={5}>
+                <FormCheck type="radio">
+                  <FormCheck.Input
+                    type="radio"
+                    checked={!poolConfig.transferableUnits}
+                    onChange={() =>
+                      setPoolConfig({
+                        ...poolConfig,
+                        transferableUnits: false,
+                      })
+                    }
+                  />
+                  <FormCheck.Label>Non-Transferable</FormCheck.Label>
+                </FormCheck>
+                <FormCheck type="radio">
+                  <FormCheck.Input
+                    type="radio"
+                    checked={!!poolConfig.transferableUnits}
+                    onChange={() =>
+                      setPoolConfig({
+                        ...poolConfig,
+                        transferableUnits: true,
+                      })
+                    }
+                  />
+                  <FormCheck.Label>Transferable by Recipients</FormCheck.Label>
+                </FormCheck>
+              </Stack>
+            </Stack>
+          </Card.Body>
+        </Card>
+        <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
+          <Card.Header className="mb-3 bg-transparent border-0 rounded-4 p-0 fs-4">
+            Name
+          </Card.Header>
+          <Card.Body className="p-0">
+            <Form.Control
+              type="text"
+              placeholder="Name (Optional)"
+              value={metadata.name}
+              style={{ width: !isMobile ? "50%" : "" }}
+              onChange={(e) =>
+                setMetadata({ ...metadata, name: e.target.value })
+              }
+            />
+          </Card.Body>
+        </Card>
+        <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
+          <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-4">
+            Contract Admin
+            <InfoTooltip
+              position={{ top: true }}
+              target={
+                <Image
+                  src="/info.svg"
+                  alt="Info"
+                  width={18}
+                  height={18}
+                  className="align-top"
+                />
+              }
+              content={
+                <>
+                  Set the address(es), including multisigs, that should be able
+                  to update the distribution units of your Flow Splitter for
+                  your use case.
+                  <br />
+                  <br />
+                  Admins can relinquish, transfer, or add others to the admin
+                  role. If there are no admins, your Flow Splitter contract is
+                  immutable.
+                </>
+              }
+            />
+          </Card.Header>
+          <Card.Body className="p-0">
+            <Form.Group>
               <Stack direction="horizontal" gap={5}>
                 <FormCheck type="radio">
                   <FormCheck.Input
@@ -384,7 +483,11 @@ export default function FlowSplitter() {
               {!poolConfig.immutable && (
                 <div className="mt-2">
                   {adminsEntry.map((adminEntry, i) => (
-                    <Stack direction="vertical" className="mb-2" key={i}>
+                    <Stack
+                      direction="vertical"
+                      className="mb-2"
+                      key={`${adminEntry.address}-${i}`}
+                    >
                       <Stack
                         direction="horizontal"
                         gap={2}
@@ -393,10 +496,7 @@ export default function FlowSplitter() {
                         <Form.Control
                           key={i}
                           type="text"
-                          value={truncateStr(
-                            adminEntry.address,
-                            isMobile || isTablet ? 22 : 42,
-                          )}
+                          value={adminEntry.address}
                           style={{ width: !isMobile ? "50%" : "" }}
                           onChange={(e) => {
                             const prevAdminsEntry = [...adminsEntry];
@@ -469,68 +569,13 @@ export default function FlowSplitter() {
                 </div>
               )}
             </Form.Group>
-            <Stack direction="vertical" className="mt-4">
-              <Form.Label className="d-flex gap-1 mb-2 fs-5">
-                Distribution Units Transferability
-                <InfoTooltip
-                  target={
-                    <Image
-                      src="/info.svg"
-                      alt="Info"
-                      width={14}
-                      height={14}
-                      className="align-top"
-                    />
-                  }
-                  content={
-                    <>
-                      Should recipients be able to transfer (or trade) their
-                      distribution units?
-                      <br />
-                      <br />
-                      Carefully consider the implications with your admin
-                      selection above and your particular use case before
-                      choosing to enable transferability. This is not editable
-                      after launch.
-                    </>
-                  }
-                />
-              </Form.Label>
-              <Stack direction="horizontal" gap={5}>
-                <FormCheck type="radio">
-                  <FormCheck.Input
-                    type="radio"
-                    checked={!poolConfig.transferableUnits}
-                    onChange={() =>
-                      setPoolConfig({
-                        ...poolConfig,
-                        transferableUnits: false,
-                      })
-                    }
-                  />
-                  <FormCheck.Label>Non Transferable</FormCheck.Label>
-                </FormCheck>
-                <FormCheck type="radio">
-                  <FormCheck.Input
-                    type="radio"
-                    checked={!!poolConfig.transferableUnits}
-                    onChange={() =>
-                      setPoolConfig({
-                        ...poolConfig,
-                        transferableUnits: true,
-                      })
-                    }
-                  />
-                  <FormCheck.Label>Transferable by Recipients</FormCheck.Label>
-                </FormCheck>
-              </Stack>
-            </Stack>
           </Card.Body>
         </Card>
-        <Card className="bg-light rounded-4 border-0 mt-4 px-2 px-sm-4 py-4">
+        <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
           <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-4">
             Distribution Units
             <InfoTooltip
+              position={{ top: true }}
               target={
                 <Image
                   src="/info.svg"
@@ -567,10 +612,7 @@ export default function FlowSplitter() {
                     <Form.Control
                       type="text"
                       placeholder={isMobile ? "Address" : "Recipient Address"}
-                      value={truncateStr(
-                        memberEntry.address,
-                        isMobile || isTablet ? 14 : 42,
-                      )}
+                      value={memberEntry.address}
                       onChange={(e) => {
                         const prevMembersEntry = [...membersEntry];
                         const value = e.target.value;
@@ -606,14 +648,18 @@ export default function FlowSplitter() {
                 <Stack direction="vertical">
                   <Form.Control
                     type="text"
+                    inputMode="numeric"
                     placeholder="Units"
                     value={memberEntry.units}
+                    className="text-center"
                     onChange={(e) => {
                       const prevMembersEntry = [...membersEntry];
                       const value = e.target.value;
 
-                      if (!value || value === "0" || value === ".") {
+                      if (!value || value === "0") {
                         prevMembersEntry[i].units = "";
+                      } else if (value.includes(".")) {
+                        return;
                       } else if (isNumber(value)) {
                         prevMembersEntry[i].units = value;
                       }
@@ -646,9 +692,10 @@ export default function FlowSplitter() {
                                     )
                                     .reduce((a, b) => a + b, 0)) *
                                 100
-                              ).toFixed(isMobile ? 0 : 2),
+                              ).toFixed(isMobile ? 1 : 2),
                             )}%`
                       }
+                      className="text-center"
                     />
                     <Button
                       variant="transparent"
@@ -695,28 +742,50 @@ export default function FlowSplitter() {
                 <Form.Control
                   type="text"
                   disabled
-                  className="bg-transparent text-info border-0"
+                  className="bg-transparent text-info text-center border-0"
                   value={totalUnits}
                 />
               </Stack>
-              <Stack>
+              <Stack
+                direction="horizontal"
+                gap={isMobile ? 1 : 2}
+                className="align-items-center"
+              >
                 <Form.Control
                   type="text"
                   disabled
-                  className="bg-transparent text-info border-0"
                   value="100%"
+                  className="bg-transparent border-0 text-center"
                 />
+                <span className="p-0 opacity-0">
+                  <Image src="/close.svg" alt="Remove" width={28} height={28} />
+                </span>
               </Stack>
-              <span style={{ width: 4 }} />
             </Stack>
             <Stack
-              direction="vertical"
-              className="ms-auto mt-3"
-              style={{ width: isMobile ? "" : 256 }}
+              direction={isMobile ? "vertical" : "horizontal"}
+              gap={2}
+              className="justify-content-end mt-3"
             >
+              <Card.Link
+                href={URL.createObjectURL(
+                  new Blob([
+                    Papa.unparse(
+                      membersEntry.map((memberEntry) => {
+                        return [memberEntry.address, memberEntry.units];
+                      }),
+                    ),
+                  ]),
+                )}
+                target="_blank"
+                download="Flow_Splitter.csv"
+                className="m-0 bg-secondary px-5 py-2 rounded-3 text-light text-center text-decoration-none"
+              >
+                Export Current
+              </Card.Link>
               <Form.Label
                 htmlFor="upload-csv"
-                className="bg-primary text-white text-center fs-5 px-3 py-2 rounded-3 cursor-pointer"
+                className="bg-primary text-white text-center m-0 px-5 py-2 rounded-3 cursor-pointer"
               >
                 Upload CSV
               </Form.Label>
@@ -744,8 +813,10 @@ export default function FlowSplitter() {
                         membersEntry.push({
                           address: row[0],
                           units:
-                            isNumber(row[1]) && Number(row[1]) > 0
-                              ? row[1].split(".")[0]
+                            isNumber(row[1]) &&
+                            Number(row[1]) > 0 &&
+                            !row[1].includes(".")
+                              ? row[1]
                               : "",
                           validationError: !isAddress(row[0])
                             ? "Invalid Address"
@@ -764,58 +835,45 @@ export default function FlowSplitter() {
                   });
                 }}
               />
-              <Stack
-                direction="horizontal"
-                gap={4}
-                className="justify-content-center"
-              >
-                <Card.Link
-                  href="https://docs.google.com/spreadsheets/d/13oBKSJzKfW0yC8ghiZ_3EYWrjlZ9g8BU-mV91ezG_XU/edit?gid=0#gid=0"
-                  target="_blank"
-                  className="text-primary"
-                >
-                  Template
-                </Card.Link>
-                <Card.Link
-                  href={URL.createObjectURL(
-                    new Blob([
-                      Papa.unparse(
-                        membersEntry.map((memberEntry) => {
-                          return [memberEntry.address, memberEntry.units];
-                        }),
-                      ),
-                    ]),
-                  )}
-                  target="_blank"
-                  download="Flow_Splitter.csv"
-                  className="m-0 text-primary"
-                >
-                  Export Current
-                </Card.Link>
-              </Stack>
             </Stack>
+            <Card.Link
+              href="https://docs.google.com/spreadsheets/d/13oBKSJzKfW0yC8ghiZ_3EYWrjlZ9g8BU-mV91ezG_XU/edit?gid=0#gid=0"
+              target="_blank"
+              className="float-end mt-2 pe-1 text-primary"
+            >
+              Template
+            </Card.Link>
           </Card.Body>
         </Card>
-        <Button
-          disabled={
-            (!poolConfig.immutable && !isValidAdminsEntry) ||
-            (customTokenSelection && !!customTokenEntry.validationError) ||
-            !isValidMembersEntry ||
-            !address
-          }
-          className="w-100 mt-4"
-          onClick={() =>
-            connectedChain?.id === networks[1].id
-              ? handleSubmit()
-              : switchChain({ chainId: networks[1].id })
-          }
-        >
-          {isTransactionLoading ? (
-            <Spinner size="sm" className="ms-2" />
-          ) : (
-            "Launch Flow Splitter"
+        <Stack direction="vertical" className="mt-4">
+          {poolConfig.immutable && (
+            <Card.Text className="mb-1 text-danger">
+              Warning: You've set your contract to "No Admin." You won't be able
+              to make changes after deployment.
+            </Card.Text>
           )}
-        </Button>
+          <Button
+            disabled={
+              (!poolConfig.immutable && !isValidAdminsEntry) ||
+              (customTokenSelection && !!customTokenEntry.validationError) ||
+              !isValidMembersEntry
+            }
+            className="w-100"
+            onClick={() =>
+              !address && openConnectModal
+                ? openConnectModal()
+                : connectedChain?.id !== networks[1].id
+                  ? switchChain({ chainId: networks[1].id })
+                  : handleSubmit()
+            }
+          >
+            {isTransactionLoading ? (
+              <Spinner size="sm" className="ms-2" />
+            ) : (
+              "Launch Flow Splitter"
+            )}
+          </Button>
+        </Stack>
         {transactionerror ? (
           <Alert variant="danger" className="w-100 mt-3">
             {transactionerror}
