@@ -27,7 +27,7 @@ export default function SuperfluidContextProvider({
   children,
 }: {
   network?: Network;
-  allocationTokenInfo: Token;
+  allocationTokenInfo?: Token;
   matchingTokenInfo: Token;
   children: React.ReactNode;
 }) {
@@ -39,7 +39,7 @@ export default function SuperfluidContextProvider({
 
   useEffect(() => {
     (async () => {
-      if (network && matchingTokenInfo.address && allocationTokenInfo.address) {
+      if (network) {
         try {
           const ethersProvider = new providers.JsonRpcProvider(network.rpcUrl, {
             chainId: network.id,
@@ -50,16 +50,24 @@ export default function SuperfluidContextProvider({
             resolverAddress: network.superfluidResolver,
             provider: ethersProvider,
           });
-          const matchingSuperToken = await sfFramework.loadSuperToken(
-            matchingTokenInfo.address,
-          );
-          const allocationSuperToken = await sfFramework.loadSuperToken(
-            allocationTokenInfo.address,
-          );
 
           setSfFramework(sfFramework);
-          setMatchingSuperToken(matchingSuperToken);
-          setAllocationSuperToken(allocationSuperToken);
+
+          if (matchingTokenInfo.address) {
+            const matchingSuperToken = await sfFramework.loadSuperToken(
+              matchingTokenInfo.address,
+            );
+
+            setMatchingSuperToken(matchingSuperToken);
+          }
+
+          if (allocationTokenInfo?.address) {
+            const allocationSuperToken = await sfFramework.loadSuperToken(
+              allocationTokenInfo.address,
+            );
+
+            setAllocationSuperToken(allocationSuperToken);
+          }
         } catch (err) {
           console.error(err);
         }
