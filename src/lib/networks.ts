@@ -97,7 +97,7 @@ const networks: Network[] = [
       "https://subgraph-endpoints.superfluid.dev/base-mainnet/protocol-v1",
     onRampLabel: "base",
     flowStateCoreGda: "0xDa52BaD6d11f5027c1ee45798c9c7e733b96F43b",
-    pay16zPool: "0x6c0c40f60961fdbca0032c91be0ce1b7d87e4084",
+    pay16zPool: "0x7B0d808456100a6015423C8BF8759509c1252129",
     passportDecoder: "0xe819c3FA368e164Da88E76A08a60f65280Af3ed6",
     superfluidHost: "0x4C073B3baB6d8826b8C5b229f3cfdC1eC6E47E74",
     superfluidResolver: "0x6a214c324553F96F04eFBDd66908685525Da0E0d",
@@ -130,6 +130,11 @@ const networks: Network[] = [
         name: "DEGENx",
         address: "0x1efF3Dd78F4A14aBfa9Fa66579bD3Ce9E1B30529",
         icon: "/degen.png",
+      },
+      {
+        name: "pay16z",
+        address: "0x1a589e9c3EEE580F87117C513B2c8282926f1883",
+        icon: "/base.svg",
       },
       {
         name: "TESTx",

@@ -70,7 +70,7 @@ export default function GithubRewardsModal(props: GithubRewardsModalProps) {
         const json = await res.json();
 
         if (!json.success) {
-          setError(json.message);
+          setError(json.error);
         }
 
         console.info("Claiming Profile: ", json);
