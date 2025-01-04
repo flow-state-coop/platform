@@ -183,17 +183,19 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
           {clampedText}
         </Card.Text>
       )}
-      <Button
-        variant="transparent"
-        className="p-0 border-0 shadow-none"
-        onClick={() => setReadMore(!readMore)}
-      >
-        <Image
-          src={readMore ? "/expand-less.svg" : "/expand-more.svg"}
-          alt="expand"
-          width={18}
-        />
-      </Button>
+      {!noClamp && (
+        <Button
+          variant="transparent"
+          className="p-0 border-0 shadow-none"
+          onClick={() => setReadMore(!readMore)}
+        >
+          <Image
+            src={readMore ? "/expand-less.svg" : "/expand-more.svg"}
+            alt="expand"
+            width={18}
+          />
+        </Button>
+      )}
     </Stack>
   );
 }

@@ -1,13 +1,14 @@
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useDisconnect } from "wagmi";
 import Stack from "react-bootstrap/Stack";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
-import Image from "next/image";
-import Link from "next/link";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import { usePathname } from "next/navigation";
 import WalletBalance from "@/components/WalletBalance";
+import GithubRewardsButton from "@/components/GithubRewardsButton";
 
 export default function ConnectWallet() {
   const pathname = usePathname();
@@ -93,7 +94,10 @@ export default function ConnectWallet() {
                       </Stack>
                     </Dropdown.Toggle>
                     <Dropdown.Menu className="py-0">
-                      <Dropdown.Item className="py-3 rounded-top-1 text-dark">
+                      <Dropdown.Item
+                        as="div"
+                        className="py-3 rounded-top-1 text-dark"
+                      >
                         <Link href="/projects" className="text-decoration-none">
                           Projects
                         </Link>
@@ -118,6 +122,9 @@ export default function ConnectWallet() {
                       </Dropdown.Item>
                     </Dropdown.Menu>
                   </Dropdown>
+                  {pathname?.startsWith("/pay16z") && (
+                    <GithubRewardsButton chainId={chain.id} />
+                  )}
                 </div>
               );
             })()}

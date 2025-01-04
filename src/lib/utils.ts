@@ -1,3 +1,6 @@
+import { NextAuthOptions } from "next-auth";
+import GithubProvider from "next-auth/providers/github";
+import type { GithubProfile } from "next-auth/providers/github";
 import { formatEther } from "viem";
 
 export enum TimeInterval {
@@ -12,6 +15,38 @@ export const unitOfTime = {
   [TimeInterval.WEEK]: "weeks",
   [TimeInterval.MONTH]: "months",
   [TimeInterval.YEAR]: "years",
+};
+
+export const nextAuthOptions: NextAuthOptions = {
+  providers: [
+    GithubProvider({
+      clientId: process.env.GITHUB_ID!,
+      clientSecret: process.env.GITHUB_SECRET!,
+    }),
+  ],
+  callbacks: {
+    jwt({ token, user, profile }) {
+      if (user) {
+        token.user = user;
+      }
+
+      if (profile) {
+        token.profile = profile;
+      }
+
+      return token;
+    },
+    session({ session, token }) {
+      if (session.user) {
+        session.user = {
+          ...session.user,
+          name: (token.profile as GithubProfile).login,
+        };
+      }
+
+      return session;
+    },
+  },
 };
 
 export function isNumber(value: string) {
@@ -155,4 +190,29 @@ export function getPlaceholderImageSrc() {
   const max = 5;
 
   return `/placeholders/${Math.floor(Math.random() * (max - min + 1)) + min}.jpg`;
+}
+
+export function formatNumberWithCharSuffix(num: number, digits: number) {
+  if (num < 1) {
+    return parseFloat(num.toFixed(6));
+  }
+
+  const lookupTable = [
+    { value: 1, symbol: "" },
+    { value: 1e3, symbol: "k" },
+    { value: 1e6, symbol: "M" },
+    { value: 1e9, symbol: "B" },
+    { value: 1e12, symbol: "T" },
+    { value: 1e15, symbol: "P" },
+    { value: 1e18, symbol: "E" },
+  ];
+  const regexp = /\.0+$|(?<=\.[0-9]*[1-9])0+$/;
+  const item = lookupTable
+    .slice()
+    .reverse()
+    .find((item) => num >= item.value);
+
+  return item
+    ? (num / item.value).toFixed(digits).replace(regexp, "").concat(item.symbol)
+    : "0";
 }

@@ -61,6 +61,7 @@ type MatchingPoolFundingProps = {
       }[]
     | null;
   shouldMintNft: boolean;
+  isFundingFlowSplitter?: boolean;
 };
 
 enum MintingError {
@@ -86,6 +87,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     receiver,
     userAccountSnapshots,
     shouldMintNft,
+    isFundingFlowSplitter,
   } = props;
 
   const [step, setStep] = useState<Step>(Step.SELECT_AMOUNT);
@@ -728,6 +730,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
           <Success
             step={step}
             isFundingMatchingPool={true}
+            isFundingFlowSplitter={isFundingFlowSplitter}
             poolName={poolName}
             poolUiLink={poolUiLink}
             newFlowRate={newFlowRate}

@@ -97,6 +97,7 @@ const networks: Network[] = [
       "https://subgraph-endpoints.superfluid.dev/base-mainnet/protocol-v1",
     onRampLabel: "base",
     flowStateCoreGda: "0xDa52BaD6d11f5027c1ee45798c9c7e733b96F43b",
+    pay16zPool: "0x7B0d808456100a6015423C8BF8759509c1252129",
     passportDecoder: "0xe819c3FA368e164Da88E76A08a60f65280Af3ed6",
     superfluidHost: "0x4C073B3baB6d8826b8C5b229f3cfdC1eC6E47E74",
     superfluidResolver: "0x6a214c324553F96F04eFBDd66908685525Da0E0d",
@@ -130,6 +131,16 @@ const networks: Network[] = [
         address: "0x1efF3Dd78F4A14aBfa9Fa66579bD3Ce9E1B30529",
         icon: "/degen.png",
       },
+      {
+        name: "pay16z",
+        address: "0x1a589e9c3EEE580F87117C513B2c8282926f1883",
+        icon: "/base.svg",
+      },
+      {
+        name: "TESTx",
+        address: "0xB1bE9A812222c75564c08D860f063D27911F3adc",
+        icon: "/base.svg",
+      },
     ],
   },
   {
@@ -144,6 +155,7 @@ const networks: Network[] = [
       "https://subgraph-endpoints.superfluid.dev/optimism-sepolia/protocol-v1",
     onRampLabel: "optimism",
     flowStateCoreGda: "0xe70150912e11BB4E3A27dBB786DdEDD9783Bc93A",
+    pay16zPool: "0x1f4c05f5a7900d4cfbc9dd892e8ce61d9727ce8c",
     passportDecoder: "0xe53C60F8069C2f0c3a84F9B3DB5cf56f3100ba56",
     superfluidHost: "0xd399e2Fb5f4cf3722a11F65b88FAB6B2B8621005",
     superfluidResolver: "0x554c06487bEc8c890A0345eb05a5292C1b1017Bd",

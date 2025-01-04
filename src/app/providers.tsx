@@ -6,6 +6,7 @@ import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
 import { /*optimism, arbitrum,*/ base, optimismSepolia } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import { SessionProvider } from "next-auth/react";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { DonorParamsContextProvider } from "@/context/DonorParams";
@@ -47,13 +48,17 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider modalSize="compact">
-          <PostHogProvider client={posthog}>
-            <DonorParamsContextProvider>{children}</DonorParamsContextProvider>
-          </PostHogProvider>
-        </RainbowKitProvider>
-      </QueryClientProvider>
+      <SessionProvider>
+        <QueryClientProvider client={queryClient}>
+          <RainbowKitProvider modalSize="compact">
+            <PostHogProvider client={posthog}>
+              <DonorParamsContextProvider>
+                {children}
+              </DonorParamsContextProvider>
+            </PostHogProvider>
+          </RainbowKitProvider>
+        </QueryClientProvider>
+      </SessionProvider>
     </WagmiProvider>
   );
 }

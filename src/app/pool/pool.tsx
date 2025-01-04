@@ -106,6 +106,7 @@ const STREAM_QUERY = gql`
       }
     }
     pool(id: $gdaPool) {
+      id
       flowRate
       adjustmentFlowRate
       totalAmountFlowedDistributedUntilUpdatedAt

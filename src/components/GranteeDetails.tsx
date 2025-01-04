@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { formatEther } from "viem";
+import { formatEther, Address } from "viem";
+import { useReadContract } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import { useClampText } from "use-clamp-text";
 import { createVerifiedFetch } from "@helia/verified-fetch";
@@ -19,6 +20,7 @@ import { Inflow } from "@/types/inflow";
 import { Outflow } from "@/types/outflow";
 import { ProjectMetadata } from "@/types/project";
 import { Token } from "@/types/token";
+import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
 import useFlowingAmount from "../hooks/flowingAmount";
 import { formatNumberWithCommas } from "@/lib/utils";
 import { SECONDS_IN_MONTH, IPFS_GATEWAYS } from "@/lib/constants";
@@ -65,12 +67,15 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
   const [readMore, setReadMore] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
 
+  const matchingPoolMember = matchingPool?.poolMembers.find(
+    (member) => member.account.id === recipientAddress,
+  );
+
   const [descriptionRef, { noClamp, clampedText }] = useClampText({
     text: removeMarkdown(metadata.description).replace(/\r?\n|\r/g, " "),
     ellipsis: "...",
     lines: 4,
   });
-
   const { data: flowStateQueryRes } = useQuery(PROFILE_ID_QUERY, {
     client: getApolloClient("flowState"),
     variables: {
@@ -79,11 +84,16 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
     },
     skip: !chainId,
   });
+  const { data: totalAmountReceivedByMember, dataUpdatedAt } = useReadContract({
+    chainId,
+    address: matchingPool.id as Address,
+    abi: superfluidPoolAbi,
+    functionName: "getTotalAmountReceivedByMember",
+    args: [matchingPoolMember?.account.id as Address],
+    query: { enabled: !!matchingPoolMember },
+  });
 
   const profileId = flowStateQueryRes?.profiles[0]?.id ?? "";
-  const matchingPoolMember = matchingPool?.poolMembers.find(
-    (member) => member.account.id === recipientAddress,
-  );
   const totalAllocatedUser = useFlowingAmount(
     BigInt(userOutflow?.streamedUntilUpdatedAt ?? 0),
     userOutflow?.updatedAtTimestamp ?? 0,
@@ -96,8 +106,8 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
       BigInt(inflow?.totalInflowRate ?? 0),
     ) - totalAllocatedUser;
   const totalMatching = useFlowingAmount(
-    BigInt(matchingPoolMember?.totalAmountReceivedUntilUpdatedAt ?? 0),
-    matchingPoolMember?.updatedAtTimestamp ?? 0,
+    totalAmountReceivedByMember ?? BigInt(0),
+    dataUpdatedAt ? Math.round(dataUpdatedAt / 1000) : 0,
     matchingFlowRate,
   );
 

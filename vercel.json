@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/github-rewards/update?chainId=8453",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}
