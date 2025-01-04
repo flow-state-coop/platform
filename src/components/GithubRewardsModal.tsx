@@ -10,9 +10,14 @@ import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
 import Toast from "react-bootstrap/Toast";
 import Spinner from "react-bootstrap/Spinner";
+import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 
-type GithubRewardsModalProps = { showModal: boolean; closeModal: () => void };
+type GithubRewardsModalProps = {
+  showModal: boolean;
+  chainId: number;
+  closeModal: () => void;
+};
 
 const GDA_POOL_QUERY = gql`
   query GdaPoolMembersQuery($gdaPool: String!, $address: String!) {
@@ -28,7 +33,7 @@ const GDA_POOL_QUERY = gql`
 `;
 
 export default function GithubRewardsModal(props: GithubRewardsModalProps) {
-  const { showModal, closeModal } = props;
+  const { showModal, chainId, closeModal } = props;
 
   const [isClaiming, setIsClaiming] = useState(false);
   const [error, setError] = useState("");
@@ -37,10 +42,12 @@ export default function GithubRewardsModal(props: GithubRewardsModalProps) {
   const { data: session, status } = useSession();
   const { isMobile, isTablet } = useMediaQuery();
 
+  const network =
+    networks.find((network) => network.id === chainId) ?? networks[0];
   const { data: superfluidQueryRes } = useQuery(GDA_POOL_QUERY, {
-    client: getApolloClient("superfluid", 11155420),
+    client: getApolloClient("superfluid", chainId),
     variables: {
-      gdaPool: "0x1f4c05f5a7900d4cfbc9dd892e8ce61d9727ce8c",
+      gdaPool: network.pay16zPool,
       address: address?.toLowerCase(),
     },
     skip: !address,
@@ -49,6 +56,7 @@ export default function GithubRewardsModal(props: GithubRewardsModalProps) {
 
   const isAuthenticated = status === "authenticated";
   const poolMember = superfluidQueryRes?.pool?.poolMembers[0];
+  const isConnected = poolMember?.units && BigInt(poolMember.units) > 0;
 
   const handleClaim = async () => {
     if (session?.user?.name && address) {
@@ -57,7 +65,7 @@ export default function GithubRewardsModal(props: GithubRewardsModalProps) {
       try {
         const res = await fetch("/api/github-rewards/claim", {
           method: "POST",
-          body: JSON.stringify({ address, chainId: 11155420 }),
+          body: JSON.stringify({ address, chainId: chainId }),
         });
         const json = await res.json();
 
@@ -127,14 +135,17 @@ export default function GithubRewardsModal(props: GithubRewardsModalProps) {
             {isAuthenticated ? "Remove Github Link" : "Link Github"}
           </Button>
           <Button
-            disabled={
-              !isAuthenticated ||
-              (poolMember?.units && BigInt(poolMember.units) > 0)
-            }
+            disabled={!isAuthenticated || isConnected}
             style={{ width: isMobile ? "100%" : "50%" }}
             onClick={isClaiming ? void 0 : handleClaim}
           >
-            {isClaiming ? <Spinner size="sm" /> : "Connect to Pool"}
+            {isClaiming ? (
+              <Spinner size="sm" />
+            ) : isConnected ? (
+              "Connected to Pool"
+            ) : (
+              "Connect to Pool"
+            )}
           </Button>
         </Stack>
       </Modal.Body>

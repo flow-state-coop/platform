@@ -122,7 +122,9 @@ export default function ConnectWallet() {
                       </Dropdown.Item>
                     </Dropdown.Menu>
                   </Dropdown>
-                  {pathname?.startsWith("/pay16z") && <GithubRewardsButton />}
+                  {pathname?.startsWith("/pay16z") && (
+                    <GithubRewardsButton chainId={chain.id} />
+                  )}
                 </div>
               );
             })()}

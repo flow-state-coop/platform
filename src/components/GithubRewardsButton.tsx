@@ -8,7 +8,7 @@ import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import GithubRewardsModal from "@/components/GithubRewardsModal";
 
-export default function GithubRewards() {
+export default function GithubRewardsButton({ chainId }: { chainId: number }) {
   const [showModal, setShowModal] = useState(false);
 
   const { data: session, status } = useSession();
@@ -43,6 +43,7 @@ export default function GithubRewards() {
       </Button>
       <GithubRewardsModal
         showModal={showModal}
+        chainId={chainId}
         closeModal={() => setShowModal(false)}
       />
     </>

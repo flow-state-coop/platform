@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useLayoutEffect, useEffect } from "react";
-import { useAccount } from "wagmi";
-import { formatEther } from "viem";
+import { useAccount, useConfig } from "wagmi";
+import { formatEther, Address } from "viem";
+import { readContracts } from "@wagmi/core";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useQuery, gql } from "@apollo/client";
 import Papa from "papaparse";
@@ -20,6 +21,7 @@ import { Token } from "@/types/token";
 import { scoresCsvUrl } from "@/app/api/github-rewards/constants";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
+import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
 import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";
 import { formatNumberWithCharSuffix } from "@/lib/utils";
@@ -52,6 +54,7 @@ type Contributor = {
 const GDA_POOL_QUERY = gql`
   query GdaPoolQuery($gdaPool: String!, $userAddress: String!) {
     pool(id: $gdaPool) {
+      id
       flowRate
       adjustmentFlowRate
       totalUnits
@@ -98,6 +101,7 @@ export default function GithubRewards(props: GithubRewardsProps) {
 
   const [showFullInfo, setShowFullInfo] = useState(true);
   const [showGithubRewardsModal, setShowGithubRewardsModal] = useState(false);
+  const [contributors, setContributors] = useState<Contributor[]>([]);
   const [transactionPanelState, setTransactionPanelState] = useState<{
     show: boolean;
     isFundingWithStream: boolean;
@@ -105,17 +109,17 @@ export default function GithubRewards(props: GithubRewardsProps) {
     show: false,
     isFundingWithStream: false,
   });
-  const [contributors, setContributors] = useState<Contributor[]>([]);
 
   const network =
     networks.find((network) => network.id === chainId) ?? networks[0];
 
+  const wagmiConfig = useConfig();
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const { address } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { data: superfluidQueryRes } = useQuery(GDA_POOL_QUERY, {
-    client: getApolloClient("superfluid", chainId),
+    client: getApolloClient("superfluid", network.id),
     variables: {
       gdaPool: network.pay16zPool?.toLowerCase(),
       userAddress: address?.toLowerCase() ?? "0x",
@@ -154,7 +158,14 @@ export default function GithubRewards(props: GithubRewardsProps) {
         const scoresCsvRes = await fetch(scoresCsvUrl[network.id]);
         const scoresCsv = await scoresCsvRes.text();
         const scoresParsingResult = Papa.parse(scoresCsv, { header: true });
-        const scores = scoresParsingResult.data as Score[];
+        const scores = (scoresParsingResult.data as Score[])
+          .filter(
+            (score) =>
+              score["Github Username"] !== "renovate" &&
+              score["Github Username"] !== "renovate[bot]" &&
+              score["Github Username"] !== "elizaos-demirix",
+          )
+          .slice(0, 40) as Score[];
         const contributorsRes = await fetch(
           "/api/github-rewards/contributors",
           {
@@ -167,13 +178,46 @@ export default function GithubRewards(props: GithubRewardsProps) {
         const adjustedFlowRate =
           BigInt(pool.flowRate) - BigInt(pool.adjustmentFlowRate);
 
-        for (const score of scores) {
+        const profilesQueryRes = await fetch(
+          "/api/github-rewards/github-profiles",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              usernames: scores.map((score) => score["Github Username"]),
+            }),
+          },
+        );
+        const profilesQueryData = await profilesQueryRes.json();
+
+        let profiles;
+
+        if (profilesQueryData.success) {
+          profiles = profilesQueryData.message;
+        }
+
+        const flowInfosBatchQuery = [];
+
+        for (const poolMember of pool.poolMembers) {
+          flowInfosBatchQuery.push({
+            address: pool.id as Address,
+            functionName: "getTotalAmountReceivedByMember",
+            abi: superfluidPoolAbi,
+            args: [poolMember.account.id as Address],
+            chainId,
+          });
+        }
+
+        const flowInfosResults = await readContracts(wagmiConfig, {
+          contracts: flowInfosBatchQuery,
+        });
+
+        for (const i in scores) {
           let memberFlowRate = BigInt(0);
           let totalFlowed = BigInt(0);
 
-          const registeredContributor = registeredContributors.find(
+          const registeredContributor = registeredContributors?.find(
             (contributor: { name: string }) =>
-              contributor.name === score["Github Username"],
+              contributor.name === scores[i]["Github Username"],
           );
           const member = pool.poolMembers.find(
             (member: { account: { id: string } }) =>
@@ -187,41 +231,27 @@ export default function GithubRewards(props: GithubRewardsProps) {
                 ? (BigInt(member?.units ?? 0) * adjustedFlowRate) /
                   BigInt(pool.totalUnits)
                 : BigInt(0);
-            const elapsedTimeInMilliseconds = BigInt(
-              Date.now() - member.updatedAtTimestamp * 1000,
-            );
             totalFlowed =
-              memberFlowRate +
-              (BigInt(pool.flowRate) * elapsedTimeInMilliseconds) /
-                BigInt(1000);
+              (flowInfosResults[
+                flowInfosBatchQuery.findIndex(
+                  (a) => a.args[0] === member.account.id,
+                )
+              ]?.result as bigint) ?? BigInt(0);
           }
 
-          const githubProfileRes = await fetch(
-            `https://api.github.com/users/${score["Github Username"]}`,
-          );
-
-          const githubProfile = await githubProfileRes.json();
-
-          await new Promise((resolve) =>
-            setTimeout(
-              resolve,
-              process.env.NODE_ENV === "production" ? 10 : 200,
-            ),
-          );
-
           contributors.push({
-            name: score["Github Username"],
-            image: githubProfile?.avatar_url ?? "",
-            score: Number(score["Score"]),
-            commits: Number(score["Commits"]),
-            pullRequests: Number(score["Pull Requests"]),
-            issues: Number(score["Issues"]),
+            name: scores[i]["Github Username"],
+            image: profiles[i]?.avatarUrl ?? "",
+            score: Number(scores[i]["Score"]),
+            commits: Number(scores[i]["Commits"]),
+            pullRequests: Number(scores[i]["Pull Requests"]),
+            issues: Number(scores[i]["Issues"]),
             flowRate: memberFlowRate,
             totalFlowed: totalFlowed,
             estimatedFlowRate: member
               ? null
-              : (BigInt(score["Score"]) * adjustedFlowRate) /
-                (BigInt(pool.totalUnits) + BigInt(score["Score"])),
+              : (BigInt(scores[i]["Score"]) * adjustedFlowRate) /
+                (BigInt(pool.totalUnits) + BigInt(scores[i]["Score"])),
           });
         }
 
@@ -230,7 +260,7 @@ export default function GithubRewards(props: GithubRewardsProps) {
         console.error(err);
       }
     })();
-  }, [pool, chainId, network]);
+  }, [pool, chainId, network, wagmiConfig]);
 
   return (
     <SuperfluidContextProvider
@@ -354,7 +384,7 @@ export default function GithubRewards(props: GithubRewardsProps) {
                       </Button>
                       <Button
                         variant="primary"
-                        disabled={network.name !== "Base"}
+                        disabled
                         className="p-2 text-light fs-5"
                         style={{ width: isMobile ? "100%" : 180 }}
                         onClick={() => () =>
@@ -554,6 +584,7 @@ export default function GithubRewards(props: GithubRewardsProps) {
         {showGithubRewardsModal && (
           <GithubRewardsModal
             showModal={showGithubRewardsModal}
+            chainId={chainId}
             closeModal={() => setShowGithubRewardsModal(false)}
           />
         )}

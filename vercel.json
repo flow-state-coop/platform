@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/github-rewards/update?chainId=11155420",
+      "path": "/api/github-rewards/update?chainId=8453",
       "schedule": "0 6 * * *"
     }
   ]
