@@ -206,7 +206,7 @@ export default function FlowSplitter() {
         <h1 className="mt-5">Launch a Flow Splitter</h1>
         <h2 className="text-info fs-5">
           A Flow Splitter allocates one or more incoming Superfluid token
-          streams to recipients proportional to their unit share in real time.
+          streams to recipients proportional to their shares in real time.
         </h2>
         <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-3 py-4">
           <Card.Header className="bg-transparent border-0 rounded-4 p-0 fs-4">
@@ -219,7 +219,7 @@ export default function FlowSplitter() {
             <Dropdown>
               <Dropdown.Toggle
                 className="d-flex justify-content-between align-items-center bg-white text-dark border border-2"
-                style={{ width: 156 }}
+                style={{ width: 156, paddingTop: 12, paddingBottom: 12 }}
               >
                 <Stack
                   direction="horizontal"
@@ -257,7 +257,7 @@ export default function FlowSplitter() {
               <Dropdown>
                 <Dropdown.Toggle
                   className="d-flex justify-content-between align-items-center bg-white text-dark border border-2"
-                  style={{ width: 156 }}
+                  style={{ width: 156, paddingTop: 12, paddingBottom: 12 }}
                 >
                   <Stack
                     direction="horizontal"
@@ -304,12 +304,19 @@ export default function FlowSplitter() {
                   </Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>
-              {customTokenSelection && (
-                <Stack direction="vertical" className="align-self-sm-end">
+              {customTokenSelection ? (
+                <Stack
+                  direction="vertical"
+                  className="position-relative align-self-sm-end"
+                >
                   <Form.Control
                     type="text"
                     value={customTokenEntry.address}
-                    style={{ width: !isMobile ? "50%" : "" }}
+                    style={{
+                      width: !isMobile ? "50%" : "",
+                      paddingTop: 12,
+                      paddingBottom: 12,
+                    }}
                     onChange={async (e) => {
                       const value = e.target.value;
 
@@ -340,16 +347,34 @@ export default function FlowSplitter() {
                     }}
                   />
                   {customTokenEntry.validationError && (
-                    <Card.Text className="mb-0 ms-2 ps-1 text-danger">
+                    <Card.Text
+                      className="position-absolute mb-0 ms-2 ps-1 text-danger"
+                      style={{ bottom: 1, fontSize: "0.7rem" }}
+                    >
                       {customTokenEntry.validationError}
                     </Card.Text>
                   )}
+                </Stack>
+              ) : (
+                <Stack direction="vertical" className="align-self-sm-end">
+                  <Form.Control
+                    type="text"
+                    disabled
+                    value={
+                      selectedToken?.address ?? networks[1].tokens[0].address
+                    }
+                    style={{
+                      width: !isMobile ? "50%" : "",
+                      paddingTop: 12,
+                      paddingBottom: 12,
+                    }}
+                  />
                 </Stack>
               )}
             </Stack>
             <Stack direction="vertical" className="mt-4">
               <Form.Label className="d-flex gap-1 mb-2 fs-5">
-                Distribution Unit Transferability
+                Share Transferability
                 <InfoTooltip
                   position={{ top: true }}
                   target={
@@ -364,7 +389,7 @@ export default function FlowSplitter() {
                   content={
                     <>
                       Should recipients be able to transfer (or trade) their
-                      distribution units?
+                      distribution shares?
                       <br />
                       <br />
                       Carefully consider the implications with your Contract
@@ -415,7 +440,11 @@ export default function FlowSplitter() {
               type="text"
               placeholder="Name (Optional)"
               value={metadata.name}
-              style={{ width: !isMobile ? "50%" : "" }}
+              style={{
+                width: !isMobile ? "50%" : "",
+                paddingTop: 12,
+                paddingBottom: 12,
+              }}
               onChange={(e) =>
                 setMetadata({ ...metadata, name: e.target.value })
               }
@@ -439,8 +468,7 @@ export default function FlowSplitter() {
               content={
                 <>
                   Set the address(es), including multisigs, that should be able
-                  to update the distribution units of your Flow Splitter for
-                  your use case.
+                  to update the shares of your Flow Splitter for your use case.
                   <br />
                   <br />
                   Admins can relinquish, transfer, or add others to the admin
@@ -485,7 +513,7 @@ export default function FlowSplitter() {
                   {adminsEntry.map((adminEntry, i) => (
                     <Stack
                       direction="vertical"
-                      className="mb-2"
+                      className="position-relative mb-3"
                       key={`${adminEntry.address}-${i}`}
                     >
                       <Stack
@@ -497,7 +525,11 @@ export default function FlowSplitter() {
                           key={i}
                           type="text"
                           value={adminEntry.address}
-                          style={{ width: !isMobile ? "50%" : "" }}
+                          style={{
+                            width: !isMobile ? "50%" : "",
+                            paddingTop: 12,
+                            paddingBottom: 12,
+                          }}
                           onChange={(e) => {
                             const prevAdminsEntry = [...adminsEntry];
                             const value = e.target.value;
@@ -544,7 +576,10 @@ export default function FlowSplitter() {
                         </Button>
                       </Stack>
                       {adminEntry.validationError ? (
-                        <Card.Text className="mb-0 ms-2 ps-1 text-danger small">
+                        <Card.Text
+                          className="position-absolute mb-0 ms-2 ps-1 text-danger"
+                          style={{ bottom: 1, fontSize: "0.7rem" }}
+                        >
                           {adminEntry.validationError}
                         </Card.Text>
                       ) : null}
@@ -573,7 +608,7 @@ export default function FlowSplitter() {
         </Card>
         <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
           <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-4">
-            Distribution Units
+            Share Register
             <InfoTooltip
               position={{ top: true }}
               target={
@@ -589,11 +624,11 @@ export default function FlowSplitter() {
                 <>
                   As tokens are streamed to the Flow Splitter, they're
                   proportionally distributed in real time to recipients
-                  according to their percentage of the total outstanding units.
+                  according to their percentage of the total outstanding shares.
                   <br />
                   <br />
-                  Any changes to the total number of outstanding units or a
-                  recipient's units will be reflected in the continuing stream
+                  Any changes to the total number of outstanding or a
+                  recipient's shares will be reflected in the continuing stream
                   allocation.
                 </>
               }
@@ -604,15 +639,19 @@ export default function FlowSplitter() {
               <Stack
                 direction="horizontal"
                 gap={isMobile ? 2 : 4}
-                className="justify-content-start mb-2"
+                className="justify-content-start mb-3"
                 key={i}
               >
                 <Stack direction="vertical" className="w-100">
-                  <Stack direction="vertical">
+                  <Stack direction="vertical" className="position-relative">
                     <Form.Control
                       type="text"
                       placeholder={isMobile ? "Address" : "Recipient Address"}
                       value={memberEntry.address}
+                      style={{
+                        paddingTop: 12,
+                        paddingBottom: 12,
+                      }}
                       onChange={(e) => {
                         const prevMembersEntry = [...membersEntry];
                         const value = e.target.value;
@@ -639,7 +678,10 @@ export default function FlowSplitter() {
                       }}
                     />
                     {memberEntry.validationError ? (
-                      <Card.Text className="mt-1 mb-0 ms-2 ps-1 text-danger small">
+                      <Card.Text
+                        className="position-absolute mt-1 mb-0 ms-2 ps-1 text-danger"
+                        style={{ bottom: 1, fontSize: "0.7rem" }}
+                      >
                         {memberEntry.validationError}
                       </Card.Text>
                     ) : null}
@@ -652,6 +694,10 @@ export default function FlowSplitter() {
                     placeholder="Units"
                     value={memberEntry.units}
                     className="text-center"
+                    style={{
+                      paddingTop: 12,
+                      paddingBottom: 12,
+                    }}
                     onChange={(e) => {
                       const prevMembersEntry = [...membersEntry];
                       const value = e.target.value;
@@ -696,6 +742,10 @@ export default function FlowSplitter() {
                             )}%`
                       }
                       className="text-center"
+                      style={{
+                        paddingTop: 12,
+                        paddingBottom: 12,
+                      }}
                     />
                     <Button
                       variant="transparent"
@@ -858,7 +908,7 @@ export default function FlowSplitter() {
               (customTokenSelection && !!customTokenEntry.validationError) ||
               !isValidMembersEntry
             }
-            className="w-100"
+            className="w-100 py-2 fs-5"
             onClick={() =>
               !address && openConnectModal
                 ? openConnectModal()

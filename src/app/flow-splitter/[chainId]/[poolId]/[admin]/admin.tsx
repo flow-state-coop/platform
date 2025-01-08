@@ -66,6 +66,7 @@ const FLOW_SPLITTER_POOL_QUERY = gql`
 const SUPERFLUID_QUERY = gql`
   query SuperfluidQuery($token: String!, $gdaPool: String!) {
     token(id: $token) {
+      id
       symbol
     }
     pool(id: $gdaPool) {
@@ -431,7 +432,7 @@ export default function Admin(props: AdminProps) {
                   <Dropdown>
                     <Dropdown.Toggle
                       className="d-flex justify-content-between align-items-center bg-white text-dark border border-2"
-                      style={{ width: 156 }}
+                      style={{ width: 156, paddingTop: 12, paddingBottom: 12 }}
                       disabled
                     >
                       <Stack
@@ -458,7 +459,11 @@ export default function Admin(props: AdminProps) {
                       <Dropdown.Toggle
                         className="d-flex justify-content-between align-items-center bg-white text-dark border border-2"
                         disabled
-                        style={{ width: 156 }}
+                        style={{
+                          width: 156,
+                          paddingTop: 12,
+                          paddingBottom: 12,
+                        }}
                       >
                         <Stack
                           direction="horizontal"
@@ -477,10 +482,22 @@ export default function Admin(props: AdminProps) {
                         </Stack>
                       </Dropdown.Toggle>
                     </Dropdown>
+                    <Stack direction="vertical" className="align-self-sm-end">
+                      <Form.Control
+                        type="text"
+                        disabled
+                        value={superfluidQueryRes?.token.id}
+                        style={{
+                          width: !isMobile ? "50%" : "",
+                          paddingTop: 12,
+                          paddingBottom: 12,
+                        }}
+                      />
+                    </Stack>
                   </Stack>
                   <Stack direction="vertical" className="mt-4">
                     <Form.Label className="d-flex gap-1 mb-2 fs-5">
-                      Distribution Unit Transferability
+                      Share Transferability
                       <InfoTooltip
                         position={{ top: true }}
                         target={
@@ -495,7 +512,7 @@ export default function Admin(props: AdminProps) {
                         content={
                           <>
                             Should recipients be able to transfer (or trade)
-                            their distribution units?
+                            their shares?
                             <br />
                             <br />
                             Carefully consider the implications with your
@@ -539,7 +556,11 @@ export default function Admin(props: AdminProps) {
                   type="text"
                   placeholder="Name (Optional)"
                   value={metadataEntry.name}
-                  style={{ width: !isMobile ? "50%" : "" }}
+                  style={{
+                    width: !isMobile ? "50%" : "",
+                    paddingTop: 12,
+                    paddingBottom: 12,
+                  }}
                   onChange={(e) =>
                     setMetadataEntry({ ...metadataEntry, name: e.target.value })
                   }
@@ -563,8 +584,8 @@ export default function Admin(props: AdminProps) {
                   content={
                     <>
                       Set the address(es), including multisigs, that should be
-                      able to update the distribution units of your Flow
-                      Splitter for your use case.
+                      able to update the shares of your Flow Splitter for your
+                      use case.
                       <br />
                       <br />
                       Admins can relinquish, transfer, or add others to the
@@ -607,7 +628,11 @@ export default function Admin(props: AdminProps) {
                   {!poolConfig.immutable && (
                     <div className="mt-2">
                       {adminsEntry.map((adminEntry, i) => (
-                        <Stack direction="vertical" className="mb-2" key={i}>
+                        <Stack
+                          direction="vertical"
+                          className="position-relative mb-3"
+                          key={i}
+                        >
                           <Stack
                             direction="horizontal"
                             gap={2}
@@ -617,7 +642,11 @@ export default function Admin(props: AdminProps) {
                               key={i}
                               type="text"
                               value={adminEntry.address}
-                              style={{ width: !isMobile ? "50%" : "" }}
+                              style={{
+                                width: !isMobile ? "50%" : "",
+                                paddingTop: 12,
+                                paddingBottom: 12,
+                              }}
                               onChange={(e) => {
                                 const prevAdminsEntry = [...adminsEntry];
                                 const value = e.target.value;
@@ -664,7 +693,10 @@ export default function Admin(props: AdminProps) {
                             </Button>
                           </Stack>
                           {adminEntry.validationError ? (
-                            <Card.Text className="mb-0 ms-2 ps-1 text-danger small">
+                            <Card.Text
+                              className="position-absolute mb-0 ms-2 ps-1 text-danger"
+                              style={{ bottom: 1, fontSize: "0.7rem" }}
+                            >
                               {adminEntry.validationError}
                             </Card.Text>
                           ) : null}
@@ -693,7 +725,7 @@ export default function Admin(props: AdminProps) {
             </Card>
             <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
               <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-4">
-                Distribution Units
+                Share Register
                 <InfoTooltip
                   position={{ top: true }}
                   target={
@@ -710,11 +742,11 @@ export default function Admin(props: AdminProps) {
                       As tokens are streamed to the Flow Splitter, they're
                       proportionally distributed in real time to recipients
                       according to their percentage of the total outstanding
-                      units.
+                      shares.
                       <br />
                       <br />
-                      Any changes to the total number of outstanding units or a
-                      recipient's units will be reflected in the continuing
+                      Any changes to the total number of outstanding or a
+                      recipient's shares will be reflected in the continuing
                       stream allocation.
                     </>
                   }
@@ -725,17 +757,18 @@ export default function Admin(props: AdminProps) {
                   <Stack
                     direction="horizontal"
                     gap={isMobile ? 2 : 4}
-                    className="justify-content-start mb-2"
+                    className="justify-content-start mb-3"
                     key={i}
                   >
                     <Stack direction="vertical" className="w-100">
-                      <Stack direction="vertical">
+                      <Stack direction="vertical" className="position-relative">
                         <Form.Control
                           type="text"
                           placeholder={
                             isMobile ? "Address" : "Recipient Address"
                           }
                           value={memberEntry.address}
+                          style={{ paddingTop: 12, paddingBottom: 12 }}
                           onChange={(e) => {
                             const prevMembersEntry = [...membersEntry];
                             const value = e.target.value;
@@ -762,7 +795,10 @@ export default function Admin(props: AdminProps) {
                           }}
                         />
                         {memberEntry.validationError ? (
-                          <Card.Text className="mt-1 mb-0 ms-2 ps-1 text-danger small">
+                          <Card.Text
+                            className="position-absolute mt-1 mb-0 ms-2 ps-1 text-danger"
+                            style={{ bottom: 1, fontSize: "0.7rem" }}
+                          >
                             {memberEntry.validationError}
                           </Card.Text>
                         ) : null}
@@ -774,6 +810,7 @@ export default function Admin(props: AdminProps) {
                         inputMode="numeric"
                         placeholder="Units"
                         value={memberEntry.units}
+                        style={{ paddingTop: 12, paddingBottom: 12 }}
                         onChange={(e) => {
                           const prevMembersEntry = [...membersEntry];
                           const value = e.target.value;
@@ -820,6 +857,7 @@ export default function Admin(props: AdminProps) {
                                 )}%`
                           }
                           className="text-center"
+                          style={{ paddingTop: 12, paddingBottom: 12 }}
                         />
                         <Button
                           variant="transparent"
@@ -987,7 +1025,7 @@ export default function Admin(props: AdminProps) {
                   (!poolConfig.immutable && !isValidAdminsEntry) ||
                   !isValidMembersEntry
                 }
-                className="w-100"
+                className="w-100 py-2 fs-5"
                 onClick={() =>
                   !address && openConnectModal
                     ? openConnectModal()
