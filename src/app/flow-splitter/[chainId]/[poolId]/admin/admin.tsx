@@ -530,7 +530,9 @@ export default function Admin(props: AdminProps) {
                           disabled
                           checked={!unitsTrasnferability}
                         />
-                        <FormCheck.Label>Non-Transferable</FormCheck.Label>
+                        <FormCheck.Label>
+                          Non-Transferable (Admin Only)
+                        </FormCheck.Label>
                       </FormCheck>
                       <FormCheck type="radio">
                         <FormCheck.Input
@@ -808,7 +810,7 @@ export default function Admin(props: AdminProps) {
                       <Form.Control
                         type="text"
                         inputMode="numeric"
-                        placeholder="Units"
+                        placeholder="Shares"
                         value={memberEntry.units}
                         style={{ paddingTop: 12, paddingBottom: 12 }}
                         onChange={(e) => {

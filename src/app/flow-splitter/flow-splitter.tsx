@@ -21,6 +21,7 @@ import FormCheck from "react-bootstrap/FormCheck";
 import Form from "react-bootstrap/Form";
 import InfoTooltip from "@/components/InfoTooltip";
 import { Token } from "@/types/token";
+import { Network } from "@/types/network";
 import { pinJsonToIpfs } from "@/lib/ipfs";
 import { getApolloClient } from "@/lib/apollo";
 import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
@@ -54,6 +55,7 @@ const SUPERTOKEN_QUERY = gql`
 `;
 
 export default function FlowSplitter() {
+  const [selectedNetwork, setSelectedNetwork] = useState<Network>(networks[1]);
   const [selectedToken, setSelectedToken] = useState<Token>();
   const [poolConfig, setPoolConfig] = useState<PoolConfig>({
     transferableUnits: false,
@@ -80,7 +82,7 @@ export default function FlowSplitter() {
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
   const [checkSuperToken] = useLazyQuery(SUPERTOKEN_QUERY, {
-    client: getApolloClient("superfluid", networks[1].id),
+    client: getApolloClient("superfluid", selectedNetwork.id),
   });
   const router = useRouter();
   const wagmiConfig = useConfig();
@@ -128,7 +130,7 @@ export default function FlowSplitter() {
 
     const token = selectedToken
       ? selectedToken.address
-      : networks[1].tokens[0].address;
+      : selectedNetwork.tokens[0].address;
 
     try {
       setTransactionError("");
@@ -147,7 +149,7 @@ export default function FlowSplitter() {
       });
 
       const hash = await writeContract(wagmiConfig, {
-        address: networks[1].flowSplitter,
+        address: selectedNetwork.flowSplitter,
         abi: flowSplitterAbi,
         functionName: "createPool",
         args: [
@@ -203,11 +205,32 @@ export default function FlowSplitter() {
                   : 1600,
         }}
       >
-        <h1 className="mt-5">Launch a Flow Splitter</h1>
-        <h2 className="text-info fs-5">
-          A Flow Splitter allocates one or more incoming Superfluid token
-          streams to recipients proportional to their shares in real time.
-        </h2>
+        <Card className="bg-light rounded-4 border-0 mt-5 px-3 px-sm-4 py-4">
+          <Card.Header className="mb-3 bg-transparent border-0 rounded-4 p-0">
+            <Card.Title className="mb-0 fs-1">
+              Launch a Flow Splitter
+            </Card.Title>
+            <Card.Text className="text-info">
+              A Flow Splitter allocates one or more incoming Superfluid token
+              streams to recipients proportional to their shares in real time.
+            </Card.Text>
+          </Card.Header>
+          <Card.Body className="p-0">
+            <Form.Control
+              type="text"
+              placeholder="Name (Optional)"
+              value={metadata.name}
+              style={{
+                width: !isMobile ? "50%" : "",
+                paddingTop: 12,
+                paddingBottom: 12,
+              }}
+              onChange={(e) =>
+                setMetadata({ ...metadata, name: e.target.value })
+              }
+            />
+          </Card.Body>
+        </Card>
         <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-3 py-4">
           <Card.Header className="bg-transparent border-0 rounded-4 p-0 fs-4">
             Core Configuration
@@ -227,26 +250,31 @@ export default function FlowSplitter() {
                   className="align-items-center"
                 >
                   <Image
-                    src={networks[1].icon}
+                    src={selectedNetwork.icon}
                     alt="Network Icon"
                     width={18}
                     height={18}
                   />
-                  {networks[1].name}
+                  {selectedNetwork.name}
                 </Stack>
               </Dropdown.Toggle>
               <Dropdown.Menu>
-                <Dropdown.Item>
-                  <Stack direction="horizontal" gap={1}>
-                    <Image
-                      src={networks[1].icon}
-                      alt="Network Icon"
-                      width={16}
-                      height={16}
-                    />
-                    {networks[1].name}
-                  </Stack>
-                </Dropdown.Item>
+                {networks.map((network, i) => (
+                  <Dropdown.Item
+                    key={i}
+                    onClick={() => setSelectedNetwork(network)}
+                  >
+                    <Stack direction="horizontal" gap={1}>
+                      <Image
+                        src={network.icon}
+                        alt="Network Icon"
+                        width={16}
+                        height={16}
+                      />
+                      {network.name}
+                    </Stack>
+                  </Dropdown.Item>
+                ))}
               </Dropdown.Menu>
             </Dropdown>
             <Stack
@@ -266,7 +294,9 @@ export default function FlowSplitter() {
                   >
                     {!customTokenSelection && (
                       <Image
-                        src={selectedToken?.icon ?? networks[1].tokens[0].icon}
+                        src={
+                          selectedToken?.icon ?? selectedNetwork.tokens[0].icon
+                        }
                         alt="Network Icon"
                         width={18}
                         height={18}
@@ -276,11 +306,12 @@ export default function FlowSplitter() {
                       ? customTokenEntry.symbol
                       : customTokenSelection
                         ? "Custom"
-                        : (selectedToken?.name ?? networks[1].tokens[0].name)}
+                        : (selectedToken?.name ??
+                          selectedNetwork.tokens[0].name)}
                   </Stack>
                 </Dropdown.Toggle>
                 <Dropdown.Menu>
-                  {networks[1].tokens.map((token, i) => (
+                  {selectedNetwork.tokens.map((token, i) => (
                     <Dropdown.Item
                       key={i}
                       onClick={() => {
@@ -361,7 +392,8 @@ export default function FlowSplitter() {
                     type="text"
                     disabled
                     value={
-                      selectedToken?.address ?? networks[1].tokens[0].address
+                      selectedToken?.address ??
+                      selectedNetwork.tokens[0].address
                     }
                     style={{
                       width: !isMobile ? "50%" : "",
@@ -412,7 +444,9 @@ export default function FlowSplitter() {
                       })
                     }
                   />
-                  <FormCheck.Label>Non-Transferable</FormCheck.Label>
+                  <FormCheck.Label>
+                    Non-Transferable (Admin Only)
+                  </FormCheck.Label>
                 </FormCheck>
                 <FormCheck type="radio">
                   <FormCheck.Input
@@ -429,26 +463,6 @@ export default function FlowSplitter() {
                 </FormCheck>
               </Stack>
             </Stack>
-          </Card.Body>
-        </Card>
-        <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
-          <Card.Header className="mb-3 bg-transparent border-0 rounded-4 p-0 fs-4">
-            Name
-          </Card.Header>
-          <Card.Body className="p-0">
-            <Form.Control
-              type="text"
-              placeholder="Name (Optional)"
-              value={metadata.name}
-              style={{
-                width: !isMobile ? "50%" : "",
-                paddingTop: 12,
-                paddingBottom: 12,
-              }}
-              onChange={(e) =>
-                setMetadata({ ...metadata, name: e.target.value })
-              }
-            />
           </Card.Body>
         </Card>
         <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
@@ -691,7 +705,7 @@ export default function FlowSplitter() {
                   <Form.Control
                     type="text"
                     inputMode="numeric"
-                    placeholder="Units"
+                    placeholder="Shares"
                     value={memberEntry.units}
                     className="text-center"
                     style={{
@@ -912,8 +926,8 @@ export default function FlowSplitter() {
             onClick={() =>
               !address && openConnectModal
                 ? openConnectModal()
-                : connectedChain?.id !== networks[1].id
-                  ? switchChain({ chainId: networks[1].id })
+                : connectedChain?.id !== selectedNetwork.id
+                  ? switchChain({ chainId: selectedNetwork.id })
                   : handleSubmit()
             }
           >
