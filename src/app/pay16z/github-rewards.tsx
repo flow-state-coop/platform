@@ -17,6 +17,7 @@ import Spinner from "react-bootstrap/Spinner";
 import SuperfluidContextProvider from "@/context/Superfluid";
 import MatchingPoolFunding from "@/components/MatchingPoolFunding";
 import GithubRewardsModal from "@/components/GithubRewardsModal";
+import InfoTooltip from "@/components/InfoTooltip";
 import { Token } from "@/types/token";
 import { scoresCsvUrl } from "@/app/api/github-rewards/constants";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -41,6 +42,7 @@ type Score = {
 
 type Contributor = {
   name: string;
+  address: string | null;
   image: string;
   score: number;
   commits: number;
@@ -214,6 +216,7 @@ export default function GithubRewards(props: GithubRewardsProps) {
         for (const i in scores) {
           let memberFlowRate = BigInt(0);
           let totalFlowed = BigInt(0);
+          let memberAddress = null;
 
           const registeredContributor = registeredContributors?.find(
             (contributor: { name: string }) =>
@@ -226,6 +229,7 @@ export default function GithubRewards(props: GithubRewardsProps) {
           );
 
           if (member) {
+            memberAddress = member.account.id ?? null;
             memberFlowRate =
               BigInt(pool.totalUnits) > 0
                 ? (BigInt(member?.units ?? 0) * adjustedFlowRate) /
@@ -241,6 +245,7 @@ export default function GithubRewards(props: GithubRewardsProps) {
 
           contributors.push({
             name: scores[i]["Github Username"],
+            address: memberAddress,
             image: profiles[i]?.avatarUrl ?? "",
             score: Number(scores[i]["Score"]),
             commits: Number(scores[i]["Commits"]),
@@ -248,10 +253,11 @@ export default function GithubRewards(props: GithubRewardsProps) {
             issues: Number(scores[i]["Issues"]),
             flowRate: memberFlowRate,
             totalFlowed: totalFlowed,
-            estimatedFlowRate: member
-              ? null
-              : (BigInt(scores[i]["Score"]) * adjustedFlowRate) /
-                (BigInt(pool.totalUnits) + BigInt(scores[i]["Score"])),
+            estimatedFlowRate:
+              member && memberFlowRate > 0
+                ? null
+                : (BigInt(scores[i]["Score"]) * adjustedFlowRate) /
+                  (BigInt(pool.totalUnits) + BigInt(scores[i]["Score"])),
           });
         }
 
@@ -297,7 +303,37 @@ export default function GithubRewards(props: GithubRewardsProps) {
                   className="justify-content-between"
                 >
                   <Stack direction="horizontal" gap={1}>
-                    <Card.Text className="m-0 fs-4 fw-bold">ai16z</Card.Text>
+                    <Card.Text className="m-0 fs-4 fw-bold">
+                      elizaOS Github Contributors
+                    </Card.Text>
+                    <InfoTooltip
+                      content={
+                        <>
+                          This continuous retro funding round programmatically
+                          allocates a stream of{" "}
+                          <Card.Link
+                            href={`https://explorer.superfluid.finance/base-mainnet/supertokens/${token?.address ?? ""}?tab=pools`}
+                            target="_blank"
+                            className="text-white"
+                          >
+                            pay16z tokens
+                          </Card.Link>{" "}
+                          to elizaOS contributors based on their contributor
+                          scores. Scores are updated daily at 5pm EST and
+                          reflected in the onchain stream split shortly after.
+                          Contributors must verify and add an address on Base to
+                          begin receiving contributor rewards.
+                        </>
+                      }
+                      target={
+                        <Image
+                          src="/info.svg"
+                          alt="description"
+                          width={20}
+                          className="mb-4"
+                        />
+                      }
+                    />
                   </Stack>
                   {isMobile && !showFullInfo && (
                     <Button
@@ -310,7 +346,7 @@ export default function GithubRewards(props: GithubRewardsProps) {
                   )}
                 </Stack>
                 <Card.Text className="mb-4 fs-6">
-                  Continuous Retro Funding
+                  Continuous Retro Funding (Beta)
                 </Card.Text>
                 {(!isMobile || showFullInfo) && (
                   <>
@@ -334,7 +370,12 @@ export default function GithubRewards(props: GithubRewardsProps) {
                       <tbody>
                         <tr>
                           <td className="w-33 ps-0 bg-transparent">
-                            {token?.name ?? "N/A"}
+                            <Card.Link
+                              href={`${network.superfluidExplorer}/pools/${network.pay16zPool}`}
+                              target="_blank"
+                            >
+                              {token?.name ?? "N/A"}
+                            </Card.Link>
                           </td>
                           <td className="w-20 bg-transparent">
                             {formatNumberWithCharSuffix(
@@ -476,12 +517,13 @@ export default function GithubRewards(props: GithubRewardsProps) {
                       </Stack>
                     </Card.Body>
                     <Card.Footer className="bg-transparent border-0 pb-3">
-                      <Stack
-                        direction="horizontal"
-                        className="justify-content-between"
-                      >
-                        {contributor.estimatedFlowRate === null ? (
-                          <>
+                      {contributor.flowRate > 0 &&
+                      contributor.estimatedFlowRate === null ? (
+                        <>
+                          <Stack
+                            direction="horizontal"
+                            className="justify-content-between"
+                          >
                             <Stack direction="vertical" gap={2}>
                               <Card.Text className="m-0 text-center small fw-bold">
                                 Current Stream
@@ -511,41 +553,49 @@ export default function GithubRewards(props: GithubRewardsProps) {
                                 {token?.name ?? "N/A"}
                               </Card.Text>
                             </Stack>
-                          </>
-                        ) : (
-                          <Stack
-                            direction="vertical"
-                            className="align-items-center"
-                          >
-                            <Button
-                              variant="transparent"
-                              className="mb-2 text-decoration-underline fs-4"
-                              onClick={
-                                !address
-                                  ? openConnectModal
-                                  : () => setShowGithubRewardsModal(true)
-                              }
-                            >
-                              Profile Not Claimed
-                            </Button>
-                            <Card.Text className="m-0 fw-bold">
-                              Missing out on
-                            </Card.Text>
-                            <Card.Text>
-                              {formatNumberWithCharSuffix(
-                                Number(
-                                  formatEther(
-                                    contributor.estimatedFlowRate *
-                                      BigInt(SECONDS_IN_MONTH),
-                                  ),
-                                ),
-                                3,
-                              )}{" "}
-                              {token?.name ?? "N/A"}/mo
-                            </Card.Text>
                           </Stack>
-                        )}
-                      </Stack>
+                          <Button
+                            variant="link"
+                            href={`${network.superfluidDashboard}/token/${network.label}/${token?.address ?? ""}/?view=${contributor.address}`}
+                            target="_blank"
+                            className="w-100 mt-4 bg-primary text-white text-decoration-none"
+                          >
+                            Live Token Balance
+                          </Button>
+                        </>
+                      ) : (
+                        <Stack
+                          direction="vertical"
+                          className="align-items-center"
+                        >
+                          <Button
+                            variant="transparent"
+                            className="mb-2 text-decoration-underline fs-4"
+                            onClick={
+                              !address
+                                ? openConnectModal
+                                : () => setShowGithubRewardsModal(true)
+                            }
+                          >
+                            Profile Not Claimed
+                          </Button>
+                          <Card.Text className="m-0 fw-bold">
+                            Missing out on
+                          </Card.Text>
+                          <Card.Text>
+                            {formatNumberWithCharSuffix(
+                              Number(
+                                formatEther(
+                                  BigInt(contributor?.estimatedFlowRate ?? 0) *
+                                    BigInt(SECONDS_IN_MONTH),
+                                ),
+                              ),
+                              3,
+                            )}{" "}
+                            {token?.name ?? "N/A"}/mo
+                          </Card.Text>
+                        </Stack>
+                      )}
                     </Card.Footer>
                   </Card>
                 ))}
@@ -567,7 +617,7 @@ export default function GithubRewards(props: GithubRewardsProps) {
                 }
                 poolName="Pay16z"
                 poolUiLink={`${hostName}/pay16z/?&chainId=${chainId}`}
-                description="ai16z Continous Retro Funding"
+                description="elizaOS Continous Retro Funding"
                 matchingPool={pool}
                 matchingTokenInfo={token ?? network.tokens[0]}
                 network={network}

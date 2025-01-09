@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useDisconnect } from "wagmi";
 import Stack from "react-bootstrap/Stack";
@@ -9,11 +9,15 @@ import Button from "react-bootstrap/Button";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import WalletBalance from "@/components/WalletBalance";
 import GithubRewardsButton from "@/components/GithubRewardsButton";
+import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
 export default function ConnectWallet() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { disconnect } = useDisconnect();
   const { isMobile } = useMediaQuery();
+
+  const chainId = searchParams.get("chainId");
 
   return (
     <ConnectButton.Custom>
@@ -123,7 +127,9 @@ export default function ConnectWallet() {
                     </Dropdown.Menu>
                   </Dropdown>
                   {pathname?.startsWith("/pay16z") && (
-                    <GithubRewardsButton chainId={chain.id} />
+                    <GithubRewardsButton
+                      chainId={chainId ? Number(chainId) : DEFAULT_CHAIN_ID}
+                    />
                   )}
                 </div>
               );

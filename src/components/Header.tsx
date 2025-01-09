@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useAccount } from "wagmi";
 import { useRouter, usePathname } from "next/navigation";
 import ConnectWallet from "@/components/ConnectWallet";
@@ -48,7 +49,9 @@ export default function Header() {
           onClick={() => router.push("/")}
         />
         <Stack direction="horizontal" gap={3}>
-          <ConnectWallet />
+          <Suspense>
+            <ConnectWallet />
+          </Suspense>
           {!address && !isMobile && <CreateCoinbaseWallet />}
         </Stack>
       </Stack>
