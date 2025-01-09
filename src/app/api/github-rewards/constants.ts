@@ -8,7 +8,7 @@ const flowSplitter: {
   };
 } = {
   8453: {
-    address: "0x7B0d808456100a6015423C8BF8759509c1252129",
+    address: "0x25b64c200cf3362bac6961353d38a1dbeb42e60e",
     poolId: 2,
   },
   11155420: {
@@ -26,7 +26,7 @@ const chains: { [id: number]: Chain } = {
 
 const scoresCsvUrl: { [id: number]: string } = {
   11155420:
-    "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzWxJCKtviDCIxl4K1GbgjiDxZ_0G42KVKAltupsf_P0a23UoodMIELwuDCFV6QSJ9bQNWusFq9M2i/pub?gid=249454841&single=true&output=csv",
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpgQJ1jLGd9oFEMw7JjfKeC8322XypQe4pKdPlNbMXMO9-ZCDxHoNzwF0ygSvr66rExqdo-KWp9o86/pub?gid=0&single=true&output=csv",
   8453: "https://docs.google.com/spreadsheets/d/1g-id77tiY0saYHWbsRfMHDSqFmB6urjKhGaXJSNtmxI/export?format=csv&id=1g-id77tiY0saYHWbsRfMHDSqFmB6urjKhGaXJSNtmxI&gid=0",
 };
 

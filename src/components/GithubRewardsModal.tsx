@@ -70,7 +70,7 @@ export default function GithubRewardsModal(props: GithubRewardsModalProps) {
         const json = await res.json();
 
         if (!json.success) {
-          setError(json.error);
+          setError(json.error ? json.error : json.message);
         }
 
         console.info("Claiming Profile: ", json);
@@ -115,7 +115,7 @@ export default function GithubRewardsModal(props: GithubRewardsModalProps) {
   return (
     <Modal show={showModal} centered onHide={closeModal}>
       <Modal.Header closeButton className="border-0 fs-4">
-        <Modal.Title>Are you an ai16z contributor?</Modal.Title>
+        <Modal.Title>Are you an elizaOS contributor?</Modal.Title>
       </Modal.Header>
       <Modal.Body className="px-3 pt-0 pb-4 fs-5">
         <p className="mb-0">1) Link your Github to opt-in to funding</p>

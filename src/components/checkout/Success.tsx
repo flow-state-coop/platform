@@ -61,7 +61,7 @@ export default function Success(props: SuccessProps) {
               isFundingFlowStateCore
                 ? `https://twitter.com/intent/tweet?text=I%20just%20opened%20a%20stream%20to%20the%20%40flowstatecoop%20Core%20team%20on%20Flow%20State.%0AJoin%20me%20in%20supporting%20these%20public%20goods%20builders%20at%20${encodeURIComponent(poolUiLink)}`
                 : isFundingFlowSplitter
-                  ? `https://twitter.com/intent/tweet?text=I%20just%20opened%20a%20stream%20to%20%40ai16z%20on%20Flow%20State.%0AJoin%20me%20in%20supporting%20these%20public%20goods%20builders%20at%20${encodeURIComponent(poolUiLink)}`
+                  ? `https://twitter.com/intent/tweet?text=I%20just%20opened%20a%20stream%20to%20%40elizaOS%20on%20Flow%20State.%0AJoin%20me%20in%20supporting%20these%20public%20goods%20builders%20at%20${encodeURIComponent(poolUiLink)}`
                   : `https://twitter.com/intent/tweet?text=I%20just%20opened%20a%20donation%20stream%20to%20${
                       isFundingMatchingPool
                         ? "the matching pool"
@@ -83,7 +83,7 @@ export default function Success(props: SuccessProps) {
               isFundingFlowStateCore
                 ? `https://warpcast.com/~/compose?text=I+just+opened+a+stream+to+the+%40flowstatecoop+Core+team+on+Flow+State.%0AJoin+me+in+supporting+these+public+goods+builders+at&embeds[]=${encodeURIComponent(poolUiLink)}`
                 : isFundingFlowSplitter
-                  ? `https://warpcast.com/~/compose?text=I+just+opened+a+stream+to+%40ai16z+on+Flow+State.%0AJoin+me+in+supporting+these+public+goods+builders+at&embeds[]=${encodeURIComponent(poolUiLink)}`
+                  ? `https://warpcast.com/~/compose?text=I+just+opened+a+stream+to+%40elizaOS%0AJoin+me+in+supporting+these+public+goods+builders+at&embeds[]=${encodeURIComponent(poolUiLink)}`
                   : `https://warpcast.com/~/compose?text=I+just+opened+a+donation+stream+to+${isFundingMatchingPool ? "the matching pool" : granteeName}+in+the+${poolName}+SQF+round%21+Support+public+goods+by+opening+your+stream+with+a+real%2Dtime+matching+multiplier+from+${isFundingMatchingPool ? "here" : "this+frame"}%3A&embeds[]=${isFundingMatchingPool ? encodeURIComponent(poolUiLink) : encodeURIComponent(framesLink ?? "")}`
             }
           >
@@ -103,7 +103,7 @@ export default function Success(props: SuccessProps) {
               isFundingFlowStateCore
                 ? `https://hey.xyz/?text=I+just+opened+a+stream+to+the+%40flowstatecoop+Core+team+on+Flow+State.%0AJoin+me+in+supporting+these+public+goods+builders+at+${encodeURIComponent(poolUiLink)}`
                 : isFundingFlowSplitter
-                  ? `https://hey.xyz/?text=I+just+opened+a+stream+to+the+%40ai16z+on+Flow+State.%0AJoin+me+in+supporting+these+public+goods+builders+at+${encodeURIComponent(poolUiLink)}`
+                  ? `https://hey.xyz/?text=I+just+opened+a+stream+to+the+%40elizaOS%0AJoin+me+in+supporting+these+public+goods+builders+at+${encodeURIComponent(poolUiLink)}`
                   : `https://hey.xyz/?text=I+just+opened+a+donation+stream+to+${isFundingMatchingPool ? "the matching pool" : granteeName}+in+the+${poolName}+SQF+round%21+Support+public+goods+by+opening+your+stream+with+a+real%2Dtime+matching+multiplier+from+${isFundingMatchingPool ? "here" : "this+frame"}%3A+%0A%0A${isFundingMatchingPool ? encodeURIComponent(poolUiLink) : encodeURIComponent(framesLink ?? "")}`
             }
           >

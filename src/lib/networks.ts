@@ -88,6 +88,7 @@ const networks: Network[] = [
   {
     id: 8453,
     name: "Base",
+    label: "base",
     icon: "/base.svg",
     blockExplorer: "https://basescan.org/",
     rpcUrl: "https://base-rpc.publicnode.com",
@@ -146,6 +147,7 @@ const networks: Network[] = [
   {
     id: 11155420,
     name: "OP Sepolia",
+    label: "optimism-sepolia",
     icon: "/optimism.svg",
     rpcUrl: "https://optimism-sepolia-rpc.publicnode.com",
     blockExplorer: "https://sepolia-optimism.etherscan.io",
