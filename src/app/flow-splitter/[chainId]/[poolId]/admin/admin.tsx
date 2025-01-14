@@ -28,6 +28,7 @@ import Spinner from "react-bootstrap/Spinner";
 import FormCheck from "react-bootstrap/FormCheck";
 import Form from "react-bootstrap/Form";
 import InfoTooltip from "@/components/InfoTooltip";
+import OpenFlow from "@/app/flow-splitter/components/OpenFlow";
 import { pinJsonToIpfs } from "@/lib/ipfs";
 import { getApolloClient } from "@/lib/apollo";
 import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
@@ -70,11 +71,18 @@ const SUPERFLUID_QUERY = gql`
       symbol
     }
     pool(id: $gdaPool) {
+      id
       poolMembers {
         account {
           id
         }
         units
+      }
+      poolDistributors {
+        account {
+          id
+        }
+        flowRate
       }
     }
   }
@@ -96,6 +104,7 @@ export default function Admin(props: AdminProps) {
   const [metadataEntry, setMetadataEntry] = useState<Metadata>({ name: "" });
   const [poolMetadata, setPoolMetadata] = useState<Metadata | null>(null);
   const [showCoreConfig, setShowCoreConfig] = useState(false);
+  const [showTransactionPanel, setShowTransactionPanel] = useState(false);
   const [transactionSuccess, setTransactionSuccess] = useState("");
   const [transactionError, setTransactionError] = useState("");
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
@@ -137,9 +146,9 @@ export default function Admin(props: AdminProps) {
   const postHog = usePostHog();
 
   const network = networks.find((network) => network.id === chainId);
-  const poolTokenIcon = network?.tokens.find(
+  const poolToken = network?.tokens.find(
     (token) => token.address.toLowerCase() === pool?.token,
-  )?.icon;
+  );
   const isValidAdminsEntry = adminsEntry.every(
     (adminEntry) =>
       adminEntry.validationError === "" && adminEntry.address !== "",
@@ -360,56 +369,31 @@ export default function Admin(props: AdminProps) {
           <p className="w-100 mt-5 fs-4 text-center">Pool Admin Not Found</p>
         ) : (
           <>
-            <Stack direction="vertical" gap={2} className="d-sm-none mt-5">
-              <h1 className="me-2 mb-0 text-break">
-                Edit {poolMetadata.name ? poolMetadata.name : "Flow Splitter"}
-              </h1>
-              <Stack direction="horizontal" gap={1} className="small">
-                (
-                <Link
-                  href={`${network.superfluidExplorer}/pools/${pool.poolAddress}`}
-                  target="_blank"
-                  className="fs-6"
-                >
-                  {truncateStr(pool.poolAddress, 14)}
-                </Link>
-                )
-                {poolTokenIcon && (
-                  <Image src={poolTokenIcon} alt="" width={16} height={16} />
-                )}
-                {superfluidQueryRes?.token.symbol}
-                <span className="fs-6">on</span>
-                <Image src={network.icon} alt="" width={16} height={16} />
-                {network.name}
-              </Stack>
+            <h1 className="mt-5 mb-1">
+              Edit {poolMetadata.name ? poolMetadata.name : "Flow Splitter"} (
+              <Link
+                href={`${network.superfluidExplorer}/pools/${pool.poolAddress}`}
+                target="_blank"
+              >
+                {truncateStr(pool.poolAddress, 14)}
+              </Link>
+              )
+            </h1>
+            <Stack direction="horizontal" gap={1} className="fs-6">
+              Distributing{" "}
+              {poolToken && (
+                <Image src={poolToken.icon} alt="" width={18} height={18} />
+              )}
+              {superfluidQueryRes?.token.symbol} on
+              <Image src={network.icon} alt="" width={18} height={18} />
+              {network.name}
             </Stack>
-            <Stack
-              direction="horizontal"
-              gap={2}
-              className="d-none d-sm-flex mt-5"
+            <Button
+              className="w-100 mt-5 py-2 fs-5"
+              onClick={() => setShowTransactionPanel(true)}
             >
-              <h1 className="me-2 text-break">
-                Edit {poolMetadata.name ? poolMetadata.name : "Flow Splitter"} (
-                <Link
-                  href={`${network.superfluidExplorer}/pools/${pool.poolAddress}`}
-                  target="_blank"
-                >
-                  {truncateStr(pool.poolAddress, 14)}
-                </Link>
-                )
-              </h1>
-              <Stack direction="horizontal" gap={1} className="fs-6">
-                {poolTokenIcon && (
-                  <Image src={poolTokenIcon} alt="" width={18} height={18} />
-                )}
-                {superfluidQueryRes?.token.symbol}
-              </Stack>
-              <span className="fs-6">on</span>
-              <Stack direction="horizontal" gap={1} className="fs-6">
-                <Image src={network.icon} alt="" width={18} height={18} />
-                {network.name}
-              </Stack>
-            </Stack>
+              Open Flow
+            </Button>
             <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
               <Card.Header
                 className="d-flex justify-content-between align-items-center bg-transparent border-0 rounded-4 p-0 fs-4 cursor-pointer"
@@ -470,9 +454,9 @@ export default function Admin(props: AdminProps) {
                           gap={1}
                           className="align-items-center"
                         >
-                          {poolTokenIcon && (
+                          {poolToken && (
                             <Image
-                              src={poolTokenIcon}
+                              src={poolToken.icon}
                               alt="Network Icon"
                               width={18}
                               height={18}
@@ -1065,6 +1049,17 @@ export default function Admin(props: AdminProps) {
           </>
         )}
       </Container>
+      {showTransactionPanel && (
+        <OpenFlow
+          show={showTransactionPanel}
+          network={network!}
+          token={
+            poolToken ?? { address: pool?.token ?? "", name: "N/A", icon: "" }
+          }
+          pool={superfluidQueryRes?.pool}
+          handleClose={() => setShowTransactionPanel(false)}
+        />
+      )}
     </>
   );
 }

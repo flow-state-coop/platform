@@ -262,7 +262,10 @@ export default function FlowSplitter() {
                 {networks.map((network, i) => (
                   <Dropdown.Item
                     key={i}
-                    onClick={() => setSelectedNetwork(network)}
+                    onClick={() => {
+                      setSelectedNetwork(network);
+                      setSelectedToken(network.tokens[0]);
+                    }}
                   >
                     <Stack direction="horizontal" gap={1}>
                       <Image

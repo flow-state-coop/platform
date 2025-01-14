@@ -81,6 +81,7 @@ const networks: Network[] = [
   {
     id: 10,
     name: "Optimism",
+    label: "optimism",
     icon: "/optimism.svg",
     rpcUrl: "https://optimism-rpc.publicnode.com",
     blockExplorer: "https://optimistic.etherscan.io",
