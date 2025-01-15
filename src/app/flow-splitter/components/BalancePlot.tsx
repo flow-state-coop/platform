@@ -8,12 +8,14 @@ export type BalancePlotFlowInfo = {
   currentStartingBalance: bigint;
   newStartingBalance: bigint;
   currentTotalFlowRate: bigint;
-  currentLiquidation: number;
+  currentLiquidation: number | null;
   newTotalFlowRate: bigint;
   newLiquidation: number | null;
 };
 
-type BalancePlotProps = { flowInfo: BalancePlotFlowInfo | null };
+type BalancePlotProps = {
+  flowInfo: BalancePlotFlowInfo | null;
+};
 
 const SECONDS_IN_YEAR = 31536000;
 
@@ -39,8 +41,9 @@ export default function BalancePlot(props: BalancePlotProps) {
                 flowInfo.currentTotalFlowRate * BigInt(SECONDS_IN_YEAR),
             ),
           )
-        : flowInfo.currentLiquidation * 1000 >
-            Date.now() + SECONDS_IN_YEAR * 1e3 * 1000
+        : flowInfo.currentLiquidation &&
+            flowInfo.currentLiquidation * 1000 >
+              Date.now() + SECONDS_IN_YEAR * 1e3 * 1000
           ? Number(
               formatEther(
                 flowInfo.currentStartingBalance +
@@ -69,8 +72,9 @@ export default function BalancePlot(props: BalancePlotProps) {
     const currentEndingDate =
       flowInfo.currentTotalFlowRate > 0
         ? new Date(Date.now() + SECONDS_IN_YEAR * 1000)
-        : flowInfo.currentLiquidation * 1000 >
-            Date.now() + SECONDS_IN_YEAR * 1e3 * 1000
+        : !flowInfo.currentLiquidation ||
+            flowInfo.currentLiquidation * 1000 >
+              Date.now() + SECONDS_IN_YEAR * 1e3 * 1000
           ? new Date(Date.now() + SECONDS_IN_YEAR * 1e3 * 1000)
           : new Date(flowInfo.currentLiquidation * 1000);
     const newEndingDate =
@@ -173,7 +177,7 @@ export default function BalancePlot(props: BalancePlotProps) {
           {parseFloat(
             Number(formatEther(flowInfo.currentStartingBalance)).toFixed(2),
           )}{" "}
-          -{" "}
+          {flowInfo.currentTotalFlowRate > 0 ? "+" : "-"}{" "}
           {parseFloat(
             Number(
               formatEther(
@@ -181,7 +185,7 @@ export default function BalancePlot(props: BalancePlotProps) {
                   ? -flowInfo.currentTotalFlowRate
                   : flowInfo.currentTotalFlowRate) * BigInt(SECONDS_IN_MONTH),
               ),
-            ).toFixed(2),
+            ).toFixed(4),
           )}
           /mo
         </p>
@@ -193,7 +197,7 @@ export default function BalancePlot(props: BalancePlotProps) {
             {parseFloat(
               Number(formatEther(flowInfo.newStartingBalance)).toFixed(2),
             )}{" "}
-            -{" "}
+            {flowInfo.newTotalFlowRate > 0 ? "+" : "-"}{" "}
             {parseFloat(
               Number(
                 formatEther(
@@ -201,7 +205,7 @@ export default function BalancePlot(props: BalancePlotProps) {
                     ? -flowInfo.newTotalFlowRate
                     : flowInfo.newTotalFlowRate) * BigInt(SECONDS_IN_MONTH),
                 ),
-              ).toFixed(2),
+              ).toFixed(4),
             )}
             /mo
           </p>

@@ -55,15 +55,19 @@ const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
     account(id: $address) {
       accountTokenSnapshots(where: { token: $token }) {
         totalNetFlowRate
-        totalOutflowRate
-        totalCFANetFlowRate
-        totalGDAOutflowRate
-        totalDeposit
         maybeCriticalAtTimestamp
         balanceUntilUpdatedAt
         updatedAtTimestamp
         token {
           id
+        }
+      }
+      poolMemberships(where: { pool_: { token: $token } }) {
+        units
+        pool {
+          flowRate
+          adjustmentFlowRate
+          totalUnits
         }
       }
     }
@@ -117,6 +121,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   });
   const accountTokenSnapshot =
     superfluidQueryRes?.account?.accountTokenSnapshots[0] ?? null;
+  const poolMemberships = superfluidQueryRes?.account?.poolMemberships ?? null;
   const superTokenBalance = useFlowingAmount(
     BigInt(accountTokenSnapshot?.balanceUntilUpdatedAt ?? 0),
     accountTokenSnapshot?.updatedAtTimestamp ?? 0,
@@ -181,14 +186,35 @@ export default function OpenFlow(props: OpenFlowProps) {
     hasSufficientSuperTokenBalance &&
     hasSufficientWrappingBalance;
 
+  const membershipsInflowRate = useMemo(() => {
+    let membershipsInflowRate = BigInt(0);
+
+    if (poolMemberships) {
+      for (const poolMembership of poolMemberships) {
+        const adjustedFlowRate =
+          BigInt(poolMembership.pool.flowRate) -
+          BigInt(poolMembership.pool.adjustmentFlowRate);
+        const memberFlowRate =
+          (BigInt(poolMembership.units) * adjustedFlowRate) /
+          BigInt(poolMembership.pool.totalUnits);
+
+        membershipsInflowRate += memberFlowRate;
+      }
+    }
+
+    return membershipsInflowRate;
+  }, [poolMemberships]);
+
   const calcLiquidationEstimate = useCallback(
     (newFlowRate: bigint, wrapAmount: string = "0") => {
       if (address) {
-        const accountFlowRate = accountTokenSnapshot?.totalNetFlowRate ?? "0";
+        const accountFlowRate =
+          BigInt(accountTokenSnapshot?.totalNetFlowRate ?? 0) +
+          membershipsInflowRate;
         const wrapAmountWei = parseEther(wrapAmount);
 
         if (
-          BigInt(-accountFlowRate) - BigInt(flowRateToReceiver) + newFlowRate >
+          -accountFlowRate - BigInt(flowRateToReceiver) + newFlowRate >
           BigInt(0)
         ) {
           const updatedAtTimestamp = accountTokenSnapshot
@@ -202,7 +228,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                 seconds: Number(
                   (BigInt(accountTokenSnapshot?.balanceUntilUpdatedAt ?? "0") +
                     wrapAmountWei) /
-                    (BigInt(-accountFlowRate) -
+                    (-accountFlowRate -
                       BigInt(flowRateToReceiver) +
                       newFlowRate),
                 ),
@@ -214,7 +240,7 @@ export default function OpenFlow(props: OpenFlowProps) {
 
       return null;
     },
-    [accountTokenSnapshot, address, flowRateToReceiver],
+    [accountTokenSnapshot, address, flowRateToReceiver, membershipsInflowRate],
   );
 
   const balancePlotFlowInfo = useMemo(() => {
@@ -228,21 +254,19 @@ export default function OpenFlow(props: OpenFlowProps) {
         (BigInt(accountTokenSnapshot.totalNetFlowRate) *
           BigInt(Date.now() - accountTokenSnapshot.updatedAtTimestamp * 1000)) /
           BigInt(1000);
+      const totalNetFlowRate =
+        BigInt(accountTokenSnapshot.totalNetFlowRate) + membershipsInflowRate;
 
       const result = {
         currentStartingBalance: startingBalance,
         newStartingBalance:
           startingBalance + parseEther(wrapAmountPerTimeInterval ?? 0),
-        currentTotalFlowRate: BigInt(accountTokenSnapshot?.totalNetFlowRate),
-        currentLiquidation: Number(
-          accountTokenSnapshot?.maybeCriticalAtTimestamp,
-        ),
+        currentTotalFlowRate: totalNetFlowRate,
+        currentLiquidation: calcLiquidationEstimate(BigInt(flowRateToReceiver)),
         newTotalFlowRate:
           BigInt(flowRateToReceiver) !== newFlowRate
-            ? BigInt(accountTokenSnapshot.totalNetFlowRate) +
-              BigInt(flowRateToReceiver) -
-              newFlowRate
-            : BigInt(accountTokenSnapshot.totalNetFlowRate),
+            ? totalNetFlowRate + BigInt(flowRateToReceiver) - newFlowRate
+            : totalNetFlowRate,
         newLiquidation: calcLiquidationEstimate(
           newFlowRate,
           wrapAmountPerTimeInterval,
@@ -258,6 +282,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   }, [
     areTransactionsLoading,
     accountTokenSnapshot,
+    membershipsInflowRate,
     flowRateToReceiver,
     wrapAmountPerTimeInterval,
     newFlowRate,
