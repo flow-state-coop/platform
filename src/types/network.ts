@@ -14,6 +14,8 @@ export type Network = {
   onRampLabel: string;
   flowStateCoreGda: string;
   pay16zPool: string;
+  flowSplitter: Address;
+  flowSplitterSubgraph: string;
   passportDecoder: Address;
   superfluidHost: Address;
   superfluidResolver: Address;

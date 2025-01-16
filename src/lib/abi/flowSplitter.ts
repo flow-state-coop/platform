@@ -44,6 +44,16 @@ export const flowSplitterAbi = [
         ],
       },
       {
+        name: "_erc20Metadata",
+        type: "tuple",
+        internalType: "struct PoolERC20Metadata",
+        components: [
+          { name: "name", type: "string", internalType: "string" },
+          { name: "symbol", type: "string", internalType: "string" },
+          { name: "decimals", type: "uint8", internalType: "uint8" },
+        ],
+      },
+      {
         name: "_members",
         type: "tuple[]",
         internalType: "struct IFlowSplitter.Member[]",
@@ -75,18 +85,10 @@ export const flowSplitterAbi = [
         internalType: "struct IFlowSplitter.Pool",
         components: [
           { name: "id", type: "uint256", internalType: "uint256" },
-          {
-            name: "poolAddress",
-            type: "address",
-            internalType: "address",
-          },
+          { name: "poolAddress", type: "address", internalType: "address" },
           { name: "token", type: "address", internalType: "address" },
           { name: "metadata", type: "string", internalType: "string" },
-          {
-            name: "adminRole",
-            type: "bytes32",
-            internalType: "bytes32",
-          },
+          { name: "adminRole", type: "bytes32", internalType: "bytes32" },
         ],
       },
     ],
@@ -103,21 +105,27 @@ export const flowSplitterAbi = [
         internalType: "struct IFlowSplitter.Pool",
         components: [
           { name: "id", type: "uint256", internalType: "uint256" },
-          {
-            name: "poolAddress",
-            type: "address",
-            internalType: "address",
-          },
+          { name: "poolAddress", type: "address", internalType: "address" },
           { name: "token", type: "address", internalType: "address" },
           { name: "metadata", type: "string", internalType: "string" },
-          {
-            name: "adminRole",
-            type: "bytes32",
-            internalType: "bytes32",
-          },
+          { name: "adminRole", type: "bytes32", internalType: "bytes32" },
         ],
       },
     ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getPoolNameById",
+    inputs: [{ name: "_poolId", type: "uint256", internalType: "uint256" }],
+    outputs: [{ name: "name", type: "string", internalType: "string" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getPoolSymbolById",
+    inputs: [{ name: "_poolId", type: "uint256", internalType: "uint256" }],
+    outputs: [{ name: "symbol", type: "string", internalType: "string" }],
     stateMutability: "view",
   },
   {
@@ -322,11 +330,7 @@ export const flowSplitterAbi = [
     type: "function",
     name: "upgradeTo",
     inputs: [
-      {
-        name: "newImplementation",
-        type: "address",
-        internalType: "address",
-      },
+      { name: "newImplementation", type: "address", internalType: "address" },
     ],
     outputs: [],
     stateMutability: "nonpayable",
@@ -335,11 +339,7 @@ export const flowSplitterAbi = [
     type: "function",
     name: "upgradeToAndCall",
     inputs: [
-      {
-        name: "newImplementation",
-        type: "address",
-        internalType: "address",
-      },
+      { name: "newImplementation", type: "address", internalType: "address" },
       { name: "data", type: "bytes", internalType: "bytes" },
     ],
     outputs: [],
@@ -381,12 +381,7 @@ export const flowSplitterAbi = [
     type: "event",
     name: "Initialized",
     inputs: [
-      {
-        name: "version",
-        type: "uint8",
-        indexed: false,
-        internalType: "uint8",
-      },
+      { name: "version", type: "uint8", indexed: false, internalType: "uint8" },
     ],
     anonymous: false,
   },
@@ -463,12 +458,7 @@ export const flowSplitterAbi = [
     type: "event",
     name: "RoleAdminChanged",
     inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        indexed: true,
-        internalType: "bytes32",
-      },
+      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
       {
         name: "previousAdminRole",
         type: "bytes32",
@@ -488,12 +478,7 @@ export const flowSplitterAbi = [
     type: "event",
     name: "RoleGranted",
     inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        indexed: true,
-        internalType: "bytes32",
-      },
+      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
       {
         name: "account",
         type: "address",
@@ -513,12 +498,7 @@ export const flowSplitterAbi = [
     type: "event",
     name: "RoleRevoked",
     inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        indexed: true,
-        internalType: "bytes32",
-      },
+      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
       {
         name: "account",
         type: "address",

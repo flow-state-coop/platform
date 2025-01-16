@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { http } from "viem";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
-import { /*optimism, arbitrum,*/ base, optimismSepolia } from "wagmi/chains";
+import { base, optimism, optimismSepolia /* arbitrum */ } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { SessionProvider } from "next-auth/react";
 import posthog from "posthog-js";
@@ -17,15 +17,15 @@ import "@/styles.scss";
 const config = getDefaultConfig({
   appName: "Flow State",
   projectId: WALLET_CONNECT_PROJECT_ID,
-  chains: [/*optimism, arbitrum,*/ base, optimismSepolia],
+  chains: [base, optimism, optimismSepolia /* arbitrum */],
   ssr: true,
   transports: {
-    /*
+    [base.id]: http("https://base-rpc.publicnode.com"),
     [optimism.id]: http("https://optimism-rpc.publicnode.com"),
+    [optimismSepolia.id]: http("https://optimism-sepolia-rpc.publicnode.com"),
+    /*
     [arbitrum.id]: http("https://arb1.arbitrum.io/rpc"),
      */
-    [base.id]: http("https://base-rpc.publicnode.com"),
-    [optimismSepolia.id]: http("https://optimism-sepolia-rpc.publicnode.com"),
   },
 });
 
