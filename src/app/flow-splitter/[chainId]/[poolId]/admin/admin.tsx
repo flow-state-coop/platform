@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useCallback, useState, useEffect } from "react";
 import Link from "next/link";
 import { Address, parseAbi, isAddress } from "viem";
 import {
   useConfig,
   useAccount,
+  useWalletClient,
   usePublicClient,
   useSwitchChain,
   useReadContract,
@@ -14,7 +15,6 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Papa from "papaparse";
 import { writeContract } from "@wagmi/core";
 import { useQuery, gql } from "@apollo/client";
-import { createVerifiedFetch } from "@helia/verified-fetch";
 import { usePostHog } from "posthog-js/react";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
@@ -29,13 +29,11 @@ import FormCheck from "react-bootstrap/FormCheck";
 import Form from "react-bootstrap/Form";
 import InfoTooltip from "@/components/InfoTooltip";
 import OpenFlow from "@/app/flow-splitter/components/OpenFlow";
-import { pinJsonToIpfs } from "@/lib/ipfs";
 import { getApolloClient } from "@/lib/apollo";
 import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { isNumber, truncateStr } from "@/lib/utils";
-import { IPFS_GATEWAYS } from "@/lib/constants";
 
 type AdminProps = {
   chainId: number;
@@ -47,7 +45,6 @@ type PoolConfig = {
   immutable: boolean;
 };
 
-type Metadata = { name: string };
 type AdminEntry = { address: string; validationError: string };
 type MemberEntry = { address: string; units: string; validationError: string };
 
@@ -55,8 +52,9 @@ const FLOW_SPLITTER_POOL_QUERY = gql`
   query FlowSplitterPoolQuery($poolId: String!) {
     pools(where: { id: $poolId }) {
       poolAddress
+      name
+      symbol
       token
-      metadata
       poolAdmins {
         address
       }
@@ -101,8 +99,7 @@ export default function Admin(props: AdminProps) {
   const [membersEntry, setMembersEntry] = useState<MemberEntry[]>([
     { address: "", units: "", validationError: "" },
   ]);
-  const [metadataEntry, setMetadataEntry] = useState<Metadata>({ name: "" });
-  const [poolMetadata, setPoolMetadata] = useState<Metadata | null>(null);
+  const [membersToRemove, setMembersToRemove] = useState<MemberEntry[]>([]);
   const [showCoreConfig, setShowCoreConfig] = useState(false);
   const [showTransactionPanel, setShowTransactionPanel] = useState(false);
   const [transactionSuccess, setTransactionSuccess] = useState("");
@@ -110,6 +107,7 @@ export default function Admin(props: AdminProps) {
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
 
   const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
+  const { data: walletClient } = useWalletClient();
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
@@ -174,8 +172,6 @@ export default function Admin(props: AdminProps) {
     const compareArrays = (a: string[], b: string[]) =>
       a.length === b.length && a.every((elem, i) => elem === b[i]);
 
-    const hasChangesMetadata =
-      poolMetadata && poolMetadata.name !== metadataEntry.name;
     const sortedPoolAdmins = poolAdmins
       ?.toSorted((a: { address: string }, b: { address: string }) =>
         a.address > b.address ? -1 : 1,
@@ -187,7 +183,8 @@ export default function Admin(props: AdminProps) {
       )
       .map((admin) => admin.address.toLowerCase());
     const hasChangesAdmins =
-      sortedPoolAdmins && !compareArrays(sortedPoolAdmins, sortedAdminsEntry);
+      poolConfig.immutable ||
+      (sortedPoolAdmins && !compareArrays(sortedPoolAdmins, sortedAdminsEntry));
     const sortedPoolMembers = superfluidQueryRes?.pool?.poolMembers?.toSorted(
       (a: { account: { id: string } }, b: { account: { id: string } }) =>
         a.account.id > b.account.id ? -1 : 1,
@@ -198,49 +195,44 @@ export default function Admin(props: AdminProps) {
     const hasChangesMembers =
       sortedPoolMembers &&
       (!compareArrays(
-        sortedPoolMembers.map(
-          (member: { account: { id: string } }) => member.account.id,
-        ),
+        sortedPoolMembers
+          .filter((member: { units: string }) => member.units !== "0")
+          .map((member: { account: { id: string } }) => member.account.id),
         sortedMembersEntry.map((member) => member.address.toLowerCase()),
       ) ||
         !compareArrays(
-          sortedPoolMembers.map((member: { units: string }) => member.units),
+          sortedPoolMembers
+            .filter((member: { units: string }) => member.units !== "0")
+            .map((member: { units: string }) => member.units),
           sortedMembersEntry.map((member) => member.units),
         ));
 
-    return hasChangesMetadata || hasChangesAdmins || hasChangesMembers
-      ? true
-      : false;
-  }, [
-    poolMetadata,
-    metadataEntry,
-    poolAdmins,
-    adminsEntry,
-    superfluidQueryRes,
-    membersEntry,
-  ]);
+    return hasChangesAdmins || hasChangesMembers ? true : false;
+  }, [poolConfig, poolAdmins, adminsEntry, superfluidQueryRes, membersEntry]);
+
+  const addPoolToWallet = useCallback(() => {
+    if (!pool) {
+      return;
+    }
+
+    walletClient?.request({
+      method: "wallet_watchAsset",
+      params: {
+        type: "ERC20",
+        options: {
+          address: pool.poolAddress,
+          symbol: pool.symbol,
+          decimals: 0,
+          image: "",
+        },
+      },
+    });
+  }, [pool, walletClient]);
 
   useEffect(() => {
     (async () => {
       if (flowSplitterPoolQueryLoading) {
         return;
-      }
-
-      try {
-        const verifiedFetch = await createVerifiedFetch({
-          gateways: IPFS_GATEWAYS,
-        });
-        const poolMetadataRes = await verifiedFetch(
-          `ipfs://${pool?.metadata ?? ""}`,
-        );
-        const poolMetadata = await poolMetadataRes.json();
-
-        setPoolMetadata(poolMetadata);
-        setMetadataEntry(poolMetadata);
-      } catch (err) {
-        console.error(err);
-
-        setPoolMetadata({ name: "" });
       }
 
       if (poolAdmins) {
@@ -299,9 +291,14 @@ export default function Admin(props: AdminProps) {
         (memberEntry) =>
           memberEntry.validationError === "" && memberEntry.address !== "",
       );
-      const { IpfsHash: metadataCid } = await pinJsonToIpfs({
-        name: metadataEntry.name,
-      });
+      const adminsToRemove = poolAdmins
+        .map((admin: { address: string }) => admin.address)
+        .filter(
+          (x: string) =>
+            !validAdmins
+              .map((admin: { address: string }) => admin.address)
+              .includes(x),
+        );
 
       const hash = await writeContract(wagmiConfig, {
         address: network.flowSplitter,
@@ -309,20 +306,35 @@ export default function Admin(props: AdminProps) {
         functionName: "updatePool",
         args: [
           BigInt(poolId),
-          validMembers.map((member) => {
-            return {
-              account: member.address as Address,
-              units: BigInt(member.units),
-            };
-          }),
+          validMembers
+            .map((member) => {
+              return {
+                account: member.address as Address,
+                units: BigInt(member.units),
+              };
+            })
+            .concat(
+              membersToRemove.map((member) => {
+                return { account: member.address as Address, units: BigInt(0) };
+              }),
+            ),
           poolConfig.immutable
             ? poolAdmins.map((admin: { address: Address }) => {
                 return { account: admin.address, status: BigInt(1) };
               })
-            : validAdmins.map((admin) => {
-                return { account: admin.address as Address, status: BigInt(0) };
-              }),
-          metadataCid,
+            : validAdmins
+                .map((admin) => {
+                  return {
+                    account: admin.address as Address,
+                    status: BigInt(0),
+                  };
+                })
+                .concat(
+                  adminsToRemove.map((adminAddress: string) => {
+                    return { account: adminAddress, status: BigInt(1) };
+                  }),
+                ),
+          "",
         ],
       });
 
@@ -333,6 +345,7 @@ export default function Admin(props: AdminProps) {
 
       setIsTransactionLoading(false);
       setTransactionSuccess("Flow Splitter Updated Successfully");
+      setMembersToRemove([]);
     } catch (err) {
       console.error(err);
 
@@ -356,9 +369,7 @@ export default function Admin(props: AdminProps) {
                   : 1600,
         }}
       >
-        {flowSplitterPoolQueryLoading ||
-        superfluidQueryLoading ||
-        poolMetadata === null ? (
+        {flowSplitterPoolQueryLoading || superfluidQueryLoading ? (
           <span className="position-absolute top-50 start-50 translate-middle">
             <Spinner />
           </span>
@@ -369,15 +380,31 @@ export default function Admin(props: AdminProps) {
           <p className="w-100 mt-5 fs-4 text-center">Pool Admin Not Found</p>
         ) : (
           <>
-            <h1 className="mt-5 mb-1">
-              Edit {poolMetadata.name ? poolMetadata.name : "Flow Splitter"} (
-              <Link
-                href={`${network.superfluidExplorer}/pools/${pool.poolAddress}`}
-                target="_blank"
-              >
-                {truncateStr(pool.poolAddress, 14)}
-              </Link>
-              )
+            <h1 className="d-flex flex-column flex-sm-row align-items-sm-center overflow-hidden gap-sm-1 mt-5 mb-1">
+              <span className="text-truncate">
+                Edit {pool ? pool.name : "Flow Splitter"}{" "}
+                <span className="d-none d-sm-inline-block">(</span>
+              </span>
+              <Stack direction="horizontal" gap={1}>
+                <Link
+                  href={`${network.superfluidExplorer}/pools/${pool.poolAddress}`}
+                  target="_blank"
+                >
+                  {truncateStr(pool.poolAddress, 14)}
+                </Link>
+                <span className="d-none d-sm-inline-block">)</span>
+                <Button
+                  variant="transparent"
+                  className="d-flex align-items-center mt-2 p-0 border-0"
+                  onClick={addPoolToWallet}
+                >
+                  <InfoTooltip
+                    position={{ top: true }}
+                    target={<Image width={32} src="/wallet.svg" alt="wallet" />}
+                    content={<>Add to Wallet</>}
+                  />
+                </Button>
+              </Stack>
             </h1>
             <Stack direction="horizontal" gap={1} className="fs-6">
               Distributing{" "}
@@ -532,26 +559,6 @@ export default function Admin(props: AdminProps) {
                   </Stack>
                 </Card.Body>
               )}
-            </Card>
-            <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
-              <Card.Header className="mb-3 bg-transparent border-0 rounded-4 p-0 fs-4">
-                Name
-              </Card.Header>
-              <Card.Body className="p-0">
-                <Form.Control
-                  type="text"
-                  placeholder="Name (Optional)"
-                  value={metadataEntry.name}
-                  style={{
-                    width: !isMobile ? "50%" : "",
-                    paddingTop: 12,
-                    paddingBottom: 12,
-                  }}
-                  onChange={(e) =>
-                    setMetadataEntry({ ...metadataEntry, name: e.target.value })
-                  }
-                />
-              </Card.Body>
             </Card>
             <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
               <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-4">
@@ -711,7 +718,7 @@ export default function Admin(props: AdminProps) {
             </Card>
             <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
               <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-4">
-                Share Register
+                Share Register ({pool?.symbol ? pool.symbol : "POOL"})
                 <InfoTooltip
                   position={{ top: true }}
                   target={
@@ -855,11 +862,92 @@ export default function Admin(props: AdminProps) {
                                   prevMemberEntryIndex !== i,
                               ),
                             );
+
+                            const existingPoolMember =
+                              superfluidQueryRes?.pool?.poolMembers?.find(
+                                (member: { account: { id: string } }) =>
+                                  member.account.id ===
+                                  memberEntry.address.toLowerCase(),
+                              );
+
+                            if (
+                              !memberEntry.validationError &&
+                              existingPoolMember &&
+                              existingPoolMember.units !== "0"
+                            ) {
+                              setMembersToRemove(
+                                membersToRemove.concat(memberEntry),
+                              );
+                            }
                           }}
                         >
                           <Image
                             src="/close.svg"
                             alt="Remove"
+                            width={28}
+                            height={28}
+                          />
+                        </Button>
+                      </Stack>
+                    </Stack>
+                  </Stack>
+                ))}
+                {membersToRemove.map((memberEntry, i) => (
+                  <Stack
+                    direction="horizontal"
+                    gap={isMobile ? 2 : 4}
+                    className="justify-content-start mb-3"
+                    key={i}
+                  >
+                    <Stack direction="vertical" className="w-100">
+                      <Stack direction="vertical" className="position-relative">
+                        <Form.Control
+                          disabled
+                          type="text"
+                          value={memberEntry.address}
+                          style={{ paddingTop: 12, paddingBottom: 12 }}
+                        />
+                      </Stack>
+                    </Stack>
+                    <Stack direction="vertical">
+                      <Form.Control
+                        type="text"
+                        disabled
+                        inputMode="numeric"
+                        value="0"
+                        className="text-center"
+                        style={{ paddingTop: 12, paddingBottom: 12 }}
+                      />
+                    </Stack>
+                    <Stack direction="vertical">
+                      <Stack
+                        direction="horizontal"
+                        gap={isMobile ? 1 : 2}
+                        className="align-items-center"
+                      >
+                        <Form.Control
+                          type="text"
+                          disabled
+                          value="Removed"
+                          className="text-center"
+                          style={{ paddingTop: 12, paddingBottom: 12 }}
+                        />
+                        <Button
+                          variant="transparent"
+                          className="p-0"
+                          onClick={() => {
+                            setMembersToRemove((prev) =>
+                              prev.filter(
+                                (_, prevMemberEntryIndex) =>
+                                  prevMemberEntryIndex !== i,
+                              ),
+                            );
+                            setMembersEntry(membersEntry.concat(memberEntry));
+                          }}
+                        >
+                          <Image
+                            src="/add.svg"
+                            alt="Add"
                             width={28}
                             height={28}
                           />

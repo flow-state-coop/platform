@@ -615,68 +615,88 @@ export default function OpenFlow(props: OpenFlowProps) {
                 : underlyingTokenBalance?.symbol}{" "}
               to {token?.name ?? "N/A"})
             </Card.Text>
-            <Stack
-              direction="horizontal"
-              gap={2}
-              className="align-items-start bg-light p-3 rounded-4"
-            >
-              <Stack direction="vertical" className="w-50">
-                <InputGroup>
-                  <Form.Control
-                    type="text"
-                    placeholder="0"
-                    value={wrapAmountPerTimeInterval}
-                    className="border-end-0"
-                    onChange={handleWrapAmountSelection}
-                  />
-                  <InputGroup.Text className="bg-white small">
-                    {isSuperTokenNative
-                      ? ethBalance?.symbol
-                      : underlyingTokenBalance?.symbol}
-                  </InputGroup.Text>
-                </InputGroup>
-                <Stack
-                  direction="horizontal"
-                  gap={1}
-                  className="justify-content-center mt-1"
-                >
-                  <Card.Text
-                    className={`m-0 ${!hasSufficientWrappingBalance ? "text-danger" : "text-info"}`}
-                    style={{
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    {isSuperTokenNative ? (
-                      <>
-                        {ethBalance?.symbol}{" "}
-                        {Intl.NumberFormat("en", {
-                          notation: "compact",
-                        }).format(Number(ethBalance?.formatted))}
-                      </>
-                    ) : (
-                      <>
-                        {underlyingTokenBalance?.symbol}{" "}
-                        {underlyingTokenBalance?.formatted.slice(0, 6)}
-                      </>
-                    )}
-                  </Card.Text>
+            <Stack direction="vertical" className="bg-light p-3 rounded-4">
+              <Stack
+                direction="horizontal"
+                gap={2}
+                className="align-items-start"
+              >
+                <Stack direction="vertical" className="w-50">
+                  <InputGroup>
+                    <Form.Control
+                      type="text"
+                      placeholder="0"
+                      value={wrapAmountPerTimeInterval}
+                      className="border-end-0"
+                      onChange={handleWrapAmountSelection}
+                    />
+                    <InputGroup.Text className="bg-white small">
+                      {isSuperTokenNative
+                        ? ethBalance?.symbol
+                        : underlyingTokenBalance?.symbol}
+                    </InputGroup.Text>
+                  </InputGroup>
+                </Stack>
+                <span style={{ marginTop: 7 }}>=</span>
+                <Stack direction="vertical" className="w-50">
+                  <InputGroup>
+                    <Form.Control
+                      type="text"
+                      placeholder="0"
+                      value={wrapTimeInterval}
+                      className="border-end-0"
+                      onChange={handleWrapTimeIntervalSelection}
+                    />
+                    <InputGroup.Text className="bg-white small">
+                      {`${unitOfTime[timeInterval].charAt(0).toUpperCase()}${unitOfTime[timeInterval].slice(1)}`}
+                    </InputGroup.Text>
+                  </InputGroup>
                 </Stack>
               </Stack>
-              <span style={{ marginTop: 7 }}>=</span>
-              <Stack direction="vertical" className="w-50">
-                <InputGroup>
-                  <Form.Control
-                    type="text"
-                    placeholder="0"
-                    value={wrapTimeInterval}
-                    className="border-end-0"
-                    onChange={handleWrapTimeIntervalSelection}
-                  />
-                  <InputGroup.Text className="bg-white small">
-                    {`${unitOfTime[timeInterval].charAt(0).toUpperCase()}${unitOfTime[timeInterval].slice(1)}`}
-                  </InputGroup.Text>
-                </InputGroup>
-              </Stack>
+              {hasSufficientWrappingBalance ? (
+                <Card.Text
+                  className="mt-1 mb-0 w-50 text-info text-center"
+                  style={{
+                    fontSize: "0.8rem",
+                  }}
+                >
+                  {isSuperTokenNative
+                    ? ethBalance?.symbol
+                    : underlyingTokenBalance?.symbol}
+                  :{" "}
+                  {Intl.NumberFormat("en", {
+                    notation: "compact",
+                  }).format(
+                    Number(
+                      isSuperTokenNative
+                        ? ethBalance?.formatted
+                        : underlyingTokenBalance?.formatted,
+                    ),
+                  )}
+                </Card.Text>
+              ) : (
+                <Card.Text
+                  className="mt-1 mb-0 ms-2 ps-1 text-danger w-100 float-start text-nowrap"
+                  style={{
+                    fontSize: "0.8rem",
+                  }}
+                >
+                  {isSuperTokenNative
+                    ? ethBalance?.symbol
+                    : underlyingTokenBalance?.symbol}
+                  :{" "}
+                  {Intl.NumberFormat("en", {
+                    notation: "compact",
+                  }).format(
+                    Number(
+                      isSuperTokenNative
+                        ? ethBalance?.formatted
+                        : underlyingTokenBalance?.formatted,
+                    ),
+                  )}{" "}
+                  (Insufficient Balance)
+                </Card.Text>
+              )}
             </Stack>
           </>
         )}

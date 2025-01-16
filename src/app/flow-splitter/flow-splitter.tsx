@@ -22,7 +22,6 @@ import Form from "react-bootstrap/Form";
 import InfoTooltip from "@/components/InfoTooltip";
 import { Token } from "@/types/token";
 import { Network } from "@/types/network";
-import { pinJsonToIpfs } from "@/lib/ipfs";
 import { getApolloClient } from "@/lib/apollo";
 import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -34,7 +33,7 @@ type PoolConfig = {
   immutable: boolean;
 };
 
-type Metadata = { name: string };
+type Erc20Metadata = { name: string; symbol: string };
 
 type CustomTokenEntry = {
   address: string;
@@ -72,7 +71,10 @@ export default function FlowSplitter() {
   const [membersEntry, setMembersEntry] = useState<MemberEntry[]>([
     { address: "", units: "", validationError: "" },
   ]);
-  const [metadata, setMetadata] = useState<Metadata>({ name: "" });
+  const [erc20Metadata, setErc20Metadata] = useState<Erc20Metadata>({
+    name: "",
+    symbol: "",
+  });
   const [customTokenSelection, setCustomTokenSelection] = useState(false);
   const [transactionerror, setTransactionError] = useState("");
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
@@ -128,9 +130,11 @@ export default function FlowSplitter() {
       return;
     }
 
-    const token = selectedToken
-      ? selectedToken.address
-      : selectedNetwork.tokens[0].address;
+    const token = customTokenSelection
+      ? (customTokenEntry.address as Address)
+      : selectedToken
+        ? selectedToken.address
+        : selectedNetwork.tokens[0].address;
 
     try {
       setTransactionError("");
@@ -144,10 +148,6 @@ export default function FlowSplitter() {
         (memberEntry) =>
           memberEntry.validationError === "" && memberEntry.address !== "",
       );
-      const { IpfsHash: metadataCid } = await pinJsonToIpfs({
-        name: metadata.name,
-      });
-
       const hash = await writeContract(wagmiConfig, {
         address: selectedNetwork.flowSplitter,
         abi: flowSplitterAbi,
@@ -158,6 +158,11 @@ export default function FlowSplitter() {
             transferabilityForUnitsOwner: poolConfig.transferableUnits,
             distributionFromAnyAddress: true,
           },
+          {
+            name: erc20Metadata.name ? erc20Metadata.name : "Flow Splitter",
+            symbol: erc20Metadata.symbol ? erc20Metadata.symbol : "POOL",
+            decimals: 0,
+          },
           validMembers.map((member) => {
             return {
               account: member.address as Address,
@@ -167,7 +172,7 @@ export default function FlowSplitter() {
           poolConfig.immutable
             ? []
             : validAdmins.map((admin) => admin.address as Address),
-          metadataCid,
+          "",
         ],
       });
 
@@ -207,9 +212,35 @@ export default function FlowSplitter() {
       >
         <Card className="bg-light rounded-4 border-0 mt-5 px-3 px-sm-4 py-4">
           <Card.Header className="mb-3 bg-transparent border-0 rounded-4 p-0">
-            <Card.Title className="mb-0 fs-1">
-              Launch a Flow Splitter
-            </Card.Title>
+            <Stack direction="horizontal" gap={1} className="align-items-start">
+              <Card.Title className="mb-0 fs-1">
+                Launch a Flow Splitter
+              </Card.Title>
+              <InfoTooltip
+                position={{ bottom: isMobile }}
+                target={
+                  <Image
+                    src="/info.svg"
+                    alt="Info"
+                    width={18}
+                    height={18}
+                    className="align-top"
+                  />
+                }
+                content={
+                  <>
+                    Flow Splitter shares are implemented as ERC20 tokens (with 0
+                    decimals). This means shares can show in your wallet &
+                    across block explorers like other tokens... but they have
+                    built-in cashflow superpowers.
+                    <br />
+                    <br />
+                    You can set a name and symbol to brand your Flow Splitter
+                    for your use case.
+                  </>
+                }
+              />
+            </Stack>
             <Card.Text className="text-info">
               A Flow Splitter allocates one or more incoming Superfluid token
               streams to recipients proportional to their shares in real time.
@@ -219,14 +250,28 @@ export default function FlowSplitter() {
             <Form.Control
               type="text"
               placeholder="Name (Optional)"
-              value={metadata.name}
+              value={erc20Metadata.name}
               style={{
                 width: !isMobile ? "50%" : "",
                 paddingTop: 12,
                 paddingBottom: 12,
               }}
               onChange={(e) =>
-                setMetadata({ ...metadata, name: e.target.value })
+                setErc20Metadata({ ...erc20Metadata, name: e.target.value })
+              }
+            />
+            <Form.Control
+              type="text"
+              placeholder="Symbol (Optional)"
+              value={erc20Metadata.symbol}
+              className="mt-3"
+              style={{
+                width: !isMobile ? "50%" : "",
+                paddingTop: 12,
+                paddingBottom: 12,
+              }}
+              onChange={(e) =>
+                setErc20Metadata({ ...erc20Metadata, symbol: e.target.value })
               }
             />
           </Card.Body>
