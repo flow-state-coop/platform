@@ -186,7 +186,7 @@ export default function FlowSplitter() {
         logs: receipt.logs,
       })[0].args.poolId;
 
-      router.push(`/flow-splitter/11155420/${poolId}/admin`);
+      router.push(`/flow-splitter/${selectedNetwork.id}/${poolId}/admin`);
     } catch (err) {
       console.error(err);
 
