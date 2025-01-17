@@ -1142,7 +1142,11 @@ export default function Admin(props: AdminProps) {
           show={showTransactionPanel}
           network={network!}
           token={
-            poolToken ?? { address: pool?.token ?? "", name: "N/A", icon: "" }
+            poolToken ?? {
+              address: pool?.token ?? "",
+              name: superfluidQueryRes?.token.symbol ?? "N/A",
+              icon: "",
+            }
           }
           pool={superfluidQueryRes?.pool}
           handleClose={() => setShowTransactionPanel(false)}

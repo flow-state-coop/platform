@@ -214,7 +214,7 @@ export default function FlowSplitter() {
           <Card.Header className="mb-3 bg-transparent border-0 rounded-4 p-0">
             <Stack direction="horizontal" gap={1} className="align-items-start">
               <Card.Title className="mb-0 fs-1">
-                Launch a Flow Splitter
+                Flow Splitter (beta)
               </Card.Title>
               <InfoTooltip
                 position={{ bottom: isMobile }}
@@ -249,7 +249,7 @@ export default function FlowSplitter() {
           <Card.Body className="p-0">
             <Form.Control
               type="text"
-              placeholder="Name (Optional)"
+              placeholder="Share Token Name (Optional)"
               value={erc20Metadata.name}
               style={{
                 width: !isMobile ? "50%" : "",
@@ -262,7 +262,7 @@ export default function FlowSplitter() {
             />
             <Form.Control
               type="text"
-              placeholder="Symbol (Optional)"
+              placeholder="Share Token Symbol (Optional)"
               value={erc20Metadata.symbol}
               className="mt-3"
               style={{

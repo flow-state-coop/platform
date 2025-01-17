@@ -41,7 +41,7 @@ export default function BalancePlot(props: BalancePlotProps) {
                 flowInfo.currentTotalFlowRate * BigInt(SECONDS_IN_YEAR),
             ),
           )
-        : flowInfo.currentLiquidation &&
+        : !flowInfo.currentLiquidation ||
             flowInfo.currentLiquidation * 1000 >
               Date.now() + SECONDS_IN_YEAR * 1e3 * 1000
           ? Number(
@@ -59,7 +59,7 @@ export default function BalancePlot(props: BalancePlotProps) {
                 flowInfo.newTotalFlowRate * BigInt(SECONDS_IN_YEAR),
             ),
           )
-        : flowInfo.newLiquidation &&
+        : !flowInfo.newLiquidation ||
             flowInfo.newLiquidation * 1000 >
               Date.now() + SECONDS_IN_YEAR * 1e3 * 1000
           ? Number(
@@ -80,8 +80,9 @@ export default function BalancePlot(props: BalancePlotProps) {
     const newEndingDate =
       flowInfo.newTotalFlowRate > 0 && !flowInfo.newLiquidation
         ? new Date(Date.now() + SECONDS_IN_YEAR * 1000)
-        : flowInfo.newLiquidation! * 1000 >
-            Date.now() + SECONDS_IN_YEAR * 1e3 * 1000
+        : !flowInfo.newLiquidation ||
+            flowInfo.newLiquidation * 1000 >
+              Date.now() + SECONDS_IN_YEAR * 1e3 * 1000
           ? new Date(Date.now() + SECONDS_IN_YEAR * 1e3 * 1000)
           : new Date(flowInfo.newLiquidation! * 1000);
 
