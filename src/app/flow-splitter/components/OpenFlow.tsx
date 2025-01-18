@@ -64,6 +64,7 @@ const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
       }
       poolMemberships(where: { pool_: { token: $token } }) {
         units
+        isConnected
         pool {
           flowRate
           adjustmentFlowRate
@@ -191,6 +192,10 @@ export default function OpenFlow(props: OpenFlowProps) {
 
     if (poolMemberships) {
       for (const poolMembership of poolMemberships) {
+        if (!poolMembership.isConnected) {
+          continue;
+        }
+
         const adjustedFlowRate =
           BigInt(poolMembership.pool.flowRate) -
           BigInt(poolMembership.pool.adjustmentFlowRate);

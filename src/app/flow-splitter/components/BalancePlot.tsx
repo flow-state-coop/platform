@@ -17,6 +17,7 @@ type BalancePlotProps = {
   flowInfo: BalancePlotFlowInfo | null;
 };
 
+const MS_IN_SEC = 1000;
 const SECONDS_IN_YEAR = 31536000;
 
 export default function BalancePlot(props: BalancePlotProps) {
@@ -33,6 +34,7 @@ export default function BalancePlot(props: BalancePlotProps) {
       formatEther(flowInfo.currentStartingBalance),
     );
     const newStartingBalance = Number(formatEther(flowInfo.newStartingBalance));
+    const now = (Date.now() / MS_IN_SEC) | 0;
     const currentEndingBalance =
       flowInfo.currentTotalFlowRate > 0
         ? Number(
@@ -42,12 +44,11 @@ export default function BalancePlot(props: BalancePlotProps) {
             ),
           )
         : !flowInfo.currentLiquidation ||
-            flowInfo.currentLiquidation * 1000 >
-              Date.now() + SECONDS_IN_YEAR * 1e3 * 1000
+            flowInfo.currentLiquidation > now + SECONDS_IN_YEAR
           ? Number(
               formatEther(
                 flowInfo.currentStartingBalance +
-                  flowInfo.currentTotalFlowRate * BigInt(SECONDS_IN_YEAR * 1e3),
+                  flowInfo.currentTotalFlowRate * BigInt(SECONDS_IN_YEAR),
               ),
             )
           : 0;
@@ -60,31 +61,28 @@ export default function BalancePlot(props: BalancePlotProps) {
             ),
           )
         : !flowInfo.newLiquidation ||
-            flowInfo.newLiquidation * 1000 >
-              Date.now() + SECONDS_IN_YEAR * 1e3 * 1000
+            flowInfo.newLiquidation > now + SECONDS_IN_YEAR
           ? Number(
               formatEther(
                 flowInfo.newStartingBalance +
-                  flowInfo.newTotalFlowRate * BigInt(SECONDS_IN_YEAR * 1e3),
+                  flowInfo.newTotalFlowRate * BigInt(SECONDS_IN_YEAR),
               ),
             )
           : 0;
     const currentEndingDate =
       flowInfo.currentTotalFlowRate > 0
-        ? new Date(Date.now() + SECONDS_IN_YEAR * 1000)
+        ? new Date((now + SECONDS_IN_YEAR) * MS_IN_SEC)
         : !flowInfo.currentLiquidation ||
-            flowInfo.currentLiquidation * 1000 >
-              Date.now() + SECONDS_IN_YEAR * 1e3 * 1000
-          ? new Date(Date.now() + SECONDS_IN_YEAR * 1e3 * 1000)
-          : new Date(flowInfo.currentLiquidation * 1000);
+            flowInfo.currentLiquidation > now + SECONDS_IN_YEAR
+          ? new Date((now + SECONDS_IN_YEAR) * MS_IN_SEC)
+          : new Date(flowInfo.currentLiquidation * MS_IN_SEC);
     const newEndingDate =
       flowInfo.newTotalFlowRate > 0 && !flowInfo.newLiquidation
-        ? new Date(Date.now() + SECONDS_IN_YEAR * 1000)
+        ? new Date((now + SECONDS_IN_YEAR) * MS_IN_SEC)
         : !flowInfo.newLiquidation ||
-            flowInfo.newLiquidation * 1000 >
-              Date.now() + SECONDS_IN_YEAR * 1e3 * 1000
-          ? new Date(Date.now() + SECONDS_IN_YEAR * 1e3 * 1000)
-          : new Date(flowInfo.newLiquidation! * 1000);
+            flowInfo.newLiquidation > now + SECONDS_IN_YEAR
+          ? new Date((now + SECONDS_IN_YEAR) * MS_IN_SEC)
+          : new Date(flowInfo.newLiquidation! * MS_IN_SEC);
 
     const plot = Plot.plot({
       marks: [
@@ -141,11 +139,11 @@ export default function BalancePlot(props: BalancePlotProps) {
             currentEndingDate > newEndingDate
               ? new Date(
                   currentEndingDate.getTime() +
-                    (currentEndingDate.getTime() - Date.now()) * 0.1,
+                    (currentEndingDate.getTime() - now * MS_IN_SEC) * 0.1,
                 )
               : new Date(
                   newEndingDate.getTime() +
-                    (newEndingDate.getTime() - Date.now()) * 0.1,
+                    (newEndingDate.getTime() - now * MS_IN_SEC) * 0.1,
                 ),
           ],
           {
