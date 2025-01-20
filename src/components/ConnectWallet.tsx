@@ -107,6 +107,17 @@ export default function ConnectWallet() {
                         </Link>
                       </Dropdown.Item>
                       <Dropdown.Item
+                        as="div"
+                        className="py-3 border-top rounded-bottom-1 text-dark"
+                      >
+                        <Link
+                          href="/flow-splitters"
+                          className="text-decoration-none"
+                        >
+                          Flow Splitters
+                        </Link>
+                      </Dropdown.Item>
+                      <Dropdown.Item
                         className="gap-2 py-3 border-top rounded-bottom-1 text-dark"
                         onClick={() => disconnect()}
                       >

@@ -253,37 +253,35 @@ export default function OpenFlow(props: OpenFlowProps) {
       return balancePlotFlowInfoSnapshot.current;
     }
 
-    if (accountTokenSnapshot) {
-      const startingBalance =
-        BigInt(accountTokenSnapshot.balanceUntilUpdatedAt) +
+    const startingBalance = accountTokenSnapshot
+      ? BigInt(accountTokenSnapshot?.balanceUntilUpdatedAt) +
         (BigInt(accountTokenSnapshot.totalNetFlowRate) *
           BigInt(Date.now() - accountTokenSnapshot.updatedAtTimestamp * 1000)) /
-          BigInt(1000);
-      const totalNetFlowRate =
-        BigInt(accountTokenSnapshot.totalNetFlowRate) + membershipsInflowRate;
+          BigInt(1000)
+      : BigInt(0);
+    const totalNetFlowRate = accountTokenSnapshot
+      ? BigInt(accountTokenSnapshot.totalNetFlowRate) + membershipsInflowRate
+      : BigInt(0);
 
-      const result = {
-        currentStartingBalance: startingBalance,
-        newStartingBalance:
-          startingBalance + parseEther(wrapAmountPerTimeInterval ?? 0),
-        currentTotalFlowRate: totalNetFlowRate,
-        currentLiquidation: calcLiquidationEstimate(BigInt(flowRateToReceiver)),
-        newTotalFlowRate:
-          BigInt(flowRateToReceiver) !== newFlowRate
-            ? totalNetFlowRate + BigInt(flowRateToReceiver) - newFlowRate
-            : totalNetFlowRate,
-        newLiquidation: calcLiquidationEstimate(
-          newFlowRate,
-          wrapAmountPerTimeInterval,
-        ),
-      };
+    const result = {
+      currentStartingBalance: startingBalance,
+      newStartingBalance:
+        startingBalance + parseEther(wrapAmountPerTimeInterval ?? 0),
+      currentTotalFlowRate: totalNetFlowRate,
+      currentLiquidation: calcLiquidationEstimate(BigInt(flowRateToReceiver)),
+      newTotalFlowRate:
+        BigInt(flowRateToReceiver) !== newFlowRate
+          ? totalNetFlowRate + BigInt(flowRateToReceiver) - newFlowRate
+          : totalNetFlowRate,
+      newLiquidation: calcLiquidationEstimate(
+        newFlowRate,
+        wrapAmountPerTimeInterval,
+      ),
+    };
 
-      balancePlotFlowInfoSnapshot.current = result;
+    balancePlotFlowInfoSnapshot.current = result;
 
-      return result;
-    }
-
-    return null;
+    return result;
   }, [
     areTransactionsLoading,
     accountTokenSnapshot,
@@ -739,18 +737,22 @@ export default function OpenFlow(props: OpenFlowProps) {
             {transactionError}
           </Alert>
         )}
-        <Card.Text className="mt-4 mb-2">
-          Your {token.name} Balance Over Time
-        </Card.Text>
-        {accountTokenSnapshot?.totalNetFlowRate !== "0" ||
-        newFlowRate !== BigInt(0) ? (
-          <BalancePlot
-            flowInfo={
-              areTransactionsLoading && balancePlotFlowInfoSnapshot?.current
-                ? balancePlotFlowInfoSnapshot.current
-                : balancePlotFlowInfo
-            }
-          />
+        {(accountTokenSnapshot &&
+          accountTokenSnapshot.totalNetFlowRate !== "0") ||
+        (newFlowRate !== BigInt(0) &&
+          (superTokenBalance > 0 || wrapAmountPerTimeInterval > "0")) ? (
+          <>
+            <Card.Text className="mt-4 mb-2">
+              Your {token.name} Balance Over Time
+            </Card.Text>
+            <BalancePlot
+              flowInfo={
+                areTransactionsLoading && balancePlotFlowInfoSnapshot?.current
+                  ? balancePlotFlowInfoSnapshot.current
+                  : balancePlotFlowInfo
+              }
+            />
+          </>
         ) : null}
       </Offcanvas.Body>
     </Offcanvas>

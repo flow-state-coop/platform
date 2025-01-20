@@ -28,7 +28,7 @@ import Spinner from "react-bootstrap/Spinner";
 import FormCheck from "react-bootstrap/FormCheck";
 import Form from "react-bootstrap/Form";
 import InfoTooltip from "@/components/InfoTooltip";
-import OpenFlow from "@/app/flow-splitter/components/OpenFlow";
+import OpenFlow from "@/app/flow-splitters/components/OpenFlow";
 import { getApolloClient } from "@/lib/apollo";
 import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
 import { useMediaQuery } from "@/hooks/mediaQuery";
