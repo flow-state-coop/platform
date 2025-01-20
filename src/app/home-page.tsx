@@ -70,9 +70,9 @@ export default function HomePage() {
           >
             <Button
               className="w-50 text-light fs-5 shadow"
-              onClick={() => router.push("/projects/?new=true")}
+              onClick={() => router.push("/flow-splitters")}
             >
-              Create Project
+              Flow Splitters
             </Button>
             <Button
               variant="link"
