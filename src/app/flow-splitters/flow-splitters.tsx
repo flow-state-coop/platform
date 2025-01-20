@@ -151,8 +151,10 @@ export default function FlowSplitters() {
             BigInt(poolMembership.pool.flowRate) -
             BigInt(poolMembership.pool.adjustmentFlowRate);
           memberFlowRate =
-            (BigInt(poolMembership.units) * adjustedFlowRate) /
-            BigInt(poolMembership.pool.totalUnits);
+            BigInt(poolMembership.pool.totalUnits) > 0
+              ? (BigInt(poolMembership.units) * adjustedFlowRate) /
+                BigInt(poolMembership.pool.totalUnits)
+              : BigInt(0);
         }
 
         pools.push({
@@ -163,7 +165,7 @@ export default function FlowSplitters() {
           token: poolAdmin.token,
           isAdmin: true,
           flowRate: memberFlowRate,
-          units: BigInt(poolMembership?.units) ?? BigInt(0),
+          units: BigInt(poolMembership?.units ?? 0),
           isConnected: poolMembership?.isConnected ?? false,
         });
       }
@@ -190,11 +192,13 @@ export default function FlowSplitters() {
               BigInt(poolMembership.pool.flowRate) -
               BigInt(poolMembership.pool.adjustmentFlowRate);
             memberFlowRate =
-              (BigInt(poolMembership.units) * adjustedFlowRate) /
-              BigInt(poolMembership.pool.totalUnits);
+              BigInt(poolMembership.pool.totalUnits) > 0
+                ? (BigInt(poolMembership.units) * adjustedFlowRate) /
+                  BigInt(poolMembership.pool.totalUnits)
+                : BigInt(0);
           }
 
-          if (memberFlowRate > 0) {
+          if (BigInt(poolMembership.units) > 0) {
             pools.push({
               id: BigInt(flowSplitterPool.id).toString(),
               name: flowSplitterPool.name,
@@ -203,7 +207,7 @@ export default function FlowSplitters() {
               token: flowSplitterPool.token,
               isAdmin: false,
               flowRate: memberFlowRate,
-              units: BigInt(poolMembership?.units) ?? BigInt(0),
+              units: BigInt(poolMembership?.units ?? 0),
               isConnected: poolMembership?.isConnected ?? false,
             });
           }
@@ -221,7 +225,12 @@ export default function FlowSplitters() {
   useEffect(() => {
     refetchFlowSplitterAdmin();
     refetchSuperfluidQuery();
-  }, [selectedNetwork, refetchFlowSplitterAdmin, refetchSuperfluidQuery]);
+  }, [
+    address,
+    selectedNetwork,
+    refetchFlowSplitterAdmin,
+    refetchSuperfluidQuery,
+  ]);
 
   const addToWallet = (token: Token) => {
     walletClient?.request({
@@ -412,7 +421,11 @@ export default function FlowSplitters() {
                         />
                       </Button>
                     </Stack>
-                    {pool.isAdmin && pool.flowRate > 0 ? (
+                    {pool.isAdmin && pool.units === BigInt(0) ? (
+                      <Card.Text className="mt-5 mb-0 fs-1 fw-bold text-center">
+                        Admin
+                      </Card.Text>
+                    ) : (
                       <Stack direction="vertical" gap={1} className="mt-5">
                         {pool.isConnected ? (
                           <Stack
@@ -449,6 +462,7 @@ export default function FlowSplitters() {
                                 Unconnected Shares
                               </Card.Text>
                               <InfoTooltip
+                                position={{ top: true }}
                                 target={
                                   <Image
                                     src="/info.svg"
@@ -469,14 +483,12 @@ export default function FlowSplitters() {
                             </Stack>
                           </Stack>
                         )}
-                        <Card.Text className="m-0 fs-6 text-center">
-                          Admin
-                        </Card.Text>
+                        {pool.isAdmin && (
+                          <Card.Text className="m-0 fs-6 text-center">
+                            Admin
+                          </Card.Text>
+                        )}
                       </Stack>
-                    ) : (
-                      <Card.Text className="mt-5 mb-0 fs-1 fw-bold text-center">
-                        Admin
-                      </Card.Text>
                     )}
                   </Card.Body>
                   <Card.Footer className="d-flex flex-column gap-1 w-100 bg-transparent border-0">
