@@ -111,7 +111,7 @@ export default function ConnectWallet() {
                         className="py-3 border-top rounded-bottom-1 text-dark"
                       >
                         <Link
-                          href="/flow-splitters"
+                          href={`/flow-splitters/?chainId=${chain.id}`}
                           className="text-decoration-none"
                         >
                           Flow Splitters
