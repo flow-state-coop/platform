@@ -3,15 +3,18 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAccount, useWalletClient } from "wagmi";
+import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import { usePostHog } from "posthog-js/react";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
+import Modal from "react-bootstrap/Modal";
 import InfoTooltip from "@/components/InfoTooltip";
+import PoolConnectionButton from "@/components/PoolConnectionButton";
 import PoolGraph from "../../components/PoolGraph";
 import OpenFlow from "@/app/flow-splitters/components/OpenFlow";
 import { getApolloClient } from "@/lib/apollo";
@@ -55,6 +58,7 @@ const SUPERFLUID_QUERY = gql`
           id
         }
         units
+        isConnected
       }
       poolDistributors {
         account {
@@ -74,11 +78,14 @@ export default function FlowSplitter(props: FlowSplitterProps) {
   const { poolId, chainId } = props;
 
   const [showTransactionPanel, setShowTransactionPanel] = useState(false);
+  const [showConnectionModal, setShowConnectionModal] = useState(false);
 
   const router = useRouter();
   const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
+  const { openConnectModal } = useConnectModal();
+  const { switchChain } = useSwitchChain();
   const { data: walletClient } = useWalletClient();
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
   const {
     data: flowSplitterPoolQueryRes,
     loading: flowSplitterPoolQueryLoading,
@@ -105,6 +112,13 @@ export default function FlowSplitter(props: FlowSplitterProps) {
   const poolToken = network?.tokens.find(
     (token) => token.address.toLowerCase() === pool?.token,
   );
+  const poolMember = superfluidQueryRes?.pool?.poolMembers.find(
+    (member: { account: { id: string } }) =>
+      member.account.id === address?.toLowerCase(),
+  );
+  const shouldConnect = !!poolMember && !poolMember.isConnected;
+
+  useEffect(() => setShowConnectionModal(shouldConnect), [shouldConnect]);
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") {
@@ -159,7 +173,9 @@ export default function FlowSplitter(props: FlowSplitterProps) {
           <>
             <h1 className="d-flex flex-column flex-sm-row align-items-sm-center overflow-hidden gap-sm-1 mt-5 mb-1">
               <span className="text-truncate">
-                Edit {pool ? pool.name : "Flow Splitter"}{" "}
+                {pool && pool.name !== "Superfluid Pool"
+                  ? pool.name
+                  : "Flow Splitter"}{" "}
                 <span className="d-none d-sm-inline-block">(</span>
               </span>
               <Stack direction="horizontal" gap={1}>
@@ -191,14 +207,18 @@ export default function FlowSplitter(props: FlowSplitterProps) {
                 <Button
                   variant="transparent"
                   className="d-flex align-items-center mt-2 p-0 border-0"
-                  onClick={() =>
-                    addToWallet({
-                      address: pool.poolAddress,
-                      symbol: pool.symbol,
-                      decimals: 0,
-                      image: "",
-                    })
-                  }
+                  onClick={() => {
+                    !address && openConnectModal
+                      ? openConnectModal()
+                      : connectedChain?.id !== chainId
+                        ? switchChain({ chainId })
+                        : addToWallet({
+                            address: pool.poolAddress,
+                            symbol: pool.symbol,
+                            decimals: 0,
+                            image: "",
+                          });
+                  }}
                 >
                   <InfoTooltip
                     position={{ top: true }}
@@ -219,14 +239,18 @@ export default function FlowSplitter(props: FlowSplitterProps) {
               <Button
                 variant="transparent"
                 className="d-flex align-items-center p-0 border-0"
-                onClick={() =>
-                  addToWallet({
-                    address: pool.token,
-                    symbol: superfluidQueryRes?.token.symbol,
-                    decimals: 18,
-                    image: poolToken?.icon ?? "",
-                  })
-                }
+                onClick={() => {
+                  !address && openConnectModal
+                    ? openConnectModal()
+                    : connectedChain?.id !== chainId
+                      ? switchChain({ chainId })
+                      : addToWallet({
+                          address: pool.token,
+                          symbol: superfluidQueryRes?.token.symbol,
+                          decimals: 18,
+                          image: poolToken?.icon ?? "",
+                        });
+                }}
               >
                 <InfoTooltip
                   position={{ top: true }}
@@ -235,12 +259,16 @@ export default function FlowSplitter(props: FlowSplitterProps) {
                 />
               </Button>
             </Stack>
-            {superfluidQueryRes?.pool && (
-              <PoolGraph pool={superfluidQueryRes.pool} chainId={chainId} />
-            )}
+            <PoolGraph pool={superfluidQueryRes?.pool} chainId={chainId} />
             <Button
               className="w-100 mt-5 py-2 fs-5"
-              onClick={() => setShowTransactionPanel(true)}
+              onClick={() => {
+                !address && openConnectModal
+                  ? openConnectModal()
+                  : connectedChain?.id !== chainId
+                    ? switchChain({ chainId })
+                    : setShowTransactionPanel(true);
+              }}
             >
               Open Flow
             </Button>
@@ -262,6 +290,29 @@ export default function FlowSplitter(props: FlowSplitterProps) {
           handleClose={() => setShowTransactionPanel(false)}
         />
       )}
+      <Modal
+        show={showConnectionModal}
+        centered
+        onHide={() => setShowConnectionModal(false)}
+      >
+        <Modal.Header closeButton className="align-items-start border-0 pt-3">
+          <Modal.Title className="fs-5 fw-bold">
+            You're a recipient in this Flow Splitter but haven't connected your
+            shares.
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="fs-5">
+          Do you want to do that now, so your supertoken balance is reflected in
+          real time?
+        </Modal.Body>
+        <Modal.Footer className="border-0">
+          <PoolConnectionButton
+            network={network}
+            poolAddress={pool?.poolAddress}
+            isConnected={!shouldConnect}
+          />
+        </Modal.Footer>
+      </Modal>
     </>
   );
 }
