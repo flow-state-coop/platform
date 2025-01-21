@@ -324,9 +324,9 @@ export default function PoolGraph(props: PoolGraphProps) {
             totalUnits: pool.totalUnits,
             token: { address: pool.token.id, symbol: pool.token.symbol },
             flowRate:
-              BigInt(x.units) > 0
-                ? (BigInt(pool.flowRate) * BigInt(pool.totalUnits)) /
-                  BigInt(x.units)
+              BigInt(pool.totalUnits) > 0
+                ? (BigInt(pool.flowRate) * BigInt(x.units)) /
+                  BigInt(pool.totalUnits)
                 : BigInt(0),
             chainId,
           },
@@ -357,9 +357,9 @@ export default function PoolGraph(props: PoolGraphProps) {
           type: "custom",
           data: {
             flowRate:
-              BigInt(x.units) > 0
-                ? (BigInt(pool.flowRate) * BigInt(pool.totalUnits)) /
-                  BigInt(x.units)
+              BigInt(pool.totalUnits) > 0
+                ? (BigInt(pool.flowRate) * BigInt(x.units)) /
+                  BigInt(pool.totalUnits)
                 : BigInt(0),
           },
         },
@@ -410,6 +410,8 @@ export default function PoolGraph(props: PoolGraphProps) {
       <ReactFlow
         defaultNodes={graph.nodes}
         defaultEdges={graph.edges}
+        nodes={graph.nodes}
+        edges={graph.edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={{ animated: true }}
