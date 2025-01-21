@@ -152,7 +152,7 @@ export default function PoolCard(props: PoolCardProps) {
       </Card>
       <Stack
         direction="horizontal"
-        className="align-items-start justify-content-around mt-2"
+        className="align-items-start justify-content-around mt-2 mb-3"
       >
         <Button
           variant="link p-0"
@@ -196,7 +196,16 @@ export default function PoolCard(props: PoolCardProps) {
         (profile) => profile.role === "OWNER",
       )?.address === address?.toLowerCase() && (
         <>
-          <PoolConnectionButton matchingPool={matchingPool} network={network} />
+          <PoolConnectionButton
+            poolAddress={matchingPool.id}
+            isConnected={
+              matchingPool.poolMembers.find(
+                (member: { account: { id: string } }) =>
+                  member.account.id === address?.toLowerCase(),
+              )?.isConnected ?? false
+            }
+            network={network}
+          />
           <Button
             className="w-100 mt-2 text-white"
             onClick={() =>

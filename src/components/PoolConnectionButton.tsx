@@ -1,16 +1,17 @@
 import { useState } from "react";
+import { Address } from "viem";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
-import { GDAPool } from "@/types/gdaPool";
 import { Network } from "@/types/network";
 import { gdaForwarderAbi } from "@/lib/abi/gdaForwarder";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 
 export default function PoolConnectionButton(props: {
-  matchingPool: GDAPool;
   network?: Network;
+  poolAddress: string;
+  isConnected: boolean;
 }) {
-  const { matchingPool, network } = props;
+  const { network, poolAddress, isConnected } = props;
 
   const [isTransactionConfirming, setIsTransactionConfirming] = useState(false);
 
@@ -30,7 +31,7 @@ export default function PoolConnectionButton(props: {
         address: network.gdaForwarder,
         abi: gdaForwarderAbi,
         functionName: "connectPool",
-        args: [matchingPool.id, "0x"],
+        args: [poolAddress as Address, "0x"],
       });
 
       await publicClient.waitForTransactionReceipt({
@@ -46,24 +47,19 @@ export default function PoolConnectionButton(props: {
     }
   };
 
-  const isConnected = matchingPool.poolMembers.find(
-    (member: { account: { id: string } }) =>
-      member.account.id === address?.toLowerCase(),
-  )?.isConnected;
-
   return (
     <Button
       variant="secondary"
       onClick={handlePoolConnection}
       disabled={isConnected}
-      className="w-100 mt-3 text-white"
+      className="w-100 text-white"
     >
       {isTransactionConfirming ? (
         <Spinner size="sm" />
       ) : isConnected ? (
         "Connected"
       ) : (
-        "Connect to Pool"
+        "Connect"
       )}
     </Button>
   );

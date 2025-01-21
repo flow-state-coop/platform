@@ -28,7 +28,7 @@ import Spinner from "react-bootstrap/Spinner";
 import FormCheck from "react-bootstrap/FormCheck";
 import Form from "react-bootstrap/Form";
 import InfoTooltip from "@/components/InfoTooltip";
-import OpenFlow from "@/app/flow-splitter/components/OpenFlow";
+import OpenFlow from "@/app/flow-splitters/components/OpenFlow";
 import { getApolloClient } from "@/lib/apollo";
 import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -382,7 +382,10 @@ export default function Admin(props: AdminProps) {
           <>
             <h1 className="d-flex flex-column flex-sm-row align-items-sm-center overflow-hidden gap-sm-1 mt-5 mb-1">
               <span className="text-truncate">
-                Edit {pool ? pool.name : "Flow Splitter"}{" "}
+                Edit{" "}
+                {pool && pool.name !== "Superfluid Pool"
+                  ? pool.name
+                  : "Flow Splitter"}{" "}
                 <span className="d-none d-sm-inline-block">(</span>
               </span>
               <Stack direction="horizontal" gap={1}>
@@ -396,7 +399,13 @@ export default function Admin(props: AdminProps) {
                 <Button
                   variant="transparent"
                   className="d-flex align-items-center mt-2 p-0 border-0"
-                  onClick={addPoolToWallet}
+                  onClick={() =>
+                    !address && openConnectModal
+                      ? openConnectModal()
+                      : connectedChain?.id !== chainId
+                        ? switchChain({ chainId })
+                        : addPoolToWallet()
+                  }
                 >
                   <InfoTooltip
                     position={{ top: true }}
@@ -417,7 +426,13 @@ export default function Admin(props: AdminProps) {
             </Stack>
             <Button
               className="w-100 mt-5 py-2 fs-5"
-              onClick={() => setShowTransactionPanel(true)}
+              onClick={() => {
+                !address && openConnectModal
+                  ? openConnectModal()
+                  : connectedChain?.id !== chainId
+                    ? switchChain({ chainId })
+                    : setShowTransactionPanel(true);
+              }}
             >
               Open Flow
             </Button>
