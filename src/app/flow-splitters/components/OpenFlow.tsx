@@ -182,7 +182,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   }, [address, pool]);
 
   const canSubmit =
-    newFlowRate > 0 &&
+    (newFlowRate > 0 || BigInt(flowRateToReceiver) > 0) &&
     BigInt(flowRateToReceiver) !== newFlowRate &&
     hasSufficientSuperTokenBalance &&
     hasSufficientWrappingBalance;
@@ -200,8 +200,10 @@ export default function OpenFlow(props: OpenFlowProps) {
           BigInt(poolMembership.pool.flowRate) -
           BigInt(poolMembership.pool.adjustmentFlowRate);
         const memberFlowRate =
-          (BigInt(poolMembership.units) * adjustedFlowRate) /
-          BigInt(poolMembership.pool.totalUnits);
+          BigInt(poolMembership.pool.totalUnits) > 0
+            ? (BigInt(poolMembership.units) * adjustedFlowRate) /
+              BigInt(poolMembership.pool.totalUnits)
+            : BigInt(0);
 
         membershipsInflowRate += memberFlowRate;
       }
@@ -293,7 +295,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   ]);
 
   useEffect(() => {
-    if (address && flowRateToReceiver) {
+    if (address && flowRateToReceiver && !areTransactionsLoading) {
       const currentStreamValue = roundWeiAmount(
         BigInt(flowRateToReceiver) *
           BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH])),
@@ -303,7 +305,7 @@ export default function OpenFlow(props: OpenFlowProps) {
       setAmountPerTimeInterval(currentStreamValue);
       setNewFlowRate(BigInt(flowRateToReceiver));
     }
-  }, [address, flowRateToReceiver]);
+  }, [address, flowRateToReceiver, areTransactionsLoading]);
 
   useEffect(() => {
     const liquidationEstimate = calcLiquidationEstimate(newFlowRate);
@@ -350,7 +352,6 @@ export default function OpenFlow(props: OpenFlowProps) {
     (async () => {
       if (
         !address ||
-        !newFlowRate ||
         !pool ||
         !underlyingTokenAllowance ||
         !distributionSuperToken ||
@@ -521,6 +522,7 @@ export default function OpenFlow(props: OpenFlowProps) {
 
       setSuccess(true);
       setWrapAmountPerTimeInterval("");
+      setTimeInterval(TimeInterval.MONTH);
     } catch (err) {
       console.error(err);
     }
@@ -601,7 +603,16 @@ export default function OpenFlow(props: OpenFlowProps) {
               {Object.values(TimeInterval).map((timeInterval, i) => (
                 <Dropdown.Item
                   key={i}
-                  onClick={() => setTimeInterval(timeInterval)}
+                  onClick={() => {
+                    setNewFlowRate(
+                      parseEther(amountPerTimeInterval) /
+                        BigInt(
+                          fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]),
+                        ),
+                    );
+
+                    setTimeInterval(timeInterval);
+                  }}
                 >
                   {timeInterval}
                 </Dropdown.Item>
