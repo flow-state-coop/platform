@@ -28,6 +28,8 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { isNumber } from "@/lib/utils";
 
+type LaunchProps = { defaultNetwork: Network };
+
 type PoolConfig = {
   transferableUnits: boolean;
   immutable: boolean;
@@ -53,8 +55,11 @@ const SUPERTOKEN_QUERY = gql`
   }
 `;
 
-export default function FlowSplitter() {
-  const [selectedNetwork, setSelectedNetwork] = useState<Network>(networks[1]);
+export default function Launch(props: LaunchProps) {
+  const { defaultNetwork } = props;
+
+  const [selectedNetwork, setSelectedNetwork] =
+    useState<Network>(defaultNetwork);
   const [selectedToken, setSelectedToken] = useState<Token>();
   const [poolConfig, setPoolConfig] = useState<PoolConfig>({
     transferableUnits: false,
@@ -186,7 +191,7 @@ export default function FlowSplitter() {
         logs: receipt.logs,
       })[0].args.poolId;
 
-      router.push(`/flow-splitter/${selectedNetwork.id}/${poolId}/admin`);
+      router.push(`/flow-splitters/${selectedNetwork.id}/${poolId}`);
     } catch (err) {
       console.error(err);
 

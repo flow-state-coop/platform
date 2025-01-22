@@ -5,7 +5,7 @@ export type GDAPool = {
   totalAmountFlowedDistributedUntilUpdatedAt: `${number}`;
   updatedAtTimestamp: number;
   totalUnits: `${number}`;
-  token: { id: `0x${string}` };
+  token: { id: `0x${string}`; symbol: string };
   poolMembers: {
     account: {
       id: `0x${string}`;

@@ -182,7 +182,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   }, [address, pool]);
 
   const canSubmit =
-    newFlowRate > 0 &&
+    (newFlowRate > 0 || BigInt(flowRateToReceiver) > 0) &&
     BigInt(flowRateToReceiver) !== newFlowRate &&
     hasSufficientSuperTokenBalance &&
     hasSufficientWrappingBalance;
@@ -200,8 +200,10 @@ export default function OpenFlow(props: OpenFlowProps) {
           BigInt(poolMembership.pool.flowRate) -
           BigInt(poolMembership.pool.adjustmentFlowRate);
         const memberFlowRate =
-          (BigInt(poolMembership.units) * adjustedFlowRate) /
-          BigInt(poolMembership.pool.totalUnits);
+          BigInt(poolMembership.pool.totalUnits) > 0
+            ? (BigInt(poolMembership.units) * adjustedFlowRate) /
+              BigInt(poolMembership.pool.totalUnits)
+            : BigInt(0);
 
         membershipsInflowRate += memberFlowRate;
       }
@@ -253,37 +255,35 @@ export default function OpenFlow(props: OpenFlowProps) {
       return balancePlotFlowInfoSnapshot.current;
     }
 
-    if (accountTokenSnapshot) {
-      const startingBalance =
-        BigInt(accountTokenSnapshot.balanceUntilUpdatedAt) +
+    const startingBalance = accountTokenSnapshot
+      ? BigInt(accountTokenSnapshot?.balanceUntilUpdatedAt) +
         (BigInt(accountTokenSnapshot.totalNetFlowRate) *
           BigInt(Date.now() - accountTokenSnapshot.updatedAtTimestamp * 1000)) /
-          BigInt(1000);
-      const totalNetFlowRate =
-        BigInt(accountTokenSnapshot.totalNetFlowRate) + membershipsInflowRate;
+          BigInt(1000)
+      : BigInt(0);
+    const totalNetFlowRate = accountTokenSnapshot
+      ? BigInt(accountTokenSnapshot.totalNetFlowRate) + membershipsInflowRate
+      : BigInt(0);
 
-      const result = {
-        currentStartingBalance: startingBalance,
-        newStartingBalance:
-          startingBalance + parseEther(wrapAmountPerTimeInterval ?? 0),
-        currentTotalFlowRate: totalNetFlowRate,
-        currentLiquidation: calcLiquidationEstimate(BigInt(flowRateToReceiver)),
-        newTotalFlowRate:
-          BigInt(flowRateToReceiver) !== newFlowRate
-            ? totalNetFlowRate + BigInt(flowRateToReceiver) - newFlowRate
-            : totalNetFlowRate,
-        newLiquidation: calcLiquidationEstimate(
-          newFlowRate,
-          wrapAmountPerTimeInterval,
-        ),
-      };
+    const result = {
+      currentStartingBalance: startingBalance,
+      newStartingBalance:
+        startingBalance + parseEther(wrapAmountPerTimeInterval ?? 0),
+      currentTotalFlowRate: totalNetFlowRate,
+      currentLiquidation: calcLiquidationEstimate(BigInt(flowRateToReceiver)),
+      newTotalFlowRate:
+        BigInt(flowRateToReceiver) !== newFlowRate
+          ? totalNetFlowRate + BigInt(flowRateToReceiver) - newFlowRate
+          : totalNetFlowRate,
+      newLiquidation: calcLiquidationEstimate(
+        newFlowRate,
+        wrapAmountPerTimeInterval,
+      ),
+    };
 
-      balancePlotFlowInfoSnapshot.current = result;
+    balancePlotFlowInfoSnapshot.current = result;
 
-      return result;
-    }
-
-    return null;
+    return result;
   }, [
     areTransactionsLoading,
     accountTokenSnapshot,
@@ -295,7 +295,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   ]);
 
   useEffect(() => {
-    if (address && flowRateToReceiver) {
+    if (address && flowRateToReceiver && !areTransactionsLoading) {
       const currentStreamValue = roundWeiAmount(
         BigInt(flowRateToReceiver) *
           BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH])),
@@ -305,7 +305,7 @@ export default function OpenFlow(props: OpenFlowProps) {
       setAmountPerTimeInterval(currentStreamValue);
       setNewFlowRate(BigInt(flowRateToReceiver));
     }
-  }, [address, flowRateToReceiver]);
+  }, [address, flowRateToReceiver, areTransactionsLoading]);
 
   useEffect(() => {
     const liquidationEstimate = calcLiquidationEstimate(newFlowRate);
@@ -352,7 +352,6 @@ export default function OpenFlow(props: OpenFlowProps) {
     (async () => {
       if (
         !address ||
-        !newFlowRate ||
         !pool ||
         !underlyingTokenAllowance ||
         !distributionSuperToken ||
@@ -523,6 +522,7 @@ export default function OpenFlow(props: OpenFlowProps) {
 
       setSuccess(true);
       setWrapAmountPerTimeInterval("");
+      setTimeInterval(TimeInterval.MONTH);
     } catch (err) {
       console.error(err);
     }
@@ -603,7 +603,16 @@ export default function OpenFlow(props: OpenFlowProps) {
               {Object.values(TimeInterval).map((timeInterval, i) => (
                 <Dropdown.Item
                   key={i}
-                  onClick={() => setTimeInterval(timeInterval)}
+                  onClick={() => {
+                    setNewFlowRate(
+                      parseEther(amountPerTimeInterval) /
+                        BigInt(
+                          fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]),
+                        ),
+                    );
+
+                    setTimeInterval(timeInterval);
+                  }}
                 >
                   {timeInterval}
                 </Dropdown.Item>
@@ -739,18 +748,22 @@ export default function OpenFlow(props: OpenFlowProps) {
             {transactionError}
           </Alert>
         )}
-        <Card.Text className="mt-4 mb-2">
-          Your {token.name} Balance Over Time
-        </Card.Text>
-        {accountTokenSnapshot?.totalNetFlowRate !== "0" ||
-        newFlowRate !== BigInt(0) ? (
-          <BalancePlot
-            flowInfo={
-              areTransactionsLoading && balancePlotFlowInfoSnapshot?.current
-                ? balancePlotFlowInfoSnapshot.current
-                : balancePlotFlowInfo
-            }
-          />
+        {(accountTokenSnapshot &&
+          accountTokenSnapshot.totalNetFlowRate !== "0") ||
+        (newFlowRate !== BigInt(0) &&
+          (superTokenBalance > 0 || wrapAmountPerTimeInterval > "0")) ? (
+          <>
+            <Card.Text className="mt-4 mb-2">
+              Your {token.name} Balance Over Time
+            </Card.Text>
+            <BalancePlot
+              flowInfo={
+                areTransactionsLoading && balancePlotFlowInfoSnapshot?.current
+                  ? balancePlotFlowInfoSnapshot.current
+                  : balancePlotFlowInfo
+              }
+            />
+          </>
         ) : null}
       </Offcanvas.Body>
     </Offcanvas>

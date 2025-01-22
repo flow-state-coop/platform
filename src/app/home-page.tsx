@@ -3,6 +3,7 @@
 import { useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAccount } from "wagmi";
 import { usePostHog } from "posthog-js/react";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
@@ -15,6 +16,7 @@ export default function HomePage() {
   const poolsRef = useRef<HTMLDivElement>(null);
 
   const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
+  const { chain: connectedChain } = useAccount();
   const postHog = usePostHog();
 
   const handleScrollToPools = () => {
@@ -70,9 +72,15 @@ export default function HomePage() {
           >
             <Button
               className="w-50 text-light fs-5 shadow"
-              onClick={() => router.push("/projects/?new=true")}
+              onClick={() =>
+                router.push(
+                  connectedChain
+                    ? `/flow-splitters/?chainId=${connectedChain.id}`
+                    : "/flow-splitters",
+                )
+              }
             >
-              Create Project
+              Flow Splitters
             </Button>
             <Button
               variant="link"
