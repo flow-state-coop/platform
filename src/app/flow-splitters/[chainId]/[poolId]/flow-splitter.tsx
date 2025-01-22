@@ -302,8 +302,11 @@ export default function FlowSplitter(props: FlowSplitterProps) {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="fs-5">
-          Do you want to do that now, so your supertoken balance is reflected in
-          real time?
+          Do you want to do that now, so your{" "}
+          <Link href="https://app.superfluid.finance/" target="_blank">
+            Supertoken Balance
+          </Link>{" "}
+          is reflected in real time?
         </Modal.Body>
         <Modal.Footer className="border-0">
           <PoolConnectionButton
