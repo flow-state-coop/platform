@@ -191,7 +191,7 @@ export default function Launch(props: LaunchProps) {
         logs: receipt.logs,
       })[0].args.poolId;
 
-      router.push(`/flow-splitters/${selectedNetwork.id}/${poolId}/admin`);
+      router.push(`/flow-splitters/${selectedNetwork.id}/${poolId}`);
     } catch (err) {
       console.error(err);
 
