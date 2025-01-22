@@ -304,7 +304,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
         <Modal.Body className="fs-5">
           Do you want to do that now, so your{" "}
           <Link href="https://app.superfluid.finance/" target="_blank">
-            Supertoken Balance
+            Super Token balance
           </Link>{" "}
           is reflected in real time?
         </Modal.Body>
