@@ -490,7 +490,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
               target="blank"
               className="text-primary"
             >
-              ask questions
+              get help.
             </Card.Link>
           </h2>
           <h3 className="mt-2 fs-5">
