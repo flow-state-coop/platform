@@ -248,8 +248,8 @@ export default function Launch(props: LaunchProps) {
             </Stack>
             <Card.Text className="text-info">
               The easiest way to split streams to your team, guild, DAO, or
-              community: Flow Splitters are onchain contracts that split
-              incoming streams to recipients in real-time based on their % of
+              community: Flow Splitters are onchain contracts that forward
+              incoming streams to recipients in real time based on their % of
               shares in the Splitter.{" "}
               <Card.Link
                 href="https://docs.flowstate.network/platform/flow-splitters/"
