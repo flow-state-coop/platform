@@ -273,6 +273,93 @@ export default function Admin(props: AdminProps) {
     }
   }, [postHog, postHog.decideEndpointWasHit]);
 
+  const removeMemberEntry = (memberEntry: MemberEntry, memberIndex: number) => {
+    setMembersEntry((prev) =>
+      prev.filter(
+        (_, prevMemberEntryIndex) => prevMemberEntryIndex !== memberIndex,
+      ),
+    );
+
+    const existingPoolMember = superfluidQueryRes?.pool?.poolMembers?.find(
+      (member: { account: { id: string } }) =>
+        member.account.id === memberEntry.address.toLowerCase(),
+    );
+
+    if (
+      !memberEntry.validationError &&
+      existingPoolMember &&
+      existingPoolMember.units !== "0"
+    ) {
+      setMembersToRemove(membersToRemove.concat(memberEntry));
+    }
+  };
+
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) {
+      return;
+    }
+
+    Papa?.parse(e.target.files[0], {
+      complete: (results: { data: string[] }) => {
+        const { data } = results;
+
+        const membersEntry: MemberEntry[] = [];
+
+        for (const row of data) {
+          if (!row[0]) {
+            continue;
+          }
+
+          membersEntry.push({
+            address: row[0],
+            units:
+              isNumber(row[1]) && !row[1].includes(".")
+                ? row[1].replace(/\s/g, "")
+                : "",
+            validationError: !isAddress(row[0])
+              ? "Invalid Address"
+              : membersEntry
+                    .map((memberEntry) => memberEntry.address.toLowerCase())
+                    .includes(row[0].toLowerCase())
+                ? "Address already added"
+                : "",
+          });
+        }
+
+        const membersToRemove = [];
+
+        for (const i in membersEntry) {
+          if (membersEntry[i].units === "0") {
+            if (!membersEntry[i].validationError) {
+              membersToRemove.push(membersEntry[i]);
+              membersEntry.splice(Number(i), 1);
+            }
+          }
+        }
+
+        const csvAddresses = data.map((row) => row[0].toLowerCase());
+        const existingMembers = superfluidQueryRes?.pool.poolMembers;
+        const excludedMembers = existingMembers.filter(
+          (existingMember: { account: { id: string } }) =>
+            !csvAddresses.some(
+              (address) => existingMember.account.id === address,
+            ),
+        );
+
+        for (const excludedMember of excludedMembers) {
+          membersToRemove.push({
+            address: excludedMember.account.id,
+            units: excludedMember.units,
+            validationError: "",
+          });
+        }
+
+        setMembersEntry(membersEntry);
+        setMembersToRemove(membersToRemove);
+      },
+    });
+  };
+
   const handleSubmit = async () => {
     if (!network || !address || !publicClient) {
       return;
@@ -285,12 +372,24 @@ export default function Admin(props: AdminProps) {
 
       const validAdmins = adminsEntry.filter(
         (adminEntry) =>
-          adminEntry.validationError === "" && adminEntry.address !== "",
+          adminEntry.validationError === "" &&
+          adminEntry.address !== "" &&
+          !poolAdmins.some(
+            (admin: { address: string }) =>
+              admin.address === adminEntry.address,
+          ),
       );
       const validMembers = membersEntry.filter(
         (memberEntry) =>
-          memberEntry.validationError === "" && memberEntry.address !== "",
+          memberEntry.validationError === "" &&
+          memberEntry.address !== "" &&
+          !superfluidQueryRes?.pool?.poolMembers.some(
+            (member: { account: { id: string }; units: string }) =>
+              member.account.id === memberEntry.address &&
+              member.units === memberEntry.units,
+          ),
       );
+
       const adminsToRemove = poolAdmins
         .map((admin: { address: string }) => admin.address)
         .filter(
@@ -772,6 +871,14 @@ export default function Admin(props: AdminProps) {
                       <Stack direction="vertical" className="position-relative">
                         <Form.Control
                           type="text"
+                          disabled={
+                            superfluidQueryRes?.pool?.poolMembers
+                              .map((member: { account: { id: string } }) =>
+                                member.account.id.toLowerCase(),
+                              )
+                              .includes(memberEntry.address.toLowerCase()) &&
+                            !memberEntry.validationError
+                          }
                           placeholder={
                             isMobile ? "Address" : "Recipient Address"
                           }
@@ -828,7 +935,13 @@ export default function Admin(props: AdminProps) {
                           } else if (value.includes(".")) {
                             return;
                           } else if (isNumber(value)) {
-                            prevMembersEntry[i].units = value;
+                            if (value === "0") {
+                              removeMemberEntry(prevMembersEntry[i], i);
+
+                              return;
+                            } else {
+                              prevMembersEntry[i].units = value;
+                            }
                           }
 
                           setMembersEntry(prevMembersEntry);
@@ -870,31 +983,7 @@ export default function Admin(props: AdminProps) {
                         <Button
                           variant="transparent"
                           className="p-0"
-                          onClick={() => {
-                            setMembersEntry((prev) =>
-                              prev.filter(
-                                (_, prevMemberEntryIndex) =>
-                                  prevMemberEntryIndex !== i,
-                              ),
-                            );
-
-                            const existingPoolMember =
-                              superfluidQueryRes?.pool?.poolMembers?.find(
-                                (member: { account: { id: string } }) =>
-                                  member.account.id ===
-                                  memberEntry.address.toLowerCase(),
-                              );
-
-                            if (
-                              !memberEntry.validationError &&
-                              existingPoolMember &&
-                              existingPoolMember.units !== "0"
-                            ) {
-                              setMembersToRemove(
-                                membersToRemove.concat(memberEntry),
-                              );
-                            }
-                          }}
+                          onClick={() => removeMemberEntry(memberEntry, i)}
                         >
                           <Image
                             src="/close.svg"
@@ -1050,46 +1139,7 @@ export default function Admin(props: AdminProps) {
                     id="upload-csv"
                     accept=".csv"
                     hidden
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                      if (!e.target.files) {
-                        return;
-                      }
-
-                      Papa?.parse(e.target.files[0], {
-                        complete: (results: { data: string[] }) => {
-                          const { data } = results;
-
-                          const membersEntry: MemberEntry[] = [];
-
-                          for (const row of data) {
-                            if (!row[0]) {
-                              continue;
-                            }
-
-                            membersEntry.push({
-                              address: row[0],
-                              units:
-                                isNumber(row[1]) &&
-                                Number(row[1]) > 0 &&
-                                !row[1].includes(".")
-                                  ? row[1]
-                                  : "",
-                              validationError: !isAddress(row[0])
-                                ? "Invalid Address"
-                                : membersEntry
-                                      .map((memberEntry) =>
-                                        memberEntry.address.toLowerCase(),
-                                      )
-                                      .includes(row[0].toLowerCase())
-                                  ? "Address already added"
-                                  : "",
-                            });
-                          }
-
-                          setMembersEntry(membersEntry);
-                        },
-                      });
-                    }}
+                    onChange={handleCsvUpload}
                   />
                 </Stack>
                 <Card.Link

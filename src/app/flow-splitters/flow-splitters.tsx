@@ -126,16 +126,16 @@ export default function FlowSplitters(props: FlowSplittersProps) {
 
   useEffect(() => {
     (async () => {
-      if (!flowSplitterAdminQueryRes?.pools || !superfluidQueryRes?.account) {
+      if (!flowSplitterAdminQueryRes?.pools) {
         return;
       }
 
       const pools = [];
-      const sfPoolMemberships = superfluidQueryRes.account.poolMemberships;
+      const sfPoolMemberships = superfluidQueryRes?.account?.poolMemberships;
       const flowSplitterPoolMemberships = (
         await getFlowSplitterMemberships({
           variables: {
-            poolAddresses: sfPoolMemberships.map(
+            poolAddresses: sfPoolMemberships?.map(
               (m: { pool: { id: string } }) => m.pool.id,
             ),
           },
@@ -147,7 +147,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
           (pool: { poolAddress: string }) =>
             pool.poolAddress === poolAdmin.poolAddress,
         );
-        const poolMembership = sfPoolMemberships.find(
+        const poolMembership = sfPoolMemberships?.find(
           (membership: { pool: { id: string } }) =>
             membership.pool.id === flowSplitterMember?.poolAddress,
         );
@@ -188,7 +188,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
             continue;
           }
 
-          const poolMembership = sfPoolMemberships.find(
+          const poolMembership = sfPoolMemberships?.find(
             (membership: { pool: { id: string } }) =>
               membership.pool.id === flowSplitterPool?.poolAddress,
           );
