@@ -484,13 +484,12 @@ export default function FlowSplitters(props: FlowSplittersProps) {
             >
               Learn more
             </Card.Link>{" "}
-            or
+            or{" "}
             <Card.Link
               href="https://t.me/flowstatecoop"
               target="blank"
               className="text-primary"
             >
-              {" "}
               ask questions
             </Card.Link>
           </h2>

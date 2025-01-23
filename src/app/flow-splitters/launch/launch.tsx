@@ -247,14 +247,32 @@ export default function Launch(props: LaunchProps) {
               />
             </Stack>
             <Card.Text className="text-info">
-              A Flow Splitter allocates one or more incoming Superfluid token
-              streams to recipients proportional to their shares in real time.
+              The easiest way to split streams to your team, guild, DAO, or
+              community: Flow Splitters are onchain contracts that split
+              incoming streams to recipients in real-time based on their % of
+              shares in the Splitter.{" "}
+              <Card.Link
+                href="https://docs.flowstate.network/platform/flow-splitters/"
+                target="_blank"
+                className="text-primary"
+              >
+                Learn more
+              </Card.Link>{" "}
+              or{" "}
+              <Card.Link
+                href="https://t.me/flowstatecoop"
+                target="_blank"
+                className="m-0 text-primary"
+              >
+                get help
+              </Card.Link>
+              .
             </Card.Text>
           </Card.Header>
           <Card.Body className="p-0">
             <Form.Control
               type="text"
-              placeholder="Share Token Name (Optional)"
+              placeholder="Name (Optional)"
               value={erc20Metadata.name}
               style={{
                 width: !isMobile ? "50%" : "",
@@ -267,7 +285,7 @@ export default function Launch(props: LaunchProps) {
             />
             <Form.Control
               type="text"
-              placeholder="Share Token Symbol (Optional)"
+              placeholder="Share Symbol (Optional)"
               value={erc20Metadata.symbol}
               className="mt-3"
               style={{
