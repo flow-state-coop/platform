@@ -474,12 +474,32 @@ export default function FlowSplitters(props: FlowSplittersProps) {
             />
           </Stack>
           <h2 className="fs-5">
-            {truncateStr(address ?? "", isMobile ? 20 : 42)}
+            The easiest way to split streams to your team, guild, DAO, or
+            community.
+            <br />
+            <Card.Link
+              href="https://docs.flowstate.network/platform/flow-splitters/"
+              target="blank"
+              className="text-primary"
+            >
+              Learn more
+            </Card.Link>{" "}
+            or{" "}
+            <Card.Link
+              href="https://t.me/flowstatecoop"
+              target="blank"
+              className="text-primary"
+            >
+              get help.
+            </Card.Link>
           </h2>
+          <h3 className="mt-2 fs-5">
+            {truncateStr(address ?? "", isMobile ? 20 : 42)}
+          </h3>
           <Dropdown>
             <Dropdown.Toggle
               variant="transparent"
-              className={`d-flex justify-content-between align-items-center border border-2 mt-3 ${isMobile ? "" : "w-20"}`}
+              className={`d-flex justify-content-between align-items-center border border-2 ${isMobile ? "" : "w-20"}`}
             >
               {selectedNetwork.name}
             </Dropdown.Toggle>
