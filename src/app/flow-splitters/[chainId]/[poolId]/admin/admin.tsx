@@ -372,12 +372,7 @@ export default function Admin(props: AdminProps) {
 
       const validAdmins = adminsEntry.filter(
         (adminEntry) =>
-          adminEntry.validationError === "" &&
-          adminEntry.address !== "" &&
-          !poolAdmins.some(
-            (admin: { address: string }) =>
-              admin.address === adminEntry.address,
-          ),
+          adminEntry.validationError === "" && adminEntry.address !== "",
       );
       const validMembers = membersEntry.filter(
         (memberEntry) =>
