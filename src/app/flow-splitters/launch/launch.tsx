@@ -305,7 +305,9 @@ export default function Launch(props: LaunchProps) {
           </Card.Header>
           <Card.Body className="p-0">
             <Card.Text className="text-info">
-              Configuration in this section cannot be edited after deployment.
+              Select the token your Flow Splitter will be used to distribute
+              and whether recipients can transfer their shares. Configuration 
+              in this section cannot be edited after deployment.
             </Card.Text>
             <Dropdown>
               <Dropdown.Toggle
