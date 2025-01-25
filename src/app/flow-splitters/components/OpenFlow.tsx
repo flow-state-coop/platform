@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
-import { Address, parseEther, formatEther } from "viem";
-import { useAccount, useBalance } from "wagmi";
+import { Address, parseAbi, parseEther, formatEther } from "viem";
+import { useAccount, useBalance, useReadContract } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import {
   SuperToken,
@@ -56,8 +56,6 @@ const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
       accountTokenSnapshots(where: { token: $token }) {
         totalNetFlowRate
         maybeCriticalAtTimestamp
-        balanceUntilUpdatedAt
-        updatedAtTimestamp
         token {
           id
         }
@@ -123,9 +121,23 @@ export default function OpenFlow(props: OpenFlowProps) {
   const accountTokenSnapshot =
     superfluidQueryRes?.account?.accountTokenSnapshots[0] ?? null;
   const poolMemberships = superfluidQueryRes?.account?.poolMemberships ?? null;
+  const { data: realtimeBalanceOfNow } = useReadContract({
+    address: token?.address,
+    functionName: "realtimeBalanceOfNow",
+    abi: parseAbi([
+      "function realtimeBalanceOfNow(address) returns (int256,uint256,uint256,uint256)",
+    ]),
+    args: [address],
+    chainId: network.id,
+  });
+
+  const balanceUntilUpdatedAt = realtimeBalanceOfNow?.[0];
+  const updatedAtTimestamp = realtimeBalanceOfNow
+    ? Number(realtimeBalanceOfNow[3])
+    : null;
   const superTokenBalance = useFlowingAmount(
-    BigInt(accountTokenSnapshot?.balanceUntilUpdatedAt ?? 0),
-    accountTokenSnapshot?.updatedAtTimestamp ?? 0,
+    BigInt(balanceUntilUpdatedAt ?? 0),
+    updatedAtTimestamp ?? 0,
     BigInt(accountTokenSnapshot?.totalNetFlowRate ?? 0),
   );
   const isSuperTokenNative = superfluidQueryRes?.token?.isNativeAssetSuperToken;
@@ -224,17 +236,17 @@ export default function OpenFlow(props: OpenFlowProps) {
           -accountFlowRate - BigInt(flowRateToReceiver) + newFlowRate >
           BigInt(0)
         ) {
-          const updatedAtTimestamp = accountTokenSnapshot
-            ? accountTokenSnapshot.updatedAtTimestamp * 1000
-            : Date.now();
-          const date = dayjs(new Date(updatedAtTimestamp));
+          const date = dayjs(
+            new Date(
+              updatedAtTimestamp ? updatedAtTimestamp * 1000 : Date.now(),
+            ),
+          );
 
           return date
             .add(
               dayjs.duration({
                 seconds: Number(
-                  (BigInt(accountTokenSnapshot?.balanceUntilUpdatedAt ?? "0") +
-                    wrapAmountWei) /
+                  (BigInt(balanceUntilUpdatedAt ?? 0) + wrapAmountWei) /
                     (-accountFlowRate -
                       BigInt(flowRateToReceiver) +
                       newFlowRate),
@@ -247,7 +259,14 @@ export default function OpenFlow(props: OpenFlowProps) {
 
       return null;
     },
-    [accountTokenSnapshot, address, flowRateToReceiver, membershipsInflowRate],
+    [
+      accountTokenSnapshot,
+      balanceUntilUpdatedAt,
+      updatedAtTimestamp,
+      address,
+      flowRateToReceiver,
+      membershipsInflowRate,
+    ],
   );
 
   const balancePlotFlowInfo = useMemo(() => {
@@ -255,10 +274,10 @@ export default function OpenFlow(props: OpenFlowProps) {
       return balancePlotFlowInfoSnapshot.current;
     }
 
-    const startingBalance = accountTokenSnapshot
-      ? BigInt(accountTokenSnapshot?.balanceUntilUpdatedAt) +
-        (BigInt(accountTokenSnapshot.totalNetFlowRate) *
-          BigInt(Date.now() - accountTokenSnapshot.updatedAtTimestamp * 1000)) /
+    const startingBalance = balanceUntilUpdatedAt
+      ? BigInt(balanceUntilUpdatedAt) +
+        (BigInt(accountTokenSnapshot?.totalNetFlowRate ?? 0) *
+          BigInt(Date.now() - (updatedAtTimestamp ?? 0) * 1000)) /
           BigInt(1000)
       : BigInt(0);
     const totalNetFlowRate = accountTokenSnapshot
@@ -287,6 +306,8 @@ export default function OpenFlow(props: OpenFlowProps) {
   }, [
     areTransactionsLoading,
     accountTokenSnapshot,
+    balanceUntilUpdatedAt,
+    updatedAtTimestamp,
     membershipsInflowRate,
     flowRateToReceiver,
     wrapAmountPerTimeInterval,
