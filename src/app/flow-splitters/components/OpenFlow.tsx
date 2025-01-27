@@ -129,6 +129,9 @@ export default function OpenFlow(props: OpenFlowProps) {
     ]),
     args: [address],
     chainId: network.id,
+    query: {
+      refetchInterval: 10000,
+    },
   });
 
   const balanceUntilUpdatedAt = realtimeBalanceOfNow?.[0];
@@ -197,7 +200,9 @@ export default function OpenFlow(props: OpenFlowProps) {
     (newFlowRate > 0 || BigInt(flowRateToReceiver) > 0) &&
     BigInt(flowRateToReceiver) !== newFlowRate &&
     hasSufficientSuperTokenBalance &&
-    hasSufficientWrappingBalance;
+    (!wrapAmountPerTimeInterval ||
+      wrapAmountPerTimeInterval === "0" ||
+      hasSufficientWrappingBalance);
 
   const membershipsInflowRate = useMemo(() => {
     let membershipsInflowRate = BigInt(0);

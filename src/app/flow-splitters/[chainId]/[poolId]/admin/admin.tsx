@@ -29,6 +29,7 @@ import FormCheck from "react-bootstrap/FormCheck";
 import Form from "react-bootstrap/Form";
 import InfoTooltip from "@/components/InfoTooltip";
 import OpenFlow from "@/app/flow-splitters/components/OpenFlow";
+import InstantDistribution from "@/app/flow-splitters/components/InstantDistribution";
 import { getApolloClient } from "@/lib/apollo";
 import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -101,7 +102,8 @@ export default function Admin(props: AdminProps) {
   ]);
   const [membersToRemove, setMembersToRemove] = useState<MemberEntry[]>([]);
   const [showCoreConfig, setShowCoreConfig] = useState(false);
-  const [showTransactionPanel, setShowTransactionPanel] = useState(false);
+  const [showOpenFlow, setShowOpenFlow] = useState(false);
+  const [showInstantDistribution, setShowInstantDistribution] = useState(false);
   const [transactionSuccess, setTransactionSuccess] = useState("");
   const [transactionError, setTransactionError] = useState("");
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
@@ -519,16 +521,29 @@ export default function Admin(props: AdminProps) {
               {network.name}
             </Stack>
             <Button
-              className="w-100 mt-5 py-2 fs-5"
+              className="w-100 mt-5 py-2 fs-4"
               onClick={() => {
                 !address && openConnectModal
                   ? openConnectModal()
                   : connectedChain?.id !== chainId
                     ? switchChain({ chainId })
-                    : setShowTransactionPanel(true);
+                    : setShowOpenFlow(true);
               }}
             >
               Open Flow
+            </Button>
+            <Button
+              variant="secondary"
+              className="w-100 mt-3 py-2 fs-4"
+              onClick={() => {
+                !address && openConnectModal
+                  ? openConnectModal()
+                  : connectedChain?.id !== chainId
+                    ? switchChain({ chainId })
+                    : setShowInstantDistribution(true);
+              }}
+            >
+              Send Distribution
             </Button>
             <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
               <Card.Header
@@ -1197,9 +1212,9 @@ export default function Admin(props: AdminProps) {
           </>
         )}
       </Container>
-      {showTransactionPanel && (
+      {showOpenFlow && (
         <OpenFlow
-          show={showTransactionPanel}
+          show={showOpenFlow}
           network={network!}
           token={
             poolToken ?? {
@@ -1209,7 +1224,22 @@ export default function Admin(props: AdminProps) {
             }
           }
           pool={superfluidQueryRes?.pool}
-          handleClose={() => setShowTransactionPanel(false)}
+          handleClose={() => setShowOpenFlow(false)}
+        />
+      )}
+      {showInstantDistribution && (
+        <InstantDistribution
+          show={showInstantDistribution}
+          network={network!}
+          token={
+            poolToken ?? {
+              address: pool?.token ?? "",
+              name: superfluidQueryRes?.token.symbol ?? "N/A",
+              icon: "",
+            }
+          }
+          pool={superfluidQueryRes?.pool}
+          handleClose={() => setShowInstantDistribution(false)}
         />
       )}
     </>
