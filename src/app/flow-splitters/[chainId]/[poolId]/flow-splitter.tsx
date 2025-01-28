@@ -17,6 +17,7 @@ import InfoTooltip from "@/components/InfoTooltip";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
 import PoolGraph from "../../components/PoolGraph";
 import OpenFlow from "@/app/flow-splitters/components/OpenFlow";
+import InstantDistribution from "@/app/flow-splitters/components/InstantDistribution";
 import { getApolloClient } from "@/lib/apollo";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
@@ -52,6 +53,7 @@ const SUPERFLUID_QUERY = gql`
       flowRate
       totalUnits
       totalAmountFlowedDistributedUntilUpdatedAt
+      totalAmountInstantlyDistributedUntilUpdatedAt
       updatedAtTimestamp
       poolMembers {
         account {
@@ -77,7 +79,8 @@ const SUPERFLUID_QUERY = gql`
 export default function FlowSplitter(props: FlowSplitterProps) {
   const { poolId, chainId } = props;
 
-  const [showTransactionPanel, setShowTransactionPanel] = useState(false);
+  const [showOpenFlow, setShowOpenFlow] = useState(false);
+  const [showInstantDistribution, setShowInstantDistribution] = useState(false);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
 
   const router = useRouter();
@@ -261,23 +264,36 @@ export default function FlowSplitter(props: FlowSplitterProps) {
             </Stack>
             <PoolGraph pool={superfluidQueryRes?.pool} chainId={chainId} />
             <Button
-              className="w-100 mt-5 py-2 fs-5"
+              className="w-100 mt-5 py-2 fs-4"
               onClick={() => {
                 !address && openConnectModal
                   ? openConnectModal()
                   : connectedChain?.id !== chainId
                     ? switchChain({ chainId })
-                    : setShowTransactionPanel(true);
+                    : setShowOpenFlow(true);
               }}
             >
               Open Flow
             </Button>
+            <Button
+              variant="secondary"
+              className="w-100 mt-3 py-2 fs-4"
+              onClick={() => {
+                !address && openConnectModal
+                  ? openConnectModal()
+                  : connectedChain?.id !== chainId
+                    ? switchChain({ chainId })
+                    : setShowInstantDistribution(true);
+              }}
+            >
+              Send Distribution
+            </Button>
           </>
         )}
       </Container>
-      {showTransactionPanel && (
+      {showOpenFlow && (
         <OpenFlow
-          show={showTransactionPanel}
+          show={showOpenFlow}
           network={network!}
           token={
             poolToken ?? {
@@ -287,7 +303,22 @@ export default function FlowSplitter(props: FlowSplitterProps) {
             }
           }
           pool={superfluidQueryRes?.pool}
-          handleClose={() => setShowTransactionPanel(false)}
+          handleClose={() => setShowOpenFlow(false)}
+        />
+      )}
+      {showInstantDistribution && (
+        <InstantDistribution
+          show={showInstantDistribution}
+          network={network!}
+          token={
+            poolToken ?? {
+              address: pool?.token ?? "",
+              name: superfluidQueryRes?.token.symbol ?? "N/A",
+              icon: "",
+            }
+          }
+          pool={superfluidQueryRes?.pool}
+          handleClose={() => setShowInstantDistribution(false)}
         />
       )}
       <Modal

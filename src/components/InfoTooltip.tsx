@@ -47,6 +47,7 @@ function InfoTooltip(props: InfoTooltipProps) {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onTouchEnd={handleTouchEnd}
+        className="align-self-start"
       >
         {target}
       </span>
