@@ -92,7 +92,10 @@ function CustomNode(props: NodeProps<Node>) {
   });
 
   const totalFlowed = useFlowingAmount(
-    BigInt((data?.totalAmountFlowedDistributedUntilUpdatedAt as string) ?? 0),
+    BigInt((data?.totalAmountFlowedDistributedUntilUpdatedAt as string) ?? 0) +
+      BigInt(
+        (data?.totalAmountInstantlyDistributedUntilUpdatedAt as string) ?? 0,
+      ),
     (data?.updatedAtTimestamp as number) ?? 0,
     BigInt((data?.flowRate as string) ?? 0),
   );
@@ -111,7 +114,7 @@ function CustomNode(props: NodeProps<Node>) {
           </span>
           <span style={{ fontSize: "0.6rem" }}>
             Total{" "}
-            {`${Intl.NumberFormat("en").format(
+            {`${Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
               Number(formatEther(totalFlowed)),
             )} ${(data.token as { symbol: string }).symbol}`}
           </span>
@@ -192,7 +195,7 @@ function CustomNode(props: NodeProps<Node>) {
               className="bg-light border border-dark rounded-2 p-2 text-center"
             >
               {Intl.NumberFormat("en", {
-                notation: "compact",
+                maximumFractionDigits: 4,
               }).format(
                 Number(
                   formatEther(
@@ -223,7 +226,7 @@ function CustomNode(props: NodeProps<Node>) {
               <span style={{ fontSize: "0.7rem" }}>
                 Current:{" "}
                 {Intl.NumberFormat("en", {
-                  notation: "compact",
+                  maximumFractionDigits: 4,
                 }).format(
                   Number(
                     formatEther(
@@ -377,7 +380,7 @@ export default function PoolGraph(props: PoolGraphProps) {
             address: pool.id,
             isPool: true,
             label: `${Intl.NumberFormat("en", {
-              notation: "compact",
+              maximumFractionDigits: 4,
             }).format(
               Number(
                 formatEther(BigInt(pool.flowRate) * BigInt(SECONDS_IN_MONTH)),
@@ -387,6 +390,8 @@ export default function PoolGraph(props: PoolGraphProps) {
             flowRate: pool.flowRate,
             totalAmountFlowedDistributedUntilUpdatedAt:
               pool.totalAmountFlowedDistributedUntilUpdatedAt,
+            totalAmountInstantlyDistributedUntilUpdatedAt:
+              pool.totalAmountInstantlyDistributedUntilUpdatedAt,
             updatedAtTimestamp: pool.updatedAtTimestamp,
             chainId,
           },

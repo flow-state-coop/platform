@@ -599,7 +599,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                 }}
               >
                 {token.name}:{" "}
-                {Intl.NumberFormat("en", { notation: "compact" }).format(
+                {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
                   Number(formatEther(superTokenBalance)),
                 )}
               </Card.Text>
@@ -705,7 +705,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                     : underlyingTokenBalance?.symbol}
                   :{" "}
                   {Intl.NumberFormat("en", {
-                    notation: "compact",
+                    maximumFractionDigits: 4,
                   }).format(
                     Number(
                       isSuperTokenNative
@@ -726,7 +726,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                     : underlyingTokenBalance?.symbol}
                   :{" "}
                   {Intl.NumberFormat("en", {
-                    notation: "compact",
+                    maximumFractionDigits: 4,
                   }).format(
                     Number(
                       isSuperTokenNative

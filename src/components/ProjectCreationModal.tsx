@@ -204,7 +204,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
             <Form.Label>
               Project Description{" "}
               <Link
-                href="https://docs.flowstate.network/project-markdown"
+                href="https://www.markdownguide.org/basic-syntax/"
                 target="_blank"
               >
                 (Markdown

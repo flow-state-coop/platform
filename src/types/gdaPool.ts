@@ -3,6 +3,7 @@ export type GDAPool = {
   flowRate: `${number}`;
   adjustmentFlowRate: `${number}`;
   totalAmountFlowedDistributedUntilUpdatedAt: `${number}`;
+  totalAmountInstantlyDistributedUntilUpdatedAt: `${number}`;
   updatedAtTimestamp: number;
   totalUnits: `${number}`;
   token: { id: `0x${string}`; symbol: string };

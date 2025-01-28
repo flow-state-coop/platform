@@ -53,6 +53,7 @@ const SUPERFLUID_QUERY = gql`
       flowRate
       totalUnits
       totalAmountFlowedDistributedUntilUpdatedAt
+      totalAmountInstantlyDistributedUntilUpdatedAt
       updatedAtTimestamp
       poolMembers {
         account {

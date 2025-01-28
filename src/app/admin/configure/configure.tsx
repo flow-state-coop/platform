@@ -527,7 +527,7 @@ export default function Configure(props: ConfigureProps) {
                 <Form.Label>
                   Description (
                   <Link
-                    href="https://docs.flowstate.network/project-markdown"
+                    href="https://www.markdownguide.org/basic-syntax/"
                     target="_blank"
                   >
                     supports basic Markdown syntax

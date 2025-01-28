@@ -385,13 +385,13 @@ export default function InstantDistribution(props: InstantDistributionProps) {
                   ? ethBalance?.symbol
                   : underlyingTokenBalance?.symbol}
                 :{" "}
-                {Intl.NumberFormat("en", { notation: "compact" }).format(
+                {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
                   Number(
                     isSuperTokenNative
                       ? ethBalance?.formatted
                       : underlyingTokenBalance?.formatted,
                   ),
-                )}
+                )}{" "}
               </Card.Text>
             )}
             <Card.Text
@@ -401,8 +401,18 @@ export default function InstantDistribution(props: InstantDistributionProps) {
               }}
             >
               {token.name}:{" "}
-              {Intl.NumberFormat("en", { notation: "compact" }).format(
+              {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
                 Number(formatEther(superTokenBalance)),
+              )}
+              {!hasSufficientSuperTokenBalance && (
+                <>
+                  {" "}
+                  (need +
+                  {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
+                    Number(formatEther(amountWei - superTokenBalance)),
+                  )}
+                  )
+                </>
               )}
             </Card.Text>
           </Stack>
@@ -435,7 +445,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
           >
             <Card.Text className="m-0 small">
               1) Wrap{" "}
-              {Intl.NumberFormat("en", { notation: "compact" }).format(
+              {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
                 Number(wrapAmount),
               )}{" "}
               {isSuperTokenNative
