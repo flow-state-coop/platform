@@ -15,6 +15,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Modal from "react-bootstrap/Modal";
 import InfoTooltip from "@/components/InfoTooltip";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
+import ActivityFeed from "../../components/ActivityFeed";
 import PoolGraph from "../../components/PoolGraph";
 import OpenFlow from "@/app/flow-splitters/components/OpenFlow";
 import InstantDistribution from "@/app/flow-splitters/components/InstantDistribution";
@@ -37,6 +38,16 @@ const FLOW_SPLITTER_POOL_QUERY = gql`
       token
       poolAdmins {
         address
+      }
+      poolAdminRemovedEvents(orderBy: timestamp, orderDirection: asc) {
+        address
+        timestamp
+        transactionHash
+      }
+      poolAdminAddedEvents(orderBy: timestamp, orderDirection: asc) {
+        address
+        timestamp
+        transactionHash
       }
     }
   }
@@ -71,6 +82,46 @@ const SUPERFLUID_QUERY = gql`
       token {
         id
         symbol
+      }
+      poolCreatedEvent {
+        timestamp
+        transactionHash
+        name
+      }
+      memberUnitsUpdatedEvents(orderBy: timestamp, orderDirection: desc) {
+        units
+        oldUnits
+        poolMember {
+          account {
+            id
+          }
+        }
+        timestamp
+        transactionHash
+      }
+      flowDistributionUpdatedEvents(orderBy: timestamp, orderDirection: desc) {
+        newDistributorToPoolFlowRate
+        oldFlowRate
+        poolDistributor {
+          account {
+            id
+          }
+        }
+        timestamp
+        transactionHash
+      }
+      instantDistributionUpdatedEvents(
+        orderBy: timestamp
+        orderDirection: desc
+      ) {
+        requestedAmount
+        poolDistributor {
+          account {
+            id
+          }
+        }
+        timestamp
+        transactionHash
       }
     }
   }
@@ -114,7 +165,11 @@ export default function FlowSplitter(props: FlowSplitterProps) {
   const network = networks.find((network) => network.id === chainId);
   const poolToken = network?.tokens.find(
     (token) => token.address.toLowerCase() === pool?.token,
-  );
+  ) ?? {
+    address: pool?.token ?? "",
+    name: superfluidQueryRes?.token.symbol ?? "N/A",
+    icon: "",
+  };
   const poolMember = superfluidQueryRes?.pool?.poolMembers.find(
     (member: { account: { id: string } }) =>
       member.account.id === address?.toLowerCase(),
@@ -233,7 +288,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
             </h1>
             <Stack direction="horizontal" gap={1} className="mb-5 fs-6">
               Distributing{" "}
-              {poolToken && (
+              {!!poolToken.icon && (
                 <Image src={poolToken.icon} alt="" width={18} height={18} />
               )}
               {superfluidQueryRes?.token.symbol} on
@@ -288,6 +343,26 @@ export default function FlowSplitter(props: FlowSplitterProps) {
             >
               Send Distribution
             </Button>
+            {superfluidQueryRes?.pool && pool ? (
+              <ActivityFeed
+                poolSymbol={pool.symbol}
+                poolAddress={pool.poolAddress}
+                network={network}
+                token={poolToken}
+                poolCreatedEvent={superfluidQueryRes?.pool.poolCreatedEvent}
+                poolAdminAddedEvents={pool.poolAdminAddedEvents}
+                poolAdminRemovedEvents={pool.poolAdminRemovedEvents}
+                flowDistributionUpdatedEvents={
+                  superfluidQueryRes?.pool.flowDistributionUpdatedEvents
+                }
+                instantDistributionUpdatedEvents={
+                  superfluidQueryRes?.pool.instantDistributionUpdatedEvents
+                }
+                memberUnitsUpdatedEvents={
+                  superfluidQueryRes?.pool.memberUnitsUpdatedEvents
+                }
+              />
+            ) : null}
           </>
         )}
       </Container>
@@ -295,13 +370,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
         <OpenFlow
           show={showOpenFlow}
           network={network!}
-          token={
-            poolToken ?? {
-              address: pool?.token ?? "",
-              name: superfluidQueryRes?.token.symbol ?? "N/A",
-              icon: "",
-            }
-          }
+          token={poolToken}
           pool={superfluidQueryRes?.pool}
           handleClose={() => setShowOpenFlow(false)}
         />
@@ -310,13 +379,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
         <InstantDistribution
           show={showInstantDistribution}
           network={network!}
-          token={
-            poolToken ?? {
-              address: pool?.token ?? "",
-              name: superfluidQueryRes?.token.symbol ?? "N/A",
-              icon: "",
-            }
-          }
+          token={poolToken}
           pool={superfluidQueryRes?.pool}
           handleClose={() => setShowInstantDistribution(false)}
         />
