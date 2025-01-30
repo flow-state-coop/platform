@@ -211,7 +211,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                 <Link
                   href={`${network.blockExplorer}/tx/${(event as PoolCreationMemberUnitsUpdates).poolCreatedEvent.transactionHash}`}
                   target="_blank"
-                  className="text-info text-decoration-none"
+                  className="text-info"
                 >
                   {new Date(Number(event.timestamp) * 1000).toLocaleString(
                     "en-US",
@@ -232,7 +232,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     <Link
                       href={`${network.blockExplorer}/address/${memberUnitsUpdatedEvent.poolMember.account.id}`}
                       target="_blank"
-                      className="d-flex align-items-center gap-2 text-decoration-none"
+                      className="d-flex align-items-center gap-2"
                     >
                       <Jazzicon
                         paperStyles={{ border: "1px solid black" }}
@@ -276,7 +276,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                 <Link
                   href={`${network.blockExplorer}/tx/${(event as PoolUpdateMemberUnitsUpdates).transactionHash}`}
                   target="_blank"
-                  className="text-info text-decoration-none"
+                  className="text-info"
                 >
                   {new Date(Number(event.timestamp) * 1000).toLocaleString(
                     "en-US",
@@ -297,7 +297,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     <Link
                       href={`${network.blockExplorer}/address/${memberUnitsUpdatedEvent.poolMember.account.id}`}
                       target="_blank"
-                      className="d-flex align-items-center gap-2 text-decoration-none"
+                      className="d-flex align-items-center gap-2"
                     >
                       <Jazzicon
                         paperStyles={{ border: "1px solid black" }}
@@ -344,7 +344,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                 <Link
                   href={`${network.blockExplorer}/address/${(event as PoolAdminAddedEvent).address}`}
                   target="_blank"
-                  className="d-flex align-items-center gap-2 m-0 text-decoration-none"
+                  className="d-flex align-items-center gap-2 m-0"
                 >
                   <Jazzicon
                     paperStyles={{ border: "1px solid black" }}
@@ -360,7 +360,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
               <Link
                 href={`${network.blockExplorer}/tx/${(event as PoolAdminAddedEvent).transactionHash}`}
                 target="_blank"
-                className="text-info text-decoration-none"
+                className="text-info"
               >
                 {new Date(Number(event.timestamp) * 1000).toLocaleString(
                   "en-US",
@@ -388,7 +388,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                   <Link
                     href={`${network.blockExplorer}/address/${(event as PoolAdminRemovedEvent).address}`}
                     target="_blank"
-                    className="d-flex align-items-center gap-2 m-0 text-decoration-none"
+                    className="d-flex align-items-center gap-2 m-0"
                   >
                     <Jazzicon
                       paperStyles={{ border: "1px solid black" }}
@@ -404,7 +404,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                 <Link
                   href={`${network.blockExplorer}/tx/${(event as PoolAdminRemovedEvent).transactionHash}`}
                   target="_blank"
-                  className="text-info text-decoration-none"
+                  className="text-info"
                 >
                   {new Date(Number(event.timestamp) * 1000).toLocaleString(
                     "en-US",
@@ -432,7 +432,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                 <Link
                   href={`${network.blockExplorer}/address/${(event as FlowDistributionUpdatedEvent).poolDistributor.account.id}`}
                   target="_blank"
-                  className="d-flex align-items-center gap-2 m-0 text-decoration-none"
+                  className="d-flex align-items-center gap-2 m-0"
                 >
                   <Jazzicon
                     paperStyles={{ border: "1px solid black" }}
@@ -516,7 +516,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
               <Link
                 href={`${network.blockExplorer}/tx/${(event as FlowDistributionUpdatedEvent).transactionHash}`}
                 target="_blank"
-                className="text-info text-decoration-none"
+                className="text-info"
               >
                 {new Date(Number(event.timestamp) * 1000).toLocaleString(
                   "en-US",
@@ -543,7 +543,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                 <Link
                   href={`${network.blockExplorer}/address/${(event as InstantDistributionUpdatedEvent).poolDistributor.account.id}`}
                   target="_blank"
-                  className="d-flex align-items-center gap-2 m-0 text-decoration-none"
+                  className="d-flex align-items-center gap-2 m-0"
                 >
                   <Jazzicon
                     paperStyles={{ border: "1px solid black" }}
@@ -570,7 +570,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
               <Link
                 href={`${network.blockExplorer}/tx/${(event as InstantDistributionUpdatedEvent).transactionHash}`}
                 target="_blank"
-                className="text-info text-decoration-none"
+                className="text-info"
               >
                 {new Date(Number(event.timestamp) * 1000).toLocaleString(
                   "en-US",
