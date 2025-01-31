@@ -216,7 +216,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                   direction={isMobile ? "vertical" : "horizontal"}
                   className="w-100 justify-content-between"
                 >
-                  <p className="m-0">Flow Splitter Created.</p>
+                  <p className="m-0">Flow Splitter Created</p>
                   <Link
                     href={`${network.blockExplorer}/tx/${(event as PoolCreationMemberUnitsUpdates).poolCreatedEvent.transactionHash}`}
                     target="_blank"
@@ -299,7 +299,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                   direction={isMobile ? "vertical" : "horizontal"}
                   className="w-100 justify-content-between"
                 >
-                  <p className="m-0">Flow Splitter Updated.</p>
+                  <p className="m-0">Flow Splitter Updated</p>
                   <Link
                     href={`${network.blockExplorer}/tx/${(event as PoolUpdateMemberUnitsUpdates).transactionHash}`}
                     target="_blank"
@@ -401,7 +401,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                   >
                     {truncateStr((event as PoolAdminAddedEvent).address, 15)}{" "}
                   </Link>{" "}
-                  added as a Flow Splitter admin.
+                  added as a Flow Splitter admin
                 </p>
                 <Link
                   href={`${network.blockExplorer}/tx/${(event as PoolAdminAddedEvent).transactionHash}`}
@@ -522,7 +522,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                           ),
                         ),
                       )}{" "}
-                      {token.name}/mo stream.
+                      {token.name}/mo stream
                     </>
                   ) : (event as FlowDistributionUpdatedEvent)
                       .newDistributorToPoolFlowRate === "0" ? (
