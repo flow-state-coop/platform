@@ -7,6 +7,7 @@ import { Network } from "@/types/network";
 import { Token } from "@/types/token";
 import { truncateStr } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
+import { useMediaQuery } from "@/hooks/mediaQuery";
 
 type ActivityFeedProps = {
   poolSymbol: string;
@@ -107,6 +108,8 @@ export default function ActivityFeed(props: ActivityFeedProps) {
     instantDistributionUpdatedEvents,
   } = props;
 
+  const { isMobile } = useMediaQuery();
+
   const events = useMemo(() => {
     const events: Array<
       | PoolCreationMemberUnitsUpdates
@@ -188,52 +191,60 @@ export default function ActivityFeed(props: ActivityFeedProps) {
     <Stack
       direction="vertical"
       gap={4}
-      className="mt-5 bg-light p-4 rounded-5 fs-5"
+      className="mt-5 bg-light p-4 rounded-5"
+      style={{ fontSize: isMobile ? "1rem" : "1.25rem" }}
     >
       <p className="m-0 fs-3">Activity</p>
       {events.map((event, i) => {
         if (event.__typename === "PoolCreationMemberUnitsUpdates") {
           return (
             <Stack direction="vertical" gap={2} key={i}>
-              <Stack direction="horizontal" className="justify-content-between">
-                <Stack
-                  direction="horizontal"
-                  gap={2}
-                  className="align-items-center"
+              <Stack direction="horizontal" gap={2}>
+                <span
+                  style={{
+                    width: isMobile ? 36 : 24,
+                    height: isMobile ? 36 : 24,
+                  }}
                 >
                   <Jazzicon
                     paperStyles={{ border: "1px solid black" }}
-                    diameter={24}
+                    diameter={isMobile ? 36 : 24}
                     seed={jsNumberForAddress(poolAddress)}
                   />
-                  <p className="m-0">Flow Splitter Created.</p>
-                </Stack>
-                <Link
-                  href={`${network.blockExplorer}/tx/${(event as PoolCreationMemberUnitsUpdates).poolCreatedEvent.transactionHash}`}
-                  target="_blank"
-                  className="text-info"
+                </span>
+                <Stack
+                  direction={isMobile ? "vertical" : "horizontal"}
+                  className="w-100 justify-content-between"
                 >
-                  {new Date(Number(event.timestamp) * 1000).toLocaleString(
-                    "en-US",
-                    {
-                      month: "short",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "numeric",
-                    },
-                  )}
-                </Link>
+                  <p className="m-0">Flow Splitter Created.</p>
+                  <Link
+                    href={`${network.blockExplorer}/tx/${(event as PoolCreationMemberUnitsUpdates).poolCreatedEvent.transactionHash}`}
+                    target="_blank"
+                    className="text-info"
+                  >
+                    {new Date(Number(event.timestamp) * 1000).toLocaleString(
+                      "en-US",
+                      {
+                        month: "short",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "numeric",
+                      },
+                    )}
+                  </Link>
+                </Stack>
               </Stack>
               <Stack direction="vertical" gap={2} className="ms-5">
                 {(
                   event as PoolCreationMemberUnitsUpdates
                 ).memberUnitsUpdatedEvents.map((memberUnitsUpdatedEvent, i) => (
-                  <Stack direction="horizontal" gap={1} key={i}>
-                    <Link
-                      href={`${network.blockExplorer}/address/${memberUnitsUpdatedEvent.poolMember.account.id}`}
-                      target="_blank"
-                      className="d-flex align-items-center gap-2"
-                    >
+                  <Stack
+                    direction="horizontal"
+                    gap={2}
+                    className="align-items-center"
+                    key={i}
+                  >
+                    <span style={{ width: 24, height: 24 }}>
                       <Jazzicon
                         paperStyles={{ border: "1px solid black" }}
                         diameter={24}
@@ -241,15 +252,26 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                           memberUnitsUpdatedEvent.poolMember.account.id,
                         )}
                       />
-                      {truncateStr(
-                        memberUnitsUpdatedEvent.poolMember.account.id,
-                        15,
-                      )}
-                    </Link>
-                    : {memberUnitsUpdatedEvent.units} {poolSymbol}{" "}
-                    {Number(memberUnitsUpdatedEvent.units) === 1
-                      ? "Share"
-                      : "Shares"}
+                    </span>
+                    <p className="m-0">
+                      <Link
+                        href={`${network.blockExplorer}/address/${memberUnitsUpdatedEvent.poolMember.account.id}`}
+                        target="_blank"
+                      >
+                        {truncateStr(
+                          memberUnitsUpdatedEvent.poolMember.account.id,
+                          15,
+                        )}
+                      </Link>
+                      :{" "}
+                      {Intl.NumberFormat("en", {
+                        maximumFractionDigits: 4,
+                      }).format(Number(memberUnitsUpdatedEvent.units))}{" "}
+                      {poolSymbol}{" "}
+                      {Number(memberUnitsUpdatedEvent.units) === 1
+                        ? "Share"
+                        : "Shares"}
+                    </p>
                   </Stack>
                 ))}
               </Stack>
@@ -260,21 +282,129 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "PoolUpdateMemberUnitsUpdates") {
           return (
             <Stack direction="vertical" gap={2} key={i}>
-              <Stack direction="horizontal" className="justify-content-between">
-                <Stack
-                  direction="horizontal"
-                  gap={2}
-                  className="align-items-center"
+              <Stack direction="horizontal" gap={2}>
+                <span
+                  style={{
+                    width: isMobile ? 36 : 24,
+                    height: isMobile ? 36 : 24,
+                  }}
                 >
                   <Jazzicon
                     paperStyles={{ border: "1px solid black" }}
-                    diameter={24}
+                    diameter={isMobile ? 36 : 24}
                     seed={jsNumberForAddress(poolAddress)}
                   />
+                </span>
+                <Stack
+                  direction={isMobile ? "vertical" : "horizontal"}
+                  className="w-100 justify-content-between"
+                >
                   <p className="m-0">Flow Splitter Updated.</p>
+                  <Link
+                    href={`${network.blockExplorer}/tx/${(event as PoolUpdateMemberUnitsUpdates).transactionHash}`}
+                    target="_blank"
+                    className="text-info"
+                  >
+                    {new Date(Number(event.timestamp) * 1000).toLocaleString(
+                      "en-US",
+                      {
+                        month: "short",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "numeric",
+                      },
+                    )}
+                  </Link>
                 </Stack>
+              </Stack>
+              <Stack direction="vertical" gap={2} className="ms-5">
+                {(
+                  event as PoolUpdateMemberUnitsUpdates
+                ).memberUnitsUpdatedEvents.map((memberUnitsUpdatedEvent, i) => (
+                  <Stack
+                    direction="horizontal"
+                    gap={2}
+                    className="align-items-center"
+                    key={i}
+                  >
+                    <span style={{ width: 24, height: 24 }}>
+                      <Jazzicon
+                        paperStyles={{ border: "1px solid black" }}
+                        diameter={24}
+                        seed={jsNumberForAddress(
+                          memberUnitsUpdatedEvent.poolMember.account.id,
+                        )}
+                      />
+                    </span>
+                    <p className="m-0">
+                      <Link
+                        href={`${network.blockExplorer}/address/${memberUnitsUpdatedEvent.poolMember.account.id}`}
+                        target="_blank"
+                      >
+                        {truncateStr(
+                          memberUnitsUpdatedEvent.poolMember.account.id,
+                          15,
+                        )}
+                      </Link>
+                      :{" "}
+                      {Number(memberUnitsUpdatedEvent.units) -
+                        Number(memberUnitsUpdatedEvent.oldUnits) >=
+                      0
+                        ? "+"
+                        : ""}
+                      {Intl.NumberFormat("en", {
+                        maximumFractionDigits: 4,
+                      }).format(
+                        Number(memberUnitsUpdatedEvent.units) -
+                          Number(memberUnitsUpdatedEvent.oldUnits),
+                      )}{" "}
+                      {poolSymbol}{" "}
+                      {Math.abs(
+                        Number(memberUnitsUpdatedEvent.units) -
+                          Number(memberUnitsUpdatedEvent.oldUnits),
+                      ) === 1
+                        ? "Share"
+                        : "Shares"}
+                    </p>
+                  </Stack>
+                ))}
+              </Stack>
+            </Stack>
+          );
+        }
+
+        if (event.__typename === "PoolAdminAddedEvent") {
+          return (
+            <Stack direction="horizontal" gap={2} key={i}>
+              <span
+                style={{
+                  width: isMobile ? 36 : 24,
+                  height: isMobile ? 36 : 24,
+                }}
+              >
+                <Jazzicon
+                  paperStyles={{ border: "1px solid black" }}
+                  diameter={isMobile ? 36 : 24}
+                  seed={jsNumberForAddress(
+                    (event as PoolAdminAddedEvent).address,
+                  )}
+                />
+              </span>
+              <Stack
+                direction={isMobile ? "vertical" : "horizontal"}
+                className="w-100 justify-content-between"
+              >
+                <p className="m-0">
+                  <Link
+                    href={`${network.blockExplorer}/address/${(event as PoolAdminAddedEvent).address}`}
+                    target="_blank"
+                  >
+                    {truncateStr((event as PoolAdminAddedEvent).address, 15)}{" "}
+                  </Link>{" "}
+                  added as a Flow Splitter admin.
+                </p>
                 <Link
-                  href={`${network.blockExplorer}/tx/${(event as PoolUpdateMemberUnitsUpdates).transactionHash}`}
+                  href={`${network.blockExplorer}/tx/${(event as PoolAdminAddedEvent).transactionHash}`}
                   target="_blank"
                   className="text-info"
                 >
@@ -289,118 +419,40 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                   )}
                 </Link>
               </Stack>
-              <Stack direction="vertical" gap={2} className="ms-5">
-                {(
-                  event as PoolUpdateMemberUnitsUpdates
-                ).memberUnitsUpdatedEvents.map((memberUnitsUpdatedEvent, i) => (
-                  <Stack direction="horizontal" gap={1} key={i}>
-                    <Link
-                      href={`${network.blockExplorer}/address/${memberUnitsUpdatedEvent.poolMember.account.id}`}
-                      target="_blank"
-                      className="d-flex align-items-center gap-2"
-                    >
-                      <Jazzicon
-                        paperStyles={{ border: "1px solid black" }}
-                        diameter={24}
-                        seed={jsNumberForAddress(
-                          memberUnitsUpdatedEvent.poolMember.account.id,
-                        )}
-                      />
-                      {truncateStr(
-                        memberUnitsUpdatedEvent.poolMember.account.id,
-                        15,
-                      )}
-                    </Link>
-                    :{" "}
-                    {Number(memberUnitsUpdatedEvent.units) -
-                      Number(memberUnitsUpdatedEvent.oldUnits) >=
-                    0
-                      ? "+"
-                      : ""}
-                    {Number(memberUnitsUpdatedEvent.units) -
-                      Number(memberUnitsUpdatedEvent.oldUnits)}{" "}
-                    {poolSymbol}{" "}
-                    {Math.abs(
-                      Number(memberUnitsUpdatedEvent.units) -
-                        Number(memberUnitsUpdatedEvent.oldUnits),
-                    ) === 1
-                      ? "Share"
-                      : "Shares"}
-                  </Stack>
-                ))}
-              </Stack>
-            </Stack>
-          );
-        }
-
-        if (event.__typename === "PoolAdminAddedEvent") {
-          return (
-            <Stack
-              direction="horizontal"
-              className="justify-content-between"
-              key={i}
-            >
-              <Stack direction="horizontal" gap={1}>
-                <Link
-                  href={`${network.blockExplorer}/address/${(event as PoolAdminAddedEvent).address}`}
-                  target="_blank"
-                  className="d-flex align-items-center gap-2 m-0"
-                >
-                  <Jazzicon
-                    paperStyles={{ border: "1px solid black" }}
-                    diameter={24}
-                    seed={jsNumberForAddress(
-                      (event as PoolAdminAddedEvent).address,
-                    )}
-                  />
-                  {truncateStr((event as PoolAdminAddedEvent).address, 15)}{" "}
-                </Link>{" "}
-                added as a Flow Splitter admin.
-              </Stack>
-              <Link
-                href={`${network.blockExplorer}/tx/${(event as PoolAdminAddedEvent).transactionHash}`}
-                target="_blank"
-                className="text-info"
-              >
-                {new Date(Number(event.timestamp) * 1000).toLocaleString(
-                  "en-US",
-                  {
-                    month: "short",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "numeric",
-                  },
-                )}
-              </Link>
             </Stack>
           );
         }
 
         if (event.__typename === "PoolAdminRemovedEvent") {
           return (
-            <>
-              <Stack
-                direction="horizontal"
-                className="justify-content-between"
-                key={i}
+            <Stack direction="horizontal" gap={2} key={i}>
+              <span
+                style={{
+                  width: isMobile ? 36 : 24,
+                  height: isMobile ? 36 : 24,
+                }}
               >
-                <Stack direction="horizontal" gap={1}>
+                <Jazzicon
+                  paperStyles={{ border: "1px solid black" }}
+                  diameter={isMobile ? 36 : 24}
+                  seed={jsNumberForAddress(
+                    (event as PoolAdminRemovedEvent).address,
+                  )}
+                />
+              </span>
+              <Stack
+                direction={isMobile ? "vertical" : "horizontal"}
+                className="w-100 justify-content-between"
+              >
+                <p className="m-0">
                   <Link
                     href={`${network.blockExplorer}/address/${(event as PoolAdminRemovedEvent).address}`}
                     target="_blank"
-                    className="d-flex align-items-center gap-2 m-0"
                   >
-                    <Jazzicon
-                      paperStyles={{ border: "1px solid black" }}
-                      diameter={24}
-                      seed={jsNumberForAddress(
-                        (event as PoolAdminRemovedEvent).address,
-                      )}
-                    />
                     {truncateStr((event as PoolAdminRemovedEvent).address, 15)}{" "}
                   </Link>{" "}
                   removed as a Flow Splitter admin.
-                </Stack>
+                </p>
                 <Link
                   href={`${network.blockExplorer}/tx/${(event as PoolAdminRemovedEvent).transactionHash}`}
                   target="_blank"
@@ -417,171 +469,195 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                   )}
                 </Link>
               </Stack>
-            </>
+            </Stack>
           );
         }
 
         if (event.__typename === "FlowDistributionUpdatedEvent") {
           return (
-            <Stack
-              direction="horizontal"
-              className="justify-content-between"
-              key={i}
-            >
-              <Stack direction="horizontal" gap={1}>
-                <Link
-                  href={`${network.blockExplorer}/address/${(event as FlowDistributionUpdatedEvent).poolDistributor.account.id}`}
-                  target="_blank"
-                  className="d-flex align-items-center gap-2 m-0"
-                >
-                  <Jazzicon
-                    paperStyles={{ border: "1px solid black" }}
-                    diameter={24}
-                    seed={jsNumberForAddress(
-                      (event as FlowDistributionUpdatedEvent).poolDistributor
-                        .account.id,
-                    )}
-                  />
-                  {truncateStr(
+            <Stack direction="horizontal" gap={2} key={i}>
+              <span
+                style={{
+                  width: isMobile ? 36 : 24,
+                  height: isMobile ? 36 : 24,
+                }}
+              >
+                <Jazzicon
+                  paperStyles={{ border: "1px solid black" }}
+                  diameter={isMobile ? 36 : 24}
+                  seed={jsNumberForAddress(
                     (event as FlowDistributionUpdatedEvent).poolDistributor
                       .account.id,
-                    15,
-                  )}{" "}
-                </Link>{" "}
-                {(event as FlowDistributionUpdatedEvent).oldFlowRate === "0" ? (
-                  <>
-                    opened a{" "}
-                    {Intl.NumberFormat("en", {
-                      maximumFractionDigits: 4,
-                    }).format(
-                      Number(
-                        formatEther(
-                          BigInt(
-                            (event as FlowDistributionUpdatedEvent)
-                              .newDistributorToPoolFlowRate,
-                          ) * BigInt(SECONDS_IN_MONTH),
-                        ),
-                      ),
-                    )}{" "}
-                    {token.name}/mo stream.
-                  </>
-                ) : (event as FlowDistributionUpdatedEvent)
-                    .newDistributorToPoolFlowRate === "0" ? (
-                  <>
-                    closed a{" "}
-                    {Intl.NumberFormat("en", {
-                      maximumFractionDigits: 4,
-                    }).format(
-                      Number(
-                        formatEther(
-                          BigInt(
-                            (event as FlowDistributionUpdatedEvent).oldFlowRate,
-                          ) * BigInt(SECONDS_IN_MONTH),
-                        ),
-                      ),
-                    )}{" "}
-                    {token.name}/mo stream.
-                  </>
-                ) : (
-                  <>
-                    updated a stream from{" "}
-                    {Intl.NumberFormat("en", {
-                      maximumFractionDigits: 4,
-                    }).format(
-                      Number(
-                        formatEther(
-                          BigInt(
-                            (event as FlowDistributionUpdatedEvent).oldFlowRate,
-                          ) * BigInt(SECONDS_IN_MONTH),
-                        ),
-                      ),
-                    )}{" "}
-                    {token.name}/mo to{" "}
-                    {Intl.NumberFormat("en", {
-                      maximumFractionDigits: 4,
-                    }).format(
-                      Number(
-                        formatEther(
-                          BigInt(
-                            (event as FlowDistributionUpdatedEvent)
-                              .newDistributorToPoolFlowRate,
-                          ) * BigInt(SECONDS_IN_MONTH),
-                        ),
-                      ),
-                    )}{" "}
-                    {token.name}/mo
-                  </>
-                )}
-              </Stack>
-              <Link
-                href={`${network.blockExplorer}/tx/${(event as FlowDistributionUpdatedEvent).transactionHash}`}
-                target="_blank"
-                className="text-info"
+                  )}
+                />
+              </span>
+              <Stack
+                direction={isMobile ? "vertical" : "horizontal"}
+                className="w-100 justify-content-between"
               >
-                {new Date(Number(event.timestamp) * 1000).toLocaleString(
-                  "en-US",
-                  {
-                    month: "short",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "numeric",
-                  },
-                )}
-              </Link>
+                <p className="m-0">
+                  <Link
+                    href={`${network.blockExplorer}/address/${(event as FlowDistributionUpdatedEvent).poolDistributor.account.id}`}
+                    target="_blank"
+                  >
+                    {truncateStr(
+                      (event as FlowDistributionUpdatedEvent).poolDistributor
+                        .account.id,
+                      15,
+                    )}{" "}
+                  </Link>{" "}
+                  {(event as FlowDistributionUpdatedEvent).oldFlowRate ===
+                  "0" ? (
+                    <>
+                      opened a{" "}
+                      {Intl.NumberFormat("en", {
+                        maximumFractionDigits: 4,
+                      }).format(
+                        Number(
+                          formatEther(
+                            BigInt(
+                              (event as FlowDistributionUpdatedEvent)
+                                .newDistributorToPoolFlowRate,
+                            ) * BigInt(SECONDS_IN_MONTH),
+                          ),
+                        ),
+                      )}{" "}
+                      {token.name}/mo stream.
+                    </>
+                  ) : (event as FlowDistributionUpdatedEvent)
+                      .newDistributorToPoolFlowRate === "0" ? (
+                    <>
+                      closed a{" "}
+                      {Intl.NumberFormat("en", {
+                        maximumFractionDigits: 4,
+                      }).format(
+                        Number(
+                          formatEther(
+                            BigInt(
+                              (event as FlowDistributionUpdatedEvent)
+                                .oldFlowRate,
+                            ) * BigInt(SECONDS_IN_MONTH),
+                          ),
+                        ),
+                      )}{" "}
+                      {token.name}/mo stream.
+                    </>
+                  ) : (
+                    <>
+                      updated a stream from{" "}
+                      {Intl.NumberFormat("en", {
+                        maximumFractionDigits: 4,
+                      }).format(
+                        Number(
+                          formatEther(
+                            BigInt(
+                              (event as FlowDistributionUpdatedEvent)
+                                .oldFlowRate,
+                            ) * BigInt(SECONDS_IN_MONTH),
+                          ),
+                        ),
+                      )}{" "}
+                      {token.name}/mo to{" "}
+                      {Intl.NumberFormat("en", {
+                        maximumFractionDigits: 4,
+                      }).format(
+                        Number(
+                          formatEther(
+                            BigInt(
+                              (event as FlowDistributionUpdatedEvent)
+                                .newDistributorToPoolFlowRate,
+                            ) * BigInt(SECONDS_IN_MONTH),
+                          ),
+                        ),
+                      )}{" "}
+                      {token.name}/mo
+                    </>
+                  )}
+                </p>
+                <Link
+                  href={`${network.blockExplorer}/tx/${(event as FlowDistributionUpdatedEvent).transactionHash}`}
+                  target="_blank"
+                  className="text-info"
+                >
+                  {new Date(Number(event.timestamp) * 1000).toLocaleString(
+                    "en-US",
+                    {
+                      month: "short",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "numeric",
+                    },
+                  )}
+                </Link>
+              </Stack>
             </Stack>
           );
         }
 
         if (event.__typename === "InstantDistributionUpdatedEvent") {
           return (
-            <Stack
-              direction="horizontal"
-              className="justify-content-between"
-              key={i}
-            >
-              <Stack direction="horizontal" gap={1}>
-                <Link
-                  href={`${network.blockExplorer}/address/${(event as InstantDistributionUpdatedEvent).poolDistributor.account.id}`}
-                  target="_blank"
-                  className="d-flex align-items-center gap-2 m-0"
-                >
-                  <Jazzicon
-                    paperStyles={{ border: "1px solid black" }}
-                    diameter={24}
-                    seed={jsNumberForAddress(
-                      (event as InstantDistributionUpdatedEvent).poolDistributor
-                        .account.id,
-                    )}
-                  />
-                  {truncateStr(
+            <Stack direction="horizontal" gap={2} key={i}>
+              <span
+                style={{
+                  width: isMobile ? 36 : 24,
+                  height: isMobile ? 36 : 24,
+                }}
+              >
+                <Jazzicon
+                  paperStyles={{ border: "1px solid black" }}
+                  diameter={isMobile ? 36 : 24}
+                  seed={jsNumberForAddress(
                     (event as InstantDistributionUpdatedEvent).poolDistributor
                       .account.id,
-                    15,
-                  )}{" "}
-                </Link>{" "}
-                instantly distributed{" "}
-                {formatEther(
-                  BigInt(
-                    (event as InstantDistributionUpdatedEvent).requestedAmount,
-                  ),
-                )}{" "}
-                {token.name}
-              </Stack>
-              <Link
-                href={`${network.blockExplorer}/tx/${(event as InstantDistributionUpdatedEvent).transactionHash}`}
-                target="_blank"
-                className="text-info"
+                  )}
+                />
+              </span>
+              <Stack
+                direction={isMobile ? "vertical" : "horizontal"}
+                className="w-100 justify-content-between"
               >
-                {new Date(Number(event.timestamp) * 1000).toLocaleString(
-                  "en-US",
-                  {
-                    month: "short",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "numeric",
-                  },
-                )}
-              </Link>
+                <p className="m-0">
+                  <Link
+                    href={`${network.blockExplorer}/address/${(event as FlowDistributionUpdatedEvent).poolDistributor.account.id}`}
+                    target="_blank"
+                  >
+                    {truncateStr(
+                      (event as InstantDistributionUpdatedEvent).poolDistributor
+                        .account.id,
+                      15,
+                    )}
+                  </Link>{" "}
+                  instantly distributed{" "}
+                  {Intl.NumberFormat("en", {
+                    maximumFractionDigits: 4,
+                  }).format(
+                    Number(
+                      formatEther(
+                        BigInt(
+                          (event as InstantDistributionUpdatedEvent)
+                            .requestedAmount,
+                        ),
+                      ),
+                    ),
+                  )}{" "}
+                  {token.name}
+                </p>
+                <Link
+                  href={`${network.blockExplorer}/tx/${(event as InstantDistributionUpdatedEvent).transactionHash}`}
+                  target="_blank"
+                  className="text-info"
+                >
+                  {new Date(Number(event.timestamp) * 1000).toLocaleString(
+                    "en-US",
+                    {
+                      month: "short",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "numeric",
+                    },
+                  )}
+                </Link>
+              </Stack>
             </Stack>
           );
         }
