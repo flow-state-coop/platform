@@ -17,7 +17,7 @@ const networks: Network[] = [
     pay16zPool: "0x7B0d808456100a6015423C8BF8759509c1252129",
     flowSplitter: "0x25B64C200cf3362BaC6961353D38A1dbEB42e60E",
     flowSplitterSubgraph:
-      "https://api.0xgraph.xyz/api/public/76ce6edf-8ead-4af2-98b2-95c12af6f222/subgraphs/flow-splitter-base/0.94.0/gn",
+      "https://api.0xgraph.xyz/api/public/76ce6edf-8ead-4af2-98b2-95c12af6f222/subgraphs/flow-splitter-base/0.95.0/gn",
     passportDecoder: "0xe819c3FA368e164Da88E76A08a60f65280Af3ed6",
     superfluidHost: "0x4C073B3baB6d8826b8C5b229f3cfdC1eC6E47E74",
     superfluidResolver: "0x6a214c324553F96F04eFBDd66908685525Da0E0d",
@@ -94,7 +94,7 @@ const networks: Network[] = [
     pay16zPool: "0x",
     flowSplitter: "0x25B64C200cf3362BaC6961353D38A1dbEB42e60E",
     flowSplitterSubgraph:
-      "https://api.0xgraph.xyz/api/public/76ce6edf-8ead-4af2-98b2-95c12af6f222/subgraphs/flow-splitter-optimism/0.94.0/gn",
+      "https://api.0xgraph.xyz/api/public/76ce6edf-8ead-4af2-98b2-95c12af6f222/subgraphs/flow-splitter-optimism/0.95.0/gn",
     passportDecoder: "0x5558D441779Eca04A329BcD6b47830D2C6607769",
     superfluidHost: "0x567c4B141ED61923967cA25Ef4906C8781069a10",
     superfluidResolver: "0x743B5f46BC86caF41bE4956d9275721E0531B186",
