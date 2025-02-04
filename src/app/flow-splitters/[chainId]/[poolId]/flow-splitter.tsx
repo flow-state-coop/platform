@@ -222,7 +222,12 @@ export default function FlowSplitter(props: FlowSplitterProps) {
 
       const publicClient = createPublicClient({
         chain: mainnet,
-        transport: http("https://eth.llamarpc.com", { batch: true }),
+        transport: http("https://ethereum-rpc.publicnode.com", {
+          batch: {
+            batchSize: 100,
+            wait: 10,
+          },
+        }),
       });
 
       try {
