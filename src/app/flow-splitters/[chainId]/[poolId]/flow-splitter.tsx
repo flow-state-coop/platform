@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Address, createPublicClient, http } from "viem";
+import { mainnet } from "viem/chains";
+import { normalize } from "viem/ens";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
@@ -133,6 +136,9 @@ export default function FlowSplitter(props: FlowSplitterProps) {
   const [showOpenFlow, setShowOpenFlow] = useState(false);
   const [showInstantDistribution, setShowInstantDistribution] = useState(false);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
+  const [ensByAddress, setEnsByAddress] = useState<{
+    [key: Address]: { name: string | null; avatar: string | null };
+  } | null>(null);
 
   const router = useRouter();
   const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
@@ -179,6 +185,78 @@ export default function FlowSplitter(props: FlowSplitterProps) {
   useEffect(() => setShowConnectionModal(shouldConnect), [shouldConnect]);
 
   useEffect(() => {
+    const ensByAddress: {
+      [key: Address]: { name: string | null; avatar: string | null };
+    } = {};
+    (async () => {
+      if (!pool || !superfluidQueryRes) {
+        return;
+      }
+
+      const addresses = [];
+
+      for (const memberUnitsUpdatedEvent of superfluidQueryRes.pool
+        .memberUnitsUpdatedEvents) {
+        addresses.push(memberUnitsUpdatedEvent.poolMember.account.id);
+      }
+
+      for (const poolAdminAddedEvent of pool.poolAdminAddedEvents) {
+        addresses.push(poolAdminAddedEvent.address);
+      }
+
+      for (const poolAdminRemovedEvent of pool.poolAdminRemovedEvents) {
+        addresses.push(poolAdminRemovedEvent.address);
+      }
+
+      for (const flowDistributionUpdatedEvent of superfluidQueryRes.pool
+        .flowDistributionUpdatedEvents) {
+        addresses.push(flowDistributionUpdatedEvent.poolDistributor.account.id);
+      }
+
+      for (const instantDistributionUpdatedEvent of superfluidQueryRes.pool
+        .instantDistributionUpdatedEvents) {
+        addresses.push(
+          instantDistributionUpdatedEvent.poolDistributor.account.id,
+        );
+      }
+
+      const publicClient = createPublicClient({
+        chain: mainnet,
+        transport: http("https://eth.llamarpc.com", { batch: true }),
+      });
+
+      try {
+        const ensNames = await Promise.all(
+          addresses.map((address) =>
+            publicClient.getEnsName({
+              address: address as Address,
+            }),
+          ),
+        );
+
+        const ensAvatars = await Promise.all(
+          ensNames.map((ensName) =>
+            publicClient.getEnsAvatar({
+              name: normalize(ensName ?? ""),
+            }),
+          ),
+        );
+
+        for (const i in addresses) {
+          ensByAddress[addresses[i] as Address] = {
+            name: ensNames[i] ?? null,
+            avatar: ensAvatars[i] ?? null,
+          };
+        }
+      } catch (err) {
+        console.error(err);
+      }
+
+      setEnsByAddress(ensByAddress);
+    })();
+  }, [pool, superfluidQueryRes]);
+
+  useEffect(() => {
     if (process.env.NODE_ENV !== "development") {
       postHog.startSessionRecording();
     }
@@ -221,7 +299,9 @@ export default function FlowSplitter(props: FlowSplitterProps) {
                   : 1600,
         }}
       >
-        {flowSplitterPoolQueryLoading || superfluidQueryLoading ? (
+        {flowSplitterPoolQueryLoading ||
+        superfluidQueryLoading ||
+        !ensByAddress ? (
           <span className="position-absolute top-50 start-50 translate-middle">
             <Spinner />
           </span>
@@ -317,7 +397,13 @@ export default function FlowSplitter(props: FlowSplitterProps) {
                 />
               </Button>
             </Stack>
-            <PoolGraph pool={superfluidQueryRes?.pool} chainId={chainId} />
+            {ensByAddress && (
+              <PoolGraph
+                pool={superfluidQueryRes?.pool}
+                chainId={chainId}
+                ensByAddress={ensByAddress}
+              />
+            )}
             <Button
               className="w-100 mt-5 py-2 fs-4"
               onClick={() => {
@@ -343,7 +429,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
             >
               Send Distribution
             </Button>
-            {superfluidQueryRes?.pool && pool ? (
+            {superfluidQueryRes?.pool && pool && ensByAddress && (
               <ActivityFeed
                 poolSymbol={pool.symbol}
                 poolAddress={pool.poolAddress}
@@ -361,8 +447,9 @@ export default function FlowSplitter(props: FlowSplitterProps) {
                 memberUnitsUpdatedEvents={
                   superfluidQueryRes?.pool.memberUnitsUpdatedEvents
                 }
+                ensByAddress={ensByAddress}
               />
-            ) : null}
+            )}
           </>
         )}
       </Container>
