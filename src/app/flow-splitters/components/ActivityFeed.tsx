@@ -1,7 +1,9 @@
 import { useMemo } from "react";
+import { Address } from "viem";
 import Link from "next/link";
 import { formatEther } from "viem";
 import Stack from "react-bootstrap/Stack";
+import Image from "react-bootstrap/Image";
 import Jazzicon, { jsNumberForAddress } from "react-jazzicon";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
@@ -20,6 +22,9 @@ type ActivityFeedProps = {
   memberUnitsUpdatedEvents: MemberUnitsUpdatedEvent[];
   flowDistributionUpdatedEvents: FlowDistributionUpdatedEvent[];
   instantDistributionUpdatedEvents: InstantDistributionUpdatedEvent[];
+  ensByAddress: {
+    [key: Address]: { name: string | null; avatar: string | null };
+  };
 };
 
 type PoolCreationMemberUnitsUpdates = {
@@ -106,9 +111,9 @@ export default function ActivityFeed(props: ActivityFeedProps) {
     poolAdminRemovedEvents,
     flowDistributionUpdatedEvents,
     instantDistributionUpdatedEvents,
+    ensByAddress,
   } = props;
-
-  const { isMobile } = useMediaQuery();
+  const { isMobile, isTablet } = useMediaQuery();
 
   const events = useMemo(() => {
     const events: Array<
@@ -192,7 +197,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
       direction="vertical"
       gap={4}
       className="mt-5 bg-light p-4 rounded-5"
-      style={{ fontSize: isMobile ? "1rem" : "1.25rem" }}
+      style={{ fontSize: isMobile || isTablet ? "1rem" : "1.25rem" }}
     >
       <p className="m-0 fs-3">Activity</p>
       {events.map((event, i) => {
@@ -202,18 +207,18 @@ export default function ActivityFeed(props: ActivityFeedProps) {
               <Stack direction="horizontal" gap={2}>
                 <span
                   style={{
-                    width: isMobile ? 36 : 24,
-                    height: isMobile ? 36 : 24,
+                    width: isMobile || isTablet ? 36 : 24,
+                    height: isMobile || isTablet ? 36 : 24,
                   }}
                 >
                   <Jazzicon
                     paperStyles={{ border: "1px solid black" }}
-                    diameter={isMobile ? 36 : 24}
+                    diameter={isMobile || isTablet ? 36 : 24}
                     seed={jsNumberForAddress(poolAddress)}
                   />
                 </span>
                 <Stack
-                  direction={isMobile ? "vertical" : "horizontal"}
+                  direction={isMobile || isTablet ? "vertical" : "horizontal"}
                   className="w-100 justify-content-between"
                 >
                   <p className="m-0">Flow Splitter Created</p>
@@ -244,24 +249,42 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     className="align-items-center"
                     key={i}
                   >
-                    <span style={{ width: 24, height: 24 }}>
-                      <Jazzicon
-                        paperStyles={{ border: "1px solid black" }}
-                        diameter={24}
-                        seed={jsNumberForAddress(
-                          memberUnitsUpdatedEvent.poolMember.account.id,
-                        )}
+                    {ensByAddress[memberUnitsUpdatedEvent.poolMember.account.id]
+                      ?.avatar ? (
+                      <Image
+                        src={
+                          ensByAddress[
+                            memberUnitsUpdatedEvent.poolMember.account.id
+                          ].avatar ?? ""
+                        }
+                        alt=""
+                        width={isMobile || isTablet ? 36 : 24}
+                        height={isMobile || isTablet ? 36 : 24}
+                        className="rounded-circle align-self-center"
                       />
-                    </span>
+                    ) : (
+                      <span style={{ width: 24, height: 24 }}>
+                        <Jazzicon
+                          paperStyles={{ border: "1px solid black" }}
+                          diameter={24}
+                          seed={jsNumberForAddress(
+                            memberUnitsUpdatedEvent.poolMember.account.id,
+                          )}
+                        />
+                      </span>
+                    )}
                     <p className="m-0">
                       <Link
                         href={`${network.blockExplorer}/address/${memberUnitsUpdatedEvent.poolMember.account.id}`}
                         target="_blank"
                       >
-                        {truncateStr(
-                          memberUnitsUpdatedEvent.poolMember.account.id,
-                          15,
-                        )}
+                        {ensByAddress[
+                          memberUnitsUpdatedEvent.poolMember.account.id
+                        ]?.name ??
+                          truncateStr(
+                            memberUnitsUpdatedEvent.poolMember.account.id,
+                            15,
+                          )}
                       </Link>
                       :{" "}
                       {Intl.NumberFormat("en", {
@@ -285,18 +308,18 @@ export default function ActivityFeed(props: ActivityFeedProps) {
               <Stack direction="horizontal" gap={2}>
                 <span
                   style={{
-                    width: isMobile ? 36 : 24,
-                    height: isMobile ? 36 : 24,
+                    width: isMobile || isTablet ? 36 : 24,
+                    height: isMobile || isTablet ? 36 : 24,
                   }}
                 >
                   <Jazzicon
                     paperStyles={{ border: "1px solid black" }}
-                    diameter={isMobile ? 36 : 24}
+                    diameter={isMobile || isTablet ? 36 : 24}
                     seed={jsNumberForAddress(poolAddress)}
                   />
                 </span>
                 <Stack
-                  direction={isMobile ? "vertical" : "horizontal"}
+                  direction={isMobile || isTablet ? "vertical" : "horizontal"}
                   className="w-100 justify-content-between"
                 >
                   <p className="m-0">Flow Splitter Updated</p>
@@ -327,24 +350,42 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     className="align-items-center"
                     key={i}
                   >
-                    <span style={{ width: 24, height: 24 }}>
-                      <Jazzicon
-                        paperStyles={{ border: "1px solid black" }}
-                        diameter={24}
-                        seed={jsNumberForAddress(
-                          memberUnitsUpdatedEvent.poolMember.account.id,
-                        )}
+                    {ensByAddress[memberUnitsUpdatedEvent.poolMember.account.id]
+                      ?.avatar ? (
+                      <Image
+                        src={
+                          ensByAddress[
+                            memberUnitsUpdatedEvent.poolMember.account.id
+                          ].avatar ?? ""
+                        }
+                        alt=""
+                        width={24}
+                        height={24}
+                        className="rounded-circle align-self-center"
                       />
-                    </span>
+                    ) : (
+                      <span style={{ width: 24, height: 24 }}>
+                        <Jazzicon
+                          paperStyles={{ border: "1px solid black" }}
+                          diameter={24}
+                          seed={jsNumberForAddress(
+                            memberUnitsUpdatedEvent.poolMember.account.id,
+                          )}
+                        />
+                      </span>
+                    )}
                     <p className="m-0">
                       <Link
                         href={`${network.blockExplorer}/address/${memberUnitsUpdatedEvent.poolMember.account.id}`}
                         target="_blank"
                       >
-                        {truncateStr(
-                          memberUnitsUpdatedEvent.poolMember.account.id,
-                          15,
-                        )}
+                        {ensByAddress[
+                          memberUnitsUpdatedEvent.poolMember.account.id
+                        ]?.name ??
+                          truncateStr(
+                            memberUnitsUpdatedEvent.poolMember.account.id,
+                            15,
+                          )}
                       </Link>
                       :{" "}
                       {Number(memberUnitsUpdatedEvent.units) -
@@ -376,22 +417,37 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "PoolAdminAddedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              <span
-                style={{
-                  width: isMobile ? 36 : 24,
-                  height: isMobile ? 36 : 24,
-                }}
-              >
-                <Jazzicon
-                  paperStyles={{ border: "1px solid black" }}
-                  diameter={isMobile ? 36 : 24}
-                  seed={jsNumberForAddress(
-                    (event as PoolAdminAddedEvent).address,
-                  )}
+              {ensByAddress[(event as PoolAdminAddedEvent).address as Address]
+                ?.avatar ? (
+                <Image
+                  src={
+                    ensByAddress[
+                      (event as PoolAdminAddedEvent).address as Address
+                    ].avatar ?? ""
+                  }
+                  alt=""
+                  width={isMobile || isTablet ? 36 : 24}
+                  height={isMobile || isTablet ? 36 : 24}
+                  className="rounded-circle align-self-center"
                 />
-              </span>
+              ) : (
+                <span
+                  style={{
+                    width: isMobile || isTablet ? 36 : 24,
+                    height: isMobile || isTablet ? 36 : 24,
+                  }}
+                >
+                  <Jazzicon
+                    paperStyles={{ border: "1px solid black" }}
+                    diameter={isMobile || isTablet ? 36 : 24}
+                    seed={jsNumberForAddress(
+                      (event as PoolAdminAddedEvent).address,
+                    )}
+                  />
+                </span>
+              )}
               <Stack
-                direction={isMobile ? "vertical" : "horizontal"}
+                direction={isMobile || isTablet ? "vertical" : "horizontal"}
                 className="w-100 justify-content-between"
               >
                 <p className="m-0">
@@ -399,7 +455,10 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as PoolAdminAddedEvent).address}`}
                     target="_blank"
                   >
-                    {truncateStr((event as PoolAdminAddedEvent).address, 15)}{" "}
+                    {ensByAddress[
+                      (event as PoolAdminAddedEvent).address as Address
+                    ]?.name ??
+                      truncateStr((event as PoolAdminAddedEvent).address, 15)}
                   </Link>{" "}
                   added as a Flow Splitter admin
                 </p>
@@ -426,22 +485,37 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "PoolAdminRemovedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              <span
-                style={{
-                  width: isMobile ? 36 : 24,
-                  height: isMobile ? 36 : 24,
-                }}
-              >
-                <Jazzicon
-                  paperStyles={{ border: "1px solid black" }}
-                  diameter={isMobile ? 36 : 24}
-                  seed={jsNumberForAddress(
-                    (event as PoolAdminRemovedEvent).address,
-                  )}
+              {ensByAddress[(event as PoolAdminRemovedEvent).address as Address]
+                ?.avatar ? (
+                <Image
+                  src={
+                    ensByAddress[
+                      (event as PoolAdminRemovedEvent).address as Address
+                    ].avatar ?? ""
+                  }
+                  alt=""
+                  width={isMobile || isTablet ? 36 : 24}
+                  height={isMobile || isTablet ? 36 : 24}
+                  className="rounded-circle align-self-center"
                 />
-              </span>
+              ) : (
+                <span
+                  style={{
+                    width: isMobile || isTablet ? 36 : 24,
+                    height: isMobile || isTablet ? 36 : 24,
+                  }}
+                >
+                  <Jazzicon
+                    paperStyles={{ border: "1px solid black" }}
+                    diameter={isMobile || isTablet ? 36 : 24}
+                    seed={jsNumberForAddress(
+                      (event as PoolAdminRemovedEvent).address,
+                    )}
+                  />
+                </span>
+              )}
               <Stack
-                direction={isMobile ? "vertical" : "horizontal"}
+                direction={isMobile || isTablet ? "vertical" : "horizontal"}
                 className="w-100 justify-content-between"
               >
                 <p className="m-0">
@@ -449,7 +523,10 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as PoolAdminRemovedEvent).address}`}
                     target="_blank"
                   >
-                    {truncateStr((event as PoolAdminRemovedEvent).address, 15)}{" "}
+                    {ensByAddress[
+                      (event as PoolAdminRemovedEvent).address as Address
+                    ]?.name ??
+                      truncateStr((event as PoolAdminRemovedEvent).address, 15)}
                   </Link>{" "}
                   removed as a Flow Splitter admin.
                 </p>
@@ -476,23 +553,41 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "FlowDistributionUpdatedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              <span
-                style={{
-                  width: isMobile ? 36 : 24,
-                  height: isMobile ? 36 : 24,
-                }}
-              >
-                <Jazzicon
-                  paperStyles={{ border: "1px solid black" }}
-                  diameter={isMobile ? 36 : 24}
-                  seed={jsNumberForAddress(
-                    (event as FlowDistributionUpdatedEvent).poolDistributor
-                      .account.id,
-                  )}
+              {ensByAddress[
+                (event as FlowDistributionUpdatedEvent).poolDistributor.account
+                  .id
+              ]?.avatar ? (
+                <Image
+                  src={
+                    ensByAddress[
+                      (event as FlowDistributionUpdatedEvent).poolDistributor
+                        .account.id
+                    ].avatar ?? ""
+                  }
+                  alt=""
+                  width={isMobile || isTablet ? 36 : 24}
+                  height={isMobile || isTablet ? 36 : 24}
+                  className="rounded-circle align-self-center"
                 />
-              </span>
+              ) : (
+                <span
+                  style={{
+                    width: isMobile || isTablet ? 36 : 24,
+                    height: isMobile || isTablet ? 36 : 24,
+                  }}
+                >
+                  <Jazzicon
+                    paperStyles={{ border: "1px solid black" }}
+                    diameter={isMobile || isTablet ? 36 : 24}
+                    seed={jsNumberForAddress(
+                      (event as FlowDistributionUpdatedEvent).poolDistributor
+                        .account.id,
+                    )}
+                  />
+                </span>
+              )}
               <Stack
-                direction={isMobile ? "vertical" : "horizontal"}
+                direction={isMobile || isTablet ? "vertical" : "horizontal"}
                 className="w-100 justify-content-between"
               >
                 <p className="m-0">
@@ -500,11 +595,15 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as FlowDistributionUpdatedEvent).poolDistributor.account.id}`}
                     target="_blank"
                   >
-                    {truncateStr(
+                    {ensByAddress[
                       (event as FlowDistributionUpdatedEvent).poolDistributor
-                        .account.id,
-                      15,
-                    )}{" "}
+                        .account.id
+                    ]?.name ??
+                      truncateStr(
+                        (event as FlowDistributionUpdatedEvent).poolDistributor
+                          .account.id,
+                        15,
+                      )}
                   </Link>{" "}
                   {(event as FlowDistributionUpdatedEvent).oldFlowRate ===
                   "0" ? (
@@ -597,23 +696,41 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "InstantDistributionUpdatedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              <span
-                style={{
-                  width: isMobile ? 36 : 24,
-                  height: isMobile ? 36 : 24,
-                }}
-              >
-                <Jazzicon
-                  paperStyles={{ border: "1px solid black" }}
-                  diameter={isMobile ? 36 : 24}
-                  seed={jsNumberForAddress(
-                    (event as InstantDistributionUpdatedEvent).poolDistributor
-                      .account.id,
-                  )}
+              {ensByAddress[
+                (event as InstantDistributionUpdatedEvent).poolDistributor
+                  .account.id
+              ]?.avatar ? (
+                <Image
+                  src={
+                    ensByAddress[
+                      (event as InstantDistributionUpdatedEvent).poolDistributor
+                        .account.id
+                    ].avatar ?? ""
+                  }
+                  alt=""
+                  width={isMobile || isTablet ? 36 : 24}
+                  height={isMobile || isTablet ? 36 : 24}
+                  className="rounded-circle align-self-center"
                 />
-              </span>
+              ) : (
+                <span
+                  style={{
+                    width: isMobile || isTablet ? 36 : 24,
+                    height: isMobile || isTablet ? 36 : 24,
+                  }}
+                >
+                  <Jazzicon
+                    paperStyles={{ border: "1px solid black" }}
+                    diameter={isMobile || isTablet ? 36 : 24}
+                    seed={jsNumberForAddress(
+                      (event as InstantDistributionUpdatedEvent).poolDistributor
+                        .account.id,
+                    )}
+                  />
+                </span>
+              )}
               <Stack
-                direction={isMobile ? "vertical" : "horizontal"}
+                direction={isMobile || isTablet ? "vertical" : "horizontal"}
                 className="w-100 justify-content-between"
               >
                 <p className="m-0">
@@ -621,11 +738,15 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as FlowDistributionUpdatedEvent).poolDistributor.account.id}`}
                     target="_blank"
                   >
-                    {truncateStr(
+                    {ensByAddress[
                       (event as InstantDistributionUpdatedEvent).poolDistributor
-                        .account.id,
-                      15,
-                    )}
+                        .account.id
+                    ]?.name ??
+                      truncateStr(
+                        (event as InstantDistributionUpdatedEvent)
+                          .poolDistributor.account.id,
+                        15,
+                      )}
                   </Link>{" "}
                   instantly distributed{" "}
                   {Intl.NumberFormat("en", {

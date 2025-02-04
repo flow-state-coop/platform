@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { formatEther } from "viem";
-import { useEnsAvatar, useEnsName } from "wagmi";
+import { Address, formatEther } from "viem";
 import {
   ReactFlow,
   Background,
@@ -30,6 +29,9 @@ import "@xyflow/react/dist/style.css";
 type PoolGraphProps = {
   pool: GDAPool;
   chainId: number;
+  ensByAddress: {
+    [key: Address]: { name: string | null; avatar: string | null };
+  };
 };
 
 const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
@@ -75,21 +77,9 @@ const getLayoutedElements = (
 
 const nodeTypes = { custom: CustomNode };
 const edgeTypes = { custom: CustomEdge };
-const poolMemberLabels: { [key: string]: string } = {
-  ["0x2a81c13f9366395c8fd1ea24912294230d062db3"]: "garysheng.eth",
-  ["0x884ff907d5fb8bae239b64aa8ad18ba3f8196038"]: "graven.eth",
-  ["0x956313dd2711878879b40ea5b4f2489c41a2e717"]: "tnrdd.eth",
-};
 
 function CustomNode(props: NodeProps<Node>) {
   const { selected, data } = props;
-
-  const { data: ensName } = useEnsName({
-    address: data.address as `0x${string}`,
-  });
-  const { data: ensAvatar } = useEnsAvatar({
-    name: ensName ?? (data.address as `0x${string}`),
-  });
 
   const totalFlowed = useFlowingAmount(
     BigInt((data?.totalAmountFlowedDistributedUntilUpdatedAt as string) ?? 0) +
@@ -157,9 +147,9 @@ function CustomNode(props: NodeProps<Node>) {
         gap={1}
         className="align-items-center cursor-pointer"
       >
-        {ensAvatar ? (
+        {data.avatar ? (
           <Image
-            src={ensAvatar}
+            src={(data.avatar as string) ?? ""}
             alt="avatar"
             width={42}
             height={42}
@@ -173,7 +163,7 @@ function CustomNode(props: NodeProps<Node>) {
           />
         )}
         <span style={{ fontSize: "0.7rem" }}>
-          {ensName ?? data?.label?.toString() ?? ""}
+          {data?.label?.toString() ?? ""}
         </span>
         {data.isDistributor ? (
           <span>{`${parseFloat(((data.percentage as number) * 100).toFixed(2))}%`}</span>
@@ -284,7 +274,7 @@ function CustomEdge(props: EdgeProps<Edge>) {
 }
 
 export default function PoolGraph(props: PoolGraphProps) {
-  const { pool, chainId } = props;
+  const { pool, chainId, ensByAddress } = props;
 
   const graph = useMemo(() => {
     if (!pool) {
@@ -299,7 +289,9 @@ export default function PoolGraph(props: PoolGraphProps) {
           position: { x: 0, y: 0 },
           type: "custom",
           data: {
-            label: truncateStr(x.account.id, 11),
+            label:
+              ensByAddress[x.account.id]?.name ?? truncateStr(x.account.id, 11),
+            avatar: ensByAddress[x.account.id]?.avatar,
             address: x.account.id,
             flowRate: BigInt(x.flowRate),
             percentage:
@@ -321,7 +313,8 @@ export default function PoolGraph(props: PoolGraphProps) {
           type: "custom",
           data: {
             label:
-              poolMemberLabels[x.account.id] ?? truncateStr(x.account.id, 11),
+              ensByAddress[x.account.id]?.name ?? truncateStr(x.account.id, 11),
+            avatar: ensByAddress[x.account.id]?.avatar,
             address: x.account.id,
             units: x.units,
             totalUnits: pool.totalUnits,
@@ -402,7 +395,7 @@ export default function PoolGraph(props: PoolGraphProps) {
     );
 
     return { nodes, edges };
-  }, [pool, chainId]);
+  }, [pool, chainId, ensByAddress]);
 
   return (
     <div
