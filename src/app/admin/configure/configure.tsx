@@ -59,9 +59,11 @@ type PoolConfigParameters = {
   description: string;
   nftAddress: string;
   nftMintUrl: string;
+  flowStateEligibility: boolean;
 };
 
 enum EligibilityMethod {
+  FLOW_STATE = "Flow State Managed",
   PASSPORT = "Gitcoin Passport",
   NFT_GATING = "ERC721 NFT Gated",
 }
@@ -108,9 +110,10 @@ export default function Configure(props: ConfigureProps) {
       description: "",
       nftAddress: "",
       nftMintUrl: "",
+      flowStateEligibility: true,
     });
   const [eligibilityMethod, setEligibilityMethod] = useState(
-    EligibilityMethod.PASSPORT,
+    EligibilityMethod.FLOW_STATE,
   );
 
   const router = useRouter();
@@ -182,15 +185,12 @@ export default function Configure(props: ConfigureProps) {
       return;
     }
 
-    if (network.name === "Base") {
-      setEligibilityMethod(EligibilityMethod.NFT_GATING);
-    }
-
     setPoolConfigParameters((prev) => {
       return {
         ...prev,
         allocationToken: network.tokens[0].name,
         matchingToken: network.tokens[0].name,
+        nftAddress: network.flowStateEligibilityNft,
       };
     });
   }, [network]);
@@ -250,7 +250,11 @@ export default function Configure(props: ConfigureProps) {
               functionName: "erc721",
             })) as Address) ?? "";
 
-          setEligibilityMethod(EligibilityMethod.NFT_GATING);
+          setEligibilityMethod(
+            pool.metadata.flowStateEligibility
+              ? EligibilityMethod.FLOW_STATE
+              : EligibilityMethod.NFT_GATING,
+          );
         }
       } catch (err) {
         console.error(err);
@@ -264,6 +268,7 @@ export default function Configure(props: ConfigureProps) {
         description: pool.metadata.description ?? "",
         nftAddress,
         nftMintUrl: pool.metadata.nftMintUrl ?? "",
+        flowStateEligibility: pool.metadata.flowStateEligibility,
       });
     })();
   }, [pool, publicClient, network, connectedChain]);
@@ -283,6 +288,7 @@ export default function Configure(props: ConfigureProps) {
       name: poolConfigParameters.name,
       description: poolConfigParameters.description,
       nftMintUrl: poolConfigParameters.nftMintUrl,
+      flowStateEligibility: poolConfigParameters.flowStateEligibility,
     });
     const allocationToken = network.tokens.find(
       (token) => token.name === poolConfigParameters.allocationToken,
@@ -305,7 +311,7 @@ export default function Configure(props: ConfigureProps) {
     if (existingNftChecker) {
       nftCheckerAddress = existingNftChecker;
     } else if (
-      eligibilityMethod === EligibilityMethod.NFT_GATING &&
+      eligibilityMethod !== EligibilityMethod.PASSPORT &&
       poolConfigParameters.nftAddress &&
       !existingNftChecker
     ) {
@@ -339,7 +345,7 @@ export default function Configure(props: ConfigureProps) {
           : BigInt(Number(poolConfigParameters.minPassportScore) * 10000),
       initialSuperAppBalance: parseEther("0.0000001"),
       checker:
-        eligibilityMethod === EligibilityMethod.NFT_GATING && nftCheckerAddress
+        eligibilityMethod !== EligibilityMethod.PASSPORT && nftCheckerAddress
           ? (nftCheckerAddress as Address)
           : ZERO_ADDRESS,
       flowRateScaling: getPoolFlowRateConfig(allocationToken.name)
@@ -638,6 +644,19 @@ export default function Configure(props: ConfigureProps) {
                   {eligibilityMethod}
                 </Dropdown.Toggle>
                 <Dropdown.Menu>
+                  <Dropdown.Item
+                    onClick={() => {
+                      setEligibilityMethod(EligibilityMethod.FLOW_STATE);
+                      setPoolConfigParameters({
+                        ...poolConfigParameters,
+                        nftAddress: network.flowStateEligibilityNft,
+                        nftMintUrl: "",
+                        flowStateEligibility: true,
+                      });
+                    }}
+                  >
+                    {EligibilityMethod.FLOW_STATE}
+                  </Dropdown.Item>
                   {network && network.name !== "Base" && (
                     <Dropdown.Item
                       onClick={() => {
@@ -646,6 +665,7 @@ export default function Configure(props: ConfigureProps) {
                           ...poolConfigParameters,
                           nftAddress: "",
                           nftMintUrl: "",
+                          flowStateEligibility: false,
                         });
                       }}
                     >
@@ -658,6 +678,7 @@ export default function Configure(props: ConfigureProps) {
                       setPoolConfigParameters({
                         ...poolConfigParameters,
                         minPassportScore: "",
+                        flowStateEligibility: false,
                       });
                     }}
                   >
@@ -699,7 +720,10 @@ export default function Configure(props: ConfigureProps) {
                       <Form.Label>NFT Contract Address</Form.Label>
                       <Form.Control
                         type="text"
-                        disabled={!!pool}
+                        disabled={
+                          !!pool ||
+                          eligibilityMethod === EligibilityMethod.FLOW_STATE
+                        }
                         onChange={(e) => {
                           setPoolConfigParameters({
                             ...poolConfigParameters,
@@ -725,23 +749,24 @@ export default function Configure(props: ConfigureProps) {
                       />
                     </Form.Group>
                   </Stack>
-                  {(!pool || poolConfigParameters.nftMintUrl) && (
-                    <Form.Group style={{ width: isMobile ? "100%" : "50%" }}>
-                      <Form.Label>Mint URL or Contact (Optional)</Form.Label>
-                      <Form.Control
-                        type="text"
-                        disabled={!!pool}
-                        onChange={(e) => {
-                          setPoolConfigParameters({
-                            ...poolConfigParameters,
-                            nftMintUrl: e.target.value,
-                          });
-                          setExistingStrategyAddress("");
-                        }}
-                        value={poolConfigParameters.nftMintUrl}
-                      />
-                    </Form.Group>
-                  )}
+                  {!poolConfigParameters.flowStateEligibility &&
+                    (!pool || poolConfigParameters.nftMintUrl) && (
+                      <Form.Group style={{ width: isMobile ? "100%" : "50%" }}>
+                        <Form.Label>Mint URL or Contact (Optional)</Form.Label>
+                        <Form.Control
+                          type="text"
+                          disabled={!!pool}
+                          onChange={(e) => {
+                            setPoolConfigParameters({
+                              ...poolConfigParameters,
+                              nftMintUrl: e.target.value,
+                            });
+                            setExistingStrategyAddress("");
+                          }}
+                          value={poolConfigParameters.nftMintUrl}
+                        />
+                      </Form.Group>
+                    )}
                 </>
               )}
               <Stack direction={isMobile ? "vertical" : "horizontal"} gap={3}>

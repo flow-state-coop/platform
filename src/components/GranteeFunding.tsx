@@ -21,6 +21,7 @@ import EditStream from "@/components/checkout/EditStream";
 import TopUp from "@/components/checkout/TopUp";
 import Wrap from "@/components/checkout/Wrap";
 import Passport from "@/components/checkout/Passport";
+import FlowStateEligibility from "@/components/checkout/FlowStateEligibility";
 import GuildGating from "@/components/checkout/GuildGating";
 import NFTGating from "@/components/checkout/NFTGating";
 //import SupportFlowState from "@/components/checkout/SupportFlowState";
@@ -83,6 +84,7 @@ type GranteeFundingProps = {
   passportDecoder?: Address;
   minPassportScore?: bigint;
   requiredNftAddress: Address | null;
+  flowStateEligibility: boolean;
   nftMintUrl: string | null;
   recipientId: string;
 };
@@ -116,6 +118,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     refetchPassportScore,
     minPassportScore,
     requiredNftAddress,
+    flowStateEligibility,
     nftMintUrl,
     recipientId,
   } = props;
@@ -669,8 +672,17 @@ export default function GranteeFunding(props: GranteeFundingProps) {
                 underlyingTokenBalance={underlyingTokenBalance}
               />
             )}
-            {requiredNftAddress &&
-            nftMintUrl?.startsWith("https://guild.xyz/octant-sqf-voter") ? (
+            {requiredNftAddress && flowStateEligibility ? (
+              <FlowStateEligibility
+                step={step}
+                setStep={setStep}
+                network={network}
+                requiredNftAddress={requiredNftAddress}
+                isEligible={isEligible}
+                isPureSuperToken={isPureSuperToken}
+              />
+            ) : requiredNftAddress &&
+              nftMintUrl?.startsWith("https://guild.xyz/octant-sqf-voter") ? (
               <GuildGating
                 step={step}
                 setStep={setStep}

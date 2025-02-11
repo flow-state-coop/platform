@@ -86,11 +86,11 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
   });
   const { data: totalAmountReceivedByMember, dataUpdatedAt } = useReadContract({
     chainId,
-    address: matchingPool.id as Address,
+    address: matchingPool?.id as Address,
     abi: superfluidPoolAbi,
     functionName: "getTotalAmountReceivedByMember",
     args: [matchingPoolMember?.account.id as Address],
-    query: { enabled: !!matchingPoolMember },
+    query: { enabled: !!matchingPool && !!matchingPoolMember },
   });
 
   const profileId = flowStateQueryRes?.profiles[0]?.id ?? "";
