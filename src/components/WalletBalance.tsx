@@ -338,7 +338,7 @@ export default function WalletBalance() {
                 </Stack>
               </Stack>
               <Stack>
-                {nftMintUrl ? (
+                {nftMintUrl && (!nftBalance || nftBalance === BigInt(0)) ? (
                   <Button
                     variant="link"
                     href={nftMintUrl}
@@ -347,12 +347,12 @@ export default function WalletBalance() {
                   >
                     Get the NFT
                   </Button>
-                ) : (
+                ) : !nftBalance || nftBalance === BigInt(0) ? (
                   <Card.Text className="m-0">
                     Double check the wallet you're using or reach out to the
                     pool admins if you think you should be eligible.
                   </Card.Text>
-                )}
+                ) : null}
               </Stack>
             </Card.Body>
           </Card>

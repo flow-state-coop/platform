@@ -803,6 +803,9 @@ export default function Pool(props: PoolProps) {
             passportDecoder={passportDecoder}
             minPassportScore={minPassportScore}
             requiredNftAddress={(requiredNftAddress as Address) ?? null}
+            flowStateEligibility={
+              flowStateQueryRes?.pool.metadata.flowStateEligibility ?? false
+            }
             nftMintUrl={flowStateQueryRes?.pool.metadata.nftMintUrl ?? null}
             recipientId={grantees[transactionPanelState.selectedGrantee].id}
           />

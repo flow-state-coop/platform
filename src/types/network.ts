@@ -16,6 +16,7 @@ export type Network = {
   pay16zPool: string;
   flowSplitter: Address;
   flowSplitterSubgraph: string;
+  flowStateEligibilityNft: string;
   passportDecoder: Address;
   superfluidHost: Address;
   superfluidResolver: Address;
