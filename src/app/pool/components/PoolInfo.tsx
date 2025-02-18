@@ -67,11 +67,15 @@ export default function PoolInfo(props: PoolInfoProps) {
           </Stack>
         </Stack>
         <Card.Text className="mb-4 fs-6">Streaming Quadratic Funding</Card.Text>
-        <Sankey grantees={grantees} />
+        <Sankey
+          grantees={grantees}
+          chainId={chainId}
+          gdaPoolAddress={gdaPoolAddress}
+        />
         <Stack
           direction={isMobile ? "vertical" : "horizontal"}
           gap={4}
-          className="justify-content-end w-100 mt-5"
+          className="justify-content-end w-100 mt-4"
         >
           <Button
             className="p-2 text-light fs-5"
