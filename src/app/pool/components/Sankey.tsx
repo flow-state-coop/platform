@@ -41,7 +41,7 @@ type Dataset = {
 };
 
 const FPS = 60;
-const ANIMATION_DURATION = 2000;
+const ANIMATION_DURATION = 4000;
 const dots: {
   link: SankeyLink;
   time: number;
@@ -79,16 +79,18 @@ export default function Sankey(props: SankeyProps) {
       return;
     }
 
+    const nodePadding = isMobile ? 15 : 25;
     const linkHorizontal = d3Sankey.sankeyLinkHorizontal();
     const svg = d3.select(svgRef.current);
     const sankey = d3Sankey
       .sankey()
       .nodeWidth(15)
-      .nodePadding(18)
+      .nodePadding(nodePadding)
       .extent([
         [1, 5],
-        [svgTargetWidth, svgTargetHeight],
-      ]);
+        [svgTargetWidth, svgTargetHeight - nodePadding],
+      ])
+      .nodeSort((a, b) => Number(b.value) - Number(a.value));
 
     const { nodes, links } = sankey({
       nodes: dataset.nodes.map((d) => Object.assign({}, d)) as SankeyNode[],
@@ -103,7 +105,7 @@ export default function Sankey(props: SankeyProps) {
     const dotSize = d3
       .scaleLinear()
       .domain(linkExtent as [number, number])
-      .range([isMobile ? 2 : 4, isMobile ? 4 : 8]);
+      .range([isMobile ? 2 : 3, isMobile ? 4 : 6]);
 
     if (svgGroup?.current) {
       svgGroup.current.remove();
@@ -134,7 +136,7 @@ export default function Sankey(props: SankeyProps) {
     const link = bounds
       .append("g")
       .attr("fill", "none")
-      .attr("stroke-opacity", 0.5)
+      .attr("stroke-opacity", 0.3)
       .selectAll()
       .data(links)
       .join("g")
@@ -168,16 +170,7 @@ export default function Sankey(props: SankeyProps) {
       .join("text")
       .attr("x", (d) => (d.x0! < svgTargetWidth / 2 ? d.x1! + 6 : d.x0! - 6))
       .attr("y", (d) => (d.y0 && d.y1 ? (d.y1 + d.y0) / 2 : 0))
-      .attr("dy", (d) =>
-        Math.round(d?.y1 ?? 0) === svgTargetHeight &&
-        d.y0 &&
-        d.y1 &&
-        d.y1 - d.y0 < 20
-          ? "0"
-          : isMobile
-            ? "0.3rem"
-            : "0.7rem",
-      )
+      .attr("dy", isMobile ? "0.3rem" : "0.6rem")
       .attr("font-size", isMobile ? "1rem" : "1.4rem")
       .attr("text-anchor", (d) =>
         d.x0 && d.x0 < svgTargetWidth / 2 ? "start" : "end",
@@ -204,7 +197,7 @@ export default function Sankey(props: SankeyProps) {
       link.dotSize = dotSize(link.value);
       link.dotColor = d3
         .scaleLinear()
-        .domain([1, svgTargetWidth])
+        .domain([1, ANIMATION_DURATION])
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .range([(link.source as any).color, (link.target as any).color]);
     });
@@ -245,6 +238,7 @@ export default function Sankey(props: SankeyProps) {
       const ctx = canvasRef.current.getContext("2d");
 
       if (ctx) {
+        ctx.globalAlpha = 0.3;
         ctx.fillStyle = color;
         ctx.strokeStyle = "transparent";
         ctx.beginPath();
