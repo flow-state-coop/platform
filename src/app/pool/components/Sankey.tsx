@@ -7,13 +7,18 @@ import {
 } from "react";
 import * as d3 from "d3";
 import * as d3Sankey from "d3-sankey";
-import { formatEther } from "viem";
+import { Address, formatEther } from "viem";
+import { useReadContracts } from "wagmi";
+import Form from "react-bootstrap/Form";
+import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { Grantee } from "../pool";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 type SankeyProps = {
   grantees: Grantee[];
+  chainId: number;
+  gdaPoolAddress: Address;
 };
 
 type CustomNodeProperties = {
@@ -40,6 +45,11 @@ type Dataset = {
   links: { source: number; target: number; value: number }[];
 };
 
+enum Mode {
+  LIVE = "Live",
+  TOTAL = "Total",
+}
+
 const FPS = 60;
 const ANIMATION_DURATION = 4000;
 const dots: {
@@ -50,10 +60,10 @@ const dots: {
 }[] = [];
 
 export default function Sankey(props: SankeyProps) {
-  const { grantees } = props;
+  const { grantees, chainId, gdaPoolAddress } = props;
 
   const [dataset, setDataset] = useState<Dataset | null>(null);
-
+  const [mode, setMode] = useState<Mode>(Mode.LIVE);
   const [windowDimensions, setWindowDimensions] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -66,10 +76,23 @@ export default function Sankey(props: SankeyProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const svgGroup = useRef<SVGGElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const timer = useRef<d3.Timer | null>(null);
+  const timerDots = useRef<d3.Timer | null>(null);
+  const timerLabels = useRef<d3.Timer | null>(null);
 
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
+  const totalMatchings = useReadContracts({
+    contracts: grantees.map((grantee) => {
+      return {
+        chainId,
+        address: gdaPoolAddress,
+        abi: superfluidPoolAbi,
+        functionName: "getTotalAmountReceivedByMember",
+        args: [grantee.recipientAddress as Address],
+        query: { enabled: gdaPoolAddress !== "0x" },
+      };
+    }),
+  });
 
   const svgTargetWidth = isMobile ? 400 : 1920;
   const svgTargetHeight = isMobile ? 900 : 1080;
@@ -168,6 +191,7 @@ export default function Sankey(props: SankeyProps) {
       .selectAll()
       .data(nodes)
       .join("text")
+      .attr("class", "label")
       .attr("x", (d) => (d.x0! < svgTargetWidth / 2 ? d.x1! + 6 : d.x0! - 6))
       .attr("y", (d) => (d.y0 && d.y1 ? (d.y1 + d.y0) / 2 : 0))
       .attr("dy", isMobile ? "0.3rem" : "0.6rem")
@@ -314,14 +338,14 @@ export default function Sankey(props: SankeyProps) {
       }
     };
 
-    timer.current = d3.interval((elapsed) => animate(elapsed), 1000 / FPS);
+    timerDots.current = d3.interval((elapsed) => animate(elapsed), 1000 / FPS);
 
     return () => {
-      if (timer?.current) {
-        timer.current.stop();
+      if (timerDots?.current) {
+        timerDots.current.stop();
       }
     };
-  }, [timer, dimensions, svgTargetWidth, svgTargetHeight, drawDot]);
+  }, [timerDots, dimensions, svgTargetWidth, svgTargetHeight, drawDot]);
 
   useEffect(() => {
     if (grantees.length === 0) {
@@ -347,42 +371,55 @@ export default function Sankey(props: SankeyProps) {
       links: [],
     };
 
-    for (const grantee of grantees) {
-      if (BigInt(grantee.inflow.totalInflowRate) > 0) {
+    for (const i in grantees) {
+      if (
+        mode === Mode.TOTAL ||
+        BigInt(grantees[i].inflow.totalInflowRate) > 0
+      ) {
         dataset.links.push({
           source: 0,
-          target: dataset.nodes.findIndex((node) => grantee.id === node.id),
+          target: dataset.nodes.findIndex((node) => grantees[i].id === node.id),
           value: Number(
             formatEther(
-              BigInt(grantee.inflow.totalInflowRate) *
-                BigInt(SECONDS_IN_MONTH) -
-                BigInt(grantee.userOutflow?.currentFlowRate ?? 0) *
-                  BigInt(SECONDS_IN_MONTH),
+              mode === Mode.TOTAL
+                ? BigInt(
+                    grantees[i].inflow.totalAmountStreamedInUntilUpdatedAt,
+                  ) -
+                    BigInt(grantees[i].userOutflow?.streamedUntilUpdatedAt ?? 0)
+                : BigInt(grantees[i].inflow.totalInflowRate) *
+                    BigInt(SECONDS_IN_MONTH) -
+                    BigInt(grantees[i].userOutflow?.currentFlowRate ?? 0) *
+                      BigInt(SECONDS_IN_MONTH),
             ),
           ),
         });
       }
 
-      if (BigInt(grantee.matchingFlowRate) > 0) {
+      if (mode === Mode.TOTAL || BigInt(grantees[i].matchingFlowRate) > 0) {
         dataset.links.push({
           source: 1,
-          target: dataset.nodes.findIndex((node) => grantee.id === node.id),
+          target: dataset.nodes.findIndex((node) => grantees[i].id === node.id),
           value: Number(
             formatEther(
-              BigInt(grantee.matchingFlowRate) * BigInt(SECONDS_IN_MONTH),
+              mode === Mode.TOTAL && totalMatchings?.data
+                ? (totalMatchings.data[i].result as bigint)
+                : BigInt(grantees[i].matchingFlowRate) *
+                    BigInt(SECONDS_IN_MONTH),
             ),
           ),
         });
       }
 
-      if (grantee.userOutflow) {
+      if (grantees[i].userOutflow) {
         dataset.links.push({
           source: 2,
-          target: dataset.nodes.findIndex((node) => grantee.id === node.id),
+          target: dataset.nodes.findIndex((node) => grantees[i].id === node.id),
           value: Number(
             formatEther(
-              BigInt(grantee.userOutflow.currentFlowRate) *
-                BigInt(SECONDS_IN_MONTH),
+              mode === Mode.TOTAL
+                ? BigInt(grantees[i].userOutflow.streamedUntilUpdatedAt)
+                : BigInt(grantees[i].userOutflow.currentFlowRate) *
+                    BigInt(SECONDS_IN_MONTH),
             ),
           ),
         });
@@ -393,7 +430,135 @@ export default function Sankey(props: SankeyProps) {
       nodes: dataset.nodes,
       links: dataset.links.filter((link) => link.value > 0),
     });
-  }, [grantees]);
+  }, [grantees, mode, totalMatchings?.data]);
+
+  useEffect(() => {
+    if (timerLabels?.current) {
+      timerLabels.current.stop();
+    }
+
+    if (mode !== Mode.TOTAL || !totalMatchings?.data) {
+      return;
+    }
+
+    const updatedLabels = () => {
+      d3.selectAll(".label").text((d) => {
+        if ((d as SankeyNode).id === "Matching") {
+          const totalMatching = totalMatchings.data
+            .map((d) => d.result as bigint)
+            .reduce((a, b) => a + b, BigInt(0));
+          const totalMatchingFlowRate = grantees
+            .map((d) => BigInt(d.matchingFlowRate))
+            .reduce((a, b) => a + b, BigInt(0));
+          const elapsedTimeInMillisecondsMatching = BigInt(
+            Date.now() - totalMatchings.dataUpdatedAt,
+          );
+          const flowingAmountMatching =
+            totalMatching +
+            (totalMatchingFlowRate * elapsedTimeInMillisecondsMatching) /
+              BigInt(1000);
+
+          return `${(d as SankeyNode).name} ${Intl.NumberFormat("en", {
+            maximumFractionDigits: 4,
+          }).format(Number(formatEther(flowingAmountMatching)))}`;
+        }
+
+        if ((d as SankeyNode).id === "Direct") {
+          const flowingAmountDirect = grantees
+            .map((d) => {
+              const elapsedTimeInMillisecondsDirect = BigInt(
+                Date.now() - d.inflow.updatedAtTimestamp * 1000,
+              );
+              const elapsedTimeInMillisecondsUser = d.userOutflow
+                ? BigInt(Date.now() - d.userOutflow.updatedAtTimestamp * 1000)
+                : BigInt(0);
+              const totalDirect =
+                BigInt(d.inflow.totalAmountStreamedInUntilUpdatedAt) +
+                (BigInt(d.inflow.totalInflowRate) *
+                  elapsedTimeInMillisecondsDirect) /
+                  BigInt(1000);
+              const totalUser = d.userOutflow
+                ? BigInt(d.userOutflow.streamedUntilUpdatedAt) +
+                  (BigInt(d.userOutflow.currentFlowRate) *
+                    elapsedTimeInMillisecondsUser) /
+                    BigInt(1000)
+                : BigInt(0);
+
+              return totalDirect - totalUser;
+            })
+            .reduce((a, b) => a + b, BigInt(0));
+
+          return `${(d as SankeyNode).name} ${Intl.NumberFormat("en", {
+            maximumFractionDigits: 4,
+          }).format(Number(formatEther(flowingAmountDirect)))}`;
+        }
+
+        if ((d as SankeyNode).id === "You") {
+          const flowingAmountUser = grantees
+            .map((d) => {
+              const elapsedTimeInMilliseconds = d.userOutflow
+                ? BigInt(Date.now() - d.userOutflow.updatedAtTimestamp * 1000)
+                : BigInt(0);
+
+              return d.userOutflow
+                ? BigInt(d.userOutflow.streamedUntilUpdatedAt) +
+                    (BigInt(d.userOutflow.currentFlowRate) *
+                      elapsedTimeInMilliseconds) /
+                      BigInt(1000)
+                : BigInt(0);
+            })
+            .reduce((a, b) => a + b, BigInt(0));
+
+          return `${(d as SankeyNode).name} ${Intl.NumberFormat("en", {
+            maximumFractionDigits: 4,
+          }).format(Number(formatEther(flowingAmountUser)))}`;
+        }
+
+        const granteeIndex = grantees.findIndex(
+          (grantee) => grantee.id === (d as SankeyNode).id,
+        );
+        if (granteeIndex > -1) {
+          const elapsedTimeInMillisecondsMatching = BigInt(
+            Date.now() - totalMatchings.dataUpdatedAt,
+          );
+          const flowingAmountMatching =
+            (totalMatchings.data[granteeIndex].result as bigint) +
+            (BigInt(grantees[granteeIndex].matchingFlowRate) *
+              elapsedTimeInMillisecondsMatching) /
+              BigInt(1000);
+          const elapsedTimeInMillisecondsDirect = BigInt(
+            Date.now() -
+              grantees[granteeIndex].inflow.updatedAtTimestamp * 1000,
+          );
+          const flowingAmountDirect =
+            BigInt(
+              grantees[granteeIndex].inflow.totalAmountStreamedInUntilUpdatedAt,
+            ) +
+            (BigInt(grantees[granteeIndex].inflow.totalInflowRate) *
+              elapsedTimeInMillisecondsDirect) /
+              BigInt(1000);
+
+          return `${(d as SankeyNode).name} ${Intl.NumberFormat("en", {
+            maximumFractionDigits: 4,
+          }).format(
+            Number(formatEther(flowingAmountMatching + flowingAmountDirect)),
+          )}`;
+        }
+
+        return `${(d as SankeyNode).name} ${Intl.NumberFormat("en", {
+          maximumFractionDigits: 4,
+        }).format((d as SankeyNode).value ?? 0)}`;
+      });
+    };
+
+    timerLabels.current = d3.interval(updatedLabels, 100);
+
+    return () => {
+      if (timerLabels?.current) {
+        timerLabels.current.stop();
+      }
+    };
+  }, [mode, grantees, totalMatchings?.data, totalMatchings?.dataUpdatedAt]);
 
   useEffect(() => {
     if (!window.visualViewport) {
@@ -406,7 +571,8 @@ export default function Sankey(props: SankeyProps) {
       clearTimeout(Number(timerId));
 
       dots.splice(0, dots.length);
-      timer.current?.stop();
+      timerDots.current?.stop();
+      timerLabels.current?.stop();
 
       timerId = setTimeout(
         () =>
@@ -428,23 +594,39 @@ export default function Sankey(props: SankeyProps) {
   }, []);
 
   return (
-    <div className="position-relative">
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${svgTargetWidth} ${svgTargetHeight}`}
-        width={svgTargetWidth}
-        height={svgTargetHeight}
-        style={{
-          maxWidth: "100%",
-          height: "auto",
-        }}
-      />
-      <canvas
-        ref={canvasRef}
-        width={dimensions.width}
-        height={dimensions.height}
-        className="position-absolute start-0"
-      />
+    <div>
+      <div className="position-relative">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${svgTargetWidth} ${svgTargetHeight}`}
+          width={svgTargetWidth}
+          height={svgTargetHeight}
+          style={{
+            maxWidth: "100%",
+            height: "auto",
+          }}
+        />
+        <canvas
+          ref={canvasRef}
+          width={dimensions.width}
+          height={dimensions.height}
+          className="position-absolute start-0"
+        />
+      </div>
+      {dataset && (
+        <Form className="d-flex justify-content-end gap-2 mt-1 fs-4">
+          <Form.Label>{Mode.LIVE}</Form.Label>
+          <Form.Check
+            type="switch"
+            defaultChecked={false}
+            className="d-flex justify-content-center"
+            onChange={() =>
+              setMode(mode === Mode.LIVE ? Mode.TOTAL : Mode.LIVE)
+            }
+          />
+          <Form.Label>{Mode.TOTAL}</Form.Label>
+        </Form>
+      )}
     </div>
   );
 }
