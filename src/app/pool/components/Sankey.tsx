@@ -94,8 +94,14 @@ export default function Sankey(props: SankeyProps) {
     }),
   });
 
-  const svgTargetWidth = isMobile ? 400 : 1920;
-  const svgTargetHeight = isMobile ? 900 : 1080;
+  const svgTargetWidth = isMobile
+    ? 500
+    : isTablet || isSmallScreen
+      ? 1000
+      : isMediumScreen
+        ? 1300
+        : 1600;
+  const svgTargetHeight = isMobile ? 800 : isBigScreen ? 600 : 500;
 
   useLayoutEffect(() => {
     if (!svgRef.current || !dataset) {
@@ -195,16 +201,19 @@ export default function Sankey(props: SankeyProps) {
       .attr("x", (d) => (d.x0! < svgTargetWidth / 2 ? d.x1! + 6 : d.x0! - 6))
       .attr("y", (d) => (d.y0 && d.y1 ? (d.y1 + d.y0) / 2 : 0))
       .attr("dy", isMobile ? "0.3rem" : "0.6rem")
-      .attr("font-size", isMobile ? "1rem" : "1.4rem")
+      .attr("font-size", isMobile ? "1.2rem" : "1.4rem")
       .attr("text-anchor", (d) =>
         d.x0 && d.x0 < svgTargetWidth / 2 ? "start" : "end",
       )
       .attr("fill", (d) => (d.value ? color(d.id) : "none"))
       .text(
         (d) =>
-          `${d.name} ${Intl.NumberFormat("en", {
-            maximumFractionDigits: 4,
-          }).format(d.value ?? 0)}`,
+          `${d.name.length > 50 ? d.name.slice(0, 50) + "..." : d.name} ${Intl.NumberFormat(
+            "en",
+            {
+              maximumFractionDigits: 4,
+            },
+          ).format(d.value ?? 0)}`,
       );
 
     bounds
@@ -568,6 +577,10 @@ export default function Sankey(props: SankeyProps) {
     let timerId: NodeJS.Timer;
 
     const handleResize = () => {
+      if (window.innerWidth === windowDimensions.width) {
+        return;
+      }
+
       clearTimeout(Number(timerId));
 
       dots.splice(0, dots.length);
@@ -591,42 +604,43 @@ export default function Sankey(props: SankeyProps) {
         window.visualViewport.removeEventListener("resize", handleResize);
       }
     };
-  }, []);
+  }, [windowDimensions.width]);
 
   return (
     <div>
-      <div className="position-relative">
-        <svg
-          ref={svgRef}
-          viewBox={`0 0 ${svgTargetWidth} ${svgTargetHeight}`}
-          width={svgTargetWidth}
-          height={svgTargetHeight}
-          style={{
-            maxWidth: "100%",
-            height: "auto",
-          }}
-        />
-        <canvas
-          ref={canvasRef}
-          width={dimensions.width}
-          height={dimensions.height}
-          className="position-absolute start-0"
-        />
-      </div>
       {dataset && (
-        <Form className="d-flex justify-content-end gap-2 mt-1 fs-4">
-          <Form.Label>{Mode.LIVE}</Form.Label>
-          <Form.Check
-            type="switch"
+        <Form className="d-flex justify-content-end gap-2 fs-4">
+          <Form.Label className="cursor-pointer">{Mode.LIVE}</Form.Label>
+          <Form.Switch
             defaultChecked={false}
             className="d-flex justify-content-center"
             onChange={() =>
               setMode(mode === Mode.LIVE ? Mode.TOTAL : Mode.LIVE)
             }
           />
-          <Form.Label>{Mode.TOTAL}</Form.Label>
+          <Form.Label className="cursor-pointer">{Mode.TOTAL}</Form.Label>
         </Form>
       )}
+      <div className="d-flex flex-column align-items-center">
+        <div className="position-relative">
+          <svg
+            ref={svgRef}
+            viewBox={`0 0 ${svgTargetWidth} ${svgTargetHeight}`}
+            width={svgTargetWidth}
+            height={svgTargetHeight}
+            style={{
+              maxWidth: "100%",
+              height: "auto",
+            }}
+          />
+          <canvas
+            ref={canvasRef}
+            width={dimensions.width}
+            height={dimensions.height}
+            className="position-absolute start-0"
+          />
+        </div>
+      </div>
     </div>
   );
 }
