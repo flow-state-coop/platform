@@ -45,7 +45,7 @@ const CORE_POOL_QUERY = gql`
         address
       }
       poolAdminRemovedEvents(
-        first: 1000
+        first: 100
         orderBy: timestamp
         orderDirection: asc
       ) {
@@ -54,7 +54,7 @@ const CORE_POOL_QUERY = gql`
         transactionHash
       }
       poolAdminAddedEvents(
-        first: 1000
+        first: 100
         orderBy: timestamp
         orderDirection: asc
       ) {
@@ -81,6 +81,19 @@ const SUPERFLUID_QUERY = gql`
         totalInflowRate
       }
     }
+    flowUpdatedEvents(
+      first: 100
+      orderBy: timestamp
+      orderDirection: asc
+      where: { receiver: $flowStateSafe }
+    ) {
+      flowRate
+      oldFlowRate
+      receiver
+      sender
+      timestamp
+      transactionHash
+    }
     pool(id: $gdaPool) {
       id
       flowRate
@@ -95,7 +108,7 @@ const SUPERFLUID_QUERY = gql`
         units
         isConnected
       }
-      poolDistributors(first: 1000, where: { flowRate_not: "0" }) {
+      poolDistributors(first: 100, where: { flowRate_not: "0" }) {
         account {
           id
         }
@@ -111,7 +124,7 @@ const SUPERFLUID_QUERY = gql`
         name
       }
       memberUnitsUpdatedEvents(
-        first: 1000
+        first: 100
         orderBy: timestamp
         orderDirection: desc
       ) {
@@ -126,7 +139,7 @@ const SUPERFLUID_QUERY = gql`
         transactionHash
       }
       flowDistributionUpdatedEvents(
-        first: 1000
+        first: 100
         orderBy: timestamp
         orderDirection: desc
       ) {
@@ -141,7 +154,7 @@ const SUPERFLUID_QUERY = gql`
         transactionHash
       }
       instantDistributionUpdatedEvents(
-        first: 1000
+        first: 100
         orderBy: timestamp
         orderDirection: desc
       ) {
@@ -229,6 +242,10 @@ export default function Core(props: CoreProps) {
       }
 
       const addresses = [];
+
+      for (const flowUpdatedEvent of superfluidQueryRes.flowUpdatedEvents) {
+        addresses.push(flowUpdatedEvent.sender);
+      }
 
       for (const memberUnitsUpdatedEvent of superfluidQueryRes.pool
         .memberUnitsUpdatedEvents) {
@@ -442,7 +459,7 @@ export default function Core(props: CoreProps) {
             {ensByAddress && (
               <PoolGraph
                 flowStateSafeInflowRate={
-                  superfluidQueryRes?.account.accountTokenSnapshots[0]
+                  superfluidQueryRes?.account?.accountTokenSnapshots[0]
                     .totalInflowRate ?? "0"
                 }
                 pool={superfluidQueryRes?.pool}
@@ -462,12 +479,26 @@ export default function Core(props: CoreProps) {
             >
               Open Flow
             </Button>
+            <Button
+              variant="secondary"
+              className="w-100 mt-3 py-2 fs-4"
+              onClick={() => {
+                !address && openConnectModal
+                  ? openConnectModal()
+                  : connectedChain?.id !== chainId
+                    ? switchChain({ chainId })
+                    : setShowInstantDistribution(true);
+              }}
+            >
+              Send Distribution
+            </Button>
             {superfluidQueryRes?.pool && pool && ensByAddress && (
               <ActivityFeed
                 poolSymbol={pool.symbol}
                 poolAddress={pool.poolAddress}
                 network={network}
                 token={poolToken}
+                flowUpdatedEvents={superfluidQueryRes?.flowUpdatedEvents}
                 poolCreatedEvent={superfluidQueryRes?.pool.poolCreatedEvent}
                 poolAdminAddedEvents={pool.poolAdminAddedEvents}
                 poolAdminRemovedEvents={pool.poolAdminRemovedEvents}

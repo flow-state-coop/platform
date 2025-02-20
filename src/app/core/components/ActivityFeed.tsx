@@ -17,6 +17,7 @@ type ActivityFeedProps = {
   poolAddress: string;
   network: Network;
   token: Token;
+  flowUpdatedEvents: FlowUpdatedEvent[];
   poolCreatedEvent: PoolCreatedEvent;
   poolAdminAddedEvents: PoolAdminAddedEvent[];
   poolAdminRemovedEvents: PoolAdminRemovedEvent[];
@@ -26,6 +27,16 @@ type ActivityFeedProps = {
   ensByAddress: {
     [key: Address]: { name: string | null; avatar: string | null };
   };
+};
+
+type FlowUpdatedEvent = {
+  flowRate: `${number}`;
+  oldFlowRate: `${number}`;
+  receiver: Address;
+  sender: Address;
+  timestamp: `${number}`;
+  transactionHash: `0x${string}`;
+  __typename: string;
 };
 
 type PoolCreationMemberUnitsUpdates = {
@@ -106,6 +117,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
     poolAddress,
     network,
     token,
+    flowUpdatedEvents,
     poolCreatedEvent,
     memberUnitsUpdatedEvents,
     poolAdminAddedEvents,
@@ -118,6 +130,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
 
   const events = useMemo(() => {
     const events: Array<
+      | FlowUpdatedEvent
       | PoolCreationMemberUnitsUpdates
       | PoolUpdateMemberUnitsUpdates
       | PoolAdminAddedEvent
@@ -176,6 +189,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
       events.push(poolUpdateMemberUnitsUpdates);
     }
 
+    events.push(...flowUpdatedEvents);
     events.push(...instantDistributionUpdatedEvents);
     events.push(...flowDistributionUpdatedEvents);
     events.push(...poolAdminAddedEvents);
@@ -183,8 +197,13 @@ export default function ActivityFeed(props: ActivityFeedProps) {
     events.push(poolCreationMemberUnitsUpdates);
     events.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
 
+    if (events.length > 100) {
+      events.length = 100;
+    }
+
     return events;
   }, [
+    flowUpdatedEvents,
     poolCreatedEvent,
     memberUnitsUpdatedEvents,
     poolAdminAddedEvents,
@@ -197,11 +216,126 @@ export default function ActivityFeed(props: ActivityFeedProps) {
     <Stack
       direction="vertical"
       gap={4}
-      className="mt-5 bg-light p-4 rounded-5"
-      style={{ fontSize: isMobile || isTablet ? "1rem" : "1.25rem" }}
+      className="mt-5 bg-light p-4 rounded-5 overflow-auto"
+      style={{
+        fontSize: isMobile || isTablet ? "1rem" : "1.25rem",
+        height: 600,
+      }}
     >
       <p className="m-0 fs-3">Activity</p>
       {events.map((event, i) => {
+        if (event.__typename === "FlowUpdatedEvent") {
+          return (
+            <Stack direction="horizontal" gap={2} key={i}>
+              {ensByAddress[(event as FlowUpdatedEvent).sender]?.avatar ? (
+                <Image
+                  src={
+                    ensByAddress[(event as FlowUpdatedEvent).sender].avatar ??
+                    ""
+                  }
+                  alt=""
+                  width={isMobile || isTablet ? 36 : 24}
+                  height={isMobile || isTablet ? 36 : 24}
+                  className="rounded-circle align-self-center"
+                />
+              ) : (
+                <span
+                  style={{
+                    width: isMobile || isTablet ? 36 : 24,
+                    height: isMobile || isTablet ? 36 : 24,
+                  }}
+                >
+                  <Jazzicon
+                    paperStyles={{ border: "1px solid black" }}
+                    diameter={isMobile || isTablet ? 36 : 24}
+                    seed={jsNumberForAddress(
+                      (event as FlowUpdatedEvent).sender,
+                    )}
+                  />
+                </span>
+              )}
+              <Stack
+                direction={isMobile || isTablet ? "vertical" : "horizontal"}
+                className="w-100 justify-content-between"
+              >
+                <p className="m-0">
+                  <Link
+                    href={`${network.blockExplorer}/address/${(event as FlowUpdatedEvent).sender}`}
+                    target="_blank"
+                  >
+                    {ensByAddress[(event as FlowUpdatedEvent).sender]?.name ??
+                      truncateStr((event as FlowUpdatedEvent).sender, 15)}
+                  </Link>{" "}
+                  {(event as FlowUpdatedEvent).oldFlowRate === "0" ? (
+                    <>
+                      opened a{" "}
+                      {formatNumber(
+                        Number(
+                          formatEther(
+                            BigInt((event as FlowUpdatedEvent).flowRate) *
+                              BigInt(SECONDS_IN_MONTH),
+                          ),
+                        ),
+                      )}{" "}
+                      {token.symbol}/mo stream
+                    </>
+                  ) : (event as FlowUpdatedEvent).flowRate === "0" ? (
+                    <>
+                      closed a{" "}
+                      {formatNumber(
+                        Number(
+                          formatEther(
+                            BigInt((event as FlowUpdatedEvent).oldFlowRate) *
+                              BigInt(SECONDS_IN_MONTH),
+                          ),
+                        ),
+                      )}{" "}
+                      {token.symbol}/mo stream.
+                    </>
+                  ) : (
+                    <>
+                      updated a stream from{" "}
+                      {formatNumber(
+                        Number(
+                          formatEther(
+                            BigInt((event as FlowUpdatedEvent).oldFlowRate) *
+                              BigInt(SECONDS_IN_MONTH),
+                          ),
+                        ),
+                      )}{" "}
+                      {token.symbol}/mo to{" "}
+                      {formatNumber(
+                        Number(
+                          formatEther(
+                            BigInt((event as FlowUpdatedEvent).flowRate) *
+                              BigInt(SECONDS_IN_MONTH),
+                          ),
+                        ),
+                      )}{" "}
+                      {token.symbol}/mo
+                    </>
+                  )}
+                </p>
+                <Link
+                  href={`${network.blockExplorer}/tx/${(event as FlowUpdatedEvent).transactionHash}`}
+                  target="_blank"
+                  className="text-info"
+                >
+                  {new Date(Number(event.timestamp) * 1000).toLocaleString(
+                    "en-US",
+                    {
+                      month: "short",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "numeric",
+                    },
+                  )}
+                </Link>
+              </Stack>
+            </Stack>
+          );
+        }
+
         if (event.__typename === "PoolCreationMemberUnitsUpdates") {
           return (
             <Stack direction="vertical" gap={2} key={i}>
