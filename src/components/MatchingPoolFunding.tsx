@@ -18,7 +18,7 @@ import MatchingPoolDetails from "@/components/MatchingPoolDetails";
 import EditStream from "@/components/checkout/EditStream";
 import TopUp from "@/components/checkout/TopUp";
 import Wrap from "@/components/checkout/Wrap";
-//import SupportFlowState from "@/components/checkout/SupportFlowState";
+import SupportFlowState from "@/components/checkout/SupportFlowState";
 import Review from "@/components/checkout/Review";
 import MatchingPoolNft from "@/components/checkout/MatchingPoolNft";
 import Success from "@/components/checkout/Success";
@@ -671,7 +671,6 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
               underlyingTokenBalance={underlyingTokenBalance}
             />
           )}
-          {/*
           <SupportFlowState
             network={network}
             token={matchingTokenInfo}
@@ -686,7 +685,6 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             isFundingMatchingPool={true}
             isPureSuperToken={isPureSuperToken}
           />
-          */}
           <Review
             step={step}
             setStep={(step) => setStep(step)}

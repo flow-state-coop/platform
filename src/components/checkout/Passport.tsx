@@ -133,15 +133,12 @@ export default function Passport(props: PassportProps) {
             disabled={!passportScore || passportScore < minPassportScore}
             className="w-100 m-0 ms-auto mt-1 mb-3 text-light fw-bold"
             onClick={() =>
-              /*
               setStep(
                 !sessionStorage.getItem("skipSupportFlowState") &&
                   !localStorage.getItem("skipSupportFlowState")
                   ? Step.SUPPORT
                   : Step.REVIEW,
               )
-              */
-              setStep(Step.REVIEW)
             }
           >
             Continue

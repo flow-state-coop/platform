@@ -318,8 +318,7 @@ export default function Wrap(props: WrapProps) {
                       ? Step.ELIGIBILITY
                       : !sessionStorage.getItem("skipSupportFlowState") &&
                           !localStorage.getItem("skipSupportFlowState")
-                        ? // ? Step.SUPPORT
-                          Step.REVIEW
+                        ? Step.SUPPORT
                         : Step.REVIEW,
                   );
                 }}

@@ -224,7 +224,14 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
               <Button
                 disabled={!isEligible}
                 className="w-100 m-0 ms-auto mt-1 mb-3 text-light fw-bold"
-                onClick={() => setStep(Step.REVIEW)}
+                onClick={() =>
+                  setStep(
+                    !sessionStorage.getItem("skipSupportFlowState") &&
+                      !localStorage.getItem("skipSupportFlowState")
+                      ? Step.SUPPORT
+                      : Step.REVIEW,
+                  )
+                }
               >
                 Continue
               </Button>
