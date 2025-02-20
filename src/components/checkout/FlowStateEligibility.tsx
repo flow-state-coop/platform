@@ -135,7 +135,7 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
       <Accordion.Collapse eventKey={Step.ELIGIBILITY} className="p-3 py-0">
         <Stack direction="vertical" gap={2}>
           <Card.Text className="m-0 border-bottom border-gray">
-            Flow State Eligibility
+            Matching Eligibility
           </Card.Text>
           <Stack
             direction="horizontal"
@@ -203,7 +203,7 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
                 className="d-flex justify-content-center align-items-center gap-2"
                 onClick={!isLoading ? handleNftMintRequest : void 0}
               >
-                {isEligible ? "Claim Voter NFT" : "2. Claim Voter NFT"}
+                {isEligible ? "Claim NFT" : "2. Claim NFT"}
                 {isLoading && <Spinner size="sm" />}
               </Button>
               {error && error === "Ineligible" ? (
