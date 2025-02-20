@@ -27,7 +27,11 @@ import {
   formatNumberWithCommas,
   truncateStr,
 } from "@/lib/utils";
-import { ZERO_ADDRESS, SECONDS_IN_MONTH } from "@/lib/constants";
+import {
+  ZERO_ADDRESS,
+  SECONDS_IN_MONTH,
+  DEFAULT_CHAIN_ID,
+} from "@/lib/constants";
 
 enum Token {
   ALLOCATION,
@@ -37,6 +41,10 @@ enum Token {
 enum EligibilityMethod {
   PASSPORT,
   NFT_GATING,
+}
+
+enum MintError {
+  FAIL = "There was an error minting the NFT. Please try again later.",
 }
 
 dayjs.extend(utc);
@@ -64,6 +72,8 @@ export default function WalletBalance() {
   const [showOffcanvas, setShowOffcanvas] = useState(false);
   const [showMintingInstructions, setShowMintingInstructions] = useState(false);
   const [token, setToken] = useState(Token.ALLOCATION);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const { address } = useAccount();
   const { disconnect } = useDisconnect();
@@ -184,6 +194,38 @@ export default function WalletBalance() {
       ) ?? { name: "N/A", address: matchingToken ?? "", icon: "" },
     [network, matchingToken],
   );
+
+  const handleNftMintRequest = async () => {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      const res = await fetch("/api/mint-nft", {
+        method: "POST",
+        body: JSON.stringify({
+          address,
+          chainId: network?.id ?? DEFAULT_CHAIN_ID,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        setError(MintError.FAIL);
+      }
+
+      setIsLoading(false);
+
+      console.info(data);
+    } catch (err) {
+      setIsLoading(false);
+      setError(MintError.FAIL);
+
+      console.error(err);
+    }
+  };
 
   const handleCloseOffcanvas = () => setShowOffcanvas(false);
   const handleShowOffcanvas = () => setShowOffcanvas(true);
@@ -338,7 +380,23 @@ export default function WalletBalance() {
                 </Stack>
               </Stack>
               <Stack>
-                {nftMintUrl && (!nftBalance || nftBalance === BigInt(0)) ? (
+                {nftMintUrl?.startsWith("https://guild.xyz/octant-sqf-voter") &&
+                (!nftBalance || nftBalance === BigInt(0)) ? (
+                  <>
+                    <Button
+                      className="d-flex justify-content-center align-items-center text-light gap-2"
+                      onClick={!isLoading ? handleNftMintRequest : void 0}
+                    >
+                      Claim NFT
+                      {isLoading && <Spinner size="sm" />}
+                    </Button>
+                    {error && (
+                      <p className="mb-1 small text-center text-danger">
+                        {error}
+                      </p>
+                    )}
+                  </>
+                ) : nftMintUrl && (!nftBalance || nftBalance === BigInt(0)) ? (
                   <Button
                     variant="link"
                     href={nftMintUrl}
