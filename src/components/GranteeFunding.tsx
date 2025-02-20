@@ -24,7 +24,7 @@ import Passport from "@/components/checkout/Passport";
 import FlowStateEligibility from "@/components/checkout/FlowStateEligibility";
 import MintNFT from "@/components/checkout/MintNFT";
 import NFTGating from "@/components/checkout/NFTGating";
-//import SupportFlowState from "@/components/checkout/SupportFlowState";
+import SupportFlowState from "@/components/checkout/SupportFlowState";
 import Review from "@/components/checkout/Review";
 import Success from "@/components/checkout/Success";
 import PassportMintingInstructions from "@/components/PassportMintingInstructions";
@@ -716,7 +716,6 @@ export default function GranteeFunding(props: GranteeFundingProps) {
                 isPureSuperToken={isPureSuperToken}
               />
             )}
-            {/*
             <SupportFlowState
               network={network}
               token={allocationTokenInfo}
@@ -731,7 +730,6 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               isFundingMatchingPool={false}
               isPureSuperToken={isPureSuperToken}
             />
-            */}
             <Review
               step={step}
               setStep={(step) => setStep(step)}

@@ -374,8 +374,7 @@ export default function TopUp(props: TopUpProps) {
                     ? Step.ELIGIBILITY
                     : !sessionStorage.getItem("skipSupportFlowState") &&
                         !localStorage.getItem("skipSupportFlowState")
-                      ? //? Step.SUPPORT
-                        Step.REVIEW
+                      ? Step.SUPPORT
                       : Step.REVIEW,
               )
             }
