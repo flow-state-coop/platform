@@ -22,7 +22,7 @@ import TopUp from "@/components/checkout/TopUp";
 import Wrap from "@/components/checkout/Wrap";
 import Passport from "@/components/checkout/Passport";
 import FlowStateEligibility from "@/components/checkout/FlowStateEligibility";
-import GuildGating from "@/components/checkout/GuildGating";
+import MintNFT from "@/components/checkout/MintNFT";
 import NFTGating from "@/components/checkout/NFTGating";
 //import SupportFlowState from "@/components/checkout/SupportFlowState";
 import Review from "@/components/checkout/Review";
@@ -683,12 +683,11 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               />
             ) : requiredNftAddress &&
               nftMintUrl?.startsWith("https://guild.xyz/octant-sqf-voter") ? (
-              <GuildGating
+              <MintNFT
                 step={step}
                 setStep={setStep}
                 network={network}
                 requiredNftAddress={requiredNftAddress}
-                nftMintUrl={nftMintUrl}
                 isEligible={isEligible}
                 isPureSuperToken={isPureSuperToken}
               />

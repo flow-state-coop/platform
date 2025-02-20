@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { Address } from "viem";
 import Image from "next/image";
@@ -13,42 +13,41 @@ import { Network } from "@/types/network";
 import { truncateStr } from "@/lib/utils";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
-export type GuildGatingProps = {
+export type MintNFTProps = {
   step: Step;
   setStep: (step: Step) => void;
   network?: Network;
   requiredNftAddress: Address;
   isEligible: boolean;
-  nftMintUrl: string | null;
   isPureSuperToken: boolean;
 };
 
 enum MintError {
-  FAIL = "Not yet eligible: Earn the Guild role & try again.",
+  FAIL = "There was an error minting the NFT. Please try again later.",
 }
 
-export default function GuildGating(props: GuildGatingProps) {
+export default function MintNFT(props: MintNFTProps) {
   const {
     step,
     setStep,
     network,
     requiredNftAddress,
     isEligible,
-    nftMintUrl,
     isPureSuperToken,
   } = props;
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isFirstCheck, setIsFirstCheck] = useState(isEligible ? false : true);
 
   const { address } = useAccount();
 
-  const handleNftMintRequest = async () => {
+  const handleNftMintRequest = useCallback(async () => {
     try {
       setIsLoading(true);
       setError("");
 
-      const res = await fetch("/api/guild-nft", {
+      const res = await fetch("/api/mint-nft", {
         method: "POST",
         body: JSON.stringify({
           address,
@@ -60,7 +59,7 @@ export default function GuildGating(props: GuildGatingProps) {
       });
       const data = await res.json();
 
-      if (!data.success) {
+      if (!data.success && !isFirstCheck) {
         setError(MintError.FAIL);
       }
 
@@ -73,7 +72,17 @@ export default function GuildGating(props: GuildGatingProps) {
 
       console.error(err);
     }
-  };
+  }, [address, network, isFirstCheck]);
+
+  useEffect(() => {
+    (async () => {
+      if (address && !isEligible && isFirstCheck) {
+        await handleNftMintRequest();
+
+        setIsFirstCheck(false);
+      }
+    })();
+  }, [address, isEligible, isFirstCheck, handleNftMintRequest]);
 
   return (
     <Card className="bg-light rounded-0 border-0 border-bottom border-info">
@@ -129,7 +138,7 @@ export default function GuildGating(props: GuildGatingProps) {
       <Accordion.Collapse eventKey={Step.ELIGIBILITY} className="p-3 py-0">
         <Stack direction="vertical" gap={2}>
           <Card.Text className="m-0 border-bottom border-gray">
-            Guild-Gated NFT
+            Matching Eligibility
           </Card.Text>
           <Stack
             direction="horizontal"
@@ -137,17 +146,21 @@ export default function GuildGating(props: GuildGatingProps) {
             className="justify-content-between mb-4"
           >
             <Stack direction="vertical" gap={2} className="align-items-center">
-              <Image
-                src={isEligible ? "/success.svg" : "close.svg"}
-                alt={isEligible ? "success" : "fail"}
-                width={48}
-                height={48}
-                style={{
-                  filter: isEligible
-                    ? "invert(40%) sepia(14%) saturate(2723%) hue-rotate(103deg) brightness(97%) contrast(80%)"
-                    : "invert(27%) sepia(47%) saturate(3471%) hue-rotate(336deg) brightness(93%) contrast(85%)",
-                }}
-              />
+              {isFirstCheck ? (
+                <Spinner />
+              ) : (
+                <Image
+                  src={isEligible ? "/success.svg" : "close.svg"}
+                  alt={isEligible ? "success" : "fail"}
+                  width={48}
+                  height={48}
+                  style={{
+                    filter: isEligible
+                      ? "invert(40%) sepia(14%) saturate(2723%) hue-rotate(103deg) brightness(97%) contrast(80%)"
+                      : "invert(27%) sepia(47%) saturate(3471%) hue-rotate(336deg) brightness(93%) contrast(85%)",
+                  }}
+                />
+              )}
               <Card.Text
                 className={`m-0 ${isEligible ? "text-success" : "text-danger"}`}
               >
@@ -174,32 +187,28 @@ export default function GuildGating(props: GuildGatingProps) {
               </Stack>
             </Stack>
           </Stack>
-          <Button
-            variant="link"
-            href={nftMintUrl ?? ""}
-            target="_blank"
-            className="bg-secondary text-light text-decoration-none"
-          >
-            {isEligible ? "Check Guild Role" : "1. Earn Guild Role"}
-          </Button>
-          <Button
-            disabled={isEligible}
-            className="d-flex justify-content-center align-items-center gap-2"
-            onClick={!isLoading ? handleNftMintRequest : void 0}
-          >
-            {isEligible ? "Claim Voter NFT" : "2. Claim Voter NFT"}
-            {isLoading && <Spinner size="sm" />}
-          </Button>
-          {error && (
-            <p className="mb-1 small text-center text-danger">{error}</p>
+          {!isFirstCheck && (
+            <>
+              <Button
+                disabled={isEligible}
+                className="d-flex justify-content-center align-items-center gap-2"
+                onClick={!isLoading ? handleNftMintRequest : void 0}
+              >
+                Claim NFT
+                {isLoading && <Spinner size="sm" />}
+              </Button>
+              {error && (
+                <p className="mb-1 small text-center text-danger">{error}</p>
+              )}
+              <Button
+                disabled={!isEligible}
+                className="w-100 m-0 ms-auto mt-1 mb-3 text-light fw-bold"
+                onClick={() => setStep(Step.REVIEW)}
+              >
+                Continue
+              </Button>
+            </>
           )}
-          <Button
-            disabled={!isEligible}
-            className="w-100 m-0 ms-auto mt-1 mb-3 text-light fw-bold"
-            onClick={() => setStep(Step.REVIEW)}
-          >
-            Continue
-          </Button>
         </Stack>
       </Accordion.Collapse>
     </Card>

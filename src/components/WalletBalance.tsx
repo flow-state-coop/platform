@@ -275,7 +275,7 @@ export default function WalletBalance() {
         {eligibilityMethod === EligibilityMethod.NFT_GATING ? (
           <Card className="bg-light mx-3 p-2 rounded-4 border-0">
             <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 py-1 text-info fs-5">
-              NFT Gating
+              Matching Eligibility
             </Card.Header>
             <Card.Body className="p-2">
               <Stack
@@ -345,7 +345,7 @@ export default function WalletBalance() {
                     target="_blank"
                     className="bg-primary text-light text-decoration-none"
                   >
-                    Get the NFT
+                    Claim NFT
                   </Button>
                 ) : !nftBalance || nftBalance === BigInt(0) ? (
                   <Card.Text className="m-0">

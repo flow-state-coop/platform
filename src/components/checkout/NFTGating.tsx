@@ -84,7 +84,7 @@ export default function NFTGating(props: NFTGatingProps) {
       <Accordion.Collapse eventKey={Step.ELIGIBILITY} className="p-3 py-0">
         <Stack direction="vertical" gap={2}>
           <Card.Text className="m-0 border-bottom border-gray">
-            NFT Gating
+            Matching Eligibility
           </Card.Text>
           <Stack
             direction="horizontal"
@@ -137,7 +137,7 @@ export default function NFTGating(props: NFTGatingProps) {
               disabled={isEligible}
               className="bg-secondary text-light text-decoration-none"
             >
-              Get the NFT
+              Claim NFT
             </Button>
           ) : !isEligible ? (
             <Card.Text className="m-0">
