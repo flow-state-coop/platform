@@ -19,6 +19,7 @@ type SankeyProps = {
   grantees: Grantee[];
   chainId: number;
   gdaPoolAddress: Address;
+  totalDistributionsCount: number;
 };
 
 type CustomNodeProperties = {
@@ -60,7 +61,7 @@ const dots: {
 }[] = [];
 
 export default function Sankey(props: SankeyProps) {
-  const { grantees, chainId, gdaPoolAddress } = props;
+  const { grantees, chainId, gdaPoolAddress, totalDistributionsCount } = props;
 
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [mode, setMode] = useState<Mode>(Mode.LIVE);
@@ -102,6 +103,14 @@ export default function Sankey(props: SankeyProps) {
         ? 1300
         : 1600;
   const svgTargetHeight = isMobile ? 800 : isBigScreen ? 600 : 500;
+  const allocationToken = grantees[0]?.allocationTokenInfo.name;
+  const matchingToken = grantees[0]?.matchingTokenInfo.name;
+  const totalDonationsCount =
+    grantees.length > 0
+      ? grantees
+          .map((grantee) => grantee.inflow.activeIncomingStreamCount)
+          .reduce((a, b) => a + b)
+      : 0;
 
   useLayoutEffect(() => {
     if (!svgRef.current || !dataset) {
@@ -165,7 +174,7 @@ export default function Sankey(props: SankeyProps) {
     const link = bounds
       .append("g")
       .attr("fill", "none")
-      .attr("stroke-opacity", 0.3)
+      .attr("stroke-opacity", 0.2)
       .selectAll()
       .data(links)
       .join("g")
@@ -213,7 +222,13 @@ export default function Sankey(props: SankeyProps) {
             {
               maximumFractionDigits: 4,
             },
-          ).format(d.value ?? 0)}`,
+          ).format(d.value ?? 0)}${
+            d.id === "Matching"
+              ? " " + matchingToken + " " + "(" + totalDistributionsCount + ")"
+              : d.id === "Direct"
+                ? " " + allocationToken + " " + "(" + totalDonationsCount + ")"
+                : ""
+          }`,
       );
 
     bounds
@@ -234,7 +249,16 @@ export default function Sankey(props: SankeyProps) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .range([(link.source as any).color, (link.target as any).color]);
     });
-  }, [dataset, svgTargetWidth, svgTargetHeight, isMobile]);
+  }, [
+    dataset,
+    svgTargetWidth,
+    svgTargetHeight,
+    isMobile,
+    allocationToken,
+    matchingToken,
+    totalDonationsCount,
+    totalDistributionsCount,
+  ]);
 
   useLayoutEffect(() => {
     if (!svgRef?.current) {
@@ -261,100 +285,6 @@ export default function Sankey(props: SankeyProps) {
     isMediumScreen,
     isBigScreen,
   ]);
-
-  const drawDot = useCallback(
-    (point: { x: number; y: number }, size: number, color: string) => {
-      if (!canvasRef?.current) {
-        return;
-      }
-
-      const ctx = canvasRef.current.getContext("2d");
-
-      if (ctx) {
-        ctx.globalAlpha = 0.3;
-        ctx.fillStyle = color;
-        ctx.strokeStyle = "transparent";
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, size, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-      }
-    },
-    [canvasRef],
-  );
-
-  useEffect(() => {
-    const svgBoundingRect = svgRef.current?.getBoundingClientRect();
-
-    if (
-      !svgBoundingRect ||
-      dimensions.width !== svgBoundingRect.width ||
-      dimensions.height !== svgBoundingRect.height
-    ) {
-      return;
-    }
-
-    const animate = (elapsed: number) => {
-      if (!canvasRef?.current) {
-        return;
-      }
-
-      const removeItemsFrom = dots.findIndex(
-        (dot) => dot.time > elapsed - ANIMATION_DURATION,
-      );
-
-      if (removeItemsFrom > -1) {
-        dots.splice(0, removeItemsFrom);
-      }
-
-      const nodes = d3.selectAll(".link").nodes();
-
-      d3.selectAll(".link").each((d, i) => {
-        const yJitter =
-          (Math.random() - 0.5) * (((d as SankeyLink)?.width ?? 0) * 0.9);
-
-        dots.push({
-          link: d as SankeyLink,
-          time: elapsed,
-          yJitter,
-          path: nodes[i] as SVGPathElement,
-        });
-      });
-
-      const ctx = canvasRef.current.getContext("2d");
-
-      if (ctx) {
-        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-
-        for (const dot of dots) {
-          const currentTime = elapsed - dot.time;
-          const currentPercent =
-            (currentTime / ANIMATION_DURATION) * dot.path.getTotalLength();
-          const currentPos = dot.path.getPointAtLength(currentPercent);
-          const scalingXFactor = svgTargetWidth / dimensions.width;
-          const scalingYFactor = svgTargetHeight / dimensions.height;
-
-          drawDot(
-            {
-              x: currentPos.x / scalingXFactor,
-              y: (currentPos.y + dot.yJitter) / scalingYFactor,
-            },
-            dot.link.dotSize,
-            dot.link.dotColor(currentTime) as string,
-          );
-        }
-      }
-    };
-
-    timerDots.current = d3.interval((elapsed) => animate(elapsed), 1000 / FPS);
-
-    return () => {
-      if (timerDots?.current) {
-        timerDots.current.stop();
-      }
-    };
-  }, [timerDots, dimensions, svgTargetWidth, svgTargetHeight, drawDot]);
 
   useEffect(() => {
     if (grantees.length === 0) {
@@ -441,6 +371,103 @@ export default function Sankey(props: SankeyProps) {
     });
   }, [grantees, mode, totalMatchings?.data]);
 
+  const drawDot = useCallback(
+    (point: { x: number; y: number }, size: number, color: string) => {
+      if (!canvasRef?.current) {
+        return;
+      }
+
+      const ctx = canvasRef.current.getContext("2d");
+
+      if (ctx) {
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = color;
+        ctx.strokeStyle = "transparent";
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, size, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+    },
+    [canvasRef],
+  );
+
+  const animate = useCallback(
+    (elapsed: number) => {
+      if (!canvasRef?.current) {
+        return;
+      }
+
+      const removeItemsFrom = dots.findIndex(
+        (dot) => dot.time > elapsed - ANIMATION_DURATION,
+      );
+
+      if (removeItemsFrom > -1) {
+        dots.splice(0, removeItemsFrom);
+      }
+
+      const nodes = d3.selectAll(".link").nodes();
+
+      d3.selectAll(".link").each((d, i) => {
+        const yJitter =
+          (Math.random() - 0.5) * (((d as SankeyLink)?.width ?? 0) * 0.9);
+
+        dots.push({
+          link: d as SankeyLink,
+          time: elapsed,
+          yJitter,
+          path: nodes[i] as SVGPathElement,
+        });
+      });
+
+      const ctx = canvasRef.current.getContext("2d");
+
+      if (ctx) {
+        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+
+        for (const dot of dots) {
+          const currentTime = elapsed - dot.time;
+          const currentPercent =
+            (currentTime / ANIMATION_DURATION) * dot.path.getTotalLength();
+          const currentPos = dot.path.getPointAtLength(currentPercent);
+          const scalingXFactor = svgTargetWidth / dimensions.width;
+          const scalingYFactor = svgTargetHeight / dimensions.height;
+
+          drawDot(
+            {
+              x: currentPos.x / scalingXFactor,
+              y: (currentPos.y + dot.yJitter) / scalingYFactor,
+            },
+            dot.link.dotSize,
+            dot.link.dotColor(currentTime) as string,
+          );
+        }
+      }
+    },
+    [dimensions, drawDot, svgTargetHeight, svgTargetWidth],
+  );
+
+  useEffect(() => {
+    const svgBoundingRect = svgRef.current?.getBoundingClientRect();
+
+    if (
+      !svgBoundingRect ||
+      dimensions.width !== svgBoundingRect.width ||
+      dimensions.height !== svgBoundingRect.height
+    ) {
+      return;
+    }
+
+    timerDots.current = d3.interval((elapsed) => animate(elapsed), 1000 / FPS);
+
+    return () => {
+      if (timerDots?.current) {
+        timerDots.current.stop();
+      }
+    };
+  }, [dimensions, drawDot, animate]);
+
   useEffect(() => {
     if (timerLabels?.current) {
       timerLabels.current.stop();
@@ -469,7 +496,9 @@ export default function Sankey(props: SankeyProps) {
 
           return `${(d as SankeyNode).name} ${Intl.NumberFormat("en", {
             maximumFractionDigits: 4,
-          }).format(Number(formatEther(flowingAmountMatching)))}`;
+          }).format(
+            Number(formatEther(flowingAmountMatching)),
+          )} ${matchingToken} (${totalDistributionsCount})`;
         }
 
         if ((d as SankeyNode).id === "Direct") {
@@ -499,7 +528,9 @@ export default function Sankey(props: SankeyProps) {
 
           return `${(d as SankeyNode).name} ${Intl.NumberFormat("en", {
             maximumFractionDigits: 4,
-          }).format(Number(formatEther(flowingAmountDirect)))}`;
+          }).format(
+            Number(formatEther(flowingAmountDirect)),
+          )} ${allocationToken} (${totalDonationsCount})`;
         }
 
         if ((d as SankeyNode).id === "You") {
@@ -567,7 +598,16 @@ export default function Sankey(props: SankeyProps) {
         timerLabels.current.stop();
       }
     };
-  }, [mode, grantees, totalMatchings?.data, totalMatchings?.dataUpdatedAt]);
+  }, [
+    mode,
+    grantees,
+    totalMatchings?.data,
+    totalMatchings?.dataUpdatedAt,
+    allocationToken,
+    matchingToken,
+    totalDonationsCount,
+    totalDistributionsCount,
+  ]);
 
   useEffect(() => {
     if (!window.visualViewport) {
@@ -593,7 +633,7 @@ export default function Sankey(props: SankeyProps) {
             width: window.innerWidth,
             height: window.innerHeight,
           }),
-        250,
+        150,
       );
     };
 
@@ -614,9 +654,15 @@ export default function Sankey(props: SankeyProps) {
           <Form.Switch
             defaultChecked={false}
             className="d-flex justify-content-center"
-            onChange={() =>
-              setMode(mode === Mode.LIVE ? Mode.TOTAL : Mode.LIVE)
-            }
+            onChange={() => {
+              dots.splice(0, dots.length);
+              timerDots.current?.stop();
+              timerDots.current = d3.interval(
+                (elapsed) => animate(elapsed),
+                1000 / FPS,
+              );
+              setMode(mode === Mode.LIVE ? Mode.TOTAL : Mode.LIVE);
+            }}
           />
           <Form.Label className="cursor-pointer">{Mode.TOTAL}</Form.Label>
         </Form>

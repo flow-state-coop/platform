@@ -71,6 +71,7 @@ export default function PoolInfo(props: PoolInfoProps) {
           grantees={grantees}
           chainId={chainId}
           gdaPoolAddress={gdaPoolAddress}
+          totalDistributionsCount={totalDistributionsCount}
         />
         <Stack
           direction={isMobile ? "vertical" : "horizontal"}
