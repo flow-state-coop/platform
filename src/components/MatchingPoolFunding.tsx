@@ -24,6 +24,7 @@ import MatchingPoolNft from "@/components/checkout/MatchingPoolNft";
 import Success from "@/components/checkout/Success";
 import { useSuperfluidContext } from "@/context/Superfluid";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
@@ -55,8 +56,6 @@ type MatchingPoolFundingProps = {
   userAccountSnapshots:
     | {
         totalNetFlowRate: string;
-        balanceUntilUpdatedAt: string;
-        updatedAtTimestamp: number;
         token: { id: string };
       }[]
     | null;
@@ -141,9 +140,15 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       (snapshot) =>
         snapshot.token.id === matchingTokenInfo.address.toLowerCase(),
     ) ?? null;
+  const { balanceUntilUpdatedAt, updatedAtTimestamp } =
+    useSuperTokenBalanceOfNow({
+      token: matchingTokenInfo.address,
+      address: address ?? "",
+      chainId: network?.id ?? DEFAULT_CHAIN_ID,
+    });
   const superTokenBalance = useFlowingAmount(
-    BigInt(userAccountSnapshot?.balanceUntilUpdatedAt ?? 0),
-    userAccountSnapshot?.updatedAtTimestamp ?? 0,
+    BigInt(balanceUntilUpdatedAt ?? 0),
+    updatedAtTimestamp ?? 0,
     BigInt(userAccountSnapshot?.totalNetFlowRate ?? 0),
   );
 
@@ -244,16 +249,17 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             BigInt(newFlowRateToFlowState) >
           BigInt(0)
         ) {
-          const updatedAtTimestamp = userAccountSnapshot
-            ? userAccountSnapshot.updatedAtTimestamp * 1000
-            : Date.now();
-          const date = dayjs(new Date(updatedAtTimestamp));
+          const date = dayjs(
+            new Date(
+              updatedAtTimestamp ? updatedAtTimestamp * 1000 : Date.now(),
+            ),
+          );
 
           return date
             .add(
               dayjs.duration({
                 seconds: Number(
-                  (BigInt(userAccountSnapshot?.balanceUntilUpdatedAt ?? "0") +
+                  (BigInt(balanceUntilUpdatedAt ?? 0) +
                     parseEther(wrapAmount?.replace(/,/g, "") ?? "0")) /
                     (BigInt(-accountFlowRate) -
                       BigInt(flowRateToReceiver) -
@@ -271,6 +277,8 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     },
     [
       userAccountSnapshot,
+      balanceUntilUpdatedAt,
+      updatedAtTimestamp,
       address,
       wrapAmount,
       flowRateToReceiver,

@@ -31,6 +31,7 @@ import PassportMintingInstructions from "@/components/PassportMintingInstruction
 import { useSuperfluidContext } from "@/context/Superfluid";
 import { ProjectMetadata } from "@/types/project";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
@@ -72,8 +73,6 @@ type GranteeFundingProps = {
   userAccountSnapshots:
     | {
         totalNetFlowRate: string;
-        balanceUntilUpdatedAt: string;
-        updatedAtTimestamp: number;
         token: { id: string };
       }[]
     | null;
@@ -172,9 +171,15 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       (snapshot) =>
         snapshot.token.id === allocationTokenInfo.address.toLowerCase(),
     ) ?? null;
+  const { balanceUntilUpdatedAt, updatedAtTimestamp } =
+    useSuperTokenBalanceOfNow({
+      token: allocationTokenInfo.address,
+      address: address ?? "",
+      chainId: network?.id ?? DEFAULT_CHAIN_ID,
+    });
   const superTokenBalance = useFlowingAmount(
-    BigInt(userAccountSnapshot?.balanceUntilUpdatedAt ?? 0),
-    userAccountSnapshot?.updatedAtTimestamp ?? 0,
+    BigInt(balanceUntilUpdatedAt ?? 0),
+    updatedAtTimestamp ?? 0,
     BigInt(userAccountSnapshot?.totalNetFlowRate ?? 0),
   );
 
@@ -261,16 +266,17 @@ export default function GranteeFunding(props: GranteeFundingProps) {
             BigInt(newFlowRateToFlowState) >
           BigInt(0)
         ) {
-          const updatedAtTimestamp = userAccountSnapshot
-            ? userAccountSnapshot.updatedAtTimestamp * 1000
-            : Date.now();
-          const date = dayjs(new Date(updatedAtTimestamp));
+          const date = dayjs(
+            new Date(
+              updatedAtTimestamp ? updatedAtTimestamp * 1000 : Date.now(),
+            ),
+          );
 
           return date
             .add(
               dayjs.duration({
                 seconds: Number(
-                  (BigInt(userAccountSnapshot?.balanceUntilUpdatedAt ?? "0") +
+                  (BigInt(balanceUntilUpdatedAt ?? 0) +
                     parseEther(wrapAmount?.replace(/,/g, "") ?? "0")) /
                     (BigInt(-accountFlowRate) -
                       BigInt(flowRateToReceiver) -
@@ -288,6 +294,8 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     },
     [
       userAccountSnapshot,
+      balanceUntilUpdatedAt,
+      updatedAtTimestamp,
       address,
       wrapAmount,
       flowRateToReceiver,
