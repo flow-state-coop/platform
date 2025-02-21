@@ -15,6 +15,7 @@ import Badge from "react-bootstrap/Badge";
 import Spinner from "react-bootstrap/Spinner";
 import PassportMintingInstructions from "./PassportMintingInstructions";
 import useDonorParams from "@/hooks/donorParams";
+import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
@@ -55,10 +56,8 @@ const ACCOUNT_QUERY = gql`
   query AccountQuery($userAddress: String!) {
     account(id: $userAddress) {
       accountTokenSnapshots {
-        balanceUntilUpdatedAt
         totalNetFlowRate
         totalOutflowRate
-        updatedAtTimestamp
         maybeCriticalAtTimestamp
         token {
           id
@@ -169,14 +168,30 @@ export default function WalletBalance() {
       (snapshot: { token: { id: string } }) =>
         snapshot.token.id === matchingToken?.toLowerCase(),
     )[0];
+  const {
+    balanceUntilUpdatedAt: balanceUntilUpdatedAtAllocation,
+    updatedAtTimestamp: updatedAtTimestampAllocation,
+  } = useSuperTokenBalanceOfNow({
+    token: allocationToken ?? "",
+    address: address ?? "",
+    chainId: chainId ?? DEFAULT_CHAIN_ID,
+  });
+  const {
+    balanceUntilUpdatedAt: balanceUntilUpdatedAtMatching,
+    updatedAtTimestamp: updatedAtTimestampMatching,
+  } = useSuperTokenBalanceOfNow({
+    token: matchingToken ?? "",
+    address: address ?? "",
+    chainId: chainId ?? DEFAULT_CHAIN_ID,
+  });
   const superTokenBalanceAllocation = useFlowingAmount(
-    BigInt(accountTokenSnapshotAllocation?.balanceUntilUpdatedAt ?? 0),
-    accountTokenSnapshotAllocation?.updatedAtTimestamp ?? 0,
+    BigInt(balanceUntilUpdatedAtAllocation ?? 0),
+    updatedAtTimestampAllocation ?? 0,
     BigInt(accountTokenSnapshotAllocation?.totalNetFlowRate ?? 0),
   );
   const superTokenBalanceMatching = useFlowingAmount(
-    BigInt(accountTokenSnapshotMatching?.balanceUntilUpdatedAt ?? 0),
-    accountTokenSnapshotMatching?.updatedAtTimestamp ?? 0,
+    BigInt(balanceUntilUpdatedAtMatching ?? 0),
+    updatedAtTimestampMatching ?? 0,
     BigInt(accountTokenSnapshotMatching?.totalNetFlowRate ?? 0),
   );
 

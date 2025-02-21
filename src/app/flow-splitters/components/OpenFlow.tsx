@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
-import { Address, parseAbi, parseEther, formatEther } from "viem";
-import { useAccount, useBalance, useReadContract } from "wagmi";
+import { Address, parseEther, formatEther } from "viem";
+import { useAccount, useBalance } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import {
   SuperToken,
@@ -26,6 +26,7 @@ import { Token } from "@/types/token";
 import { GDAPool } from "@/types/gdaPool";
 import BalancePlot, { BalancePlotFlowInfo } from "./BalancePlot";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
@@ -121,23 +122,12 @@ export default function OpenFlow(props: OpenFlowProps) {
   const accountTokenSnapshot =
     superfluidQueryRes?.account?.accountTokenSnapshots[0] ?? null;
   const poolMemberships = superfluidQueryRes?.account?.poolMemberships ?? null;
-  const { data: realtimeBalanceOfNow } = useReadContract({
-    address: token?.address,
-    functionName: "realtimeBalanceOfNow",
-    abi: parseAbi([
-      "function realtimeBalanceOfNow(address) returns (int256,uint256,uint256,uint256)",
-    ]),
-    args: [address],
-    chainId: network.id,
-    query: {
-      refetchInterval: 10000,
-    },
-  });
-
-  const balanceUntilUpdatedAt = realtimeBalanceOfNow?.[0];
-  const updatedAtTimestamp = realtimeBalanceOfNow
-    ? Number(realtimeBalanceOfNow[3])
-    : null;
+  const { balanceUntilUpdatedAt, updatedAtTimestamp } =
+    useSuperTokenBalanceOfNow({
+      token: token?.address ?? "",
+      address: address ?? "",
+      chainId: network.id,
+    });
   const superTokenBalance = useFlowingAmount(
     BigInt(balanceUntilUpdatedAt ?? 0),
     updatedAtTimestamp ?? 0,
