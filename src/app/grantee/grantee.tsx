@@ -46,6 +46,7 @@ enum EligibilityMethod {
 const PROJECTS_QUERY = gql`
   query ProjectsQuery($address: String!, $chainId: Int!, $poolId: String!) {
     profiles(
+      first: 1000
       filter: {
         chainId: { equalTo: $chainId }
         profileRolesByChainIdAndProfileId: {
@@ -58,7 +59,7 @@ const PROJECTS_QUERY = gql`
       anchorAddress
       metadataCid
       metadata
-      profileRolesByChainIdAndProfileId {
+      profileRolesByChainIdAndProfileId(first: 1000) {
         address
       }
     }
@@ -68,6 +69,7 @@ const PROJECTS_QUERY = gql`
       matchingToken
       allocationToken
       recipientsByPoolIdAndChainId(
+        first: 1000
         filter: { recipientAddress: { equalTo: $address } }
       ) {
         id

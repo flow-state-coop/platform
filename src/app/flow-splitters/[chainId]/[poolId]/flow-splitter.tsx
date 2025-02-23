@@ -69,14 +69,14 @@ const SUPERFLUID_QUERY = gql`
       totalAmountFlowedDistributedUntilUpdatedAt
       totalAmountInstantlyDistributedUntilUpdatedAt
       updatedAtTimestamp
-      poolMembers {
+      poolMembers(first: 1000, where: { units_not: "0" }) {
         account {
           id
         }
         units
         isConnected
       }
-      poolDistributors {
+      poolDistributors(first: 1000, where: { flowRate_not: "0" }) {
         account {
           id
         }
@@ -91,7 +91,11 @@ const SUPERFLUID_QUERY = gql`
         transactionHash
         name
       }
-      memberUnitsUpdatedEvents(orderBy: timestamp, orderDirection: desc) {
+      memberUnitsUpdatedEvents(
+        first: 1000
+        orderBy: timestamp
+        orderDirection: desc
+      ) {
         units
         oldUnits
         poolMember {
@@ -102,7 +106,11 @@ const SUPERFLUID_QUERY = gql`
         timestamp
         transactionHash
       }
-      flowDistributionUpdatedEvents(orderBy: timestamp, orderDirection: desc) {
+      flowDistributionUpdatedEvents(
+        first: 1000
+        orderBy: timestamp
+        orderDirection: desc
+      ) {
         newDistributorToPoolFlowRate
         oldFlowRate
         poolDistributor {
@@ -114,6 +122,7 @@ const SUPERFLUID_QUERY = gql`
         transactionHash
       }
       instantDistributionUpdatedEvents(
+        first: 1000
         orderBy: timestamp
         orderDirection: desc
       ) {

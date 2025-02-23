@@ -282,7 +282,6 @@ export default function PoolGraph(props: PoolGraphProps) {
     }
 
     const nodesFromPoolDistributors = pool.poolDistributors
-      .filter((distributor) => distributor.flowRate !== "0")
       .map((x) => [
         {
           id: `${x.account.id}-distributor`,

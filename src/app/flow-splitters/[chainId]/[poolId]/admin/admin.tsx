@@ -77,7 +77,7 @@ const SUPERFLUID_QUERY = gql`
         }
         units
       }
-      poolDistributors {
+      poolDistributors(first: 1000, where: { flowRate_not: "0" }) {
         account {
           id
         }
