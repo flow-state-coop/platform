@@ -76,7 +76,10 @@ const POOL_QUERY = gql`
       matchingToken
       allocationToken
       chainId
-      recipientsByPoolIdAndChainId(condition: { status: APPROVED }) {
+      recipientsByPoolIdAndChainId(
+        first: 1000
+        condition: { status: APPROVED }
+      ) {
         id
         recipientAddress
         metadata
@@ -112,7 +115,7 @@ const STREAM_QUERY = gql`
       totalAmountFlowedDistributedUntilUpdatedAt
       updatedAtTimestamp
       totalUnits
-      poolMembers {
+      poolMembers(first: 1000, where: { units_not: "0" }) {
         account {
           id
         }
@@ -120,7 +123,7 @@ const STREAM_QUERY = gql`
         updatedAtTimestamp
         totalAmountReceivedUntilUpdatedAt
       }
-      poolDistributors {
+      poolDistributors(first: 1000, where: { flowRate_not: "0" }) {
         account {
           id
         }

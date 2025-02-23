@@ -60,7 +60,7 @@ const POOLS_BY_ANCHOR_ADDRESS = gql`
       allocationToken
       matchingToken
       strategyAddress
-      recipientsByPoolIdAndChainId {
+      recipientsByPoolIdAndChainId(first: 1000) {
         id
         status
         recipientAddress
@@ -79,7 +79,7 @@ const GDA_POOLS = gql`
       totalAmountFlowedDistributedUntilUpdatedAt
       updatedAtTimestamp
       totalUnits
-      poolMembers {
+      poolMembers(first: 1000, where: { units_not: "0" }) {
         account {
           id
         }
@@ -88,7 +88,7 @@ const GDA_POOLS = gql`
         totalAmountReceivedUntilUpdatedAt
         isConnected
       }
-      poolDistributors {
+      poolDistributors(first: 1000, where: { flowRate_not: "0" }) {
         account {
           id
         }

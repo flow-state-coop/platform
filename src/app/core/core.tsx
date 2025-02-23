@@ -60,7 +60,7 @@ const FLOW_STATE_CORE_QUERY = gql`
         }
         units
       }
-      poolDistributors(where: { flowRate_not: "0" }) {
+      poolDistributors(first: 1000, where: { flowRate_not: "0" }) {
         account {
           id
         }
