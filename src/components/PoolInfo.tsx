@@ -23,7 +23,6 @@ type PoolInfoProps = Pool & {
   directTotal: bigint;
   directFunders: number;
   matchingPool: GDAPool;
-  supervisualUrl: string;
   showTransactionPanel: () => void;
 };
 
@@ -37,7 +36,6 @@ export default function PoolInfo(props: PoolInfoProps) {
     directTotal,
     directFunders,
     matchingPool,
-    supervisualUrl,
     showTransactionPanel,
   } = props;
 
@@ -166,15 +164,6 @@ export default function PoolInfo(props: PoolInfoProps) {
                 onClick={showTransactionPanel}
               >
                 Grow the Pie
-              </Button>
-              <Button
-                variant="link"
-                href={supervisualUrl}
-                target="_blank"
-                className="bg-secondary p-2 text-light fs-5 text-decoration-none"
-                style={{ width: isMobile ? "100%" : 180 }}
-              >
-                View Flow State
               </Button>
             </Stack>
           </>

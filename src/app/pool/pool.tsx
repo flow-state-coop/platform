@@ -35,7 +35,6 @@ import {
   SECONDS_IN_MONTH,
   ZERO_ADDRESS,
   FLOW_STATE_RECEIVER,
-  SUPERVISUAL_BASE_URL,
 } from "@/lib/constants";
 
 type PoolProps = { chainId: number; poolId: string; recipientId: string };
@@ -291,25 +290,6 @@ export default function Pool(props: PoolProps) {
           passportScore >= minPassportScore
         ? true
         : false;
-
-  const supervisualUrl = useMemo(() => {
-    const url = new URL(SUPERVISUAL_BASE_URL);
-
-    if (flowStateQueryRes?.pool) {
-      const { matchingToken, allocationToken } = flowStateQueryRes.pool;
-
-      const accounts = grantees
-        .map((grantee) => grantee.superappAddress)
-        .concat(gdaPoolAddress ?? "");
-      const tokens = [matchingToken, allocationToken];
-
-      url.searchParams.set("chain", chainId.toString());
-      url.searchParams.set("tokens", tokens.toString());
-      url.searchParams.set("accounts", accounts.toString());
-    }
-
-    return url.toString();
-  }, [grantees, flowStateQueryRes, chainId, gdaPoolAddress]);
 
   const allocationTokenInfo = useMemo(
     () =>
@@ -608,7 +588,6 @@ export default function Pool(props: PoolProps) {
         <PoolInfo
           name={pool?.metadata.name ?? "N/A"}
           description={pool?.metadata.description ?? "N/A"}
-          supervisualUrl={supervisualUrl}
           directFlowRate={
             superfluidQueryRes?.accounts
               ? superfluidQueryRes?.accounts
