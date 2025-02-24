@@ -211,13 +211,10 @@ export default function EditStream(props: EditStreamProps) {
               /month
             </Badge>
           </Stack>
-          {!isFundingMatchingPool &&
-            !isFundingFlowStateCore &&
-            isNativeSuperToken &&
-            Number(amountPerTimeInterval) > 0 &&
+          {Number(amountPerTimeInterval) > 0 &&
             Number(amountPerTimeInterval) < minAllocationPerMonth && (
               <Alert variant="warning" className="m-0 py-2">
-                Minimum Donation = .0004 ETHx/mo
+                Minimum Donation = {minAllocationPerMonth} {token.name}/mo
               </Alert>
             )}
           {network && address ? (
@@ -228,10 +225,7 @@ export default function EditStream(props: EditStreamProps) {
                 Number(amountPerTimeInterval.replace(/,/g, "")) < 0 ||
                 (BigInt(flowRateToReceiver) === BigInt(0) &&
                   Number(amountPerTimeInterval.replace(/,/g, "")) === 0) ||
-                (!isFundingMatchingPool &&
-                  !isFundingFlowStateCore &&
-                  isNativeSuperToken &&
-                  !isDeletingStream &&
+                (!isDeletingStream &&
                   Number(amountPerTimeInterval) < minAllocationPerMonth) ||
                 newFlowRate === flowRateToReceiver
               }
