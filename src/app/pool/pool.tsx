@@ -37,7 +37,12 @@ import {
   FLOW_STATE_RECEIVER,
 } from "@/lib/constants";
 
-type PoolProps = { chainId: number; poolId: string; recipientId: string };
+type PoolProps = {
+  chainId: number;
+  poolId: string;
+  recipientId: string;
+  editPoolDistribution: boolean;
+};
 
 type Grantee = {
   id: string;
@@ -162,7 +167,7 @@ const STREAM_QUERY = gql`
 const GRANTEES_BATCH_SIZE = 20;
 
 export default function Pool(props: PoolProps) {
-  const { poolId, chainId, recipientId } = props;
+  const { poolId, chainId, recipientId, editPoolDistribution } = props;
 
   const [grantees, setGrantees] = useState<Grantee[]>([]);
   const [directTotal, setDirectTotal] = useState(BigInt(0));
@@ -523,7 +528,7 @@ export default function Pool(props: PoolProps) {
   }, [superfluidQueryRes, directTotalTimerId]);
 
   useEffect(() => {
-    if (!pool) {
+    if (!pool || !gdaPoolAddress) {
       return;
     }
 
@@ -536,13 +541,15 @@ export default function Pool(props: PoolProps) {
     } = pool;
 
     updateDonorParams({
+      poolId,
       strategyAddress,
+      gdaPoolAddress: gdaPoolAddress.toLowerCase(),
       chainId,
       allocationToken,
       matchingToken,
       nftMintUrl: metadata.nftMintUrl ?? null,
     });
-  }, [pool, updateDonorParams]);
+  }, [pool, gdaPoolAddress, poolId, updateDonorParams]);
 
   useEffect(() => {
     if (recipientId && grantees.length > 0) {
@@ -557,8 +564,14 @@ export default function Pool(props: PoolProps) {
           selectedGrantee: granteeIndex,
         });
       }
+    } else if (editPoolDistribution) {
+      setTransactionPanelState({
+        show: true,
+        isFundingMatchingPool: true,
+        selectedGrantee: null,
+      });
     }
-  }, [recipientId, grantees]);
+  }, [recipientId, grantees, editPoolDistribution]);
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") {

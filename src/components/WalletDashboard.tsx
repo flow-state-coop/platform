@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useAccount, useDisconnect, useReadContract } from "wagmi";
 import { formatEther, Address } from "viem";
 import { useQuery, gql } from "@apollo/client";
@@ -14,6 +15,7 @@ import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
 import Spinner from "react-bootstrap/Spinner";
 import PassportMintingInstructions from "./PassportMintingInstructions";
+import StreamDeletionModal from "@/app/pool/components/StreamDeletionModal";
 import useDonorParams from "@/hooks/donorParams";
 import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useFlowingAmount from "@/hooks/flowingAmount";
@@ -32,6 +34,7 @@ import {
   ZERO_ADDRESS,
   SECONDS_IN_MONTH,
   DEFAULT_CHAIN_ID,
+  FLOW_STATE_RECEIVER,
 } from "@/lib/constants";
 
 enum Token {
@@ -52,9 +55,30 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(advancedFormat);
 
+const FLOW_STATE_POOL_QUERY = gql`
+  query PoolQuery($poolId: String!, $chainId: Int!) {
+    pool(chainId: $chainId, id: $poolId) {
+      recipientsByPoolIdAndChainId(
+        first: 1000
+        condition: { status: APPROVED }
+      ) {
+        id
+        superappAddress
+        metadata
+      }
+    }
+  }
+`;
+
 const ACCOUNT_QUERY = gql`
-  query AccountQuery($userAddress: String!) {
+  query AccountQuery(
+    $userAddress: String!
+    $allocationToken: String!
+    $receivers: [String]
+    $gdaPoolAddress: String!
+  ) {
     account(id: $userAddress) {
+      id
       accountTokenSnapshots {
         totalNetFlowRate
         totalOutflowRate
@@ -63,6 +87,32 @@ const ACCOUNT_QUERY = gql`
           id
         }
       }
+      outflows(
+        where: {
+          token: $allocationToken
+          receiver_: { id_in: $receivers }
+          currentFlowRate_not: "0"
+        }
+        orderBy: updatedAtTimestamp
+        orderDirection: desc
+      ) {
+        receiver {
+          id
+        }
+        streamedUntilUpdatedAt
+        updatedAtTimestamp
+        currentFlowRate
+      }
+    }
+    poolDistributors(
+      where: {
+        account_: { id: $userAddress }
+        pool_: { id: $gdaPoolAddress }
+        flowRate_not: "0"
+      }
+    ) {
+      id
+      flowRate
     }
   }
 `;
@@ -70,24 +120,49 @@ const ACCOUNT_QUERY = gql`
 export default function WalletBalance() {
   const [showOffcanvas, setShowOffcanvas] = useState(false);
   const [showMintingInstructions, setShowMintingInstructions] = useState(false);
+  const [streamDeletionModalState, setStreamDeletionModalState] = useState({
+    show: false,
+    isMatchingPool: false,
+    receiver: "",
+  });
   const [token, setToken] = useState(Token.ALLOCATION);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [isLoadingNftMint, setIsLoadingNftMint] = useState(false);
+  const [errorNftMint, setErrorNftMint] = useState("");
 
+  const router = useRouter();
   const { address } = useAccount();
   const { disconnect } = useDisconnect();
   const {
+    poolId,
     strategyAddress,
+    gdaPoolAddress,
     chainId,
     allocationToken,
     matchingToken,
     nftMintUrl,
   } = useDonorParams();
+  const { data: flowStateQueryRes } = useQuery(FLOW_STATE_POOL_QUERY, {
+    client: getApolloClient("flowState"),
+    variables: {
+      poolId,
+      chainId,
+    },
+    pollInterval: 10000,
+  });
   const { data: superfluidQueryRes } = useQuery(ACCOUNT_QUERY, {
     client: getApolloClient("superfluid", chainId ?? void 0),
     variables: {
       userAddress: address?.toLowerCase() ?? "0x",
+      allocationToken: allocationToken?.toLowerCase() ?? "0x",
+      receivers: [FLOW_STATE_RECEIVER].concat(
+        flowStateQueryRes?.pool.recipientsByPoolIdAndChainId.map(
+          (recipient: { superappAddress: string }) => recipient.superappAddress,
+        ) ?? [],
+      ),
+      gdaPoolAddress,
     },
+    skip: !poolId || !flowStateQueryRes || !address || !allocationToken,
+    pollInterval: 10000,
   });
   const { data: eligibilityMethod } = useReadContract({
     address: strategyAddress as Address,
@@ -157,7 +232,8 @@ export default function WalletBalance() {
     },
   });
 
-  const network = networks.find((network) => network.id === chainId);
+  const network =
+    networks.find((network) => network.id === chainId) ?? networks[0];
   const accountTokenSnapshotAllocation =
     superfluidQueryRes?.account?.accountTokenSnapshots?.filter(
       (snapshot: { token: { id: string } }) =>
@@ -212,8 +288,8 @@ export default function WalletBalance() {
 
   const handleNftMintRequest = async () => {
     try {
-      setIsLoading(true);
-      setError("");
+      setIsLoadingNftMint(true);
+      setErrorNftMint("");
 
       const res = await fetch("/api/mint-nft", {
         method: "POST",
@@ -228,15 +304,15 @@ export default function WalletBalance() {
       const data = await res.json();
 
       if (!data.success) {
-        setError(MintError.FAIL);
+        setErrorNftMint(MintError.FAIL);
       }
 
-      setIsLoading(false);
+      setIsLoadingNftMint(false);
 
       console.info(data);
     } catch (err) {
-      setIsLoading(false);
-      setError(MintError.FAIL);
+      setIsLoadingNftMint(false);
+      setErrorNftMint(MintError.FAIL);
 
       console.error(err);
     }
@@ -400,14 +476,16 @@ export default function WalletBalance() {
                   <>
                     <Button
                       className="d-flex justify-content-center align-items-center text-light gap-2"
-                      onClick={!isLoading ? handleNftMintRequest : void 0}
+                      onClick={
+                        !isLoadingNftMint ? handleNftMintRequest : void 0
+                      }
                     >
                       Claim NFT
-                      {isLoading && <Spinner size="sm" />}
+                      {isLoadingNftMint && <Spinner size="sm" />}
                     </Button>
-                    {error && (
+                    {errorNftMint && (
                       <p className="mb-1 small text-center text-danger">
-                        {error}
+                        {errorNftMint}
                       </p>
                     )}
                   </>
@@ -506,6 +584,151 @@ export default function WalletBalance() {
             </Card.Body>
           </Card>
         )}
+        {superfluidQueryRes?.poolDistributors[0] ||
+        (superfluidQueryRes?.account &&
+          superfluidQueryRes.account.outflows.length > 0) ? (
+          <Card className="bg-light mt-3 mx-3 p-2 rounded-4 border-0">
+            <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 text-info fs-5">
+              Your Streams ({allocationTokenInfo?.name}/mo)
+            </Card.Header>
+            <Card.Body className="p-2">
+              {superfluidQueryRes?.poolDistributors[0] ? (
+                <Stack
+                  direction="horizontal"
+                  gap={2}
+                  className="align-items-center"
+                >
+                  <Card.Text className="w-66 m-0 text-info">
+                    Matching Pool
+                  </Card.Text>
+                  <Card.Text className="w-25 m-0">
+                    {Intl.NumberFormat("en", {
+                      maximumFractionDigits: 6,
+                    }).format(
+                      Number(
+                        formatEther(
+                          BigInt(
+                            superfluidQueryRes.poolDistributors[0].flowRate,
+                          ) * BigInt(SECONDS_IN_MONTH),
+                        ),
+                      ),
+                    )}
+                  </Card.Text>
+                  <Button
+                    variant="transparent"
+                    className="px-0 py-2"
+                    onClick={() =>
+                      setStreamDeletionModalState({
+                        show: true,
+                        isMatchingPool: true,
+                        receiver: gdaPoolAddress!,
+                      })
+                    }
+                  >
+                    <Image
+                      src="/delete.svg"
+                      alt="Delete"
+                      width={20}
+                      height={20}
+                    />
+                  </Button>
+                  <Button
+                    variant="transparent"
+                    className="px-0 py-2"
+                    onClick={() => {
+                      setShowOffcanvas(false);
+                      router.push(
+                        `/pool/?chainId=${chainId}&poolId=${poolId}&editPoolDistribution=true`,
+                      );
+                    }}
+                  >
+                    <Image src="/edit.svg" alt="Edit" width={20} height={20} />
+                  </Button>
+                </Stack>
+              ) : null}
+              {superfluidQueryRes?.account ? (
+                <>
+                  {superfluidQueryRes.account.outflows.map(
+                    (
+                      outflow: {
+                        currentFlowRate: string;
+                        receiver: { id: string };
+                      },
+                      i: number,
+                    ) => (
+                      <Stack
+                        direction="horizontal"
+                        gap={3}
+                        className="align-items-center border-bottom border-white"
+                        key={i}
+                      >
+                        <Card.Text className="w-66 m-0 text-info text-truncate">
+                          {outflow.receiver.id === FLOW_STATE_RECEIVER
+                            ? "Flow State"
+                            : flowStateQueryRes.pool.recipientsByPoolIdAndChainId.find(
+                                (recipient: { superappAddress: string }) =>
+                                  recipient.superappAddress ===
+                                  outflow.receiver.id,
+                              )?.metadata.title}
+                        </Card.Text>
+                        <Card.Text className="w-25 m-0">
+                          {Intl.NumberFormat("en", {
+                            maximumFractionDigits: 6,
+                          }).format(
+                            Number(
+                              formatEther(
+                                BigInt(outflow.currentFlowRate) *
+                                  BigInt(SECONDS_IN_MONTH),
+                              ),
+                            ),
+                          )}
+                        </Card.Text>
+                        <Button
+                          variant="transparent"
+                          className="px-0 py-2"
+                          onClick={() =>
+                            setStreamDeletionModalState({
+                              show: true,
+                              isMatchingPool: false,
+                              receiver: outflow.receiver.id,
+                            })
+                          }
+                        >
+                          <Image
+                            src="/delete.svg"
+                            alt="Delete"
+                            width={20}
+                            height={20}
+                          />
+                        </Button>
+                        <Button
+                          variant="transparent"
+                          className="px-0 py-2"
+                          onClick={() => {
+                            setShowOffcanvas(false);
+
+                            router.push(
+                              outflow.receiver.id === FLOW_STATE_RECEIVER
+                                ? `/core/?chainId=${chainId}`
+                                : `/pool/?chainId=${chainId}&poolId=${poolId}&recipientId=${flowStateQueryRes?.pool.recipientsByPoolIdAndChainId.find((recipient: { superappAddress: string }) => recipient.superappAddress === outflow.receiver.id)?.id}`,
+                            );
+                          }}
+                        >
+                          <Image
+                            src="/edit.svg"
+                            alt="Edit"
+                            width={20}
+                            height={20}
+                          />
+                        </Button>
+                      </Stack>
+                    ),
+                  )}
+                </>
+              ) : null}
+            </Card.Body>
+          </Card>
+        ) : null}
         <Stack
           direction="horizontal"
           gap={1}
@@ -695,6 +918,23 @@ export default function WalletBalance() {
           network={network}
           minPassportScore={
             minPassportScore ? Number(minPassportScore) / 10000 : 0
+          }
+        />
+      )}
+      {streamDeletionModalState.show && (
+        <StreamDeletionModal
+          show={streamDeletionModalState.show}
+          network={network}
+          allocationToken={allocationTokenInfo.address}
+          matchingToken={matchingTokenInfo.address}
+          receiver={streamDeletionModalState.receiver}
+          isMatchingPool={streamDeletionModalState.isMatchingPool}
+          hide={() =>
+            setStreamDeletionModalState({
+              isMatchingPool: false,
+              receiver: "",
+              show: false,
+            })
           }
         />
       )}

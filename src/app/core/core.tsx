@@ -1,304 +1,300 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
-import { parseEther, formatEther } from "viem";
-import { useAccount, useBalance } from "wagmi";
-import dayjs from "dayjs";
+import { useState, useEffect } from "react";
+import { Address, createPublicClient, http } from "viem";
+import { mainnet } from "viem/chains";
+import { normalize } from "viem/ens";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
-import {
-  NativeAssetSuperToken,
-  Operation,
-  Framework,
-} from "@superfluid-finance/sdk-core";
 import { usePostHog } from "posthog-js/react";
-import duration from "dayjs/plugin/duration";
-import Accordion from "react-bootstrap/Accordion";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
-import Offcanvas from "react-bootstrap/Offcanvas";
 import Image from "react-bootstrap/Image";
-import { Step } from "@/types/checkout";
-import EditStream from "@/components/checkout/EditStream";
-import TopUp from "@/components/checkout/TopUp";
-import Wrap from "@/components/checkout/Wrap";
-import FlowStateCoreGraph from "@/components/FlowStateCoreGraph";
-import Review from "@/components/checkout/Review";
-import Success from "@/components/checkout/Success";
-import FlowStateCoreDetails from "@/components/FlowStateCoreDetails";
-import { useMediaQuery } from "@/hooks/mediaQuery";
-import useFlowingAmount from "@/hooks/flowingAmount";
-import useTransactionsQueue from "@/hooks/transactionsQueue";
-import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
+import Spinner from "react-bootstrap/Spinner";
+import Modal from "react-bootstrap/Modal";
+import InfoTooltip from "@/components/InfoTooltip";
+import PoolConnectionButton from "@/components/PoolConnectionButton";
+import ActivityFeed from "./components/ActivityFeed";
+import PoolGraph from "./components/PoolGraph";
+import OpenFlow from "./components/OpenFlow";
+import InstantDistribution from "@/app/flow-splitters/components/InstantDistribution";
 import { getApolloClient } from "@/lib/apollo";
+import { useMediaQuery } from "@/hooks/mediaQuery";
+import { flowStateFlowSplitters } from "./lib/flowSplittersTable";
 import { networks } from "@/lib/networks";
-import {
-  TimeInterval,
-  unitOfTime,
-  fromTimeUnitsToSeconds,
-  formatNumberWithCommas,
-  roundWeiAmount,
-} from "@/lib/utils";
-import { SECONDS_IN_MONTH } from "@/lib/constants";
+import { truncateStr } from "@/lib/utils";
+import { FLOW_STATE_RECEIVER } from "@/lib/constants";
 
-type FlowStateCoreProps = { chainId: number };
+type CoreProps = {
+  chainId: number;
+  edit: boolean;
+};
 
-const FLOW_STATE_CORE_QUERY = gql`
-  query FlowStateCoreQuery($gdaPool: String!, $userAddress: String!) {
+const CORE_POOL_QUERY = gql`
+  query CorePoolQuery($poolId: String!) {
+    pools(where: { id: $poolId }) {
+      poolAddress
+      name
+      symbol
+      token
+      poolAdmins {
+        address
+      }
+      poolAdminRemovedEvents(
+        first: 1000
+        orderBy: timestamp
+        orderDirection: asc
+      ) {
+        address
+        timestamp
+        transactionHash
+      }
+      poolAdminAddedEvents(
+        first: 1000
+        orderBy: timestamp
+        orderDirection: asc
+      ) {
+        address
+        timestamp
+        transactionHash
+      }
+    }
+  }
+`;
+
+const SUPERFLUID_QUERY = gql`
+  query SuperfluidQuery(
+    $token: String!
+    $flowStateSafe: String!
+    $gdaPool: String!
+  ) {
+    token(id: $token) {
+      id
+      symbol
+    }
+    account(id: $flowStateSafe) {
+      accountTokenSnapshots(where: { token: $token }) {
+        totalInflowRate
+      }
+    }
     pool(id: $gdaPool) {
       id
       flowRate
-      adjustmentFlowRate
-      totalAmountFlowedDistributedUntilUpdatedAt
-      updatedAtTimestamp
       totalUnits
-      token {
-        id
-      }
+      totalAmountFlowedDistributedUntilUpdatedAt
+      totalAmountInstantlyDistributedUntilUpdatedAt
+      updatedAtTimestamp
       poolMembers {
         account {
           id
         }
         units
+        isConnected
       }
       poolDistributors(first: 1000, where: { flowRate_not: "0" }) {
         account {
           id
         }
         flowRate
-        totalAmountFlowedDistributedUntilUpdatedAt
-        updatedAtTimestamp
       }
-    }
-    account(id: $userAddress) {
-      accountTokenSnapshots {
-        totalNetFlowRate
-        totalOutflowRate
-        totalDeposit
-        maybeCriticalAtTimestamp
-        balanceUntilUpdatedAt
-        updatedAtTimestamp
-        token {
-          id
-        }
+      token {
+        id
+        symbol
       }
-      outflows(
-        where: { token: $token }
-        orderBy: updatedAtTimestamp
+      poolCreatedEvent {
+        timestamp
+        transactionHash
+        name
+      }
+      memberUnitsUpdatedEvents(
+        first: 1000
+        orderBy: timestamp
         orderDirection: desc
       ) {
-        receiver {
-          id
+        units
+        oldUnits
+        poolMember {
+          account {
+            id
+          }
         }
-        streamedUntilUpdatedAt
-        updatedAtTimestamp
-        currentFlowRate
+        timestamp
+        transactionHash
+      }
+      flowDistributionUpdatedEvents(
+        first: 1000
+        orderBy: timestamp
+        orderDirection: desc
+      ) {
+        newDistributorToPoolFlowRate
+        oldFlowRate
+        poolDistributor {
+          account {
+            id
+          }
+        }
+        timestamp
+        transactionHash
+      }
+      instantDistributionUpdatedEvents(
+        first: 1000
+        orderBy: timestamp
+        orderDirection: desc
+      ) {
+        requestedAmount
+        poolDistributor {
+          account {
+            id
+          }
+        }
+        timestamp
+        transactionHash
       }
     }
   }
 `;
 
-dayjs().format();
-dayjs.extend(duration);
+export default function Core(props: CoreProps) {
+  const { chainId, edit } = props;
 
-export default function FlowStateCore(props: FlowStateCoreProps) {
-  const { chainId } = props;
-
-  const [step, setStep] = useState<Step>(Step.SELECT_AMOUNT);
-  const [amountPerTimeInterval, setAmountPerTimeInterval] = useState("");
-  const [newFlowRate, setNewFlowRate] = useState("");
-  const [wrapAmount, setWrapAmount] = useState("");
-  const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
-  const [showTransactionPanel, setShowTransactionPanel] = useState(false);
+  const [showOpenFlow, setShowOpenFlow] = useState(edit);
+  const [showInstantDistribution, setShowInstantDistribution] = useState(false);
+  const [showConnectionModal, setShowConnectionModal] = useState(false);
+  const [ensByAddress, setEnsByAddress] = useState<{
+    [key: Address]: { name: string | null; avatar: string | null };
+  } | null>(null);
 
   const network =
     networks.find((network) => network.id === chainId) ?? networks[0];
-  const { isMobile, isTablet } = useMediaQuery();
-  const { address } = useAccount();
-  const postHog = usePostHog();
+  const flowSplitter = flowStateFlowSplitters[network.id]["ETHx"];
+
+  const router = useRouter();
+  const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
+  const { openConnectModal } = useConnectModal();
+  const { switchChain } = useSwitchChain();
+  const { data: walletClient } = useWalletClient();
+  const { address, chain: connectedChain } = useAccount();
   const {
-    areTransactionsLoading,
-    completedTransactions,
-    transactionError,
-    executeTransactions,
-  } = useTransactionsQueue();
-  const { data: ethBalance } = useBalance({
-    address,
-    chainId,
-    query: {
-      refetchInterval: 10000,
-    },
-  });
-  const { data: superfluidQueryRes } = useQuery(FLOW_STATE_CORE_QUERY, {
-    client: getApolloClient("superfluid", chainId),
+    data: flowSplitterPoolQueryRes,
+    loading: flowSplitterPoolQueryLoading,
+  } = useQuery(CORE_POOL_QUERY, {
+    client: getApolloClient("flowSplitter", chainId),
     variables: {
-      gdaPool: network.flowStateCoreGda.toLowerCase(),
-      userAddress: address?.toLowerCase() ?? "",
+      poolId: flowSplitter.id,
+      address: address?.toLowerCase() ?? "",
     },
     pollInterval: 10000,
   });
-  const ethersProvider = useEthersProvider({ chainId: network.id });
-  const ethersSigner = useEthersSigner({ chainId: network.id });
+  const poolAdmins = flowSplitterPoolQueryRes?.pools[0]?.poolAdmins;
+  const pool = flowSplitterPoolQueryRes?.pools[0];
+  const { data: superfluidQueryRes, loading: superfluidQueryLoading } =
+    useQuery(SUPERFLUID_QUERY, {
+      client: getApolloClient("superfluid", chainId),
+      variables: {
+        token: pool?.token,
+        flowStateSafe: FLOW_STATE_RECEIVER,
+        gdaPool: pool?.poolAddress,
+      },
+      pollInterval: 10000,
+      skip: !pool,
+    });
+  const postHog = usePostHog();
 
-  const userAccountSnapshot =
-    superfluidQueryRes?.account?.accountTokenSnapshots?.find(
-      (snapshot: { token: { id: string } }) =>
-        snapshot.token.id === network.tokens[0].address.toLowerCase(),
-    ) ?? null;
-  const superTokenBalance = useFlowingAmount(
-    BigInt(userAccountSnapshot?.balanceUntilUpdatedAt ?? 0),
-    userAccountSnapshot?.updatedAtTimestamp ?? 0,
-    BigInt(userAccountSnapshot?.totalNetFlowRate ?? 0),
+  const poolToken = network?.tokens.find(
+    (token) => token.address.toLowerCase() === pool?.token,
+  ) ?? {
+    address: pool?.token ?? "",
+    name: superfluidQueryRes?.token.symbol ?? "N/A",
+    icon: "",
+  };
+  const poolMember = superfluidQueryRes?.pool?.poolMembers.find(
+    (member: { account: { id: string } }) =>
+      member.account.id === address?.toLowerCase(),
   );
-  const minEthBalance = 0.0005;
-  const suggestedTokenBalance = newFlowRate
-    ? BigInt(newFlowRate) * BigInt(SECONDS_IN_MONTH) * BigInt(3)
-    : BigInt(0);
-  const hasSufficientEthBalance =
-    ethBalance && ethBalance.value > parseEther(minEthBalance.toString())
-      ? true
-      : false;
-  const hasSuggestedTokenBalance = superTokenBalance > suggestedTokenBalance;
-  const hasSufficientTokenBalance =
-    (ethBalance && ethBalance.value + superTokenBalance > BigInt(0)) ||
-    superTokenBalance > BigInt(0)
-      ? true
-      : false;
+  const shouldConnect = !!poolMember && !poolMember.isConnected;
 
-  const flowRateToReceiver = useMemo(() => {
-    if (address && superfluidQueryRes?.pool) {
-      const distributor = superfluidQueryRes.pool.poolDistributors.find(
-        (distributor: { account: { id: string } }) =>
-          distributor.account.id === address.toLowerCase(),
-      );
-
-      if (distributor) {
-        return distributor.flowRate;
-      }
-    }
-
-    return "0";
-  }, [address, superfluidQueryRes]);
-
-  const calcLiquidationEstimate = useCallback(
-    (amountPerTimeInterval: string) => {
-      if (address) {
-        const newFlowRate =
-          parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
-        const accountFlowRate = userAccountSnapshot?.totalNetFlowRate ?? "0";
-
-        if (
-          BigInt(-accountFlowRate) -
-            BigInt(flowRateToReceiver) +
-            BigInt(newFlowRate) >
-          BigInt(0)
-        ) {
-          const updatedAtTimestamp = userAccountSnapshot
-            ? userAccountSnapshot.updatedAtTimestamp * 1000
-            : Date.now();
-          const date = dayjs(new Date(updatedAtTimestamp));
-
-          return date
-            .add(
-              dayjs.duration({
-                seconds: Number(
-                  (BigInt(userAccountSnapshot?.balanceUntilUpdatedAt ?? "0") +
-                    parseEther(wrapAmount?.replace(/,/g, "") ?? "0")) /
-                    (BigInt(-accountFlowRate) -
-                      BigInt(flowRateToReceiver) +
-                      BigInt(newFlowRate)),
-                ),
-              }),
-            )
-            .unix();
-        }
-      }
-
-      return null;
-    },
-    [userAccountSnapshot, address, wrapAmount, flowRateToReceiver],
-  );
-
-  const liquidationEstimate = useMemo(
-    () => calcLiquidationEstimate(amountPerTimeInterval),
-    [calcLiquidationEstimate, amountPerTimeInterval],
-  );
+  useEffect(() => setShowConnectionModal(shouldConnect), [shouldConnect]);
 
   useEffect(() => {
+    const ensByAddress: {
+      [key: Address]: { name: string | null; avatar: string | null };
+    } = {};
     (async () => {
-      if (!address || !newFlowRate || !ethersProvider || !ethersSigner) {
+      if (!pool || !superfluidQueryRes) {
         return;
       }
 
-      const wrapAmountWei = parseEther(wrapAmount?.replace(/,/g, "") ?? "0");
-      const transactions: (() => Promise<void>)[] = [];
-      const operations: Operation[] = [];
+      const addresses = [];
 
-      const sfFramework = await Framework.create({
-        chainId: network.id,
-        resolverAddress: network.superfluidResolver,
-        provider: ethersProvider,
-      });
-      const superToken = await sfFramework.loadSuperToken("ETHx");
-
-      if (wrapAmount && Number(wrapAmount?.replace(/,/g, "")) > 0) {
-        transactions.push(async () => {
-          const tx = await (superToken as NativeAssetSuperToken)
-            .upgrade({
-              amount: wrapAmountWei.toString(),
-            })
-            .exec(ethersSigner);
-
-          await tx.wait();
-        });
+      for (const memberUnitsUpdatedEvent of superfluidQueryRes.pool
+        .memberUnitsUpdatedEvents) {
+        addresses.push(memberUnitsUpdatedEvent.poolMember.account.id);
       }
 
-      operations.push(
-        superToken.distributeFlow({
-          from: address,
-          pool: network.flowStateCoreGda,
-          requestedFlowRate: newFlowRate,
+      for (const poolAdminAddedEvent of pool.poolAdminAddedEvents) {
+        addresses.push(poolAdminAddedEvent.address);
+      }
+
+      for (const poolAdminRemovedEvent of pool.poolAdminRemovedEvents) {
+        addresses.push(poolAdminRemovedEvent.address);
+      }
+
+      for (const flowDistributionUpdatedEvent of superfluidQueryRes.pool
+        .flowDistributionUpdatedEvents) {
+        addresses.push(flowDistributionUpdatedEvent.poolDistributor.account.id);
+      }
+
+      for (const instantDistributionUpdatedEvent of superfluidQueryRes.pool
+        .instantDistributionUpdatedEvents) {
+        addresses.push(
+          instantDistributionUpdatedEvent.poolDistributor.account.id,
+        );
+      }
+
+      const publicClient = createPublicClient({
+        chain: mainnet,
+        transport: http("https://ethereum-rpc.publicnode.com", {
+          batch: {
+            batchSize: 100,
+            wait: 10,
+          },
         }),
-      );
-
-      transactions.push(async () => {
-        const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
-
-        await tx.wait();
       });
 
-      setTransactions(transactions);
+      try {
+        const ensNames = await Promise.all(
+          addresses.map((address) =>
+            publicClient.getEnsName({
+              address: address as Address,
+            }),
+          ),
+        );
+
+        const ensAvatars = await Promise.all(
+          ensNames.map((ensName) =>
+            publicClient.getEnsAvatar({
+              name: normalize(ensName ?? ""),
+            }),
+          ),
+        );
+
+        for (const i in addresses) {
+          ensByAddress[addresses[i] as Address] = {
+            name: ensNames[i] ?? null,
+            avatar: ensAvatars[i] ?? null,
+          };
+        }
+      } catch (err) {
+        console.error(err);
+      }
+
+      setEnsByAddress(ensByAddress);
     })();
-  }, [address, network, wrapAmount, newFlowRate, ethersProvider, ethersSigner]);
-
-  const graphComponentKey = useMemo(
-    () => `${superfluidQueryRes?.pool.id ?? ""}-${Date.now()}`,
-    [superfluidQueryRes?.pool],
-  );
-
-  useEffect(() => {
-    (async () => {
-      const currentStreamValue = roundWeiAmount(
-        BigInt(flowRateToReceiver) * BigInt(SECONDS_IN_MONTH),
-        4,
-      );
-
-      setAmountPerTimeInterval(
-        formatNumberWithCommas(parseFloat(currentStreamValue)),
-      );
-    })();
-  }, [address, flowRateToReceiver]);
-
-  useEffect(() => {
-    if (!areTransactionsLoading && amountPerTimeInterval) {
-      setNewFlowRate(
-        (
-          parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
-        ).toString(),
-      );
-    }
-  }, [areTransactionsLoading, amountPerTimeInterval]);
+  }, [pool, superfluidQueryRes]);
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") {
@@ -306,286 +302,234 @@ export default function FlowStateCore(props: FlowStateCoreProps) {
     }
   }, [postHog, postHog.decideEndpointWasHit]);
 
-  const updateWrapAmount = (
-    amountPerTimeInterval: string,
-    liquidationEstimate: number | null,
-  ) => {
-    if (amountPerTimeInterval) {
-      const weiAmount = parseEther(amountPerTimeInterval.replace(/,/g, ""));
+  const addToWallet = (args: {
+    address: string;
+    symbol: string;
+    decimals: number;
+    image: string;
+  }) => {
+    const { address, symbol, decimals, image } = args;
 
-      if (
-        weiAmount > 0 &&
-        liquidationEstimate &&
-        dayjs
-          .unix(liquidationEstimate)
-          .isBefore(dayjs().add(dayjs.duration({ months: 3 })))
-      ) {
-        if (ethBalance?.value && ethBalance.value <= weiAmount * BigInt(3)) {
-          const amount =
-            ethBalance.value - parseEther(minEthBalance.toString());
-
-          setWrapAmount(
-            formatNumberWithCommas(
-              parseFloat(formatEther(amount > 0 ? BigInt(amount) : BigInt(0))),
-            ),
-          );
-        } else {
-          setWrapAmount(
-            formatNumberWithCommas(
-              parseFloat(formatEther(weiAmount * BigInt(3))),
-            ),
-          );
-        }
-      } else {
-        setWrapAmount("");
-      }
-
-      setNewFlowRate(
-        (
-          weiAmount /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
-        ).toString(),
-      );
-    }
+    walletClient?.request({
+      method: "wallet_watchAsset",
+      params: {
+        type: "ERC20",
+        options: {
+          address,
+          symbol,
+          decimals,
+          image,
+        },
+      },
+    });
   };
 
   return (
     <>
-      {!network ? (
-        <Stack direction="horizontal" className="m-auto fs-1 fs-bold">
-          Network not supported
-        </Stack>
-      ) : (
-        <Stack
-          direction="horizontal"
-          className="align-items-stretch flex-grow-1 overflow-hidden"
-          style={{ height: "100vh" }}
-        >
-          <FlowStateCoreGraph
-            key={graphComponentKey}
-            pool={superfluidQueryRes?.pool}
-            chainId={chainId}
-          />
-          {!isMobile && !isTablet ? (
-            <Stack
-              direction="vertical"
-              className="w-25 p-3 mx-auto me-0 overflow-y-auto"
-              style={{
-                minHeight: "100svh",
-                boxShadow: "-0.4rem 0 0.4rem 1px rgba(0,0,0,0.1)",
+      <Container
+        className="mx-auto p-0 px-4 mb-5"
+        style={{
+          maxWidth:
+            isMobile || isTablet
+              ? "100%"
+              : isSmallScreen
+                ? 1000
+                : isMediumScreen
+                  ? 1300
+                  : 1600,
+        }}
+      >
+        {flowSplitterPoolQueryLoading ||
+        superfluidQueryLoading ||
+        !ensByAddress ? (
+          <span className="position-absolute top-50 start-50 translate-middle">
+            <Spinner />
+          </span>
+        ) : !network ? (
+          <p className="w-100 mt-5 fs-4 text-center">Pool Not Found</p>
+        ) : (
+          <>
+            <h1 className="d-flex flex-column flex-sm-row align-items-sm-center overflow-hidden gap-sm-1 mt-5 mb-1">
+              <span className="text-truncate">
+                {pool && pool.name !== "Superfluid Pool"
+                  ? pool.name
+                  : "Flow Splitter"}{" "}
+                <span className="d-none d-sm-inline-block">(</span>
+              </span>
+              <Stack direction="horizontal" gap={1}>
+                <Link
+                  href={`${network.superfluidExplorer}/pools/${pool.poolAddress}`}
+                  target="_blank"
+                >
+                  {truncateStr(pool.poolAddress, 14)}
+                </Link>
+                <span className="d-none d-sm-inline-block">)</span>
+                {poolAdmins.find(
+                  (admin: { address: string }) =>
+                    admin.address === address?.toLowerCase(),
+                ) && (
+                  <Button
+                    variant="transparent"
+                    className="mt-2 p-0 border-0"
+                    onClick={() =>
+                      router.push(
+                        `/flow-splitters/${chainId}/${flowSplitter.id}/admin`,
+                      )
+                    }
+                  >
+                    <InfoTooltip
+                      position={{ top: true }}
+                      target={<Image width={32} src="/edit.svg" alt="Edit" />}
+                      content={<>Edit</>}
+                    />
+                  </Button>
+                )}
+                <Button
+                  variant="transparent"
+                  className="d-flex align-items-center mt-2 p-0 border-0"
+                  onClick={() => {
+                    !address && openConnectModal
+                      ? openConnectModal()
+                      : connectedChain?.id !== chainId
+                        ? switchChain({ chainId })
+                        : addToWallet({
+                            address: pool.poolAddress,
+                            symbol: pool.symbol,
+                            decimals: 0,
+                            image: "",
+                          });
+                  }}
+                >
+                  <InfoTooltip
+                    position={{ top: true }}
+                    target={<Image width={32} src="/wallet.svg" alt="wallet" />}
+                    content={<>Add to Wallet</>}
+                  />
+                </Button>
+              </Stack>
+            </h1>
+            <Stack direction="horizontal" gap={1} className="mb-5 fs-6">
+              Distributing{" "}
+              {!!poolToken.icon && (
+                <Image src={poolToken.icon} alt="" width={18} height={18} />
+              )}
+              {superfluidQueryRes?.token.symbol} on
+              <Image src={network.icon} alt="" width={18} height={18} />
+              {network.name}
+              <Button
+                variant="transparent"
+                className="d-flex align-items-center p-0 border-0"
+                onClick={() => {
+                  !address && openConnectModal
+                    ? openConnectModal()
+                    : connectedChain?.id !== chainId
+                      ? switchChain({ chainId })
+                      : addToWallet({
+                          address: pool.token,
+                          symbol: superfluidQueryRes?.token.symbol,
+                          decimals: 18,
+                          image: poolToken?.icon ?? "",
+                        });
+                }}
+              >
+                <InfoTooltip
+                  position={{ top: true }}
+                  target={<Image width={24} src="/wallet.svg" alt="wallet" />}
+                  content={<>Add to Wallet</>}
+                />
+              </Button>
+            </Stack>
+            {ensByAddress && (
+              <PoolGraph
+                flowStateSafeInflowRate={
+                  superfluidQueryRes?.account.accountTokenSnapshots[0]
+                    .totalInflowRate ?? "0"
+                }
+                pool={superfluidQueryRes?.pool}
+                chainId={chainId}
+                ensByAddress={ensByAddress}
+              />
+            )}
+            <Button
+              className="w-100 mt-5 py-2 fs-4"
+              onClick={() => {
+                !address && openConnectModal
+                  ? openConnectModal()
+                  : connectedChain?.id !== chainId
+                    ? switchChain({ chainId })
+                    : setShowOpenFlow(true);
               }}
             >
-              <p className="m-0 fs-4">Fund Flow State</p>
-              <Stack direction="vertical" className="flex-grow-0">
-                <FlowStateCoreDetails matchingPool={superfluidQueryRes?.pool} />
-                <Accordion activeKey={step} className="mt-4">
-                  <EditStream
-                    isSelected={step === Step.SELECT_AMOUNT}
-                    setStep={(step) => setStep(step)}
-                    token={network.tokens[0]}
-                    network={network}
-                    flowRateToReceiver={flowRateToReceiver}
-                    amountPerTimeInterval={amountPerTimeInterval}
-                    setAmountPerTimeInterval={(amount) => {
-                      setAmountPerTimeInterval(amount);
-                      updateWrapAmount(amount, calcLiquidationEstimate(amount));
-                    }}
-                    newFlowRate={newFlowRate}
-                    wrapAmount={wrapAmount}
-                    isFundingFlowStateCore={true}
-                    superTokenBalance={superTokenBalance}
-                    hasSufficientBalance={
-                      !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
-                    }
-                  />
-                  <TopUp
-                    step={step}
-                    setStep={(step) => setStep(step)}
-                    newFlowRate={newFlowRate}
-                    wrapAmount={wrapAmount}
-                    isFundingFlowStateCore={true}
-                    superTokenBalance={superTokenBalance}
-                    minEthBalance={minEthBalance}
-                    suggestedTokenBalance={suggestedTokenBalance}
-                    hasSufficientEthBalance={hasSufficientEthBalance}
-                    hasSufficientTokenBalance={hasSufficientTokenBalance}
-                    hasSuggestedTokenBalance={hasSuggestedTokenBalance}
-                    ethBalance={ethBalance}
-                    underlyingTokenBalance={ethBalance}
-                    network={network}
-                    superTokenInfo={network.tokens[0]}
-                  />
-                  <Wrap
-                    step={step}
-                    setStep={setStep}
-                    wrapAmount={wrapAmount}
-                    setWrapAmount={setWrapAmount}
-                    newFlowRate={newFlowRate}
-                    token={network.tokens[0]}
-                    isFundingFlowStateCore={true}
-                    superTokenBalance={superTokenBalance}
-                    underlyingTokenBalance={ethBalance}
-                  />
-                  <Review
-                    step={step}
-                    setStep={(step) => setStep(step)}
-                    network={network}
-                    receiver={network.flowStateCoreGda}
-                    transactions={transactions}
-                    completedTransactions={completedTransactions}
-                    areTransactionsLoading={areTransactionsLoading}
-                    transactionError={transactionError}
-                    executeTransactions={executeTransactions}
-                    liquidationEstimate={liquidationEstimate}
-                    netImpact={BigInt(0)}
-                    matchingTokenInfo={network.tokens[0]}
-                    allocationTokenInfo={network.tokens[0]}
-                    flowRateToReceiver={flowRateToReceiver}
-                    amountPerTimeInterval={amountPerTimeInterval}
-                    newFlowRate={newFlowRate}
-                    wrapAmount={wrapAmount}
-                    newFlowRateToFlowState={"0"}
-                    flowRateToFlowState={"0"}
-                    supportFlowStateAmount={"0"}
-                    supportFlowStateTimeInterval={TimeInterval.MONTH}
-                    isFundingFlowStateCore={true}
-                    isPureSuperToken={false}
-                    superTokenBalance={superTokenBalance}
-                    underlyingTokenBalance={ethBalance}
-                  />
-                  <Success
-                    step={step}
-                    isFundingFlowStateCore={true}
-                    poolName="Flow State Core"
-                    poolUiLink="https://flowstate.network/core"
-                    newFlowRate={newFlowRate}
-                  />
-                </Accordion>
-              </Stack>
-            </Stack>
-          ) : (
-            <Offcanvas
-              show={showTransactionPanel}
-              placement="bottom"
-              onHide={() => setShowTransactionPanel(false)}
-              className="h-100"
-            >
-              <Offcanvas.Header closeButton className="fs-4 pb-2">
-                Fund Flow State
-              </Offcanvas.Header>
-              <Offcanvas.Body>
-                <Stack direction="vertical" className="flex-grow-0">
-                  <FlowStateCoreDetails
-                    matchingPool={superfluidQueryRes?.pool}
-                  />
-                  <Accordion activeKey={step} className="mt-4">
-                    <EditStream
-                      isSelected={step === Step.SELECT_AMOUNT}
-                      setStep={(step) => setStep(step)}
-                      token={network.tokens[0]}
-                      network={network}
-                      flowRateToReceiver={flowRateToReceiver}
-                      amountPerTimeInterval={amountPerTimeInterval}
-                      setAmountPerTimeInterval={(amount) => {
-                        setAmountPerTimeInterval(amount);
-                        updateWrapAmount(
-                          amount,
-                          calcLiquidationEstimate(amount),
-                        );
-                      }}
-                      newFlowRate={newFlowRate}
-                      wrapAmount={wrapAmount}
-                      isFundingFlowStateCore={true}
-                      superTokenBalance={superTokenBalance}
-                      hasSufficientBalance={
-                        !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
-                      }
-                    />
-                    <TopUp
-                      step={step}
-                      setStep={(step) => setStep(step)}
-                      newFlowRate={newFlowRate}
-                      wrapAmount={wrapAmount}
-                      isFundingFlowStateCore={true}
-                      superTokenBalance={superTokenBalance}
-                      minEthBalance={minEthBalance}
-                      suggestedTokenBalance={suggestedTokenBalance}
-                      hasSufficientEthBalance={hasSufficientEthBalance}
-                      hasSufficientTokenBalance={hasSufficientTokenBalance}
-                      hasSuggestedTokenBalance={hasSuggestedTokenBalance}
-                      ethBalance={ethBalance}
-                      underlyingTokenBalance={ethBalance}
-                      network={network}
-                      superTokenInfo={network.tokens[0]}
-                    />
-                    <Wrap
-                      step={step}
-                      setStep={setStep}
-                      wrapAmount={wrapAmount}
-                      setWrapAmount={setWrapAmount}
-                      newFlowRate={newFlowRate}
-                      token={network.tokens[0]}
-                      isFundingFlowStateCore={true}
-                      superTokenBalance={superTokenBalance}
-                      underlyingTokenBalance={ethBalance}
-                    />
-                    <Review
-                      step={step}
-                      setStep={(step) => setStep(step)}
-                      network={network}
-                      receiver={network.flowStateCoreGda}
-                      transactions={transactions}
-                      completedTransactions={completedTransactions}
-                      areTransactionsLoading={areTransactionsLoading}
-                      transactionError={transactionError}
-                      executeTransactions={executeTransactions}
-                      liquidationEstimate={liquidationEstimate}
-                      netImpact={BigInt(0)}
-                      matchingTokenInfo={network.tokens[0]}
-                      allocationTokenInfo={network.tokens[0]}
-                      flowRateToReceiver={flowRateToReceiver}
-                      amountPerTimeInterval={amountPerTimeInterval}
-                      newFlowRate={newFlowRate}
-                      wrapAmount={wrapAmount}
-                      newFlowRateToFlowState={"0"}
-                      flowRateToFlowState={"0"}
-                      supportFlowStateAmount={"0"}
-                      supportFlowStateTimeInterval={TimeInterval.MONTH}
-                      isFundingFlowStateCore={true}
-                      isPureSuperToken={false}
-                      superTokenBalance={superTokenBalance}
-                      underlyingTokenBalance={ethBalance}
-                    />
-                    <Success
-                      step={step}
-                      isFundingFlowStateCore={true}
-                      poolName="Flow State Core"
-                      poolUiLink="https://flowstate.network/core"
-                      newFlowRate={newFlowRate}
-                    />
-                  </Accordion>
-                </Stack>
-              </Offcanvas.Body>
-            </Offcanvas>
-          )}
-        </Stack>
-      )}
-      <Button
-        onClick={() => setShowTransactionPanel(true)}
-        className="d-lg-none position-absolute bottom-0 end-0 me-4 mb-3 p-0 rounded-circle"
-        style={{ width: 64, height: 64 }}
-      >
-        <Image
-          src="/add.svg"
-          alt="Open"
-          width={38}
-          height={38}
-          style={{
-            filter:
-              "invert(100%) sepia(0%) saturate(0%) hue-rotate(49deg) brightness(103%) contrast(103%)",
-          }}
+              Open Flow
+            </Button>
+            {superfluidQueryRes?.pool && pool && ensByAddress && (
+              <ActivityFeed
+                poolSymbol={pool.symbol}
+                poolAddress={pool.poolAddress}
+                network={network}
+                token={poolToken}
+                poolCreatedEvent={superfluidQueryRes?.pool.poolCreatedEvent}
+                poolAdminAddedEvents={pool.poolAdminAddedEvents}
+                poolAdminRemovedEvents={pool.poolAdminRemovedEvents}
+                flowDistributionUpdatedEvents={
+                  superfluidQueryRes?.pool.flowDistributionUpdatedEvents
+                }
+                instantDistributionUpdatedEvents={
+                  superfluidQueryRes?.pool.instantDistributionUpdatedEvents
+                }
+                memberUnitsUpdatedEvents={
+                  superfluidQueryRes?.pool.memberUnitsUpdatedEvents
+                }
+                ensByAddress={ensByAddress}
+              />
+            )}
+          </>
+        )}
+      </Container>
+      {showOpenFlow && (
+        <OpenFlow
+          show={showOpenFlow}
+          network={network!}
+          token={poolToken}
+          pool={superfluidQueryRes?.pool}
+          handleClose={() => setShowOpenFlow(false)}
         />
-      </Button>
+      )}
+      {showInstantDistribution && (
+        <InstantDistribution
+          show={showInstantDistribution}
+          network={network!}
+          token={poolToken}
+          pool={superfluidQueryRes?.pool}
+          handleClose={() => setShowInstantDistribution(false)}
+        />
+      )}
+      <Modal
+        show={showConnectionModal}
+        centered
+        onHide={() => setShowConnectionModal(false)}
+      >
+        <Modal.Header closeButton className="align-items-start border-0 pt-3">
+          <Modal.Title className="fs-5 fw-bold">
+            You're a recipient in this Flow Splitter but haven't connected your
+            shares.
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="fs-5">
+          Do you want to do that now, so your{" "}
+          <Link href="https://app.superfluid.finance/" target="_blank">
+            Super Token balance
+          </Link>{" "}
+          is reflected in real time?
+        </Modal.Body>
+        <Modal.Footer className="border-0">
+          <PoolConnectionButton
+            network={network}
+            poolAddress={pool?.poolAddress}
+            isConnected={!shouldConnect}
+          />
+        </Modal.Footer>
+      </Modal>
     </>
   );
 }

@@ -1,7 +1,9 @@
 import { useState, createContext, useContext, useCallback } from "react";
 
 type DonorParams = {
+  poolId: string | null;
   strategyAddress: string | null;
+  gdaPoolAddress: string | null;
   chainId: number | null;
   allocationToken: string | null;
   matchingToken: string | null;
@@ -29,7 +31,9 @@ export function DonorParamsContextProvider({
   children: React.ReactNode;
 }) {
   const [donorParams, setDonorParams] = useState<DonorParams>({
+    poolId: null,
     strategyAddress: null,
+    gdaPoolAddress: null,
     chainId: null,
     allocationToken: null,
     matchingToken: null,

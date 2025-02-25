@@ -25,4 +25,5 @@ export type Network = {
   allo: Address;
   alloRegistry: Address;
   gdaForwarder: Address;
+  cfaForwarder: Address;
 };
