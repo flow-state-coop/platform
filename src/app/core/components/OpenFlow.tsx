@@ -30,12 +30,14 @@ import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
 import { getApolloClient } from "@/lib/apollo";
+import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import {
   TimeInterval,
   unitOfTime,
   fromTimeUnitsToSeconds,
   roundWeiAmount,
   isNumber,
+  convertStreamValueToInterval,
 } from "@/lib/utils";
 import { ZERO_ADDRESS, FLOW_STATE_RECEIVER } from "@/lib/constants";
 
@@ -183,6 +185,18 @@ export default function OpenFlow(props: OpenFlowProps) {
       underlyingTokenBalance?.value >= parseEther(wrapAmountPerTimeInterval))
       ? true
       : false;
+  const minDonationPerMonth = getPoolFlowRateConfig(
+    token.name,
+  ).minAllocationPerMonth;
+  const isAmountInsufficient =
+    Number(amountPerTimeInterval) > 0 &&
+    Number(
+      convertStreamValueToInterval(
+        parseEther(amountPerTimeInterval),
+        timeInterval,
+        TimeInterval.MONTH,
+      ),
+    ) < minDonationPerMonth;
 
   const flowRateToReceiver = useMemo(() => {
     if (address && pool) {
@@ -205,7 +219,8 @@ export default function OpenFlow(props: OpenFlowProps) {
     hasSufficientSuperTokenBalance &&
     (!wrapAmountPerTimeInterval ||
       wrapAmountPerTimeInterval === "0" ||
-      hasSufficientWrappingBalance);
+      hasSufficientWrappingBalance) &&
+    !isAmountInsufficient;
 
   const membershipsInflowRate = useMemo(() => {
     let membershipsInflowRate = BigInt(0);
@@ -699,7 +714,12 @@ export default function OpenFlow(props: OpenFlowProps) {
             </Dropdown.Menu>
           </Dropdown>
         </Stack>
-        {!isSuperTokenPure && showWrappingStep && (
+        {isAmountInsufficient && (
+          <Alert variant="warning" className="mt-2 mb-0 py-2">
+            Minimum Donation = {minDonationPerMonth} {token.name}/mo
+          </Alert>
+        )}
+        {!isSuperTokenPure && showWrappingStep && !isAmountInsufficient && (
           <>
             <Card.Text className="mt-3 mb-2">
               Wrap for Streaming (

@@ -10,9 +10,11 @@ import FormCheck from "react-bootstrap/FormCheck";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import Badge from "react-bootstrap/Badge";
+import Alert from "react-bootstrap/Alert";
 import { Step } from "@/types/checkout";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
+import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import {
   fromTimeUnitsToSeconds,
   unitOfTime,
@@ -62,6 +64,9 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
   const isDeletingStream =
     BigInt(flowRateToFlowState) > 0 &&
     BigInt(newFlowRateToFlowState) === BigInt(0);
+  const minDonationPerMonth = getPoolFlowRateConfig(
+    token.name,
+  ).minAllocationPerMonth;
 
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
@@ -305,6 +310,12 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
               </Dropdown.Menu>
             </Dropdown>
           </Stack>
+          {Number(supportFlowStateAmount) > 0 &&
+            Number(supportFlowStateAmount) < minDonationPerMonth && (
+              <Alert variant="warning" className="mt-2 py-2">
+                Minimum Donation = {minDonationPerMonth} {token.name}/mo
+              </Alert>
+            )}
           <Stack
             direction="horizontal"
             gap={2}
@@ -322,7 +333,10 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
             </Button>
             <Button
               variant={isDeletingStream ? "danger" : "primary"}
-              disabled={!supportFlowStateAmount}
+              disabled={
+                !supportFlowStateAmount ||
+                Number(supportFlowStateAmount) < minDonationPerMonth
+              }
               className="w-50 py-1 rounded-3 text-light"
               onClick={() => setStep(Step.REVIEW)}
             >
