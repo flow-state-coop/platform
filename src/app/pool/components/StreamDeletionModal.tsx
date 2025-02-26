@@ -124,15 +124,16 @@ export default function StreamDeletionModal(props: StreamDeletionModalProps) {
       </Modal.Header>
       <Modal.Body className="bg-light mt-3">
         <Stack direction="horizontal" gap={3} className="justify-content-end">
-          <Button variant="danger" className="w-25" onClick={hide}>
-            Cancel
+          <Button className="w-25" onClick={hide}>
+            Nevermind
           </Button>
           <Button
+            variant="danger"
             className="w-25"
             onClick={deleteStream}
             style={{ pointerEvents: isLoading ? "none" : "auto" }}
           >
-            {isLoading ? <Spinner size="sm" /> : "Confirm"}
+            {isLoading ? <Spinner size="sm" /> : "Yes, close it"}
           </Button>
         </Stack>
         {error ? (

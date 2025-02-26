@@ -519,26 +519,40 @@ export default function WalletBalance() {
                           height={20}
                         />
                       </Button>
-                      <Button
-                        variant="transparent"
-                        className="px-0 py-2"
-                        onClick={() => {
-                          setShowOffcanvas(false);
+                      {outflow.receiver.id === FLOW_STATE_RECEIVER ? (
+                        <Button
+                          variant="transparent"
+                          href={`/core/?chainId=${chainId}`}
+                          target="_blank"
+                          className="px-0 py-2"
+                        >
+                          <Image
+                            src="/edit.svg"
+                            alt="Edit"
+                            width={20}
+                            height={20}
+                          />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="transparent"
+                          className="px-0 py-2"
+                          onClick={() => {
+                            setShowOffcanvas(false);
 
-                          router.push(
-                            outflow.receiver.id === FLOW_STATE_RECEIVER
-                              ? `/core/?chainId=${chainId}`
-                              : `/pool/?chainId=${chainId}&poolId=${poolId}&recipientId=${flowStateQueryRes?.pool.recipientsByPoolIdAndChainId.find((recipient: { superappAddress: string }) => recipient.superappAddress === outflow.receiver.id)?.id}`,
-                          );
-                        }}
-                      >
-                        <Image
-                          src="/edit.svg"
-                          alt="Edit"
-                          width={20}
-                          height={20}
-                        />
-                      </Button>
+                            router.push(
+                              `/pool/?chainId=${chainId}&poolId=${poolId}&recipientId=${flowStateQueryRes?.pool.recipientsByPoolIdAndChainId.find((recipient: { superappAddress: string }) => recipient.superappAddress === outflow.receiver.id)?.id}`,
+                            );
+                          }}
+                        >
+                          <Image
+                            src="/edit.svg"
+                            alt="Edit"
+                            width={20}
+                            height={20}
+                          />
+                        </Button>
+                      )}
                     </Stack>
                   ),
                 )}
