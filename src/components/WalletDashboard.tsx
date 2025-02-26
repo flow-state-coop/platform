@@ -405,151 +405,151 @@ export default function WalletBalance() {
             <Image src="/logout.svg" alt="Logout" width={18} />{" "}
           </Button>
         </Stack>
-        {superfluidQueryRes?.poolDistributors[0] ||
-        (superfluidQueryRes?.account &&
-          superfluidQueryRes.account.outflows.length > 0) ? (
-          <Card className="bg-light mt-3 mx-3 p-2 rounded-4 border-0">
-            <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 text-info fs-5">
-              Your Streams ({allocationTokenInfo?.name}/mo)
-            </Card.Header>
-            <Card.Body className="p-2">
-              {superfluidQueryRes?.poolDistributors[0] ? (
-                <Stack
-                  direction="horizontal"
-                  gap={2}
-                  className="align-items-center"
-                >
-                  <Card.Text className="w-66 m-0 text-info">
-                    Matching Pool
-                  </Card.Text>
-                  <Card.Text className="w-25 m-0">
-                    {Intl.NumberFormat("en", {
-                      maximumFractionDigits: 6,
-                    }).format(
-                      Number(
-                        formatEther(
-                          BigInt(
-                            superfluidQueryRes.poolDistributors[0].flowRate,
-                          ) * BigInt(SECONDS_IN_MONTH),
-                        ),
+        <Card className="bg-light mt-3 mx-3 p-2 rounded-4 border-0">
+          <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 fs-5">
+            Your Streams ({allocationTokenInfo?.name}/mo)
+          </Card.Header>
+          <Card.Body className="p-2">
+            {superfluidQueryRes?.poolDistributors[0] ? (
+              <Stack
+                direction="horizontal"
+                gap={3}
+                className="align-items-center border-bottom border-white"
+              >
+                <Card.Text className="w-66 m-0 text-info">
+                  Matching Pool
+                </Card.Text>
+                <Card.Text className="w-33 m-0">
+                  {Intl.NumberFormat("en", {
+                    maximumFractionDigits: 6,
+                  }).format(
+                    Number(
+                      formatEther(
+                        BigInt(
+                          superfluidQueryRes.poolDistributors[0].flowRate,
+                        ) * BigInt(SECONDS_IN_MONTH),
                       ),
-                    )}
-                  </Card.Text>
-                  <Button
-                    variant="transparent"
-                    className="px-0 py-2"
-                    onClick={() =>
-                      setStreamDeletionModalState({
-                        show: true,
-                        isMatchingPool: true,
-                        receiver: gdaPoolAddress!,
-                      })
-                    }
-                  >
-                    <Image
-                      src="/delete.svg"
-                      alt="Delete"
-                      width={20}
-                      height={20}
-                    />
-                  </Button>
-                  <Button
-                    variant="transparent"
-                    className="px-0 py-2"
-                    onClick={() => {
-                      setShowOffcanvas(false);
-                      router.push(
-                        `/pool/?chainId=${chainId}&poolId=${poolId}&editPoolDistribution=true`,
-                      );
-                    }}
-                  >
-                    <Image src="/edit.svg" alt="Edit" width={20} height={20} />
-                  </Button>
-                </Stack>
-              ) : null}
-              {superfluidQueryRes?.account ? (
-                <>
-                  {superfluidQueryRes.account.outflows.map(
-                    (
-                      outflow: {
-                        currentFlowRate: string;
-                        receiver: { id: string };
-                      },
-                      i: number,
-                    ) => (
-                      <Stack
-                        direction="horizontal"
-                        gap={3}
-                        className="align-items-center border-bottom border-white"
-                        key={i}
-                      >
-                        <Card.Text className="w-66 m-0 text-info text-truncate">
-                          {outflow.receiver.id === FLOW_STATE_RECEIVER
-                            ? "Flow State"
-                            : flowStateQueryRes.pool.recipientsByPoolIdAndChainId.find(
-                                (recipient: { superappAddress: string }) =>
-                                  recipient.superappAddress ===
-                                  outflow.receiver.id,
-                              )?.metadata.title}
-                        </Card.Text>
-                        <Card.Text className="w-25 m-0">
-                          {Intl.NumberFormat("en", {
-                            maximumFractionDigits: 6,
-                          }).format(
-                            Number(
-                              formatEther(
-                                BigInt(outflow.currentFlowRate) *
-                                  BigInt(SECONDS_IN_MONTH),
-                              ),
-                            ),
-                          )}
-                        </Card.Text>
-                        <Button
-                          variant="transparent"
-                          className="px-0 py-2"
-                          onClick={() =>
-                            setStreamDeletionModalState({
-                              show: true,
-                              isMatchingPool: false,
-                              receiver: outflow.receiver.id,
-                            })
-                          }
-                        >
-                          <Image
-                            src="/delete.svg"
-                            alt="Delete"
-                            width={20}
-                            height={20}
-                          />
-                        </Button>
-                        <Button
-                          variant="transparent"
-                          className="px-0 py-2"
-                          onClick={() => {
-                            setShowOffcanvas(false);
-
-                            router.push(
-                              outflow.receiver.id === FLOW_STATE_RECEIVER
-                                ? `/core/?chainId=${chainId}`
-                                : `/pool/?chainId=${chainId}&poolId=${poolId}&recipientId=${flowStateQueryRes?.pool.recipientsByPoolIdAndChainId.find((recipient: { superappAddress: string }) => recipient.superappAddress === outflow.receiver.id)?.id}`,
-                            );
-                          }}
-                        >
-                          <Image
-                            src="/edit.svg"
-                            alt="Edit"
-                            width={20}
-                            height={20}
-                          />
-                        </Button>
-                      </Stack>
                     ),
                   )}
-                </>
-              ) : null}
-            </Card.Body>
-          </Card>
-        ) : null}
+                </Card.Text>
+                <Button
+                  variant="transparent"
+                  className="px-0 py-2"
+                  onClick={() =>
+                    setStreamDeletionModalState({
+                      show: true,
+                      isMatchingPool: true,
+                      receiver: gdaPoolAddress!,
+                    })
+                  }
+                >
+                  <Image
+                    src="/delete.svg"
+                    alt="Delete"
+                    width={20}
+                    height={20}
+                  />
+                </Button>
+                <Button
+                  variant="transparent"
+                  className="px-0 py-2"
+                  onClick={() => {
+                    setShowOffcanvas(false);
+                    router.push(
+                      `/pool/?chainId=${chainId}&poolId=${poolId}&editPoolDistribution=true`,
+                    );
+                  }}
+                >
+                  <Image src="/edit.svg" alt="Edit" width={20} height={20} />
+                </Button>
+              </Stack>
+            ) : null}
+            {superfluidQueryRes?.account.outflows?.length > 0 ? (
+              <>
+                {superfluidQueryRes.account.outflows.map(
+                  (
+                    outflow: {
+                      currentFlowRate: string;
+                      receiver: { id: string };
+                    },
+                    i: number,
+                  ) => (
+                    <Stack
+                      direction="horizontal"
+                      gap={3}
+                      className="align-items-center border-bottom border-white"
+                      key={i}
+                    >
+                      <Card.Text className="w-66 m-0 text-info text-truncate">
+                        {outflow.receiver.id === FLOW_STATE_RECEIVER
+                          ? "Flow State"
+                          : flowStateQueryRes.pool.recipientsByPoolIdAndChainId.find(
+                              (recipient: { superappAddress: string }) =>
+                                recipient.superappAddress ===
+                                outflow.receiver.id,
+                            )?.metadata.title}
+                      </Card.Text>
+                      <Card.Text className="w-33 m-0">
+                        {Intl.NumberFormat("en", {
+                          maximumFractionDigits: 6,
+                        }).format(
+                          Number(
+                            formatEther(
+                              BigInt(outflow.currentFlowRate) *
+                                BigInt(SECONDS_IN_MONTH),
+                            ),
+                          ),
+                        )}
+                      </Card.Text>
+                      <Button
+                        variant="transparent"
+                        className="px-0 py-2"
+                        onClick={() =>
+                          setStreamDeletionModalState({
+                            show: true,
+                            isMatchingPool: false,
+                            receiver: outflow.receiver.id,
+                          })
+                        }
+                      >
+                        <Image
+                          src="/delete.svg"
+                          alt="Delete"
+                          width={20}
+                          height={20}
+                        />
+                      </Button>
+                      <Button
+                        variant="transparent"
+                        className="px-0 py-2"
+                        onClick={() => {
+                          setShowOffcanvas(false);
+
+                          router.push(
+                            outflow.receiver.id === FLOW_STATE_RECEIVER
+                              ? `/core/?chainId=${chainId}`
+                              : `/pool/?chainId=${chainId}&poolId=${poolId}&recipientId=${flowStateQueryRes?.pool.recipientsByPoolIdAndChainId.find((recipient: { superappAddress: string }) => recipient.superappAddress === outflow.receiver.id)?.id}`,
+                          );
+                        }}
+                      >
+                        <Image
+                          src="/edit.svg"
+                          alt="Edit"
+                          width={20}
+                          height={20}
+                        />
+                      </Button>
+                    </Stack>
+                  ),
+                )}
+              </>
+            ) : (
+              <Card.Text className="mt-1 small text-center">
+                No open streams
+              </Card.Text>
+            )}
+          </Card.Body>
+        </Card>
         <Stack
           direction="horizontal"
           gap={1}
@@ -684,7 +684,7 @@ export default function WalletBalance() {
               alt="close"
               width={24}
             />
-            <Card.Text className="m-0 w33 overflow-hidden text-truncate">
+            <Card.Text className="m-0">
               {formatNumberWithCommas(
                 parseFloat(
                   roundWeiAmount(
@@ -699,7 +699,9 @@ export default function WalletBalance() {
                 ),
               )}
             </Card.Text>
-            <Card.Text className="m-0 text-info fs-6">monthly</Card.Text>
+            <Card.Text className="m-0 text-info" style={{ fontSize: "0.7rem" }}>
+              /mo
+            </Card.Text>
           </Stack>
         </Stack>
         <Stack
@@ -733,7 +735,7 @@ export default function WalletBalance() {
         </Card.Link>
         {eligibilityMethod === EligibilityMethod.NFT_GATING ? (
           <Card className="bg-light m-3 p-2 rounded-4 border-0">
-            <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 py-1 text-info fs-5">
+            <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 py-1 fs-5">
               Matching Eligibility
             </Card.Header>
             <Card.Body className="p-2">
