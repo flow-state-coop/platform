@@ -103,6 +103,7 @@ export default async function Page({
       }
       poolId={searchParams.poolId ?? DEFAULT_POOL_ID}
       recipientId={searchParams.recipientId ?? ""}
+      editPoolDistribution={searchParams.editPoolDistribution ? true : false}
     />
   );
 }

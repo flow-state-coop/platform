@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useAccount, useDisconnect, useReadContract } from "wagmi";
 import { formatEther, Address } from "viem";
 import { useQuery, gql } from "@apollo/client";
@@ -14,6 +15,7 @@ import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
 import Spinner from "react-bootstrap/Spinner";
 import PassportMintingInstructions from "./PassportMintingInstructions";
+import StreamDeletionModal from "@/app/pool/components/StreamDeletionModal";
 import useDonorParams from "@/hooks/donorParams";
 import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useFlowingAmount from "@/hooks/flowingAmount";
@@ -32,6 +34,7 @@ import {
   ZERO_ADDRESS,
   SECONDS_IN_MONTH,
   DEFAULT_CHAIN_ID,
+  FLOW_STATE_RECEIVER,
 } from "@/lib/constants";
 
 enum Token {
@@ -52,9 +55,30 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(advancedFormat);
 
+const FLOW_STATE_POOL_QUERY = gql`
+  query PoolQuery($poolId: String!, $chainId: Int!) {
+    pool(chainId: $chainId, id: $poolId) {
+      recipientsByPoolIdAndChainId(
+        first: 1000
+        condition: { status: APPROVED }
+      ) {
+        id
+        superappAddress
+        metadata
+      }
+    }
+  }
+`;
+
 const ACCOUNT_QUERY = gql`
-  query AccountQuery($userAddress: String!) {
+  query AccountQuery(
+    $userAddress: String!
+    $allocationToken: String!
+    $receivers: [String]
+    $gdaPoolAddress: String!
+  ) {
     account(id: $userAddress) {
+      id
       accountTokenSnapshots {
         totalNetFlowRate
         totalOutflowRate
@@ -63,6 +87,32 @@ const ACCOUNT_QUERY = gql`
           id
         }
       }
+      outflows(
+        where: {
+          token: $allocationToken
+          receiver_: { id_in: $receivers }
+          currentFlowRate_not: "0"
+        }
+        orderBy: updatedAtTimestamp
+        orderDirection: desc
+      ) {
+        receiver {
+          id
+        }
+        streamedUntilUpdatedAt
+        updatedAtTimestamp
+        currentFlowRate
+      }
+    }
+    poolDistributors(
+      where: {
+        account_: { id: $userAddress }
+        pool_: { id: $gdaPoolAddress }
+        flowRate_not: "0"
+      }
+    ) {
+      id
+      flowRate
     }
   }
 `;
@@ -70,24 +120,49 @@ const ACCOUNT_QUERY = gql`
 export default function WalletBalance() {
   const [showOffcanvas, setShowOffcanvas] = useState(false);
   const [showMintingInstructions, setShowMintingInstructions] = useState(false);
+  const [streamDeletionModalState, setStreamDeletionModalState] = useState({
+    show: false,
+    isMatchingPool: false,
+    receiver: "",
+  });
   const [token, setToken] = useState(Token.ALLOCATION);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [isLoadingNftMint, setIsLoadingNftMint] = useState(false);
+  const [errorNftMint, setErrorNftMint] = useState("");
 
+  const router = useRouter();
   const { address } = useAccount();
   const { disconnect } = useDisconnect();
   const {
+    poolId,
     strategyAddress,
+    gdaPoolAddress,
     chainId,
     allocationToken,
     matchingToken,
     nftMintUrl,
   } = useDonorParams();
+  const { data: flowStateQueryRes } = useQuery(FLOW_STATE_POOL_QUERY, {
+    client: getApolloClient("flowState"),
+    variables: {
+      poolId,
+      chainId,
+    },
+    pollInterval: 10000,
+  });
   const { data: superfluidQueryRes } = useQuery(ACCOUNT_QUERY, {
     client: getApolloClient("superfluid", chainId ?? void 0),
     variables: {
       userAddress: address?.toLowerCase() ?? "0x",
+      allocationToken: allocationToken?.toLowerCase() ?? "0x",
+      receivers: [FLOW_STATE_RECEIVER].concat(
+        flowStateQueryRes?.pool.recipientsByPoolIdAndChainId.map(
+          (recipient: { superappAddress: string }) => recipient.superappAddress,
+        ) ?? [],
+      ),
+      gdaPoolAddress,
     },
+    skip: !poolId || !flowStateQueryRes || !address || !allocationToken,
+    pollInterval: 10000,
   });
   const { data: eligibilityMethod } = useReadContract({
     address: strategyAddress as Address,
@@ -157,7 +232,8 @@ export default function WalletBalance() {
     },
   });
 
-  const network = networks.find((network) => network.id === chainId);
+  const network =
+    networks.find((network) => network.id === chainId) ?? networks[0];
   const accountTokenSnapshotAllocation =
     superfluidQueryRes?.account?.accountTokenSnapshots?.filter(
       (snapshot: { token: { id: string } }) =>
@@ -212,8 +288,8 @@ export default function WalletBalance() {
 
   const handleNftMintRequest = async () => {
     try {
-      setIsLoading(true);
-      setError("");
+      setIsLoadingNftMint(true);
+      setErrorNftMint("");
 
       const res = await fetch("/api/mint-nft", {
         method: "POST",
@@ -228,15 +304,15 @@ export default function WalletBalance() {
       const data = await res.json();
 
       if (!data.success) {
-        setError(MintError.FAIL);
+        setErrorNftMint(MintError.FAIL);
       }
 
-      setIsLoading(false);
+      setIsLoadingNftMint(false);
 
       console.info(data);
     } catch (err) {
-      setIsLoading(false);
-      setError(MintError.FAIL);
+      setIsLoadingNftMint(false);
+      setErrorNftMint(MintError.FAIL);
 
       console.error(err);
     }
@@ -295,7 +371,7 @@ export default function WalletBalance() {
         </Stack>
         <Stack
           direction="horizontal"
-          className="justify-content-between align-items-center p-3"
+          className="justify-content-between align-items-center px-3 py-2"
         >
           <Stack direction="horizontal" className="align-items-center">
             <Card.Text className="m-0 sensitive">
@@ -329,183 +405,165 @@ export default function WalletBalance() {
             <Image src="/logout.svg" alt="Logout" width={18} />{" "}
           </Button>
         </Stack>
-        {eligibilityMethod === EligibilityMethod.NFT_GATING ? (
-          <Card className="bg-light mx-3 p-2 rounded-4 border-0">
-            <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 py-1 text-info fs-5">
-              Matching Eligibility
-            </Card.Header>
-            <Card.Body className="p-2">
+        <Card className="bg-light mt-3 mx-3 p-2 rounded-4 border-0">
+          <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 fs-5">
+            Your Streams ({allocationTokenInfo?.name}/mo)
+          </Card.Header>
+          <Card.Body className="p-2">
+            {superfluidQueryRes?.poolDistributors[0] ? (
               <Stack
                 direction="horizontal"
                 gap={3}
-                className="justify-content-center mb-4"
+                className="align-items-center border-bottom border-white"
               >
-                <Stack
-                  direction="vertical"
-                  gap={2}
-                  className="align-items-center"
+                <Card.Text className="w-66 m-0 text-info">
+                  Matching Pool
+                </Card.Text>
+                <Card.Text className="w-33 m-0">
+                  {Intl.NumberFormat("en", {
+                    maximumFractionDigits: 6,
+                  }).format(
+                    Number(
+                      formatEther(
+                        BigInt(
+                          superfluidQueryRes.poolDistributors[0].flowRate,
+                        ) * BigInt(SECONDS_IN_MONTH),
+                      ),
+                    ),
+                  )}
+                </Card.Text>
+                <Button
+                  variant="transparent"
+                  className="px-0 py-2"
+                  onClick={() =>
+                    setStreamDeletionModalState({
+                      show: true,
+                      isMatchingPool: true,
+                      receiver: gdaPoolAddress!,
+                    })
+                  }
                 >
                   <Image
-                    src={
-                      nftBalance && nftBalance > 0
-                        ? "/success.svg"
-                        : "close.svg"
-                    }
-                    alt={nftBalance && nftBalance > 0 ? "success" : "fail"}
-                    width={48}
-                    height={48}
-                    style={{
-                      filter:
-                        nftBalance && nftBalance > 0
-                          ? "invert(40%) sepia(14%) saturate(2723%) hue-rotate(103deg) brightness(97%) contrast(80%)"
-                          : "invert(27%) sepia(47%) saturate(3471%) hue-rotate(336deg) brightness(93%) contrast(85%)",
-                    }}
+                    src="/delete.svg"
+                    alt="Delete"
+                    width={20}
+                    height={20}
                   />
-                  <Card.Text
-                    className={`m-0 ${nftBalance && nftBalance > 0 ? "text-success" : "text-danger"}`}
-                  >
-                    {nftBalance && nftBalance > 0 ? "Eligibile" : "Ineligible"}
-                  </Card.Text>
-                </Stack>
-                <Stack
-                  direction="vertical"
-                  className="align-items-center justify-content-center m-auto"
+                </Button>
+                <Button
+                  variant="transparent"
+                  className="px-0 py-2"
+                  onClick={() => {
+                    setShowOffcanvas(false);
+                    router.push(
+                      `/pool/?chainId=${chainId}&poolId=${poolId}&editPoolDistribution=true`,
+                    );
+                  }}
                 >
-                  NFT Required:
-                  <Stack direction="horizontal" gap={2} className="m-auto mt-0">
-                    <Card.Text className="m-0">
-                      {requiredNftAddress
-                        ? truncateStr(requiredNftAddress as string, 12)
-                        : ""}
-                    </Card.Text>
-                    <Button
-                      variant="link"
-                      href={`${network?.blockExplorer}/address/${requiredNftAddress}`}
-                      target="_blank"
-                      className="d-flex align-items-center p-0"
-                    >
-                      <Image
-                        src="open-new.svg"
-                        alt="open"
-                        width={18}
-                        height={18}
-                      />
-                    </Button>
-                  </Stack>
-                </Stack>
+                  <Image src="/edit.svg" alt="Edit" width={20} height={20} />
+                </Button>
               </Stack>
-              <Stack>
-                {nftMintUrl?.startsWith("https://guild.xyz/octant-sqf-voter") &&
-                (!nftBalance || nftBalance === BigInt(0)) ? (
-                  <>
-                    <Button
-                      className="d-flex justify-content-center align-items-center text-light gap-2"
-                      onClick={!isLoading ? handleNftMintRequest : void 0}
+            ) : null}
+            {superfluidQueryRes?.account?.outflows?.length > 0 ? (
+              <>
+                {superfluidQueryRes.account.outflows.map(
+                  (
+                    outflow: {
+                      currentFlowRate: string;
+                      receiver: { id: string };
+                    },
+                    i: number,
+                  ) => (
+                    <Stack
+                      direction="horizontal"
+                      gap={3}
+                      className="align-items-center border-bottom border-white"
+                      key={i}
                     >
-                      Claim NFT
-                      {isLoading && <Spinner size="sm" />}
-                    </Button>
-                    {error && (
-                      <p className="mb-1 small text-center text-danger">
-                        {error}
-                      </p>
-                    )}
-                  </>
-                ) : nftMintUrl && (!nftBalance || nftBalance === BigInt(0)) ? (
-                  <Button
-                    variant="link"
-                    href={nftMintUrl}
-                    target="_blank"
-                    className="bg-primary text-light text-decoration-none"
-                  >
-                    Claim NFT
-                  </Button>
-                ) : !nftBalance || nftBalance === BigInt(0) ? (
-                  <Card.Text className="m-0">
-                    Double check the wallet you're using or reach out to the
-                    pool admins if you think you should be eligible.
-                  </Card.Text>
-                ) : null}
-              </Stack>
-            </Card.Body>
-          </Card>
-        ) : (
-          <Card className="bg-light mx-3 p-2 rounded-4 border-0">
-            <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 py-1 text-info fs-5">
-              Current Gitcoin Passport Score
-            </Card.Header>
-            <Card.Body className="p-2">
-              {minPassportScore ? (
-                <>
-                  <Stack
-                    direction="horizontal"
-                    gap={2}
-                    className={`${
-                      passportScore && passportScore > minPassportScore
-                        ? "text-success"
-                        : passportScore
-                          ? "text-danger"
-                          : "text-warning"
-                    }`}
-                  >
-                    <Image src="/passport.svg" alt="passport" width={36} />
-                    <Card.Text className="m-0 fs-1 fw-bold">
-                      {passportScore
-                        ? parseFloat((Number(passportScore) / 10000).toFixed(3))
-                        : "N/A"}
-                    </Card.Text>
-                    <Card.Text className="m-0 ms-2 fs-6" style={{ width: 100 }}>
-                      min. {Number(minPassportScore) / 10000} required for
-                      matching
-                    </Card.Text>
-                    <Button
-                      variant="transparent"
-                      className="p-0 ms-1"
-                      onClick={() =>
-                        refetchPassportScore({ throwOnError: false })
-                      }
-                    >
-                      <Image
-                        src="/reload.svg"
-                        alt="Reload"
-                        width={28}
-                        style={{
-                          filter:
-                            passportScore && passportScore > minPassportScore
-                              ? "invert(40%) sepia(14%) saturate(2723%) hue-rotate(103deg) brightness(97%) contrast(80%)"
-                              : passportScore
-                                ? "invert(27%) sepia(47%) saturate(3471%) hue-rotate(336deg) brightness(93%) contrast(85%)"
-                                : "invert(86%) sepia(44%) saturate(4756%) hue-rotate(353deg) brightness(109%) contrast(103%)",
-                        }}
-                      />
-                    </Button>
-                  </Stack>
-                  <Button
-                    className="w-100 mt-2 rounded-3 rounded-3 text-light"
-                    onClick={() => setShowMintingInstructions(true)}
-                  >
-                    Update stamps and mint
-                  </Button>
-                </>
-              ) : (
-                <Stack
-                  direction="vertical"
-                  gap={2}
-                  className="align-items-center"
-                >
-                  <Spinner
-                    animation="border"
-                    role="status"
-                    className="mx-auto mt-5 p-3"
-                  ></Spinner>
-                  <Card.Text className="text-center">
-                    Waiting for passport details...
-                  </Card.Text>
-                </Stack>
-              )}
-            </Card.Body>
-          </Card>
-        )}
+                      <Card.Text className="w-66 m-0 text-info text-truncate">
+                        {outflow.receiver.id === FLOW_STATE_RECEIVER
+                          ? "Flow State"
+                          : flowStateQueryRes.pool.recipientsByPoolIdAndChainId.find(
+                              (recipient: { superappAddress: string }) =>
+                                recipient.superappAddress ===
+                                outflow.receiver.id,
+                            )?.metadata.title}
+                      </Card.Text>
+                      <Card.Text className="w-33 m-0">
+                        {Intl.NumberFormat("en", {
+                          maximumFractionDigits: 6,
+                        }).format(
+                          Number(
+                            formatEther(
+                              BigInt(outflow.currentFlowRate) *
+                                BigInt(SECONDS_IN_MONTH),
+                            ),
+                          ),
+                        )}
+                      </Card.Text>
+                      <Button
+                        variant="transparent"
+                        className="px-0 py-2"
+                        onClick={() =>
+                          setStreamDeletionModalState({
+                            show: true,
+                            isMatchingPool: false,
+                            receiver: outflow.receiver.id,
+                          })
+                        }
+                      >
+                        <Image
+                          src="/delete.svg"
+                          alt="Delete"
+                          width={20}
+                          height={20}
+                        />
+                      </Button>
+                      {outflow.receiver.id === FLOW_STATE_RECEIVER ? (
+                        <Button
+                          variant="transparent"
+                          href={`/core/?chainId=${chainId}`}
+                          target="_blank"
+                          className="px-0 py-2"
+                        >
+                          <Image
+                            src="/edit.svg"
+                            alt="Edit"
+                            width={20}
+                            height={20}
+                          />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="transparent"
+                          className="px-0 py-2"
+                          onClick={() => {
+                            setShowOffcanvas(false);
+
+                            router.push(
+                              `/pool/?chainId=${chainId}&poolId=${poolId}&recipientId=${flowStateQueryRes?.pool.recipientsByPoolIdAndChainId.find((recipient: { superappAddress: string }) => recipient.superappAddress === outflow.receiver.id)?.id}`,
+                            );
+                          }}
+                        >
+                          <Image
+                            src="/edit.svg"
+                            alt="Edit"
+                            width={20}
+                            height={20}
+                          />
+                        </Button>
+                      )}
+                    </Stack>
+                  ),
+                )}
+              </>
+            ) : (
+              <Card.Text className="mt-1 small text-center">
+                No open streams
+              </Card.Text>
+            )}
+          </Card.Body>
+        </Card>
         <Stack
           direction="horizontal"
           gap={1}
@@ -640,7 +698,7 @@ export default function WalletBalance() {
               alt="close"
               width={24}
             />
-            <Card.Text className="m-0 w33 overflow-hidden text-truncate">
+            <Card.Text className="m-0">
               {formatNumberWithCommas(
                 parseFloat(
                   roundWeiAmount(
@@ -655,7 +713,9 @@ export default function WalletBalance() {
                 ),
               )}
             </Card.Text>
-            <Card.Text className="m-0 text-info fs-6">monthly</Card.Text>
+            <Card.Text className="m-0 text-info" style={{ fontSize: "0.7rem" }}>
+              /mo
+            </Card.Text>
           </Stack>
         </Stack>
         <Stack
@@ -682,11 +742,190 @@ export default function WalletBalance() {
         <Card.Link
           href="https://app.superfluid.finance"
           target="_blank"
-          className="mx-3 p-3 text-primary text-center cursor-pointer"
+          className="mt-1 mx-3 px-3 text-primary text-center cursor-pointer"
         >
           Visit the Superfluid App for advanced management of your Super Token
           balances
         </Card.Link>
+        {eligibilityMethod === EligibilityMethod.NFT_GATING ? (
+          <Card className="bg-light m-3 p-2 rounded-4 border-0">
+            <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 py-1 fs-5">
+              Matching Eligibility
+            </Card.Header>
+            <Card.Body className="p-2">
+              <Stack
+                direction="horizontal"
+                gap={3}
+                className="justify-content-center mb-4"
+              >
+                <Stack
+                  direction="vertical"
+                  gap={2}
+                  className="align-items-center"
+                >
+                  <Image
+                    src={
+                      nftBalance && nftBalance > 0
+                        ? "/success.svg"
+                        : "close.svg"
+                    }
+                    alt={nftBalance && nftBalance > 0 ? "success" : "fail"}
+                    width={48}
+                    height={48}
+                    style={{
+                      filter:
+                        nftBalance && nftBalance > 0
+                          ? "invert(40%) sepia(14%) saturate(2723%) hue-rotate(103deg) brightness(97%) contrast(80%)"
+                          : "invert(27%) sepia(47%) saturate(3471%) hue-rotate(336deg) brightness(93%) contrast(85%)",
+                    }}
+                  />
+                  <Card.Text
+                    className={`m-0 ${nftBalance && nftBalance > 0 ? "text-success" : "text-danger"}`}
+                  >
+                    {nftBalance && nftBalance > 0 ? "Eligibile" : "Ineligible"}
+                  </Card.Text>
+                </Stack>
+                <Stack
+                  direction="vertical"
+                  className="align-items-center justify-content-center m-auto"
+                >
+                  NFT Required:
+                  <Stack direction="horizontal" gap={2} className="m-auto mt-0">
+                    <Card.Text className="m-0">
+                      {requiredNftAddress
+                        ? truncateStr(requiredNftAddress as string, 12)
+                        : ""}
+                    </Card.Text>
+                    <Button
+                      variant="link"
+                      href={`${network?.blockExplorer}/address/${requiredNftAddress}`}
+                      target="_blank"
+                      className="d-flex align-items-center p-0"
+                    >
+                      <Image
+                        src="open-new.svg"
+                        alt="open"
+                        width={18}
+                        height={18}
+                      />
+                    </Button>
+                  </Stack>
+                </Stack>
+              </Stack>
+              <Stack>
+                {nftMintUrl?.startsWith("https://guild.xyz/octant-sqf-voter") &&
+                (!nftBalance || nftBalance === BigInt(0)) ? (
+                  <>
+                    <Button
+                      className="d-flex justify-content-center align-items-center text-light gap-2"
+                      onClick={
+                        !isLoadingNftMint ? handleNftMintRequest : void 0
+                      }
+                    >
+                      Claim NFT
+                      {isLoadingNftMint && <Spinner size="sm" />}
+                    </Button>
+                    {errorNftMint && (
+                      <p className="mb-1 small text-center text-danger">
+                        {errorNftMint}
+                      </p>
+                    )}
+                  </>
+                ) : nftMintUrl && (!nftBalance || nftBalance === BigInt(0)) ? (
+                  <Button
+                    variant="link"
+                    href={nftMintUrl}
+                    target="_blank"
+                    className="bg-primary text-light text-decoration-none"
+                  >
+                    Claim NFT
+                  </Button>
+                ) : !nftBalance || nftBalance === BigInt(0) ? (
+                  <Card.Text className="m-0">
+                    Double check the wallet you're using or reach out to the
+                    pool admins if you think you should be eligible.
+                  </Card.Text>
+                ) : null}
+              </Stack>
+            </Card.Body>
+          </Card>
+        ) : (
+          <Card className="bg-light m-3 p-2 rounded-4 border-0">
+            <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 py-1 text-info fs-5">
+              Current Gitcoin Passport Score
+            </Card.Header>
+            <Card.Body className="p-2">
+              {minPassportScore ? (
+                <>
+                  <Stack
+                    direction="horizontal"
+                    gap={2}
+                    className={`${
+                      passportScore && passportScore > minPassportScore
+                        ? "text-success"
+                        : passportScore
+                          ? "text-danger"
+                          : "text-warning"
+                    }`}
+                  >
+                    <Image src="/passport.svg" alt="passport" width={36} />
+                    <Card.Text className="m-0 fs-1 fw-bold">
+                      {passportScore
+                        ? parseFloat((Number(passportScore) / 10000).toFixed(3))
+                        : "N/A"}
+                    </Card.Text>
+                    <Card.Text className="m-0 ms-2 fs-6" style={{ width: 100 }}>
+                      min. {Number(minPassportScore) / 10000} required for
+                      matching
+                    </Card.Text>
+                    <Button
+                      variant="transparent"
+                      className="p-0 ms-1"
+                      onClick={() =>
+                        refetchPassportScore({ throwOnError: false })
+                      }
+                    >
+                      <Image
+                        src="/reload.svg"
+                        alt="Reload"
+                        width={28}
+                        style={{
+                          filter:
+                            passportScore && passportScore > minPassportScore
+                              ? "invert(40%) sepia(14%) saturate(2723%) hue-rotate(103deg) brightness(97%) contrast(80%)"
+                              : passportScore
+                                ? "invert(27%) sepia(47%) saturate(3471%) hue-rotate(336deg) brightness(93%) contrast(85%)"
+                                : "invert(86%) sepia(44%) saturate(4756%) hue-rotate(353deg) brightness(109%) contrast(103%)",
+                        }}
+                      />
+                    </Button>
+                  </Stack>
+                  <Button
+                    className="w-100 mt-2 rounded-3 rounded-3 text-light"
+                    onClick={() => setShowMintingInstructions(true)}
+                  >
+                    Update stamps and mint
+                  </Button>
+                </>
+              ) : (
+                <Stack
+                  direction="vertical"
+                  gap={2}
+                  className="align-items-center"
+                >
+                  <Spinner
+                    animation="border"
+                    role="status"
+                    className="mx-auto mt-5 p-3"
+                  ></Spinner>
+                  <Card.Text className="text-center">
+                    Waiting for passport details...
+                  </Card.Text>
+                </Stack>
+              )}
+            </Card.Body>
+          </Card>
+        )}
       </Offcanvas>
       {network && (
         <PassportMintingInstructions
@@ -695,6 +934,23 @@ export default function WalletBalance() {
           network={network}
           minPassportScore={
             minPassportScore ? Number(minPassportScore) / 10000 : 0
+          }
+        />
+      )}
+      {streamDeletionModalState.show && (
+        <StreamDeletionModal
+          show={streamDeletionModalState.show}
+          network={network}
+          allocationToken={allocationTokenInfo.address}
+          matchingToken={matchingTokenInfo.address}
+          receiver={streamDeletionModalState.receiver}
+          isMatchingPool={streamDeletionModalState.isMatchingPool}
+          hide={() =>
+            setStreamDeletionModalState({
+              isMatchingPool: false,
+              receiver: "",
+              show: false,
+            })
           }
         />
       )}

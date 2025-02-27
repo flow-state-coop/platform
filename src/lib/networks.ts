@@ -26,6 +26,7 @@ const networks: Network[] = [
     allo: "0x1133eA7Af70876e64665ecD07C0A0476d09465a1",
     alloRegistry: "0x4AAcca72145e1dF2aeC137E1f3C5E3D75DB8b5f3",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
+    cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     tokens: [
       {
         name: "ETHx",
@@ -104,6 +105,7 @@ const networks: Network[] = [
     allo: "0x1133eA7Af70876e64665ecD07C0A0476d09465a1",
     alloRegistry: "0x4AAcca72145e1dF2aeC137E1f3C5E3D75DB8b5f3",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
+    cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     tokens: [
       {
         name: "ETHx",
@@ -151,6 +153,7 @@ const networks: Network[] = [
     recipientSuperappFactory: "0x77F9A5D05e37B0c1DAEbB425bf2C69Fa8d9BEF90",
     allo: "0x1133eA7Af70876e64665ecD07C0A0476d09465a1",
     alloRegistry: "0x4AAcca72145e1dF2aeC137E1f3C5E3D75DB8b5f3",
+    cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     tokens: [
       {
@@ -190,6 +193,7 @@ const networks: Network[] = [
     allo: "0x1133eA7Af70876e64665ecD07C0A0476d09465a1",
     alloRegistry: "0x4AAcca72145e1dF2aeC137E1f3C5E3D75DB8b5f3",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
+    cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     tokens: [
       {
         name: "ETHx",

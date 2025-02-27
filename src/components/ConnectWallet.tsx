@@ -7,7 +7,7 @@ import Stack from "react-bootstrap/Stack";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import WalletBalance from "@/components/WalletBalance";
+import WalletDashboard from "@/components/WalletDashboard";
 import GithubRewardsButton from "@/components/GithubRewardsButton";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
@@ -74,7 +74,7 @@ export default function ConnectWallet() {
                       />
                     )}
                   </Button>
-                  {pathname?.startsWith("/pool") && <WalletBalance />}
+                  {pathname?.startsWith("/pool") && <WalletDashboard />}
                   <Dropdown align={{ md: "start" }}>
                     <Dropdown.Toggle
                       bsPrefix="dropdown"

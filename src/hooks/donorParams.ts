@@ -2,7 +2,9 @@ import { useDonorParamsContext } from "@/context/DonorParams";
 
 export default function useDonorParams() {
   const {
+    poolId,
     strategyAddress,
+    gdaPoolAddress,
     chainId,
     allocationToken,
     matchingToken,
@@ -11,7 +13,9 @@ export default function useDonorParams() {
   } = useDonorParamsContext();
 
   return {
+    poolId,
     strategyAddress,
+    gdaPoolAddress,
     chainId,
     allocationToken,
     matchingToken,
