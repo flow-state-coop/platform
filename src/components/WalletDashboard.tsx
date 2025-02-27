@@ -464,7 +464,7 @@ export default function WalletBalance() {
                 </Button>
               </Stack>
             ) : null}
-            {superfluidQueryRes?.account.outflows?.length > 0 ? (
+            {superfluidQueryRes?.account?.outflows?.length > 0 ? (
               <>
                 {superfluidQueryRes.account.outflows.map(
                   (
