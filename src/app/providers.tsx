@@ -20,11 +20,27 @@ const config = getDefaultConfig({
   chains: [base, optimism, optimismSepolia /* arbitrum */],
   ssr: true,
   transports: {
-    [base.id]: http("https://base-rpc.publicnode.com"),
-    [optimism.id]: http("https://optimism-rpc.publicnode.com"),
-    [optimismSepolia.id]: http("https://optimism-sepolia-rpc.publicnode.com"),
+    [base.id]: http("https://base-rpc.publicnode.com", {
+      batch: {
+        batchSize: 100,
+      },
+    }),
+    [optimism.id]: http("https://optimism-rpc.publicnode.com", {
+      batch: {
+        batchSize: 100,
+      },
+    }),
+    [optimismSepolia.id]: http("https://optimism-sepolia-rpc.publicnode.com", {
+      batch: {
+        batchSize: 100,
+      },
+    }),
     /*
-    [arbitrum.id]: http("https://arb1.arbitrum.io/rpc"),
+    [arbitrum.id]: http("https://arb1.arbitrum.io/rpc", {
+      batch: {
+        batchSize: 100,
+      },
+    }),
      */
   },
 });
