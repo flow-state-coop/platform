@@ -15,6 +15,7 @@ import { Step } from "@/types/checkout";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
 import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
+import { useMediaQuery } from "@/hooks/mediaQuery";
 import {
   fromTimeUnitsToSeconds,
   unitOfTime,
@@ -59,6 +60,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
   } = props;
 
   const { address } = useAccount();
+  const { isMobile } = useMediaQuery();
 
   const isNativeSuperToken = token.name === "ETHx";
   const isDeletingStream =
@@ -67,6 +69,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
   const minDonationPerMonth = getPoolFlowRateConfig(
     token.name,
   ).minAllocationPerMonth;
+  const suggestedDonation = isNativeSuperToken ? 0.001 : 1;
 
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
@@ -201,7 +204,11 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
             </Badge>
           </Stack>
           <Stack direction="horizontal" gap={2} className="mt-3">
-            <Stack direction="vertical" gap={1} className="w-50">
+            <Stack
+              direction="vertical"
+              gap={1}
+              className="position-relative w-50"
+            >
               <Stack direction="horizontal">
                 <FormControl
                   type="text"
@@ -239,8 +246,11 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                   </>
                 )}
               </Stack>
-              <Card.Text className="m-0 small text-center">
-                Current Stream:{" "}
+              <Card.Text
+                className="position-absolute m-0 text-info"
+                style={{ right: 8, fontSize: "0.6rem" }}
+              >
+                Current:{" "}
                 {formatNumberWithCommas(
                   parseFloat(
                     roundWeiAmount(
@@ -256,6 +266,54 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                   ),
                 )}
               </Card.Text>
+              <Stack
+                direction="horizontal"
+                gap={2}
+                className="mt-2 align-items-stretch"
+              >
+                <Button
+                  className="p-0"
+                  style={{
+                    minWidth: "30%",
+                    fontSize: isMobile ? "0.6rem" : "0.8rem",
+                  }}
+                  onClick={() =>
+                    setSupportFlowStateAmount(
+                      (suggestedDonation * 2).toString(),
+                    )
+                  }
+                >
+                  {suggestedDonation * 2}
+                </Button>
+                <Button
+                  className="px-0 py-1"
+                  style={{
+                    minWidth: "30%",
+                    fontSize: isMobile ? "0.6rem" : "0.8rem",
+                  }}
+                  onClick={() =>
+                    setSupportFlowStateAmount(
+                      (suggestedDonation * 5).toString(),
+                    )
+                  }
+                >
+                  {suggestedDonation * 5}
+                </Button>
+                <Button
+                  className="px-0 py-1"
+                  style={{
+                    minWidth: "30%",
+                    fontSize: isMobile ? "0.6rem" : "0.8rem",
+                  }}
+                  onClick={() =>
+                    setSupportFlowStateAmount(
+                      (suggestedDonation * 10).toString(),
+                    )
+                  }
+                >
+                  {suggestedDonation * 10}
+                </Button>
+              </Stack>
             </Stack>
             <Dropdown className="w-50 align-self-start">
               <Dropdown.Toggle
