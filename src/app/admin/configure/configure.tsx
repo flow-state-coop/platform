@@ -556,7 +556,13 @@ export default function Configure(props: ConfigureProps) {
                 />
               </Form.Group>
               <Dropdown>
-                <Form.Label className="px-1">Donation Token</Form.Label>
+                <Form.Label className="px-1">
+                  Donation Token (
+                  <Card.Link href="https://t.me/flowstatecoop/" target="_blank">
+                    Request to add a token
+                  </Card.Link>
+                  )
+                </Form.Label>
                 <Dropdown.Toggle
                   variant="transparent"
                   className="d-flex justify-content-between align-items-center border border-2"
@@ -595,7 +601,13 @@ export default function Configure(props: ConfigureProps) {
                 </Dropdown.Menu>
               </Dropdown>
               <Dropdown>
-                <Form.Label className="px-1">Matching Token</Form.Label>
+                <Form.Label className="px-1">
+                  Matching Token (
+                  <Card.Link href="https://t.me/flowstatecoop/" target="_blank">
+                    Request to add a token
+                  </Card.Link>
+                  )
+                </Form.Label>
                 <Dropdown.Toggle
                   variant="transparent"
                   className="d-flex justify-content-between align-items-center border border-2"
