@@ -66,10 +66,9 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
   const isDeletingStream =
     BigInt(flowRateToFlowState) > 0 &&
     BigInt(newFlowRateToFlowState) === BigInt(0);
-  const minDonationPerMonth = getPoolFlowRateConfig(
-    token.name,
-  ).minAllocationPerMonth;
-  const suggestedDonation = isNativeSuperToken ? 0.001 : 1;
+  const poolFlowRateConfig = getPoolFlowRateConfig(token.name);
+  const minDonationPerMonth = poolFlowRateConfig.minAllocationPerMonth;
+  const suggestedDonation = poolFlowRateConfig.suggestedFlowStateDonation;
 
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
@@ -87,22 +86,6 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
       setSupportFlowStateAmount("");
     } else if (value === ".") {
       setSupportFlowStateAmount(isNativeSuperToken ? "0." : "0");
-    }
-  };
-
-  const handleAmountStepping = (stepping: { increment: boolean }) => {
-    const { increment } = stepping;
-
-    if (supportFlowStateAmount === "") {
-      setSupportFlowStateAmount(increment ? "1" : "0");
-    } else if (isNumber(supportFlowStateAmount.replace(/,/g, ""))) {
-      const amount = parseFloat(supportFlowStateAmount.replace(/,/g, ""));
-
-      setSupportFlowStateAmount(
-        `${formatNumberWithCommas(
-          increment ? amount + 1 : amount - 1 <= 0 ? 0 : amount - 1,
-        )}`,
-      );
     }
   };
 
@@ -220,31 +203,6 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                     isNativeSuperToken ? "" : "rounded-end-0"
                   } shadow-none`}
                 />
-                {!isNativeSuperToken && (
-                  <>
-                    <Button
-                      disabled={!address}
-                      variant="white"
-                      className="d-flex align-items-center bg-white border-0 rounded-0 fs-4 px-1 py-2"
-                      onClick={() => handleAmountStepping({ increment: false })}
-                    >
-                      <Image
-                        src="/remove.svg"
-                        alt="remove"
-                        width={20}
-                        height={20}
-                      />
-                    </Button>
-                    <Button
-                      disabled={!address}
-                      variant="white"
-                      className="d-flex align-items-center bg-white border-0 rounded-0 rounded-end-3 fs-4 px-1 py-2"
-                      onClick={() => handleAmountStepping({ increment: true })}
-                    >
-                      <Image src="/add.svg" alt="add" width={20} height={20} />
-                    </Button>
-                  </>
-                )}
               </Stack>
               <Card.Text
                 className="position-absolute m-0 text-info"
