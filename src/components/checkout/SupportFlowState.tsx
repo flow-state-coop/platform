@@ -351,7 +351,8 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
               variant={isDeletingStream ? "danger" : "primary"}
               disabled={
                 !supportFlowStateAmount ||
-                Number(supportFlowStateAmount) < minDonationPerMonth
+                (!isDeletingStream &&
+                  Number(supportFlowStateAmount) < minDonationPerMonth)
               }
               className="w-50 py-1 rounded-3 text-light"
               onClick={() => setStep(Step.REVIEW)}
