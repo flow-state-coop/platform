@@ -237,7 +237,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                   }}
                   onClick={() =>
                     setSupportFlowStateAmount(
-                      (suggestedDonation * 2).toString(),
+                      formatNumberWithCommas(suggestedDonation * 2),
                     )
                   }
                 >
@@ -251,7 +251,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                   }}
                   onClick={() =>
                     setSupportFlowStateAmount(
-                      (suggestedDonation * 5).toString(),
+                      formatNumberWithCommas(suggestedDonation * 5),
                     )
                   }
                 >
@@ -265,7 +265,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                   }}
                   onClick={() =>
                     setSupportFlowStateAmount(
-                      (suggestedDonation * 10).toString(),
+                      formatNumberWithCommas(suggestedDonation * 10),
                     )
                   }
                 >

@@ -28,7 +28,7 @@ import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
-import { suggestedSupportDonationByToken } from "@/lib/suggestedSupportDonationByToken";
+import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import {
   TimeInterval,
   unitOfTime,
@@ -175,6 +175,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     superTokenBalance > suggestedTokenBalance
       ? true
       : false;
+  const poolFlowRateConfig = getPoolFlowRateConfig(matchingTokenSymbol);
 
   const flowRateToReceiver = useMemo(() => {
     if (address && matchingPool) {
@@ -468,12 +469,10 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
           4,
         );
 
-        const suggestedSupportDonation =
-          suggestedSupportDonationByToken[matchingTokenInfo.name] ?? 1;
-
         setSupportFlowStateAmount(
           formatNumberWithCommas(
-            parseFloat(currentStreamValue) + suggestedSupportDonation,
+            parseFloat(currentStreamValue) +
+              poolFlowRateConfig.suggestedFlowStateDonation,
           ),
         );
       }
@@ -483,6 +482,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     flowRateToFlowState,
     supportFlowStateTimeInterval,
     matchingTokenInfo.name,
+    poolFlowRateConfig,
     step,
     newFlowRate,
     handleNftMint,
