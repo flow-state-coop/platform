@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Address, parseEther, formatEther } from "viem";
+import { Address, parseEther, parseUnits, formatUnits } from "viem";
 import { useAccount, useBalance } from "wagmi";
 import dayjs from "dayjs";
 import {
@@ -568,7 +568,10 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     liquidationEstimate: number | null,
   ) => {
     if (amountPerTimeInterval) {
-      const weiAmount = parseEther(amountPerTimeInterval.replace(/,/g, ""));
+      const weiAmount = parseUnits(
+        amountPerTimeInterval.replace(/,/g, ""),
+        underlyingTokenBalance?.decimals ?? 18,
+      );
 
       if (
         weiAmount > 0 &&
@@ -588,13 +591,23 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
 
           setWrapAmount(
             formatNumberWithCommas(
-              parseFloat(formatEther(amount > 0 ? BigInt(amount) : BigInt(0))),
+              parseFloat(
+                formatUnits(
+                  amount > 0 ? BigInt(amount) : BigInt(0),
+                  underlyingTokenBalance?.decimals ?? 18,
+                ),
+              ),
             ),
           );
         } else {
           setWrapAmount(
             formatNumberWithCommas(
-              parseFloat(formatEther(weiAmount * BigInt(3))),
+              parseFloat(
+                formatUnits(
+                  weiAmount * BigInt(3),
+                  underlyingTokenBalance?.decimals ?? 18,
+                ),
+              ),
             ),
           );
         }
