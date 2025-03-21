@@ -101,7 +101,7 @@ const networks: Network[] = [
     passportDecoder: "0x5558D441779Eca04A329BcD6b47830D2C6607769",
     superfluidHost: "0x567c4B141ED61923967cA25Ef4906C8781069a10",
     superfluidResolver: "0x743B5f46BC86caF41bE4956d9275721E0531B186",
-    recipientSuperappFactory: "0x552942adAc3f12d078ACEc1922C9Fefc61c6EE6a",
+    recipientSuperappFactory: "0xC0d7774AbdFBD9a30BcC1b53E1A6D90d5804d934",
     allo: "0x1133eA7Af70876e64665ecD07C0A0476d09465a1",
     alloRegistry: "0x4AAcca72145e1dF2aeC137E1f3C5E3D75DB8b5f3",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
@@ -125,6 +125,55 @@ const networks: Network[] = [
       {
         name: "USDC.ex",
         address: "0x8430F084B939208E2eDEd1584889C9A66B90562f",
+        icon: "/usdc.png",
+      },
+    ],
+  },
+  {
+    id: 42161,
+    name: "Arbitrum One",
+    label: "arbitrum-one",
+    icon: "/arb.svg",
+    rpcUrl: "https://arbitrum.meowrpc.com",
+    blockExplorer: "https://arbiscan.io/",
+    superfluidExplorer: "https://explorer.superfluid.finance/arbitrum-one",
+    superfluidDashboard: "https://app.superfluid.finance",
+    superfluidSubgraph:
+      "https://subgraph-endpoints.superfluid.dev/arbitrum-one/protocol-v1",
+    onRampLabel: "arbitrum",
+    flowStateCoreGda: "0x",
+    pay16zPool: "0x",
+    flowSplitter: "0x25B64C200cf3362BaC6961353D38A1dbEB42e60E",
+    flowSplitterSubgraph:
+      "https://api.0xgraph.xyz/api/public/76ce6edf-8ead-4af2-98b2-95c12af6f222/subgraphs/flow-splitter-arbitrum-one/0.96.0/gn",
+    flowStateEligibilityNft: "0x",
+    passportDecoder: "0x2050256A91cbABD7C42465aA0d5325115C1dEB43",
+    superfluidHost: "0xCf8Acb4eF033efF16E8080aed4c7D5B9285D2192",
+    superfluidResolver: "0x609b9d9d6Ee9C3200745A79B9d3398DBd63d509F",
+    recipientSuperappFactory: "0x7C959499F285E8Ca70EfDC46afD15C36A58c087a",
+    allo: "0x1133eA7Af70876e64665ecD07C0A0476d09465a1",
+    alloRegistry: "0x4AAcca72145e1dF2aeC137E1f3C5E3D75DB8b5f3",
+    gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
+    cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
+    tokens: [
+      {
+        name: "ETHx",
+        address: "0xe6c8d111337d0052b9d88bf5d7d55b7f8385acd3",
+        icon: "/eth.png",
+      },
+      {
+        name: "ARBx",
+        address: "0xB3EDb2F90fEc1Bf1F872a9ef143cfd614773Ad04",
+        icon: "/arb.svg",
+      },
+      {
+        name: "DAIx",
+        address: "0x521677A61D101A80cE0fB903b13cb485232774ee",
+        icon: "/dai.png",
+      },
+      {
+        name: "USDCx",
+        address: "0xfc55f2854e74b4f42d01a6d3daac4c52d9dfdcff",
         icon: "/usdc.png",
       },
     ],
@@ -173,51 +222,6 @@ const networks: Network[] = [
       },
     ],
   },
-  /*
-  {
-    id: 42161,
-    name: "Arbitrum One",
-    icon: "/arb.svg",
-    rpcUrl: "https://arb1.arbitrum.io/rpc",
-    blockExplorer: "https://arbiscan.io/",
-    superfluidExplorer: "https://explorer.superfluid.finance/arbitrum-one",
-    superfluidDashboard: "https://app.superfluid.finance",
-    superfluidSubgraph:
-      "https://subgraph-endpoints.superfluid.dev/arbitrum-one/protocol-v1",
-    onRampLabel: "arbitrum",
-    flowStateEligibilityNft: "0x",
-    passportDecoder: "0x2050256A91cbABD7C42465aA0d5325115C1dEB43",
-    superfluidHost: "0xCf8Acb4eF033efF16E8080aed4c7D5B9285D2192",
-    superfluidResolver: "0x609b9d9d6Ee9C3200745A79B9d3398DBd63d509F",
-    recipientSuperappFactory: "0xbb6ecb12a045a84dc5e43fec0fcee53dfa11c878",
-    allo: "0x1133eA7Af70876e64665ecD07C0A0476d09465a1",
-    alloRegistry: "0x4AAcca72145e1dF2aeC137E1f3C5E3D75DB8b5f3",
-    gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
-    cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
-    tokens: [
-      {
-        name: "ETHx",
-        address: "0xe6c8d111337d0052b9d88bf5d7d55b7f8385acd3",
-        icon: "/eth.png",
-      },
-      {
-        name: "ARBx",
-        address: "0xB3EDb2F90fEc1Bf1F872a9ef143cfd614773Ad04",
-        icon: "/arb.svg",
-      },
-      {
-        name: "DAIx",
-        address: "0x521677A61D101A80cE0fB903b13cb485232774ee",
-        icon: "/dai.png",
-      },
-      {
-        name: "USDCx",
-        address: "0xfc55f2854e74b4f42d01a6d3daac4c52d9dfdcff",
-        icon: "/usdc.png",
-      },
-    ],
-  },
-  */
 ];
 
 export { networks };
