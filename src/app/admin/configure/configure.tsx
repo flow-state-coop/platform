@@ -578,16 +578,6 @@ export default function Configure(props: ConfigureProps) {
                         <Dropdown.Item
                           key={i}
                           onClick={() => {
-                            if (token.name === "ETHx") {
-                              setPoolConfigParameters({
-                                ...poolConfigParameters,
-                                allocationToken: "ETHx",
-                                matchingToken: "ETHx",
-                              });
-
-                              return;
-                            }
-
                             setPoolConfigParameters({
                               ...poolConfigParameters,
                               allocationToken: token.name ?? "N/A",
@@ -617,32 +607,21 @@ export default function Configure(props: ConfigureProps) {
                   {poolConfigParameters.matchingToken}
                 </Dropdown.Toggle>
                 <Dropdown.Menu>
-                  {poolConfigParameters.allocationToken === "ETHx" ? (
-                    <Dropdown.Item
-                      onClick={() => {
-                        setPoolConfigParameters({
-                          ...poolConfigParameters,
-                          matchingToken: "ETHx",
-                        });
-                      }}
-                    >
-                      ETHx
-                    </Dropdown.Item>
-                  ) : network ? (
-                    network.tokens.map((token, i) => (
-                      <Dropdown.Item
-                        key={i}
-                        onClick={() => {
-                          setPoolConfigParameters({
-                            ...poolConfigParameters,
-                            matchingToken: token.name ?? "N/A",
-                          });
-                        }}
-                      >
-                        {token.name}
-                      </Dropdown.Item>
-                    ))
-                  ) : null}
+                  {network
+                    ? network.tokens.map((token, i) => (
+                        <Dropdown.Item
+                          key={i}
+                          onClick={() => {
+                            setPoolConfigParameters({
+                              ...poolConfigParameters,
+                              matchingToken: token.name ?? "N/A",
+                            });
+                          }}
+                        >
+                          {token.name}
+                        </Dropdown.Item>
+                      ))
+                    : null}
                 </Dropdown.Menu>
               </Dropdown>
               <Dropdown>

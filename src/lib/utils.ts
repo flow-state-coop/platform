@@ -1,6 +1,3 @@
-import { NextAuthOptions } from "next-auth";
-import GithubProvider from "next-auth/providers/github";
-import type { GithubProfile } from "next-auth/providers/github";
 import { formatEther } from "viem";
 
 export enum TimeInterval {
@@ -15,38 +12,6 @@ export const unitOfTime = {
   [TimeInterval.WEEK]: "weeks",
   [TimeInterval.MONTH]: "months",
   [TimeInterval.YEAR]: "years",
-};
-
-export const nextAuthOptions: NextAuthOptions = {
-  providers: [
-    GithubProvider({
-      clientId: process.env.GITHUB_ID!,
-      clientSecret: process.env.GITHUB_SECRET!,
-    }),
-  ],
-  callbacks: {
-    jwt({ token, user, profile }) {
-      if (user) {
-        token.user = user;
-      }
-
-      if (profile) {
-        token.profile = profile;
-      }
-
-      return token;
-    },
-    session({ session, token }) {
-      if (session.user) {
-        session.user = {
-          ...session.user,
-          name: (token.profile as GithubProfile).login,
-        };
-      }
-
-      return session;
-    },
-  },
 };
 
 export function isNumber(value: string) {
