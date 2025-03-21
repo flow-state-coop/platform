@@ -206,7 +206,6 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       ? true
       : false;
   const flowRateToReceiver = userOutflow?.currentFlowRate ?? "0";
-  const poolFlowRateConfig = getPoolFlowRateConfig(allocationTokenSymbol);
 
   const editFlow = useCallback(
     (
@@ -303,6 +302,11 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       supportFlowStateAmount,
       supportFlowStateTimeInterval,
     ],
+  );
+
+  const poolFlowRateConfig = useMemo(
+    () => getPoolFlowRateConfig(allocationTokenSymbol),
+    [allocationTokenSymbol],
   );
 
   const liquidationEstimate = useMemo(

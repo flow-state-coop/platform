@@ -175,7 +175,11 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     superTokenBalance > suggestedTokenBalance
       ? true
       : false;
-  const poolFlowRateConfig = getPoolFlowRateConfig(matchingTokenSymbol);
+
+  const poolFlowRateConfig = useMemo(
+    () => getPoolFlowRateConfig(matchingTokenSymbol),
+    [matchingTokenSymbol],
+  );
 
   const flowRateToReceiver = useMemo(() => {
     if (address && matchingPool) {
