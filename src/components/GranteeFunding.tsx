@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Address, parseEther, formatEther } from "viem";
+import { Address, parseEther, parseUnits, formatUnits } from "viem";
 import { useAccount, useBalance } from "wagmi";
 import dayjs from "dayjs";
 import {
@@ -37,7 +37,6 @@ import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
 import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
-import { suggestedSupportDonationByToken } from "@/lib/suggestedSupportDonationByToken";
 import {
   TimeInterval,
   unitOfTime,
@@ -305,6 +304,11 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     ],
   );
 
+  const poolFlowRateConfig = useMemo(
+    () => getPoolFlowRateConfig(allocationTokenSymbol),
+    [allocationTokenSymbol],
+  );
+
   const liquidationEstimate = useMemo(
     () => calcLiquidationEstimate(amountPerTimeInterval),
     [calcLiquidationEstimate, amountPerTimeInterval],
@@ -323,8 +327,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
         granteeFlowRate: BigInt(matchingFlowRate),
         previousFlowRate: BigInt(flowRateToReceiver ?? 0),
         newFlowRate: BigInt(newFlowRate ?? 0),
-        flowRateScaling: getPoolFlowRateConfig(allocationTokenSymbol)
-          .flowRateScaling,
+        flowRateScaling: poolFlowRateConfig.flowRateScaling,
       });
     }
 
@@ -332,10 +335,10 @@ export default function GranteeFunding(props: GranteeFundingProps) {
   }, [
     newFlowRate,
     flowRateToReceiver,
+    poolFlowRateConfig,
     matchingPool,
     matchingFlowRate,
     recipientAddress,
-    allocationTokenSymbol,
   ]);
 
   const transactions = useMemo(() => {
@@ -480,18 +483,17 @@ export default function GranteeFunding(props: GranteeFundingProps) {
         4,
       );
 
-      const suggestedSupportDonation =
-        suggestedSupportDonationByToken[allocationTokenInfo.name] ?? 1;
-
       setSupportFlowStateAmount(
         formatNumberWithCommas(
-          parseFloat(currentStreamValue) + suggestedSupportDonation,
+          parseFloat(currentStreamValue) +
+            poolFlowRateConfig.suggestedFlowStateDonation,
         ),
       );
     })();
   }, [
     address,
     flowRateToFlowState,
+    poolFlowRateConfig,
     supportFlowStateTimeInterval,
     step,
     allocationTokenInfo.name,
@@ -556,7 +558,10 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     liquidationEstimate: number | null,
   ) => {
     if (amountPerTimeInterval) {
-      const weiAmount = parseEther(amountPerTimeInterval.replace(/,/g, ""));
+      const weiAmount = parseUnits(
+        amountPerTimeInterval.replace(/,/g, ""),
+        underlyingTokenBalance?.decimals ?? 18,
+      );
 
       if (
         weiAmount > 0 &&
@@ -576,13 +581,23 @@ export default function GranteeFunding(props: GranteeFundingProps) {
 
           setWrapAmount(
             formatNumberWithCommas(
-              parseFloat(formatEther(amount > 0 ? BigInt(amount) : BigInt(0))),
+              parseFloat(
+                formatUnits(
+                  amount > 0 ? BigInt(amount) : BigInt(0),
+                  underlyingTokenBalance?.decimals ?? 18,
+                ),
+              ),
             ),
           );
         } else {
           setWrapAmount(
             formatNumberWithCommas(
-              parseFloat(formatEther(weiAmount * BigInt(3))),
+              parseFloat(
+                formatUnits(
+                  weiAmount * BigInt(3),
+                  underlyingTokenBalance?.decimals ?? 18,
+                ),
+              ),
             ),
           );
         }
