@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Address, parseEther, formatEther } from "viem";
+import { Address, parseEther, parseUnits, formatUnits } from "viem";
 import { useAccount, useBalance } from "wagmi";
 import dayjs from "dayjs";
 import {
@@ -28,7 +28,7 @@ import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
-import { suggestedSupportDonationByToken } from "@/lib/suggestedSupportDonationByToken";
+import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import {
   TimeInterval,
   unitOfTime,
@@ -175,6 +175,11 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     superTokenBalance > suggestedTokenBalance
       ? true
       : false;
+
+  const poolFlowRateConfig = useMemo(
+    () => getPoolFlowRateConfig(matchingTokenSymbol),
+    [matchingTokenSymbol],
+  );
 
   const flowRateToReceiver = useMemo(() => {
     if (address && matchingPool) {
@@ -468,12 +473,10 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
           4,
         );
 
-        const suggestedSupportDonation =
-          suggestedSupportDonationByToken[matchingTokenInfo.name] ?? 1;
-
         setSupportFlowStateAmount(
           formatNumberWithCommas(
-            parseFloat(currentStreamValue) + suggestedSupportDonation,
+            parseFloat(currentStreamValue) +
+              poolFlowRateConfig.suggestedFlowStateDonation,
           ),
         );
       }
@@ -483,6 +486,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     flowRateToFlowState,
     supportFlowStateTimeInterval,
     matchingTokenInfo.name,
+    poolFlowRateConfig,
     step,
     newFlowRate,
     handleNftMint,
@@ -568,7 +572,10 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     liquidationEstimate: number | null,
   ) => {
     if (amountPerTimeInterval) {
-      const weiAmount = parseEther(amountPerTimeInterval.replace(/,/g, ""));
+      const weiAmount = parseUnits(
+        amountPerTimeInterval.replace(/,/g, ""),
+        underlyingTokenBalance?.decimals ?? 18,
+      );
 
       if (
         weiAmount > 0 &&
@@ -588,13 +595,23 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
 
           setWrapAmount(
             formatNumberWithCommas(
-              parseFloat(formatEther(amount > 0 ? BigInt(amount) : BigInt(0))),
+              parseFloat(
+                formatUnits(
+                  amount > 0 ? BigInt(amount) : BigInt(0),
+                  underlyingTokenBalance?.decimals ?? 18,
+                ),
+              ),
             ),
           );
         } else {
           setWrapAmount(
             formatNumberWithCommas(
-              parseFloat(formatEther(weiAmount * BigInt(3))),
+              parseFloat(
+                formatUnits(
+                  weiAmount * BigInt(3),
+                  underlyingTokenBalance?.decimals ?? 18,
+                ),
+              ),
             ),
           );
         }

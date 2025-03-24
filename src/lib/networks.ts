@@ -29,24 +29,9 @@ const networks: Network[] = [
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     tokens: [
       {
-        name: "ETHx",
-        address: "0x46fd5cfB4c12D87acD3a13e92BAa53240C661D93",
-        icon: "/eth.png",
-      },
-      {
         name: "DAIx",
         address: "0x708169c8C87563Ce904E0a7F3BFC1F3b0b767f41",
         icon: "/dai.png",
-      },
-      {
-        name: "USDCx",
-        address: "0xD04383398dD2426297da660F9CCA3d439AF9ce1b",
-        icon: "/usdc.png",
-      },
-      {
-        name: "HIGHERx",
-        address: "0x5f2Fab273F1F64b6bc6ab8F35314CD21501F35C5",
-        icon: "/higher.png",
       },
       {
         name: "DEGENx",
@@ -54,29 +39,19 @@ const networks: Network[] = [
         icon: "/degen.png",
       },
       {
-        name: "pay16z",
-        address: "0x1a589e9c3EEE580F87117C513B2c8282926f1883",
-        icon: "/base.svg",
+        name: "ETHx",
+        address: "0x46fd5cfB4c12D87acD3a13e92BAa53240C661D93",
+        icon: "/eth.png",
       },
       {
-        name: "TESTx",
-        address: "0xB1bE9A812222c75564c08D860f063D27911F3adc",
-        icon: "/base.svg",
+        name: "HIGHERx",
+        address: "0x5f2Fab273F1F64b6bc6ab8F35314CD21501F35C5",
+        icon: "/higher.png",
       },
       {
-        name: "ONCHAINx",
-        address: "0xfef2d7b013b88fec2bfe4d2fee0aeb719af73481",
-        icon: "/onchain.png",
-      },
-      {
-        name: "AF",
-        address: "0x6c90A582C166F59dE91f97fA7Aef7315A968B342",
-        icon: "/alphafrens.png",
-      },
-      {
-        name: "$mferx",
-        address: "0x9097e4a4d75a611b65ab21d98a7d5b1177c050f7",
-        icon: "/mfercoin.png",
+        name: "USDCx",
+        address: "0xD04383398dD2426297da660F9CCA3d439AF9ce1b",
+        icon: "/usdc.png",
       },
     ],
   },
@@ -108,6 +83,11 @@ const networks: Network[] = [
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     tokens: [
       {
+        name: "DAIx",
+        address: "0x7d342726B69C28D942ad8BfE6Ac81b972349d524",
+        icon: "/dai.png",
+      },
+      {
         name: "ETHx",
         address: "0x4ac8bD1bDaE47beeF2D1c6Aa62229509b962Aa0d",
         icon: "/eth.png",
@@ -118,14 +98,14 @@ const networks: Network[] = [
         icon: "/optimism.svg",
       },
       {
-        name: "DAIx",
-        address: "0x7d342726B69C28D942ad8BfE6Ac81b972349d524",
-        icon: "/dai.png",
-      },
-      {
         name: "USDC.ex",
         address: "0x8430F084B939208E2eDEd1584889C9A66B90562f",
         icon: "/usdc.png",
+      },
+      {
+        name: "USDGLOx",
+        address: "0x9F41d0AA24E599fd8D0c180Ee3C0F609dc41c622",
+        icon: "/usdglo.png",
       },
     ],
   },

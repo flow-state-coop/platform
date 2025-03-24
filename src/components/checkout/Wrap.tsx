@@ -1,5 +1,5 @@
 import { useAccount } from "wagmi";
-import { formatEther, parseEther, formatUnits } from "viem";
+import { formatEther, parseEther, parseUnits, formatUnits } from "viem";
 import Image from "next/image";
 import Card from "react-bootstrap/Card";
 import Accordion from "react-bootstrap/Accordion";
@@ -158,7 +158,10 @@ export default function Wrap(props: WrapProps) {
               {underlyingTokenBalance &&
               wrapAmount &&
               underlyingTokenBalance?.value <
-                parseEther(wrapAmount?.replace(/,/g, "")) ? (
+                parseUnits(
+                  wrapAmount?.replace(/,/g, ""),
+                  underlyingTokenBalance.decimals,
+                ) ? (
                 <i
                   className="ms-2 ps-1 text-danger"
                   style={{
