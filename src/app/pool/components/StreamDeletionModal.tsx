@@ -14,22 +14,13 @@ type StreamDeletionModalProps = {
   show: boolean;
   network: Network;
   isMatchingPool: boolean;
-  allocationToken: string;
-  matchingToken: string;
+  token: string;
   receiver: string;
   hide: () => void;
 };
 
 export default function StreamDeletionModal(props: StreamDeletionModalProps) {
-  const {
-    show,
-    network,
-    isMatchingPool,
-    receiver,
-    allocationToken,
-    matchingToken,
-    hide,
-  } = props;
+  const { show, network, isMatchingPool, receiver, token, hide } = props;
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -65,7 +56,7 @@ export default function StreamDeletionModal(props: StreamDeletionModalProps) {
           address: network.gdaForwarder,
           functionName: "distributeFlow",
           args: [
-            matchingToken as Address,
+            token as Address,
             address,
             receiver as Address,
             BigInt(0),
@@ -80,12 +71,7 @@ export default function StreamDeletionModal(props: StreamDeletionModalProps) {
           ]),
           address: network.cfaForwarder,
           functionName: "deleteFlow",
-          args: [
-            allocationToken as Address,
-            address,
-            receiver as Address,
-            "0x",
-          ],
+          args: [token as Address, address, receiver as Address, "0x"],
           chainId: network.id,
         });
       }

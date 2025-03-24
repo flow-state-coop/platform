@@ -73,7 +73,7 @@ const FLOW_STATE_POOL_QUERY = gql`
 const ACCOUNT_QUERY = gql`
   query AccountQuery(
     $userAddress: String!
-    $allocationToken: String!
+    $tokens: [String]
     $receivers: [String]
     $gdaPoolAddress: String!
   ) {
@@ -89,7 +89,7 @@ const ACCOUNT_QUERY = gql`
       }
       outflows(
         where: {
-          token: $allocationToken
+          token_: { id_in: $tokens }
           receiver_: { id_in: $receivers }
           currentFlowRate_not: "0"
         }
@@ -97,6 +97,9 @@ const ACCOUNT_QUERY = gql`
         orderDirection: desc
       ) {
         receiver {
+          id
+        }
+        token {
           id
         }
         streamedUntilUpdatedAt
@@ -123,6 +126,7 @@ export default function WalletBalance() {
   const [streamDeletionModalState, setStreamDeletionModalState] = useState({
     show: false,
     isMatchingPool: false,
+    token: "",
     receiver: "",
   });
   const [token, setToken] = useState(Token.ALLOCATION);
@@ -153,7 +157,10 @@ export default function WalletBalance() {
     client: getApolloClient("superfluid", chainId ?? void 0),
     variables: {
       userAddress: address?.toLowerCase() ?? "0x",
-      allocationToken: allocationToken?.toLowerCase() ?? "0x",
+      tokens: [
+        allocationToken?.toLowerCase() ?? "0x",
+        matchingToken?.toLowerCase() ?? "0x",
+      ],
       receivers: [FLOW_STATE_RECEIVER].concat(
         flowStateQueryRes?.pool.recipientsByPoolIdAndChainId.map(
           (recipient: { superappAddress: string }) => recipient.superappAddress,
@@ -161,7 +168,12 @@ export default function WalletBalance() {
       ),
       gdaPoolAddress,
     },
-    skip: !poolId || !flowStateQueryRes || !address || !allocationToken,
+    skip:
+      !poolId ||
+      !flowStateQueryRes ||
+      !address ||
+      !allocationToken ||
+      !matchingToken,
     pollInterval: 10000,
   });
   const { data: eligibilityMethod } = useReadContract({
@@ -439,6 +451,7 @@ export default function WalletBalance() {
                     setStreamDeletionModalState({
                       show: true,
                       isMatchingPool: true,
+                      token: matchingTokenInfo.address,
                       receiver: gdaPoolAddress!,
                     })
                   }
@@ -471,6 +484,7 @@ export default function WalletBalance() {
                     outflow: {
                       currentFlowRate: string;
                       receiver: { id: string };
+                      token: { id: string };
                     },
                     i: number,
                   ) => (
@@ -508,6 +522,7 @@ export default function WalletBalance() {
                           setStreamDeletionModalState({
                             show: true,
                             isMatchingPool: false,
+                            token: outflow.token.id,
                             receiver: outflow.receiver.id,
                           })
                         }
@@ -557,11 +572,14 @@ export default function WalletBalance() {
                   ),
                 )}
               </>
-            ) : (
-              <Card.Text className="mt-1 small text-center">
-                No open streams
-              </Card.Text>
-            )}
+            ) : null}
+            {!superfluidQueryRes?.poolDistributors[0] &&
+              (!superfluidQueryRes?.account?.outflows ||
+                superfluidQueryRes.account.outflows.length === 0) && (
+                <Card.Text className="mt-1 small text-center">
+                  No open streams
+                </Card.Text>
+              )}
           </Card.Body>
         </Card>
         <Stack
@@ -941,15 +959,15 @@ export default function WalletBalance() {
         <StreamDeletionModal
           show={streamDeletionModalState.show}
           network={network}
-          allocationToken={allocationTokenInfo.address}
-          matchingToken={matchingTokenInfo.address}
+          token={streamDeletionModalState.token}
           receiver={streamDeletionModalState.receiver}
           isMatchingPool={streamDeletionModalState.isMatchingPool}
           hide={() =>
             setStreamDeletionModalState({
-              isMatchingPool: false,
-              receiver: "",
               show: false,
+              token: "",
+              receiver: "",
+              isMatchingPool: false,
             })
           }
         />
