@@ -18,7 +18,7 @@ const networks: Network[] = [
     flowSplitter: "0x25B64C200cf3362BaC6961353D38A1dbEB42e60E",
     flowSplitterSubgraph:
       "https://api.0xgraph.xyz/api/public/76ce6edf-8ead-4af2-98b2-95c12af6f222/subgraphs/flow-splitter-base/0.95.0/gn",
-    flowStateEligibilityNft: "0x",
+    flowStateEligibilityNft: "0xA72c184738842626a920A8935092b7b3f35A3082",
     passportDecoder: "0xe819c3FA368e164Da88E76A08a60f65280Af3ed6",
     superfluidHost: "0x4C073B3baB6d8826b8C5b229f3cfdC1eC6E47E74",
     superfluidResolver: "0x6a214c324553F96F04eFBDd66908685525Da0E0d",
@@ -72,7 +72,7 @@ const networks: Network[] = [
     flowSplitter: "0x25B64C200cf3362BaC6961353D38A1dbEB42e60E",
     flowSplitterSubgraph:
       "https://api.0xgraph.xyz/api/public/76ce6edf-8ead-4af2-98b2-95c12af6f222/subgraphs/flow-splitter-optimism/0.95.0/gn",
-    flowStateEligibilityNft: "0x",
+    flowStateEligibilityNft: "0x09A62710a3BFC83aae2956F1D5B2363e4773Db7a",
     passportDecoder: "0x5558D441779Eca04A329BcD6b47830D2C6607769",
     superfluidHost: "0x567c4B141ED61923967cA25Ef4906C8781069a10",
     superfluidResolver: "0x743B5f46BC86caF41bE4956d9275721E0531B186",
@@ -126,7 +126,7 @@ const networks: Network[] = [
     flowSplitter: "0x25B64C200cf3362BaC6961353D38A1dbEB42e60E",
     flowSplitterSubgraph:
       "https://api.0xgraph.xyz/api/public/76ce6edf-8ead-4af2-98b2-95c12af6f222/subgraphs/flow-splitter-arbitrum-one/0.96.0/gn",
-    flowStateEligibilityNft: "0x",
+    flowStateEligibilityNft: "0x6Ee1Cc715EAB6a1a661d34C1439Fc7f05Aa5f435",
     passportDecoder: "0x2050256A91cbABD7C42465aA0d5325115C1dEB43",
     superfluidHost: "0xCf8Acb4eF033efF16E8080aed4c7D5B9285D2192",
     superfluidResolver: "0x609b9d9d6Ee9C3200745A79B9d3398DBd63d509F",
@@ -175,7 +175,7 @@ const networks: Network[] = [
     flowSplitter: "0xd53B8Bed28E122eA20dCC90d3991a614EC163a21",
     flowSplitterSubgraph:
       "https://api.goldsky.com/api/public/project_cm2vlxq9s82qo01xtc11y9stm/subgraphs/flow-splitter-optimism-sepolia/0.0.1/gn",
-    flowStateEligibilityNft: "0x635f936f3e0C205B032f0060C5A003a4f493e491",
+    flowStateEligibilityNft: "0x1059A20C7aA0B4576B631d064730dB2E02940535",
     passportDecoder: "0xe53C60F8069C2f0c3a84F9B3DB5cf56f3100ba56",
     superfluidHost: "0xd399e2Fb5f4cf3722a11F65b88FAB6B2B8621005",
     superfluidResolver: "0x554c06487bEc8c890A0345eb05a5292C1b1017Bd",
