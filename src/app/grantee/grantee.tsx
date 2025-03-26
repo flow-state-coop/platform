@@ -38,11 +38,6 @@ type GranteeProps = {
 
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
 
-enum EligibilityMethod {
-  PASSPORT,
-  NFT_GATING,
-}
-
 const PROJECTS_QUERY = gql`
   query ProjectsQuery($address: String!, $chainId: Int!, $poolId: String!) {
     profiles(
@@ -110,11 +105,6 @@ export default function Grantee(props: GranteeProps) {
     pollInterval: 3000,
   });
   const { writeContractAsync, isError } = useWriteContract();
-  const { data: minPassportScore } = useReadContract({
-    address: queryRes?.pool?.strategyAddress as Address,
-    abi: strategyAbi,
-    functionName: "minPassportScore",
-  });
   const { data: eligibilityMethod } = useReadContract({
     address: queryRes?.pool?.strategyAddress as Address,
     abi: strategyAbi,
@@ -280,22 +270,10 @@ export default function Grantee(props: GranteeProps) {
                       token.address.toLowerCase() === pool?.matchingToken,
                   )?.name ?? "N/A"}
                 </Card.Text>
-                {!eligibilityMethod ||
-                eligibilityMethod === EligibilityMethod.PASSPORT ? (
-                  <Card.Text>
-                    - Gitcoin Passport Threshold:{" "}
-                    {minPassportScore
-                      ? parseFloat(
-                          (Number(minPassportScore) / 10000).toFixed(2),
-                        )
-                      : "N/A"}
-                  </Card.Text>
-                ) : (
-                  <Card.Text>
-                    - Voter Eligibility NFT:{" "}
-                    {(requiredNftAddress as Address) ?? "N/A"}
-                  </Card.Text>
-                )}
+                <Card.Text>
+                  - Voter Eligibility NFT:{" "}
+                  {(requiredNftAddress as Address) ?? "N/A"}
+                </Card.Text>
               </Card>
               {loading ? (
                 <Spinner className="m-auto" />

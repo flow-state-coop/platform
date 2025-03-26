@@ -20,14 +20,12 @@ import GranteeDetails from "@/components/GranteeDetails";
 import EditStream from "@/components/checkout/EditStream";
 import TopUp from "@/components/checkout/TopUp";
 import Wrap from "@/components/checkout/Wrap";
-import Passport from "@/components/checkout/Passport";
 import FlowStateEligibility from "@/components/checkout/FlowStateEligibility";
 import MintNFT from "@/components/checkout/MintNFT";
 import NFTGating from "@/components/checkout/NFTGating";
 import SupportFlowState from "@/components/checkout/SupportFlowState";
 import Review from "@/components/checkout/Review";
 import Success from "@/components/checkout/Success";
-import PassportMintingInstructions from "@/components/PassportMintingInstructions";
 import { useSuperfluidContext } from "@/context/Superfluid";
 import { ProjectMetadata } from "@/types/project";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -77,10 +75,6 @@ type GranteeFundingProps = {
     | null;
   network?: Network;
   isEligible: boolean;
-  passportScore?: bigint;
-  refetchPassportScore: (args: { throwOnError: boolean }) => void;
-  passportDecoder?: Address;
-  minPassportScore?: bigint;
   requiredNftAddress: Address | null;
   flowStateEligibility: boolean;
   nftMintUrl: string | null;
@@ -112,9 +106,6 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     userAccountSnapshots,
     network,
     isEligible,
-    passportScore,
-    refetchPassportScore,
-    minPassportScore,
     requiredNftAddress,
     flowStateEligibility,
     nftMintUrl,
@@ -132,7 +123,6 @@ export default function GranteeFunding(props: GranteeFundingProps) {
   const [supportFlowStateTimeInterval, setSupportFlowStateTimeInterval] =
     useState<TimeInterval>(TimeInterval.MONTH);
   const [allocationTokenSymbol, setAllocationTokenSymbol] = useState("");
-  const [showMintingInstructions, setShowMintingInstructions] = useState(false);
 
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
@@ -724,21 +714,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
                 isEligible={isEligible}
                 isPureSuperToken={isPureSuperToken}
               />
-            ) : (
-              <Passport
-                step={step}
-                setStep={setStep}
-                passportScore={
-                  passportScore ? Number(passportScore) / 10000 : 0
-                }
-                minPassportScore={
-                  minPassportScore ? Number(minPassportScore) / 10000 : 0
-                }
-                setShowMintingInstructions={setShowMintingInstructions}
-                refetchPassportScore={refetchPassportScore}
-                isPureSuperToken={isPureSuperToken}
-              />
-            )}
+            ) : null}
             <SupportFlowState
               network={network}
               token={allocationTokenInfo}
@@ -793,16 +769,6 @@ export default function GranteeFunding(props: GranteeFundingProps) {
           </Accordion>
         </Offcanvas.Body>
       </Offcanvas>
-      {network && showMintingInstructions && (
-        <PassportMintingInstructions
-          show={showMintingInstructions}
-          hide={() => setShowMintingInstructions(false)}
-          network={network}
-          minPassportScore={
-            minPassportScore ? Number(minPassportScore) / 10000 : 0
-          }
-        />
-      )}
     </>
   );
 }

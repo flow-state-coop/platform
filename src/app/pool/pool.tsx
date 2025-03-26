@@ -23,7 +23,6 @@ import { Outflow } from "@/types/outflow";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useDonorParams from "@/hooks/donorParams";
-import { passportDecoderAbi } from "@/lib/abi/passportDecoder";
 import { erc721CheckerAbi } from "@/lib/abi/erc721Checker";
 import { erc721Abi } from "@/lib/abi/erc721";
 import { networks } from "@/lib/networks";
@@ -68,7 +67,6 @@ enum SortingMethod {
 }
 
 enum EligibilityMethod {
-  PASSPORT,
   NFT_GATING,
 }
 
@@ -220,29 +218,6 @@ export default function Pool(props: PoolProps) {
     },
     pollInterval: 10000,
   });
-  const { data: passportDecoder } = useReadContract({
-    address: flowStateQueryRes?.pool?.strategyAddress,
-    abi: strategyAbi,
-    functionName: "passportDecoder",
-    chainId,
-  });
-  const { data: minPassportScore } = useReadContract({
-    address: flowStateQueryRes?.pool?.strategyAddress,
-    abi: strategyAbi,
-    functionName: "minPassportScore",
-    chainId,
-  });
-  const { data: passportScore, refetch: refetchPassportScore } =
-    useReadContract({
-      abi: passportDecoderAbi,
-      address: passportDecoder ?? "0x",
-      functionName: "getScore",
-      args: [address ?? "0x"],
-      chainId,
-      query: {
-        enabled: address && passportDecoder !== ZERO_ADDRESS ? true : false,
-      },
-    });
   const { data: eligibilityMethod } = useReadContract({
     address: flowStateQueryRes?.pool?.strategyAddress,
     abi: strategyAbi,
@@ -289,12 +264,7 @@ export default function Pool(props: PoolProps) {
   const isEligible =
     eligibilityMethod === EligibilityMethod.NFT_GATING && !!nftBalance
       ? true
-      : eligibilityMethod === EligibilityMethod.PASSPORT &&
-          passportScore &&
-          minPassportScore &&
-          passportScore >= minPassportScore
-        ? true
-        : false;
+      : false;
 
   const allocationTokenInfo = useMemo(
     () =>
@@ -793,10 +763,6 @@ export default function Pool(props: PoolProps) {
             }
             isEligible={isEligible}
             network={network}
-            passportScore={passportScore}
-            refetchPassportScore={refetchPassportScore}
-            passportDecoder={passportDecoder}
-            minPassportScore={minPassportScore}
             requiredNftAddress={(requiredNftAddress as Address) ?? null}
             flowStateEligibility={
               flowStateQueryRes?.pool.metadata.flowStateEligibility ?? false
