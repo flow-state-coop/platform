@@ -706,15 +706,7 @@ export default function WalletBalance() {
                 : "N/A"}
           </Card.Text>
         </Stack>
-        <Card.Link
-          href="https://app.superfluid.finance"
-          target="_blank"
-          className="mt-1 mx-3 px-3 text-primary text-center cursor-pointer"
-        >
-          Visit the Superfluid App for advanced management of your Super Token
-          balances
-        </Card.Link>
-        <Card className="bg-light m-3 p-2 rounded-4 border-0">
+        <Card className="bg-light mx-3 my-2 p-2 rounded-4 border-0">
           <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 py-1 fs-5">
             Matching Eligibility
           </Card.Header>
@@ -811,6 +803,14 @@ export default function WalletBalance() {
             </Stack>
           </Card.Body>
         </Card>
+        <Card.Link
+          href="https://app.superfluid.finance"
+          target="_blank"
+          className="mx-3 my-2 px-3 text-primary text-center cursor-pointer"
+        >
+          Visit the Superfluid App for advanced management of your Super Token
+          balances
+        </Card.Link>
       </Offcanvas>
       {streamDeletionModalState.show && (
         <StreamDeletionModal
