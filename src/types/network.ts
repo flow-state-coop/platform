@@ -17,7 +17,6 @@ export type Network = {
   flowSplitter: Address;
   flowSplitterSubgraph: string;
   flowStateEligibilityNft: string;
-  passportDecoder: Address;
   superfluidHost: Address;
   superfluidResolver: Address;
   recipientSuperappFactory: Address;
