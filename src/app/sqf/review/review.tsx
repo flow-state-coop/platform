@@ -345,7 +345,7 @@ export default function Review(props: ReviewProps) {
           {!profileId || !chainId ? (
             <Card.Text>
               Program not found, please select one from{" "}
-              <Link href="/admin">Program Selection</Link>
+              <Link href="/sqf">Program Selection</Link>
             </Card.Text>
           ) : loading || !chainId ? (
             <Spinner className="m-auto" />
@@ -353,7 +353,7 @@ export default function Review(props: ReviewProps) {
             <Card.Text>
               Pool not found, please select one from{" "}
               <Link
-                href={`/admin/pools/?chainId=${chainId}&profileId=${profileId}`}
+                href={`/sqf/pools/?chainId=${chainId}&profileId=${profileId}`}
               >
                 Pool Selection
               </Link>
@@ -369,7 +369,7 @@ export default function Review(props: ReviewProps) {
               >
                 {network?.name}
               </span>{" "}
-              or return to <Link href="/admin">Program Selection</Link>
+              or return to <Link href="/sqf">Program Selection</Link>
             </Card.Text>
           ) : (
             <Stack direction="vertical" gap={2}>
@@ -666,7 +666,7 @@ export default function Review(props: ReviewProps) {
                   style={{ width: isMobile ? "100%" : "25%" }}
                 >
                   <Link
-                    href={`/admin/matching/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
+                    href={`/sqf/matching/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
                     className="w-100 text-light text-decoration-none"
                     style={{ paddingTop: 6, paddingBottom: 6 }}
                   >

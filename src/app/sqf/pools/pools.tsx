@@ -77,7 +77,7 @@ export default function Pools(props: PoolsProps) {
         style={{ width: 256, height: 256 }}
         onClick={() => {
           router.push(
-            `/admin/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${pool.id}`,
+            `/sqf/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${pool.id}`,
           );
         }}
       >
@@ -114,7 +114,7 @@ export default function Pools(props: PoolsProps) {
           {!profileId || !chainId ? (
             <Card.Text>
               Program not found, please select one from{" "}
-              <Link href="/admin">Program Selection</Link>
+              <Link href="/sqf">Program Selection</Link>
             </Card.Text>
           ) : loading || !chainId || !profileId ? (
             <Spinner className="m-auto" />
@@ -129,7 +129,7 @@ export default function Pools(props: PoolsProps) {
               >
                 {network?.name}
               </span>{" "}
-              or return to <Link href="/admin">Program Selection</Link>
+              or return to <Link href="/sqf">Program Selection</Link>
             </Card.Text>
           ) : (
             <Stack direction="horizontal" gap={5} className="flex-wrap">
@@ -147,7 +147,7 @@ export default function Pools(props: PoolsProps) {
                 style={{ width: 256, height: 256 }}
                 onClick={() => {
                   router.push(
-                    `/admin/configure/?chainId=${chainId}&profileId=${profileId}`,
+                    `/sqf/configure/?chainId=${chainId}&profileId=${profileId}`,
                   );
                 }}
               >
