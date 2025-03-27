@@ -85,7 +85,6 @@ export default function HomePage() {
             <Button
               variant="link"
               href="/sqf"
-              target="_blank"
               className="w-50 text-white fs-5 shadow text-decoration-none"
               style={{ background: "#33a8c2" }}
             >
