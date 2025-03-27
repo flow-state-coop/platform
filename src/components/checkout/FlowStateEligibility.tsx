@@ -198,7 +198,7 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
               >
                 {isEligible
                   ? "Check Your Score"
-                  : `1. Earn Stamps (min = ${network?.flowStateEligibilityMinScore}})`}
+                  : `1. Earn Stamps (min = ${network?.flowStateEligibilityMinScore})`}
               </Button>
               <Button
                 disabled={isEligible}
