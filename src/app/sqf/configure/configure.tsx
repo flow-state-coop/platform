@@ -310,7 +310,8 @@ export default function Configure(props: ConfigureProps) {
     const initParams = {
       useRegistryAnchor: true,
       metadataRequired: true,
-      passportDecoder: ZERO_ADDRESS,
+      passportDecoder:
+        `${ZERO_ADDRESS.slice(0, ZERO_ADDRESS.length - 1)}1` as Address,
       superfluidHost: network.superfluidHost,
       allocationSuperToken: allocationToken.address,
       recipientSuperAppFactory: network.recipientSuperappFactory,
