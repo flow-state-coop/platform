@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const minScore = network.id === optimismSepolia.id ? 0.5 : 15;
+    const minScore = network.flowStateEligibilityMinScore;
     const passportStampRes = await fetch(
       `https://api.passport.xyz/v2/stamps/${SCORER_ID}/score/${address}`,
       {
