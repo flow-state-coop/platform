@@ -25,7 +25,7 @@ export default function Header() {
           minWidth:
             isMobile ||
             isTablet ||
-            pathname?.startsWith("/admin") ||
+            pathname?.startsWith("/sqf") ||
             pathname?.startsWith("/grantee") ||
             pathname?.startsWith("/core") ||
             pathname?.startsWith("/terms") ||

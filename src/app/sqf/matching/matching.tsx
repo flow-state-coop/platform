@@ -181,7 +181,7 @@ export default function Matching(props: MatchingProps) {
           {!profileId || !chainId ? (
             <Card.Text>
               Program not found, please select one from{" "}
-              <Link href="/admin">Program Selection</Link>
+              <Link href="/sqf">Program Selection</Link>
             </Card.Text>
           ) : loading || !chainId ? (
             <Spinner className="m-auto" />
@@ -189,7 +189,7 @@ export default function Matching(props: MatchingProps) {
             <Card.Text>
               Pool not found, please select one from{" "}
               <Link
-                href={`/admin/pools/?chainId=${chainId}&profileId=${profileId}`}
+                href={`/sqf/pools/?chainId=${chainId}&profileId=${profileId}`}
               >
                 Pool Selection
               </Link>
@@ -205,7 +205,7 @@ export default function Matching(props: MatchingProps) {
               >
                 {network?.name}
               </span>{" "}
-              or return to <Link href="/admin">Program Selection</Link>
+              or return to <Link href="/sqf">Program Selection</Link>
             </Card.Text>
           ) : (
             <>

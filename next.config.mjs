@@ -8,6 +8,11 @@ const nextConfig = {
         destination: "/pool/?chainId=8453&poolId=63",
         permanent: true,
       },
+      {
+        source: "/admin",
+        destination: "/sqf",
+        permanent: true,
+      },
     ];
   },
   webpack: (config) => {

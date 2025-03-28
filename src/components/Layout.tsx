@@ -15,7 +15,7 @@ export default function Layout({ children }: LayoutProps) {
   const { isMobile } = useMediaQuery();
 
   const showSidebar =
-    (!isMobile && pathname?.startsWith("/admin") && pathname !== "/admin") ||
+    (!isMobile && pathname?.startsWith("/sqf") && pathname !== "/sqf") ||
     (!isMobile && pathname?.startsWith("/grantee"));
 
   return (

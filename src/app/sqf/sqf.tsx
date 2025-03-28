@@ -35,7 +35,7 @@ const PROGRAMS_QUERY = gql`
   }
 `;
 
-export default function Admin() {
+export default function SQF() {
   const [showProgramCreationModal, setShowProgramCreationModal] =
     useState(false);
 
@@ -117,7 +117,7 @@ export default function Admin() {
                     style={{ width: 256, height: 256 }}
                     onClick={() => {
                       router.push(
-                        `/admin/pools/?chainId=${network?.id}&profileId=${profile.id}`,
+                        `/sqf/pools/?chainId=${network?.id}&profileId=${profile.id}`,
                       );
                     }}
                     key={i}

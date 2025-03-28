@@ -84,9 +84,9 @@ function Sidebar() {
   const selectedPool = poolsQueryRes?.pools.find(
     (pool: { id: string }) => pool.id === poolId,
   );
-  const isCreatingNewPool = pathname === "/admin/configure" && !selectedPool;
+  const isCreatingNewPool = pathname === "/sqf/configure" && !selectedPool;
 
-  if (pathname === "/admin") {
+  if (pathname === "/sqf") {
     return null;
   }
 
@@ -153,7 +153,7 @@ function Sidebar() {
                       key={i}
                       onClick={() => {
                         router.push(
-                          `/admin/pools/?chainId=${chainId}&profileId=${profile.id}`,
+                          `/sqf/pools/?chainId=${chainId}&profileId=${profile.id}`,
                         );
                       }}
                     >
@@ -161,7 +161,7 @@ function Sidebar() {
                     </Dropdown.Item>
                   ),
                 )}
-                <Dropdown.Item onClick={() => router.push("/admin/?new=true")}>
+                <Dropdown.Item onClick={() => router.push("/sqf/?new=true")}>
                   Create New
                 </Dropdown.Item>
               </Dropdown.Menu>
@@ -212,7 +212,7 @@ function Sidebar() {
                       key={i}
                       onClick={() =>
                         router.push(
-                          `/admin/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${pool.id}`,
+                          `/sqf/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${pool.id}`,
                         )
                       }
                     >
@@ -223,7 +223,7 @@ function Sidebar() {
                 <Dropdown.Item
                   onClick={() => {
                     router.push(
-                      `/admin/configure/?chainId=${chainId}&profileId=${profileId}`,
+                      `/sqf/configure/?chainId=${chainId}&profileId=${profileId}`,
                     );
                   }}
                 >
@@ -239,9 +239,9 @@ function Sidebar() {
             style={{ color: !selectedPool || isWrongNetwork ? "#dee2e6" : "" }}
           >
             <Link
-              href={`/admin/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
+              href={`/sqf/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
               className={`d-flex align-items-center gap-1 text-decoration-none ${
-                pathname?.startsWith("/admin/configure") &&
+                pathname?.startsWith("/sqf/configure") &&
                 !!selectedPool &&
                 !isWrongNetwork
                   ? "fw-bold"
@@ -256,7 +256,7 @@ function Sidebar() {
               }}
             >
               <Image
-                src={`${pathname?.startsWith("/admin/configure") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+                src={`${pathname?.startsWith("/sqf/configure") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
                 alt="Bullet Point"
                 width={24}
                 height={24}
@@ -270,9 +270,9 @@ function Sidebar() {
               Configuration
             </Link>
             <Link
-              href={`/admin/review/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
+              href={`/sqf/review/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
               className={`d-flex align-items-center gap-1 text-decoration-none ${
-                pathname?.startsWith("/admin/review") &&
+                pathname?.startsWith("/sqf/review") &&
                 !!selectedPool &&
                 !isWrongNetwork
                   ? "fw-bold"
@@ -285,7 +285,7 @@ function Sidebar() {
               }}
             >
               <Image
-                src={`${pathname?.startsWith("/admin/review") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+                src={`${pathname?.startsWith("/sqf/review") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
                 alt="Bullet Point"
                 width={24}
                 height={24}
@@ -299,9 +299,9 @@ function Sidebar() {
               Grantee Review
             </Link>
             <Link
-              href={`/admin/matching/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
+              href={`/sqf/matching/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
               className={`d-flex align-items-center gap-1 text-decoration-none ${
-                pathname?.startsWith("/admin/matching") &&
+                pathname?.startsWith("/sqf/matching") &&
                 !!selectedPool &&
                 !isWrongNetwork
                   ? "fw-bold"
@@ -313,7 +313,7 @@ function Sidebar() {
               }}
             >
               <Image
-                src={`${pathname?.startsWith("/admin/matching") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+                src={`${pathname?.startsWith("/sqf/matching") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
                 alt="Bullet Point"
                 width={24}
                 height={24}
