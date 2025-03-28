@@ -15,7 +15,6 @@ import { networks } from "@/lib/networks";
 export const dynamic = "force-dynamic";
 
 const SCORER_ID = 9864;
-const MIN_SCORE = 0.5;
 
 const chains: { [id: number]: Chain } = {
   10: optimism,
@@ -28,6 +27,15 @@ export async function POST(request: Request) {
   try {
     const { address, chainId } = await request.json();
 
+    const network = networks.find((network) => network.id === chainId);
+
+    if (!network) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Wrong network" }),
+      );
+    }
+
+    const minScore = network.flowStateEligibilityMinScore;
     const passportStampRes = await fetch(
       `https://api.passport.xyz/v2/stamps/${SCORER_ID}/score/${address}`,
       {
@@ -37,7 +45,7 @@ export async function POST(request: Request) {
     );
     const passportStamp = await passportStampRes.json();
 
-    if (Number(passportStamp.score) < MIN_SCORE) {
+    if (Number(passportStamp.score) < minScore) {
       const aggregateOnchainScoreRes = await fetch(
         `https://api.passport.xyz/v2/models/score/${address}`,
         {
@@ -48,7 +56,7 @@ export async function POST(request: Request) {
       const aggregateOnchainScore = await aggregateOnchainScoreRes.json();
 
       if (
-        Number(aggregateOnchainScore.details.models.aggregate.score) < MIN_SCORE
+        Number(aggregateOnchainScore.details.models.aggregate.score) < minScore
       ) {
         return new Response(
           JSON.stringify({
@@ -57,14 +65,6 @@ export async function POST(request: Request) {
           }),
         );
       }
-    }
-
-    const network = networks.find((network) => network.id === chainId);
-
-    if (!network) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Wrong network" }),
-      );
     }
 
     const walletClient = createWalletClient({

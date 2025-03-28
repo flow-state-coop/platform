@@ -66,10 +66,6 @@ enum SortingMethod {
   POPULAR = "Popular",
 }
 
-enum EligibilityMethod {
-  NFT_GATING,
-}
-
 const POOL_QUERY = gql`
   query PoolQuery($poolId: String!, $chainId: Int!) {
     pool(chainId: $chainId, id: $poolId) {
@@ -218,17 +214,10 @@ export default function Pool(props: PoolProps) {
     },
     pollInterval: 10000,
   });
-  const { data: eligibilityMethod } = useReadContract({
-    address: flowStateQueryRes?.pool?.strategyAddress,
-    abi: strategyAbi,
-    functionName: "getAllocationEligiblity",
-    chainId,
-  });
   const { data: nftChecker } = useReadContract({
     address: flowStateQueryRes?.pool?.strategyAddress,
     abi: strategyAbi,
     functionName: "checker",
-    query: { enabled: eligibilityMethod === EligibilityMethod.NFT_GATING },
     chainId,
   });
   const { data: requiredNftAddress } = useReadContract({
@@ -261,10 +250,7 @@ export default function Pool(props: PoolProps) {
   const pool = flowStateQueryRes?.pool ?? null;
   const matchingPool = superfluidQueryRes?.pool ?? null;
   const network = networks.find((network) => network.id === chainId);
-  const isEligible =
-    eligibilityMethod === EligibilityMethod.NFT_GATING && !!nftBalance
-      ? true
-      : false;
+  const isEligible = !!nftBalance;
 
   const allocationTokenInfo = useMemo(
     () =>
@@ -718,9 +704,7 @@ export default function Pool(props: PoolProps) {
             userAccountSnapshots={
               superfluidQueryRes?.account?.accountTokenSnapshots ?? null
             }
-            shouldMintNft={
-              !isEligible && eligibilityMethod === EligibilityMethod.NFT_GATING
-            }
+            shouldMintNft={!isEligible}
           />
         ) : transactionPanelState.show &&
           transactionPanelState.selectedGrantee !== null ? (

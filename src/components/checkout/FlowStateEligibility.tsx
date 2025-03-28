@@ -196,7 +196,9 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
                 target="_blank"
                 className="bg-secondary text-light text-decoration-none"
               >
-                {isEligible ? "Check Your Score" : "1. Earn Stamps (min = 0.5)"}
+                {isEligible
+                  ? "Check Your Score"
+                  : `1. Earn Stamps (min = ${network?.flowStateEligibilityMinScore})`}
               </Button>
               <Button
                 disabled={isEligible}

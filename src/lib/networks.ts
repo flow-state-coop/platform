@@ -19,6 +19,7 @@ const networks: Network[] = [
     flowSplitterSubgraph:
       "https://api.0xgraph.xyz/api/public/76ce6edf-8ead-4af2-98b2-95c12af6f222/subgraphs/flow-splitter-base/0.95.0/gn",
     flowStateEligibilityNft: "0xA72c184738842626a920A8935092b7b3f35A3082",
+    flowStateEligibilityMinScore: 15,
     superfluidHost: "0x4C073B3baB6d8826b8C5b229f3cfdC1eC6E47E74",
     superfluidResolver: "0x6a214c324553F96F04eFBDd66908685525Da0E0d",
     recipientSuperappFactory: "0xf29933097dFC1456e8B3d934d89D90e6bbED76e5",
@@ -72,6 +73,7 @@ const networks: Network[] = [
     flowSplitterSubgraph:
       "https://api.0xgraph.xyz/api/public/76ce6edf-8ead-4af2-98b2-95c12af6f222/subgraphs/flow-splitter-optimism/0.95.0/gn",
     flowStateEligibilityNft: "0x09A62710a3BFC83aae2956F1D5B2363e4773Db7a",
+    flowStateEligibilityMinScore: 15,
     superfluidHost: "0x567c4B141ED61923967cA25Ef4906C8781069a10",
     superfluidResolver: "0x743B5f46BC86caF41bE4956d9275721E0531B186",
     recipientSuperappFactory: "0xC0d7774AbdFBD9a30BcC1b53E1A6D90d5804d934",
@@ -111,7 +113,7 @@ const networks: Network[] = [
     id: 42161,
     name: "Arbitrum One",
     label: "arbitrum-one",
-    icon: "/arb.svg",
+    icon: "/arb.png",
     rpcUrl: "https://arbitrum.meowrpc.com",
     blockExplorer: "https://arbiscan.io/",
     superfluidExplorer: "https://explorer.superfluid.finance/arbitrum-one",
@@ -125,6 +127,7 @@ const networks: Network[] = [
     flowSplitterSubgraph:
       "https://api.0xgraph.xyz/api/public/76ce6edf-8ead-4af2-98b2-95c12af6f222/subgraphs/flow-splitter-arbitrum-one/0.96.0/gn",
     flowStateEligibilityNft: "0x6Ee1Cc715EAB6a1a661d34C1439Fc7f05Aa5f435",
+    flowStateEligibilityMinScore: 15,
     superfluidHost: "0xCf8Acb4eF033efF16E8080aed4c7D5B9285D2192",
     superfluidResolver: "0x609b9d9d6Ee9C3200745A79B9d3398DBd63d509F",
     recipientSuperappFactory: "0x7C959499F285E8Ca70EfDC46afD15C36A58c087a",
@@ -141,7 +144,7 @@ const networks: Network[] = [
       {
         name: "ARBx",
         address: "0xB3EDb2F90fEc1Bf1F872a9ef143cfd614773Ad04",
-        icon: "/arb.svg",
+        icon: "/arb.png",
       },
       {
         name: "DAIx",
@@ -173,6 +176,7 @@ const networks: Network[] = [
     flowSplitterSubgraph:
       "https://api.goldsky.com/api/public/project_cm2vlxq9s82qo01xtc11y9stm/subgraphs/flow-splitter-optimism-sepolia/0.0.1/gn",
     flowStateEligibilityNft: "0x1059A20C7aA0B4576B631d064730dB2E02940535",
+    flowStateEligibilityMinScore: 0.5,
     superfluidHost: "0xd399e2Fb5f4cf3722a11F65b88FAB6B2B8621005",
     superfluidResolver: "0x554c06487bEc8c890A0345eb05a5292C1b1017Bd",
     recipientSuperappFactory: "0x77F9A5D05e37B0c1DAEbB425bf2C69Fa8d9BEF90",

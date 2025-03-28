@@ -51,6 +51,7 @@ dayjs.extend(advancedFormat);
 const FLOW_STATE_POOL_QUERY = gql`
   query PoolQuery($poolId: String!, $chainId: Int!) {
     pool(chainId: $chainId, id: $poolId) {
+      metadata
       recipientsByPoolIdAndChainId(
         first: 1000
         condition: { status: APPROVED }
@@ -252,16 +253,21 @@ export default function WalletBalance() {
       setIsLoadingNftMint(true);
       setErrorNftMint("");
 
-      const res = await fetch("/api/mint-nft", {
-        method: "POST",
-        body: JSON.stringify({
-          address,
-          chainId: network?.id ?? DEFAULT_CHAIN_ID,
-        }),
-        headers: {
-          "Content-Type": "application/json",
+      const res = await fetch(
+        flowStateQueryRes?.pool.metadata.flowStateEligibility
+          ? "/api/flow-state-eligibility"
+          : "/api/mint-nft",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            address,
+            chainId: network?.id ?? DEFAULT_CHAIN_ID,
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
       const data = await res.json();
 
       if (!data.success) {
@@ -706,15 +712,7 @@ export default function WalletBalance() {
                 : "N/A"}
           </Card.Text>
         </Stack>
-        <Card.Link
-          href="https://app.superfluid.finance"
-          target="_blank"
-          className="mt-1 mx-3 px-3 text-primary text-center cursor-pointer"
-        >
-          Visit the Superfluid App for advanced management of your Super Token
-          balances
-        </Card.Link>
-        <Card className="bg-light m-3 p-2 rounded-4 border-0">
+        <Card className="bg-light mx-3 mt-3 ms-2 p-2 rounded-4 border-0">
           <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 py-1 fs-5">
             Matching Eligibility
           </Card.Header>
@@ -722,7 +720,7 @@ export default function WalletBalance() {
             <Stack
               direction="horizontal"
               gap={3}
-              className="justify-content-center mb-4"
+              className="justify-content-center"
             >
               <Stack
                 direction="vertical"
@@ -778,39 +776,65 @@ export default function WalletBalance() {
             </Stack>
             <Stack>
               {nftMintUrl?.startsWith("https://guild.xyz/octant-sqf-voter") &&
-              (!nftBalance || nftBalance === BigInt(0)) ? (
+              !nftBalance ? (
+                <Button
+                  className="d-flex justify-content-center align-items-center text-light gap-2 mt-4"
+                  onClick={!isLoadingNftMint ? handleNftMintRequest : void 0}
+                >
+                  Claim NFT
+                  {isLoadingNftMint && <Spinner size="sm" />}
+                </Button>
+              ) : flowStateQueryRes?.pool.metadata.flowStateEligibility &&
+                !nftBalance ? (
                 <>
                   <Button
-                    className="d-flex justify-content-center align-items-center text-light gap-2"
+                    variant="link"
+                    href="https://app.passport.xyz"
+                    target="_blank"
+                    className="mt-4 bg-secondary text-light text-decoration-none"
+                  >
+                    1. Earn Stamps (min ={" "}
+                    {network?.flowStateEligibilityMinScore})
+                  </Button>
+                  <Button
+                    className="d-flex justify-content-center align-items-center gap-2 mt-2"
                     onClick={!isLoadingNftMint ? handleNftMintRequest : void 0}
                   >
-                    Claim NFT
+                    2. Claim NFT
                     {isLoadingNftMint && <Spinner size="sm" />}
                   </Button>
-                  {errorNftMint && (
-                    <p className="mb-1 small text-center text-danger">
-                      {errorNftMint}
-                    </p>
-                  )}
                 </>
-              ) : nftMintUrl && (!nftBalance || nftBalance === BigInt(0)) ? (
+              ) : nftMintUrl && !nftBalance ? (
                 <Button
                   variant="link"
                   href={nftMintUrl}
                   target="_blank"
-                  className="bg-primary text-light text-decoration-none"
+                  className="mt-4 bg-primary text-light text-decoration-none"
                 >
                   Claim NFT
                 </Button>
-              ) : !nftBalance || nftBalance === BigInt(0) ? (
-                <Card.Text className="m-0">
+              ) : !nftBalance ? (
+                <Card.Text className="m-0 mt-4">
                   Double check the wallet you're using or reach out to the pool
                   admins if you think you should be eligible.
                 </Card.Text>
               ) : null}
+              {errorNftMint && (
+                <p className="mb-1 small text-center text-danger">
+                  {errorNftMint}
+                </p>
+              )}
             </Stack>
           </Card.Body>
         </Card>
+        <Card.Link
+          href="https://app.superfluid.finance"
+          target="_blank"
+          className="mx-3 my-2 px-3 text-primary text-center cursor-pointer"
+        >
+          Visit the Superfluid App for advanced management of your Super Token
+          balances
+        </Card.Link>
       </Offcanvas>
       {streamDeletionModalState.show && (
         <StreamDeletionModal
