@@ -68,11 +68,37 @@ export default function SQF() {
     <>
       <Stack
         direction="horizontal"
-        className="flex-grow-1"
+        className="flex-grow-1 mt-3"
         style={{ minHeight: "100svh" }}
       >
         <Stack direction="vertical" gap={4} className="px-5 py-4 mb-5">
-          <Card.Text as="h1">Select or create an Allo Program</Card.Text>
+          <div className="mb-3">
+            <Card.Text as="h1" className="mb-3">
+              SQF Launchpad
+            </Card.Text>
+            <Card.Text as="h2" className="fs-5">
+              Streaming Quadratic Funding (SQF) is an open-ended, real-time
+              implementation of quadratic funding. With this tool, you can
+              launch & manage rounds with no code. Start by selecting or
+              creating an Allo program.
+            </Card.Text>
+            <Card.Link
+              href="https://docs.flowstate.network/platform/streaming-qf/"
+              target="_blank"
+              className="text-primary"
+            >
+              Learn more
+            </Card.Link>{" "}
+            or{" "}
+            <Card.Link
+              href="https://t.me/flowstatecoop"
+              target="_blank"
+              className="text-primary"
+            >
+              get help
+            </Card.Link>
+            .
+          </div>
           <Dropdown>
             <Dropdown.Toggle
               variant="transparent"
