@@ -189,7 +189,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   const canSubmit =
     (newFlowRate > 0 || BigInt(flowRateToReceiver) > 0) &&
     BigInt(flowRateToReceiver) !== newFlowRate &&
-    (hasSufficientSuperTokenBalance ||
+    ((hasSufficientSuperTokenBalance && hasSufficientWrappingBalance) ||
       (wrapAmountPerTimeInterval &&
         Number(wrapAmountPerTimeInterval) > 0 &&
         hasSufficientWrappingBalance));
