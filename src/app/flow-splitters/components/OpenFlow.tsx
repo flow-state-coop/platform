@@ -189,10 +189,10 @@ export default function OpenFlow(props: OpenFlowProps) {
   const canSubmit =
     (newFlowRate > 0 || BigInt(flowRateToReceiver) > 0) &&
     BigInt(flowRateToReceiver) !== newFlowRate &&
-    hasSufficientSuperTokenBalance &&
-    (!wrapAmountPerTimeInterval ||
-      wrapAmountPerTimeInterval === "0" ||
-      hasSufficientWrappingBalance);
+    (hasSufficientSuperTokenBalance ||
+      (wrapAmountPerTimeInterval &&
+        Number(wrapAmountPerTimeInterval) > 0 &&
+        hasSufficientWrappingBalance));
 
   const membershipsInflowRate = useMemo(() => {
     let membershipsInflowRate = BigInt(0);
