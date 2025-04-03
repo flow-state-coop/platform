@@ -307,7 +307,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   ]);
 
   useEffect(() => {
-    if (address && flowRateToReceiver && !areTransactionsLoading) {
+    if (address && flowRateToReceiver) {
       const currentStreamValue = roundWeiAmount(
         BigInt(flowRateToReceiver) *
           BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH])),
@@ -317,7 +317,7 @@ export default function OpenFlow(props: OpenFlowProps) {
       setAmountPerTimeInterval(currentStreamValue);
       setNewFlowRate(BigInt(flowRateToReceiver));
     }
-  }, [address, flowRateToReceiver, areTransactionsLoading]);
+  }, [address, flowRateToReceiver]);
 
   useEffect(() => {
     const liquidationEstimate = calcLiquidationEstimate(newFlowRate);
