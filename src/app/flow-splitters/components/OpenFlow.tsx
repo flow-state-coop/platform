@@ -156,18 +156,14 @@ export default function OpenFlow(props: OpenFlowProps) {
   });
 
   const hasSufficientSuperTokenBalance =
-    (!isSuperTokenPure &&
-      underlyingTokenBalance &&
-      underlyingTokenBalance.value + superTokenBalance > BigInt(0)) ||
-    superTokenBalance > BigInt(0)
-      ? true
-      : false;
+    superTokenBalance > BigInt(0) ? true : false;
   const hasSufficientWrappingBalance =
     (isSuperTokenNative &&
       ethBalance &&
-      ethBalance?.value >= parseEther(wrapAmountPerTimeInterval)) ||
+      ethBalance.value > parseEther(wrapAmountPerTimeInterval ?? 0)) ||
     (underlyingTokenBalance &&
-      underlyingTokenBalance?.value >= parseEther(wrapAmountPerTimeInterval))
+      underlyingTokenBalance.value >= parseEther(wrapAmountPerTimeInterval)) ||
+    isSuperTokenPure
       ? true
       : false;
 
@@ -589,9 +585,13 @@ export default function OpenFlow(props: OpenFlowProps) {
                 }}
               >
                 {token.name}:{" "}
-                {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
+                {Intl.NumberFormat("en", { maximumFractionDigits: 6 }).format(
                   Number(formatEther(superTokenBalance)),
-                )}
+                )}{" "}
+                {!hasSufficientSuperTokenBalance &&
+                Number(amountPerTimeInterval) > 0
+                  ? "(Wrap below)"
+                  : null}
               </Card.Text>
               {!isSuperTokenPure &&
                 !showWrappingStep &&
@@ -683,28 +683,10 @@ export default function OpenFlow(props: OpenFlowProps) {
                   </InputGroup>
                 </Stack>
               </Stack>
-              {hasSufficientWrappingBalance ? (
-                <Card.Text
-                  className="mt-1 mb-0 w-50 text-info text-center"
-                  style={{
-                    fontSize: "0.8rem",
-                  }}
-                >
-                  {isSuperTokenNative
-                    ? ethBalance?.symbol
-                    : underlyingTokenBalance?.symbol}
-                  :{" "}
-                  {Intl.NumberFormat("en", {
-                    maximumFractionDigits: 4,
-                  }).format(
-                    Number(
-                      isSuperTokenNative
-                        ? ethBalance?.formatted
-                        : underlyingTokenBalance?.formatted,
-                    ),
-                  )}
-                </Card.Text>
-              ) : (
+              {isSuperTokenNative &&
+              ethBalance &&
+              wrapAmountPerTimeInterval &&
+              ethBalance.value === parseEther(wrapAmountPerTimeInterval) ? (
                 <Card.Text
                   className="mt-1 mb-0 ms-2 ps-1 text-danger w-100 float-start text-nowrap"
                   style={{
@@ -716,7 +698,29 @@ export default function OpenFlow(props: OpenFlowProps) {
                     : underlyingTokenBalance?.symbol}
                   :{" "}
                   {Intl.NumberFormat("en", {
-                    maximumFractionDigits: 4,
+                    maximumFractionDigits: 6,
+                  }).format(
+                    Number(
+                      isSuperTokenNative
+                        ? ethBalance?.formatted
+                        : underlyingTokenBalance?.formatted,
+                    ),
+                  )}{" "}
+                  (Leave enough for gas)
+                </Card.Text>
+              ) : !hasSufficientWrappingBalance ? (
+                <Card.Text
+                  className="mt-1 mb-0 ms-2 ps-1 text-danger w-100 float-start text-nowrap"
+                  style={{
+                    fontSize: "0.8rem",
+                  }}
+                >
+                  {isSuperTokenNative
+                    ? ethBalance?.symbol
+                    : underlyingTokenBalance?.symbol}
+                  :{" "}
+                  {Intl.NumberFormat("en", {
+                    maximumFractionDigits: 6,
                   }).format(
                     Number(
                       isSuperTokenNative
@@ -725,6 +729,27 @@ export default function OpenFlow(props: OpenFlowProps) {
                     ),
                   )}{" "}
                   (Insufficient Balance)
+                </Card.Text>
+              ) : (
+                <Card.Text
+                  className="mt-1 mb-0 w-50 text-info text-center"
+                  style={{
+                    fontSize: "0.8rem",
+                  }}
+                >
+                  {isSuperTokenNative
+                    ? ethBalance?.symbol
+                    : underlyingTokenBalance?.symbol}
+                  :{" "}
+                  {Intl.NumberFormat("en", {
+                    maximumFractionDigits: 6,
+                  }).format(
+                    Number(
+                      isSuperTokenNative
+                        ? ethBalance?.formatted
+                        : underlyingTokenBalance?.formatted,
+                    ),
+                  )}
                 </Card.Text>
               )}
             </Stack>
