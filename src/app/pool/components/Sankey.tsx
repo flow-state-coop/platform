@@ -102,7 +102,16 @@ export default function Sankey(props: SankeyProps) {
       : isMediumScreen
         ? 1300
         : 1600;
-  const svgTargetHeight = isMobile ? 800 : isBigScreen ? 600 : 500;
+  const svgTargetHeight =
+    grantees.length < 16
+      ? 720
+      : grantees.length < 32
+        ? 1440
+        : grantees.length < 64
+          ? 2880
+          : grantees.length < 128
+            ? 5760
+            : 11520;
   const allocationToken = grantees[0]?.allocationTokenInfo.name;
   const matchingToken = grantees[0]?.matchingTokenInfo.name;
   const totalDonationsCount =
@@ -643,6 +652,8 @@ export default function Sankey(props: SankeyProps) {
       if (window.visualViewport) {
         window.visualViewport.removeEventListener("resize", handleResize);
       }
+
+      dots.splice(0, dots.length);
     };
   }, [windowDimensions.width]);
 

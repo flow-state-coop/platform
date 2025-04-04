@@ -164,6 +164,7 @@ export default function Pool(props: PoolProps) {
   const { poolId, chainId, recipientId, editPoolDistribution } = props;
 
   const [grantees, setGrantees] = useState<Grantee[]>([]);
+  const [directTotal, setDirectTotal] = useState(BigInt(0));
   const [sortingMethod, setSortingMethod] = useState(SortingMethod.RANDOM);
   const [transactionPanelState, setTransactionPanelState] = useState<{
     show: boolean;
@@ -178,6 +179,7 @@ export default function Pool(props: PoolProps) {
   const skipGrantees = useRef(0);
   const granteesBatch = useRef(1);
   const hasNextGrantee = useRef(true);
+  const directTotalTimerId = useRef<NodeJS.Timeout>();
 
   const [sentryRef, inView] = useInView();
 
@@ -358,6 +360,40 @@ export default function Pool(props: PoolProps) {
   );
 
   useEffect(() => {
+    if (superfluidQueryRes?.accounts.length > 0) {
+      const calcDirectTotal = () => {
+        let directTotal = BigInt(0);
+
+        for (const account of superfluidQueryRes.accounts) {
+          const elapsed = BigInt(
+            Date.now() -
+              account.accountTokenSnapshots[0].updatedAtTimestamp * 1000,
+          );
+          directTotal +=
+            BigInt(
+              account.accountTokenSnapshots[0]
+                .totalAmountStreamedInUntilUpdatedAt,
+            ) +
+            (BigInt(account.accountTokenSnapshots[0].totalInflowRate) *
+              elapsed) /
+              BigInt(1000);
+        }
+
+        return directTotal;
+      };
+
+      clearInterval(directTotalTimerId.current);
+
+      directTotalTimerId.current = setInterval(
+        () => setDirectTotal(calcDirectTotal()),
+        1000,
+      );
+    }
+
+    return () => clearInterval(directTotalTimerId.current);
+  }, [superfluidQueryRes, directTotalTimerId]);
+
+  useEffect(() => {
     if (
       !flowStateQueryRes?.pool ||
       !superfluidQueryRes?.accounts ||
@@ -530,6 +566,53 @@ export default function Pool(props: PoolProps) {
             ).length ?? 0
           }
           grantees={grantees}
+          /*
+          grantees={grantees.concat(
+            grantees.map((grantee) => {
+              return {
+                ...grantee,
+                id: grantee.id + "1",
+                metadata: {
+                  ...grantee.metadata,
+                  title: grantee.metadata.title + "1",
+                },
+              };
+            }),
+          )}
+           */
+          directFlowRate={
+            superfluidQueryRes?.accounts
+              ? superfluidQueryRes?.accounts
+                  .map(
+                    (account: {
+                      accountTokenSnapshots: {
+                        totalInflowRate: string;
+                      }[];
+                    }) =>
+                      BigInt(account.accountTokenSnapshots[0].totalInflowRate),
+                  )
+                  .reduce((a: bigint, b: bigint) => a + b, BigInt(0))
+              : BigInt(0)
+          }
+          directTotal={directTotal}
+          allocationTokenInfo={allocationTokenInfo}
+          matchingTokenInfo={matchingTokenInfo}
+          directFunders={
+            superfluidQueryRes?.accounts
+              ? superfluidQueryRes?.accounts
+                  .map(
+                    (account: {
+                      accountTokenSnapshots: {
+                        activeIncomingStreamCount: number;
+                      }[];
+                    }) =>
+                      account.accountTokenSnapshots[0]
+                        .activeIncomingStreamCount,
+                  )
+                  .reduce((a: number, b: number) => a + b, 0)
+              : 0
+          }
+          matchingPool={matchingPool}
           showTransactionPanel={() =>
             setTransactionPanelState({
               show: true,
