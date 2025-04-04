@@ -11,7 +11,7 @@ import Stack from "react-bootstrap/Stack";
 import Dropdown from "react-bootstrap/Dropdown";
 import Spinner from "react-bootstrap/Spinner";
 import SuperfluidContextProvider from "@/context/Superfluid";
-import PoolInfo from "@/components/PoolInfo";
+import PoolInfo from "./components/PoolInfo";
 import Grantee from "@/components/Grantee";
 import GranteeFunding from "@/components/GranteeFunding";
 import MatchingPoolFunding from "@/components/MatchingPoolFunding";
@@ -43,7 +43,7 @@ type PoolProps = {
   editPoolDistribution: boolean;
 };
 
-type Grantee = {
+export type Grantee = {
   id: string;
   recipientAddress: string;
   superappAddress: string;
@@ -360,6 +360,40 @@ export default function Pool(props: PoolProps) {
   );
 
   useEffect(() => {
+    if (superfluidQueryRes?.accounts.length > 0) {
+      const calcDirectTotal = () => {
+        let directTotal = BigInt(0);
+
+        for (const account of superfluidQueryRes.accounts) {
+          const elapsed = BigInt(
+            Date.now() -
+              account.accountTokenSnapshots[0].updatedAtTimestamp * 1000,
+          );
+          directTotal +=
+            BigInt(
+              account.accountTokenSnapshots[0]
+                .totalAmountStreamedInUntilUpdatedAt,
+            ) +
+            (BigInt(account.accountTokenSnapshots[0].totalInflowRate) *
+              elapsed) /
+              BigInt(1000);
+        }
+
+        return directTotal;
+      };
+
+      clearInterval(directTotalTimerId.current);
+
+      directTotalTimerId.current = setInterval(
+        () => setDirectTotal(calcDirectTotal()),
+        1000,
+      );
+    }
+
+    return () => clearInterval(directTotalTimerId.current);
+  }, [superfluidQueryRes, directTotalTimerId]);
+
+  useEffect(() => {
     if (
       !flowStateQueryRes?.pool ||
       !superfluidQueryRes?.accounts ||
@@ -368,7 +402,7 @@ export default function Pool(props: PoolProps) {
       return;
     }
 
-    if (inView && hasNextGrantee.current) {
+    if ((inView || granteesBatch.current === 1) && hasNextGrantee.current) {
       const grantees: Grantee[] = [];
 
       if (recipientId) {
@@ -450,40 +484,6 @@ export default function Pool(props: PoolProps) {
   }, [sortingMethod, sortGrantees]);
 
   useEffect(() => {
-    if (superfluidQueryRes?.accounts.length > 0) {
-      const calcDirectTotal = () => {
-        let directTotal = BigInt(0);
-
-        for (const account of superfluidQueryRes.accounts) {
-          const elapsed = BigInt(
-            Date.now() -
-              account.accountTokenSnapshots[0].updatedAtTimestamp * 1000,
-          );
-          directTotal +=
-            BigInt(
-              account.accountTokenSnapshots[0]
-                .totalAmountStreamedInUntilUpdatedAt,
-            ) +
-            (BigInt(account.accountTokenSnapshots[0].totalInflowRate) *
-              elapsed) /
-              BigInt(1000);
-        }
-
-        return directTotal;
-      };
-
-      clearInterval(directTotalTimerId.current);
-
-      directTotalTimerId.current = setInterval(
-        () => setDirectTotal(calcDirectTotal()),
-        1000,
-      );
-    }
-
-    return () => clearInterval(directTotalTimerId.current);
-  }, [superfluidQueryRes, directTotalTimerId]);
-
-  useEffect(() => {
     if (!pool || !gdaPoolAddress) {
       return;
     }
@@ -557,6 +557,15 @@ export default function Pool(props: PoolProps) {
         <PoolInfo
           name={pool?.metadata.name ?? "N/A"}
           description={pool?.metadata.description ?? "N/A"}
+          chainId={chainId}
+          gdaPoolAddress={gdaPoolAddress ?? "0x"}
+          totalDistributionsCount={
+            superfluidQueryRes?.pool.poolDistributors.filter(
+              (distributor: { flowRate: string }) =>
+                distributor.flowRate !== "0",
+            ).length ?? 0
+          }
+          grantees={grantees}
           directFlowRate={
             superfluidQueryRes?.accounts
               ? superfluidQueryRes?.accounts

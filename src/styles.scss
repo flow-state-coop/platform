@@ -83,6 +83,10 @@ blockquote {
   border-color: $info;
 }
 
+.form-switch > .form-check-input {
+  cursor: pointer;
+}
+
 .cursor-pointer {
   cursor: pointer;
 }
