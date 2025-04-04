@@ -566,20 +566,6 @@ export default function Pool(props: PoolProps) {
             ).length ?? 0
           }
           grantees={grantees}
-          /*
-          grantees={grantees.concat(
-            grantees.map((grantee) => {
-              return {
-                ...grantee,
-                id: grantee.id + "1",
-                metadata: {
-                  ...grantee.metadata,
-                  title: grantee.metadata.title + "1",
-                },
-              };
-            }),
-          )}
-           */
           directFlowRate={
             superfluidQueryRes?.accounts
               ? superfluidQueryRes?.accounts
