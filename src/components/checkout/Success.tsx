@@ -71,7 +71,7 @@ export default function Success(props: SuccessProps) {
             href={
               isFundingFlowStateCore
                 ? `https://warpcast.com/~/compose?text=I+just+opened+a+stream+to+the+%40flowstatecoop+Core+team+on+Flow+State.%0AJoin+me+in+supporting+these+public+goods+builders+at&embeds[]=${encodeURIComponent(poolUiLink)}`
-                : `https://warpcast.com/~/compose?text=I%20opened%20a%20stream%20to%20${isFundingMatchingPool ? "the matching pool" : granteeWarpcast ? granteeWarpcast : granteeName}%20in%20the%20${poolName === "Octant Builder Accelerator" ? "@Octant%20Builder%20Accelerator" : poolName}%20SQF%20round%20on%20@flowstatecoop.%20I%27m%20earning%20@Superfluid%20%24SUP%20every%20second%20for%20supporting%20public%20goods.%20You%20can%20too%F0%9F%91%87%3A&embeds[]=https://warpcast.com/flowstatecoop/0x87385e01&embeds[]=${isFundingMatchingPool ? poolUiLink : framesLink}`
+                : `https://warpcast.com/~/compose?text=I%20opened%20a%20stream%20to%20${isFundingMatchingPool ? "the matching pool" : granteeWarpcast ? granteeWarpcast : granteeName}%20in%20the%20${poolName === "Octant Builder Accelerator" ? "@octant%20Builder%20Accelerator" : poolName}%20SQF%20round%20on%20@flowstatecoop.%20I%27m%20earning%20@superfluid%20%24SUP%20every%20second%20for%20supporting%20public%20goods.%20You%20can%20too%F0%9F%91%87%3A&embeds[]=https://warpcast.com/flowstatecoop/0x87385e01&embeds[]=${isFundingMatchingPool ? poolUiLink : framesLink}`
             }
           >
             <Image
