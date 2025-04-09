@@ -85,7 +85,7 @@ export default function SQF() {
             <Card.Link
               href="https://docs.flowstate.network/platform/streaming-qf/"
               target="_blank"
-              className="text-primary"
+              className="fs-5 text-primary"
             >
               Learn more
             </Card.Link>{" "}
@@ -93,7 +93,7 @@ export default function SQF() {
             <Card.Link
               href="https://t.me/flowstatecoop"
               target="_blank"
-              className="text-primary"
+              className="fs-5 text-primary"
             >
               get help
             </Card.Link>
