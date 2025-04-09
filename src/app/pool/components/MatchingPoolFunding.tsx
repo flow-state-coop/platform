@@ -11,30 +11,24 @@ import duration from "dayjs/plugin/duration";
 import Offcanvas from "react-bootstrap/Offcanvas";
 import Accordion from "react-bootstrap/Accordion";
 import { GDAPool } from "@/types/gdaPool";
-import { Inflow } from "@/types/inflow";
-import { Outflow } from "@/types/outflow";
 import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
 import { Network } from "@/types/network";
-import GranteeDetails from "@/components/GranteeDetails";
-import EditStream from "@/components/checkout/EditStream";
-import TopUp from "@/components/checkout/TopUp";
-import Wrap from "@/components/checkout/Wrap";
-import FlowStateEligibility from "@/components/checkout/FlowStateEligibility";
-import MintNFT from "@/components/checkout/MintNFT";
-import NFTGating from "@/components/checkout/NFTGating";
-import SupportFlowState from "@/components/checkout/SupportFlowState";
-import Review from "@/components/checkout/Review";
-import Success from "@/components/checkout/Success";
+import MatchingPoolDetails from "./MatchingPoolDetails";
+import EditStream from "./checkout/EditStream";
+import TopUp from "./checkout/TopUp";
+import Wrap from "./checkout/Wrap";
+import SupportFlowState from "./checkout/SupportFlowState";
+import Review from "./checkout/Review";
+import MatchingPoolNft from "./checkout/MatchingPoolNft";
+import Success from "./checkout/Success";
 import { useSuperfluidContext } from "@/context/Superfluid";
-import { ProjectMetadata } from "@/types/project";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
 import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
-import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
 import {
   TimeInterval,
   unitOfTime,
@@ -49,86 +43,69 @@ import {
   DEFAULT_CHAIN_ID,
 } from "@/lib/constants";
 
-type GranteeFundingProps = {
+type MatchingPoolFundingProps = {
   show: boolean;
   handleClose: () => void;
-  metadata: ProjectMetadata;
-  twitter: string;
-  warpcast: string;
-  placeholderLogo: string;
-  poolUiLink: string;
-  framesLink: string;
   poolName: string;
-  receiver: string;
-  recipientAddress: string;
-  inflow: Inflow;
+  description: string;
+  poolUiLink: string;
   matchingPool: GDAPool;
-  matchingFlowRate: bigint;
-  userOutflow: Outflow | null;
-  flowRateToFlowState: string;
-  allocationTokenInfo: Token;
   matchingTokenInfo: Token;
+  network?: Network;
+  receiver: string;
   userAccountSnapshots:
     | {
         totalNetFlowRate: string;
         token: { id: string };
       }[]
     | null;
-  network?: Network;
-  isEligible: boolean;
-  requiredNftAddress: Address | null;
-  flowStateEligibility: boolean;
-  nftMintUrl: string | null;
-  recipientId: string;
+  shouldMintNft: boolean;
 };
+
+enum MintingError {
+  FAIL = "Something went wrong. Please try again.",
+}
 
 dayjs().format();
 dayjs.extend(duration);
 
-export default function GranteeFunding(props: GranteeFundingProps) {
+const MIN_FLOW_RATE_NFT_MINT = BigInt(342465753);
+const OCTANT_GDA_POOL = "0x8398c030be586c86759c4f1fc9f63df83c99813a";
+
+export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
   const {
     show,
     handleClose,
-    metadata,
-    placeholderLogo,
-    twitter,
-    warpcast,
-    poolUiLink,
-    framesLink,
-    poolName,
-    receiver,
-    recipientAddress,
-    inflow,
     matchingPool,
-    matchingFlowRate,
-    userOutflow,
-    flowRateToFlowState,
-    allocationTokenInfo,
+    poolName,
+    description,
+    poolUiLink,
     matchingTokenInfo,
-    userAccountSnapshots,
     network,
-    isEligible,
-    requiredNftAddress,
-    flowStateEligibility,
-    nftMintUrl,
-    recipientId,
+    receiver,
+    userAccountSnapshots,
+    shouldMintNft,
   } = props;
 
   const [step, setStep] = useState<Step>(Step.SELECT_AMOUNT);
   const [amountPerTimeInterval, setAmountPerTimeInterval] = useState("");
   const [newFlowRate, setNewFlowRate] = useState("");
-  const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("0");
   const [wrapAmount, setWrapAmount] = useState("");
   const [newFlowRateToFlowState, setNewFlowRateToFlowState] = useState("");
+  const [flowRateToFlowState, setFlowRateToFlowState] = useState("");
   const [supportFlowStateAmount, setSupportFlowStateAmount] = useState("");
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [supportFlowStateTimeInterval, setSupportFlowStateTimeInterval] =
     useState<TimeInterval>(TimeInterval.MONTH);
-  const [allocationTokenSymbol, setAllocationTokenSymbol] = useState("");
+  const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("0");
+  const [matchingTokenSymbol, setMatchingTokenSymbol] = useState("");
+  const [isMintingNft, setIsMintingNft] = useState(false);
+  const [hasMintedNft, setHasMintedNft] = useState(false);
+  const [mintingError, setMintingError] = useState("");
 
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
-  const { sfFramework, allocationSuperToken } = useSuperfluidContext();
+  const { sfFramework, matchingSuperToken } = useSuperfluidContext();
   const {
     areTransactionsLoading,
     completedTransactions,
@@ -142,14 +119,13 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       refetchInterval: 10000,
     },
   });
-  const isNativeSuperToken = allocationTokenSymbol === "ETHx";
+  const isNativeSuperToken = matchingTokenSymbol === "ETHx";
   const isPureSuperToken =
-    allocationTokenSymbol !== "ETHx" && !allocationSuperToken?.underlyingToken;
+    matchingTokenSymbol !== "ETHx" && !matchingSuperToken?.underlyingToken;
   const { data: underlyingTokenBalance } = useBalance({
     address,
+    token: (matchingSuperToken?.underlyingToken?.address as Address) ?? void 0,
     chainId: network?.id ?? DEFAULT_CHAIN_ID,
-    token:
-      (allocationSuperToken?.underlyingToken?.address as Address) ?? void 0,
     query: {
       refetchInterval: 10000,
       enabled: !isPureSuperToken,
@@ -160,11 +136,11 @@ export default function GranteeFunding(props: GranteeFundingProps) {
   const userAccountSnapshot =
     userAccountSnapshots?.find(
       (snapshot) =>
-        snapshot.token.id === allocationTokenInfo.address.toLowerCase(),
+        snapshot.token.id === matchingTokenInfo.address.toLowerCase(),
     ) ?? null;
   const { balanceUntilUpdatedAt, updatedAtTimestamp } =
     useSuperTokenBalanceOfNow({
-      token: allocationTokenInfo.address,
+      token: matchingTokenInfo.address,
       address: address ?? "",
       chainId: network?.id ?? DEFAULT_CHAIN_ID,
     });
@@ -190,14 +166,33 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       ? true
       : false;
   const hasSuggestedTokenBalance =
-    (!isPureSuperToken &&
+    (isPureSuperToken &&
       underlyingTokenBalance &&
       underlyingTokenBalance.value + superTokenBalance >
         suggestedTokenBalance) ||
     superTokenBalance > suggestedTokenBalance
       ? true
       : false;
-  const flowRateToReceiver = userOutflow?.currentFlowRate ?? "0";
+
+  const poolFlowRateConfig = useMemo(
+    () => getPoolFlowRateConfig(matchingTokenSymbol),
+    [matchingTokenSymbol],
+  );
+
+  const flowRateToReceiver = useMemo(() => {
+    if (address && matchingPool) {
+      const distributor = matchingPool.poolDistributors.find(
+        (distributor: { account: { id: string } }) =>
+          distributor.account.id === address.toLowerCase(),
+      );
+
+      if (distributor) {
+        return distributor.flowRate;
+      }
+    }
+
+    return "0";
+  }, [address, matchingPool]);
 
   const editFlow = useCallback(
     (
@@ -296,50 +291,52 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     ],
   );
 
-  const poolFlowRateConfig = useMemo(
-    () => getPoolFlowRateConfig(allocationTokenSymbol),
-    [allocationTokenSymbol],
-  );
+  const handleNftMint = useCallback(async () => {
+    try {
+      setIsMintingNft(true);
+      setMintingError("");
+
+      const res = await fetch("/api/matching-pool-nft", {
+        method: "POST",
+        body: JSON.stringify({
+          address,
+          chainId: network?.id ?? DEFAULT_CHAIN_ID,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setHasMintedNft(true);
+      } else {
+        setMintingError(MintingError.FAIL);
+      }
+
+      setIsMintingNft(false);
+
+      console.info(data);
+    } catch (err) {
+      setIsMintingNft(false);
+      setMintingError(MintingError.FAIL);
+
+      console.error(err);
+    }
+  }, [network, address]);
 
   const liquidationEstimate = useMemo(
     () => calcLiquidationEstimate(amountPerTimeInterval),
     [calcLiquidationEstimate, amountPerTimeInterval],
   );
 
-  const netImpact = useMemo(() => {
-    const member = matchingPool?.poolMembers.find(
-      (member) => member.account.id === recipientAddress,
-    );
-
-    if (member) {
-      return calcMatchingImpactEstimate({
-        totalFlowRate: BigInt(matchingPool.flowRate),
-        totalUnits: BigInt(matchingPool.totalUnits),
-        granteeUnits: BigInt(member.units),
-        granteeFlowRate: BigInt(matchingFlowRate),
-        previousFlowRate: BigInt(flowRateToReceiver ?? 0),
-        newFlowRate: BigInt(newFlowRate ?? 0),
-        flowRateScaling: poolFlowRateConfig.flowRateScaling,
-      });
-    }
-
-    return BigInt(0);
-  }, [
-    newFlowRate,
-    flowRateToReceiver,
-    poolFlowRateConfig,
-    matchingPool,
-    matchingFlowRate,
-    recipientAddress,
-  ]);
-
   const transactions = useMemo(() => {
     if (
       !address ||
-      !allocationSuperToken ||
+      !matchingSuperToken ||
       !newFlowRate ||
       !underlyingTokenAllowance ||
-      !allocationTokenSymbol ||
+      !matchingTokenSymbol ||
       !sfFramework ||
       !ethersProvider ||
       !ethersSigner
@@ -348,7 +345,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     }
 
     const wrapAmountWei = parseEther(wrapAmount?.replace(/,/g, "") ?? "0");
-    const underlyingToken = allocationSuperToken.underlyingToken;
+    const underlyingToken = matchingSuperToken.underlyingToken;
     const isWrapperSuperToken =
       underlyingToken && underlyingToken.address !== ZERO_ADDRESS;
     const approvalTransactionsCount =
@@ -368,7 +365,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
         transactions.push(async () => {
           const tx = await underlyingToken
             .approve({
-              receiver: allocationSuperToken.address,
+              receiver: matchingSuperToken.address,
               amount: wrapAmountWei.toString(),
             })
             .exec(ethersSigner);
@@ -379,13 +376,13 @@ export default function GranteeFunding(props: GranteeFundingProps) {
 
       if (isWrapperSuperToken) {
         operations.push(
-          (allocationSuperToken as WrapperSuperToken).upgrade({
+          (matchingSuperToken as WrapperSuperToken).upgrade({
             amount: wrapAmountWei.toString(),
           }),
         );
       } else {
         transactions.push(async () => {
-          const tx = await (allocationSuperToken as NativeAssetSuperToken)
+          const tx = await (matchingSuperToken as NativeAssetSuperToken)
             .upgrade({
               amount: wrapAmountWei.toString(),
             })
@@ -397,21 +394,20 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     }
 
     operations.push(
-      editFlow(
-        allocationSuperToken as WrapperSuperToken,
-        receiver,
-        flowRateToReceiver,
-        newFlowRate,
-      ),
+      matchingSuperToken.distributeFlow({
+        from: address,
+        pool: receiver,
+        requestedFlowRate: newFlowRate,
+      }),
     );
 
     if (
       newFlowRateToFlowState &&
-      newFlowRateToFlowState !== flowRateToReceiver
+      newFlowRateToFlowState !== flowRateToFlowState
     ) {
       operations.push(
         editFlow(
-          allocationSuperToken as WrapperSuperToken,
+          matchingSuperToken as WrapperSuperToken,
           FLOW_STATE_RECEIVER,
           flowRateToFlowState,
           newFlowRateToFlowState,
@@ -435,19 +431,18 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     return transactions;
   }, [
     address,
-    flowRateToReceiver,
-    flowRateToFlowState,
-    allocationSuperToken,
+    matchingSuperToken,
     wrapAmount,
     receiver,
+    flowRateToFlowState,
     newFlowRate,
     newFlowRateToFlowState,
     underlyingTokenAllowance,
-    allocationTokenSymbol,
+    matchingTokenSymbol,
     sfFramework,
-    isPureSuperToken,
     ethersProvider,
     ethersSigner,
+    isPureSuperToken,
     editFlow,
   ]);
 
@@ -466,29 +461,34 @@ export default function GranteeFunding(props: GranteeFundingProps) {
 
   useEffect(() => {
     (async () => {
-      if (step !== Step.SUPPORT) {
-        return;
+      if (step === Step.SUCCESS) {
+        if (shouldMintNft && BigInt(newFlowRate) >= MIN_FLOW_RATE_NFT_MINT) {
+          handleNftMint();
+        }
+      } else if (step === Step.SUPPORT) {
+        const currentStreamValue = roundWeiAmount(
+          BigInt(flowRateToFlowState) * BigInt(SECONDS_IN_MONTH),
+          4,
+        );
+
+        setSupportFlowStateAmount(
+          formatNumberWithCommas(
+            parseFloat(currentStreamValue) +
+              poolFlowRateConfig.suggestedFlowStateDonation,
+          ),
+        );
       }
-
-      const currentStreamValue = roundWeiAmount(
-        BigInt(flowRateToFlowState) * BigInt(SECONDS_IN_MONTH),
-        4,
-      );
-
-      setSupportFlowStateAmount(
-        formatNumberWithCommas(
-          parseFloat(currentStreamValue) +
-            poolFlowRateConfig.suggestedFlowStateDonation,
-        ),
-      );
     })();
   }, [
     address,
     flowRateToFlowState,
-    poolFlowRateConfig,
     supportFlowStateTimeInterval,
+    matchingTokenInfo.name,
+    poolFlowRateConfig,
     step,
-    allocationTokenInfo.name,
+    newFlowRate,
+    handleNftMint,
+    shouldMintNft,
   ]);
 
   useEffect(() => {
@@ -528,22 +528,42 @@ export default function GranteeFunding(props: GranteeFundingProps) {
 
   useEffect(() => {
     (async () => {
-      if (address && ethersProvider && allocationSuperToken) {
-        const underlyingToken = allocationSuperToken.underlyingToken;
+      if (address && ethersProvider && matchingSuperToken) {
+        const underlyingToken = matchingSuperToken.underlyingToken;
         const underlyingTokenAllowance = await underlyingToken?.allowance({
           owner: address,
-          spender: allocationSuperToken.address,
+          spender: matchingSuperToken.address,
           providerOrSigner: ethersProvider,
         });
-        const allocationTokenSymbol = await allocationSuperToken?.symbol({
+        const matchingTokenSymbol = await matchingSuperToken?.symbol({
           providerOrSigner: ethersProvider,
         });
-
         setUnderlyingTokenAllowance(underlyingTokenAllowance ?? "0");
-        setAllocationTokenSymbol(allocationTokenSymbol ?? "");
+        setMatchingTokenSymbol(matchingTokenSymbol ?? "");
       }
     })();
-  }, [address, ethersProvider, allocationSuperToken]);
+  }, [address, ethersProvider, matchingSuperToken]);
+
+  useEffect(() => {
+    (async () => {
+      if (
+        areTransactionsLoading ||
+        !matchingSuperToken ||
+        !address ||
+        !ethersProvider
+      ) {
+        return;
+      }
+
+      const flowInfo = await matchingSuperToken.getFlow({
+        sender: address,
+        receiver: FLOW_STATE_RECEIVER,
+        providerOrSigner: ethersProvider,
+      });
+
+      setFlowRateToFlowState(flowInfo.flowRate);
+    })();
+  }, [areTransactionsLoading, matchingSuperToken, address, ethersProvider]);
 
   const updateWrapAmount = (
     amountPerTimeInterval: string,
@@ -607,171 +627,136 @@ export default function GranteeFunding(props: GranteeFundingProps) {
   };
 
   return (
-    <>
-      <Offcanvas
-        show={show}
-        onHide={handleClose}
-        placement={isMobile ? "bottom" : "end"}
-        className={`${isMobile ? "w-100 h-100" : ""}`}
-      >
-        <Offcanvas.Header closeButton>
-          <Offcanvas.Title className="fs-4">Fund Grantee</Offcanvas.Title>
-        </Offcanvas.Header>
-        <Offcanvas.Body>
-          <GranteeDetails
-            metadata={metadata}
-            placeholderLogo={placeholderLogo}
-            poolUiLink={poolUiLink}
-            recipientAddress={recipientAddress}
-            inflow={inflow}
-            matchingPool={matchingPool}
-            matchingFlowRate={matchingFlowRate}
-            userOutflow={userOutflow}
-            allocationTokenInfo={allocationTokenInfo}
-            matchingTokenInfo={matchingTokenInfo}
-            recipientId={recipientId}
-            chainId={network?.id}
+    <Offcanvas
+      show={show}
+      onHide={handleClose}
+      placement={isMobile ? "bottom" : "end"}
+      className={`${isMobile ? "w-100 h-100" : ""}`}
+    >
+      <Offcanvas.Header closeButton>
+        <Offcanvas.Title className="fs-4">Fund Matching Pool</Offcanvas.Title>
+      </Offcanvas.Header>
+      <Offcanvas.Body>
+        <MatchingPoolDetails
+          matchingPool={matchingPool}
+          poolName={poolName}
+          description={description}
+        />
+        <Accordion activeKey={step} className="mt-4">
+          <EditStream
+            isSelected={step === Step.SELECT_AMOUNT}
+            setStep={(step) => setStep(step)}
+            token={matchingTokenInfo}
+            network={network}
+            flowRateToReceiver={flowRateToReceiver}
+            amountPerTimeInterval={amountPerTimeInterval}
+            setAmountPerTimeInterval={(amount) => {
+              setAmountPerTimeInterval(amount);
+              updateWrapAmount(amount, calcLiquidationEstimate(amount));
+            }}
+            newFlowRate={newFlowRate}
+            wrapAmount={wrapAmount}
+            isFundingMatchingPool={true}
+            superTokenBalance={superTokenBalance}
+            hasSufficientBalance={
+              !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
+            }
           />
-          <Accordion activeKey={step} className="mt-4">
-            <EditStream
-              isSelected={step === Step.SELECT_AMOUNT}
-              setStep={(step) => setStep(step)}
-              token={allocationTokenInfo}
-              network={network}
-              flowRateToReceiver={flowRateToReceiver}
-              amountPerTimeInterval={amountPerTimeInterval}
-              setAmountPerTimeInterval={(amount) => {
-                setAmountPerTimeInterval(amount);
-                updateWrapAmount(amount, calcLiquidationEstimate(amount));
-              }}
-              newFlowRate={newFlowRate}
-              wrapAmount={wrapAmount}
-              isFundingMatchingPool={false}
-              isEligible={isEligible}
-              superTokenBalance={superTokenBalance}
-              hasSufficientBalance={
-                !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
-              }
-            />
-            <TopUp
+          <TopUp
+            step={step}
+            setStep={(step) => setStep(step)}
+            newFlowRate={newFlowRate}
+            wrapAmount={wrapAmount}
+            isFundingMatchingPool={true}
+            superTokenBalance={superTokenBalance}
+            minEthBalance={minEthBalance}
+            suggestedTokenBalance={suggestedTokenBalance}
+            hasSufficientEthBalance={hasSufficientEthBalance}
+            hasSufficientTokenBalance={hasSufficientTokenBalance}
+            hasSuggestedTokenBalance={hasSuggestedTokenBalance}
+            ethBalance={ethBalance}
+            underlyingTokenBalance={
+              !isPureSuperToken ? underlyingTokenBalance : void 0
+            }
+            network={network}
+            superTokenInfo={matchingTokenInfo}
+          />
+          {!isPureSuperToken && (
+            <Wrap
               step={step}
-              setStep={(step) => setStep(step)}
-              newFlowRate={newFlowRate}
+              setStep={setStep}
               wrapAmount={wrapAmount}
-              isFundingMatchingPool={false}
-              isEligible={isEligible}
-              superTokenBalance={superTokenBalance}
-              minEthBalance={minEthBalance}
-              suggestedTokenBalance={suggestedTokenBalance}
-              hasSufficientEthBalance={hasSufficientEthBalance}
-              hasSufficientTokenBalance={hasSufficientTokenBalance}
-              hasSuggestedTokenBalance={hasSuggestedTokenBalance}
-              ethBalance={ethBalance}
-              underlyingTokenBalance={
-                !isPureSuperToken ? underlyingTokenBalance : void 0
-              }
-              network={network}
-              superTokenInfo={allocationTokenInfo}
-            />
-            {!isPureSuperToken && (
-              <Wrap
-                step={step}
-                setStep={setStep}
-                wrapAmount={wrapAmount}
-                setWrapAmount={setWrapAmount}
-                newFlowRate={newFlowRate}
-                token={allocationTokenInfo}
-                isFundingMatchingPool={false}
-                isEligible={isEligible}
-                superTokenBalance={superTokenBalance}
-                underlyingTokenBalance={underlyingTokenBalance}
-              />
-            )}
-            {requiredNftAddress && flowStateEligibility ? (
-              <FlowStateEligibility
-                step={step}
-                setStep={setStep}
-                network={network}
-                requiredNftAddress={requiredNftAddress}
-                isEligible={isEligible}
-                isPureSuperToken={isPureSuperToken}
-              />
-            ) : requiredNftAddress &&
-              nftMintUrl?.startsWith("https://guild.xyz/octant-sqf-voter") ? (
-              <MintNFT
-                step={step}
-                setStep={setStep}
-                network={network}
-                requiredNftAddress={requiredNftAddress}
-                isEligible={isEligible}
-                isPureSuperToken={isPureSuperToken}
-              />
-            ) : requiredNftAddress ? (
-              <NFTGating
-                step={step}
-                setStep={setStep}
-                network={network}
-                requiredNftAddress={requiredNftAddress}
-                nftMintUrl={nftMintUrl}
-                isEligible={isEligible}
-                isPureSuperToken={isPureSuperToken}
-              />
-            ) : null}
-            <SupportFlowState
-              network={network}
-              token={allocationTokenInfo}
-              step={step}
-              setStep={(step) => setStep(step)}
-              supportFlowStateAmount={supportFlowStateAmount}
-              setSupportFlowStateAmount={setSupportFlowStateAmount}
-              supportFlowStateTimeInterval={supportFlowStateTimeInterval}
-              setSupportFlowStateTimeInterval={setSupportFlowStateTimeInterval}
-              newFlowRateToFlowState={newFlowRateToFlowState}
-              flowRateToFlowState={flowRateToFlowState}
-              isFundingMatchingPool={false}
-              isPureSuperToken={isPureSuperToken}
-            />
-            <Review
-              step={step}
-              setStep={(step) => setStep(step)}
-              network={network}
-              receiver={receiver}
-              transactions={transactions}
-              completedTransactions={completedTransactions}
-              areTransactionsLoading={areTransactionsLoading}
-              transactionError={transactionError}
-              executeTransactions={executeTransactions}
-              liquidationEstimate={liquidationEstimate}
-              netImpact={netImpact}
-              matchingTokenInfo={matchingTokenInfo}
-              allocationTokenInfo={allocationTokenInfo}
-              flowRateToReceiver={flowRateToReceiver}
-              amountPerTimeInterval={amountPerTimeInterval}
+              setWrapAmount={setWrapAmount}
               newFlowRate={newFlowRate}
-              wrapAmount={wrapAmount}
-              newFlowRateToFlowState={newFlowRateToFlowState}
-              flowRateToFlowState={flowRateToFlowState}
-              supportFlowStateAmount={supportFlowStateAmount}
-              supportFlowStateTimeInterval={supportFlowStateTimeInterval}
-              isFundingMatchingPool={false}
-              isPureSuperToken={isPureSuperToken}
+              token={matchingTokenInfo}
+              isFundingMatchingPool={true}
               superTokenBalance={superTokenBalance}
               underlyingTokenBalance={underlyingTokenBalance}
             />
-            <Success
-              step={step}
-              isFundingMatchingPool={false}
-              granteeName={metadata.title}
-              granteeTwitter={twitter ? `@${twitter}` : ""}
-              granteeWarpcast={warpcast ? `@${warpcast}` : ""}
-              poolName={poolName}
-              poolUiLink={poolUiLink}
-              framesLink={framesLink}
-              newFlowRate={newFlowRate}
+          )}
+          <SupportFlowState
+            network={network}
+            token={matchingTokenInfo}
+            step={step}
+            setStep={(step) => setStep(step)}
+            supportFlowStateAmount={supportFlowStateAmount}
+            setSupportFlowStateAmount={setSupportFlowStateAmount}
+            supportFlowStateTimeInterval={supportFlowStateTimeInterval}
+            setSupportFlowStateTimeInterval={setSupportFlowStateTimeInterval}
+            newFlowRateToFlowState={newFlowRateToFlowState}
+            flowRateToFlowState={flowRateToFlowState}
+            isFundingMatchingPool={true}
+            isPureSuperToken={isPureSuperToken}
+          />
+          <Review
+            step={step}
+            setStep={(step) => setStep(step)}
+            network={network}
+            receiver={receiver}
+            transactions={transactions}
+            completedTransactions={completedTransactions}
+            areTransactionsLoading={areTransactionsLoading}
+            transactionError={transactionError}
+            executeTransactions={executeTransactions}
+            liquidationEstimate={liquidationEstimate}
+            netImpact={BigInt(0)}
+            matchingTokenInfo={matchingTokenInfo}
+            allocationTokenInfo={matchingTokenInfo}
+            flowRateToReceiver={flowRateToReceiver}
+            amountPerTimeInterval={amountPerTimeInterval}
+            newFlowRateToFlowState={newFlowRateToFlowState}
+            flowRateToFlowState={flowRateToFlowState}
+            newFlowRate={newFlowRate}
+            wrapAmount={wrapAmount}
+            supportFlowStateAmount={supportFlowStateAmount}
+            supportFlowStateTimeInterval={supportFlowStateTimeInterval}
+            isFundingMatchingPool={true}
+            isPureSuperToken={isPureSuperToken}
+            superTokenBalance={superTokenBalance}
+            underlyingTokenBalance={underlyingTokenBalance}
+          />
+          {receiver?.toLowerCase() === OCTANT_GDA_POOL &&
+          ((shouldMintNft &&
+            BigInt(flowRateToReceiver) >= MIN_FLOW_RATE_NFT_MINT) ||
+            ((shouldMintNft || isMintingNft || hasMintedNft) &&
+              step === Step.SUCCESS &&
+              BigInt(newFlowRate) >= MIN_FLOW_RATE_NFT_MINT)) ? (
+            <MatchingPoolNft
+              handleNftMint={handleNftMint}
+              isMinting={isMintingNft}
+              hasMinted={hasMintedNft}
+              error={mintingError}
             />
-          </Accordion>
-        </Offcanvas.Body>
-      </Offcanvas>
-    </>
+          ) : null}
+          <Success
+            step={step}
+            isFundingMatchingPool={true}
+            poolName={poolName}
+            poolUiLink={poolUiLink}
+            newFlowRate={newFlowRate}
+          />
+        </Accordion>
+      </Offcanvas.Body>
+    </Offcanvas>
   );
 }

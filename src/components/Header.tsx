@@ -26,6 +26,9 @@ export default function Header() {
             isMobile ||
             isTablet ||
             pathname?.startsWith("/sqf") ||
+            pathname?.startsWith("/flow-councils/launch") ||
+            pathname?.startsWith("/flow-councils/membership") ||
+            pathname?.startsWith("/flow-councils/review") ||
             pathname?.startsWith("/grantee") ||
             pathname?.startsWith("/core") ||
             pathname?.startsWith("/terms") ||

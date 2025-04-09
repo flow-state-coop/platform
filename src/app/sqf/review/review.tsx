@@ -16,7 +16,7 @@ import Button from "react-bootstrap/Button";
 import Badge from "react-bootstrap/Badge";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "../components/Sidebar";
 import CopyTooltip from "@/components/CopyTooltip";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useFlowingAmount from "@/hooks/flowingAmount";

@@ -8,7 +8,7 @@ import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "../components/Sidebar";
 import { useClampText } from "use-clamp-text";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
