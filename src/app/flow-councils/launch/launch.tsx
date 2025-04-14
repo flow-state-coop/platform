@@ -47,6 +47,7 @@ const SUPERTOKEN_QUERY = gql`
 const COUNCIL_QUERY = gql`
   query CouncilQuery($councilId: String!) {
     council(id: $councilId) {
+      id
       metadata
       distributionToken
     }
@@ -101,9 +102,7 @@ export default function Launch(props: LaunchProps) {
       });
 
       try {
-        const metadataRes = await verifiedFetch(
-          `ipfs://${council.metadata}`,
-        );
+        const metadataRes = await verifiedFetch(`ipfs://${council.metadata}`);
         const metadata = await metadataRes.json();
 
         setCouncilMetadata({

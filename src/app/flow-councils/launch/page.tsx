@@ -11,7 +11,5 @@ export default async function Page({
     networks.find((network) => network.id === Number(searchParams.chainId)) ??
     networks[0];
 
-  return (
-    <Launch defaultNetwork={network} councilId={searchParams.councilId} />
-  );
+  return <Launch defaultNetwork={network} councilId={searchParams.councilId} />;
 }
