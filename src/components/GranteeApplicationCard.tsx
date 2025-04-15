@@ -94,8 +94,7 @@ export default function GranteeApplicationCard(
               : status === "PENDING"
                 ? "border-5 border-warning"
                 : ""
-      } rounded-4
-                    `}
+      } rounded-4 shadow`}
       style={{
         height: 418,
         pointerEvents:
@@ -167,7 +166,7 @@ export default function GranteeApplicationCard(
                       ? "/pending.svg"
                       : status === "REJECTED" || status === "CANCELED"
                         ? "/cancel-circle.svg"
-                        : "check-circle.svg"
+                        : "/check-circle.svg"
                   }
                   alt="status"
                   width={42}

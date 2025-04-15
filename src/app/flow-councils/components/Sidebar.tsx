@@ -49,9 +49,17 @@ function Sidebar() {
       </Link>
       <Link
         href={`/flow-councils/membership/?chainId=${chainId}&councilId=${council?.id}`}
-        className={`${pathname === "/flow-councils/membership" ? "fw-bold" : ""} text-decoration-none`}
+        className={`${!council?.id ? "text-info" : ""} ${pathname === "/flow-councils/membership" ? "fw-bold" : ""} text-decoration-none`}
+        style={{ pointerEvents: !council?.id ? "none" : "auto" }}
       >
         Council Membership
+      </Link>
+      <Link
+        href={`/flow-councils/review/?chainId=${chainId}&councilId=${council?.id}`}
+        className={`${!council?.id ? "text-info" : ""} ${pathname === "/flow-councils/review" ? "fw-bold" : ""} text-decoration-none`}
+        style={{ pointerEvents: !council?.id ? "none" : "auto" }}
+      >
+        Manage Recipients
       </Link>
     </Stack>
   );

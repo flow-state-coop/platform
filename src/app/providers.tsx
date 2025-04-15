@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { SessionProvider } from "next-auth/react";
 import { http } from "viem";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
@@ -46,11 +47,15 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider modalSize="compact">
-          <PostHogProvider client={posthog}>
-            <DonorParamsContextProvider>{children}</DonorParamsContextProvider>
-          </PostHogProvider>
-        </RainbowKitProvider>
+        <SessionProvider>
+          <RainbowKitProvider modalSize="compact">
+            <PostHogProvider client={posthog}>
+              <DonorParamsContextProvider>
+                {children}
+              </DonorParamsContextProvider>
+            </PostHogProvider>
+          </RainbowKitProvider>
+        </SessionProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

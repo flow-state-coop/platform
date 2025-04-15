@@ -20,7 +20,7 @@ import FormCheck from "react-bootstrap/FormCheck";
 import Spinner from "react-bootstrap/Spinner";
 import ProjectCreationModal from "@/components/ProjectCreationModal";
 import ProjectUpdateModal from "@/components/ProjectUpdateModal";
-import GranteeApplicationCard from "./components/GranteeApplicationCard";
+import GranteeApplicationCard from "@/components/GranteeApplicationCard";
 import Sidebar from "./components/Sidebar";
 import { Project } from "@/types/project";
 import { useMediaQuery } from "@/hooks/mediaQuery";
