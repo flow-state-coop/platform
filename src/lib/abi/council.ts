@@ -286,7 +286,7 @@ export const councilAbi = [
       {
         indexed: false,
         internalType: "string",
-        name: "name",
+        name: "metadata",
         type: "string",
       },
       {
@@ -511,7 +511,7 @@ export const councilAbi = [
     inputs: [
       {
         internalType: "string",
-        name: "_name",
+        name: "_metadata",
         type: "string",
       },
       {
@@ -1012,6 +1012,36 @@ export const councilAbi = [
         type: "bool",
       },
     ],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        components: [
+          {
+            internalType: "address",
+            name: "account",
+            type: "address",
+          },
+          {
+            internalType: "string",
+            name: "metadata",
+            type: "string",
+          },
+          {
+            internalType: "enum GranteeStatus",
+            name: "status",
+            type: "uint8",
+          },
+        ],
+        internalType: "struct Grantee[]",
+        name: "_grantees",
+        type: "tuple[]",
+      },
+    ],
+    name: "updateCouncilGrantees",
+    outputs: [],
     stateMutability: "nonpayable",
     type: "function",
   },

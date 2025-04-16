@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Address, isAddress } from "viem";
+import Link from "next/link";
+import { Address, isAddress, keccak256, encodePacked } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "@wagmi/core";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -35,11 +36,14 @@ const COUNCIL_QUERY = gql`
     council(id: $councilId) {
       id
       maxAllocationsPerMember
+      councilManagers {
+        account
+        role
+      }
       councilMembers {
         id
         account
         votingPower
-        enabled
       }
     }
   }
@@ -68,15 +72,18 @@ export default function Membership(props: MembershipProps) {
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
-  const { data: councilQueryRes } = useQuery(COUNCIL_QUERY, {
-    client: getApolloClient("flowCouncil", chainId),
-    variables: {
-      chainId,
-      councilId: councilId?.toLowerCase(),
+  const { data: councilQueryRes, loading: councilQueryResLoading } = useQuery(
+    COUNCIL_QUERY,
+    {
+      client: getApolloClient("flowCouncil", chainId),
+      variables: {
+        chainId,
+        councilId: councilId?.toLowerCase(),
+      },
+      skip: !councilId,
+      pollInterval: 10000,
     },
-    skip: !councilId,
-    pollInterval: 10000,
-  });
+  );
 
   const council = councilQueryRes?.council ?? null;
   const isValidMembersEntry = membersEntry.every(
@@ -86,6 +93,22 @@ export default function Membership(props: MembershipProps) {
       ((councilConfig.isVotingPowerForAll && votingPowerForAll) ||
         (memberEntry.votingPower !== "" && memberEntry.votingPower !== "0")),
   );
+
+  const isManager = useMemo(() => {
+    const memberManagerRole = keccak256(
+      encodePacked(["string"], ["MEMBER_MANAGER_ROLE"]),
+    );
+    const councilManager = council?.councilManagers.find(
+      (m: { account: string; role: string }) =>
+        m.account === address?.toLowerCase() && m.role === memberManagerRole,
+    );
+
+    if (councilManager) {
+      return true;
+    }
+
+    return false;
+  }, [address, council]);
 
   const hasChanges = useMemo(() => {
     const compareArrays = (a: string[], b: string[]) =>
@@ -139,13 +162,17 @@ export default function Membership(props: MembershipProps) {
       }
 
       if (council.maxAllocationsPerMember === 0) {
-        setCouncilConfig({ ...councilConfig, limitMaxAllocation: false });
+        setCouncilConfig((prev) => {
+          return { ...prev, limitMaxAllocation: false };
+        });
       } else {
-        setCouncilConfig({ ...councilConfig, limitMaxAllocation: true });
+        setCouncilConfig((prev) => {
+          return { ...prev, limitMaxAllocation: true };
+        });
         setMaxAllocation(council.maxAllocationsPerMember);
       }
     })();
-  }, [council, councilConfig]);
+  }, [council]);
 
   const removeMemberEntry = (memberEntry: MemberEntry, memberIndex: number) => {
     setMembersEntry((prev) =>
@@ -228,8 +255,27 @@ export default function Membership(props: MembershipProps) {
     }
   };
 
-  if (!chainId || !councilId) {
-    return <span className="m-auto fs-4 fw-bold">No council found</span>;
+  if (!councilId || !chainId || (!councilQueryResLoading && !council)) {
+    return (
+      <span className="m-auto fs-4 fw-bold">
+        Council not found.{" "}
+        <Link
+          href="/flow-councils/launch"
+          className="text-primary text-decoration-none"
+        >
+          Launch one
+        </Link>
+      </span>
+    );
+  }
+
+  if (council && !isManager) {
+    return (
+      <span className="m-auto fs-4 fw-bold">
+        Your are manager for this council. Please make sure the right wallet is
+        connected
+      </span>
+    );
   }
 
   return (

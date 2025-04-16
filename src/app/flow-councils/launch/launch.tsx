@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Address, parseEventLogs, isAddress } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
@@ -80,11 +81,14 @@ export default function Launch(props: LaunchProps) {
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
-  const { data: councilQueryRes } = useQuery(COUNCIL_QUERY, {
-    client: getApolloClient("flowCouncil", selectedNetwork.id),
-    variables: { councilId: councilId?.toLowerCase() },
-    skip: !councilId,
-  });
+  const { data: councilQueryRes, loading: councilQueryResLoading } = useQuery(
+    COUNCIL_QUERY,
+    {
+      client: getApolloClient("flowCouncil", selectedNetwork.id),
+      variables: { councilId: councilId?.toLowerCase() },
+      skip: !councilId,
+    },
+  );
   const [checkSuperToken] = useLazyQuery(SUPERTOKEN_QUERY, {
     client: getApolloClient("superfluid", selectedNetwork.id),
   });
@@ -189,6 +193,20 @@ export default function Launch(props: LaunchProps) {
       setIsTransactionLoading(false);
     }
   };
+
+  if (councilId && !councilQueryResLoading && !council) {
+    return (
+      <span className="m-auto fs-4 fw-bold">
+        Council not found.{" "}
+        <Link
+          href="/flow-councils/launch"
+          className="text-primary text-decoration-none"
+        >
+          Launch one
+        </Link>
+      </span>
+    );
+  }
 
   return (
     <>

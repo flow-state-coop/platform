@@ -23,7 +23,7 @@ const providers = [
         const headersList = await headers();
         const siwe = new SiweMessage(JSON.parse(credentials?.message || "{}"));
         const nextAuthUrl = new URL(
-          headersList.get("host") ?? "https://flowstate.network",
+          headersList.get("origin") ?? "https://flowstate.network",
         );
 
         const result = await siwe.verify({

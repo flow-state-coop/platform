@@ -182,9 +182,9 @@ const networks: Network[] = [
     flowSplitter: "0xd53B8Bed28E122eA20dCC90d3991a614EC163a21",
     flowSplitterSubgraph:
       "https://api.goldsky.com/api/public/project_cm2vlxq9s82qo01xtc11y9stm/subgraphs/flow-splitter-optimism-sepolia/0.0.1/gn",
-    flowCouncilFactory: "0xc0A2D43D6F86A2E1bbE9C0E7B55774Bd296Ea821",
+    flowCouncilFactory: "0x678272c7b9F71778aD1A6052b66615a6b2545688",
     flowCouncilSubgraph:
-      "https://api.goldsky.com/api/public/project_cm2vlxq9s82qo01xtc11y9stm/subgraphs/flow-council-optimism-sepolia/0.0.3/gn",
+      "https://api.goldsky.com/api/public/project_cm2vlxq9s82qo01xtc11y9stm/subgraphs/flow-council-optimism-sepolia/0.0.4/gn",
     flowStateEligibilityNft: "0x1059A20C7aA0B4576B631d064730dB2E02940535",
     flowStateEligibilityMinScore: 0.5,
     superfluidHost: "0xd399e2Fb5f4cf3722a11F65b88FAB6B2B8621005",

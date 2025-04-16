@@ -13,7 +13,10 @@ export async function POST(request: Request) {
     const session = await getServerSession(authOptions);
     const network = networks.find((network) => network.id === chainId);
 
-    if (!session?.address || session.address.toLowerCase() !== address) {
+    if (
+      !session?.address ||
+      session.address.toLowerCase() !== address.toLowerCase()
+    ) {
       return new Response(
         JSON.stringify({ success: false, error: "Unauthenticated" }),
       );
@@ -30,18 +33,18 @@ export async function POST(request: Request) {
       .select("address")
       .select("chainId")
       .select("councilId")
-      .where("address", "=", address)
+      .where("address", "=", address.toLowerCase)
       .where("chainId", "=", network.id)
-      .where("councilId", "=", councilId)
+      .where("councilId", "=", councilId.toLowerCase())
       .executeTakeFirst();
 
     if (!application) {
       await db
         .insertInto("applications")
         .values({
-          address,
+          address: address.toLowerCase(),
           chainId: network.id,
-          councilId,
+          councilId: councilId.toLowerCase(),
           metadata,
           status: "PENDING",
         })

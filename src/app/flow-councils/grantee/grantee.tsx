@@ -76,7 +76,6 @@ const COUNCIL_QUERY = gql`
         id
         account
         votingPower
-        enabled
       }
     }
   }
@@ -217,15 +216,18 @@ export default function Grantee(props: GranteeProps) {
       body: JSON.stringify({
         chainId,
         councilId: council.id,
-        address: address.toLowerCase(),
       }),
     });
 
     const { success, applications } = await applicationsRes.json();
 
     if (success) {
-      console.log(applications);
-      setApplications(applications);
+      setApplications(
+        applications.filter(
+          (application: Application) =>
+            application.address === address.toLowerCase(),
+        ),
+      );
     }
   }, [council, address, chainId]);
 
@@ -292,7 +294,7 @@ export default function Grantee(props: GranteeProps) {
       const res = await fetch("/api/flow-council/apply", {
         method: "POST",
         body: JSON.stringify({
-          address: session.address.toLowerCase(),
+          address: session.address,
           chainId,
           councilId: council.id,
           metadata: project.id,

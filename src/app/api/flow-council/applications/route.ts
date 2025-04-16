@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    const { address, chainId, councilId } = await request.json();
+    const { chainId, councilId } = await request.json();
 
     const network = networks.find((network) => network.id === chainId);
 
@@ -22,9 +22,8 @@ export async function POST(request: Request) {
       .select("councilId")
       .select("metadata")
       .select("status")
-      .where("address", "=", address)
       .where("chainId", "=", chainId)
-      .where("councilId", "=", councilId)
+      .where("councilId", "=", councilId.toLowerCase())
       .execute();
 
     return new Response(
