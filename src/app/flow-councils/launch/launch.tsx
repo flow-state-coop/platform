@@ -81,14 +81,15 @@ export default function Launch(props: LaunchProps) {
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
-  const { data: councilQueryRes, loading: councilQueryResLoading } = useQuery(
-    COUNCIL_QUERY,
-    {
-      client: getApolloClient("flowCouncil", selectedNetwork.id),
-      variables: { councilId: councilId?.toLowerCase() },
-      skip: !councilId,
-    },
-  );
+  const {
+    data: councilQueryRes,
+    loading: councilQueryResLoading,
+    refetch: refetchCouncilQuery,
+  } = useQuery(COUNCIL_QUERY, {
+    client: getApolloClient("flowCouncil", selectedNetwork.id),
+    variables: { councilId: councilId?.toLowerCase() },
+    skip: !councilId,
+  });
   const [checkSuperToken] = useLazyQuery(SUPERTOKEN_QUERY, {
     client: getApolloClient("superfluid", selectedNetwork.id),
   });
@@ -181,6 +182,7 @@ export default function Launch(props: LaunchProps) {
         logs: receipt.logs,
       })[0].args.council;
 
+      refetchCouncilQuery({ variables: councilId });
       router.push(
         `/flow-councils/launch/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
       );
