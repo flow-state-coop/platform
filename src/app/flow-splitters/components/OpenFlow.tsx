@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
-import { Address, parseEther, formatEther } from "viem";
+import { Address, parseEther, parseUnits, formatEther } from "viem";
 import { useAccount, useBalance } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import {
@@ -162,7 +162,11 @@ export default function OpenFlow(props: OpenFlowProps) {
       ethBalance &&
       ethBalance.value > parseEther(wrapAmountPerTimeInterval ?? 0)) ||
     (underlyingTokenBalance &&
-      underlyingTokenBalance.value >= parseEther(wrapAmountPerTimeInterval)) ||
+      underlyingTokenBalance.value >=
+        parseUnits(
+          wrapAmountPerTimeInterval,
+          underlyingTokenBalance.decimals,
+        )) ||
     isSuperTokenPure
       ? true
       : false;
@@ -390,7 +394,10 @@ export default function OpenFlow(props: OpenFlowProps) {
             const tx = await underlyingToken
               .approve({
                 receiver: distributionSuperToken.address,
-                amount: wrapAmountWei.toString(),
+                amount: parseUnits(
+                  wrapAmountPerTimeInterval,
+                  underlyingTokenBalance?.decimals ?? 18,
+                ).toString(),
               })
               .exec(ethersSigner);
 
@@ -438,6 +445,7 @@ export default function OpenFlow(props: OpenFlowProps) {
     wrapAmountPerTimeInterval,
     pool,
     newFlowRate,
+    underlyingTokenBalance,
     underlyingTokenAllowance,
     sfFramework,
     ethersProvider,
