@@ -11,6 +11,7 @@ import { gql, useQuery, useLazyQuery } from "@apollo/client";
 import { createVerifiedFetch } from "@helia/verified-fetch";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
+import Toast from "react-bootstrap/Toast";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
@@ -71,6 +72,7 @@ export default function Launch(props: LaunchProps) {
     symbol: "",
     validationError: "",
   });
+  const [success, setSuccess] = useState(false);
   const [transactionerror, setTransactionError] = useState("");
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
 
@@ -182,12 +184,14 @@ export default function Launch(props: LaunchProps) {
         logs: receipt.logs,
       })[0].args.council;
 
-      refetchCouncilQuery({ variables: councilId });
+      await refetchCouncilQuery({ variables: councilId });
+
       router.push(
         `/flow-councils/launch/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
       );
 
       setIsTransactionLoading(false);
+      setSuccess(true);
     } catch (err) {
       console.error(err);
 
@@ -228,7 +232,7 @@ export default function Launch(props: LaunchProps) {
           <Card.Body className="p-0 mt-2">
             <Form.Control
               type="text"
-              placeholder="Name (Optional)"
+              placeholder="Name"
               value={councilMetadata.name}
               disabled={!!councilId}
               style={{
@@ -462,6 +466,15 @@ export default function Launch(props: LaunchProps) {
             "Launch"
           )}
         </Button>
+        <Toast
+          show={success}
+          delay={4000}
+          autohide={true}
+          onClose={() => setSuccess(false)}
+          className="w-100 bg-success mt-2 p-3 fs-5 text-light"
+        >
+          Success!
+        </Toast>
         {transactionerror ? (
           <Alert variant="danger" className="w-100 mb-4">
             {transactionerror}

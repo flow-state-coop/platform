@@ -147,7 +147,7 @@ export default function PoolInfo(props: PoolInfoProps) {
                   variant="link"
                   href={`https://flowstate.network/projects/${grantee.metadata}/?chainId=${chainId}&edit=true`}
                   target="_blank"
-                  className="bg-primary p-2 text-light fs-5"
+                  className="bg-primary p-2 text-light fs-5 text-decoration-none"
                   style={{ width: isMobile ? "100%" : 180 }}
                 >
                   Edit Builder Profile

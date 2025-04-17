@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       .select("address")
       .select("chainId")
       .select("councilId")
-      .where("address", "=", address.toLowerCase)
+      .where("address", "=", address.toLowerCase())
       .where("chainId", "=", network.id)
       .where("councilId", "=", councilId.toLowerCase())
       .executeTakeFirst();

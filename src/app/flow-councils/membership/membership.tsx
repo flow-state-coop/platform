@@ -272,8 +272,8 @@ export default function Membership(props: MembershipProps) {
   if (council && !isManager) {
     return (
       <span className="m-auto fs-4 fw-bold">
-        Your are manager for this council. Please make sure the right wallet is
-        connected
+        Your are not a manager for this council. Please make sure the right
+        wallet is connected
       </span>
     );
   }

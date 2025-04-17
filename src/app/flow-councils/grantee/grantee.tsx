@@ -42,6 +42,10 @@ type Application = {
 
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
 
+enum ErrorMessage {
+  GENERIC = "Error: Please try again later",
+}
+
 const PROJECTS_QUERY = gql`
   query ProjectsQuery($address: String!, $chainId: Int!) {
     profiles(
@@ -303,7 +307,9 @@ export default function Grantee(props: GranteeProps) {
       const json = await res.json();
 
       if (!json.success) {
-        setError(json.error);
+        console.error(json.error);
+
+        setError(ErrorMessage.GENERIC);
       } else {
         setSuccess(true);
       }
@@ -316,7 +322,7 @@ export default function Grantee(props: GranteeProps) {
       console.error(err);
 
       setIsSubmitting(false);
-      setError("Error: Please retry later");
+      setError(ErrorMessage.GENERIC);
     }
   };
 
