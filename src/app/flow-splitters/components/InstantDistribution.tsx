@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Address, parseAbi, parseEther, formatEther } from "viem";
+import { Address, parseAbi, parseEther, parseUnits, formatEther } from "viem";
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import {
@@ -147,7 +147,8 @@ export default function InstantDistribution(props: InstantDistributionProps) {
       ethBalance &&
       ethBalance?.value >= parseEther(wrapAmount)) ||
     (underlyingTokenBalance &&
-      underlyingTokenBalance?.value >= parseEther(wrapAmount))
+      underlyingTokenBalance?.value >=
+        parseUnits(wrapAmount, underlyingTokenBalance.decimals))
       ? true
       : false;
 
@@ -212,7 +213,10 @@ export default function InstantDistribution(props: InstantDistributionProps) {
             const tx = await underlyingToken
               .approve({
                 receiver: distributionSuperToken.address,
-                amount: wrapAmountWei.toString(),
+                amount: parseUnits(
+                  wrapAmount,
+                  underlyingTokenBalance?.decimals ?? 18,
+                ).toString(),
               })
               .exec(ethersSigner);
 
@@ -260,6 +264,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
     wrapAmount,
     pool,
     amountWei,
+    underlyingTokenBalance,
     underlyingTokenAllowance,
     sfFramework,
     ethersProvider,
@@ -274,12 +279,19 @@ export default function InstantDistribution(props: InstantDistributionProps) {
 
     if (isNumber(value)) {
       const amountWei = parseEther(value);
+      const netFlowRate = BigInt(accountTokenSnapshot?.totalNetFlowRate ?? 0);
 
       setAmount(value);
       setAmountWei(amountWei);
 
+      let hourBuffer = BigInt(0);
+
+      if (netFlowRate < 0) {
+        hourBuffer = -netFlowRate * BigInt(3600);
+      }
+
       if (!isSuperTokenPure && amountWei > superTokenBalance) {
-        setWrapAmount(formatEther(amountWei - superTokenBalance));
+        setWrapAmount(formatEther(amountWei - superTokenBalance + hourBuffer));
       } else {
         setWrapAmount("");
       }
