@@ -70,6 +70,7 @@ enum SortingMethod {
 const POOL_QUERY = gql`
   query PoolQuery($poolId: String!, $chainId: Int!) {
     pool(chainId: $chainId, id: $poolId) {
+      id
       metadata
       strategyAddress
       matchingToken

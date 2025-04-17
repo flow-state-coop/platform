@@ -10,6 +10,7 @@ import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { DonorParamsContextProvider } from "@/context/DonorParams";
+import { FlowCouncilContextProvider } from "@/context/FlowCouncil";
 import { WALLET_CONNECT_PROJECT_ID } from "../lib/constants";
 import "@rainbow-me/rainbowkit/styles.css";
 import "@/styles.scss";
@@ -51,7 +52,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           <RainbowKitProvider modalSize="compact">
             <PostHogProvider client={posthog}>
               <DonorParamsContextProvider>
-                {children}
+                <FlowCouncilContextProvider>
+                  {children}
+                </FlowCouncilContextProvider>
               </DonorParamsContextProvider>
             </PostHogProvider>
           </RainbowKitProvider>

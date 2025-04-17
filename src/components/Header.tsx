@@ -2,8 +2,9 @@
 
 import { Suspense } from "react";
 import { useAccount } from "wagmi";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useParams } from "next/navigation";
 import ConnectWallet from "@/components/ConnectWallet";
+import FlowCouncilWallet from "@/app/flow-councils/components/FlowCouncilWallet";
 import CreateCoinbaseWallet from "@/components/CreateCoinbaseWallet";
 import Nav from "react-bootstrap/Nav";
 import Stack from "react-bootstrap/Stack";
@@ -13,6 +14,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams();
   const { address } = useAccount();
   const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
 
@@ -53,7 +55,11 @@ export default function Header() {
         />
         <Stack direction="horizontal" gap={3}>
           <Suspense>
-            <ConnectWallet />
+            {params.chainId && params.councilId ? (
+              <FlowCouncilWallet />
+            ) : (
+              <ConnectWallet />
+            )}
           </Suspense>
           {!address && !isMobile && <CreateCoinbaseWallet />}
         </Stack>
