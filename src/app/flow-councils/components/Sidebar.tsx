@@ -61,6 +61,13 @@ function Sidebar() {
       >
         Manage Recipients
       </Link>
+      <Link
+        href={`/flow-councils/${chainId}/${council?.id}`}
+        className={`${!council?.id ? "text-info" : ""} text-decoration-none`}
+        style={{ pointerEvents: !council?.id ? "none" : "auto" }}
+      >
+        Council UI
+      </Link>
     </Stack>
   );
 }
