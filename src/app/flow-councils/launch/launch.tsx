@@ -90,6 +90,7 @@ export default function Launch(props: LaunchProps) {
   } = useQuery(COUNCIL_QUERY, {
     client: getApolloClient("flowCouncil", selectedNetwork.id),
     variables: { councilId: councilId?.toLowerCase() },
+    pollInterval: 4000,
     skip: !councilId,
   });
   const [checkSuperToken] = useLazyQuery(SUPERTOKEN_QUERY, {
@@ -176,7 +177,7 @@ export default function Launch(props: LaunchProps) {
 
       const receipt = await publicClient.waitForTransactionReceipt({
         hash,
-        confirmations: 3,
+        confirmations: 5,
       });
       const councilId = parseEventLogs({
         abi: councilFactoryAbi,
@@ -189,6 +190,7 @@ export default function Launch(props: LaunchProps) {
       router.push(
         `/flow-councils/launch/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
       );
+
 
       setIsTransactionLoading(false);
       setSuccess(true);
