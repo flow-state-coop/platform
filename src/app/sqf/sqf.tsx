@@ -11,7 +11,7 @@ import Card from "react-bootstrap/Card";
 import Dropdown from "react-bootstrap/Dropdown";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
-import ProgramCreationModal from "@/components/ProgramCreationModal";
+import ProgramCreationModal from "./components/ProgramCreationModal";
 import { networks } from "@/lib/networks";
 
 const PROGRAMS_QUERY = gql`

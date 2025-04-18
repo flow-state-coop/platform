@@ -411,12 +411,7 @@ export default function WalletBalance() {
                     })
                   }
                 >
-                  <Image
-                    src="/delete.svg"
-                    alt="Delete"
-                    width={20}
-                    height={20}
-                  />
+                  <Image src="/trash.svg" alt="Delete" width={20} height={20} />
                 </Button>
                 <Button
                   variant="transparent"
@@ -483,7 +478,7 @@ export default function WalletBalance() {
                         }
                       >
                         <Image
-                          src="/delete.svg"
+                          src="/trash.svg"
                           alt="Delete"
                           width={20}
                           height={20}

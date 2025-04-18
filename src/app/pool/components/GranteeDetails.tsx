@@ -21,7 +21,7 @@ import { Outflow } from "@/types/outflow";
 import { ProjectMetadata } from "@/types/project";
 import { Token } from "@/types/token";
 import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
-import useFlowingAmount from "../hooks/flowingAmount";
+import useFlowingAmount from "@/hooks/flowingAmount";
 import { formatNumberWithCommas } from "@/lib/utils";
 import { SECONDS_IN_MONTH, IPFS_GATEWAYS } from "@/lib/constants";
 

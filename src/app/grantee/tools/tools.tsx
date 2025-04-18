@@ -17,7 +17,7 @@ import Dropdown from "react-bootstrap/Dropdown";
 import Badge from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "../components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { Project } from "@/types/project";
 import { networks } from "@/lib/networks";

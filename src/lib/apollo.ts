@@ -7,7 +7,7 @@ import {
 } from "@apollo/client";
 import { networks } from "@/lib/networks";
 
-type ApiType = "flowState" | "flowSplitter" | "superfluid";
+type ApiType = "flowState" | "flowSplitter" | "flowCouncil" | "superfluid";
 
 const apolloClient: ApolloClientOptions<NormalizedCacheObject> = {
   cache: new InMemoryCache(),
@@ -23,6 +23,7 @@ const apolloClient: ApolloClientOptions<NormalizedCacheObject> = {
 
 const flowStateClient = new ApolloClient(apolloClient);
 const flowSplitterClient = new ApolloClient(apolloClient);
+const flowCouncilClient = new ApolloClient(apolloClient);
 const superfluidClient = new ApolloClient(apolloClient);
 
 export const getApolloClient = (type: ApiType, chainId?: number) => {
@@ -42,6 +43,16 @@ export const getApolloClient = (type: ApiType, chainId?: number) => {
     }
 
     return flowSplitterClient;
+  } else if (type === "flowCouncil") {
+    const network = networks.find((network) => network.id === chainId);
+
+    if (network) {
+      flowCouncilClient.setLink(
+        new HttpLink({ uri: network.flowCouncilSubgraph }),
+      );
+    }
+
+    return flowCouncilClient;
   } else if (type === "superfluid") {
     const network = networks.find((network) => network.id === chainId);
 

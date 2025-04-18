@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { SessionProvider } from "next-auth/react";
 import { http } from "viem";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
@@ -9,6 +10,7 @@ import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { DonorParamsContextProvider } from "@/context/DonorParams";
+import { FlowCouncilContextProvider } from "@/context/FlowCouncil";
 import { WALLET_CONNECT_PROJECT_ID } from "../lib/constants";
 import "@rainbow-me/rainbowkit/styles.css";
 import "@/styles.scss";
@@ -46,11 +48,17 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider modalSize="compact">
-          <PostHogProvider client={posthog}>
-            <DonorParamsContextProvider>{children}</DonorParamsContextProvider>
-          </PostHogProvider>
-        </RainbowKitProvider>
+        <SessionProvider>
+          <RainbowKitProvider modalSize="compact">
+            <PostHogProvider client={posthog}>
+              <DonorParamsContextProvider>
+                <FlowCouncilContextProvider>
+                  {children}
+                </FlowCouncilContextProvider>
+              </DonorParamsContextProvider>
+            </PostHogProvider>
+          </RainbowKitProvider>
+        </SessionProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

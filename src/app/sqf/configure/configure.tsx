@@ -29,7 +29,7 @@ import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import Card from "react-bootstrap/Card";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "../components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";

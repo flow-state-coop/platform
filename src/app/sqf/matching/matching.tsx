@@ -18,7 +18,7 @@ import Image from "react-bootstrap/Image";
 import InputGroup from "react-bootstrap/InputGroup";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "../components/Sidebar";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";

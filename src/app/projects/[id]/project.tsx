@@ -17,7 +17,7 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import ProjectUpdateModal from "@/components/ProjectUpdateModal";
-import PoolCard from "@/components/PoolCard";
+import PoolCard from "../components/PoolCard";
 import { GDAPool } from "@/types/gdaPool";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { useMediaQuery } from "@/hooks/mediaQuery";
