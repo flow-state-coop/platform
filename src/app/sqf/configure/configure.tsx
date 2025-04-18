@@ -315,9 +315,13 @@ export default function Configure(props: ConfigureProps) {
       superfluidHost: network.superfluidHost,
       allocationSuperToken: allocationToken.address,
       recipientSuperAppFactory: network.recipientSuperappFactory,
-      registrationStartTime: BigInt(now + 300),
+      registrationStartTime: BigInt(
+        network.id === 11155420 ? now + 60 : now + 300,
+      ),
       registrationEndTime: BigInt(now + 3153600000),
-      allocationStartTime: BigInt(now + 300),
+      allocationStartTime: BigInt(
+        network.id === 11155420 ? now + 60 : now + 300,
+      ),
       allocationEndTime: BigInt(now + 3153600000),
       minPassportScore: BigInt(0),
       initialSuperAppBalance: parseEther("0.0000001"),
