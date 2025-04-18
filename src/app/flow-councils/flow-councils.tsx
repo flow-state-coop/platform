@@ -191,7 +191,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
       const sfPoolMemberships = superfluidQueryRes?.account?.poolMemberships;
 
       const buildCouncil = async (council: Council) => {
-        const poolMembership = sfPoolMemberships.find(
+        const poolMembership = sfPoolMemberships?.find(
           (membership: { pool: { id: string } }) =>
             membership.pool.id === council?.pool,
         );
