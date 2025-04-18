@@ -104,11 +104,17 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
+  const supportedNetworkConnection = networks.find(
+    (network) => network.id === connectedChain?.id,
+  );
   const {
     data: councilsManagerQueryRes,
     loading: councilsManagerQueryLoading,
   } = useQuery(FLOW_COUNCIL_MANAGER_QUERY, {
-    client: getApolloClient("flowCouncil", selectedNetwork.id),
+    client: getApolloClient(
+      "flowCouncil",
+      supportedNetworkConnection ? connectedChain?.id : selectedNetwork.id,
+    ),
     variables: {
       address: address?.toLowerCase(),
     },
@@ -116,7 +122,10 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
     skip: !address,
   });
   const { data: councilsMemberQueryRes } = useQuery(FLOW_COUNCIL_MEMBER_QUERY, {
-    client: getApolloClient("flowCouncil", selectedNetwork.id),
+    client: getApolloClient(
+      "flowCouncil",
+      supportedNetworkConnection ? connectedChain?.id : selectedNetwork.id,
+    ),
     variables: {
       address: address?.toLowerCase(),
     },
@@ -126,7 +135,10 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
   const { data: councilsGranteeQueryRes } = useQuery(
     FLOW_COUNCIL_GRANTEE_QUERY,
     {
-      client: getApolloClient("flowCouncil", selectedNetwork.id),
+      client: getApolloClient(
+        "flowCouncil",
+        supportedNetworkConnection ? connectedChain?.id : selectedNetwork.id,
+      ),
       variables: {
         address: address?.toLowerCase(),
       },
@@ -156,6 +168,12 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
       console.error(err);
     }
   }, []);
+
+  useEffect(() => {
+    if (supportedNetworkConnection) {
+      setSelectedNetwork(supportedNetworkConnection);
+    }
+  }, [supportedNetworkConnection]);
 
   useEffect(() => {
     (async () => {
@@ -195,8 +213,10 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
         });
       };
 
+      const promises = [];
+
       for (const councilManger of councilsManagerQueryRes.councils) {
-        await buildCouncil(councilManger);
+        promises.push(buildCouncil(councilManger));
       }
 
       for (const councilMember of councilsMemberQueryRes.councils) {
@@ -208,7 +228,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
           continue;
         }
 
-        await buildCouncil(councilMember);
+        promises.push(buildCouncil(councilMember));
       }
 
       for (const councilGrantee of councilsGranteeQueryRes.councils) {
@@ -223,8 +243,10 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
           continue;
         }
 
-        await buildCouncil(councilGrantee);
+        promises.push(buildCouncil(councilGrantee));
       }
+
+      await Promise.all(promises);
 
       setCouncils(councils);
     })();
