@@ -186,7 +186,7 @@ export default function OpenFlow(props: OpenFlowProps) {
       ? true
       : false;
   const minDonationPerMonth = getPoolFlowRateConfig(
-    token.name,
+    token.symbol,
   ).minAllocationPerMonth;
   const isAmountInsufficient =
     Number(amountPerTimeInterval) > 0 &&
@@ -641,7 +641,7 @@ export default function OpenFlow(props: OpenFlowProps) {
       </Offcanvas.Header>
       <Offcanvas.Body>
         <Card.Text className="m-0">
-          Flow Rate ({token?.name ?? "N/A"})
+          Flow Rate ({token?.symbol ?? "N/A"})
         </Card.Text>
         <Stack
           direction="horizontal"
@@ -666,7 +666,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                   fontSize: "0.8rem",
                 }}
               >
-                {token.name}:{" "}
+                {token.symbol}:{" "}
                 {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
                   Number(formatEther(superTokenBalance)),
                 )}
@@ -716,7 +716,7 @@ export default function OpenFlow(props: OpenFlowProps) {
         </Stack>
         {isAmountInsufficient && (
           <Alert variant="warning" className="mt-2 mb-0 py-2">
-            Minimum Donation = {minDonationPerMonth} {token.name}/mo
+            Minimum Donation = {minDonationPerMonth} {token.symbol}/mo
           </Alert>
         )}
         {!isSuperTokenPure && showWrappingStep && !isAmountInsufficient && (
@@ -726,7 +726,7 @@ export default function OpenFlow(props: OpenFlowProps) {
               {isSuperTokenNative
                 ? ethBalance?.symbol
                 : underlyingTokenBalance?.symbol}{" "}
-              to {token?.name ?? "N/A"})
+              to {token?.symbol ?? "N/A"})
             </Card.Text>
             <Stack direction="vertical" className="bg-light p-3 rounded-4">
               <Stack
@@ -853,7 +853,7 @@ export default function OpenFlow(props: OpenFlowProps) {
           (superTokenBalance > 0 || wrapAmountPerTimeInterval > "0")) ? (
           <>
             <Card.Text className="mt-4 mb-2">
-              Your {token.name} Balance Over Time
+              Your {token.symbol} Balance Over Time
             </Card.Text>
             <BalancePlot
               flowInfo={

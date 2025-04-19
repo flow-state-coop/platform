@@ -261,14 +261,14 @@ export default function Grantee(props: GranteeProps) {
                     (token) =>
                       token.address.toLowerCase() ===
                       pool?.allocationToken?.toLowerCase(),
-                  )?.name ?? "N/A"}
+                  )?.symbol ?? "N/A"}
                 </Card.Text>
                 <Card.Text className="m-0">
                   - Matching Token:{" "}
                   {network.tokens.find(
                     (token) =>
                       token.address.toLowerCase() === pool?.matchingToken,
-                  )?.name ?? "N/A"}
+                  )?.symbol ?? "N/A"}
                 </Card.Text>
                 <Card.Text>
                   - Voter Eligibility NFT:{" "}

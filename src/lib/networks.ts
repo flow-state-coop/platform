@@ -32,27 +32,27 @@ const networks: Network[] = [
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     tokens: [
       {
-        name: "DAIx",
+        symbol: "DAIx",
         address: "0x708169c8C87563Ce904E0a7F3BFC1F3b0b767f41",
         icon: "/dai.png",
       },
       {
-        name: "DEGENx",
+        symbol: "DEGENx",
         address: "0x1efF3Dd78F4A14aBfa9Fa66579bD3Ce9E1B30529",
         icon: "/degen.png",
       },
       {
-        name: "ETHx",
+        symbol: "ETHx",
         address: "0x46fd5cfB4c12D87acD3a13e92BAa53240C661D93",
         icon: "/eth.png",
       },
       {
-        name: "HIGHERx",
+        symbol: "HIGHERx",
         address: "0x5f2Fab273F1F64b6bc6ab8F35314CD21501F35C5",
         icon: "/higher.png",
       },
       {
-        name: "USDCx",
+        symbol: "USDCx",
         address: "0xD04383398dD2426297da660F9CCA3d439AF9ce1b",
         icon: "/usdc.png",
       },
@@ -88,27 +88,27 @@ const networks: Network[] = [
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     tokens: [
       {
-        name: "DAIx",
+        symbol: "DAIx",
         address: "0x7d342726B69C28D942ad8BfE6Ac81b972349d524",
         icon: "/dai.png",
       },
       {
-        name: "ETHx",
+        symbol: "ETHx",
         address: "0x4ac8bD1bDaE47beeF2D1c6Aa62229509b962Aa0d",
         icon: "/eth.png",
       },
       {
-        name: "OPx",
+        symbol: "OPx",
         address: "0x1828Bff08BD244F7990edDCd9B19cc654b33cDB4",
         icon: "/optimism.svg",
       },
       {
-        name: "USDC.ex",
+        symbol: "USDC.ex",
         address: "0x8430F084B939208E2eDEd1584889C9A66B90562f",
         icon: "/usdc.png",
       },
       {
-        name: "USDGLOx",
+        symbol: "USDGLOx",
         address: "0x9F41d0AA24E599fd8D0c180Ee3C0F609dc41c622",
         icon: "/usdglo.png",
       },
@@ -144,22 +144,22 @@ const networks: Network[] = [
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     tokens: [
       {
-        name: "ETHx",
+        symbol: "ETHx",
         address: "0xe6c8d111337d0052b9d88bf5d7d55b7f8385acd3",
         icon: "/eth.png",
       },
       {
-        name: "ARBx",
+        symbol: "ARBx",
         address: "0xB3EDb2F90fEc1Bf1F872a9ef143cfd614773Ad04",
         icon: "/arb.png",
       },
       {
-        name: "DAIx",
+        symbol: "DAIx",
         address: "0x521677A61D101A80cE0fB903b13cb485232774ee",
         icon: "/dai.png",
       },
       {
-        name: "USDCx",
+        symbol: "USDCx",
         address: "0xfc55f2854e74b4f42d01a6d3daac4c52d9dfdcff",
         icon: "/usdc.png",
       },
@@ -196,17 +196,17 @@ const networks: Network[] = [
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     tokens: [
       {
-        name: "ETHx",
+        symbol: "ETHx",
         address: "0x0043d7c85C8b96a49A72A92C0B48CdC4720437d7",
         icon: "/eth.png",
       },
       {
-        name: "fDAIx",
+        symbol: "fDAIx",
         address: "0xD6FAF98BeFA647403cc56bDB598690660D5257d2",
         icon: "/dai.png",
       },
       {
-        name: "F(S)",
+        symbol: "F(S)",
         address: "0xf74EB650D8A806b92618d9E90A7E157C255c6406",
         icon: "/optimism.svg",
       },

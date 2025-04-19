@@ -11,6 +11,7 @@ import useAllocationQuery from "@/app/flow-councils/hooks/allocationQuery";
 import useFlowStateProfilesQuery from "@/app/flow-councils/hooks/flowStateProfilesQuery";
 import useFlowCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 import useGdaPoolQuery from "@/app/flow-councils/hooks/gdaPoolQuery";
+import { Token } from "@/types/token";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
 type Council = {
@@ -20,6 +21,7 @@ type Council = {
     votingPower: number;
   }[];
   metadata: string;
+  distributionToken: `0x${string}`;
   grantees: { metadata: string; account: `0x${string}` }[];
   maxAllocationsPerMember: number;
   pool: string;
@@ -45,6 +47,7 @@ export const FlowCouncilContext = createContext<{
   currentAllocation?: CurrentAllocation;
   flowStateProfiles?: FlowStateProfile[];
   gdaPool?: GDAPool;
+  token: Token;
   newAllocation?: NewAllocation;
 } | null>(null);
 
@@ -163,6 +166,14 @@ export function FlowCouncilContextProvider({
     councilId,
     address ?? "",
   );
+  const token = network.tokens.find(
+    (token) => token.address.toLowerCase() === council?.distributionToken,
+  ) ?? {
+    address: gdaPool?.token.id ?? "0x",
+    symbol: gdaPool?.token.symbol,
+    icon: "",
+  };
+
   const [newAllocation, dispatch] = useReducer(newAllocationReducer, {
     showBallot: false,
     allocation: [],
@@ -174,6 +185,7 @@ export function FlowCouncilContextProvider({
         council,
         councilMetadata,
         gdaPool,
+        token,
         flowStateProfiles,
         currentAllocation,
         newAllocation,

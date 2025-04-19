@@ -9,6 +9,7 @@ export default function useCouncil() {
     councilMetadata,
     flowStateProfiles,
     gdaPool,
+    token,
     currentAllocation,
     newAllocation,
   } = useFlowCouncilContext();
@@ -19,6 +20,7 @@ export default function useCouncil() {
     councilMetadata,
     flowStateProfiles,
     gdaPool,
+    token,
     currentAllocation,
     newAllocation,
     dispatchNewAllocation,

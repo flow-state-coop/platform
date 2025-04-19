@@ -138,12 +138,12 @@ export default function TopUp(props: TopUpProps) {
             >
               {!underlyingTokenBalance ? (
                 <Card.Text className="m-0 small">
-                  {superTokenInfo.name}:
+                  {superTokenInfo.symbol}:
                 </Card.Text>
               ) : (
                 <Card.Text className="m-0 small">
                   {underlyingTokenBalance?.symbol ?? "N/A"} +{" "}
-                  {superTokenInfo.name}:
+                  {superTokenInfo.symbol}:
                 </Card.Text>
               )}
               <Card.Text
@@ -289,12 +289,12 @@ export default function TopUp(props: TopUpProps) {
                 >
                   {!underlyingTokenBalance ? (
                     <Card.Text className="m-0 small">
-                      {superTokenInfo.name}:
+                      {superTokenInfo.symbol}:
                     </Card.Text>
                   ) : (
                     <Card.Text className="m-0 small">
                       {underlyingTokenBalance?.symbol ?? "N/A"} +{" "}
-                      {superTokenInfo.name}:
+                      {superTokenInfo.symbol}:
                     </Card.Text>
                   )}
                   <Card.Text
@@ -345,7 +345,7 @@ export default function TopUp(props: TopUpProps) {
                     target="_blank"
                     className="w-100 bg-primary text-decoration-none rounded-3 text-light fs-6"
                   >
-                    Get {superTokenInfo.name}
+                    Get {superTokenInfo.symbol}
                   </Button>
                 </Stack>
               </Stack>

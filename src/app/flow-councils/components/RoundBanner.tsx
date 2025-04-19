@@ -109,7 +109,7 @@ export default function PoolInfo(props: PoolInfoProps) {
               <tbody>
                 <tr>
                   <td className="w-25 ps-0 bg-transparent">
-                    {distributionTokenInfo.name}
+                    {distributionTokenInfo.symbol}
                   </td>
                   <td className="w-25 bg-transparent">
                     {formatNumberWithCharSuffix(

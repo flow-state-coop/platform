@@ -139,7 +139,7 @@ export default function PoolInfo(props: PoolInfoProps) {
               <tbody>
                 <tr>
                   <td className="w-33 ps-0 bg-transparent">
-                    Direct ({allocationTokenInfo.name})
+                    Direct ({allocationTokenInfo.symbol})
                   </td>
                   <td className="w-20 bg-transparent">
                     {Number(formatEther(directTotal)).toFixed(isMobile ? 4 : 6)}
@@ -151,7 +151,7 @@ export default function PoolInfo(props: PoolInfoProps) {
                 </tr>
                 <tr>
                   <td className="w-33 ps-0 bg-transparent">
-                    Matching ({matchingTokenInfo.name})
+                    Matching ({matchingTokenInfo.symbol})
                   </td>
                   <td className="w-20 bg-transparent">
                     {Number(formatEther(matchingTotal)).toFixed(

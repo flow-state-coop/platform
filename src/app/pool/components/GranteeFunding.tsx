@@ -488,7 +488,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     poolFlowRateConfig,
     supportFlowStateTimeInterval,
     step,
-    allocationTokenInfo.name,
+    allocationTokenInfo.symbol,
   ]);
 
   useEffect(() => {

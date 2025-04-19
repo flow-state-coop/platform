@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Address, parseAbi, parseEther, formatEther } from "viem";
+import { Address, isAddress, parseAbi, parseEther, formatEther } from "viem";
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import dayjs from "dayjs";
 import { useQuery, gql } from "@apollo/client";
@@ -110,14 +110,14 @@ export default function DistributionPoolFunding(props: {
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("0");
 
   const { address } = useAccount();
-  const { council, councilMetadata } = useCouncil();
+  const { council, councilMetadata, token } = useCouncil();
   const {
     areTransactionsLoading,
     completedTransactions,
     transactionError,
     executeTransactions,
   } = useTransactionsQueue();
-  const distributionTokenAddress = network.tokens[0].address;
+  const distributionTokenAddress = token.address;
   const { data: underlyingTokenAddress } = useReadContract({
     address: distributionTokenAddress,
     abi: parseAbi(["function getUnderlyingToken() view returns (address)"]),
@@ -241,7 +241,13 @@ export default function DistributionPoolFunding(props: {
 
   useEffect(() => {
     (async () => {
-      if (!address || !newFlowRate || !ethersProvider || !ethersSigner) {
+      if (
+        !address ||
+        !isAddress(distributionTokenAddress) ||
+        !newFlowRate ||
+        !ethersProvider ||
+        !ethersSigner
+      ) {
         return;
       }
 
@@ -353,7 +359,7 @@ export default function DistributionPoolFunding(props: {
 
   useEffect(() => {
     (async () => {
-      if (address && ethersProvider) {
+      if (address && ethersProvider && isAddress(distributionTokenAddress)) {
         const sfFramework = await Framework.create({
           chainId: network.id,
           resolverAddress: network.superfluidResolver,
@@ -420,13 +426,13 @@ export default function DistributionPoolFunding(props: {
         <Stack direction="vertical" className="flex-grow-0">
           <DistributionPoolDetails
             gdaPool={superfluidQueryRes?.pool}
-            token={network.tokens[0]}
+            token={token}
           />
           <Accordion activeKey={step} className="mt-4">
             <EditStream
               isSelected={step === Step.SELECT_AMOUNT}
               setStep={(step) => setStep(step)}
-              token={network.tokens[0]}
+              token={token}
               network={network}
               flowRateToReceiver={flowRateToReceiver}
               amountPerTimeInterval={amountPerTimeInterval}
@@ -468,14 +474,14 @@ export default function DistributionPoolFunding(props: {
               ethBalance={ethBalance}
               underlyingTokenBalance={underlyingTokenBalance}
               network={network}
-              superTokenInfo={network.tokens[0]}
+              superTokenInfo={token}
             />
             <Wrap
               step={step}
               setStep={setStep}
               wrapAmount={wrapAmount}
               setWrapAmount={setWrapAmount}
-              token={network.tokens[0]}
+              token={token}
               superTokenBalance={superTokenBalance}
               underlyingTokenBalance={underlyingTokenBalance}
             />
@@ -491,7 +497,7 @@ export default function DistributionPoolFunding(props: {
               executeTransactions={executeTransactions}
               liquidationEstimate={liquidationEstimate}
               netImpact={BigInt(0)}
-              token={network.tokens[0]}
+              token={token}
               flowRateToReceiver={flowRateToReceiver}
               amountPerTimeInterval={amountPerTimeInterval}
               newFlowRate={newFlowRate}

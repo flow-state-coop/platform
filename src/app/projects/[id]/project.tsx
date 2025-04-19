@@ -189,7 +189,7 @@ export default function Project(props: ProjectProps) {
         (token) => token.address.toLowerCase === pool.allocationToken,
       );
       const poolFlowRateConfig = getPoolFlowRateConfig(
-        allocationToken?.name ?? "",
+        allocationToken?.symbol ?? "",
       );
       const matchingImpactEstimate = calcMatchingImpactEstimate({
         totalFlowRate: BigInt(matchingPool.flowRate ?? 0),

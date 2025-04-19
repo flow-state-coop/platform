@@ -144,7 +144,8 @@ export default function Review(props: ReviewProps) {
       liquidationEstimate,
       amountPerTimeInterval: amountPerTimeInterval.replace(/,/g, ""),
       matchingMultiplier:
-        matchingTokenInfo.name === "ETHx" && allocationTokenInfo.name === "ETHx"
+        matchingTokenInfo.symbol === "ETHx" &&
+        allocationTokenInfo.symbol === "ETHx"
           ? parseFloat(
               (
                 Number(formatEther(BigInt(netImpact))) /
@@ -295,7 +296,7 @@ export default function Review(props: ReviewProps) {
                     {areTransactionsLoading && transactionDetailsSnapshot
                       ? transactionDetailsSnapshot.wrapAmount
                       : wrapAmount}{" "}
-                    <br /> {allocationTokenInfo.name}
+                    <br /> {allocationTokenInfo.symbol}
                   </Card.Text>
                   <Card.Text className="border-0 text-center fs-6">
                     New Balance:{" "}
@@ -314,7 +315,7 @@ export default function Review(props: ReviewProps) {
               </Stack>
               <Card.Text className="border-0 text-center text-secondary fs-4">
                 1 {underlyingTokenBalance?.symbol ?? "N/A"} = 1{" "}
-                {allocationTokenInfo.name}
+                {allocationTokenInfo.symbol}
               </Card.Text>
             </Stack>
           )}
@@ -459,8 +460,8 @@ export default function Review(props: ReviewProps) {
                   </Stack>
                   <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>
                 </Stack>
-                {matchingTokenInfo.name === "ETHx" &&
-                  allocationTokenInfo.name === "ETHx" && (
+                {matchingTokenInfo.symbol === "ETHx" &&
+                  allocationTokenInfo.symbol === "ETHx" && (
                     <Stack
                       direction="horizontal"
                       className="bg-light border-top border-secondary p-2"
@@ -691,7 +692,7 @@ export default function Review(props: ReviewProps) {
               <Card.Text className="text-danger small">
                 You've set a high stream rate relative to your balance! We
                 recommend that you set a lower rate or wrap more{" "}
-                {allocationTokenInfo.name}.
+                {allocationTokenInfo.symbol}.
               </Card.Text>
               <Stack
                 direction="horizontal"

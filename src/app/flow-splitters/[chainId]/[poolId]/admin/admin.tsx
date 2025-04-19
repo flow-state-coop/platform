@@ -1219,7 +1219,7 @@ export default function Admin(props: AdminProps) {
           token={
             poolToken ?? {
               address: pool?.token ?? "",
-              name: superfluidQueryRes?.token.symbol ?? "N/A",
+              symbol: superfluidQueryRes?.token.symbol ?? "N/A",
               icon: "",
             }
           }
@@ -1234,7 +1234,7 @@ export default function Admin(props: AdminProps) {
           token={
             poolToken ?? {
               address: pool?.token ?? "",
-              name: superfluidQueryRes?.token.symbol ?? "N/A",
+              symbol: superfluidQueryRes?.token.symbol ?? "N/A",
               icon: "",
             }
           }

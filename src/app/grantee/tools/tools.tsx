@@ -246,7 +246,7 @@ export default function GranteeTools(props: ToolsProps) {
                     href={`${network.blockExplorer}/address/${queryRes?.pool.allocationToken}`}
                     target="_blank"
                   >
-                    {allocationToken?.name ?? "N/A"} (
+                    {allocationToken?.symbol ?? "N/A"} (
                     {truncateStr(queryRes?.pool.allocationToken ?? "", 12)})
                   </Card.Link>
                 </Card.Text>
@@ -256,7 +256,7 @@ export default function GranteeTools(props: ToolsProps) {
                     href={`${network.blockExplorer}/address/${queryRes?.pool.matchingToken}`}
                     target="_blank"
                   >
-                    {matchingToken?.name ?? "N/A"} (
+                    {matchingToken?.symbol ?? "N/A"} (
                     {truncateStr(queryRes?.pool.matchingToken ?? "", 12)})
                   </Card.Link>
                 </Card.Text>

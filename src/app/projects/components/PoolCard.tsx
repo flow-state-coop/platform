@@ -53,7 +53,9 @@ export default function PoolCard(props: PoolCardProps) {
   const matchingToken = network?.tokens.find(
     (token) => token.address.toLowerCase() === pool.matchingToken,
   );
-  const poolFlowRateConfig = getPoolFlowRateConfig(allocationToken?.name ?? "");
+  const poolFlowRateConfig = getPoolFlowRateConfig(
+    allocationToken?.symbol ?? "",
+  );
   const poolUiLink = `https://flowstate.network/pool/?poolId=${pool.id}&chainId=${network.id}&recipientId=${recipientId}`;
   const framesLink = `https://frames.flowstate.network/frames/grantee/${recipientId}/${pool.id}/${network.id}`;
 
@@ -110,7 +112,7 @@ export default function PoolCard(props: PoolCardProps) {
             Matching Multiplier
           </Card.Text>
           <Card.Text className="mb-3 text-center">
-            {allocationToken?.name === matchingToken?.name ? (
+            {allocationToken?.symbol === matchingToken?.symbol ? (
               <>
                 x
                 {parseFloat(
@@ -127,12 +129,12 @@ export default function PoolCard(props: PoolCardProps) {
             ) : (
               <>
                 {poolFlowRateConfig.minAllocationPerMonth}{" "}
-                {allocationToken?.name ?? "N/A"} ={" "}
+                {allocationToken?.symbol ?? "N/A"} ={" "}
                 {roundWeiAmount(
                   matchingImpactEstimate * BigInt(SECONDS_IN_MONTH),
                   4,
                 )}{" "}
-                {matchingToken?.name ?? "N/A"}
+                {matchingToken?.symbol ?? "N/A"}
               </>
             )}
           </Card.Text>

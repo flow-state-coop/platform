@@ -242,7 +242,7 @@ export default function Review(props: ReviewProps) {
                     {areTransactionsLoading && transactionDetailsSnapshot
                       ? transactionDetailsSnapshot.wrapAmount
                       : wrapAmount}{" "}
-                    <br /> {token.name}
+                    <br /> {token.symbol}
                   </Card.Text>
                   <Card.Text className="border-0 text-center fs-6">
                     New Balance:{" "}
@@ -260,7 +260,7 @@ export default function Review(props: ReviewProps) {
                 </Stack>
               </Stack>
               <Card.Text className="border-0 text-center text-secondary fs-4">
-                1 {underlyingTokenBalance?.symbol ?? "N/A"} = 1 {token.name}
+                1 {underlyingTokenBalance?.symbol ?? "N/A"} = 1 {token.symbol}
               </Card.Text>
             </Stack>
           )}

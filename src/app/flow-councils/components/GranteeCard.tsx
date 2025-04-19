@@ -162,7 +162,7 @@ export default function Grantee(props: GranteeProps) {
                 Current Stream
               </Card.Text>
               <Card.Text as="small" className="m-0">
-                {monthlyFlow} {network.tokens[0].name} /mo
+                {monthlyFlow} {network.tokens[0].symbol} /mo
               </Card.Text>
             </Stack>
           </Stack>

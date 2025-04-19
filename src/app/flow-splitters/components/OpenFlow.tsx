@@ -567,7 +567,7 @@ export default function OpenFlow(props: OpenFlowProps) {
       </Offcanvas.Header>
       <Offcanvas.Body>
         <Card.Text className="m-0">
-          Flow Rate ({token?.name ?? "N/A"})
+          Flow Rate ({token?.symbol ?? "N/A"})
         </Card.Text>
         <Stack
           direction="horizontal"
@@ -592,7 +592,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                   fontSize: "0.8rem",
                 }}
               >
-                {token.name}:{" "}
+                {token.symbol}:{" "}
                 {Intl.NumberFormat("en", { maximumFractionDigits: 6 }).format(
                   Number(formatEther(superTokenBalance)),
                 )}{" "}
@@ -651,7 +651,7 @@ export default function OpenFlow(props: OpenFlowProps) {
               {isSuperTokenNative
                 ? ethBalance?.symbol
                 : underlyingTokenBalance?.symbol}{" "}
-              to {token?.name ?? "N/A"})
+              to {token?.symbol ?? "N/A"})
             </Card.Text>
             <Stack direction="vertical" className="bg-light p-3 rounded-4">
               <Stack
@@ -803,7 +803,7 @@ export default function OpenFlow(props: OpenFlowProps) {
           (superTokenBalance > 0 || wrapAmountPerTimeInterval > "0")) ? (
           <>
             <Card.Text className="mt-4 mb-2">
-              Your {token.name} Balance Over Time
+              Your {token.symbol} Balance Over Time
             </Card.Text>
             <BalancePlot
               flowInfo={

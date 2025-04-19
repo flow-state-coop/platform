@@ -16,7 +16,6 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useCouncil from "../../hooks/council";
 import { networks } from "@/lib/networks";
 import { shuffle, getPlaceholderImageSrc } from "@/lib/utils";
-import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
 export default function Index({
   chainId,
@@ -34,9 +33,7 @@ export default function Index({
   const hasNextGrantee = useRef(true);
 
   const network =
-    networks.find(
-      (network) => network.id === Number(chainId ?? DEFAULT_CHAIN_ID),
-    ) ?? networks[0];
+    networks.find((network) => network.id === Number(chainId)) ?? networks[0];
   useMediaQuery();
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
@@ -46,6 +43,7 @@ export default function Index({
     councilMetadata,
     flowStateProfiles,
     gdaPool,
+    token,
   } = useCouncil();
 
   const getGrantee = useCallback(
@@ -198,7 +196,7 @@ export default function Index({
           name={councilMetadata.name}
           description={councilMetadata.description}
           chainId={chainId}
-          distributionTokenInfo={network.tokens[0]}
+          distributionTokenInfo={token}
           gdaPool={gdaPool}
           showDistributionPoolFunding={() =>
             setShowDistributionPoolFunding(true)

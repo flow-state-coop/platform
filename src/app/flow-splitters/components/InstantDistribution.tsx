@@ -352,7 +352,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
               />
               <InputGroup.Text className="bg-transparent border-0 fw-bold pe-1">
                 {isSuperTokenPure
-                  ? token.name
+                  ? token.symbol
                   : isSuperTokenNative
                     ? ethBalance?.symbol
                     : underlyingTokenBalance?.symbol}
@@ -412,7 +412,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
                 fontSize: "0.8rem",
               }}
             >
-              {token.name}:{" "}
+              {token.symbol}:{" "}
               {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
                 Number(formatEther(superTokenBalance)),
               )}
@@ -463,10 +463,10 @@ export default function InstantDistribution(props: InstantDistributionProps) {
               {isSuperTokenNative
                 ? ethBalance?.symbol
                 : underlyingTokenBalance?.symbol}{" "}
-              to {token.name}
+              to {token.symbol}
             </Card.Text>
             <Card.Text className="m-0 small">
-              2) Distribute {amount} {token.name}
+              2) Distribute {amount} {token.symbol}
             </Card.Text>
           </Stack>
         )}

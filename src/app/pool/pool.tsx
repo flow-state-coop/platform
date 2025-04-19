@@ -258,14 +258,14 @@ export default function Pool(props: PoolProps) {
     () =>
       network?.tokens.find(
         (token) => pool?.allocationToken === token.address.toLowerCase(),
-      ) ?? { name: "N/A", address: pool?.allocationToken ?? "", icon: "" },
+      ) ?? { symbol: "N/A", address: pool?.allocationToken ?? "", icon: "" },
     [network, pool],
   );
   const matchingTokenInfo = useMemo(
     () =>
       network?.tokens.find(
         (token) => pool?.matchingToken === token.address.toLowerCase(),
-      ) ?? { name: "N/A", address: pool?.matchingToken ?? "", icon: "" },
+      ) ?? { symbol: "N/A", address: pool?.matchingToken ?? "", icon: "" },
     [network, pool],
   );
 
@@ -291,7 +291,7 @@ export default function Pool(props: PoolProps) {
             BigInt(matchingPool.totalUnits)
           : BigInt(0);
       const poolFlowRateConfig = getPoolFlowRateConfig(
-        allocationTokenInfo.name,
+        allocationTokenInfo.symbol,
       );
       const impactMatchingEstimate = calcMatchingImpactEstimate({
         totalFlowRate: BigInt(matchingPool.flowRate ?? 0),

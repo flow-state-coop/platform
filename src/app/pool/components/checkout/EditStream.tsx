@@ -59,9 +59,9 @@ export default function EditStream(props: EditStreamProps) {
 
   const isDeletingStream =
     BigInt(flowRateToReceiver) > 0 && BigInt(newFlowRate) === BigInt(0);
-  const isNativeSuperToken = token.name === "ETHx";
+  const isNativeSuperToken = token.symbol === "ETHx";
   const minAllocationPerMonth = getPoolFlowRateConfig(
-    token.name,
+    token.symbol,
   ).minAllocationPerMonth;
 
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,7 +166,7 @@ export default function EditStream(props: EditStreamProps) {
                 width={20}
                 height={20}
               />
-              {token.name}
+              {token.symbol}
             </Badge>
           </Stack>
           <Stack direction="horizontal" gap={2} className="align-items-stretch">
@@ -214,7 +214,7 @@ export default function EditStream(props: EditStreamProps) {
           {Number(amountPerTimeInterval) > 0 &&
             Number(amountPerTimeInterval) < minAllocationPerMonth && (
               <Alert variant="warning" className="m-0 py-2">
-                Minimum Donation = {minAllocationPerMonth} {token.name}/mo
+                Minimum Donation = {minAllocationPerMonth} {token.symbol}/mo
               </Alert>
             )}
           {network && address ? (

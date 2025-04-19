@@ -261,7 +261,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
       <Stack direction="horizontal" gap={1} className="fs-6 p-2 pb-0">
         <Stack direction="vertical" gap={1} className="w-33">
           <Card.Text className="m-0 pe-0" style={{ fontSize: "0.7rem" }}>
-            You ({allocationTokenInfo.name})
+            You ({allocationTokenInfo.symbol})
           </Card.Text>
           <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
@@ -279,7 +279,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             className="m-0 pe-0 text-nowrap"
             style={{ fontSize: "0.7rem" }}
           >
-            Others ({allocationTokenInfo.name})
+            Others ({allocationTokenInfo.symbol})
           </Card.Text>
           <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(
@@ -298,7 +298,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             className="m-0 pe-0 text-nowrap"
             style={{ fontSize: "0.7rem" }}
           >
-            Match ({matchingTokenInfo.name})
+            Match ({matchingTokenInfo.symbol})
           </Card.Text>
           <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumberWithCommas(

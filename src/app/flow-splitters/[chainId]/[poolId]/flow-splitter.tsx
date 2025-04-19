@@ -182,7 +182,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
     (token) => token.address.toLowerCase() === pool?.token,
   ) ?? {
     address: pool?.token ?? "",
-    name: superfluidQueryRes?.token.symbol ?? "N/A",
+    symbol: superfluidQueryRes?.token.symbol ?? "N/A",
     icon: "",
   };
   const poolMember = superfluidQueryRes?.pool?.poolMembers.find(
