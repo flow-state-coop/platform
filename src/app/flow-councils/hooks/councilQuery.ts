@@ -16,6 +16,7 @@ const COUNCIL_QUERY = gql`
         metadata
         account
       }
+      distributionToken
       maxAllocationsPerMember
     }
   }

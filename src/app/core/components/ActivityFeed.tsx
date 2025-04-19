@@ -621,7 +621,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                           ),
                         ),
                       )}{" "}
-                      {token.name}/mo stream
+                      {token.symbol}/mo stream
                     </>
                   ) : (event as FlowDistributionUpdatedEvent)
                       .newDistributorToPoolFlowRate === "0" ? (
@@ -639,7 +639,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                           ),
                         ),
                       )}{" "}
-                      {token.name}/mo stream.
+                      {token.symbol}/mo stream.
                     </>
                   ) : (
                     <>
@@ -656,7 +656,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                           ),
                         ),
                       )}{" "}
-                      {token.name}/mo to{" "}
+                      {token.symbol}/mo to{" "}
                       {Intl.NumberFormat("en", {
                         maximumFractionDigits: 4,
                       }).format(
@@ -669,7 +669,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                           ),
                         ),
                       )}{" "}
-                      {token.name}/mo
+                      {token.symbol}/mo
                     </>
                   )}
                 </p>
@@ -761,7 +761,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                       ),
                     ),
                   )}{" "}
-                  {token.name}
+                  {token.symbol}
                 </p>
                 <Link
                   href={`${network.blockExplorer}/tx/${(event as InstantDistributionUpdatedEvent).transactionHash}`}

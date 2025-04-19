@@ -170,7 +170,7 @@ export default function Review(props: ReviewProps) {
   const allocationTokenSymbol =
     network?.tokens.find(
       (token) => allocationToken === token.address.toLowerCase(),
-    )?.name ?? "allocation token";
+    )?.symbol ?? "allocation token";
 
   const { data: superfluidQueryRes } = useQuery(SF_ACCOUNT_QUERY, {
     client: getApolloClient("superfluid", chainId ?? 10),

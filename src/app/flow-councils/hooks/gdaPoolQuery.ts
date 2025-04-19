@@ -26,6 +26,10 @@ const SUPERFLUID_QUERY = gql`
         totalAmountFlowedDistributedUntilUpdatedAt
         updatedAtTimestamp
       }
+      token {
+        id
+        symbol
+      }
     }
   }
 `;

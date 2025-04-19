@@ -139,13 +139,10 @@ export default function EditStream(props: EditStreamProps) {
               {network?.name ?? "N/A"}
             </Badge>
             <Badge className="d-flex align-items-center gap-1 bg-white text-dark w-50 rounded-3 px-3 py-2 fs-5 fw-normal">
-              <Image
-                src={token.icon ?? "/eth.svg"}
-                alt="token"
-                width={20}
-                height={20}
-              />
-              {token.name}
+              {token.icon && (
+                <Image src={token.icon} alt="Token" width={20} height={20} />
+              )}
+              {token.symbol}
             </Badge>
           </Stack>
           <Stack direction="horizontal" gap={2}>

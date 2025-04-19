@@ -114,7 +114,7 @@ export default function Matching(props: MatchingProps) {
   const matchingTokenSymbol =
     network?.tokens.find(
       (token) => matchingToken === token.address.toLowerCase(),
-    )?.name ?? "matching token";
+    )?.symbol ?? "matching token";
   const isMatchingTokenPureSuperToken =
     !superfluidQueryRes?.account?.token?.isNativeAssetSuperToken &&
     superfluidQueryRes?.account?.token?.underlyingAddress === ZERO_ADDRESS;
@@ -259,7 +259,7 @@ export default function Matching(props: MatchingProps) {
                             (token) =>
                               token.address.toLowerCase() ===
                               flowStateQueryRes?.pools[0].matchingToken,
-                          )?.name
+                          )?.symbol
                         }
                         /month
                       </InputGroup.Text>
@@ -289,7 +289,7 @@ export default function Matching(props: MatchingProps) {
                             (token) =>
                               token.address.toLowerCase() ===
                               flowStateQueryRes?.pools[0].matchingToken,
-                          )?.name
+                          )?.symbol
                         }
                         /month
                       </InputGroup.Text>

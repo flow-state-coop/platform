@@ -237,14 +237,14 @@ export default function WalletBalance() {
     () =>
       network?.tokens.find(
         (token) => allocationToken === token.address.toLowerCase(),
-      ) ?? { name: "N/A", address: allocationToken ?? "", icon: "" },
+      ) ?? { symbol: "N/A", address: allocationToken ?? "", icon: "" },
     [network, allocationToken],
   );
   const matchingTokenInfo = useMemo(
     () =>
       network?.tokens.find(
         (token) => matchingToken === token.address.toLowerCase(),
-      ) ?? { name: "N/A", address: matchingToken ?? "", icon: "" },
+      ) ?? { symbol: "N/A", address: matchingToken ?? "", icon: "" },
     [network, matchingToken],
   );
 
@@ -303,7 +303,7 @@ export default function WalletBalance() {
             <Image src="/wallet.svg" alt="Wallet" width={22} height={22} />
             <Card.Text className="m-0">
               {formatEther(superTokenBalanceAllocation).slice(0, 8)}{" "}
-              {allocationTokenInfo?.name}
+              {allocationTokenInfo?.symbol}
             </Card.Text>
           </Stack>
         )}
@@ -374,7 +374,7 @@ export default function WalletBalance() {
         </Stack>
         <Card className="bg-light mt-3 mx-3 p-2 rounded-4 border-0">
           <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 fs-5">
-            Your Streams ({allocationTokenInfo?.name}/mo)
+            Your Streams ({allocationTokenInfo?.symbol}/mo)
           </Card.Header>
           <Card.Body className="p-2">
             {superfluidQueryRes?.poolDistributors[0] ? (
@@ -551,7 +551,7 @@ export default function WalletBalance() {
             }}
             onClick={() => setToken(Token.ALLOCATION)}
           >
-            {allocationTokenInfo?.name}
+            {allocationTokenInfo?.symbol}
           </Badge>
           {allocationToken !== matchingToken && (
             <Badge
@@ -568,7 +568,7 @@ export default function WalletBalance() {
               }}
               onClick={() => setToken(Token.MATCHING)}
             >
-              {matchingTokenInfo?.name}
+              {matchingTokenInfo?.symbol}
             </Badge>
           )}
         </Stack>

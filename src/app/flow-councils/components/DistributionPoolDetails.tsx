@@ -109,7 +109,7 @@ export default function DistributionPoolDetails(
                   )}
                 </Card.Text>
                 <Card.Text as="small" className="mt-1">
-                  {token.name} <br />
+                  {token.symbol} <br />
                   per <br />
                   month
                 </Card.Text>

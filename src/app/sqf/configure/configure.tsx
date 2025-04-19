@@ -178,8 +178,8 @@ export default function Configure(props: ConfigureProps) {
     setPoolConfigParameters((prev) => {
       return {
         ...prev,
-        allocationToken: network.tokens[0].name,
-        matchingToken: network.tokens[0].name,
+        allocationToken: network.tokens[0].symbol,
+        matchingToken: network.tokens[0].symbol,
         nftAddress: network.flowStateEligibilityNft,
       };
     });
@@ -211,12 +211,12 @@ export default function Configure(props: ConfigureProps) {
         network.tokens.filter(
           (token) =>
             allocationSuperToken.toLowerCase() === token.address.toLowerCase(),
-        )[0].name ?? "N/A";
+        )[0].symbol ?? "N/A";
       const matchingToken =
         network.tokens.filter(
           (token) =>
             poolSuperToken.toLowerCase() === token.address.toLowerCase(),
-        )[0].name ?? "N/A";
+        )[0].symbol ?? "N/A";
 
       let nftAddress = "";
 
@@ -275,7 +275,7 @@ export default function Configure(props: ConfigureProps) {
       flowStateEligibility: poolConfigParameters.flowStateEligibility,
     });
     const allocationToken = network.tokens.find(
-      (token) => token.name === poolConfigParameters.allocationToken,
+      (token) => token.symbol === poolConfigParameters.allocationToken,
     );
 
     if (!allocationToken) {
@@ -283,7 +283,7 @@ export default function Configure(props: ConfigureProps) {
     }
 
     const poolSuperToken = network.tokens.find(
-      (token) => token.name === poolConfigParameters.matchingToken,
+      (token) => token.symbol === poolConfigParameters.matchingToken,
     )?.address;
 
     if (!poolSuperToken) {
@@ -328,7 +328,7 @@ export default function Configure(props: ConfigureProps) {
       checker: nftCheckerAddress
         ? (nftCheckerAddress as Address)
         : ZERO_ADDRESS,
-      flowRateScaling: getPoolFlowRateConfig(allocationToken.name)
+      flowRateScaling: getPoolFlowRateConfig(allocationToken.symbol)
         .flowRateScaling,
     };
     const metadata = { protocol: BigInt(1), pointer: metadataCid };
@@ -560,11 +560,11 @@ export default function Configure(props: ConfigureProps) {
                           onClick={() => {
                             setPoolConfigParameters({
                               ...poolConfigParameters,
-                              allocationToken: token.name ?? "N/A",
+                              allocationToken: token.symbol ?? "N/A",
                             });
                           }}
                         >
-                          {token.name}
+                          {token.symbol}
                         </Dropdown.Item>
                       );
                     })}
@@ -594,11 +594,11 @@ export default function Configure(props: ConfigureProps) {
                           onClick={() => {
                             setPoolConfigParameters({
                               ...poolConfigParameters,
-                              matchingToken: token.name ?? "N/A",
+                              matchingToken: token.symbol ?? "N/A",
                             });
                           }}
                         >
-                          {token.name}
+                          {token.symbol}
                         </Dropdown.Item>
                       ))
                     : null}

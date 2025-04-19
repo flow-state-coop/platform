@@ -266,7 +266,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
         type: "ERC20",
         options: {
           address: token.address,
-          symbol: (token.name ? token.name : void 0) as string,
+          symbol: (token.symbol ?? void 0) as string,
           decimals: 18,
           image: token.icon,
         },
@@ -315,7 +315,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
                 <Image src={token.icon} alt="" width={22} height={22} />
               )}
               <Card.Text className="text-decoration-underline">
-                {token?.name ?? truncateStr(council.distributionToken, 14)}
+                {token?.symbol ?? truncateStr(council.distributionToken, 14)}
               </Card.Text>
             </Card.Link>
             <Button
@@ -329,7 +329,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
                     : addToWallet(
                         token ?? {
                           address: council.distributionToken as Address,
-                          name: "",
+                          symbol: "",
                           icon: "",
                         },
                       )

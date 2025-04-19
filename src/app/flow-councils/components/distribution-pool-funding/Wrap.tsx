@@ -46,7 +46,7 @@ export default function Wrap(props: WrapProps) {
 
   const { address } = useAccount();
 
-  const isNativeSuperToken = token.name === "ETHx";
+  const isNativeSuperToken = token.symbol === "ETHx";
 
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
@@ -123,9 +123,9 @@ export default function Wrap(props: WrapProps) {
       <Accordion.Collapse eventKey={Step.WRAP} className="p-3 pt-0">
         <Stack direction="vertical" gap={3}>
           <Card.Text className="small mb-1">
-            {token.name} is a wrapped version of{" "}
+            {token.symbol} is a wrapped version of{" "}
             {underlyingTokenBalance?.symbol ?? "N/A"} that enables streaming
-            value transfer. After you open a stream, your {token.name} balance
+            value transfer. After you open a stream, your {token.symbol} balance
             will update accordingly every second.
           </Card.Text>
           <Stack direction="vertical" className="position-relative">
@@ -190,7 +190,7 @@ export default function Wrap(props: WrapProps) {
                 className="d-flex justify-content-center align-items-center gap-1 w-25 bg-light text-dark py-2 rounded-3"
               >
                 <Image src={token.icon} alt="done" width={18} height={18} />
-                <Card.Text className="p-0">{token.name}</Card.Text>
+                <Card.Text className="p-0">{token.symbol}</Card.Text>
               </Badge>
             </Stack>
             <Card.Text className="w-100 bg-white m-0 px-2 pb-2 rounded-bottom-4 text-end fs-6">
@@ -221,7 +221,7 @@ export default function Wrap(props: WrapProps) {
             <OverlayTrigger
               overlay={
                 <Tooltip id="t-skip-wrap" className="fs-6">
-                  You can skip wrapping if you already have an {token.name}{" "}
+                  You can skip wrapping if you already have an {token.symbol}{" "}
                   balance.
                 </Tooltip>
               }

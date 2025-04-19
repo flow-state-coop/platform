@@ -483,7 +483,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     address,
     flowRateToFlowState,
     supportFlowStateTimeInterval,
-    matchingTokenInfo.name,
+    matchingTokenInfo.symbol,
     poolFlowRateConfig,
     step,
     newFlowRate,

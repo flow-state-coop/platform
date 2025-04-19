@@ -58,11 +58,11 @@ export default function Grantee(props: GranteeProps) {
   });
   const monthlyAllocation = roundWeiAmount(
     allocationFlowRate * BigInt(SECONDS_IN_MONTH),
-    allocationTokenInfo.name.startsWith("ETH") ? 4 : 2,
+    allocationTokenInfo.symbol.startsWith("ETH") ? 4 : 2,
   );
   const monthlyMatching = roundWeiAmount(
     matchingFlowRate * BigInt(SECONDS_IN_MONTH),
-    matchingTokenInfo.name.startsWith("ETH") ? 4 : 2,
+    matchingTokenInfo.symbol.startsWith("ETH") ? 4 : 2,
   );
   const monthlyImpactMatchingEstimate = roundWeiAmount(
     impactMatchingEstimate * BigInt(SECONDS_IN_MONTH),
@@ -156,7 +156,7 @@ export default function Grantee(props: GranteeProps) {
               {monthlyAllocation}
             </Card.Text>
             <Card.Text as="small" className="m-0">
-              {allocationTokenInfo.name}/mo
+              {allocationTokenInfo.symbol}/mo
             </Card.Text>
           </Stack>
           <Stack direction="vertical" className="align-items-center w-33">
@@ -167,7 +167,7 @@ export default function Grantee(props: GranteeProps) {
               {monthlyMatching}
             </Card.Text>
             <Card.Text as="small" className="m-0">
-              {matchingTokenInfo.name}/mo
+              {matchingTokenInfo.symbol}/mo
             </Card.Text>
           </Stack>
         </Stack>
@@ -185,9 +185,9 @@ export default function Grantee(props: GranteeProps) {
               <Card.Text as="small" className="m-0">
                 {roundWeiAmount(
                   userFlowRate * BigInt(SECONDS_IN_MONTH),
-                  allocationTokenInfo.name.startsWith("ETH") ? 4 : 2,
+                  allocationTokenInfo.symbol.startsWith("ETH") ? 4 : 2,
                 )}{" "}
-                {allocationTokenInfo.name}
+                {allocationTokenInfo.symbol}
                 /mo
               </Card.Text>
             </>
@@ -196,7 +196,7 @@ export default function Grantee(props: GranteeProps) {
               <Card.Text as="small" className="m-0 fw-bold">
                 Matching Multiplier
               </Card.Text>
-              {allocationTokenInfo.name === "ETHx" ? (
+              {allocationTokenInfo.symbol === "ETHx" ? (
                 <Card.Text className="m-0 text-center">
                   x
                   {parseFloat(
@@ -212,8 +212,8 @@ export default function Grantee(props: GranteeProps) {
                 </Card.Text>
               ) : (
                 <Card.Text as="small" className="m-0 text-truncate">
-                  1 {allocationTokenInfo.name} = {monthlyImpactMatchingEstimate}{" "}
-                  {matchingTokenInfo.name}
+                  1 {allocationTokenInfo.symbol} ={" "}
+                  {monthlyImpactMatchingEstimate} {matchingTokenInfo.symbol}
                 </Card.Text>
               )}
             </>

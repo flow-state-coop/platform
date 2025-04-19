@@ -191,7 +191,6 @@ export default function Launch(props: LaunchProps) {
         `/flow-councils/launch/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
       );
 
-
       setIsTransactionLoading(false);
       setSuccess(true);
     } catch (err) {
@@ -346,8 +345,8 @@ export default function Launch(props: LaunchProps) {
                       ? customTokenEntry.symbol
                       : customTokenSelection
                         ? "Custom"
-                        : (selectedToken?.name ??
-                          selectedNetwork.tokens[0].name)}
+                        : (selectedToken?.symbol ??
+                          selectedNetwork.tokens[0].symbol)}
                   </Stack>
                 </Dropdown.Toggle>
                 <Dropdown.Menu>
@@ -366,7 +365,7 @@ export default function Launch(props: LaunchProps) {
                           width={16}
                           height={16}
                         />
-                        {token.name}
+                        {token.symbol}
                       </Stack>
                     </Dropdown.Item>
                   ))}

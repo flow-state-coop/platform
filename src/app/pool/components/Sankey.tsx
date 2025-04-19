@@ -112,8 +112,8 @@ export default function Sankey(props: SankeyProps) {
           : grantees.length < 128
             ? 5760
             : 11520;
-  const allocationToken = grantees[0]?.allocationTokenInfo.name;
-  const matchingToken = grantees[0]?.matchingTokenInfo.name;
+  const allocationToken = grantees[0]?.allocationTokenInfo.symbol;
+  const matchingToken = grantees[0]?.matchingTokenInfo.symbol;
   const totalDonationsCount =
     grantees.length > 0
       ? grantees

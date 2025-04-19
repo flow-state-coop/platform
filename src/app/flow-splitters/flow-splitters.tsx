@@ -247,7 +247,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
         type: "ERC20",
         options: {
           address: token.address,
-          symbol: (token.name ? token.name : void 0) as string,
+          symbol: (token.symbol ?? void 0) as string,
           decimals: 18,
           image: token.icon,
         },
@@ -297,7 +297,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
                 <Image src={token.icon} alt="" width={22} height={22} />
               )}
               <Card.Text className="text-decoration-underline">
-                {token?.name ?? truncateStr(pool.token, 14)}
+                {token?.symbol ?? truncateStr(pool.token, 14)}
               </Card.Text>
             </Card.Link>
             <Button
@@ -311,7 +311,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
                     : addToWallet(
                         token ?? {
                           address: pool.token as Address,
-                          name: "",
+                          symbol: "",
                           icon: "",
                         },
                       )

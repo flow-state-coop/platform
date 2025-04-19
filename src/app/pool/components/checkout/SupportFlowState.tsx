@@ -62,11 +62,11 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
   const { address } = useAccount();
   const { isMobile } = useMediaQuery();
 
-  const isNativeSuperToken = token.name === "ETHx";
+  const isNativeSuperToken = token.symbol === "ETHx";
   const isDeletingStream =
     BigInt(flowRateToFlowState) > 0 &&
     BigInt(newFlowRateToFlowState) === BigInt(0);
-  const poolFlowRateConfig = getPoolFlowRateConfig(token.name);
+  const poolFlowRateConfig = getPoolFlowRateConfig(token.symbol);
   const minDonationPerMonth = poolFlowRateConfig.minAllocationPerMonth;
   const suggestedDonation = poolFlowRateConfig.suggestedFlowStateDonation;
 
@@ -183,7 +183,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                 width={20}
                 height={20}
               />
-              {token.name}
+              {token.symbol}
             </Badge>
           </Stack>
           <Stack direction="horizontal" gap={2} className="mt-3">
@@ -329,7 +329,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
           {Number(supportFlowStateAmount) > 0 &&
             Number(supportFlowStateAmount) < minDonationPerMonth && (
               <Alert variant="warning" className="mt-2 py-2">
-                Minimum Donation = {minDonationPerMonth} {token.name}/mo
+                Minimum Donation = {minDonationPerMonth} {token.symbol}/mo
               </Alert>
             )}
           <Stack
