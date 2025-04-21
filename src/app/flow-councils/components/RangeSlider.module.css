@@ -1,5 +1,5 @@
 .rangeSlider {
-    -webkit-appearance: none;
+  -webkit-appearance: none;
   margin: 10px 0;
   width: 100%;
   position: relative;
@@ -16,8 +16,8 @@
 }
 
 .rangeSlider::-webkit-slider-thumb {
-  height: 50px;
-  width: 19px;
+  height: 60px;
+  width: 10px;
   border-radius: 14px;
   /* Color is set via inline style accentColor */
   cursor: col-resize;
@@ -33,8 +33,8 @@
 }
 
 .rangeSlider::-moz-range-thumb {
-  height: 50px;
-  width: 19px;
+  height: 60px;
+  width: 10px;
   border-radius: 14px;
   /* Color is set via inline style accentColor */
   cursor: pointer;
@@ -52,8 +52,8 @@
 }
 
 .rangeSlider::-ms-thumb {
-  height: 50px;
-  width: 19px;
+  height: 60px;
+  width: 10px;
   border-radius: 14px;
   /* Color is set via inline style accentColor */
   cursor: pointer;

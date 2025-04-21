@@ -248,13 +248,7 @@ export default function Index({
       a => a.grantee === granteeAddress
     );
     
-    if (isCurrentlySelected) {
-      // Find and remove the grantee from ballot
-      dispatchNewAllocation({
-        type: "delete",
-        allocation: { grantee: granteeAddress, amount: 0 }
-      });
-    } else {
+    if (!isCurrentlySelected) {
       // Calculate how many votes to allocate to the new grantee
       let newGranteeVotes = 0;
       
@@ -314,11 +308,17 @@ export default function Index({
   // Handle allocation percentage change
   const handleAllocationChange = (granteeAddress: `0x${string}`, newPercentage: number) => {
     if (!newAllocation?.allocation) return;
-    
+    if (newPercentage === 0) {
+      // Find and remove the grantee from ballot
+      dispatchNewAllocation({
+        type: "delete",
+        allocation: { grantee: granteeAddress, amount: 0 }
+      });
+    }
     // Find the grantee being updated
     const granteeIndex = newAllocation.allocation.findIndex(a => a.grantee === granteeAddress);
     if (granteeIndex === -1) return;
-    
+
     // Convert percentage to votes
     const newAmount = percentageToAmount(newPercentage);
     const oldAmount = newAllocation.allocation[granteeIndex].amount;
