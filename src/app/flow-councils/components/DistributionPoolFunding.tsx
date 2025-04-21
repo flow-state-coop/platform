@@ -131,12 +131,19 @@ export default function DistributionPoolFunding(props: {
       refetchInterval: 10000,
     },
   });
+  const isSuperTokenNative = token.symbol === "ETHx";
+  const isSuperTokenPure =
+    !isSuperTokenNative && underlyingTokenAddress === ZERO_ADDRESS;
   const { data: underlyingTokenBalance } = useBalance({
     address,
     chainId: network?.id,
-    token: (underlyingTokenAddress as Address) ?? void 0,
+    token:
+      isSuperTokenNative || !underlyingTokenAddress
+        ? void 0
+        : (underlyingTokenAddress as Address),
     query: {
       refetchInterval: 10000,
+      enabled: !isSuperTokenPure,
     },
   });
   const { data: superfluidQueryRes } = useQuery(
@@ -174,7 +181,9 @@ export default function DistributionPoolFunding(props: {
       : false;
   const hasSuggestedTokenBalance = superTokenBalance > suggestedTokenBalance;
   const hasSufficientTokenBalance =
-    (ethBalance && ethBalance.value + superTokenBalance > BigInt(0)) ||
+    (!isSuperTokenPure &&
+      underlyingTokenBalance &&
+      underlyingTokenBalance.value + superTokenBalance > BigInt(0)) ||
     superTokenBalance > BigInt(0)
       ? true
       : false;
@@ -465,6 +474,7 @@ export default function DistributionPoolFunding(props: {
               setStep={(step) => setStep(step)}
               newFlowRate={newFlowRate}
               wrapAmount={wrapAmount}
+              isSuperTokenPure={isSuperTokenPure}
               superTokenBalance={superTokenBalance}
               minEthBalance={minEthBalance}
               suggestedTokenBalance={suggestedTokenBalance}
@@ -476,15 +486,17 @@ export default function DistributionPoolFunding(props: {
               network={network}
               superTokenInfo={token}
             />
-            <Wrap
-              step={step}
-              setStep={setStep}
-              wrapAmount={wrapAmount}
-              setWrapAmount={setWrapAmount}
-              token={token}
-              superTokenBalance={superTokenBalance}
-              underlyingTokenBalance={underlyingTokenBalance}
-            />
+            {!isSuperTokenPure && (
+              <Wrap
+                step={step}
+                setStep={setStep}
+                wrapAmount={wrapAmount}
+                setWrapAmount={setWrapAmount}
+                token={token}
+                superTokenBalance={superTokenBalance}
+                underlyingTokenBalance={underlyingTokenBalance}
+              />
+            )}
             <Review
               step={step}
               setStep={(step) => setStep(step)}
@@ -507,7 +519,7 @@ export default function DistributionPoolFunding(props: {
               timeInterval={timeInterval}
               supportFlowStateAmount={"0"}
               supportFlowStateTimeInterval={TimeInterval.MONTH}
-              isPureSuperToken={false}
+              isSuperTokenPure={isSuperTokenPure}
               superTokenBalance={superTokenBalance}
               underlyingTokenBalance={underlyingTokenBalance}
             />
