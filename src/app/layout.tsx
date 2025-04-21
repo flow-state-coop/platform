@@ -20,7 +20,7 @@ export const metadata = {
     description:
       "A streaming funding platform & digital cooperative for funding, sustaining, & rewarding impact work. Streaming quadratic funding, streaming quadratic voting, council voting, & more.",
     url: "https://flowstate.network",
-    siteName: "Flow state",
+    siteName: "Flow State",
     images: [
       {
         url: OG_DEFAULT_IMAGE_URL,
