@@ -1,0 +1,62 @@
+.rangeSlider {
+    -webkit-appearance: none;
+  margin: 10px 0;
+  width: 100%;
+  position: relative;
+  z-index: 10;
+}
+
+.rangeSlider:focus {
+  outline: none;
+}
+
+.rangeSlider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 0px;
+}
+
+.rangeSlider::-webkit-slider-thumb {
+  height: 50px;
+  width: 19px;
+  border-radius: 14px;
+  /* Color is set via inline style accentColor */
+  cursor: col-resize;
+  -webkit-appearance: none;
+  position: relative;
+  z-index: 15;
+}
+
+/* Firefox support */
+.rangeSlider::-moz-range-track {
+  width: 100%;
+  height: 0px;
+}
+
+.rangeSlider::-moz-range-thumb {
+  height: 50px;
+  width: 19px;
+  border-radius: 14px;
+  /* Color is set via inline style accentColor */
+  cursor: pointer;
+  position: relative;
+  z-index: 15;
+}
+
+/* Edge and IE support */
+.rangeSlider::-ms-track {
+  width: 100%;
+  height: 0px;
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+}
+
+.rangeSlider::-ms-thumb {
+  height: 50px;
+  width: 19px;
+  border-radius: 14px;
+  /* Color is set via inline style accentColor */
+  cursor: pointer;
+  position: relative;
+  z-index: 15;
+} 

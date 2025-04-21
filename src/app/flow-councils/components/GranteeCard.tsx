@@ -3,6 +3,7 @@ import { formatEther } from "viem";
 import { useAccount } from "wagmi";
 import { createVerifiedFetch } from "@helia/verified-fetch";
 import { useClampText } from "use-clamp-text";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
@@ -14,11 +15,12 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useCouncil from "../hooks/council";
 import { formatNumberWithCharSuffix } from "@/lib/utils";
 import { IPFS_GATEWAYS, SECONDS_IN_MONTH } from "@/lib/constants";
+import styles from './RangeSlider.module.css';
 
 type GranteeProps = {
   id: string;
   name: string;
-  granteeAddress: string;
+  granteeAddress: `0x${string}`;
   description: string;
   logoCid: string;
   bannerCid: string;
@@ -28,6 +30,11 @@ type GranteeProps = {
   units: number;
   network: Network;
   isSelected: boolean;
+  allocationPercentage?: number;
+  onAllocationChange?: (value: number) => void;
+  onClick?: () => void;
+  votingPower?: number;
+  pieColor?: string;
 };
 
 export default function Grantee(props: GranteeProps) {
@@ -44,6 +51,11 @@ export default function Grantee(props: GranteeProps) {
     units,
     network,
     isSelected,
+    allocationPercentage = 0,
+    onAllocationChange,
+    onClick,
+    votingPower = 100,
+    pieColor = "rgb(36, 119, 137)"
   } = props;
 
   const [logoUrl, setLogoUrl] = useState("");
@@ -110,15 +122,53 @@ export default function Grantee(props: GranteeProps) {
     })();
   }, [logoCid, bannerCid]);
 
+  const handleAllocation = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    
+    if (onClick) onClick();
+
+    setShowToast(true);
+  };
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const isInteractive = 
+      target.tagName === 'BUTTON' || 
+      target.closest('button') || 
+      target.tagName === 'A' || 
+      target.closest('a') ||
+      target.tagName === 'INPUT' ||
+      target.closest('input') ||
+      target.classList.contains(styles.rangeSlider) ||
+      target.closest(`.${styles.rangeSlider}`);
+    
+    if (!isInteractive && isCouncilMember) {
+      handleAllocation(e);
+    }
+  };
+
+  // Function to calculate allocation in actual votes based on percentage and voting power
+  const calculateAllocationVotes = (percentage: number): number => {
+    return Math.round((percentage / 100) * votingPower);
+  };
+
+  // Prepare data for the pie chart
+  const pieData = [
+    { name: "Allocation", value: allocationPercentage },
+    { name: "Remaining", value: 100 - allocationPercentage }
+  ];
+
   return (
     <>
       <Card
-        className="rounded-4 overflow-hidden"
+        className="rounded-4 overflow-hidden cursor-pointer"
         style={{
           height: 400,
-          border: isSelected ? "1px solid #247789" : "1px solid #212529",
-          boxShadow: isSelected ? "0px 0px 0px 2px #247789" : "",
+          border: "1px solid #212529",
+          boxShadow: isSelected ? "0 0 12px rgba(36, 119, 137, 0.5)" : "none",
+          transition: "all 0.2s ease-in-out",
         }}
+        onClick={handleCardClick}
       >
         <Card.Img
           variant="top"
@@ -167,86 +217,179 @@ export default function Grantee(props: GranteeProps) {
             </Stack>
           </Stack>
         </Card.Body>
-        <Card.Footer
-          className="d-flex justify-content-between border-0 py-3"
-          style={{ fontSize: "15px", background: "rgb(215, 215, 220)" }}
-        >
-          <Stack
-            direction="horizontal"
-            gap={2}
-            className="justify-content-between w-100"
-          >
-            {isCouncilMember && (
-              <Button
-                variant={hasAllocated ? "secondary" : "primary"}
-                onClick={() => {
-                  if (hasAllocated) {
-                    if (
-                      newAllocation?.allocation &&
-                      newAllocation.allocation.length > 0
-                    ) {
-                      dispatchNewAllocation({ type: "show-ballot" });
-                    } else {
+        {isSelected && (
+          <>
+            <div className="d-flex justify-content-center text-center mt-1">
+              <small className="text-muted">
+                {calculateAllocationVotes(allocationPercentage)} votes ({allocationPercentage}%)
+              </small>
+            </div>
+            <div className="position-relative px-3" style={{ marginBottom: "-8px", marginTop: "-21px", zIndex: 5 }}>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={allocationPercentage}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  const newPercentage = Number(e.target.value);
+                  if (onAllocationChange) {
+                    onAllocationChange(newPercentage);
+                  }
+                  
+                  // Also update the ballot allocation
+                  if (newAllocation?.allocation) {
+                    const granteeAllocation = newAllocation.allocation.find(
+                      allocation => allocation.grantee === granteeAddress
+                    );
+                    
+                    if (granteeAllocation) {
+                      // Convert percentage to absolute voting amount
+                      const votingAmount = calculateAllocationVotes(newPercentage);
+                      
+                      // Check if updating would exceed total voting power
+                      const otherAllocations = newAllocation.allocation.filter(
+                        allocation => allocation.grantee !== granteeAddress
+                      );
+                      
+                      const totalOtherVotes = otherAllocations.reduce(
+                        (sum, allocation) => sum + allocation.amount, 
+                        0
+                      );
+                      
+                      // If the new allocation would exceed available votes, cap it
+                      const maxAllowedVotes = votingPower - totalOtherVotes;
+                      const validVotingAmount = Math.min(votingAmount, maxAllowedVotes);
+                      
+                      // If the amount was capped, also update the UI percentage
+                      if (validVotingAmount !== votingAmount && onAllocationChange) {
+                        const validPercentage = (validVotingAmount / votingPower) * 100;
+                        onAllocationChange(validPercentage);
+                      }
+                      
                       dispatchNewAllocation({
-                        type: "add",
-                        currentAllocation,
+                        type: "update",
+                        allocation: { grantee: granteeAddress, amount: validVotingAmount }
                       });
                     }
-                  } else {
-                    dispatchNewAllocation({
-                      type: "add",
-                      allocation: { grantee: granteeAddress, amount: 0 },
-                      currentAllocation,
-                    });
-                    setShowToast(true);
                   }
                 }}
-                className="d-flex justify-content-center align-items-center gap-1 w-33 px-5"
-              >
-                {hasAllocated ? (
+                className={styles.rangeSlider}
+                style={{ 
+                  cursor: "pointer",
+                  accentColor: pieColor
+                }}
+                onClick={(e) => e.stopPropagation()}
+                aria-label="Allocation percentage"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={allocationPercentage}
+                />
+            </div>
+          </>
+        )}
+        <Card.Footer
+          className="d-flex justify-content-between border-0 py-3"
+          style={{ 
+            fontSize: "15px", 
+            background: isSelected 
+              ? `linear-gradient(to right, ${pieColor} 0%, ${pieColor} ${allocationPercentage}%, rgb(65, 198, 223) ${allocationPercentage}%, rgb(65, 198, 223) 100%)` 
+              : "rgb(215, 215, 220)",
+            color: isSelected ? "white" : "inherit",
+            transition: "background 0.3s ease"
+          }}
+          onClick={(e) => handleAllocation(e)}
+        >
+          {isSelected ? (
+            <Stack
+              direction="horizontal"
+              gap={2}
+              className="justify-content-between w-100"
+            >
+              <div className="d-flex align-items-center">
+                <span className="fw-bold me-3">{allocationPercentage.toFixed(1)}%</span>
+                <div style={{ width: '32px', height: '32px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={0}
+                        outerRadius={16}
+                        fill="#8884d8"
+                        paddingAngle={0}
+                        dataKey="value"
+                        startAngle={90}
+                        endAngle={-270}
+                      >
+                        <Cell key="cell-0" fill={pieColor} />
+                        <Cell key="cell-1" fill="#e0e0e0" />
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              <span>Selected</span>
+            </Stack>
+          ) : (
+            <Stack
+              direction="horizontal"
+              gap={2}
+              className="justify-content-between w-100"
+            >
+              {isCouncilMember && (
+                <Button
+                  variant={hasAllocated ? "secondary" : "primary"}
+                  onClick={handleAllocation}
+                  className="d-flex justify-content-center align-items-center gap-1 w-33 px-5"
+                >
+                  {hasAllocated ? (
+                    <Image
+                      src="/success.svg"
+                      alt="Done"
+                      width={20}
+                      height={20}
+                      style={{
+                        filter:
+                          "invert(100%) sepia(100%) saturate(0%) hue-rotate(160deg) brightness(103%) contrast(103%)",
+                      }}
+                    />
+                  ) : (
+                    <Image
+                      src="/add.svg"
+                      alt="Add"
+                      width={16}
+                      height={16}
+                      style={{
+                        filter:
+                          "invert(100%) sepia(100%) saturate(2%) hue-rotate(281deg) brightness(107%) contrast(101%)",
+                      }}
+                    />
+                  )}
                   <Image
-                    src="/success.svg"
-                    alt="Done"
-                    width={20}
-                    height={20}
+                    src="/ballot.svg"
+                    alt="Cart"
+                    width={22}
+                    height={22}
                     style={{
                       filter:
                         "invert(100%) sepia(100%) saturate(0%) hue-rotate(160deg) brightness(103%) contrast(103%)",
                     }}
                   />
-                ) : (
-                  <Image
-                    src="/add.svg"
-                    alt="Add"
-                    width={16}
-                    height={16}
-                    style={{
-                      filter:
-                        "invert(100%) sepia(100%) saturate(2%) hue-rotate(281deg) brightness(107%) contrast(101%)",
-                    }}
-                  />
-                )}
-                <Image
-                  src="/ballot.svg"
-                  alt="Cart"
-                  width={22}
-                  height={22}
-                  style={{
-                    filter:
-                      "invert(100%) sepia(100%) saturate(0%) hue-rotate(160deg) brightness(103%) contrast(103%)",
-                  }}
-                />
+                </Button>
+              )}
+              <Button
+                variant="link"
+                href={`https://flowstate.network/projects/${id}/?chainId=${network.id}`}
+                target="_blank"
+                className="d-flex justify-content-center ms-auto p-0"
+              >
+                <Image src="/open-new.svg" alt="Profile" width={28} height={28} />
               </Button>
-            )}
-            <Button
-              variant="link"
-              href={`https://flowstate.network/projects/${id}/?chainId=${network.id}`}
-              target="_blank"
-              className="d-flex justify-content-center ms-auto p-0"
-            >
-              <Image src="/open-new.svg" alt="Profile" width={28} height={28} />
-            </Button>
-          </Stack>
+            </Stack>
+          )}
         </Card.Footer>
       </Card>
       <Toast

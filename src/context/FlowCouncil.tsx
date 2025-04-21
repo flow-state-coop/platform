@@ -27,7 +27,7 @@ type Council = {
   pool: string;
 };
 
-type Allocation = { grantee: string; amount: number };
+type Allocation = { grantee: `0x${string}`; amount: number };
 
 type FlowStateProfile = { id: string; metadata: ProjectMetadata };
 
