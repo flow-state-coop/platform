@@ -46,7 +46,7 @@ export type ReviewProps = {
   supportFlowStateTimeInterval: TimeInterval;
   liquidationEstimate: number | null;
   token: Token;
-  isPureSuperToken: boolean;
+  isSuperTokenPure: boolean;
   superTokenBalance: bigint;
   underlyingTokenBalance?: {
     value: bigint;
@@ -96,7 +96,7 @@ export default function Review(props: ReviewProps) {
     amountPerTimeInterval,
     timeInterval,
     token,
-    isPureSuperToken,
+    isSuperTokenPure,
     superTokenBalance,
     underlyingTokenBalance,
   } = props;
@@ -177,7 +177,7 @@ export default function Review(props: ReviewProps) {
               className="m-auto text-light"
               style={{ fontFamily: "Helvetica" }}
             >
-              {isPureSuperToken ? 3 : 4}
+              {isSuperTokenPure ? 3 : 4}
             </Card.Text>
           )}
         </Badge>

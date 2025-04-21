@@ -22,6 +22,7 @@ export type TopUpProps = {
   setStep: (step: Step) => void;
   newFlowRate: string;
   wrapAmount: string;
+  isSuperTokenPure: boolean;
   superTokenBalance: bigint;
   minEthBalance: number;
   suggestedTokenBalance: bigint;
@@ -40,6 +41,7 @@ export default function TopUp(props: TopUpProps) {
     setStep,
     newFlowRate,
     wrapAmount,
+    isSuperTokenPure,
     superTokenBalance,
     suggestedTokenBalance,
     minEthBalance,
@@ -296,13 +298,15 @@ export default function TopUp(props: TopUpProps) {
               </Stack>
             </>
           )}
-          <Button
-            variant="transparent"
-            className="mt-4 text-info"
-            onClick={() => setStep(Step.WRAP)}
-          >
-            Skip
-          </Button>
+          {(!isSuperTokenPure || hasSufficientTokenBalance) && (
+            <Button
+              variant="transparent"
+              className="mt-4 text-info"
+              onClick={() => setStep(Step.WRAP)}
+            >
+              Skip
+            </Button>
+          )}
           <Button
             className="w-50 mt-4 py-1 rounded-3 float-end text-light"
             disabled={!hasSufficientEthBalance || !hasSufficientTokenBalance}
