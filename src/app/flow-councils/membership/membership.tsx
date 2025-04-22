@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Address, isAddress, keccak256, encodePacked } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "@wagmi/core";
@@ -66,6 +67,7 @@ export default function Membership(props: MembershipProps) {
   ]);
   const [membersToRemove, setMembersToRemove] = useState<MemberEntry[]>([]);
 
+  const router = useRouter();
   const publicClient = usePublicClient();
   const wagmiConfig = useConfig();
   const { isMobile } = useMediaQuery();
@@ -247,6 +249,10 @@ export default function Membership(props: MembershipProps) {
 
       setTransactionSuccess(true);
       setIsTransactionLoading(false);
+
+      router.push(
+        `/flow-councils/review/?chainId=${chainId}&councilId=${councilId}`,
+      );
     } catch (err) {
       console.error(err);
 
@@ -280,14 +286,10 @@ export default function Membership(props: MembershipProps) {
 
   return (
     <>
-      {!isMobile && (
-        <Stack direction="vertical" className="w-25 flex-grow-1">
-          <Sidebar />
-        </Stack>
-      )}
+      <Sidebar />
       <Stack
         direction="vertical"
-        className={!isMobile ? "w-75 px-5" : "w-100 px-3"}
+        className={!isMobile ? "w-75 px-5" : "w-100 px-4"}
       >
         <Card className="bg-light rounded-4 border-0 mt-4 p-4">
           <Card.Header className="bg-transparent border-0 rounded-4 p-0">

@@ -188,7 +188,7 @@ export default function Launch(props: LaunchProps) {
       await refetchCouncilQuery({ variables: councilId });
 
       router.push(
-        `/flow-councils/launch/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
+        `/flow-councils/membership/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
       );
 
       setIsTransactionLoading(false);
@@ -217,14 +217,10 @@ export default function Launch(props: LaunchProps) {
 
   return (
     <>
-      {!isMobile && (
-        <Stack direction="vertical" className="w-25 flex-grow-1">
-          <Sidebar />
-        </Stack>
-      )}
+      <Sidebar />
       <Stack
         direction="vertical"
-        className={!isMobile ? "w-75 px-5" : "w-100 px-3"}
+        className={!isMobile ? "w-75 px-5" : "w-100 px-4"}
       >
         <Card className="bg-light rounded-4 border-0 mt-4 p-4">
           <Card.Header className="bg-transparent border-0 rounded-4 p-0 fs-4">
@@ -247,7 +243,7 @@ export default function Launch(props: LaunchProps) {
             <Form.Control
               as="textarea"
               rows={3}
-              placeholder="Descriptions (Supports Markdown)"
+              placeholder="Description (Supports Markdown)"
               value={councilMetadata.description}
               disabled={!!councilId}
               className="mt-3"

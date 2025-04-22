@@ -218,11 +218,7 @@ export default function GranteeTools(props: ToolsProps) {
 
   return (
     <>
-      {!isMobile && (
-        <Stack direction="vertical" className="w-25 flex-grow-1">
-          <Sidebar />
-        </Stack>
-      )}
+      <Sidebar />
       <Stack direction="vertical" className={!isMobile ? "w-75" : "w-100"}>
         <Stack direction="vertical" className="px-5 py-4 mb-5">
           {queryRes && queryRes.pool === null ? (
@@ -303,7 +299,7 @@ export default function GranteeTools(props: ToolsProps) {
                   href={`${network.superfluidExplorer}/pools/${gdaPoolAddress}`}
                   target="_blank"
                   className="text-light bg-secondary"
-                  style={{ width: 256 }}
+                  style={{ width: isMobile ? "100%" : 256 }}
                 >
                   View Pool Stats
                 </Button>
@@ -312,7 +308,7 @@ export default function GranteeTools(props: ToolsProps) {
                   href={network.superfluidDashboard}
                   target="_blank"
                   className="text-light"
-                  style={{ width: 256 }}
+                  style={{ width: isMobile ? "100%" : 256 }}
                 >
                   Superfluid Wallet Tools
                 </Button>
@@ -328,7 +324,7 @@ export default function GranteeTools(props: ToolsProps) {
                 disabled={!selectedProject || isConnectedToPool}
                 onClick={handlePoolConnection}
                 className="text-light"
-                style={{ width: 256 }}
+                style={{ width: isMobile ? "100%" : 256 }}
               >
                 {isTransactionConfirming ? (
                   <Spinner size="sm" className="m-auto" />

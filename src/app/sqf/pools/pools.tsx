@@ -101,11 +101,7 @@ export default function Pools(props: PoolsProps) {
 
   return (
     <>
-      {!isMobile && (
-        <Stack direction="vertical" className="w-25 flex-grow-1">
-          <Sidebar />
-        </Stack>
-      )}
+      <Sidebar />
       <Stack direction="vertical" className={!isMobile ? "w-75" : "w-100"}>
         <Stack direction="vertical" gap={4} className="px-5 py-4 mb-5">
           {!loading && chainId && profileId && (
@@ -132,7 +128,11 @@ export default function Pools(props: PoolsProps) {
               or return to <Link href="/sqf">Program Selection</Link>
             </Card.Text>
           ) : (
-            <Stack direction="horizontal" gap={5} className="flex-wrap">
+            <Stack
+              direction="horizontal"
+              gap={5}
+              className="flex-wrap justify-content-center justify-content-sm-start"
+            >
               {queryRes?.pools.map(
                 (
                   pool: {

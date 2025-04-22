@@ -7,6 +7,9 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useSession } from "next-auth/react";
 import { gql, useQuery } from "@apollo/client";
 import { createVerifiedFetch } from "@helia/verified-fetch";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehyperExternalLinks from "rehype-external-links";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
@@ -380,7 +383,19 @@ export default function Grantee(props: GranteeProps) {
           />
         </Button>
       </Stack>
-      <h2 className="mt-1 fs-5 text-info">{councilMetadata.description}</h2>
+      <Markdown
+        className="mt-1 fs-5 text-info"
+        skipHtml={true}
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
+        components={{
+          table: (props) => (
+            <table className="table table-striped" {...props} />
+          ),
+        }}
+      >
+        {councilMetadata.description}
+      </Markdown>
       <Card.Text className="mt-4 fs-4">
         Select or create a project to apply.
       </Card.Text>
@@ -456,29 +471,36 @@ export default function Grantee(props: GranteeProps) {
           </Card.Text>
         </Stack>
         <Button
+          variant="secondary"
           className="py-2 text-light"
-          disabled={selectedProjectIndex === null || !hasAgreedToCodeOfConduct}
+          disabled={!!session && session.address === address}
           onClick={() => {
             !address && openConnectModal
               ? openConnectModal()
               : connectedChain?.id !== chainId
                 ? switchChain({ chainId })
-                : !session || session.address !== address
-                  ? handleSignIn(csfrToken)
-                  : handleSubmit();
+                : handleSignIn(csfrToken);
           }}
         >
-          {isSubmitting ? (
-            <Spinner size="sm" className="m-auto" />
-          ) : selectedProjectIndex === null || !hasAgreedToCodeOfConduct ? (
-            "Apply"
-          ) : !address ? (
-            "Connect Wallet"
-          ) : !session || session.address !== address ? (
-            "Sign In With Ethereum"
-          ) : (
-            "Apply"
-          )}
+          Sign In With Ethereum
+        </Button>
+        <Button
+          className="py-2 text-light"
+          disabled={
+            !session ||
+            session.address !== address ||
+            selectedProjectIndex === null ||
+            !hasAgreedToCodeOfConduct
+          }
+          onClick={() => {
+            !address && openConnectModal
+              ? openConnectModal()
+              : connectedChain?.id !== chainId
+                ? switchChain({ chainId })
+                : handleSubmit();
+          }}
+        >
+          {isSubmitting ? <Spinner size="sm" className="m-auto" /> : "Apply"}
         </Button>
         <Toast
           show={success}
