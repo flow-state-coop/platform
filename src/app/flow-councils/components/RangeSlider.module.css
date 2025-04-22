@@ -1,9 +1,11 @@
 .rangeSlider {
   -webkit-appearance: none;
   margin: 10px 0;
-  width: 100%;
-  position: relative;
+  width: 120%;
+  transform: translateX(-10%) !important;
   z-index: 10;
+  touch-action: none; /* Prevent browser handling of touch events */
+  transform: translateZ(0); /* Force hardware acceleration */
 }
 
 .rangeSlider:focus {
@@ -13,39 +15,44 @@
 .rangeSlider::-webkit-slider-runnable-track {
   width: 100%;
   height: 0px;
+  cursor: col-resize;
 }
 
 .rangeSlider::-webkit-slider-thumb {
   height: 60px;
-  width: 10px;
+  width: 26px;
   border-radius: 14px;
-  /* Color is set via inline style accentColor */
+  background: transparent;
   cursor: col-resize;
   -webkit-appearance: none;
-  position: relative;
   z-index: 15;
+  transform: translateZ(0); /* Force hardware acceleration */
+  /*margin-top: -25px; /* Vertical centering 
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);  Add subtle shadow for better visibility */
 }
 
 /* Firefox support */
 .rangeSlider::-moz-range-track {
   width: 100%;
   height: 0px;
+  cursor: col-resize;
 }
 
 .rangeSlider::-moz-range-thumb {
   height: 60px;
-  width: 10px;
+  width: 26px;
   border-radius: 14px;
-  /* Color is set via inline style accentColor */
-  cursor: pointer;
-  position: relative;
-  z-index: 15;
+  background: #ffffff;
+  cursor: col-resize;
+  border: none; /* Remove Firefox default border */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-/* Edge and IE support */
+/* Edge support */
 .rangeSlider::-ms-track {
   width: 100%;
   height: 0px;
+  cursor: col-resize;
   background: transparent;
   border-color: transparent;
   color: transparent;
@@ -53,10 +60,9 @@
 
 .rangeSlider::-ms-thumb {
   height: 60px;
-  width: 10px;
+  width: 26px;
   border-radius: 14px;
-  /* Color is set via inline style accentColor */
-  cursor: pointer;
-  position: relative;
-  z-index: 15;
-} 
+  background: #ffffff;
+  cursor: col-resize;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}

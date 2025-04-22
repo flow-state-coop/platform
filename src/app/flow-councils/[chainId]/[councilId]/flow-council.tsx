@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Address } from "viem";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, Sector } from "recharts";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Spinner from "react-bootstrap/Spinner";
@@ -258,8 +258,8 @@ export default function Index({
       );
       
       if (!newAllocation?.allocation || newAllocation.allocation.length === 0) {
-        // If this is the first grantee, give all votes
-        newGranteeVotes = votingPower;
+        // If this is the first grantee, give half the votes
+        newGranteeVotes = votingPower /2;
       } else {
         // Take votes evenly from other grantees
         const totalAllocated = newAllocation.allocation.reduce(
@@ -268,7 +268,7 @@ export default function Index({
         
         // If less than total voting power is allocated, use the remainder
         if (totalAllocated < votingPower) {
-          newGranteeVotes = votingPower - totalAllocated;
+            newGranteeVotes = votingPower - totalAllocated;
         } else {
           // Take an equal percentage from each existing allocation
           const votesTaken = Math.floor(totalAllocated / (newAllocation.allocation.length + 1));
@@ -368,44 +368,109 @@ export default function Index({
     });
   };
   
-  // Prepare data for pie chart in VOTE button
-  const prepareVoteButtonPieData = () => {
-    if (!newAllocation?.allocation || newAllocation.allocation.length === 0) {
-      return [{ name: "Unallocated", value: votingPower, color: "#e0e0e0" }];
-    }
-    
-    // Filter out allocations with 0 votes
-    const validAllocations = newAllocation.allocation.filter(allocation => allocation.amount > 0);
-    
-    // Calculate total allocated votes
-    const totalAllocated = validAllocations.reduce((sum, allocation) => sum + allocation.amount, 0);
-    
-    // Create pie data for valid allocations
-    const allocatedData = validAllocations.map(allocation => {
-      const grantee = grantees.find(g => g.address === allocation.grantee);
-      return {
-        name: grantee ? grantee.metadata.title : allocation.grantee.substring(0, 6),
-        value: allocation.amount,
-        color: granteeColors[allocation.grantee] || "#1f77b4"
-      };
-    });
-    
-    // Add unallocated segment if there are any unallocated votes
-    const unallocatedVotes = votingPower - totalAllocated;
-    if (unallocatedVotes > 0) {
-      allocatedData.push({
-        name: "Unallocated",
-        value: unallocatedVotes,
-        color: "#e0e0e0"
-      });
-    }
-    
-    return allocatedData;
-  };
-  
   // Modified to open the ballot sidebar
   const handleVote = () => {
     dispatchNewAllocation({ type: "show-ballot" });
+  };
+
+  // Create a consistent pie chart data structure that all charts will use
+  // This ensures wedges appear in exactly the same positions in all charts
+  const createConsistentPieData = useCallback(() => {
+    if (!grantees.length) {
+      return [];
+    }
+
+    // First, calculate total allocated votes
+    const allocatedVotes = newAllocation?.allocation 
+      ? newAllocation.allocation.reduce((sum, a) => sum + a.amount, 0)
+      : 0;
+    
+    // Calculate unallocated votes
+    const unallocatedVotes = votingPower - allocatedVotes;
+
+    // Start with all grantees, even those without allocations
+    const data = grantees.map(grantee => {
+      const allocation = newAllocation?.allocation?.find(a => a.grantee === grantee.address);
+      
+      return {
+        id: grantee.address,
+        name: grantee.metadata.title,
+        // If this grantee has an allocation, use it; otherwise 0
+        value: allocation ? allocation.amount : 0,
+        // If this grantee has an allocation, use their color; otherwise gray
+        color: allocation && allocation.amount > 0 ? granteeColors[grantee.address] : "#e0e0e0"
+      };
+    });
+    
+    // Also include any allocations for grantees that aren't in the visible list
+    // (this can happen when filtering or pagination)
+    if (newAllocation?.allocation) {
+      newAllocation.allocation.forEach(allocation => {
+        // If we already have this grantee in our data, skip it
+        if (data.some(item => item.id === allocation.grantee)) {
+          return;
+        }
+        
+        // Add this allocation to our data
+        data.push({
+          id: allocation.grantee,
+          name: allocation.grantee.substring(0, 6), // Use address as name if we don't have metadata
+          value: allocation.amount,
+          color: granteeColors[allocation.grantee] || "#1f77b4"
+        });
+      });
+    }
+    
+    // Always add an entry for unallocated votes if there are any
+    if (unallocatedVotes > 0) {
+      data.push({
+        id: "0xUnallocated",
+        name: "Unallocated",
+        value: unallocatedVotes,
+        color: "#e0e0e0" // Grey color for unallocated votes
+      });
+    }
+    
+    // Filter out any entries with zero value to prevent empty wedges
+    // EXCEPT keep unallocated votes even if they're zero (for consistency)
+    return data.filter(entry => entry.value > 0 || entry.id === "0xUnallocated");
+  }, [grantees, newAllocation?.allocation, granteeColors, votingPower]);
+
+  // Shared pie data that will be used by all charts
+  const [sharedPieData, setSharedPieData] = useState<any[]>([]);
+  
+  // Update the shared pie data whenever relevant data changes
+  useEffect(() => {
+    setSharedPieData(createConsistentPieData());
+  }, [createConsistentPieData]);
+  
+  const renderCustomPieChart = () => {
+    if (!sharedPieData.length) return null;
+    
+    return (
+      <Pie
+        data={sharedPieData}
+        cx="50%"
+        cy="50%"
+        innerRadius={0}
+        outerRadius={28}
+        dataKey="value"
+        nameKey="name"
+        activeShape={(props: any) => <Sector {...props} />}
+        labelLine={false}
+        isAnimationActive={false}
+        startAngle={-90}
+        endAngle={270}
+        blendStroke={true}
+      >
+        {sharedPieData.map((entry, index) => (
+          <Cell
+            key={`cell-${index}`}
+            fill={entry.color}
+          />
+        ))}
+      </Pie>
+    );
   };
 
   return (
@@ -513,6 +578,7 @@ export default function Index({
                   onClick={() => handleGranteeSelection(grantee.address)}
                   votingPower={votingPower}
                   pieColor={granteeColors[grantee.address]}
+                  sharedPieData={sharedPieData}
                 />
               );
             })}
@@ -534,7 +600,7 @@ export default function Index({
              style={{ 
                bottom: '2rem', 
                right: '2rem', 
-               zIndex: 1050 
+               zIndex: 3 // just enought to be above the pie charts, but below the drawer 
              }}>
           <button 
             className="btn btn-primary d-flex align-items-center py-3 px-4 shadow-lg rounded-pill"
@@ -566,31 +632,24 @@ export default function Index({
                       fontSize: '12px'
                     }}
                   />
-                  <Pie
-                    data={prepareVoteButtonPieData()}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={0}
-                    outerRadius={28}
-                    fill="#8884d8"
-                    paddingAngle={1}
-                    dataKey="value"
-                  >
-                    {prepareVoteButtonPieData().map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={entry.color}
-                        strokeWidth={entry.name === "Unallocated" ? 1 : 0}
-                        stroke={entry.name === "Unallocated" ? "#cccccc" : "none"}
-                      />
-                    ))}
-                  </Pie>
+                  {renderCustomPieChart()}
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div>
+            <div style={{ width: '14.5em' }}>
               <span className="fs-4 fw-semibold d-block">VOTE</span>
-              <small className="fs-6 d-block text-white-50">{newAllocation.allocation.filter(a => a.amount > 0).length} projects</small>
+              <small className="fs-6 d-block text-white-50">
+                {sharedPieData.filter(entry => (entry.value > 0 && entry.id !== "0xUnallocated")).length} projects
+                {(() => {
+                  // Calculate unallocated votes
+                  const unallocated = sharedPieData.find(entry => entry.id === "0xUnallocated")?.value || 0;
+                  if (unallocated > 0) {
+                    return ` (${unallocated} votes unallocated)`;
+                  } else {
+                    return ' (all votes allocated)';
+                  }
+                })()}
+              </small>
             </div>
           </button>
         </div>

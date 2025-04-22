@@ -35,6 +35,7 @@ type GranteeProps = {
   onClick?: () => void;
   votingPower?: number;
   pieColor?: string;
+  sharedPieData?: any[];
 };
 
 export default function Grantee(props: GranteeProps) {
@@ -55,7 +56,8 @@ export default function Grantee(props: GranteeProps) {
     onAllocationChange,
     onClick,
     votingPower = 100,
-    pieColor = "rgb(36, 119, 137)"
+    pieColor = "rgb(36, 119, 137)",
+    sharedPieData = []
   } = props;
 
   const [logoUrl, setLogoUrl] = useState("");
@@ -152,11 +154,85 @@ export default function Grantee(props: GranteeProps) {
     return Math.round((percentage / 100) * votingPower);
   };
 
-  // Prepare data for the pie chart
-  const pieData = [
-    { name: "Allocation", value: allocationPercentage },
-    { name: "Remaining", value: 100 - allocationPercentage }
-  ];
+  // Render the pie chart with the shared data structure
+  const renderGranteePieChart = () => {
+    // If no shared data or the grantee isn't selected, don't show the chart
+    if (!isSelected || !sharedPieData || sharedPieData.length === 0) {
+      return null;
+    }
+    
+    // Create a modified version of the shared data that highlights only this grantee
+    const cardPieData = sharedPieData.map(entry => ({
+      ...entry,
+      // Only use the grantee's color for this grantee, make all others grey
+      color: entry.id === granteeAddress ? pieColor : "#e0e0e0"
+    }));
+    
+    // Make sure we have at least some data to display
+    if (cardPieData.length === 0) {
+      // If no data, show a placeholder grey circle
+      return (
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={[{ name: "Unallocated", value: 100, color: "#e0e0e0" }]}
+              cx="50%"
+              cy="50%"
+              innerRadius={0}
+              outerRadius={16}
+              fill="#e0e0e0"
+              dataKey="value"
+              startAngle={-90}
+              endAngle={270}
+            >
+              <Cell fill="#e0e0e0" />
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+      );
+    }
+    
+    // Check if we have a "remaining" wedge; if not, add one for unallocated votes
+    const hasRemainingWedge = cardPieData.some(entry => entry.id === "remaining");
+    const totalAllocated = cardPieData.reduce((sum, entry) => 
+      sum + (entry.id !== "remaining" ? entry.value : 0), 0);
+    
+    // If there are unallocated votes but no remaining wedge, add one
+    if (!hasRemainingWedge && totalAllocated < votingPower) {
+      cardPieData.push({
+        id: "remaining",
+        name: "Unallocated",
+        value: votingPower - totalAllocated,
+        color: "#e0e0e0"
+      });
+    }
+    
+    return (
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={cardPieData}
+            cx="50%"
+            cy="50%"
+            innerRadius={0}
+            outerRadius={16}
+            fill="#8884d8"
+            paddingAngle={0}
+            dataKey="value"
+            startAngle={-90}
+            endAngle={270}
+          >
+            {cardPieData.map((entry, index) => (
+              <Cell 
+                key={`cell-${index}`} 
+                fill={entry.color}
+              />
+            ))}
+          </Pie>
+        </PieChart>
+      </ResponsiveContainer>
+    );
+  };
 
   return (
     <>
@@ -224,7 +300,23 @@ export default function Grantee(props: GranteeProps) {
                 {calculateAllocationVotes(allocationPercentage)} votes ({allocationPercentage}%)
               </small>
             </div>
-            <div className="position-relative px-3" style={{ marginBottom: "-8px", marginTop: "-21px", zIndex: 5 }}>
+            <div className="position-relative px-3" 
+                 style={{ 
+                   marginBottom: "-8px", 
+                   marginTop: "-21px", 
+                   zIndex: 5,
+                   touchAction: "none" // Prevent scroll/zoom on the container level
+                 }}
+                 onTouchStart={(e) => {
+                   // Prevent parent card from receiving touch events
+                   e.stopPropagation();
+                 }}
+                 onTouchMove={(e) => {
+                   e.stopPropagation();
+                 }}
+                 onTouchEnd={(e) => {
+                   e.stopPropagation();
+                 }}>
               <input
                 type="range"
                 min="0"
@@ -281,6 +373,36 @@ export default function Grantee(props: GranteeProps) {
                   accentColor: pieColor
                 }}
                 onClick={(e) => e.stopPropagation()}
+                // Add touch event handlers to prevent screen scrolling
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  // Prevent page scrolling when touching slider
+                  document.body.style.overflow = 'hidden';
+                  // Prevent default behavior which causes scrolling
+                  e.preventDefault();
+                }}
+                onTouchMove={(e) => {
+                  // Prevent the default scrolling behavior
+                  e.stopPropagation();
+                  e.preventDefault();
+                  // Get touch position relative to slider
+                  const touch = e.touches[0];
+                  const slider = e.currentTarget;
+                  const rect = slider.getBoundingClientRect();
+                  const position = (touch.clientX - rect.left) / rect.width;
+                  // Calculate new value (clamped between 0-100)
+                  const newValue = Math.max(0, Math.min(100, Math.round(position * 100)));
+                  // Update slider value and trigger onChange
+                  slider.value = newValue.toString();
+                  // Trigger a change event to update the UI and state
+                  const changeEvent = new Event('change', { bubbles: true });
+                  slider.dispatchEvent(changeEvent);
+                }}
+                onTouchEnd={(e) => {
+                  // Re-enable scrolling when touch is complete
+                  document.body.style.overflow = '';
+                  e.stopPropagation();
+                }}
                 aria-label="Allocation percentage"
                 aria-valuemin={0}
                 aria-valuemax={100}
@@ -310,25 +432,7 @@ export default function Grantee(props: GranteeProps) {
               <div className="d-flex align-items-center">
                 <span className="fw-bold me-3">{allocationPercentage.toFixed(1)}%</span>
                 <div style={{ width: '32px', height: '32px' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={0}
-                        outerRadius={16}
-                        fill="#8884d8"
-                        paddingAngle={0}
-                        dataKey="value"
-                        startAngle={90}
-                        endAngle={-270}
-                      >
-                        <Cell key="cell-0" fill={pieColor} />
-                        <Cell key="cell-1" fill="#e0e0e0" />
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {renderGranteePieChart()}
                 </div>
               </div>
               <span>Selected</span>

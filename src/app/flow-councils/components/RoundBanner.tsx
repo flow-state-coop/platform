@@ -63,7 +63,7 @@ export default function PoolInfo(props: PoolInfoProps) {
       style={{ maxWidth: "100vw" }}
     >
       <Stack direction="vertical" className="pb-4">
-        <Stack direction="horizontal" className="justify-content-between">
+        <Stack direction="horizontal" className="justify-content-between align-items-center mb-2">
           <Stack direction="horizontal" gap={1}>
             <Card.Text className="m-0 fs-4 fw-bold">{name}</Card.Text>
             <InfoTooltip
@@ -78,6 +78,18 @@ export default function PoolInfo(props: PoolInfoProps) {
               }
             />
           </Stack>
+          
+          {(!isMobile || showFullInfo) && (
+            <Button
+              variant="secondary"
+              className="p-2 text-light"
+              style={{ width: "auto" }}
+              onClick={showDistributionPoolFunding}
+            >
+              Grow the Pie
+            </Button>
+          )}
+          
           {isMobile && !showFullInfo && (
             <Button
               variant="transparent"
@@ -134,14 +146,6 @@ export default function PoolInfo(props: PoolInfoProps) {
               gap={4}
               className="justify-content-end w-100 mt-3"
             >
-              <Button
-                variant="secondary"
-                className="p-2 text-light fs-5"
-                style={{ width: isMobile ? "100%" : 180 }}
-                onClick={showDistributionPoolFunding}
-              >
-                Grow the Pie
-              </Button>
               {grantee && (
                 <Button
                   variant="link"
