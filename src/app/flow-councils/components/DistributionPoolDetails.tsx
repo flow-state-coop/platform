@@ -106,7 +106,7 @@ export default function DistributionPoolDetails(
                 <Card.Text as="span" className="fs-1">
                   {Intl.NumberFormat("en", {
                     notation:
-                      monthlyStreamToReceiver > 1000 ? "compact" : void 0,
+                      monthlyStreamToReceiver >= 1000 ? "compact" : void 0,
                     maximumFractionDigits:
                       monthlyStreamToReceiver < 1
                         ? 4
@@ -132,7 +132,7 @@ export default function DistributionPoolDetails(
           <Card.Text className="m-0 pe-0">You</Card.Text>
           <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
             {Intl.NumberFormat("en", {
-              notation: monthlyStreamToReceiver > 1000 ? "compact" : void 0,
+              notation: monthlyStreamToReceiver >= 1000 ? "compact" : void 0,
               maximumFractionDigits:
                 monthlyStreamToReceiver < 1
                   ? 4
@@ -149,7 +149,7 @@ export default function DistributionPoolDetails(
           <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
             {Intl.NumberFormat("en", {
               notation:
-                totalMonthlyStream - monthlyStreamToReceiver > 1000
+                totalMonthlyStream - monthlyStreamToReceiver >= 1000
                   ? "compact"
                   : void 0,
               maximumFractionDigits:
@@ -167,7 +167,7 @@ export default function DistributionPoolDetails(
           <Card.Text className="m-0 pe-0">All</Card.Text>
           <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
             {Intl.NumberFormat("en", {
-              notation: totalMonthlyStream > 1000 ? "compact" : void 0,
+              notation: totalMonthlyStream >= 1000 ? "compact" : void 0,
               maximumFractionDigits:
                 totalMonthlyStream < 1
                   ? 4
@@ -187,7 +187,7 @@ export default function DistributionPoolDetails(
         <Stack direction="vertical" gap={1} className="w-25">
           <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
             {Intl.NumberFormat("en", {
-              notation: totalDistributedUser > 1000 ? "compact" : void 0,
+              notation: totalDistributedUser >= 1000 ? "compact" : void 0,
               maximumFractionDigits:
                 Number(formatEther(totalDistributedUser)) < 1
                   ? 4
@@ -203,7 +203,7 @@ export default function DistributionPoolDetails(
           <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
             {Intl.NumberFormat("en", {
               notation:
-                totalDistributedAll - totalDistributedUser > 1000
+                totalDistributedAll - totalDistributedUser >= 1000
                   ? "compact"
                   : void 0,
               maximumFractionDigits:
@@ -230,7 +230,7 @@ export default function DistributionPoolDetails(
         <Stack direction="vertical" gap={1} className="w-25">
           <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
             {Intl.NumberFormat("en", {
-              notation: totalDistributedAll > 1000 ? "compact" : void 0,
+              notation: totalDistributedAll >= 1000 ? "compact" : void 0,
               maximumFractionDigits:
                 Number(formatEther(totalDistributedAll)) < 1
                   ? 4

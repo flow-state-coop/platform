@@ -356,7 +356,7 @@ export default function Review(props: ReviewProps) {
                 />
                 <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
                   {Intl.NumberFormat("en", {
-                    notation: newMonthlyStream > 1000 ? "compact" : void 0,
+                    notation: newMonthlyStream >= 1000 ? "compact" : void 0,
                     maximumFractionDigits:
                       newMonthlyStream < 1
                         ? 4
@@ -468,7 +468,7 @@ export default function Review(props: ReviewProps) {
                     <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
                       {Intl.NumberFormat("en", {
                         notation:
-                          newMonthlyStreamToFlowState > 1000
+                          newMonthlyStreamToFlowState >= 1000
                             ? "compact"
                             : void 0,
                         maximumFractionDigits:

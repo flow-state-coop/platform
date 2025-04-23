@@ -160,7 +160,7 @@ export default function TopUp(props: TopUpProps) {
                 Suggested
                 {Intl.NumberFormat("en", {
                   notation:
-                    Number(roundWeiAmount(suggestedTokenBalance, 4)) > 1000
+                    Number(roundWeiAmount(suggestedTokenBalance, 4)) >= 1000
                       ? "compact"
                       : void 0,
                   maximumFractionDigits:
@@ -273,7 +273,7 @@ export default function TopUp(props: TopUpProps) {
                     {Intl.NumberFormat("en", {
                       notation:
                         Number(underlyingTokenBalance?.formatted ?? 0) +
-                          Number(formatEther(superTokenBalance)) >
+                          Number(formatEther(superTokenBalance)) >=
                         1000
                           ? "compact"
                           : void 0,
@@ -312,7 +312,7 @@ export default function TopUp(props: TopUpProps) {
                     Suggested{" "}
                     {Intl.NumberFormat("en", {
                       notation:
-                        Number(roundWeiAmount(suggestedTokenBalance, 4)) > 1000
+                        Number(roundWeiAmount(suggestedTokenBalance, 4)) >= 1000
                           ? "compact"
                           : void 0,
                       maximumFractionDigits:

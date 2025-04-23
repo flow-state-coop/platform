@@ -153,7 +153,7 @@ export default function Wrap(props: WrapProps) {
               {underlyingTokenBalance
                 ? Intl.NumberFormat("en", {
                     notation:
-                      Number(underlyingTokenBalance.formatted) > 1000
+                      Number(underlyingTokenBalance.formatted) >= 1000
                         ? "compact"
                         : void 0,
                     maximumFractionDigits:
@@ -203,7 +203,7 @@ export default function Wrap(props: WrapProps) {
               Balance:{" "}
               {Intl.NumberFormat("en", {
                 notation:
-                  Number(formatEther(superTokenBalance)) > 1000
+                  Number(formatEther(superTokenBalance)) >= 1000
                     ? "compact"
                     : void 0,
                 maximumFractionDigits:

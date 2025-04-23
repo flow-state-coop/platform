@@ -116,7 +116,7 @@ export default function PoolInfo(props: PoolInfoProps) {
                   <td className="w-25 bg-transparent">
                     {Intl.NumberFormat("en", {
                       notation:
-                        Number(formatEther(distributionMonthly)) > 1000
+                        Number(formatEther(distributionMonthly)) >= 1000
                           ? "compact"
                           : void 0,
                       maximumFractionDigits:
@@ -132,7 +132,7 @@ export default function PoolInfo(props: PoolInfoProps) {
                   <td className="w-25 bg-transparent">
                     {Intl.NumberFormat("en", {
                       notation:
-                        Number(formatEther(distributionTotal)) > 1000
+                        Number(formatEther(distributionTotal)) >= 1000
                           ? "compact"
                           : void 0,
                       maximumFractionDigits:

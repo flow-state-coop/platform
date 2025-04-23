@@ -163,7 +163,7 @@ export default function Grantee(props: GranteeProps) {
               </Card.Text>
               <Card.Text as="small" className="m-0">
                 {Intl.NumberFormat("en", {
-                  notation: monthlyFlow > 1000 ? "compact" : void 0,
+                  notation: monthlyFlow >= 1000 ? "compact" : void 0,
                   maximumFractionDigits:
                     monthlyFlow < 1
                       ? 4
