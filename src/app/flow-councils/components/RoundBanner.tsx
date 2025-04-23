@@ -1,6 +1,7 @@
 import { useState, useLayoutEffect } from "react";
 import { formatEther } from "viem";
 import { useAccount } from "wagmi";
+import removeMarkdown from "remove-markdown";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
@@ -67,7 +68,9 @@ export default function PoolInfo(props: PoolInfoProps) {
           <Stack direction="horizontal" gap={1}>
             <Card.Text className="m-0 fs-4 fw-bold">{name}</Card.Text>
             <InfoTooltip
-              content=<>{description}</>
+              content=<>
+                {removeMarkdown(description).replace(/\r?\n|\r/g, " ")}
+              </>
               target={
                 <Image
                   src="/info.svg"

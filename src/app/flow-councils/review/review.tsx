@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Address, keccak256, encodePacked } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "@wagmi/core";
@@ -119,8 +120,9 @@ export default function Review(props: ReviewProps) {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  const wagmiConfig = useConfig();
   const publicClient = usePublicClient();
+  const wagmiConfig = useConfig();
+  const router = useRouter();
   const { address, chain: connectedChain } = useAccount();
   const { data: session } = useSession();
   const { handleSignIn } = useSiwe();
@@ -316,6 +318,8 @@ export default function Review(props: ReviewProps) {
       setReviewingApplications([]);
       setCancelingApplications([]);
       setIsSubmitting(false);
+
+      router.push(`/flow-councils/${chainId}/${councilId}`);
     } catch (err) {
       console.error(err);
 
@@ -349,14 +353,10 @@ export default function Review(props: ReviewProps) {
 
   return (
     <>
-      {!isMobile && (
-        <Stack direction="vertical" className="w-25 flex-grow-1">
-          <Sidebar />
-        </Stack>
-      )}
+      <Sidebar />
       <Stack
         direction="vertical"
-        className={!isMobile ? "w-75 px-5" : "w-100 px-3"}
+        className={!isMobile ? "w-75 px-5" : "w-100 px-4"}
       >
         <h1 className="mt-4">Manage Recipients</h1>
         <h2 className="fs-5 text-info">
@@ -584,30 +584,36 @@ export default function Review(props: ReviewProps) {
             </Stack>
           )}
         <Button
-          className="my-4 fs-5"
+          variant="secondary"
+          className="mt-4 fs-5"
+          disabled={!!session && session.address === address}
+          onClick={() => {
+            !address && openConnectModal
+              ? openConnectModal()
+              : connectedChain?.id !== chainId
+                ? switchChain({ chainId })
+                : handleSignIn(csfrToken);
+          }}
+        >
+          Sign In With Ethereum
+        </Button>
+        <Button
+          className="mt-2 mb-4 fs-5"
           disabled={
-            reviewingApplications.length === 0 &&
-            cancelingApplications.length === 0
+            !session ||
+            session.address !== address ||
+            (reviewingApplications.length === 0 &&
+              cancelingApplications.length === 0)
           }
           onClick={() => {
             !address && openConnectModal
               ? openConnectModal()
               : connectedChain?.id !== chainId
                 ? switchChain({ chainId })
-                : !session ||
-                    session?.address.toLowerCase() !== address?.toLowerCase()
-                  ? handleSignIn(csfrToken)
-                  : handleSubmit();
+                : handleSubmit();
           }}
         >
-          {isSubmitting ? (
-            <Spinner size="sm" className="m-auto" />
-          ) : !session ||
-            session.address.toLowerCase() !== address?.toLowerCase() ? (
-            "Sign In With Ethereum"
-          ) : (
-            "Submit"
-          )}
+          {isSubmitting ? <Spinner size="sm" className="m-auto" /> : "Submit"}
         </Button>
         <Toast
           show={success}

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { formatEther } from "viem";
 import { useAccount } from "wagmi";
 import { createVerifiedFetch } from "@helia/verified-fetch";
+import removeMarkdown from "remove-markdown";
 import { useClampText } from "use-clamp-text";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
@@ -12,7 +13,6 @@ import { Network } from "@/types/network";
 import { CouncilMember } from "../types/councilMember";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useCouncil from "../hooks/council";
-import { formatNumberWithCharSuffix } from "@/lib/utils";
 import { IPFS_GATEWAYS, SECONDS_IN_MONTH } from "@/lib/constants";
 
 type GranteeProps = {
@@ -55,7 +55,7 @@ export default function Grantee(props: GranteeProps) {
   const { newAllocation, council, currentAllocation, dispatchNewAllocation } =
     useCouncil();
   const [descriptionRef, { noClamp, clampedText }] = useClampText({
-    text: description,
+    text: removeMarkdown(description).replace(/\r?\n|\r/g, " "),
     ellipsis: "...",
     lines: 4,
   });
@@ -73,10 +73,7 @@ export default function Grantee(props: GranteeProps) {
         allocation.grantee === granteeAddress,
     );
 
-  const monthlyFlow = formatNumberWithCharSuffix(
-    Number(formatEther(flowRate * BigInt(SECONDS_IN_MONTH))),
-    0,
-  );
+  const monthlyFlow = Number(formatEther(flowRate * BigInt(SECONDS_IN_MONTH)));
 
   useEffect(() => {
     (async () => {
@@ -162,7 +159,10 @@ export default function Grantee(props: GranteeProps) {
                 Current Stream
               </Card.Text>
               <Card.Text as="small" className="m-0">
-                {monthlyFlow} {network.tokens[0].symbol} /mo
+                {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
+                  monthlyFlow,
+                )}{" "}
+                {network.tokens[0].symbol} /mo
               </Card.Text>
             </Stack>
           </Stack>
