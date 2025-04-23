@@ -13,7 +13,6 @@ import { Token } from "@/types/token";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useCouncil from "../hooks/council";
 import useFlowingAmount from "@/hooks/flowingAmount";
-import { formatNumberWithCharSuffix } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 type PoolInfoProps = {
@@ -115,16 +114,36 @@ export default function PoolInfo(props: PoolInfoProps) {
                     {distributionTokenInfo.symbol}
                   </td>
                   <td className="w-25 bg-transparent">
-                    {formatNumberWithCharSuffix(
-                      Number(formatEther(distributionMonthly)),
-                      0,
-                    )}
+                    {Intl.NumberFormat("en", {
+                      notation:
+                        Number(formatEther(distributionMonthly)) >= 1000
+                          ? "compact"
+                          : void 0,
+                      maximumFractionDigits:
+                        Number(formatEther(distributionMonthly)) < 1
+                          ? 4
+                          : Number(formatEther(distributionMonthly)) < 10
+                            ? 3
+                            : Number(formatEther(distributionMonthly)) < 100
+                              ? 2
+                              : 1,
+                    }).format(Number(formatEther(distributionMonthly)))}
                   </td>
                   <td className="w-25 bg-transparent">
-                    {formatNumberWithCharSuffix(
-                      Number(formatEther(distributionTotal)),
-                      4,
-                    )}
+                    {Intl.NumberFormat("en", {
+                      notation:
+                        Number(formatEther(distributionTotal)) >= 1000
+                          ? "compact"
+                          : void 0,
+                      maximumFractionDigits:
+                        Number(formatEther(distributionTotal)) < 1
+                          ? 4
+                          : Number(formatEther(distributionTotal)) < 10
+                            ? 3
+                            : Number(formatEther(distributionTotal)) < 100
+                              ? 2
+                              : 1,
+                    }).format(Number(formatEther(distributionTotal)))}
                   </td>
                   <td className="w-25 bg-transparent">
                     {council?.grantees?.length ?? 0}

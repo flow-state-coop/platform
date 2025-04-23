@@ -9,7 +9,7 @@ import Spinner from "react-bootstrap/Spinner";
 import { GDAPool } from "@/types/gdaPool";
 import { Token } from "@/types/token";
 import useFlowingAmount from "@/hooks/flowingAmount";
-import { roundWeiAmount, formatNumberWithCharSuffix } from "@/lib/utils";
+import { roundWeiAmount } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 interface DistributionPoolDetailsProps {
@@ -70,6 +70,12 @@ export default function DistributionPoolDetails(
     gdaPool?.updatedAtTimestamp ?? 0,
     BigInt(gdaPool?.flowRate ?? 0),
   );
+  const monthlyStreamToReceiver = Number(
+    roundWeiAmount(BigInt(flowRateToReceiver) * BigInt(SECONDS_IN_MONTH), 4),
+  );
+  const totalMonthlyStream = Number(
+    formatEther(BigInt(gdaPool?.flowRate ?? 0) * BigInt(SECONDS_IN_MONTH)),
+  );
 
   return (
     <Stack direction="vertical" className="bg-light rounded-4 p-2 pt-0">
@@ -98,15 +104,18 @@ export default function DistributionPoolDetails(
             ) : (
               <>
                 <Card.Text as="span" className="fs-1">
-                  {formatNumberWithCharSuffix(
-                    Number(
-                      roundWeiAmount(
-                        BigInt(flowRateToReceiver) * BigInt(SECONDS_IN_MONTH),
-                        4,
-                      ),
-                    ),
-                    1,
-                  )}
+                  {Intl.NumberFormat("en", {
+                    notation:
+                      monthlyStreamToReceiver >= 1000 ? "compact" : void 0,
+                    maximumFractionDigits:
+                      monthlyStreamToReceiver < 1
+                        ? 4
+                        : monthlyStreamToReceiver < 10
+                          ? 3
+                          : monthlyStreamToReceiver < 100
+                            ? 2
+                            : 1,
+                  }).format(monthlyStreamToReceiver)}
                 </Card.Text>
                 <Card.Text as="small" className="mt-1">
                   {token.symbol} <br />
@@ -122,43 +131,52 @@ export default function DistributionPoolDetails(
         <Stack direction="vertical" gap={1} className="w-25">
           <Card.Text className="m-0 pe-0">You</Card.Text>
           <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCharSuffix(
-              Number(
-                formatEther(
-                  BigInt(userDistributionInfo?.flowRate ?? 0) *
-                    BigInt(SECONDS_IN_MONTH),
-                ),
-              ),
-              1,
-            )}
+            {Intl.NumberFormat("en", {
+              notation: monthlyStreamToReceiver >= 1000 ? "compact" : void 0,
+              maximumFractionDigits:
+                monthlyStreamToReceiver < 1
+                  ? 4
+                  : monthlyStreamToReceiver < 10
+                    ? 3
+                    : monthlyStreamToReceiver < 100
+                      ? 2
+                      : 1,
+            }).format(monthlyStreamToReceiver)}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
           <Card.Text className="m-0 pe-0">Others</Card.Text>
           <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCharSuffix(
-              Number(
-                formatEther(
-                  (BigInt(gdaPool?.flowRate ?? 0) -
-                    BigInt(userDistributionInfo?.flowRate ?? 0)) *
-                    BigInt(SECONDS_IN_MONTH),
-                ),
-              ),
-              0,
-            )}
+            {Intl.NumberFormat("en", {
+              notation:
+                totalMonthlyStream - monthlyStreamToReceiver >= 1000
+                  ? "compact"
+                  : void 0,
+              maximumFractionDigits:
+                totalMonthlyStream - monthlyStreamToReceiver < 1
+                  ? 4
+                  : totalMonthlyStream - monthlyStreamToReceiver < 10
+                    ? 3
+                    : totalMonthlyStream - monthlyStreamToReceiver < 100
+                      ? 2
+                      : 1,
+            }).format(totalMonthlyStream - monthlyStreamToReceiver)}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
           <Card.Text className="m-0 pe-0">All</Card.Text>
           <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCharSuffix(
-              Number(
-                formatEther(
-                  BigInt(gdaPool?.flowRate ?? 0) * BigInt(SECONDS_IN_MONTH),
-                ),
-              ),
-              0,
-            )}
+            {Intl.NumberFormat("en", {
+              notation: totalMonthlyStream >= 1000 ? "compact" : void 0,
+              maximumFractionDigits:
+                totalMonthlyStream < 1
+                  ? 4
+                  : totalMonthlyStream < 10
+                    ? 3
+                    : totalMonthlyStream < 100
+                      ? 2
+                      : 1,
+            }).format(totalMonthlyStream)}
           </Badge>
         </Stack>
         <Card.Text as="small" className="w-20 mt-4">
@@ -168,26 +186,60 @@ export default function DistributionPoolDetails(
       <Stack direction="horizontal" gap={1} className="fs-6 p-2">
         <Stack direction="vertical" gap={1} className="w-25">
           <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCharSuffix(
-              Number(formatEther(totalDistributedUser)),
-              4,
-            )}
+            {Intl.NumberFormat("en", {
+              notation: totalDistributedUser >= 1000 ? "compact" : void 0,
+              maximumFractionDigits:
+                Number(formatEther(totalDistributedUser)) < 1
+                  ? 4
+                  : Number(formatEther(totalDistributedUser)) < 10
+                    ? 3
+                    : Number(formatEther(totalDistributedUser)) < 100
+                      ? 2
+                      : 1,
+            }).format(Number(formatEther(totalDistributedUser)))}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
           <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCharSuffix(
+            {Intl.NumberFormat("en", {
+              notation:
+                totalDistributedAll - totalDistributedUser >= 1000
+                  ? "compact"
+                  : void 0,
+              maximumFractionDigits:
+                Number(
+                  formatEther(totalDistributedAll - totalDistributedUser),
+                ) < 1
+                  ? 4
+                  : Number(
+                        formatEther(totalDistributedAll - totalDistributedUser),
+                      ) < 10
+                    ? 3
+                    : Number(
+                          formatEther(
+                            totalDistributedAll - totalDistributedUser,
+                          ),
+                        ) < 100
+                      ? 2
+                      : 1,
+            }).format(
               Number(formatEther(totalDistributedAll - totalDistributedUser)),
-              4,
             )}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
           <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCharSuffix(
-              Number(formatEther(totalDistributedAll)),
-              4,
-            )}
+            {Intl.NumberFormat("en", {
+              notation: totalDistributedAll >= 1000 ? "compact" : void 0,
+              maximumFractionDigits:
+                Number(formatEther(totalDistributedAll)) < 1
+                  ? 4
+                  : Number(formatEther(totalDistributedAll)) < 10
+                    ? 3
+                    : Number(formatEther(totalDistributedAll)) < 100
+                      ? 2
+                      : 1,
+            }).format(Number(formatEther(totalDistributedAll)))}
           </Badge>
         </Stack>
         <Card.Text as="small" className="w-20">

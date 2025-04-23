@@ -156,28 +156,3 @@ export function getPlaceholderImageSrc() {
 
   return `/placeholders/${Math.floor(Math.random() * (max - min + 1)) + min}.jpg`;
 }
-
-export function formatNumberWithCharSuffix(num: number, digits: number) {
-  if (num < 1) {
-    return parseFloat(num.toFixed(6));
-  }
-
-  const lookupTable = [
-    { value: 1, symbol: "" },
-    { value: 1e3, symbol: "k" },
-    { value: 1e6, symbol: "M" },
-    { value: 1e9, symbol: "B" },
-    { value: 1e12, symbol: "T" },
-    { value: 1e15, symbol: "P" },
-    { value: 1e18, symbol: "E" },
-  ];
-  const regexp = /\.0+$|(?<=\.[0-9]*[1-9])0+$/;
-  const item = lookupTable
-    .slice()
-    .reverse()
-    .find((item) => num >= item.value);
-
-  return item
-    ? (num / item.value).toFixed(digits).replace(regexp, "").concat(item.symbol)
-    : "0";
-}

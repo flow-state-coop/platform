@@ -11,7 +11,6 @@ import { Token } from "@/types/token";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import {
   TimeInterval,
-  formatNumberWithCharSuffix,
   fromTimeUnitsToSeconds,
   formatNumberWithCommas,
   roundWeiAmount,
@@ -158,11 +157,23 @@ export default function TopUp(props: TopUpProps) {
                 )}
               </Card.Text>
               <Card.Text as="small" className="m-0">
-                Suggested{" "}
-                {formatNumberWithCharSuffix(
-                  Number(roundWeiAmount(suggestedTokenBalance, 6)),
-                  1,
-                )}
+                Suggested
+                {Intl.NumberFormat("en", {
+                  notation:
+                    Number(roundWeiAmount(suggestedTokenBalance, 4)) >= 1000
+                      ? "compact"
+                      : void 0,
+                  maximumFractionDigits:
+                    Number(roundWeiAmount(suggestedTokenBalance, 4)) < 1
+                      ? 4
+                      : Number(roundWeiAmount(suggestedTokenBalance, 4)) < 10
+                        ? 3
+                        : Number(roundWeiAmount(suggestedTokenBalance, 4)) < 100
+                          ? 2
+                          : 1,
+                }).format(
+                  Number(roundWeiAmount(suggestedTokenBalance, 4)),
+                )}{" "}
               </Card.Text>
               <Button
                 variant="link"
@@ -259,14 +270,34 @@ export default function TopUp(props: TopUpProps) {
                           : "text-warning"
                     }`}
                   >
-                    {formatNumberWithCharSuffix(
+                    {Intl.NumberFormat("en", {
+                      notation:
+                        Number(underlyingTokenBalance?.formatted ?? 0) +
+                          Number(formatEther(superTokenBalance)) >=
+                        1000
+                          ? "compact"
+                          : void 0,
+                      maximumFractionDigits:
+                        Number(underlyingTokenBalance?.formatted ?? 0) +
+                          Number(formatEther(superTokenBalance)) <
+                        1
+                          ? 4
+                          : Number(underlyingTokenBalance?.formatted ?? 0) +
+                                Number(formatEther(superTokenBalance)) <
+                              10
+                            ? 3
+                            : Number(underlyingTokenBalance?.formatted ?? 0) +
+                                  Number(formatEther(superTokenBalance)) <
+                                100
+                              ? 2
+                              : 1,
+                    }).format(
                       Number(
                         formatEther(
                           (underlyingTokenBalance?.value ?? BigInt(0)) +
                             superTokenBalance,
                         ),
                       ),
-                      1,
                     )}
                     {hasSuggestedTokenBalance && (
                       <Image
@@ -279,10 +310,22 @@ export default function TopUp(props: TopUpProps) {
                   </Card.Text>
                   <Card.Text as="small" className="m-0">
                     Suggested{" "}
-                    {formatNumberWithCharSuffix(
-                      Number(roundWeiAmount(suggestedTokenBalance, 6)),
-                      1,
-                    )}
+                    {Intl.NumberFormat("en", {
+                      notation:
+                        Number(roundWeiAmount(suggestedTokenBalance, 4)) >= 1000
+                          ? "compact"
+                          : void 0,
+                      maximumFractionDigits:
+                        Number(roundWeiAmount(suggestedTokenBalance, 4)) < 1
+                          ? 4
+                          : Number(roundWeiAmount(suggestedTokenBalance, 4)) <
+                              10
+                            ? 3
+                            : Number(roundWeiAmount(suggestedTokenBalance, 4)) <
+                                100
+                              ? 2
+                              : 1,
+                    }).format(Number(roundWeiAmount(suggestedTokenBalance, 4)))}
                   </Card.Text>
                   <Button
                     variant="link"

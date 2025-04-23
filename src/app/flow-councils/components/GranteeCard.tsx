@@ -10,6 +10,7 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Toast from "react-bootstrap/Toast";
 import { Network } from "@/types/network";
+import { Token } from "@/types/token";
 import { CouncilMember } from "../types/councilMember";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useCouncil from "../hooks/council";
@@ -27,6 +28,7 @@ type GranteeProps = {
   flowRate: bigint;
   units: number;
   network: Network;
+  token: Token;
   isSelected: boolean;
 };
 
@@ -43,6 +45,7 @@ export default function Grantee(props: GranteeProps) {
     flowRate,
     units,
     network,
+    token,
     isSelected,
   } = props;
 
@@ -159,10 +162,18 @@ export default function Grantee(props: GranteeProps) {
                 Current Stream
               </Card.Text>
               <Card.Text as="small" className="m-0">
-                {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
-                  monthlyFlow,
-                )}{" "}
-                {network.tokens[0].symbol} /mo
+                {Intl.NumberFormat("en", {
+                  notation: monthlyFlow >= 1000 ? "compact" : void 0,
+                  maximumFractionDigits:
+                    monthlyFlow < 1
+                      ? 4
+                      : monthlyFlow < 10
+                        ? 3
+                        : monthlyFlow < 100
+                          ? 2
+                          : 1,
+                }).format(monthlyFlow)}{" "}
+                {token.symbol} /mo
               </Card.Text>
             </Stack>
           </Stack>
