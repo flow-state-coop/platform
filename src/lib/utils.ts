@@ -159,7 +159,7 @@ export function getPlaceholderImageSrc() {
 
 export function formatNumberWithCharSuffix(num: number, digits: number) {
   if (num < 1) {
-    return parseFloat(num.toFixed(6));
+    return parseFloat(num.toFixed(4));
   }
 
   const lookupTable = [

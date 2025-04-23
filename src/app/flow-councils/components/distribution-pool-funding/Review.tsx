@@ -17,7 +17,6 @@ import { Step } from "../../types/distributionPoolFunding";
 import { Token } from "@/types/token";
 import { Network } from "@/types/network";
 import {
-  formatNumberWithCharSuffix,
   TimeInterval,
   convertStreamValueToInterval,
   truncateStr,
@@ -109,6 +108,28 @@ export default function Review(props: ReviewProps) {
 
   const isDeletingStream =
     BigInt(flowRateToReceiver) > 0 && BigInt(newFlowRate) === BigInt(0);
+  const newMonthlyStream = Number(
+    convertStreamValueToInterval(
+      parseEther(
+        areTransactionsLoading && transactionDetailsSnapshot
+          ? transactionDetailsSnapshot.amountPerTimeInterval
+          : amountPerTimeInterval.replace(/,/g, ""),
+      ),
+      timeInterval,
+      TimeInterval.MONTH,
+    ),
+  );
+  const newMonthlyStreamToFlowState = Number(
+    convertStreamValueToInterval(
+      parseEther(
+        areTransactionsLoading && transactionDetailsSnapshot
+          ? transactionDetailsSnapshot.supportFlowStateAmount
+          : supportFlowStateAmount.replace(/,/g, ""),
+      ),
+      supportFlowStateTimeInterval,
+      TimeInterval.MONTH,
+    ),
+  );
 
   const handleSubmit = async () => {
     setTransactionDetailsSnapshot({
@@ -334,20 +355,17 @@ export default function Review(props: ReviewProps) {
                   className="mx-1"
                 />
                 <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
-                  {formatNumberWithCharSuffix(
-                    Number(
-                      convertStreamValueToInterval(
-                        parseEther(
-                          areTransactionsLoading && transactionDetailsSnapshot
-                            ? transactionDetailsSnapshot.amountPerTimeInterval
-                            : amountPerTimeInterval.replace(/,/g, ""),
-                        ),
-                        timeInterval,
-                        TimeInterval.MONTH,
-                      ),
-                    ),
-                    1,
-                  )}
+                  {Intl.NumberFormat("en", {
+                    notation: newMonthlyStream > 1000 ? "compact" : void 0,
+                    maximumFractionDigits:
+                      newMonthlyStream < 1
+                        ? 4
+                        : newMonthlyStream < 10
+                          ? 3
+                          : newMonthlyStream < 100
+                            ? 2
+                            : 1,
+                  }).format(newMonthlyStream)}
                 </Badge>
               </Stack>
               <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>
@@ -448,21 +466,20 @@ export default function Review(props: ReviewProps) {
                       className="mx-1"
                     />
                     <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
-                      {formatNumberWithCharSuffix(
-                        Number(
-                          convertStreamValueToInterval(
-                            parseEther(
-                              areTransactionsLoading &&
-                                transactionDetailsSnapshot
-                                ? transactionDetailsSnapshot.supportFlowStateAmount
-                                : supportFlowStateAmount.replace(/,/g, ""),
-                            ),
-                            supportFlowStateTimeInterval,
-                            TimeInterval.MONTH,
-                          ),
-                        ),
-                        1,
-                      )}
+                      {Intl.NumberFormat("en", {
+                        notation:
+                          newMonthlyStreamToFlowState > 1000
+                            ? "compact"
+                            : void 0,
+                        maximumFractionDigits:
+                          newMonthlyStreamToFlowState < 1
+                            ? 4
+                            : newMonthlyStreamToFlowState < 10
+                              ? 3
+                              : newMonthlyStreamToFlowState < 100
+                                ? 2
+                                : 1,
+                      }).format(newMonthlyStreamToFlowState)}
                     </Badge>
                   </Stack>
                   <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>

@@ -266,6 +266,7 @@ export default function Index({
                 flowRate={grantee.flowRate}
                 units={grantee.units}
                 network={network}
+                token={token}
                 isSelected={false}
               />
             ))}
