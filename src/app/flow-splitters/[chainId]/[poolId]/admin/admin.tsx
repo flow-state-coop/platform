@@ -1060,7 +1060,7 @@ export default function Admin(props: AdminProps) {
                           }}
                         >
                           <Image
-                            src="/add.svg"
+                            src="/add-circle.svg"
                             alt="Add"
                             width={28}
                             height={28}
