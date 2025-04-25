@@ -385,7 +385,7 @@ export default function Membership(props: MembershipProps) {
               <Form.Control
                 type="text"
                 inputMode="numeric"
-                placeholder="100"
+                placeholder="Votes"
                 value={votingPowerForAll}
                 className="text-center rounded-2 flex-grow-0"
                 style={{

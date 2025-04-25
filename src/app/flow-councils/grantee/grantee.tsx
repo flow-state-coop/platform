@@ -157,7 +157,7 @@ export default function Grantee(props: GranteeProps) {
     (token) => token.address.toLowerCase() === council?.distributionToken,
   ) ?? {
     address: council?.distributionToken ?? "",
-    name: superfluidQueryRes?.token.symbol ?? "N/A",
+    name: superfluidQueryRes?.token?.symbol ?? "N/A",
     icon: "",
   };
 
@@ -357,7 +357,7 @@ export default function Grantee(props: GranteeProps) {
         {!!councilToken.icon && (
           <Image src={councilToken.icon} alt="" width={18} height={18} />
         )}
-        {superfluidQueryRes?.token.symbol} on
+        {superfluidQueryRes?.token?.symbol} on
         <Image src={network.icon} alt="" width={18} height={18} />
         {network.name}
         <Button
@@ -370,7 +370,7 @@ export default function Grantee(props: GranteeProps) {
                 ? switchChain({ chainId })
                 : addToWallet({
                     address: council.distributionToken,
-                    symbol: superfluidQueryRes?.token.symbol,
+                    symbol: superfluidQueryRes?.token?.symbol,
                     decimals: 18,
                     image: councilToken?.icon ?? "",
                   });
