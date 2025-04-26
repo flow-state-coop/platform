@@ -10,8 +10,7 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { gql, useQuery } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
-import FormCheck from "react-bootstrap/FormCheck";
-import InputGroup from "react-bootstrap/InputGroup";
+import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import Toast from "react-bootstrap/Toast";
 import Spinner from "react-bootstrap/Spinner";
@@ -58,7 +57,6 @@ export default function Membership(props: MembershipProps) {
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
   const [councilConfig, setCouncilConfig] = useState({
     limitMaxAllocation: false,
-    isVotingPowerForAll: true,
   });
   const [maxAllocation, setMaxAllocation] = useState("");
   const [votingPowerForAll, setVotingPowerForAll] = useState("");
@@ -83,7 +81,7 @@ export default function Membership(props: MembershipProps) {
         councilId: councilId?.toLowerCase(),
       },
       skip: !councilId,
-      pollInterval: 10000,
+      pollInterval: 4000,
     },
   );
 
@@ -92,10 +90,9 @@ export default function Membership(props: MembershipProps) {
     (memberEntry) =>
       memberEntry.validationError === "" &&
       memberEntry.address !== "" &&
-      ((councilConfig.isVotingPowerForAll && votingPowerForAll) ||
-        (memberEntry.votingPower !== "" && memberEntry.votingPower !== "0")),
+      memberEntry.votingPower !== "" &&
+      memberEntry.votingPower !== "0",
   );
-
   const isManager = useMemo(() => {
     const memberManagerRole = keccak256(
       encodePacked(["string"], ["MEMBER_MANAGER_ROLE"]),
@@ -125,14 +122,22 @@ export default function Membership(props: MembershipProps) {
     );
     const hasChangesMembers =
       sortedCouncilMembers &&
-      !compareArrays(
+      (!compareArrays(
         sortedCouncilMembers
           .filter(
             (member: { votingPower: string }) => member.votingPower !== "0",
           )
           .map((member: { account: string }) => member.account),
         sortedMembersEntry.map((member) => member.address.toLowerCase()),
-      );
+      ) ||
+        !compareArrays(
+          sortedCouncilMembers
+            .filter(
+              (member: { votingPower: string }) => member.votingPower !== "0",
+            )
+            .map((member: { votingPower: string }) => member.votingPower),
+          sortedMembersEntry.map((member) => member.votingPower),
+        ));
 
     return (
       (!councilConfig.limitMaxAllocation &&
@@ -225,9 +230,7 @@ export default function Membership(props: MembershipProps) {
             .map((member) => {
               return {
                 member: member.address as Address,
-                votingPower: councilConfig.isVotingPowerForAll
-                  ? BigInt(votingPowerForAll)
-                  : BigInt(member.votingPower),
+                votingPower: BigInt(member.votingPower),
               };
             })
             .concat(
@@ -330,161 +333,108 @@ export default function Membership(props: MembershipProps) {
                   }
                 />
               </Form.Label>
-              <Stack direction="horizontal" gap={3}>
-                <FormCheck type="radio">
-                  <FormCheck.Input
-                    type="radio"
-                    checked={!councilConfig.limitMaxAllocation}
-                    onChange={() =>
+              <Dropdown>
+                <Dropdown.Toggle
+                  className="d-flex justify-content-between align-items-center bg-white text-dark border"
+                  style={{ width: 128 }}
+                >
+                  {councilConfig.limitMaxAllocation
+                    ? maxAllocation
+                    : "No Limit"}
+                </Dropdown.Toggle>
+                <Dropdown.Menu
+                  className="overflow-auto"
+                  style={{ height: 256 }}
+                >
+                  <Dropdown.Item
+                    onClick={() => {
                       setCouncilConfig({
                         ...councilConfig,
                         limitMaxAllocation: false,
-                      })
-                    }
-                  />
-                  <FormCheck.Label>No Limit</FormCheck.Label>
-                </FormCheck>
-                <FormCheck type="radio">
-                  <FormCheck.Input
-                    type="radio"
-                    checked={councilConfig.limitMaxAllocation}
-                    onChange={() =>
-                      setCouncilConfig({
-                        ...councilConfig,
-                        limitMaxAllocation: true,
-                      })
-                    }
-                  />
-                  <FormCheck.Label>Set Limit</FormCheck.Label>
-                </FormCheck>
-              </Stack>
+                      });
+                      setMaxAllocation("");
+                    }}
+                  >
+                    No Limit
+                  </Dropdown.Item>
+                  {[...Array(256)].map((_, i) => {
+                    return (
+                      <Dropdown.Item
+                        key={i}
+                        onClick={() => {
+                          setCouncilConfig({
+                            ...councilConfig,
+                            limitMaxAllocation: true,
+                          });
+                          setMaxAllocation(i.toString());
+                        }}
+                      >
+                        {i}
+                      </Dropdown.Item>
+                    );
+                  })}
+                </Dropdown.Menu>
+              </Dropdown>
             </Stack>
-            {councilConfig.limitMaxAllocation && (
-              <InputGroup className="mt-2">
-                <Form.Label className="align-self-center w-25 m-0">
-                  Limit
-                </Form.Label>
-                <Form.Control
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="10"
-                  value={maxAllocation}
-                  className="w-25 rounded-2 flex-grow-0"
-                  onChange={(e) => {
-                    if (
-                      e.target.value === "" ||
-                      (isNumber(e.target.value) && e.target.value !== "0.")
-                    ) {
-                      setMaxAllocation(e.target.value);
-                    }
-                  }}
-                />
-              </InputGroup>
-            )}
             <Stack
-              direction={isMobile ? "vertical" : "horizontal"}
-              className="align-items-sm-center mt-3"
+              direction="horizontal"
+              className="justify-content-end my-3"
+              gap={isMobile ? 2 : 4}
             >
-              <Form.Label
-                className="d-flex gap-1 mb-2 fs-5"
-                style={{ width: isMobile ? "100%" : "25%" }}
+              <span className="w-75" />
+              <Form.Control
+                type="text"
+                inputMode="numeric"
+                placeholder="Votes"
+                value={votingPowerForAll}
+                className="text-center rounded-2 flex-grow-0"
+                style={{
+                  width: 128,
+                  paddingTop: 12,
+                  paddingBottom: 12,
+                }}
+                onChange={(e) => {
+                  if (
+                    e.target.value === "" ||
+                    (isNumber(e.target.value) && e.target.value !== "0.")
+                  ) {
+                    setVotingPowerForAll(e.target.value);
+                  }
+                }}
+              />
+              <Button
+                variant="transparent"
+                className="text-primary text-decoration-underline p-0"
+                style={{ width: 80, fontSize: "0.9rem" }}
+                onClick={() =>
+                  setMembersEntry((prev) => {
+                    return prev.map((memberEntry) => {
+                      return { ...memberEntry, votingPower: votingPowerForAll };
+                    });
+                  })
+                }
               >
-                Voting Budget
-                <InfoTooltip
-                  position={{ top: true }}
-                  target={
-                    <Image
-                      src="/info.svg"
-                      alt="Info"
-                      width={14}
-                      height={14}
-                      className="align-top"
-                    />
-                  }
-                  content={
-                    <>
-                      Use this field to set a uniform voting budget for all
-                      Council Members.
-                      <br />
-                      <br />
-                      Set it to variable if you want to set each member's votes
-                      individually.
-                    </>
-                  }
-                />
-              </Form.Label>
-              <Stack direction="horizontal" gap={3}>
-                <FormCheck type="radio">
-                  <FormCheck.Input
-                    type="radio"
-                    checked={councilConfig.isVotingPowerForAll}
-                    onChange={() =>
-                      setCouncilConfig({
-                        ...councilConfig,
-                        isVotingPowerForAll: true,
-                      })
-                    }
-                  />
-                  <FormCheck.Label>Same for All</FormCheck.Label>
-                </FormCheck>
-                <FormCheck type="radio">
-                  <FormCheck.Input
-                    type="radio"
-                    checked={!councilConfig.isVotingPowerForAll}
-                    onChange={() =>
-                      setCouncilConfig({
-                        ...councilConfig,
-                        isVotingPowerForAll: false,
-                      })
-                    }
-                  />
-                  <FormCheck.Label>Individual</FormCheck.Label>
-                </FormCheck>
-              </Stack>
+                Apply to All
+              </Button>
             </Stack>
-            {councilConfig.isVotingPowerForAll && (
-              <InputGroup className="mt-2">
-                <Form.Label className="align-self-center w-25 m-0">
-                  Voting per Member
-                </Form.Label>
-                <Form.Control
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="100"
-                  value={votingPowerForAll}
-                  className="w-25 rounded-2 flex-grow-0"
-                  onChange={(e) => {
-                    if (
-                      e.target.value === "" ||
-                      (isNumber(e.target.value) && e.target.value !== "0.")
-                    ) {
-                      setVotingPowerForAll(e.target.value);
-                    }
-                  }}
-                />
-              </InputGroup>
-            )}
             {membersEntry.map((memberEntry, i) => (
               <Stack
                 direction="horizontal"
                 gap={isMobile ? 2 : 4}
-                className="justify-content-start mt-4 mb-3"
+                className="justify-content-start my-3"
                 key={i}
               >
-                <Stack direction="vertical" className="w-100">
+                <Stack direction="vertical" className="w-75">
                   <Stack direction="vertical" className="position-relative">
                     <Form.Control
                       type="text"
                       placeholder="Member Address"
                       value={memberEntry.address}
-                      disabled={
-                        council?.councilMembers
-                          .map((member: { account: string }) =>
-                            member.account.toLowerCase(),
-                          )
-                          .includes(memberEntry.address.toLowerCase()) &&
-                        !memberEntry.validationError
-                      }
+                      disabled={membersToRemove
+                        .map((member: { address: string }) =>
+                          member.address.toLowerCase(),
+                        )
+                        .includes(memberEntry.address.toLowerCase())}
                       style={{
                         paddingTop: 12,
                         paddingBottom: 12,
@@ -524,54 +474,42 @@ export default function Membership(props: MembershipProps) {
                     ) : null}
                   </Stack>
                 </Stack>
-                <Stack direction="vertical">
-                  <Form.Control
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="Votes"
-                    value={
-                      councilConfig.isVotingPowerForAll &&
-                      !council?.councilMembers
-                        .map((member: { account: string }) =>
-                          member.account.toLowerCase(),
-                        )
-                        .includes(memberEntry.address.toLowerCase())
-                        ? votingPowerForAll
-                        : memberEntry.votingPower
-                    }
-                    disabled={
-                      councilConfig.isVotingPowerForAll ||
-                      council?.councilMembers
-                        .map((member: { account: string }) =>
-                          member.account.toLowerCase(),
-                        )
-                        .includes(memberEntry.address.toLowerCase())
-                    }
-                    className="text-center"
-                    style={{
-                      paddingTop: 12,
-                      paddingBottom: 12,
-                    }}
-                    onChange={(e) => {
-                      const prevMembersEntry = [...membersEntry];
-                      const value = e.target.value;
+                <Form.Control
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Votes"
+                  value={memberEntry.votingPower}
+                  disabled={membersToRemove
+                    .map((member: { address: string }) =>
+                      member.address.toLowerCase(),
+                    )
+                    .includes(memberEntry.address.toLowerCase())}
+                  className="flex-grow-0 text-center"
+                  style={{
+                    width: 128,
+                    paddingTop: 12,
+                    paddingBottom: 12,
+                  }}
+                  onChange={(e) => {
+                    const prevMembersEntry = [...membersEntry];
+                    const value = e.target.value;
 
-                      if (!value || value === "0") {
-                        prevMembersEntry[i].votingPower = "";
-                      } else if (value.includes(".")) {
-                        return;
-                      } else if (isNumber(value)) {
-                        prevMembersEntry[i].votingPower = value;
-                      }
+                    if (!value || value === "0") {
+                      prevMembersEntry[i].votingPower = "";
+                    } else if (value.includes(".")) {
+                      return;
+                    } else if (isNumber(value)) {
+                      prevMembersEntry[i].votingPower = value;
+                    }
 
-                      setMembersEntry(prevMembersEntry);
-                    }}
-                  />
-                </Stack>
+                    setMembersEntry(prevMembersEntry);
+                  }}
+                />
                 <Button
                   variant="transparent"
                   className="p-0"
                   style={{
+                    width: 80,
                     pointerEvents: isTransactionLoading ? "none" : "auto",
                   }}
                   onClick={() => {
@@ -581,8 +519,50 @@ export default function Membership(props: MembershipProps) {
                   <Image
                     src="/delete.svg"
                     alt="Remove"
-                    width={28}
-                    height={28}
+                    width={36}
+                    height={36}
+                  />
+                </Button>
+              </Stack>
+            ))}
+            {membersToRemove.map((memberEntry, i) => (
+              <Stack
+                direction="horizontal"
+                gap={isMobile ? 2 : 4}
+                className="justify-content-start mb-3"
+                key={i}
+              >
+                <Form.Control
+                  disabled
+                  type="text"
+                  value={memberEntry.address}
+                  style={{ width: "75%", paddingTop: 12, paddingBottom: 12 }}
+                />
+                <Form.Control
+                  type="text"
+                  disabled
+                  value="Removed"
+                  className="text-center"
+                  style={{ width: 128, paddingTop: 12, paddingBottom: 12 }}
+                />
+                <Button
+                  variant="transparent"
+                  className="p-0"
+                  style={{ width: 80 }}
+                  onClick={() => {
+                    setMembersToRemove((prev) =>
+                      prev.filter(
+                        (_, prevMemberEntryIndex) => prevMemberEntryIndex !== i,
+                      ),
+                    );
+                    setMembersEntry(membersEntry.concat(memberEntry));
+                  }}
+                >
+                  <Image
+                    src="/add-circle.svg"
+                    alt="Add"
+                    width={36}
+                    height={36}
                   />
                 </Button>
               </Stack>

@@ -30,9 +30,9 @@ export default function useAllocationQuery(
     client: getApolloClient("flowCouncil", network.id),
     variables: {
       councilId: councilId?.toLowerCase(),
-      councilMember: `${councilId}-${address.toLowerCase()}`,
+      councilMember: `${councilId?.toLowerCase()}-${address?.toLowerCase()}`,
     },
-    skip: !address,
+    skip: !address || !councilId,
     pollInterval: 10000,
   });
   const currentAllocation = allocationQueryRes?.allocations[0];

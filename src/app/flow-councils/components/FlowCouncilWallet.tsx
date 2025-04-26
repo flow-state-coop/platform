@@ -132,7 +132,10 @@ export default function FlowCouncilWallet() {
                               ""
                             ) : councilMember ? (
                               <>
-                                {councilMember.votingPower - currentVotes} Votes
+                                {councilMember.votingPower - currentVotes > 0
+                                  ? councilMember.votingPower - currentVotes
+                                  : 0}{" "}
+                                Votes
                               </>
                             ) : (
                               <Spinner size="sm" />
