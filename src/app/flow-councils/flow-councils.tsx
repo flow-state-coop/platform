@@ -76,7 +76,9 @@ const FLOW_COUNCIL_GRANTEE_QUERY = gql`
 const SF_POOL_MEMBERSHIPS_QUERY = gql`
   query SFPoolMembershipsQuery($address: String) {
     account(id: $address) {
-      poolMemberships {
+      id
+      poolMemberships(first: 1000, orderBy: createdAtTimestamp) {
+        id
         units
         isConnected
         pool {
@@ -148,7 +150,10 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
   );
   const { data: superfluidQueryRes, loading: superfluidQueryLoading } =
     useQuery(SF_POOL_MEMBERSHIPS_QUERY, {
-      client: getApolloClient("superfluid", selectedNetwork.id),
+      client: getApolloClient(
+        "superfluid",
+        supportedNetworkConnection ? connectedChain?.id : selectedNetwork.id,
+      ),
       variables: { address: address?.toLowerCase() },
       pollInterval: 10000,
       skip: !address,
