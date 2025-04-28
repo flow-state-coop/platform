@@ -164,9 +164,17 @@ export default function Membership(props: MembershipProps) {
           };
         });
 
-      if (membersEntry.length > 0) {
-        setMembersEntry(membersEntry);
-      }
+      setMembersEntry(
+        membersEntry.length > 0
+          ? membersEntry
+          : [
+              {
+                address: "",
+                votingPower: "",
+                validationError: "",
+              },
+            ],
+      );
 
       if (council.maxAllocationsPerMember === 0) {
         setCouncilConfig((prev) => {
