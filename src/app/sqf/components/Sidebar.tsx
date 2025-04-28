@@ -99,7 +99,7 @@ function Sidebar() {
         <Stack
           direction="vertical"
           gap={3}
-          className={`rounded-4 flex-grow-0 p-3 border ${selectedPool && !isWrongNetwork ? "border-black" : ""}`}
+          className={`rounded-4 flex-grow-0 p-3 border ${selectedPool && !isWrongNetwork ? "border-black" : ""} shadow`}
           style={{ color: !selectedPool || isWrongNetwork ? "#dee2e6" : "" }}
         >
           <Link

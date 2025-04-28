@@ -296,6 +296,9 @@ export default function Launch(props: LaunchProps) {
                     onClick={() => {
                       setSelectedNetwork(network);
                       setSelectedToken(network.tokens[0]);
+                      router.push(
+                        `/flow-councils/launch/?chainId=${network.id}`,
+                      );
                     }}
                   >
                     <Stack direction="horizontal" gap={1}>
