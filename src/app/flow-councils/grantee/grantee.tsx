@@ -472,7 +472,7 @@ export default function Grantee(props: GranteeProps) {
         </Stack>
         <Button
           variant="secondary"
-          className="py-2 text-light"
+          className="d-flex justify-content-center align-items-center gap-2 py-2"
           disabled={!!session && session.address === address}
           onClick={() => {
             !address && openConnectModal
@@ -482,6 +482,18 @@ export default function Grantee(props: GranteeProps) {
                 : handleSignIn(csfrToken);
           }}
         >
+          {!!session && session.address === address && (
+            <Image
+              src="/check-circle.svg"
+              alt=""
+              width={26}
+              height={26}
+              style={{
+                filter:
+                  "invert(34%) sepia(94%) saturate(614%) hue-rotate(109deg) brightness(92%) contrast(97%)",
+              }}
+            />
+          )}
           Sign In With Ethereum
         </Button>
         <Button
