@@ -585,7 +585,7 @@ export default function Review(props: ReviewProps) {
           )}
         <Button
           variant="secondary"
-          className="mt-4 fs-5"
+          className="d-flex justify-content-center align-items-center gap-2 mt-4 fs-5"
           disabled={!!session && session.address === address}
           onClick={() => {
             !address && openConnectModal
@@ -595,6 +595,18 @@ export default function Review(props: ReviewProps) {
                 : handleSignIn(csfrToken);
           }}
         >
+          {!!session && session.address === address && (
+            <Image
+              src="/check-circle.svg"
+              alt=""
+              width={26}
+              height={26}
+              style={{
+                filter:
+                  "brightness(0) saturate(100%) invert(10%) sepia(48%) saturate(2881%) hue-rotate(119deg) brightness(100%) contrast(99%)",
+              }}
+            />
+          )}
           Sign In With Ethereum
         </Button>
         <Button
