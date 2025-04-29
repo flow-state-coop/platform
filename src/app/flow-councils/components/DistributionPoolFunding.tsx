@@ -6,6 +6,7 @@ import { useQuery, gql } from "@apollo/client";
 import {
   NativeAssetSuperToken,
   WrapperSuperToken,
+  SuperToken,
   Operation,
   Framework,
 } from "@superfluid-finance/sdk-core";
@@ -107,8 +108,11 @@ export default function DistributionPoolFunding(props: {
   );
   const [newFlowRate, setNewFlowRate] = useState("");
   const [wrapAmount, setWrapAmount] = useState("");
-  const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("0");
+  const [sfFramework, setSfFramework] = useState<Framework | null>(null);
+  const [superToken, setSuperToken] = useState<
+    NativeAssetSuperToken | WrapperSuperToken | SuperToken | null
+  >(null);
 
   const { address } = useAccount();
   const { council, councilMetadata, token, gdaPool } = useCouncil();
@@ -249,91 +253,84 @@ export default function DistributionPoolFunding(props: {
     [calcLiquidationEstimate, amountPerTimeInterval, timeInterval],
   );
 
-  useEffect(() => {
-    (async () => {
-      if (
-        !address ||
-        !isAddress(distributionTokenAddress) ||
-        !newFlowRate ||
-        !ethersProvider ||
-        !ethersSigner
-      ) {
-        return;
-      }
+  const transactions = useMemo(() => {
+    if (
+      !address ||
+      !isAddress(distributionTokenAddress) ||
+      !sfFramework ||
+      !superToken ||
+      !newFlowRate ||
+      !ethersProvider ||
+      !ethersSigner
+    ) {
+      return [];
+    }
 
-      const sfFramework = await Framework.create({
-        chainId: network.id,
-        resolverAddress: network.superfluidResolver,
-        provider: ethersProvider,
-      });
-      const superToken = await sfFramework.loadSuperToken(
-        distributionTokenAddress,
-      );
-      const underlyingToken = superToken.underlyingToken;
+    const underlyingToken = superToken.underlyingToken;
 
-      const wrapAmountWei = parseEther(wrapAmount?.replace(/,/g, "") ?? "0");
-      const isWrapperSuperToken =
-        underlyingToken && underlyingToken.address !== ZERO_ADDRESS;
-      const approvalTransactionsCount =
-        isWrapperSuperToken &&
-        wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0)
-          ? 1
-          : 0;
-      const transactions: (() => Promise<void>)[] = [];
-      const operations: Operation[] = [];
+    const wrapAmountWei = parseEther(wrapAmount?.replace(/,/g, "") ?? "0");
+    const isWrapperSuperToken =
+      underlyingToken && underlyingToken.address !== ZERO_ADDRESS;
+    const approvalTransactionsCount =
+      isWrapperSuperToken &&
+      wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0)
+        ? 1
+        : 0;
+    const transactions: (() => Promise<void>)[] = [];
+    const operations: Operation[] = [];
 
-      if (wrapAmount && Number(wrapAmount?.replace(/,/g, "")) > 0) {
-        if (underlyingToken && approvalTransactionsCount > 0) {
-          transactions.push(async () => {
-            const tx = await underlyingToken
-              .approve({
-                receiver: distributionTokenAddress,
-                amount: wrapAmountWei.toString(),
-              })
-              .exec(ethersSigner);
-
-            await tx.wait();
-          });
-        }
-
-        if (isWrapperSuperToken) {
-          operations.push(
-            (superToken as WrapperSuperToken).upgrade({
+    if (wrapAmount && Number(wrapAmount?.replace(/,/g, "")) > 0) {
+      if (underlyingToken && approvalTransactionsCount > 0) {
+        transactions.push(async () => {
+          const tx = await underlyingToken
+            .approve({
+              receiver: distributionTokenAddress,
               amount: wrapAmountWei.toString(),
-            }),
-          );
-        } else {
-          transactions.push(async () => {
-            const tx = await (superToken as NativeAssetSuperToken)
-              .upgrade({
-                amount: wrapAmountWei.toString(),
-              })
-              .exec(ethersSigner);
+            })
+            .exec(ethersSigner);
 
-            await tx.wait();
-          });
-        }
+          await tx.wait();
+        });
       }
 
-      operations.push(
-        superToken.distributeFlow({
-          from: address,
-          pool: council?.pool ?? "",
-          requestedFlowRate: newFlowRate,
-        }),
-      );
+      if (isWrapperSuperToken) {
+        operations.push(
+          (superToken as WrapperSuperToken).upgrade({
+            amount: wrapAmountWei.toString(),
+          }),
+        );
+      } else {
+        transactions.push(async () => {
+          const tx = await (superToken as NativeAssetSuperToken)
+            .upgrade({
+              amount: wrapAmountWei.toString(),
+            })
+            .exec(ethersSigner);
 
-      transactions.push(async () => {
-        const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
+          await tx.wait();
+        });
+      }
+    }
 
-        await tx.wait();
-      });
+    operations.push(
+      superToken.distributeFlow({
+        from: address,
+        pool: council?.pool ?? "",
+        requestedFlowRate: newFlowRate,
+      }),
+    );
 
-      setTransactions(transactions);
-    })();
+    transactions.push(async () => {
+      const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
+
+      await tx.wait();
+    });
+
+    return transactions;
   }, [
     address,
-    network,
+    sfFramework,
+    superToken,
     wrapAmount,
     newFlowRate,
     ethersProvider,
@@ -386,6 +383,8 @@ export default function DistributionPoolFunding(props: {
         });
 
         setUnderlyingTokenAllowance(underlyingTokenAllowance ?? "0");
+        setSfFramework(sfFramework);
+        setSuperToken(superToken);
       }
     })();
   }, [address, ethersProvider, distributionTokenAddress, network]);
