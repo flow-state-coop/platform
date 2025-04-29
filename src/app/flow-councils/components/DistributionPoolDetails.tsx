@@ -160,7 +160,11 @@ export default function DistributionPoolDetails(
                     : totalMonthlyStream - monthlyStreamToReceiver < 100
                       ? 2
                       : 1,
-            }).format(totalMonthlyStream - monthlyStreamToReceiver)}
+            }).format(
+              totalMonthlyStream - monthlyStreamToReceiver > 0
+                ? totalMonthlyStream - monthlyStreamToReceiver
+                : 0,
+            )}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
