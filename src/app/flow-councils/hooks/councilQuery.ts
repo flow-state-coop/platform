@@ -3,7 +3,7 @@ import { Network } from "@/types/network";
 import { getApolloClient } from "@/lib/apollo";
 
 const COUNCIL_QUERY = gql`
-  query CouncilNameAndGrantees($councilId: String) {
+  query CouncilQuery($councilId: String) {
     council(id: $councilId) {
       id
       pool

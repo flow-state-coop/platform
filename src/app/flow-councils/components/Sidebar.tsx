@@ -24,13 +24,11 @@ const COUNCIL_MANAGER_QUERY = gql`
   }
 `;
 
-type CouncilMetadata = { name: string; description: string };
+type Council = { id: string; name: string; description: string };
 
 function Sidebar() {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
-  const [councilsMetadata, setCouncilsMetadata] = useState<CouncilMetadata[]>(
-    [],
-  );
+  const [councils, setCouncils] = useState<Council[]>([]);
 
   const searchParams = useSearchParams();
   const chainId = Number(searchParams?.get("chainId")) ?? null;
@@ -45,20 +43,19 @@ function Sidebar() {
       address: address?.toLowerCase(),
     },
     skip: !address,
-    pollInterval: 10000,
+    pollInterval: 4000,
   });
-  const councils = councilsQueryRes?.councils ?? null;
   const selectedCouncil = councils?.find(
     (council: { id: string }) => council.id === councilId?.toLowerCase(),
   );
 
   useEffect(() => {
     (async () => {
-      if (!councils) {
+      if (!councilsQueryRes?.councils) {
         return;
       }
 
-      const councilsMetadata: CouncilMetadata[] = [];
+      const councils: Council[] = [];
       const promises = [];
 
       try {
@@ -66,7 +63,7 @@ function Sidebar() {
           gateways: IPFS_GATEWAYS,
         });
 
-        for (const council of councils) {
+        for (const council of councilsQueryRes.councils) {
           promises.push(
             (async () => {
               const metadataRes = await verifiedFetch(
@@ -74,7 +71,11 @@ function Sidebar() {
               );
               const metadata = await metadataRes.json();
 
-              councilsMetadata.push(metadata);
+              councils.push({
+                id: council.id,
+                name: metadata.name,
+                description: metadata.description,
+              });
             })(),
           );
         }
@@ -84,9 +85,21 @@ function Sidebar() {
         console.error(err);
       }
 
-      setCouncilsMetadata(councilsMetadata);
+      councils.sort((a, b) => {
+        if (a.name < b.name) {
+          return -1;
+        }
+
+        if (a.name > b.name) {
+          return 1;
+        }
+
+        return 0;
+      });
+
+      setCouncils(councils);
     })();
-  }, [councils]);
+  }, [councilsQueryRes]);
 
   const SidebarLinks = () => {
     return (
@@ -181,6 +194,52 @@ function Sidebar() {
     );
   };
 
+  const CouncilsDropdown = () => (
+    <Dropdown className="position-static w-75 overflow-hidden">
+      <Dropdown.Toggle
+        disabled={!address}
+        variant="transparent"
+        className="d-flex justify-content-between align-items-center w-100 border border-2 overflow-hidden"
+      >
+        <span
+          className="d-inline-block text-truncate hidden"
+          style={{
+            color: !address ? "#fff" : "",
+          }}
+        >
+          {selectedCouncil?.name ?? "Create New"}
+        </span>
+      </Dropdown.Toggle>
+      <Dropdown.Menu
+        className="overflow-hidden"
+        style={{ width: isMobile ? 300 : "25%" }}
+      >
+        {councils?.map((council: Council, i: number) => (
+          <Dropdown.Item
+            key={i}
+            className="text-truncate"
+            onClick={() =>
+              router.push(
+                `/flow-councils/membership/?chainId=${chainId}&councilId=${council.id}`,
+              )
+            }
+          >
+            {council?.name ?? "N/A"}
+          </Dropdown.Item>
+        ))}
+        <Dropdown.Item
+          onClick={() => {
+            router.push(
+              `/flow-councils/launch/?chainId=${chainId ?? DEFAULT_CHAIN_ID}`,
+            );
+          }}
+        >
+          Create New
+        </Dropdown.Item>
+      </Dropdown.Menu>
+    </Dropdown>
+  );
+
   if (isMobile && !showMobileSidebar) {
     return (
       <Button
@@ -221,6 +280,7 @@ function Sidebar() {
           </Offcanvas.Title>
         </Offcanvas.Header>
         <Offcanvas.Body className="d-flex flex-column gap-4 px-3 py-4 fs-5">
+          <CouncilsDropdown />
           <SidebarLinks />
         </Offcanvas.Body>
       </Offcanvas>
@@ -231,58 +291,13 @@ function Sidebar() {
     <Stack
       direction="vertical"
       gap={4}
-      className="svh-100 py-4 px-3 fs-5"
+      className="w-25 svh-100 py-4 px-3 fs-5"
       style={{
         boxShadow: "0.5rem 0 0.5rem -2px rgba(0,0,0,0.2)",
       }}
     >
       <h1 className="fs-4 fw-bold">Flow Council Admin</h1>
-      <Dropdown className="position-static w-75 overflow-hidden">
-        <Dropdown.Toggle
-          disabled={!address}
-          variant="transparent"
-          className="d-flex justify-content-between align-items-center w-100 border border-2 overflow-hidden"
-        >
-          <span
-            className="d-inline-block text-truncate hidden"
-            style={{
-              color: !address ? "#fff" : "",
-            }}
-          >
-            {selectedCouncil
-              ? councilsMetadata[
-                  councils?.findIndex(
-                    (council: { id: string }) =>
-                      council.id === selectedCouncil.id,
-                  )
-                ]?.name
-              : "Create New"}
-          </span>
-        </Dropdown.Toggle>
-        <Dropdown.Menu>
-          {councils?.map((council: { id: string }, i: number) => (
-            <Dropdown.Item
-              key={i}
-              onClick={() =>
-                router.push(
-                  `/flow-councils/membership/?chainId=${chainId}&councilId=${council.id}`,
-                )
-              }
-            >
-              {councilsMetadata[i]?.name ?? "N/A"}
-            </Dropdown.Item>
-          ))}
-          <Dropdown.Item
-            onClick={() => {
-              router.push(
-                `/flow-councils/launch/?chainId=${chainId ?? DEFAULT_CHAIN_ID}`,
-              );
-            }}
-          >
-            Create New
-          </Dropdown.Item>
-        </Dropdown.Menu>
-      </Dropdown>
+      <CouncilsDropdown />
       <SidebarLinks />
     </Stack>
   );
