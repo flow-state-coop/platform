@@ -1,11 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { Address } from "viem";
+import { useAccount } from "wagmi";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
+import Modal from "react-bootstrap/Modal";
 import Spinner from "react-bootstrap/Spinner";
 import Dropdown from "react-bootstrap/Dropdown";
+import PoolConnectionButton from "@/components/PoolConnectionButton";
 import GranteeCard from "../../components/GranteeCard";
 import RoundBanner from "../../components/RoundBanner";
 import Ballot from "../../components/Ballot";
@@ -17,7 +21,7 @@ import useCouncil from "../../hooks/council";
 import { networks } from "@/lib/networks";
 import { shuffle, getPlaceholderImageSrc } from "@/lib/utils";
 
-export default function Index({
+export default function FlowCouncil({
   chainId,
   councilId,
 }: {
@@ -28,6 +32,7 @@ export default function Index({
   const [sortingMethod, setSortingMethod] = useState(SortingMethod.RANDOM);
   const [showDistributionPoolFunding, setShowDistributionPoolFunding] =
     useState(false);
+  const [showConnectionModal, setShowConnectionModal] = useState(false);
 
   const skipGrantees = useRef(0);
   const hasNextGrantee = useRef(true);
@@ -35,6 +40,7 @@ export default function Index({
   const network =
     networks.find((network) => network.id === Number(chainId)) ?? networks[0];
   useMediaQuery();
+  const { address } = useAccount();
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const {
@@ -45,6 +51,12 @@ export default function Index({
     gdaPool,
     token,
   } = useCouncil();
+
+  const poolMember = gdaPool?.poolMembers.find(
+    (member: { account: { id: string } }) =>
+      member.account.id === address?.toLowerCase(),
+  );
+  const shouldConnect = !!poolMember && !poolMember.isConnected;
 
   const getGrantee = useCallback(
     (recipient: { id: string; address: string; metadata: ProjectMetadata }) => {
@@ -177,6 +189,8 @@ export default function Index({
     setGrantees((prev) => sortGrantees(prev));
   }, [sortingMethod, sortGrantees]);
 
+  useEffect(() => setShowConnectionModal(shouldConnect), [shouldConnect]);
+
   return (
     <>
       <Container
@@ -289,6 +303,31 @@ export default function Index({
       ) : newAllocation?.showBallot ? (
         <Ballot councilAddress={councilId as Address} />
       ) : null}
+      <Modal
+        show={showConnectionModal}
+        centered
+        onHide={() => setShowConnectionModal(false)}
+      >
+        <Modal.Header closeButton className="align-items-start border-0 pt-3">
+          <Modal.Title className="fs-5 fw-bold">
+            You're a recipient in this Flow Council but haven't connected.
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="fs-5">
+          Do you want to do that now, so your{" "}
+          <Link href="https://app.superfluid.finance/" target="_blank">
+            Super Token balance
+          </Link>{" "}
+          is reflected in real time?
+        </Modal.Body>
+        <Modal.Footer className="border-0">
+          <PoolConnectionButton
+            network={network}
+            poolAddress={gdaPool?.id ?? "0x"}
+            isConnected={!shouldConnect}
+          />
+        </Modal.Footer>
+      </Modal>
     </>
   );
 }
