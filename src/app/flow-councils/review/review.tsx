@@ -603,7 +603,7 @@ export default function Review(props: ReviewProps) {
               height={26}
               style={{
                 filter:
-                  "invert(34%) sepia(94%) saturate(614%) hue-rotate(109deg) brightness(92%) contrast(97%)",
+                  "brightness(0) saturate(100%) invert(10%) sepia(48%) saturate(2881%) hue-rotate(119deg) brightness(100%) contrast(99%)",
               }}
             />
           )}
