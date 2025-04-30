@@ -28,7 +28,8 @@ type MembershipProps = { chainId?: number; councilId?: string };
 type MemberEntry = {
   address: string;
   votingPower: string;
-  validationError: string;
+  addressValidationError: string;
+  votesValidationError: string;
 };
 
 const COUNCIL_QUERY = gql`
@@ -61,7 +62,12 @@ export default function Membership(props: MembershipProps) {
   const [maxAllocation, setMaxAllocation] = useState("");
   const [votingPowerForAll, setVotingPowerForAll] = useState("");
   const [membersEntry, setMembersEntry] = useState<MemberEntry[]>([
-    { address: "", votingPower: "", validationError: "" },
+    {
+      address: "",
+      votingPower: "",
+      addressValidationError: "",
+      votesValidationError: "",
+    },
   ]);
   const [membersToRemove, setMembersToRemove] = useState<MemberEntry[]>([]);
 
@@ -88,7 +94,8 @@ export default function Membership(props: MembershipProps) {
   const council = councilQueryRes?.council ?? null;
   const isValidMembersEntry = membersEntry.every(
     (memberEntry) =>
-      memberEntry.validationError === "" &&
+      memberEntry.addressValidationError === "" &&
+      memberEntry.votesValidationError === "" &&
       memberEntry.address !== "" &&
       memberEntry.votingPower !== "" &&
       memberEntry.votingPower !== "0",
@@ -160,7 +167,8 @@ export default function Membership(props: MembershipProps) {
           return {
             address: member.account,
             votingPower: member.votingPower,
-            validationError: "",
+            addressValidationError: "",
+            votesValidationError: "",
           };
         });
 
@@ -171,7 +179,8 @@ export default function Membership(props: MembershipProps) {
               {
                 address: "",
                 votingPower: "",
-                validationError: "",
+                addressValidationError: "",
+                votesValidationError: "",
               },
             ],
       );
@@ -202,7 +211,8 @@ export default function Membership(props: MembershipProps) {
     );
 
     if (
-      !memberEntry.validationError &&
+      !memberEntry.addressValidationError &&
+      !memberEntry.votesValidationError &&
       existingPoolMember &&
       existingPoolMember.units !== "0"
     ) {
@@ -221,7 +231,8 @@ export default function Membership(props: MembershipProps) {
 
       const validMembers = membersEntry.filter(
         (memberEntry) =>
-          memberEntry.validationError === "" &&
+          memberEntry.addressValidationError === "" &&
+          memberEntry.votesValidationError === "" &&
           memberEntry.address !== "" &&
           !council?.councilMembers.some(
             (member: { account: string; votingPower: string }) =>
@@ -452,7 +463,7 @@ export default function Membership(props: MembershipProps) {
                         const value = e.target.value;
 
                         if (!isAddress(value)) {
-                          prevMembersEntry[i].validationError =
+                          prevMembersEntry[i].addressValidationError =
                             "Invalid Address";
                         } else if (
                           prevMembersEntry
@@ -461,10 +472,10 @@ export default function Membership(props: MembershipProps) {
                             )
                             .includes(value.toLowerCase())
                         ) {
-                          prevMembersEntry[i].validationError =
+                          prevMembersEntry[i].addressValidationError =
                             "Address already added";
                         } else {
-                          prevMembersEntry[i].validationError = "";
+                          prevMembersEntry[i].addressValidationError = "";
                         }
 
                         prevMembersEntry[i].address = value;
@@ -472,47 +483,67 @@ export default function Membership(props: MembershipProps) {
                         setMembersEntry(prevMembersEntry);
                       }}
                     />
-                    {memberEntry.validationError ? (
+                    {memberEntry.addressValidationError ? (
                       <Card.Text
                         className="position-absolute mt-1 mb-0 ms-2 ps-1 text-danger"
                         style={{ bottom: 1, fontSize: "0.7rem" }}
                       >
-                        {memberEntry.validationError}
+                        {memberEntry.addressValidationError}
                       </Card.Text>
                     ) : null}
                   </Stack>
                 </Stack>
-                <Form.Control
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="Votes"
-                  value={memberEntry.votingPower}
-                  disabled={membersToRemove
-                    .map((member: { address: string }) =>
-                      member.address.toLowerCase(),
-                    )
-                    .includes(memberEntry.address.toLowerCase())}
-                  className="flex-grow-0 text-center"
-                  style={{
-                    width: 128,
-                    paddingTop: 12,
-                    paddingBottom: 12,
-                  }}
-                  onChange={(e) => {
-                    const prevMembersEntry = [...membersEntry];
-                    const value = e.target.value;
+                <Stack direction="vertical" className="position-relative">
+                  <Form.Control
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Votes"
+                    value={memberEntry.votingPower}
+                    disabled={membersToRemove
+                      .map((member: { address: string }) =>
+                        member.address.toLowerCase(),
+                      )
+                      .includes(memberEntry.address.toLowerCase())}
+                    className="flex-grow-0 text-center"
+                    style={{
+                      width: 128,
+                      paddingTop: 12,
+                      paddingBottom: 12,
+                    }}
+                    onChange={(e) => {
+                      const prevMembersEntry = [...membersEntry];
+                      const value = e.target.value;
 
-                    if (!value || value === "0") {
-                      prevMembersEntry[i].votingPower = "";
-                    } else if (value.includes(".")) {
-                      return;
-                    } else if (isNumber(value)) {
+                      if (value === "0") {
+                        prevMembersEntry[i].votesValidationError =
+                          "Must be > 0";
+                      } else if (value.includes(".")) {
+                        prevMembersEntry[i].votesValidationError =
+                          "Must be an integer";
+                      } else if (!!value && !isNumber(value)) {
+                        prevMembersEntry[i].votesValidationError =
+                          "Must be a number";
+                      } else if (Number(value) > 1e6) {
+                        prevMembersEntry[i].votesValidationError =
+                          "Must be ≤ 1M";
+                      } else {
+                        prevMembersEntry[i].votesValidationError = "";
+                      }
+
                       prevMembersEntry[i].votingPower = value;
-                    }
 
-                    setMembersEntry(prevMembersEntry);
-                  }}
-                />
+                      setMembersEntry(prevMembersEntry);
+                    }}
+                  />
+                  {memberEntry.votesValidationError ? (
+                    <Card.Text
+                      className="position-absolute w-100 mt-1 mb-0 text-center text-danger"
+                      style={{ bottom: 1, fontSize: "0.7rem" }}
+                    >
+                      {memberEntry.votesValidationError}
+                    </Card.Text>
+                  ) : null}
+                </Stack>
                 <Button
                   variant="transparent"
                   className="p-0"
@@ -584,7 +615,8 @@ export default function Membership(props: MembershipProps) {
                     prev.concat({
                       address: "",
                       votingPower: "",
-                      validationError: "",
+                      addressValidationError: "",
+                      votesValidationError: "",
                     }),
                   )
                 }
