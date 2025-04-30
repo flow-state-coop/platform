@@ -364,8 +364,12 @@ export default function Review(props: ReviewProps) {
           Council.
         </h2>
         <Card.Text className="mt-4">Application Link</Card.Text>
-        <Stack direction="horizontal" gap={2} className="me-auto mb-5">
-          <Badge className="d-flex align-items-center bg-transparent text-black border border-2 border-gray-500 p-2 fw-normal text-start h-100">
+        <Stack
+          direction="horizontal"
+          gap={2}
+          className="w-100 me-auto mb-5 overflow-hidden"
+        >
+          <Badge className="d-flex align-items-center bg-transparent text-black border border-2 border-gray-500 p-2 fw-normal text-truncate text-start h-100">
             {granteeApplicationLink}
           </Badge>
           <CopyTooltip
