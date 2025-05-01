@@ -12,8 +12,6 @@ import useCouncil from "../hooks/council";
 import useWriteAllocation from "../hooks/writeAllocation";
 import { isNumber } from "@/lib/utils";
 
-const MAX_ALLOCATIONS_PER_MEMBER = 10;
-
 export default function Ballot({
   councilAddress,
 }: {
@@ -43,6 +41,7 @@ export default function Ballot({
       ?.map((a) => a.amount)
       ?.reduce((a, b) => a + b, 0) ?? 0;
   const newAllocationsCount = newAllocation?.allocation?.length ?? 0;
+  const maxAllocationsPerMember = council?.maxAllocationsPerMember ?? 0;
 
   useEffect(() => {
     if (success) {
@@ -63,10 +62,10 @@ export default function Ballot({
 
     if (granteeAddress) {
       const newAmount = increment
-        ? currentAmount + 10
-        : currentAmount - 10 < 0
+        ? currentAmount + 1
+        : currentAmount - 1 < 0
           ? 0
-          : currentAmount - 10;
+          : currentAmount - 1;
 
       setSuccess(false);
       dispatchNewAllocation({
@@ -138,10 +137,13 @@ export default function Ballot({
           className="justify-content-around flex-grow-0 mb-1"
         >
           <p
-            className={`m-0 fs-6 ${newAllocationsCount > MAX_ALLOCATIONS_PER_MEMBER ? "text-danger" : "text-info"}`}
+            className={`m-0 fs-6 ${newAllocationsCount > maxAllocationsPerMember ? "text-danger" : "text-info"}`}
+            style={{
+              visibility: maxAllocationsPerMember === 0 ? "hidden" : "visible",
+            }}
           >
-            ({newAllocation?.allocation?.length ?? 0}/
-            {MAX_ALLOCATIONS_PER_MEMBER} Projects)
+            ({newAllocation?.allocation?.length ?? 0}/{maxAllocationsPerMember}{" "}
+            Projects)
           </p>
           <p
             className={`m-0 fs-6 ${totalVotes > votingPower ? "text-danger" : "text-info"}`}
@@ -247,7 +249,8 @@ export default function Ballot({
             disabled={
               !success &&
               (totalVotes > votingPower ||
-                newAllocationsCount > MAX_ALLOCATIONS_PER_MEMBER ||
+                (maxAllocationsPerMember &&
+                  newAllocationsCount > maxAllocationsPerMember) ||
                 !newAllocation?.allocation ||
                 newAllocation.allocation.length === 0 ||
                 JSON.stringify(currentAllocation?.allocation) ===
