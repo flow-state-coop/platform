@@ -36,7 +36,7 @@ function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { address } = useAccount();
-  const { isMobile } = useMediaQuery();
+  const { isMobile, isTablet } = useMediaQuery();
   const { data: councilsQueryRes } = useQuery(COUNCIL_MANAGER_QUERY, {
     client: getApolloClient("flowCouncil", chainId ?? DEFAULT_CHAIN_ID),
     variables: {
@@ -212,7 +212,7 @@ function Sidebar() {
       </Dropdown.Toggle>
       <Dropdown.Menu
         className="overflow-hidden"
-        style={{ width: isMobile ? 300 : "25%" }}
+        style={{ width: isMobile || isTablet ? 300 : "25%" }}
       >
         {councils?.map((council: Council, i: number) => (
           <Dropdown.Item
@@ -240,7 +240,7 @@ function Sidebar() {
     </Dropdown>
   );
 
-  if (isMobile && !showMobileSidebar) {
+  if ((isMobile || isTablet) && !showMobileSidebar) {
     return (
       <Button
         className="position-absolute rounded-circle p-0"
@@ -267,7 +267,7 @@ function Sidebar() {
     );
   }
 
-  if (isMobile && showMobileSidebar) {
+  if ((isMobile || isTablet) && showMobileSidebar) {
     return (
       <Offcanvas
         show={showMobileSidebar}

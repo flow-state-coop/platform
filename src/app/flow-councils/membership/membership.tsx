@@ -28,7 +28,8 @@ type MembershipProps = { chainId?: number; councilId?: string };
 type MemberEntry = {
   address: string;
   votingPower: string;
-  validationError: string;
+  addressValidationError: string;
+  votesValidationError: string;
 };
 
 const COUNCIL_QUERY = gql`
@@ -61,7 +62,12 @@ export default function Membership(props: MembershipProps) {
   const [maxAllocation, setMaxAllocation] = useState("");
   const [votingPowerForAll, setVotingPowerForAll] = useState("");
   const [membersEntry, setMembersEntry] = useState<MemberEntry[]>([
-    { address: "", votingPower: "", validationError: "" },
+    {
+      address: "",
+      votingPower: "",
+      addressValidationError: "",
+      votesValidationError: "",
+    },
   ]);
   const [membersToRemove, setMembersToRemove] = useState<MemberEntry[]>([]);
 
@@ -88,7 +94,8 @@ export default function Membership(props: MembershipProps) {
   const council = councilQueryRes?.council ?? null;
   const isValidMembersEntry = membersEntry.every(
     (memberEntry) =>
-      memberEntry.validationError === "" &&
+      memberEntry.addressValidationError === "" &&
+      memberEntry.votesValidationError === "" &&
       memberEntry.address !== "" &&
       memberEntry.votingPower !== "" &&
       memberEntry.votingPower !== "0",
@@ -160,7 +167,8 @@ export default function Membership(props: MembershipProps) {
           return {
             address: member.account,
             votingPower: member.votingPower,
-            validationError: "",
+            addressValidationError: "",
+            votesValidationError: "",
           };
         });
 
@@ -171,7 +179,8 @@ export default function Membership(props: MembershipProps) {
               {
                 address: "",
                 votingPower: "",
-                validationError: "",
+                addressValidationError: "",
+                votesValidationError: "",
               },
             ],
       );
@@ -202,7 +211,8 @@ export default function Membership(props: MembershipProps) {
     );
 
     if (
-      !memberEntry.validationError &&
+      !memberEntry.addressValidationError &&
+      !memberEntry.votesValidationError &&
       existingPoolMember &&
       existingPoolMember.units !== "0"
     ) {
@@ -221,7 +231,8 @@ export default function Membership(props: MembershipProps) {
 
       const validMembers = membersEntry.filter(
         (memberEntry) =>
-          memberEntry.validationError === "" &&
+          memberEntry.addressValidationError === "" &&
+          memberEntry.votesValidationError === "" &&
           memberEntry.address !== "" &&
           !council?.councilMembers.some(
             (member: { account: string; votingPower: string }) =>
@@ -312,12 +323,10 @@ export default function Membership(props: MembershipProps) {
           <Card.Body className="p-0 mt-4">
             <Stack
               direction={isMobile ? "vertical" : "horizontal"}
+              gap={isMobile ? 1 : 4}
               className="align-items-sm-center"
             >
-              <Form.Label
-                className="d-flex gap-1 mb-2 fs-5"
-                style={{ width: isMobile ? "100%" : "25%" }}
-              >
+              <Form.Label className="d-flex gap-1 mb-2 fs-5">
                 Max Voting Spread
                 <InfoTooltip
                   position={{ top: true }}
@@ -395,16 +404,18 @@ export default function Membership(props: MembershipProps) {
                 inputMode="numeric"
                 placeholder="Votes"
                 value={votingPowerForAll}
-                className="text-center rounded-2 flex-grow-0"
+                className="text-center rounded-2 flex-grow-0 flex-shrink-0"
                 style={{
-                  width: 128,
+                  width: isMobile ? 100 : 128,
                   paddingTop: 12,
                   paddingBottom: 12,
                 }}
                 onChange={(e) => {
                   if (
                     e.target.value === "" ||
-                    (isNumber(e.target.value) && e.target.value !== "0.")
+                    (isNumber(e.target.value) &&
+                      e.target.value !== "0." &&
+                      Number(e.target.value) <= 1e6)
                   ) {
                     setVotingPowerForAll(e.target.value);
                   }
@@ -412,7 +423,7 @@ export default function Membership(props: MembershipProps) {
               />
               <Button
                 variant="transparent"
-                className="text-primary text-decoration-underline p-0"
+                className="text-primary text-decoration-underline p-0 flex-grow-0 flex-shrink-0"
                 style={{ width: 80, fontSize: "0.9rem" }}
                 onClick={() =>
                   setMembersEntry((prev) => {
@@ -429,93 +440,114 @@ export default function Membership(props: MembershipProps) {
               <Stack
                 direction="horizontal"
                 gap={isMobile ? 2 : 4}
-                className="justify-content-start my-3"
+                className="justify-content-end my-3"
                 key={i}
               >
-                <Stack direction="vertical" className="w-75">
-                  <Stack direction="vertical" className="position-relative">
-                    <Form.Control
-                      type="text"
-                      placeholder="Member Address"
-                      value={memberEntry.address}
-                      disabled={membersToRemove
-                        .map((member: { address: string }) =>
-                          member.address.toLowerCase(),
-                        )
-                        .includes(memberEntry.address.toLowerCase())}
-                      style={{
-                        paddingTop: 12,
-                        paddingBottom: 12,
-                      }}
-                      onChange={(e) => {
-                        const prevMembersEntry = [...membersEntry];
-                        const value = e.target.value;
+                <Stack direction="vertical" className="position-relative w-75">
+                  <Form.Control
+                    type="text"
+                    placeholder="Member Address"
+                    value={memberEntry.address}
+                    disabled={membersToRemove
+                      .map((member: { address: string }) =>
+                        member.address.toLowerCase(),
+                      )
+                      .includes(memberEntry.address.toLowerCase())}
+                    style={{
+                      paddingTop: 12,
+                      paddingBottom: 12,
+                    }}
+                    onChange={(e) => {
+                      const prevMembersEntry = [...membersEntry];
+                      const value = e.target.value;
 
-                        if (!isAddress(value)) {
-                          prevMembersEntry[i].validationError =
-                            "Invalid Address";
-                        } else if (
-                          prevMembersEntry
-                            .map((prevMember) =>
-                              prevMember.address.toLowerCase(),
-                            )
-                            .includes(value.toLowerCase())
-                        ) {
-                          prevMembersEntry[i].validationError =
-                            "Address already added";
-                        } else {
-                          prevMembersEntry[i].validationError = "";
-                        }
+                      if (!isAddress(value)) {
+                        prevMembersEntry[i].addressValidationError =
+                          "Invalid Address";
+                      } else if (
+                        prevMembersEntry
+                          .map((prevMember) => prevMember.address.toLowerCase())
+                          .includes(value.toLowerCase())
+                      ) {
+                        prevMembersEntry[i].addressValidationError =
+                          "Address already added";
+                      } else {
+                        prevMembersEntry[i].addressValidationError = "";
+                      }
 
-                        prevMembersEntry[i].address = value;
+                      prevMembersEntry[i].address = value;
 
-                        setMembersEntry(prevMembersEntry);
-                      }}
-                    />
-                    {memberEntry.validationError ? (
-                      <Card.Text
-                        className="position-absolute mt-1 mb-0 ms-2 ps-1 text-danger"
-                        style={{ bottom: 1, fontSize: "0.7rem" }}
-                      >
-                        {memberEntry.validationError}
-                      </Card.Text>
-                    ) : null}
-                  </Stack>
+                      setMembersEntry(prevMembersEntry);
+                    }}
+                  />
+                  {memberEntry.addressValidationError ? (
+                    <Card.Text
+                      className="position-absolute mt-1 mb-0 ms-2 ps-1 text-danger"
+                      style={{ bottom: 1, fontSize: "0.7rem" }}
+                    >
+                      {memberEntry.addressValidationError}
+                    </Card.Text>
+                  ) : null}
                 </Stack>
-                <Form.Control
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="Votes"
-                  value={memberEntry.votingPower}
-                  disabled={membersToRemove
-                    .map((member: { address: string }) =>
-                      member.address.toLowerCase(),
-                    )
-                    .includes(memberEntry.address.toLowerCase())}
-                  className="flex-grow-0 text-center"
+                <Stack
+                  direction="vertical"
+                  className="position-relative flex-grow-0 flex-shrink-0"
                   style={{
-                    width: 128,
-                    paddingTop: 12,
-                    paddingBottom: 12,
+                    width: isMobile ? 100 : 128,
                   }}
-                  onChange={(e) => {
-                    const prevMembersEntry = [...membersEntry];
-                    const value = e.target.value;
+                >
+                  <Form.Control
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Votes"
+                    value={memberEntry.votingPower}
+                    disabled={membersToRemove
+                      .map((member: { address: string }) =>
+                        member.address.toLowerCase(),
+                      )
+                      .includes(memberEntry.address.toLowerCase())}
+                    className="flex-grow-0 text-center"
+                    style={{
+                      paddingTop: 12,
+                      paddingBottom: 12,
+                    }}
+                    onChange={(e) => {
+                      const prevMembersEntry = [...membersEntry];
+                      const value = e.target.value;
 
-                    if (!value || value === "0") {
-                      prevMembersEntry[i].votingPower = "";
-                    } else if (value.includes(".")) {
-                      return;
-                    } else if (isNumber(value)) {
+                      if (!!value && !isNumber(value)) {
+                        prevMembersEntry[i].votesValidationError =
+                          "Must be a number";
+                      } else if (Number(value) === 0) {
+                        prevMembersEntry[i].votesValidationError =
+                          "Must be > 0";
+                      } else if (Number(value) > 1e6) {
+                        prevMembersEntry[i].votesValidationError =
+                          "Must be ≤ 1M";
+                      } else if (value.includes(".")) {
+                        prevMembersEntry[i].votesValidationError =
+                          "Must be an integer";
+                      } else {
+                        prevMembersEntry[i].votesValidationError = "";
+                      }
+
                       prevMembersEntry[i].votingPower = value;
-                    }
 
-                    setMembersEntry(prevMembersEntry);
-                  }}
-                />
+                      setMembersEntry(prevMembersEntry);
+                    }}
+                  />
+                  {memberEntry.votesValidationError ? (
+                    <Card.Text
+                      className="position-absolute w-100 mt-1 mb-0 text-center text-danger"
+                      style={{ bottom: 1, fontSize: "0.7rem" }}
+                    >
+                      {memberEntry.votesValidationError}
+                    </Card.Text>
+                  ) : null}
+                </Stack>
                 <Button
                   variant="transparent"
-                  className="p-0"
+                  className="p-0 flex-grow-0 flex-shrink-0"
                   style={{
                     width: 80,
                     pointerEvents: isTransactionLoading ? "none" : "auto",
@@ -537,25 +569,31 @@ export default function Membership(props: MembershipProps) {
               <Stack
                 direction="horizontal"
                 gap={isMobile ? 2 : 4}
-                className="justify-content-start mb-3"
+                className="justify-content-end mb-3"
                 key={i}
               >
-                <Form.Control
-                  disabled
-                  type="text"
-                  value={memberEntry.address}
-                  style={{ width: "75%", paddingTop: 12, paddingBottom: 12 }}
-                />
+                <Stack direction="vertical" className="w-75">
+                  <Form.Control
+                    disabled
+                    type="text"
+                    value={memberEntry.address}
+                    style={{ paddingTop: 12, paddingBottom: 12 }}
+                  />
+                </Stack>
                 <Form.Control
                   type="text"
                   disabled
                   value="Removed"
-                  className="text-center"
-                  style={{ width: 128, paddingTop: 12, paddingBottom: 12 }}
+                  className="text-center flex-grow-0 flex-shrink-0"
+                  style={{
+                    width: isMobile ? 100 : 128,
+                    paddingTop: 12,
+                    paddingBottom: 12,
+                  }}
                 />
                 <Button
                   variant="transparent"
-                  className="p-0"
+                  className="p-0 flex-grow-0 flex-shrink-0"
                   style={{ width: 80 }}
                   onClick={() => {
                     setMembersToRemove((prev) =>
@@ -584,7 +622,8 @@ export default function Membership(props: MembershipProps) {
                     prev.concat({
                       address: "",
                       votingPower: "",
-                      validationError: "",
+                      addressValidationError: "",
+                      votesValidationError: "",
                     }),
                   )
                 }
