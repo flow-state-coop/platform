@@ -428,9 +428,12 @@ export default function Grantee(props: GranteeProps) {
               bannerCid={project.metadata.bannerImg}
               status={project.status}
               hasApplied={hasApplied}
+              canReapply={true}
               isSelected={selectedProjectIndex === i}
               selectProject={() =>
-                !project.status ? setSelectedProjectIndex(i) : void 0
+                project?.status !== "PENDING"
+                  ? setSelectedProjectIndex(i)
+                  : void 0
               }
               updateProject={setShowProjectUpdateModal}
               isTransactionConfirming={isSubmitting}

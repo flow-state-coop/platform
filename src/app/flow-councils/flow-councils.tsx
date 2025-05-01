@@ -42,7 +42,12 @@ type Council = {
 
 const FLOW_COUNCIL_MANAGER_QUERY = gql`
   query FlowCouncilManagerQuery($address: String!) {
-    councils(where: { councilManagers_: { account: $address } }) {
+    councils(
+      first: 1000
+      orderBy: createdAt
+      orderDirection: desc
+      where: { councilManagers_: { account: $address } }
+    ) {
       id
       distributionToken
       pool
@@ -53,7 +58,12 @@ const FLOW_COUNCIL_MANAGER_QUERY = gql`
 
 const FLOW_COUNCIL_MEMBER_QUERY = gql`
   query FlowCouncilMemberQuery($address: String!) {
-    councils(where: { councilMembers_: { account: $address } }) {
+    councils(
+      first: 1000
+      orderBy: createdAt
+      orderDirection: desc
+      where: { councilMembers_: { account: $address } }
+    ) {
       id
       distributionToken
       pool
@@ -64,7 +74,12 @@ const FLOW_COUNCIL_MEMBER_QUERY = gql`
 
 const FLOW_COUNCIL_GRANTEE_QUERY = gql`
   query FlowCouncilGranteeQuery($address: String!) {
-    councils(where: { grantees_: { account: $address } }) {
+    councils(
+      first: 1000
+      orderBy: createdAt
+      orderDirection: desc
+      where: { grantees_: { account: $address } }
+    ) {
       id
       distributionToken
       pool
@@ -77,7 +92,11 @@ const SF_POOL_MEMBERSHIPS_QUERY = gql`
   query SFPoolMembershipsQuery($address: String) {
     account(id: $address) {
       id
-      poolMemberships(first: 1000, orderBy: createdAtTimestamp) {
+      poolMemberships(
+        first: 1000
+        orderBy: createdAtTimestamp
+        orderDirection: desc
+      ) {
         id
         units
         isConnected
