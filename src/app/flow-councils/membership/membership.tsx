@@ -375,20 +375,24 @@ export default function Membership(props: MembershipProps) {
                     No Limit
                   </Dropdown.Item>
                   {[...Array(256)].map((_, i) => {
-                    return (
-                      <Dropdown.Item
-                        key={i}
-                        onClick={() => {
-                          setCouncilConfig({
-                            ...councilConfig,
-                            limitMaxAllocation: true,
-                          });
-                          setMaxAllocation(i.toString());
-                        }}
-                      >
-                        {i}
-                      </Dropdown.Item>
-                    );
+                    if (i !== 0) {
+                      return (
+                        <Dropdown.Item
+                          key={i}
+                          onClick={() => {
+                            setCouncilConfig({
+                              ...councilConfig,
+                              limitMaxAllocation: true,
+                            });
+                            setMaxAllocation(i.toString());
+                          }}
+                        >
+                          {i}
+                        </Dropdown.Item>
+                      );
+                    }
+
+                    return null;
                   })}
                 </Dropdown.Menu>
               </Dropdown>

@@ -5,7 +5,6 @@ import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
-import Spinner from "react-bootstrap/Spinner";
 import { GDAPool } from "@/types/gdaPool";
 import { Token } from "@/types/token";
 import useFlowingAmount from "@/hooks/flowingAmount";
@@ -13,7 +12,7 @@ import { roundWeiAmount } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 interface DistributionPoolDetailsProps {
-  gdaPool: GDAPool;
+  gdaPool?: GDAPool;
   token: Token;
 }
 
@@ -23,21 +22,6 @@ export default function DistributionPoolDetails(
   const { gdaPool, token } = props;
 
   const { address } = useAccount();
-
-  const flowRateToReceiver = useMemo(() => {
-    if (address && gdaPool) {
-      const distributor = gdaPool.poolDistributors.find(
-        (distributor: { account: { id: string } }) =>
-          distributor.account.id === address.toLowerCase(),
-      );
-
-      if (distributor) {
-        return distributor.flowRate;
-      }
-    }
-
-    return "0";
-  }, [address, gdaPool]);
 
   const userDistributionInfo = useMemo(() => {
     if (address && gdaPool) {
@@ -71,7 +55,10 @@ export default function DistributionPoolDetails(
     BigInt(gdaPool?.flowRate ?? 0),
   );
   const monthlyStreamToReceiver = Number(
-    roundWeiAmount(BigInt(flowRateToReceiver) * BigInt(SECONDS_IN_MONTH), 4),
+    roundWeiAmount(
+      BigInt(userDistributionInfo?.flowRate ?? 0) * BigInt(SECONDS_IN_MONTH),
+      4,
+    ),
   );
   const totalMonthlyStream = Number(
     formatEther(BigInt(gdaPool?.flowRate ?? 0) * BigInt(SECONDS_IN_MONTH)),
@@ -95,35 +82,24 @@ export default function DistributionPoolDetails(
             Your Current Stream
           </Card.Subtitle>
           <Card.Body className="d-flex align-items-center gap-2 p-0">
-            {address && !flowRateToReceiver ? (
-              <Spinner
-                animation="border"
-                role="status"
-                className="mx-auto mt-3 p-3"
-              />
-            ) : (
-              <>
-                <Card.Text as="span" className="fs-1">
-                  {Intl.NumberFormat("en", {
-                    notation:
-                      monthlyStreamToReceiver >= 1000 ? "compact" : void 0,
-                    maximumFractionDigits:
-                      monthlyStreamToReceiver < 1
-                        ? 4
-                        : monthlyStreamToReceiver < 10
-                          ? 3
-                          : monthlyStreamToReceiver < 100
-                            ? 2
-                            : 1,
-                  }).format(monthlyStreamToReceiver)}
-                </Card.Text>
-                <Card.Text as="small" className="mt-1">
-                  {token.symbol} <br />
-                  per <br />
-                  month
-                </Card.Text>
-              </>
-            )}
+            <Card.Text as="span" className="fs-1">
+              {Intl.NumberFormat("en", {
+                notation: monthlyStreamToReceiver >= 1000 ? "compact" : void 0,
+                maximumFractionDigits:
+                  monthlyStreamToReceiver < 1
+                    ? 4
+                    : monthlyStreamToReceiver < 10
+                      ? 3
+                      : monthlyStreamToReceiver < 100
+                        ? 2
+                        : 1,
+              }).format(monthlyStreamToReceiver)}
+            </Card.Text>
+            <Card.Text as="small" className="mt-1">
+              {token.symbol} <br />
+              per <br />
+              month
+            </Card.Text>
           </Card.Body>
         </Card>
       </Stack>
