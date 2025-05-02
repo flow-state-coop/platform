@@ -347,12 +347,12 @@ export default function Grantee(props: GranteeProps) {
                 : 1600,
       }}
     >
+      <h1 className="mt-5 mb-0">{councilMetadata.name}</h1>
       <Stack
         direction="horizontal"
         gap={1}
-        className="align-items-center mt-5 fs-6"
+        className="align-items-center mb-2 fs-6"
       >
-        <h1 className="me-2">{councilMetadata.name}</h1>
         Distributing{" "}
         {!!councilToken.icon && (
           <Image src={councilToken.icon} alt="" width={18} height={18} />
@@ -384,7 +384,7 @@ export default function Grantee(props: GranteeProps) {
         </Button>
       </Stack>
       <Markdown
-        className="mt-1 fs-5 text-info"
+        className="fs-5 text-info"
         skipHtml={true}
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
