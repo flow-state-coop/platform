@@ -37,33 +37,8 @@ import {
 } from "@/lib/utils";
 import { SECONDS_IN_MONTH, ZERO_ADDRESS } from "@/lib/constants";
 
-const DISTRIBUTION_POOL_FUNDING_QUERY = gql`
-  query DistributionPoolFundingQuery($gdaPool: String!, $userAddress: String!) {
-    pool(id: $gdaPool) {
-      id
-      flowRate
-      adjustmentFlowRate
-      totalAmountFlowedDistributedUntilUpdatedAt
-      updatedAtTimestamp
-      totalUnits
-      token {
-        id
-      }
-      poolMembers {
-        account {
-          id
-        }
-        units
-      }
-      poolDistributors(where: { flowRate_not: "0" }) {
-        account {
-          id
-        }
-        flowRate
-        totalAmountFlowedDistributedUntilUpdatedAt
-        updatedAtTimestamp
-      }
-    }
+const SF_ACCOUNT_QUERY = gql`
+  query SFAccountQuery($userAddress: String!) {
     account(id: $userAddress) {
       accountTokenSnapshots {
         totalNetFlowRate
@@ -151,18 +126,14 @@ export default function DistributionPoolFunding(props: {
       enabled: !isSuperTokenPure,
     },
   });
-  const { data: superfluidQueryRes } = useQuery(
-    DISTRIBUTION_POOL_FUNDING_QUERY,
-    {
-      client: getApolloClient("superfluid", network.id),
-      variables: {
-        gdaPool: council?.pool?.toLowerCase(),
-        userAddress: address?.toLowerCase() ?? "",
-      },
-      skip: !council?.pool,
-      pollInterval: 10000,
+  const { data: superfluidQueryRes } = useQuery(SF_ACCOUNT_QUERY, {
+    client: getApolloClient("superfluid", network.id),
+    variables: {
+      userAddress: address?.toLowerCase() ?? "",
     },
-  );
+    skip: !council?.pool,
+    pollInterval: 10000,
+  });
   const ethersProvider = useEthersProvider({ chainId: network.id });
   const ethersSigner = useEthersSigner({ chainId: network.id });
 
@@ -194,9 +165,9 @@ export default function DistributionPoolFunding(props: {
       : false;
 
   const flowRateToReceiver = useMemo(() => {
-    if (address && superfluidQueryRes?.pool) {
-      const distributor = superfluidQueryRes.pool.poolDistributors.find(
-        (distributor: { account: { id: string } }) =>
+    if (address && gdaPool) {
+      const distributor = gdaPool.poolDistributors.find(
+        (distributor: { account: { id: string }; flowRate: string }) =>
           distributor.account.id === address.toLowerCase(),
       );
 
@@ -206,7 +177,7 @@ export default function DistributionPoolFunding(props: {
     }
 
     return "0";
-  }, [address, superfluidQueryRes]);
+  }, [address, gdaPool]);
 
   const calcLiquidationEstimate = useCallback(
     (amountPerTimeInterval: string, timeInterval: TimeInterval) => {
@@ -433,10 +404,7 @@ export default function DistributionPoolFunding(props: {
       </Offcanvas.Header>
       <Offcanvas.Body>
         <Stack direction="vertical" className="flex-grow-0">
-          <DistributionPoolDetails
-            gdaPool={superfluidQueryRes?.pool}
-            token={token}
-          />
+          <DistributionPoolDetails gdaPool={gdaPool} token={token} />
           {gdaPool &&
           (Number(gdaPool.totalUnits) > 0 || BigInt(flowRateToReceiver) > 0) ? (
             <Accordion activeKey={step} className="mt-4">
