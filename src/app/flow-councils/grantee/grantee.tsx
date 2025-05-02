@@ -347,22 +347,12 @@ export default function Grantee(props: GranteeProps) {
                 : 1600,
       }}
     >
-      <h1 className="mt-5 me-2">{councilMetadata.name}</h1>
-      <Markdown
-        className="fs-5 text-info"
-        skipHtml={true}
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
-        components={{
-          table: (props) => (
-            <table className="table table-striped" {...props} />
-          ),
-          p: (props) => <p className="mb-2" {...props} />,
-        }}
+      <h1 className="mt-5 mb-0">{councilMetadata.name}</h1>
+      <Stack
+        direction="horizontal"
+        gap={1}
+        className="align-items-center mb-2 fs-6"
       >
-        {councilMetadata.description}
-      </Markdown>
-      <Stack direction="horizontal" gap={1} className="align-items-center fs-6">
         Distributing{" "}
         {!!councilToken.icon && (
           <Image src={councilToken.icon} alt="" width={18} height={18} />
@@ -393,6 +383,19 @@ export default function Grantee(props: GranteeProps) {
           />
         </Button>
       </Stack>
+      <Markdown
+        className="fs-5 text-info"
+        skipHtml={true}
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
+        components={{
+          table: (props) => (
+            <table className="table table-striped" {...props} />
+          ),
+        }}
+      >
+        {councilMetadata.description}
+      </Markdown>
       <Card.Text className="mt-4 fs-4">
         Select or create a project to apply.
       </Card.Text>
