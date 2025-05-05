@@ -276,6 +276,25 @@ export const councilAbi = [
         name: "member",
         type: "address",
       },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "votingPower",
+        type: "uint256",
+      },
+    ],
+    name: "CouncilMemberEdited",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: "address",
+        name: "member",
+        type: "address",
+      },
     ],
     name: "CouncilMemberRemoved",
     type: "event",
@@ -641,6 +660,24 @@ export const councilAbi = [
       },
     ],
     stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "_member",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "_votingPower",
+        type: "uint256",
+      },
+    ],
+    name: "editCouncilMember",
+    outputs: [],
+    stateMutability: "nonpayable",
     type: "function",
   },
   {
@@ -1030,7 +1067,7 @@ export const councilAbi = [
             type: "string",
           },
           {
-            internalType: "enum GranteeStatus",
+            internalType: "enum Status",
             name: "status",
             type: "uint8",
           },
@@ -1041,6 +1078,36 @@ export const councilAbi = [
       },
     ],
     name: "updateCouncilGrantees",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        components: [
+          {
+            internalType: "address",
+            name: "account",
+            type: "address",
+          },
+          {
+            internalType: "bytes32",
+            name: "role",
+            type: "bytes32",
+          },
+          {
+            internalType: "enum Status",
+            name: "status",
+            type: "uint8",
+          },
+        ],
+        internalType: "struct Manager[]",
+        name: "_managers",
+        type: "tuple[]",
+      },
+    ],
+    name: "updateCouncilManagers",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",

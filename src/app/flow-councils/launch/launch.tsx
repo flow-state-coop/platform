@@ -188,7 +188,7 @@ export default function Launch(props: LaunchProps) {
       await refetchCouncilQuery({ variables: councilId });
 
       router.push(
-        `/flow-councils/membership/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
+        `/flow-councils/permissions/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
       );
 
       setIsTransactionLoading(false);
