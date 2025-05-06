@@ -271,10 +271,6 @@ export default function Membership(props: MembershipProps) {
 
       setTransactionSuccess(true);
       setIsTransactionLoading(false);
-
-      router.push(
-        `/flow-councils/review/?chainId=${chainId}&councilId=${councilId}`,
-      );
     } catch (err) {
       console.error(err);
 
@@ -297,15 +293,6 @@ export default function Membership(props: MembershipProps) {
     );
   }
 
-  if (council && !isManager) {
-    return (
-      <span className="m-auto fs-4 fw-bold">
-        Your are not a manager for this council. Please make sure the right
-        wallet is connected
-      </span>
-    );
-  }
-
   return (
     <>
       <Sidebar />
@@ -317,7 +304,9 @@ export default function Membership(props: MembershipProps) {
           <Card.Header className="bg-transparent border-0 rounded-4 p-0">
             <Card.Title className="fs-4">Council Membership</Card.Title>
             <Card.Text className="fs-6 text-info">
-              Manage your council membership and how they can vote.
+              {isManager
+                ? "Manage your council membership and how they can vote."
+                : "(Read only—check your connected wallet's permissions to make changes)"}
             </Card.Text>
           </Card.Header>
           <Card.Body className="p-0 mt-4">
@@ -352,6 +341,7 @@ export default function Membership(props: MembershipProps) {
               </Form.Label>
               <Dropdown>
                 <Dropdown.Toggle
+                  disabled={!isManager}
                   className="d-flex justify-content-between align-items-center bg-white text-dark border"
                   style={{ width: 128 }}
                 >
@@ -405,6 +395,7 @@ export default function Membership(props: MembershipProps) {
               <span className="w-75" />
               <Form.Control
                 type="text"
+                disabled={!isManager}
                 inputMode="numeric"
                 placeholder="Votes"
                 value={votingPowerForAll}
@@ -427,7 +418,8 @@ export default function Membership(props: MembershipProps) {
               />
               <Button
                 variant="transparent"
-                className="text-primary text-decoration-underline p-0 flex-grow-0 flex-shrink-0"
+                disabled={!isManager}
+                className="text-primary text-decoration-underline p-0 flex-grow-0 flex-shrink-0 border-0"
                 style={{ width: 80, fontSize: "0.9rem" }}
                 onClick={() =>
                   setMembersEntry((prev) => {
@@ -452,11 +444,14 @@ export default function Membership(props: MembershipProps) {
                     type="text"
                     placeholder="Member Address"
                     value={memberEntry.address}
-                    disabled={membersToRemove
-                      .map((member: { address: string }) =>
-                        member.address.toLowerCase(),
-                      )
-                      .includes(memberEntry.address.toLowerCase())}
+                    disabled={
+                      !isManager ||
+                      membersToRemove
+                        .map((member: { address: string }) =>
+                          member.address.toLowerCase(),
+                        )
+                        .includes(memberEntry.address.toLowerCase())
+                    }
                     style={{
                       paddingTop: 12,
                       paddingBottom: 12,
@@ -505,11 +500,14 @@ export default function Membership(props: MembershipProps) {
                     inputMode="numeric"
                     placeholder="Votes"
                     value={memberEntry.votingPower}
-                    disabled={membersToRemove
-                      .map((member: { address: string }) =>
-                        member.address.toLowerCase(),
-                      )
-                      .includes(memberEntry.address.toLowerCase())}
+                    disabled={
+                      !isManager ||
+                      membersToRemove
+                        .map((member: { address: string }) =>
+                          member.address.toLowerCase(),
+                        )
+                        .includes(memberEntry.address.toLowerCase())
+                    }
                     className="flex-grow-0 text-center"
                     style={{
                       paddingTop: 12,
@@ -551,7 +549,8 @@ export default function Membership(props: MembershipProps) {
                 </Stack>
                 <Button
                   variant="transparent"
-                  className="p-0 flex-grow-0 flex-shrink-0"
+                  disabled={!isManager}
+                  className="p-0 flex-grow-0 flex-shrink-0 border-0"
                   style={{
                     width: 80,
                     pointerEvents: isTransactionLoading ? "none" : "auto",
@@ -597,7 +596,8 @@ export default function Membership(props: MembershipProps) {
                 />
                 <Button
                   variant="transparent"
-                  className="p-0 flex-grow-0 flex-shrink-0"
+                  disabled={!isManager}
+                  className="p-0 flex-grow-0 flex-shrink-0 border-0"
                   style={{ width: 80 }}
                   onClick={() => {
                     setMembersToRemove((prev) =>
@@ -620,7 +620,8 @@ export default function Membership(props: MembershipProps) {
             <Stack direction="horizontal" gap={isMobile ? 2 : 4}>
               <Button
                 variant="transparent"
-                className="d-flex align-items-center w-100 p-0 text-primary text-decoration-underline"
+                disabled={!isManager}
+                className="d-flex align-items-center w-100 p-0 text-primary text-decoration-underline border-0"
                 onClick={() =>
                   setMembersEntry((prev) =>
                     prev.concat({
@@ -639,37 +640,51 @@ export default function Membership(props: MembershipProps) {
             </Stack>
           </Card.Body>
         </Card>
-        <Button
-          disabled={!hasChanges || !isValidMembersEntry}
-          className="my-4 fs-5"
-          onClick={() => {
-            !address && openConnectModal
-              ? openConnectModal()
-              : connectedChain?.id !== chainId
-                ? switchChain({ chainId })
-                : handleSubmit();
-          }}
-        >
-          {isTransactionLoading ? (
-            <Spinner size="sm" className="ms-2" />
-          ) : (
-            "Submit"
-          )}
-        </Button>
-        <Toast
-          show={transactionSuccess}
-          delay={4000}
-          autohide={true}
-          onClose={() => setTransactionSuccess(false)}
-          className="w-100 bg-success mt-2 p-3 fs-5 text-light"
-        >
-          Success!
-        </Toast>
-        {transactionError ? (
-          <Alert variant="danger" className="w-100 mb-4">
-            {transactionError}
-          </Alert>
-        ) : null}
+        <Stack direction="vertical" gap={3} className="my-4">
+          <Button
+            disabled={!isManager || !hasChanges || !isValidMembersEntry}
+            className="fs-5"
+            onClick={() => {
+              !address && openConnectModal
+                ? openConnectModal()
+                : connectedChain?.id !== chainId
+                  ? switchChain({ chainId })
+                  : handleSubmit();
+            }}
+          >
+            {isTransactionLoading ? (
+              <Spinner size="sm" className="ms-2" />
+            ) : (
+              "Submit"
+            )}
+          </Button>
+          <Button
+            variant="secondary"
+            className="fs-5"
+            style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
+            onClick={() =>
+              router.push(
+                `/flow-councils/review/?chainId=${chainId}&councilId=${councilId}`,
+              )
+            }
+          >
+            Next
+          </Button>
+          <Toast
+            show={transactionSuccess}
+            delay={4000}
+            autohide={true}
+            onClose={() => setTransactionSuccess(false)}
+            className="w-100 bg-success p-3 fs-5 text-light"
+          >
+            Success!
+          </Toast>
+          {transactionError ? (
+            <Alert variant="danger" className="w-100">
+              {transactionError}
+            </Alert>
+          ) : null}
+        </Stack>
       </Stack>
     </>
   );

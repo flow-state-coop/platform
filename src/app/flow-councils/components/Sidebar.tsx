@@ -133,6 +133,26 @@ function Sidebar() {
           Launch Config
         </Link>
         <Link
+          href={`/flow-councils/permissions/?chainId=${chainId}&councilId=${selectedCouncil?.id}`}
+          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname === "/flow-councils/permissions" ? "fw-bold" : ""}`}
+          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
+        >
+          <Image
+            src={`${pathname?.startsWith("/flow-councils/permissions") && !!selectedCouncil ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+            alt="Bullet Point"
+            width={24}
+            height={24}
+            style={{
+              filter:
+                !pathname?.startsWith("/flow-councils/permissions") &&
+                !selectedCouncil
+                  ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
+                  : "",
+            }}
+          />
+          Council Permissions
+        </Link>
+        <Link
           href={`/flow-councils/membership/?chainId=${chainId}&councilId=${selectedCouncil?.id}`}
           className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname === "/flow-councils/membership" ? "fw-bold" : ""}`}
           style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}

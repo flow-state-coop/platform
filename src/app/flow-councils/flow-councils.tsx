@@ -381,7 +381,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
               className="w-100"
               onClick={() =>
                 router.push(
-                  `/flow-councils/membership/?chainId=${selectedNetwork.id}&councilId=${council.id}`,
+                  `/flow-councils/permissions/?chainId=${selectedNetwork.id}&councilId=${council.id}`,
                 )
               }
             >
