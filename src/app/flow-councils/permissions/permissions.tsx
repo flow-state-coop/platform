@@ -286,10 +286,6 @@ export default function Permissions(props: PermissionsProps) {
 
       setTransactionSuccess(true);
       setIsTransactionLoading(false);
-
-      router.push(
-        `/flow-councils/membership/?chainId=${chainId}&councilId=${councilId}`,
-      );
     } catch (err) {
       console.error(err);
 
@@ -312,15 +308,6 @@ export default function Permissions(props: PermissionsProps) {
     );
   }
 
-  if (council && !isAdmin) {
-    return (
-      <span className="m-auto fs-4 fw-bold">
-        Your are not a manager for this council. Please make sure the right
-        wallet is connected
-      </span>
-    );
-  }
-
   return (
     <>
       <Sidebar />
@@ -332,7 +319,9 @@ export default function Permissions(props: PermissionsProps) {
           <Card.Header className="bg-transparent border-0 rounded-4 p-0">
             <Card.Title className="fs-4">Council Permissions</Card.Title>
             <Card.Text className="fs-6 text-info">
-              Manage privileged roles on your Flow Council (optional)
+              {isAdmin
+                ? "Manage privileged roles on your Flow Council (optional)"
+                : "(Read only—check your connected wallet's permissions to make changes)"}
             </Card.Text>
           </Card.Header>
           <Card.Body className="p-0 mt-4">
@@ -344,27 +333,27 @@ export default function Permissions(props: PermissionsProps) {
               <span className="w-50" />
               <Stack direction="horizontal" gap={2}>
                 <Card.Text
-                  className="m-0 text-center"
+                  className="m-0 text-center flex-shrink-0"
                   style={{
-                    width: isMobile ? 50 : 70,
+                    width: isMobile ? 52 : 70,
                     fontSize: isMobile ? "0.7rem" : "inherit",
                   }}
                 >
                   Super Admin
                 </Card.Text>
                 <Card.Text
-                  className="m-0 text-center"
+                  className="m-0 text-center flex-shrink-0"
                   style={{
-                    width: isMobile ? 50 : 70,
+                    width: isMobile ? 52 : 70,
                     fontSize: isMobile ? "0.7rem" : "inherit",
                   }}
                 >
                   Member Review
                 </Card.Text>
                 <Card.Text
-                  className="m-0 text-center"
+                  className="m-0 text-center flex-shrink-0"
                   style={{
-                    width: isMobile ? 50 : 70,
+                    width: isMobile ? 52 : 70,
                     fontSize: isMobile ? "0.7rem" : "inherit",
                   }}
                 >
@@ -382,6 +371,7 @@ export default function Permissions(props: PermissionsProps) {
                 <Stack direction="vertical" className="position-relative w-50">
                   <Form.Control
                     type="text"
+                    disabled={!isAdmin}
                     placeholder="Manager Address"
                     value={managerEntry.address}
                     style={{
@@ -432,6 +422,7 @@ export default function Permissions(props: PermissionsProps) {
                   >
                     <Form.Check.Input
                       className="m-0"
+                      disabled={!isAdmin}
                       style={{ padding: 12 }}
                       checked={!!managerEntry.defaultAdminRole}
                       onChange={(e) => {
@@ -456,7 +447,7 @@ export default function Permissions(props: PermissionsProps) {
                     }}
                   >
                     <Form.Check.Input
-                      disabled={!!managerEntry.defaultAdminRole}
+                      disabled={!isAdmin || !!managerEntry.defaultAdminRole}
                       checked={
                         !!managerEntry.defaultAdminRole ||
                         !!managerEntry.memberManagerRole
@@ -486,7 +477,7 @@ export default function Permissions(props: PermissionsProps) {
                         !!managerEntry.defaultAdminRole ||
                         !!managerEntry.granteeManagerRole
                       }
-                      disabled={!!managerEntry.defaultAdminRole}
+                      disabled={!isAdmin || !!managerEntry.defaultAdminRole}
                       className="m-0"
                       style={{ padding: 12 }}
                       onChange={(e) => {
@@ -504,27 +495,29 @@ export default function Permissions(props: PermissionsProps) {
                 </Stack>
               </Stack>
             ))}
-            <Stack direction="horizontal" gap={isMobile ? 2 : 4}>
-              <Button
-                variant="transparent"
-                className="d-flex align-items-center w-100 p-0 text-primary text-decoration-underline"
-                onClick={() =>
-                  setManagersEntry((prev) =>
-                    prev.concat({
-                      address: "",
-                      defaultAdminRole: false,
-                      granteeManagerRole: false,
-                      memberManagerRole: false,
-                      addressValidationError: "",
-                    }),
-                  )
-                }
-              >
-                <Card.Text className="mb-0">
-                  {isMobile ? "Add member" : "Add another admin"}
-                </Card.Text>
-              </Button>
-            </Stack>
+            {isAdmin && (
+              <Stack direction="horizontal" gap={isMobile ? 2 : 4}>
+                <Button
+                  variant="transparent"
+                  className="d-flex align-items-center w-100 p-0 text-primary text-decoration-underline"
+                  onClick={() =>
+                    setManagersEntry((prev) =>
+                      prev.concat({
+                        address: "",
+                        defaultAdminRole: false,
+                        granteeManagerRole: false,
+                        memberManagerRole: false,
+                        addressValidationError: "",
+                      }),
+                    )
+                  }
+                >
+                  <Card.Text className="mb-0">
+                    {isMobile ? "Add member" : "Add another admin"}
+                  </Card.Text>
+                </Button>
+              </Stack>
+            )}
           </Card.Body>
         </Card>
         {isRemovingOnlySuperAdmin && (
@@ -533,9 +526,9 @@ export default function Permissions(props: PermissionsProps) {
             won't be able to make any further changes to permissions
           </Card.Text>
         )}
-        <Stack direction="vertical" gap={2} className="my-4">
+        <Stack direction="vertical" gap={3} className="my-4">
           <Button
-            disabled={!hasChanges || !isValidManagersEntry}
+            disabled={!isAdmin || !hasChanges || !isValidManagersEntry}
             className="fs-5"
             onClick={() => {
               !address && openConnectModal
@@ -561,23 +554,23 @@ export default function Permissions(props: PermissionsProps) {
               )
             }
           >
-            Skip
+            Next
           </Button>
+          <Toast
+            show={transactionSuccess}
+            delay={4000}
+            autohide={true}
+            onClose={() => setTransactionSuccess(false)}
+            className="w-100 bg-success p-3 fs-5 text-light"
+          >
+            Success!
+          </Toast>
+          {transactionError ? (
+            <Alert variant="danger" className="w-100 mb-4">
+              {transactionError}
+            </Alert>
+          ) : null}
         </Stack>
-        <Toast
-          show={transactionSuccess}
-          delay={4000}
-          autohide={true}
-          onClose={() => setTransactionSuccess(false)}
-          className="w-100 bg-success mt-2 p-3 fs-5 text-light"
-        >
-          Success!
-        </Toast>
-        {transactionError ? (
-          <Alert variant="danger" className="w-100 mb-4">
-            {transactionError}
-          </Alert>
-        ) : null}
       </Stack>
     </>
   );

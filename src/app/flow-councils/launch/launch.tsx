@@ -188,8 +188,9 @@ export default function Launch(props: LaunchProps) {
       await refetchCouncilQuery({ variables: councilId });
 
       router.push(
-        `/flow-councils/permissions/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
+        `/flow-councils/launch/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
       );
+      router.refresh();
 
       setIsTransactionLoading(false);
       setSuccess(true);
@@ -444,42 +445,57 @@ export default function Launch(props: LaunchProps) {
             </Stack>
           </Card.Body>
         </Card>
-        <Button
-          disabled={
-            !!councilId ||
-            !councilMetadata.name ||
-            !councilMetadata.description ||
-            (customTokenSelection && !!customTokenEntry.validationError)
-          }
-          className="my-4 fs-5"
-          onClick={() =>
-            !address && openConnectModal
-              ? openConnectModal()
-              : connectedChain?.id !== selectedNetwork.id
-                ? switchChain({ chainId: selectedNetwork.id })
-                : handleSubmit()
-          }
-        >
-          {isTransactionLoading ? (
-            <Spinner size="sm" className="ms-2" />
-          ) : (
-            "Launch"
-          )}
-        </Button>
-        <Toast
-          show={success}
-          delay={4000}
-          autohide={true}
-          onClose={() => setSuccess(false)}
-          className="w-100 bg-success mt-2 p-3 fs-5 text-light"
-        >
-          Success!
-        </Toast>
-        {transactionerror ? (
-          <Alert variant="danger" className="w-100 mb-4">
-            {transactionerror}
-          </Alert>
-        ) : null}
+        <Stack direction="vertical" gap={3} className="my-4">
+          <Button
+            disabled={
+              !!councilId ||
+              !councilMetadata.name ||
+              !councilMetadata.description ||
+              (customTokenSelection && !!customTokenEntry.validationError)
+            }
+            className="fs-5"
+            onClick={() =>
+              !address && openConnectModal
+                ? openConnectModal()
+                : connectedChain?.id !== selectedNetwork.id
+                  ? switchChain({ chainId: selectedNetwork.id })
+                  : handleSubmit()
+            }
+          >
+            {isTransactionLoading ? (
+              <Spinner size="sm" className="ms-2" />
+            ) : (
+              "Launch"
+            )}
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={!councilId}
+            className="fs-5"
+            style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
+            onClick={() =>
+              router.push(
+                `/flow-councils/permissions/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
+              )
+            }
+          >
+            Next
+          </Button>
+          <Toast
+            show={success}
+            delay={4000}
+            autohide={true}
+            onClose={() => setSuccess(false)}
+            className="w-100 bg-success p-3 fs-5 text-light"
+          >
+            Success!
+          </Toast>
+          {transactionerror ? (
+            <Alert variant="danger" className="w-100">
+              {transactionerror}
+            </Alert>
+          ) : null}
+        </Stack>
       </Stack>
     </>
   );

@@ -454,7 +454,7 @@ export default function Grantee(props: GranteeProps) {
           </Card.Text>
         </Card>
       </div>
-      <Stack direction="vertical" gap={2} className="mt-5 text-light">
+      <Stack direction="vertical" gap={3} className="mt-5 text-light">
         <Stack
           direction="horizontal"
           gap={2}

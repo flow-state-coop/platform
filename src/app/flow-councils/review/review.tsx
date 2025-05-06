@@ -318,8 +318,6 @@ export default function Review(props: ReviewProps) {
       setReviewingApplications([]);
       setCancelingApplications([]);
       setIsSubmitting(false);
-
-      router.push(`/flow-councils/${chainId}/${councilId}`);
     } catch (err) {
       console.error(err);
 
@@ -342,15 +340,6 @@ export default function Review(props: ReviewProps) {
     );
   }
 
-  if (council && !isManager) {
-    return (
-      <span className="m-auto fs-4 fw-bold">
-        Your are manager for this council. Please make sure the right wallet is
-        connected
-      </span>
-    );
-  }
-
   return (
     <>
       <Sidebar />
@@ -363,287 +352,314 @@ export default function Review(props: ReviewProps) {
           Review and/or remove eligible funding recipients from your Flow
           Council.
         </h2>
-        <Card.Text className="mt-4">Application Link</Card.Text>
-        <Stack
-          direction="horizontal"
-          gap={2}
-          className="w-100 me-auto mb-5 overflow-hidden"
-        >
-          <Badge className="d-flex align-items-center bg-transparent text-black border border-2 border-gray-500 p-2 fw-normal text-truncate text-start h-100">
-            {granteeApplicationLink}
-          </Badge>
-          <CopyTooltip
-            contentClick="Link Copied"
-            contentHover="Copy Link"
-            target={<Image src="/copy.svg" alt="copy" width={28} />}
-            handleCopy={() =>
-              navigator.clipboard.writeText(granteeApplicationLink)
-            }
-          />
-        </Stack>
-        <div
-          style={{
-            height: 280,
-            overflow: "auto",
-            border: "1px solid #dee2e6",
-          }}
-        >
-          <Table striped hover>
-            <thead>
-              <tr>
-                <th>Address</th>
-                <th>Name</th>
-                <th className="text-center">Review</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {applications?.map((application: Application, i: number) => (
-                <tr key={i}>
-                  <td className="w-25">{application.address}</td>
-                  <td className="w-25">
-                    {profiles && profiles[i]
-                      ? profiles[i].metadata.title
-                      : "N/A"}
-                  </td>
-                  <td className="w-25 text-center ps-0">
-                    {reviewingApplications.find(
-                      (reviewingApplication) =>
-                        application.address === reviewingApplication.address,
-                    )?.newStatus === "APPROVED" ? (
-                      <Image
-                        src="/success.svg"
-                        alt="success"
-                        width={24}
-                        style={{
-                          filter:
-                            "invert(38%) sepia(93%) saturate(359%) hue-rotate(100deg) brightness(92%) contrast(94%)",
-                        }}
-                      />
-                    ) : reviewingApplications.find(
-                        (reviewingApplication) =>
-                          application.address === reviewingApplication.address,
-                      )?.newStatus === "REJECTED" ||
-                      cancelingApplications.find(
-                        (cancelingApplication) =>
-                          application.address === cancelingApplication.address,
-                      ) ? (
-                      <Image
-                        src="/close.svg"
-                        alt="fail"
-                        width={24}
-                        style={{
-                          filter:
-                            "invert(29%) sepia(96%) saturate(1955%) hue-rotate(334deg) brightness(88%) contrast(95%)",
-                        }}
-                      />
-                    ) : application.status === "APPROVED" ? (
-                      <Image src="/success.svg" alt="success" width={24} />
-                    ) : application.status === "REJECTED" ||
-                      application.status === "CANCELED" ? (
-                      <Image src="/close.svg" alt="fail" width={24} />
-                    ) : null}
-                  </td>
-                  <td className="w-25">
-                    {application.status === "PENDING" ? (
-                      <Button
-                        className="w-100 p-0 text-light"
-                        onClick={() => {
-                          setSelectedApplication(application);
-                          setSelectedApplicationProfile(profiles[i]);
-                        }}
-                      >
-                        Review
-                      </Button>
-                    ) : application.status === "APPROVED" ? (
+        {!council && !isManager ? (
+          <Spinner className="mt-5 mx-auto" />
+        ) : !isManager ? (
+          <Stack
+            direction="vertical"
+            gap={2}
+            className="align-items-center mt-5"
+          >
+            <Image src="/delete.svg" alt="" width={90} height={90} />
+            <span className="text-center fs-4 fw-bold">
+              You don't have access to this module. Check your connected
+              wallet's permissions.
+            </span>
+          </Stack>
+        ) : !session || session.address !== address ? (
+          <Button
+            variant="secondary"
+            className="d-flex justify-content-center align-items-center gap-2 mt-5 fs-5"
+            onClick={() => {
+              !address && openConnectModal
+                ? openConnectModal()
+                : connectedChain?.id !== chainId
+                  ? switchChain({ chainId })
+                  : handleSignIn(csfrToken);
+            }}
+          >
+            Sign In With Ethereum
+          </Button>
+        ) : (
+          <>
+            <Card.Text className="mt-4">Application Link</Card.Text>
+            <Stack
+              direction="horizontal"
+              gap={2}
+              className="w-100 me-auto mb-5 overflow-hidden"
+            >
+              <Badge className="d-flex align-items-center bg-transparent text-black border border-2 border-gray-500 p-2 fw-normal text-truncate text-start h-100">
+                {granteeApplicationLink}
+              </Badge>
+              <CopyTooltip
+                contentClick="Link Copied"
+                contentHover="Copy Link"
+                target={<Image src="/copy.svg" alt="copy" width={28} />}
+                handleCopy={() =>
+                  navigator.clipboard.writeText(granteeApplicationLink)
+                }
+              />
+            </Stack>
+            <div
+              style={{
+                height: 280,
+                overflow: "auto",
+                border: "1px solid #dee2e6",
+              }}
+            >
+              <Table striped hover>
+                <thead>
+                  <tr>
+                    <th>Address</th>
+                    <th>Name</th>
+                    <th className="text-center">Review</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {applications?.map((application: Application, i: number) => (
+                    <tr key={i}>
+                      <td className="w-25">{application.address}</td>
+                      <td className="w-25">
+                        {profiles && profiles[i]
+                          ? profiles[i].metadata.title
+                          : "N/A"}
+                      </td>
+                      <td className="w-25 text-center ps-0">
+                        {reviewingApplications.find(
+                          (reviewingApplication) =>
+                            application.address ===
+                            reviewingApplication.address,
+                        )?.newStatus === "APPROVED" ? (
+                          <Image
+                            src="/success.svg"
+                            alt="success"
+                            width={24}
+                            style={{
+                              filter:
+                                "invert(38%) sepia(93%) saturate(359%) hue-rotate(100deg) brightness(92%) contrast(94%)",
+                            }}
+                          />
+                        ) : reviewingApplications.find(
+                            (reviewingApplication) =>
+                              application.address ===
+                              reviewingApplication.address,
+                          )?.newStatus === "REJECTED" ||
+                          cancelingApplications.find(
+                            (cancelingApplication) =>
+                              application.address ===
+                              cancelingApplication.address,
+                          ) ? (
+                          <Image
+                            src="/close.svg"
+                            alt="fail"
+                            width={24}
+                            style={{
+                              filter:
+                                "invert(29%) sepia(96%) saturate(1955%) hue-rotate(334deg) brightness(88%) contrast(95%)",
+                            }}
+                          />
+                        ) : application.status === "APPROVED" ? (
+                          <Image src="/success.svg" alt="success" width={24} />
+                        ) : application.status === "REJECTED" ||
+                          application.status === "CANCELED" ? (
+                          <Image src="/close.svg" alt="fail" width={24} />
+                        ) : null}
+                      </td>
+                      <td className="w-25">
+                        {application.status === "PENDING" ? (
+                          <Button
+                            className="w-100 p-0 text-light"
+                            onClick={() => {
+                              setSelectedApplication(application);
+                              setSelectedApplicationProfile(profiles[i]);
+                            }}
+                          >
+                            Review
+                          </Button>
+                        ) : application.status === "APPROVED" ? (
+                          <Button
+                            variant="danger"
+                            className="w-100 p-0"
+                            onClick={() => {
+                              setSelectedApplication(application);
+                              setSelectedApplicationProfile(profiles[i]);
+                            }}
+                          >
+                            Kick from Pool
+                          </Button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+            {selectedApplication !== null &&
+              selectedApplicationProfile !== null && (
+                <Stack
+                  direction="vertical"
+                  className="mt-4 border border-3 border-gray rounded-4 p-4"
+                >
+                  <Form className="d-flex flex-column gap-4">
+                    <Row>
+                      <Col>
+                        <Form.Label>Recipient Address</Form.Label>
+                        <Form.Control
+                          value={selectedApplication.address}
+                          disabled
+                        />
+                      </Col>
+                      <Col>
+                        <Form.Label>Name</Form.Label>
+                        <Form.Control
+                          value={selectedApplicationProfile.metadata.title}
+                          disabled
+                        />
+                      </Col>
+                    </Row>
+                    <Row>
+                      <Col>
+                        <Form.Label>Website URL</Form.Label>
+                        <Form.Control
+                          value={selectedApplicationProfile.metadata.website}
+                          disabled
+                        />
+                      </Col>
+                      <Col>
+                        <Form.Label>Twitter</Form.Label>
+                        <Form.Control
+                          value={`@${selectedApplicationProfile.metadata.projectTwitter}`}
+                          disabled
+                        />
+                      </Col>
+                    </Row>
+                    <Row>
+                      <Col>
+                        <Form.Label>Github User URL</Form.Label>
+                        <Form.Control
+                          value={
+                            selectedApplicationProfile.metadata.userGithub
+                              ? `https://github.com/${selectedApplicationProfile.metadata.userGithub}`
+                              : ""
+                          }
+                          disabled
+                        />
+                      </Col>
+                      <Col>
+                        <Form.Label>Github Org URL</Form.Label>
+                        <Form.Control
+                          value={
+                            selectedApplicationProfile.metadata.projectGithub
+                              ? `https://github.com/${selectedApplicationProfile.metadata.projectGithub}`
+                              : ""
+                          }
+                          disabled
+                        />
+                      </Col>
+                    </Row>
+                    <Row>
+                      <Col>
+                        <Form.Label>Logo</Form.Label>
+                        <Form.Control
+                          value={`https://gateway.pinata.cloud/ipfs/${selectedApplicationProfile.metadata.logoImg}`}
+                          disabled
+                        />
+                      </Col>
+                    </Row>
+                    <Row>
+                      <Col>
+                        <Form.Label>Description</Form.Label>
+                        <Form.Control
+                          as="textarea"
+                          rows={4}
+                          disabled
+                          style={{ resize: "none" }}
+                          value={
+                            selectedApplicationProfile.metadata.description
+                          }
+                        />
+                      </Col>
+                    </Row>
+                  </Form>
+                  <Stack direction="horizontal" gap={2} className="w-50 mt-4">
+                    {selectedApplication.status === "APPROVED" ? (
                       <Button
                         variant="danger"
-                        className="w-100 p-0"
-                        onClick={() => {
-                          setSelectedApplication(application);
-                          setSelectedApplicationProfile(profiles[i]);
-                        }}
+                        className="w-50"
+                        onClick={handleCancelSelection}
                       >
                         Kick from Pool
                       </Button>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </div>
-        {selectedApplication !== null &&
-          selectedApplicationProfile !== null && (
-            <Stack
-              direction="vertical"
-              className="mt-4 border border-3 border-gray rounded-4 p-4"
-            >
-              <Form className="d-flex flex-column gap-4">
-                <Row>
-                  <Col>
-                    <Form.Label>Recipient Address</Form.Label>
-                    <Form.Control
-                      value={selectedApplication.address}
-                      disabled
-                    />
-                  </Col>
-                  <Col>
-                    <Form.Label>Name</Form.Label>
-                    <Form.Control
-                      value={selectedApplicationProfile.metadata.title}
-                      disabled
-                    />
-                  </Col>
-                </Row>
-                <Row>
-                  <Col>
-                    <Form.Label>Website URL</Form.Label>
-                    <Form.Control
-                      value={selectedApplicationProfile.metadata.website}
-                      disabled
-                    />
-                  </Col>
-                  <Col>
-                    <Form.Label>Twitter</Form.Label>
-                    <Form.Control
-                      value={`@${selectedApplicationProfile.metadata.projectTwitter}`}
-                      disabled
-                    />
-                  </Col>
-                </Row>
-                <Row>
-                  <Col>
-                    <Form.Label>Github User URL</Form.Label>
-                    <Form.Control
-                      value={
-                        selectedApplicationProfile.metadata.userGithub
-                          ? `https://github.com/${selectedApplicationProfile.metadata.userGithub}`
-                          : ""
-                      }
-                      disabled
-                    />
-                  </Col>
-                  <Col>
-                    <Form.Label>Github Org URL</Form.Label>
-                    <Form.Control
-                      value={
-                        selectedApplicationProfile.metadata.projectGithub
-                          ? `https://github.com/${selectedApplicationProfile.metadata.projectGithub}`
-                          : ""
-                      }
-                      disabled
-                    />
-                  </Col>
-                </Row>
-                <Row>
-                  <Col>
-                    <Form.Label>Logo</Form.Label>
-                    <Form.Control
-                      value={`https://gateway.pinata.cloud/ipfs/${selectedApplicationProfile.metadata.logoImg}`}
-                      disabled
-                    />
-                  </Col>
-                </Row>
-                <Row>
-                  <Col>
-                    <Form.Label>Description</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={4}
-                      disabled
-                      style={{ resize: "none" }}
-                      value={selectedApplicationProfile.metadata.description}
-                    />
-                  </Col>
-                </Row>
-              </Form>
-              <Stack direction="horizontal" gap={2} className="w-50 mt-4">
-                {selectedApplication.status === "APPROVED" ? (
-                  <Button
-                    variant="danger"
-                    className="w-50"
-                    onClick={handleCancelSelection}
-                  >
-                    Kick from Pool
-                  </Button>
+                    ) : (
+                      <>
+                        <Button
+                          className="w-50 text-light"
+                          onClick={() => handleReviewSelection("APPROVED")}
+                        >
+                          Accept
+                        </Button>
+                        <Button
+                          variant="danger"
+                          className="w-50"
+                          onClick={() => handleReviewSelection("REJECTED")}
+                        >
+                          Reject
+                        </Button>{" "}
+                      </>
+                    )}
+                  </Stack>
+                </Stack>
+              )}
+            <Stack direction="vertical" gap={3} className="my-4">
+              <Button
+                className="fs-5"
+                disabled={
+                  !session ||
+                  session.address !== address ||
+                  (reviewingApplications.length === 0 &&
+                    cancelingApplications.length === 0)
+                }
+                onClick={() => {
+                  !address && openConnectModal
+                    ? openConnectModal()
+                    : connectedChain?.id !== chainId
+                      ? switchChain({ chainId })
+                      : handleSubmit();
+                }}
+              >
+                {isSubmitting ? (
+                  <Spinner size="sm" className="m-auto" />
                 ) : (
-                  <>
-                    <Button
-                      className="w-50 text-light"
-                      onClick={() => handleReviewSelection("APPROVED")}
-                    >
-                      Accept
-                    </Button>
-                    <Button
-                      variant="danger"
-                      className="w-50"
-                      onClick={() => handleReviewSelection("REJECTED")}
-                    >
-                      Reject
-                    </Button>{" "}
-                  </>
+                  "Submit"
                 )}
-              </Stack>
+              </Button>
+              <Button
+                variant="secondary"
+                className="fs-5"
+                style={{ pointerEvents: isSubmitting ? "none" : "auto" }}
+                onClick={() =>
+                  router.push(`/flow-councils/${chainId}/${councilId}`)
+                }
+              >
+                Next
+              </Button>
+              <Toast
+                show={success}
+                delay={4000}
+                autohide={true}
+                onClose={() => setSuccess(false)}
+                className="w-100 bg-success p-3 fs-5 text-light"
+              >
+                Success!
+              </Toast>
+              {error && (
+                <Alert variant="danger" className="fs-6 text-danger">
+                  {error}
+                </Alert>
+              )}
             </Stack>
-          )}
-        <Button
-          variant="secondary"
-          className="d-flex justify-content-center align-items-center gap-2 mt-4 fs-5"
-          disabled={!!session && session.address === address}
-          onClick={() => {
-            !address && openConnectModal
-              ? openConnectModal()
-              : connectedChain?.id !== chainId
-                ? switchChain({ chainId })
-                : handleSignIn(csfrToken);
-          }}
-        >
-          {!!session && session.address === address && (
-            <Image
-              src="/check-circle.svg"
-              alt=""
-              width={26}
-              height={26}
-              style={{
-                filter:
-                  "brightness(0) saturate(100%) invert(10%) sepia(48%) saturate(2881%) hue-rotate(119deg) brightness(100%) contrast(99%)",
-              }}
-            />
-          )}
-          Sign In With Ethereum
-        </Button>
-        <Button
-          className="mt-2 mb-4 fs-5"
-          disabled={
-            !session ||
-            session.address !== address ||
-            (reviewingApplications.length === 0 &&
-              cancelingApplications.length === 0)
-          }
-          onClick={() => {
-            !address && openConnectModal
-              ? openConnectModal()
-              : connectedChain?.id !== chainId
-                ? switchChain({ chainId })
-                : handleSubmit();
-          }}
-        >
-          {isSubmitting ? <Spinner size="sm" className="m-auto" /> : "Submit"}
-        </Button>
-        <Toast
-          show={success}
-          delay={4000}
-          autohide={true}
-          onClose={() => setSuccess(false)}
-          className="w-100 bg-success my-2 p-3 fs-5 text-light"
-        >
-          Success!
-        </Toast>
-        {error && (
-          <Alert variant="danger" className="fs-6 text-danger">
-            {error}
-          </Alert>
+          </>
         )}
       </Stack>
     </>
