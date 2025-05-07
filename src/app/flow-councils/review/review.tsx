@@ -53,19 +53,6 @@ type CancelingAppplication = {
   address: string;
 };
 
-type Metadata = {
-  title: string;
-  logoImg: string;
-  bannerImg: string;
-  bannerImgData: string;
-  createdAt: number;
-  description: string;
-  website: string;
-  projectTwitter: string;
-  userGithub: string;
-  projectGithub: string;
-};
-
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
 
 const COUNCIL_QUERY = gql`
@@ -112,10 +99,6 @@ export default function Review(props: ReviewProps) {
   >([]);
   const [selectedApplication, setSelectedApplication] =
     useState<Application | null>(null);
-  const [selectedApplicationProfile, setSelectedApplicationProfile] = useState<{
-    id: string;
-    metadata: Metadata;
-  } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -153,24 +136,34 @@ export default function Review(props: ReviewProps) {
   const granteeApplicationLink = `${hostname}/flow-councils/grantee/?councilId=${councilId}&chainId=${chainId}`;
   const council = councilQueryRes?.council;
   const profiles = flowStateQueryRes?.profiles;
+  const selectedApplicationProfile =
+    profiles && selectedApplication
+      ? profiles.find(
+          (p: { id: string }) => p.id === selectedApplication.metadata,
+        )
+      : null;
 
   const fetchApplications = useCallback(async () => {
     if (!council || !address || !chainId) {
       return;
     }
 
-    const applicationsRes = await fetch("/api/flow-council/applications", {
-      method: "POST",
-      body: JSON.stringify({
-        chainId,
-        councilId: council.id,
-      }),
-    });
+    try {
+      const applicationsRes = await fetch("/api/flow-council/applications", {
+        method: "POST",
+        body: JSON.stringify({
+          chainId,
+          councilId: council.id,
+        }),
+      });
 
-    const { success, applications } = await applicationsRes.json();
+      const { success, applications } = await applicationsRes.json();
 
-    if (success) {
-      setApplications(applications);
+      if (success) {
+        setApplications(applications);
+      }
+    } catch (err) {
+      console.error(err);
     }
   }, [council, address, chainId]);
 
@@ -422,7 +415,10 @@ export default function Review(props: ReviewProps) {
                       <td className="w-25">{application.address}</td>
                       <td className="w-25">
                         {profiles && profiles[i]
-                          ? profiles[i].metadata.title
+                          ? profiles.find(
+                              (p: { id: string }) =>
+                                p.id === application.metadata,
+                            ).metadata.title
                           : "N/A"}
                       </td>
                       <td className="w-25 text-center ps-0">
@@ -472,7 +468,6 @@ export default function Review(props: ReviewProps) {
                             className="w-100 p-0 text-light"
                             onClick={() => {
                               setSelectedApplication(application);
-                              setSelectedApplicationProfile(profiles[i]);
                             }}
                           >
                             Review
@@ -483,7 +478,6 @@ export default function Review(props: ReviewProps) {
                             className="w-100 p-0"
                             onClick={() => {
                               setSelectedApplication(application);
-                              setSelectedApplicationProfile(profiles[i]);
                             }}
                           >
                             Kick from Pool
