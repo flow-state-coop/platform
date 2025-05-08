@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Address, isAddress, keccak256, encodePacked } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "@wagmi/core";
@@ -9,8 +10,7 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { gql, useQuery } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
-import FormCheck from "react-bootstrap/FormCheck";
-import InputGroup from "react-bootstrap/InputGroup";
+import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import Toast from "react-bootstrap/Toast";
 import Spinner from "react-bootstrap/Spinner";
@@ -28,7 +28,8 @@ type MembershipProps = { chainId?: number; councilId?: string };
 type MemberEntry = {
   address: string;
   votingPower: string;
-  validationError: string;
+  addressValidationError: string;
+  votesValidationError: string;
 };
 
 const COUNCIL_QUERY = gql`
@@ -57,15 +58,20 @@ export default function Membership(props: MembershipProps) {
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
   const [councilConfig, setCouncilConfig] = useState({
     limitMaxAllocation: false,
-    isVotingPowerForAll: true,
   });
   const [maxAllocation, setMaxAllocation] = useState("");
   const [votingPowerForAll, setVotingPowerForAll] = useState("");
   const [membersEntry, setMembersEntry] = useState<MemberEntry[]>([
-    { address: "", votingPower: "", validationError: "" },
+    {
+      address: "",
+      votingPower: "",
+      addressValidationError: "",
+      votesValidationError: "",
+    },
   ]);
   const [membersToRemove, setMembersToRemove] = useState<MemberEntry[]>([]);
 
+  const router = useRouter();
   const publicClient = usePublicClient();
   const wagmiConfig = useConfig();
   const { isMobile } = useMediaQuery();
@@ -81,19 +87,19 @@ export default function Membership(props: MembershipProps) {
         councilId: councilId?.toLowerCase(),
       },
       skip: !councilId,
-      pollInterval: 10000,
+      pollInterval: 4000,
     },
   );
 
   const council = councilQueryRes?.council ?? null;
   const isValidMembersEntry = membersEntry.every(
     (memberEntry) =>
-      memberEntry.validationError === "" &&
+      memberEntry.addressValidationError === "" &&
+      memberEntry.votesValidationError === "" &&
       memberEntry.address !== "" &&
-      ((councilConfig.isVotingPowerForAll && votingPowerForAll) ||
-        (memberEntry.votingPower !== "" && memberEntry.votingPower !== "0")),
+      memberEntry.votingPower !== "" &&
+      memberEntry.votingPower !== "0",
   );
-
   const isManager = useMemo(() => {
     const memberManagerRole = keccak256(
       encodePacked(["string"], ["MEMBER_MANAGER_ROLE"]),
@@ -123,14 +129,22 @@ export default function Membership(props: MembershipProps) {
     );
     const hasChangesMembers =
       sortedCouncilMembers &&
-      !compareArrays(
+      (!compareArrays(
         sortedCouncilMembers
           .filter(
             (member: { votingPower: string }) => member.votingPower !== "0",
           )
           .map((member: { account: string }) => member.account),
         sortedMembersEntry.map((member) => member.address.toLowerCase()),
-      );
+      ) ||
+        !compareArrays(
+          sortedCouncilMembers
+            .filter(
+              (member: { votingPower: string }) => member.votingPower !== "0",
+            )
+            .map((member: { votingPower: string }) => member.votingPower),
+          sortedMembersEntry.map((member) => member.votingPower),
+        ));
 
     return (
       (!councilConfig.limitMaxAllocation &&
@@ -153,13 +167,23 @@ export default function Membership(props: MembershipProps) {
           return {
             address: member.account,
             votingPower: member.votingPower,
-            validationError: "",
+            addressValidationError: "",
+            votesValidationError: "",
           };
         });
 
-      if (membersEntry.length > 0) {
-        setMembersEntry(membersEntry);
-      }
+      setMembersEntry(
+        membersEntry.length > 0
+          ? membersEntry
+          : [
+              {
+                address: "",
+                votingPower: "",
+                addressValidationError: "",
+                votesValidationError: "",
+              },
+            ],
+      );
 
       if (council.maxAllocationsPerMember === 0) {
         setCouncilConfig((prev) => {
@@ -187,7 +211,8 @@ export default function Membership(props: MembershipProps) {
     );
 
     if (
-      !memberEntry.validationError &&
+      !memberEntry.addressValidationError &&
+      !memberEntry.votesValidationError &&
       existingPoolMember &&
       existingPoolMember.units !== "0"
     ) {
@@ -206,7 +231,8 @@ export default function Membership(props: MembershipProps) {
 
       const validMembers = membersEntry.filter(
         (memberEntry) =>
-          memberEntry.validationError === "" &&
+          memberEntry.addressValidationError === "" &&
+          memberEntry.votesValidationError === "" &&
           memberEntry.address !== "" &&
           !council?.councilMembers.some(
             (member: { account: string; votingPower: string }) =>
@@ -223,9 +249,7 @@ export default function Membership(props: MembershipProps) {
             .map((member) => {
               return {
                 member: member.address as Address,
-                votingPower: councilConfig.isVotingPowerForAll
-                  ? BigInt(votingPowerForAll)
-                  : BigInt(member.votingPower),
+                votingPower: BigInt(member.votingPower),
               };
             })
             .concat(
@@ -269,42 +293,29 @@ export default function Membership(props: MembershipProps) {
     );
   }
 
-  if (council && !isManager) {
-    return (
-      <span className="m-auto fs-4 fw-bold">
-        Your are not a manager for this council. Please make sure the right
-        wallet is connected
-      </span>
-    );
-  }
-
   return (
     <>
-      {!isMobile && (
-        <Stack direction="vertical" className="w-25 flex-grow-1">
-          <Sidebar />
-        </Stack>
-      )}
+      <Sidebar />
       <Stack
         direction="vertical"
-        className={!isMobile ? "w-75 px-5" : "w-100 px-3"}
+        className={!isMobile ? "w-75 px-5" : "w-100 px-4"}
       >
         <Card className="bg-light rounded-4 border-0 mt-4 p-4">
           <Card.Header className="bg-transparent border-0 rounded-4 p-0">
             <Card.Title className="fs-4">Council Membership</Card.Title>
             <Card.Text className="fs-6 text-info">
-              Manage your council membership and how they can vote.
+              {isManager
+                ? "Manage your council membership and how they can vote."
+                : "(Read only—check your connected wallet's permissions to make changes)"}
             </Card.Text>
           </Card.Header>
           <Card.Body className="p-0 mt-4">
             <Stack
               direction={isMobile ? "vertical" : "horizontal"}
+              gap={isMobile ? 1 : 4}
               className="align-items-sm-center"
             >
-              <Form.Label
-                className="d-flex gap-1 mb-2 fs-5"
-                style={{ width: isMobile ? "100%" : "25%" }}
-              >
+              <Form.Label className="d-flex gap-1 mb-2 fs-5">
                 Max Voting Spread
                 <InfoTooltip
                   position={{ top: true }}
@@ -328,224 +339,119 @@ export default function Membership(props: MembershipProps) {
                   }
                 />
               </Form.Label>
-              <Stack direction="horizontal" gap={3}>
-                <FormCheck type="radio">
-                  <FormCheck.Input
-                    type="radio"
-                    checked={!councilConfig.limitMaxAllocation}
-                    onChange={() =>
+              <Dropdown>
+                <Dropdown.Toggle
+                  disabled={!isManager}
+                  className="d-flex justify-content-between align-items-center bg-white text-dark border"
+                  style={{ width: 128 }}
+                >
+                  {councilConfig.limitMaxAllocation
+                    ? maxAllocation
+                    : "No Limit"}
+                </Dropdown.Toggle>
+                <Dropdown.Menu
+                  className="overflow-auto"
+                  style={{ height: 256 }}
+                >
+                  <Dropdown.Item
+                    onClick={() => {
                       setCouncilConfig({
                         ...councilConfig,
                         limitMaxAllocation: false,
-                      })
+                      });
+                      setMaxAllocation("");
+                    }}
+                  >
+                    No Limit
+                  </Dropdown.Item>
+                  {[...Array(256)].map((_, i) => {
+                    if (i !== 0) {
+                      return (
+                        <Dropdown.Item
+                          key={i}
+                          onClick={() => {
+                            setCouncilConfig({
+                              ...councilConfig,
+                              limitMaxAllocation: true,
+                            });
+                            setMaxAllocation(i.toString());
+                          }}
+                        >
+                          {i}
+                        </Dropdown.Item>
+                      );
                     }
-                  />
-                  <FormCheck.Label>No Limit</FormCheck.Label>
-                </FormCheck>
-                <FormCheck type="radio">
-                  <FormCheck.Input
-                    type="radio"
-                    checked={councilConfig.limitMaxAllocation}
-                    onChange={() =>
-                      setCouncilConfig({
-                        ...councilConfig,
-                        limitMaxAllocation: true,
-                      })
-                    }
-                  />
-                  <FormCheck.Label>Set Limit</FormCheck.Label>
-                </FormCheck>
-              </Stack>
+
+                    return null;
+                  })}
+                </Dropdown.Menu>
+              </Dropdown>
             </Stack>
-            {councilConfig.limitMaxAllocation && (
-              <InputGroup className="mt-2">
-                <Form.Label className="align-self-center w-25 m-0">
-                  Limit
-                </Form.Label>
-                <Form.Control
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="10"
-                  value={maxAllocation}
-                  className="w-25 rounded-2 flex-grow-0"
-                  onChange={(e) => {
-                    if (
-                      e.target.value === "" ||
-                      (isNumber(e.target.value) && e.target.value !== "0.")
-                    ) {
-                      setMaxAllocation(e.target.value);
-                    }
-                  }}
-                />
-              </InputGroup>
-            )}
             <Stack
-              direction={isMobile ? "vertical" : "horizontal"}
-              className="align-items-sm-center mt-3"
+              direction="horizontal"
+              className="justify-content-end my-3"
+              gap={isMobile ? 2 : 4}
             >
-              <Form.Label
-                className="d-flex gap-1 mb-2 fs-5"
-                style={{ width: isMobile ? "100%" : "25%" }}
+              <span className="w-75" />
+              <Form.Control
+                type="text"
+                disabled={!isManager}
+                inputMode="numeric"
+                placeholder="Votes"
+                value={votingPowerForAll}
+                className="text-center rounded-2 flex-grow-0 flex-shrink-0"
+                style={{
+                  width: isMobile ? 100 : 128,
+                  paddingTop: 12,
+                  paddingBottom: 12,
+                }}
+                onChange={(e) => {
+                  if (
+                    e.target.value === "" ||
+                    (isNumber(e.target.value) &&
+                      e.target.value !== "0." &&
+                      Number(e.target.value) <= 1e6)
+                  ) {
+                    setVotingPowerForAll(e.target.value);
+                  }
+                }}
+              />
+              <Button
+                variant="transparent"
+                disabled={!isManager}
+                className="text-primary text-decoration-underline p-0 flex-grow-0 flex-shrink-0 border-0"
+                style={{ width: 80, fontSize: "0.9rem" }}
+                onClick={() =>
+                  setMembersEntry((prev) => {
+                    return prev.map((memberEntry) => {
+                      return { ...memberEntry, votingPower: votingPowerForAll };
+                    });
+                  })
+                }
               >
-                Voting Budget
-                <InfoTooltip
-                  position={{ top: true }}
-                  target={
-                    <Image
-                      src="/info.svg"
-                      alt="Info"
-                      width={14}
-                      height={14}
-                      className="align-top"
-                    />
-                  }
-                  content={
-                    <>
-                      Use this field to set a uniform voting budget for all
-                      Council Members.
-                      <br />
-                      <br />
-                      Set it to variable if you want to set each member's votes
-                      individually.
-                    </>
-                  }
-                />
-              </Form.Label>
-              <Stack direction="horizontal" gap={3}>
-                <FormCheck type="radio">
-                  <FormCheck.Input
-                    type="radio"
-                    checked={councilConfig.isVotingPowerForAll}
-                    onChange={() =>
-                      setCouncilConfig({
-                        ...councilConfig,
-                        isVotingPowerForAll: true,
-                      })
-                    }
-                  />
-                  <FormCheck.Label>Same for All</FormCheck.Label>
-                </FormCheck>
-                <FormCheck type="radio">
-                  <FormCheck.Input
-                    type="radio"
-                    checked={!councilConfig.isVotingPowerForAll}
-                    onChange={() =>
-                      setCouncilConfig({
-                        ...councilConfig,
-                        isVotingPowerForAll: false,
-                      })
-                    }
-                  />
-                  <FormCheck.Label>Individual</FormCheck.Label>
-                </FormCheck>
-              </Stack>
+                Apply to All
+              </Button>
             </Stack>
-            {councilConfig.isVotingPowerForAll && (
-              <InputGroup className="mt-2">
-                <Form.Label className="align-self-center w-25 m-0">
-                  Voting per Member
-                </Form.Label>
-                <Form.Control
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="100"
-                  value={votingPowerForAll}
-                  className="w-25 rounded-2 flex-grow-0"
-                  onChange={(e) => {
-                    if (
-                      e.target.value === "" ||
-                      (isNumber(e.target.value) && e.target.value !== "0.")
-                    ) {
-                      setVotingPowerForAll(e.target.value);
-                    }
-                  }}
-                />
-              </InputGroup>
-            )}
             {membersEntry.map((memberEntry, i) => (
               <Stack
                 direction="horizontal"
                 gap={isMobile ? 2 : 4}
-                className="justify-content-start mt-4 mb-3"
+                className="justify-content-end my-3"
                 key={i}
               >
-                <Stack direction="vertical" className="w-100">
-                  <Stack direction="vertical" className="position-relative">
-                    <Form.Control
-                      type="text"
-                      placeholder="Member Address"
-                      value={memberEntry.address}
-                      disabled={
-                        council?.councilMembers
-                          .map((member: { account: string }) =>
-                            member.account.toLowerCase(),
-                          )
-                          .includes(memberEntry.address.toLowerCase()) &&
-                        !memberEntry.validationError
-                      }
-                      style={{
-                        paddingTop: 12,
-                        paddingBottom: 12,
-                      }}
-                      onChange={(e) => {
-                        const prevMembersEntry = [...membersEntry];
-                        const value = e.target.value;
-
-                        if (!isAddress(value)) {
-                          prevMembersEntry[i].validationError =
-                            "Invalid Address";
-                        } else if (
-                          prevMembersEntry
-                            .map((prevMember) =>
-                              prevMember.address.toLowerCase(),
-                            )
-                            .includes(value.toLowerCase())
-                        ) {
-                          prevMembersEntry[i].validationError =
-                            "Address already added";
-                        } else {
-                          prevMembersEntry[i].validationError = "";
-                        }
-
-                        prevMembersEntry[i].address = value;
-
-                        setMembersEntry(prevMembersEntry);
-                      }}
-                    />
-                    {memberEntry.validationError ? (
-                      <Card.Text
-                        className="position-absolute mt-1 mb-0 ms-2 ps-1 text-danger"
-                        style={{ bottom: 1, fontSize: "0.7rem" }}
-                      >
-                        {memberEntry.validationError}
-                      </Card.Text>
-                    ) : null}
-                  </Stack>
-                </Stack>
-                <Stack direction="vertical">
+                <Stack direction="vertical" className="position-relative w-75">
                   <Form.Control
                     type="text"
-                    inputMode="numeric"
-                    placeholder="Votes"
-                    value={
-                      councilConfig.isVotingPowerForAll &&
-                      !council?.councilMembers
-                        .map((member: { account: string }) =>
-                          member.account.toLowerCase(),
-                        )
-                        .includes(memberEntry.address.toLowerCase())
-                        ? votingPowerForAll
-                        : memberEntry.votingPower
-                    }
+                    placeholder="Member Address"
+                    value={memberEntry.address}
                     disabled={
-                      councilConfig.isVotingPowerForAll ||
-                      council?.councilMembers
-                        .map((member: { account: string }) =>
-                          member.account.toLowerCase(),
+                      !isManager ||
+                      membersToRemove
+                        .map((member: { address: string }) =>
+                          member.address.toLowerCase(),
                         )
                         .includes(memberEntry.address.toLowerCase())
                     }
-                    className="text-center"
                     style={{
                       paddingTop: 12,
                       paddingBottom: 12,
@@ -554,22 +460,99 @@ export default function Membership(props: MembershipProps) {
                       const prevMembersEntry = [...membersEntry];
                       const value = e.target.value;
 
-                      if (!value || value === "0") {
-                        prevMembersEntry[i].votingPower = "";
-                      } else if (value.includes(".")) {
-                        return;
-                      } else if (isNumber(value)) {
-                        prevMembersEntry[i].votingPower = value;
+                      if (!isAddress(value)) {
+                        prevMembersEntry[i].addressValidationError =
+                          "Invalid Address";
+                      } else if (
+                        prevMembersEntry
+                          .map((prevMember) => prevMember.address.toLowerCase())
+                          .includes(value.toLowerCase())
+                      ) {
+                        prevMembersEntry[i].addressValidationError =
+                          "Address already added";
+                      } else {
+                        prevMembersEntry[i].addressValidationError = "";
                       }
+
+                      prevMembersEntry[i].address = value;
 
                       setMembersEntry(prevMembersEntry);
                     }}
                   />
+                  {memberEntry.addressValidationError ? (
+                    <Card.Text
+                      className="position-absolute mt-1 mb-0 ms-2 ps-1 text-danger"
+                      style={{ bottom: 1, fontSize: "0.7rem" }}
+                    >
+                      {memberEntry.addressValidationError}
+                    </Card.Text>
+                  ) : null}
+                </Stack>
+                <Stack
+                  direction="vertical"
+                  className="position-relative flex-grow-0 flex-shrink-0"
+                  style={{
+                    width: isMobile ? 100 : 128,
+                  }}
+                >
+                  <Form.Control
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Votes"
+                    value={memberEntry.votingPower}
+                    disabled={
+                      !isManager ||
+                      membersToRemove
+                        .map((member: { address: string }) =>
+                          member.address.toLowerCase(),
+                        )
+                        .includes(memberEntry.address.toLowerCase())
+                    }
+                    className="flex-grow-0 text-center"
+                    style={{
+                      paddingTop: 12,
+                      paddingBottom: 12,
+                    }}
+                    onChange={(e) => {
+                      const prevMembersEntry = [...membersEntry];
+                      const value = e.target.value;
+
+                      if (!!value && !isNumber(value)) {
+                        prevMembersEntry[i].votesValidationError =
+                          "Must be a number";
+                      } else if (Number(value) === 0) {
+                        prevMembersEntry[i].votesValidationError =
+                          "Must be > 0";
+                      } else if (Number(value) > 1e6) {
+                        prevMembersEntry[i].votesValidationError =
+                          "Must be ≤ 1M";
+                      } else if (value.includes(".")) {
+                        prevMembersEntry[i].votesValidationError =
+                          "Must be an integer";
+                      } else {
+                        prevMembersEntry[i].votesValidationError = "";
+                      }
+
+                      prevMembersEntry[i].votingPower = value;
+
+                      setMembersEntry(prevMembersEntry);
+                    }}
+                  />
+                  {memberEntry.votesValidationError ? (
+                    <Card.Text
+                      className="position-absolute w-100 mt-1 mb-0 text-center text-danger"
+                      style={{ bottom: 1, fontSize: "0.7rem" }}
+                    >
+                      {memberEntry.votesValidationError}
+                    </Card.Text>
+                  ) : null}
                 </Stack>
                 <Button
                   variant="transparent"
-                  className="p-0"
+                  disabled={!isManager}
+                  className="p-0 flex-grow-0 flex-shrink-0 border-0"
                   style={{
+                    width: 80,
                     pointerEvents: isTransactionLoading ? "none" : "auto",
                   }}
                   onClick={() => {
@@ -579,8 +562,57 @@ export default function Membership(props: MembershipProps) {
                   <Image
                     src="/delete.svg"
                     alt="Remove"
-                    width={28}
-                    height={28}
+                    width={36}
+                    height={36}
+                  />
+                </Button>
+              </Stack>
+            ))}
+            {membersToRemove.map((memberEntry, i) => (
+              <Stack
+                direction="horizontal"
+                gap={isMobile ? 2 : 4}
+                className="justify-content-end mb-3"
+                key={i}
+              >
+                <Stack direction="vertical" className="w-75">
+                  <Form.Control
+                    disabled
+                    type="text"
+                    value={memberEntry.address}
+                    style={{ paddingTop: 12, paddingBottom: 12 }}
+                  />
+                </Stack>
+                <Form.Control
+                  type="text"
+                  disabled
+                  value="Removed"
+                  className="text-center flex-grow-0 flex-shrink-0"
+                  style={{
+                    width: isMobile ? 100 : 128,
+                    paddingTop: 12,
+                    paddingBottom: 12,
+                  }}
+                />
+                <Button
+                  variant="transparent"
+                  disabled={!isManager}
+                  className="p-0 flex-grow-0 flex-shrink-0 border-0"
+                  style={{ width: 80 }}
+                  onClick={() => {
+                    setMembersToRemove((prev) =>
+                      prev.filter(
+                        (_, prevMemberEntryIndex) => prevMemberEntryIndex !== i,
+                      ),
+                    );
+                    setMembersEntry(membersEntry.concat(memberEntry));
+                  }}
+                >
+                  <Image
+                    src="/add-circle.svg"
+                    alt="Add"
+                    width={36}
+                    height={36}
                   />
                 </Button>
               </Stack>
@@ -588,13 +620,15 @@ export default function Membership(props: MembershipProps) {
             <Stack direction="horizontal" gap={isMobile ? 2 : 4}>
               <Button
                 variant="transparent"
-                className="d-flex align-items-center w-100 p-0 text-primary text-decoration-underline"
+                disabled={!isManager}
+                className="d-flex align-items-center w-100 p-0 text-primary text-decoration-underline border-0"
                 onClick={() =>
                   setMembersEntry((prev) =>
                     prev.concat({
                       address: "",
                       votingPower: "",
-                      validationError: "",
+                      addressValidationError: "",
+                      votesValidationError: "",
                     }),
                   )
                 }
@@ -606,37 +640,51 @@ export default function Membership(props: MembershipProps) {
             </Stack>
           </Card.Body>
         </Card>
-        <Button
-          disabled={!hasChanges || !isValidMembersEntry}
-          className="my-4 fs-5"
-          onClick={() => {
-            !address && openConnectModal
-              ? openConnectModal()
-              : connectedChain?.id !== chainId
-                ? switchChain({ chainId })
-                : handleSubmit();
-          }}
-        >
-          {isTransactionLoading ? (
-            <Spinner size="sm" className="ms-2" />
-          ) : (
-            "Submit"
-          )}
-        </Button>
-        <Toast
-          show={transactionSuccess}
-          delay={4000}
-          autohide={true}
-          onClose={() => setTransactionSuccess(false)}
-          className="w-100 bg-success mt-2 p-3 fs-5 text-light"
-        >
-          Success!
-        </Toast>
-        {transactionError ? (
-          <Alert variant="danger" className="w-100 mb-4">
-            {transactionError}
-          </Alert>
-        ) : null}
+        <Stack direction="vertical" gap={3} className="my-4">
+          <Button
+            disabled={!isManager || !hasChanges || !isValidMembersEntry}
+            className="fs-5"
+            onClick={() => {
+              !address && openConnectModal
+                ? openConnectModal()
+                : connectedChain?.id !== chainId
+                  ? switchChain({ chainId })
+                  : handleSubmit();
+            }}
+          >
+            {isTransactionLoading ? (
+              <Spinner size="sm" className="ms-2" />
+            ) : (
+              "Submit"
+            )}
+          </Button>
+          <Button
+            variant="secondary"
+            className="fs-5"
+            style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
+            onClick={() =>
+              router.push(
+                `/flow-councils/review/?chainId=${chainId}&councilId=${councilId}`,
+              )
+            }
+          >
+            Next
+          </Button>
+          <Toast
+            show={transactionSuccess}
+            delay={4000}
+            autohide={true}
+            onClose={() => setTransactionSuccess(false)}
+            className="w-100 bg-success p-3 fs-5 text-light"
+          >
+            Success!
+          </Toast>
+          {transactionError ? (
+            <Alert variant="danger" className="w-100">
+              {transactionError}
+            </Alert>
+          ) : null}
+        </Stack>
       </Stack>
     </>
   );

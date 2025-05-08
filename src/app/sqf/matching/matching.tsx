@@ -73,7 +73,7 @@ export default function Matching(props: MatchingProps) {
   const [newFlowRate, setNewFlowRate] = useState("");
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
 
-  const { isMobile } = useMediaQuery();
+  const { isMobile, isTablet } = useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
@@ -171,11 +171,7 @@ export default function Matching(props: MatchingProps) {
 
   return (
     <>
-      {!isMobile && (
-        <Stack direction="vertical" className="w-25 flex-grow-1">
-          <Sidebar />
-        </Stack>
-      )}
+      <Sidebar />
       <Stack direction="vertical" className={!isMobile ? "w-75" : "w-100"}>
         <Stack direction="vertical" gap={4} className="px-5 py-4 mb-5">
           {!profileId || !chainId ? (
@@ -216,7 +212,10 @@ export default function Matching(props: MatchingProps) {
                 <Form>
                   <Form.Group className="mb-4">
                     <Form.Label>Matching Pool Address</Form.Label>
-                    <InputGroup className="gap-3 mb-3 w-75">
+                    <InputGroup
+                      className="gap-3 mb-3"
+                      style={{ width: isMobile || isTablet ? "100%" : "75%" }}
+                    >
                       <Form.Control
                         type="text"
                         value={gdaPool ?? ""}
@@ -236,7 +235,10 @@ export default function Matching(props: MatchingProps) {
                   </Form.Group>
                   <Form.Group className="mb-4">
                     <Form.Label>Current Funding Rate</Form.Label>
-                    <InputGroup className="mb-3 w-50">
+                    <InputGroup
+                      className="mb-3"
+                      style={{ width: isMobile || isTablet ? "100%" : "50%" }}
+                    >
                       <Form.Control
                         type="text"
                         value={
@@ -267,7 +269,9 @@ export default function Matching(props: MatchingProps) {
                   </Form.Group>
                   <Form.Group className="mb-4">
                     <Form.Label>New Funding Rate</Form.Label>
-                    <InputGroup className="w-50">
+                    <InputGroup
+                      style={{ width: isMobile || isTablet ? "100%" : "50%" }}
+                    >
                       <Form.Control
                         type="text"
                         value={newFlowRate}
@@ -333,7 +337,8 @@ export default function Matching(props: MatchingProps) {
                     </Stack>
                   </Stack>
                   <Button
-                    className="w-20 mt-3 text-light"
+                    className="mt-3 text-light"
+                    style={{ width: isMobile || isTablet ? "100%" : "20%" }}
                     disabled={
                       !isNumber(newFlowRate) ||
                       !network ||

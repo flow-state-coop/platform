@@ -33,6 +33,7 @@ export async function POST(request: Request) {
       .select("address")
       .select("chainId")
       .select("councilId")
+      .select("status")
       .where("address", "=", address.toLowerCase())
       .where("chainId", "=", network.id)
       .where("councilId", "=", councilId.toLowerCase())
@@ -49,19 +50,30 @@ export async function POST(request: Request) {
           status: "PENDING",
         })
         .execute();
-
+    } else if (application.status !== "PENDING") {
+      await db
+        .updateTable("applications")
+        .set({
+          metadata,
+          status: "PENDING",
+        })
+        .where("chainId", "=", network.id)
+        .where("address", "=", address.toLowerCase())
+        .where("councilId", "=", councilId.toLowerCase())
+        .execute();
+    } else {
       return new Response(
         JSON.stringify({
-          success: true,
-          message: `Success! Application pending`,
+          success: false,
+          message: `Already added as ${truncateStr(application.address, 14)}`,
         }),
       );
     }
 
     return new Response(
       JSON.stringify({
-        success: false,
-        message: `Already added as ${truncateStr(application.address, 14)}`,
+        success: true,
+        message: `Success! Application pending`,
       }),
     );
   } catch (err) {

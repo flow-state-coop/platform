@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createVerifiedFetch } from "@helia/verified-fetch";
 import { useClampText } from "use-clamp-text";
 import removeMarkdown from "remove-markdown";
@@ -17,6 +17,7 @@ type GranteeApplicationCardProps = {
   bannerCid: string;
   status: Status | null;
   hasApplied: boolean;
+  canReapply?: boolean;
   isSelected: boolean;
   selectProject: () => void;
   updateProject: (shouldUpdate: boolean) => void;
@@ -35,6 +36,7 @@ export default function GranteeApplicationCard(
     bannerCid,
     status,
     hasApplied,
+    canReapply,
     isSelected,
     selectProject,
     updateProject,
@@ -49,6 +51,10 @@ export default function GranteeApplicationCard(
     ellipsis: "...",
     lines: 7,
   });
+
+  const placeholderImgBanner = useMemo(() => getPlaceholderImageSrc(), []);
+
+  const placeholderImgLogo = useMemo(() => getPlaceholderImageSrc(), []);
 
   useEffect(() => {
     (async () => {
@@ -99,8 +105,7 @@ export default function GranteeApplicationCard(
         height: 418,
         pointerEvents:
           (hasApplied && status !== "PENDING" && status !== "APPROVED") ||
-          status === "REJECTED" ||
-          status === "CANCELED"
+          (!canReapply && (status === "REJECTED" || status === "CANCELED"))
             ? "none"
             : "auto",
       }}
@@ -108,12 +113,12 @@ export default function GranteeApplicationCard(
     >
       <Card.Img
         variant="top"
-        src={bannerUrl === "" ? getPlaceholderImageSrc() : bannerUrl}
+        src={bannerUrl === "" ? placeholderImgBanner : bannerUrl}
         height={102}
         className="bg-light"
       />
       <Image
-        src={logoUrl === "" ? getPlaceholderImageSrc() : logoUrl}
+        src={logoUrl === "" ? placeholderImgLogo : logoUrl}
         alt=""
         width={52}
         height={52}
@@ -158,7 +163,9 @@ export default function GranteeApplicationCard(
                                   ? "text-success"
                                   : "text-danger"
                             }`}
-                onClick={() => updateProject(status === "PENDING")}
+                onClick={() =>
+                  updateProject(status === "PENDING" || !!canReapply)
+                }
               >
                 <Image
                   src={
@@ -186,7 +193,7 @@ export default function GranteeApplicationCard(
                     : status === "CANCELED"
                       ? "Canceled"
                       : "Accepted"}
-                {status === "PENDING" && (
+                {(status === "PENDING" || canReapply) && (
                   <Button
                     variant="transparent"
                     className="position-absolute end-0 px-3 border-0"
@@ -195,7 +202,9 @@ export default function GranteeApplicationCard(
                     }}
                     style={{
                       filter:
-                        "invert(87%) sepia(40%) saturate(4124%) hue-rotate(348deg) brightness(103%) contrast(110%)",
+                        status === "PENDING"
+                          ? "invert(87%) sepia(40%) saturate(4124%) hue-rotate(348deg) brightness(103%) contrast(110%)"
+                          : "",
                     }}
                   >
                     <Image src="/edit.svg" alt="edit" width={28} />

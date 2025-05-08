@@ -5,6 +5,7 @@ import { getApolloClient } from "@/lib/apollo";
 const SUPERFLUID_QUERY = gql`
   query GDAPoolQuery($gdaPool: String) {
     pool(id: $gdaPool) {
+      id
       flowRate
       adjustmentFlowRate
       totalAmountFlowedDistributedUntilUpdatedAt
@@ -17,6 +18,7 @@ const SUPERFLUID_QUERY = gql`
         units
         updatedAtTimestamp
         totalAmountReceivedUntilUpdatedAt
+        isConnected
       }
       poolDistributors {
         account {

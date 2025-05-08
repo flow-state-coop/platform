@@ -1,12 +1,24 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { Address } from "viem";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, Sector } from "recharts";
+import { useAccount } from "wagmi";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+  Sector,
+} from "recharts";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
+import Modal from "react-bootstrap/Modal";
 import Spinner from "react-bootstrap/Spinner";
 import Dropdown from "react-bootstrap/Dropdown";
+import PoolConnectionButton from "@/components/PoolConnectionButton";
 import GranteeCard from "../../components/GranteeCard";
 import RoundBanner from "../../components/RoundBanner";
 import Ballot from "../../components/Ballot";
@@ -24,16 +36,16 @@ const generateColor = (str: string): string => {
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-  
+
   // Generate HSL color with good saturation and lightness for visibility
   const h = Math.abs(hash % 360);
   const s = 65 + (hash % 20); // 65-85% saturation
   const l = 40 + (hash % 10); // 40-50% lightness for darker/richer colors
-  
+
   return `hsl(${h}, ${s}%, ${l}%)`;
 };
 
-export default function Index({
+export default function FlowCouncil({
   chainId,
   councilId,
 }: {
@@ -44,9 +56,10 @@ export default function Index({
   const [sortingMethod, setSortingMethod] = useState(SortingMethod.RANDOM);
   const [showDistributionPoolFunding, setShowDistributionPoolFunding] =
     useState(false);
-  
-  // Selection and allocation state for voting UI
-  const [selectedGrantees, setSelectedGrantees] = useState<{id: string, allocation: number}[]>([]);
+  const [selectedGrantees, setSelectedGrantees] = useState<
+    { id: string; allocation: number }[]
+  >([]);
+  const [showConnectionModal, setShowConnectionModal] = useState(false);
 
   const skipGrantees = useRef(0);
   const hasNextGrantee = useRef(true);
@@ -54,6 +67,7 @@ export default function Index({
   const network =
     networks.find((network) => network.id === Number(chainId)) ?? networks[0];
   useMediaQuery();
+  const { address } = useAccount();
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const {
@@ -64,8 +78,14 @@ export default function Index({
     gdaPool,
     token,
     currentAllocation,
-    dispatchNewAllocation
+    dispatchNewAllocation,
   } = useCouncil();
+
+  const poolMember = gdaPool?.poolMembers.find(
+    (member: { account: { id: string } }) =>
+      member.account.id === address?.toLowerCase(),
+  );
+  const shouldConnect = !!poolMember && !poolMember.isConnected;
 
   const getGrantee = useCallback(
     (recipient: { id: string; address: string; metadata: ProjectMetadata }) => {
@@ -202,172 +222,197 @@ export default function Index({
   useEffect(() => {
     if (newAllocation?.allocation) {
       // Update our selection UI based on ballot allocations
-      const newSelected = newAllocation.allocation.map(item => ({
+      const newSelected = newAllocation.allocation.map((item) => ({
         id: item.grantee,
-        allocation: item.amount
+        allocation: item.amount,
       }));
-      
+
       // Only update if the selection has actually changed
       if (JSON.stringify(newSelected) !== JSON.stringify(selectedGrantees)) {
         setSelectedGrantees(newSelected);
       }
     }
   }, [newAllocation?.allocation]);
-  
+
   // Calculate the total voting power available
   const votingPower = currentAllocation?.votingPower || 100;
-  
+
   // Map grantees to their colors for pie charts
-  const [granteeColors, setGranteeColors] = useState<Record<string, string>>({});
-  
+  const [granteeColors, setGranteeColors] = useState<Record<string, string>>(
+    {},
+  );
+
   // Generate consistent colors for grantees
   useEffect(() => {
     if (grantees.length > 0) {
       const colorMap: Record<string, string> = {};
-      grantees.forEach(grantee => {
+      grantees.forEach((grantee) => {
         colorMap[grantee.address] = generateColor(grantee.address + grantee.id);
       });
       setGranteeColors(colorMap);
     }
   }, [grantees]);
-  
+
   // Convert allocation amount to percentage
   const amountToPercentage = (amount: number): number => {
     return Math.round((amount / votingPower) * 100);
   };
-  
+
   // Convert percentage to allocation amount
   const percentageToAmount = (percentage: number): number => {
     return Math.round((percentage / 100) * votingPower);
   };
-  
+
   // Handle grantee selection
   const handleGranteeSelection = (granteeAddress: `0x${string}`) => {
     console.log("Selecting grantee:", granteeAddress);
     const isCurrentlySelected = newAllocation?.allocation?.some(
-      a => a.grantee === granteeAddress
+      (a) => a.grantee === granteeAddress,
     );
-    
+
     if (!isCurrentlySelected) {
       // Calculate how many votes to allocate to the new grantee
       let newGranteeVotes = 0;
-      
+
       // Check if the grantee is already in currentAllocation (important to prevent duplication)
       const isInCurrentAllocation = currentAllocation?.allocation?.some(
-        a => a.grantee === granteeAddress
+        (a) => a.grantee === granteeAddress,
       );
-      
+
       if (!newAllocation?.allocation || newAllocation.allocation.length === 0) {
         // If this is the first grantee, give half the votes
-        newGranteeVotes = votingPower /2;
+        newGranteeVotes = votingPower / 2;
       } else {
         // Take votes evenly from other grantees
         const totalAllocated = newAllocation.allocation.reduce(
-          (sum, a) => sum + a.amount, 0
+          (sum, a) => sum + a.amount,
+          0,
         );
-        
+
         // If less than total voting power is allocated, use the remainder
         if (totalAllocated < votingPower) {
-            newGranteeVotes = votingPower - totalAllocated;
+          newGranteeVotes = votingPower - totalAllocated;
         } else {
           // Take an equal percentage from each existing allocation
-          const votesTaken = Math.floor(totalAllocated / (newAllocation.allocation.length + 1));
+          const votesTaken = Math.floor(
+            totalAllocated / (newAllocation.allocation.length + 1),
+          );
           newGranteeVotes = votesTaken;
-          
+
           // Update existing allocations
-          newAllocation.allocation.forEach(allocation => {
-            const newAmount = Math.max(1, allocation.amount - Math.floor(allocation.amount / (newAllocation.allocation.length + 1)));
+          newAllocation.allocation.forEach((allocation) => {
+            const newAmount = Math.max(
+              1,
+              allocation.amount -
+                Math.floor(
+                  allocation.amount / (newAllocation.allocation.length + 1),
+                ),
+            );
             dispatchNewAllocation({
               type: "update",
               allocation: {
                 grantee: allocation.grantee,
-                amount: newAmount
-              }
+                amount: newAmount,
+              },
             });
           });
         }
       }
-      
+
       if (isInCurrentAllocation) {
         // If the grantee is already in currentAllocation, use update instead of add
         dispatchNewAllocation({
           type: "update",
-          allocation: { grantee: granteeAddress, amount: newGranteeVotes }
+          allocation: { grantee: granteeAddress, amount: newGranteeVotes },
         });
       } else {
         // Only use "add" with currentAllocation for truly new grantees
         // We're deliberately NOT passing currentAllocation here to prevent duplication
         dispatchNewAllocation({
           type: "add",
-          allocation: { grantee: granteeAddress, amount: newGranteeVotes }
+          allocation: { grantee: granteeAddress, amount: newGranteeVotes },
         });
       }
     }
   };
-  
+
   // Handle allocation percentage change
-  const handleAllocationChange = (granteeAddress: `0x${string}`, newPercentage: number) => {
+  const handleAllocationChange = (
+    granteeAddress: `0x${string}`,
+    newPercentage: number,
+  ) => {
     if (!newAllocation?.allocation) return;
     if (newPercentage === 0) {
       // Find and remove the grantee from ballot
       dispatchNewAllocation({
         type: "delete",
-        allocation: { grantee: granteeAddress, amount: 0 }
+        allocation: { grantee: granteeAddress, amount: 0 },
       });
     }
     // Find the grantee being updated
-    const granteeIndex = newAllocation.allocation.findIndex(a => a.grantee === granteeAddress);
+    const granteeIndex = newAllocation.allocation.findIndex(
+      (a) => a.grantee === granteeAddress,
+    );
     if (granteeIndex === -1) return;
 
     // Convert percentage to votes
     const newAmount = percentageToAmount(newPercentage);
     const oldAmount = newAllocation.allocation[granteeIndex].amount;
     const difference = newAmount - oldAmount;
-    
+
     // If there's only one allocation, it gets all votes
     if (newAllocation.allocation.length === 1) {
       dispatchNewAllocation({
         type: "update",
-        allocation: { grantee: granteeAddress, amount: votingPower }
+        allocation: { grantee: granteeAddress, amount: votingPower },
       });
       return;
     }
-    
+
     // If trying to allocate more votes than available
     const totalAllocated = newAllocation.allocation.reduce(
-      (sum, a) => sum + a.amount, 0
+      (sum, a) => sum + a.amount,
+      0,
     );
-    
+
     if (totalAllocated + difference > votingPower) {
       // We need to reduce other allocations proportionally
-      const otherAllocations = newAllocation.allocation.filter((_, i) => i !== granteeIndex);
-      const totalOtherVotes = otherAllocations.reduce((sum, a) => sum + a.amount, 0);
-      
+      const otherAllocations = newAllocation.allocation.filter(
+        (_, i) => i !== granteeIndex,
+      );
+      const totalOtherVotes = otherAllocations.reduce(
+        (sum, a) => sum + a.amount,
+        0,
+      );
+
       if (totalOtherVotes > 0) {
         // Calculate how much to take from each allocation proportionally
-        otherAllocations.forEach(allocation => {
+        otherAllocations.forEach((allocation) => {
           const proportion = allocation.amount / totalOtherVotes;
           const voteReduction = Math.floor(difference * proportion);
-          const newAllocationAmount = Math.max(1, allocation.amount - voteReduction);
-          
+          const newAllocationAmount = Math.max(
+            1,
+            allocation.amount - voteReduction,
+          );
+
           dispatchNewAllocation({
             type: "update",
             allocation: {
               grantee: allocation.grantee,
-              amount: newAllocationAmount
-            }
+              amount: newAllocationAmount,
+            },
           });
         });
       }
     }
-    
+
     // Update the grantee's allocation
     dispatchNewAllocation({
       type: "update",
-      allocation: { grantee: granteeAddress, amount: newAmount }
+      allocation: { grantee: granteeAddress, amount: newAmount },
     });
   };
-  
+
   // Modified to open the ballot sidebar
   const handleVote = () => {
     dispatchNewAllocation({ type: "show-ballot" });
@@ -381,72 +426,81 @@ export default function Index({
     }
 
     // First, calculate total allocated votes
-    const allocatedVotes = newAllocation?.allocation 
+    const allocatedVotes = newAllocation?.allocation
       ? newAllocation.allocation.reduce((sum, a) => sum + a.amount, 0)
       : 0;
-    
+
     // Calculate unallocated votes
     const unallocatedVotes = votingPower - allocatedVotes;
 
     // Start with all grantees, even those without allocations
-    const data = grantees.map(grantee => {
-      const allocation = newAllocation?.allocation?.find(a => a.grantee === grantee.address);
-      
+    const data = grantees.map((grantee) => {
+      const allocation = newAllocation?.allocation?.find(
+        (a) => a.grantee === grantee.address,
+      );
+
       return {
         id: grantee.address,
         name: grantee.metadata.title,
         // If this grantee has an allocation, use it; otherwise 0
         value: allocation ? allocation.amount : 0,
         // If this grantee has an allocation, use their color; otherwise gray
-        color: allocation && allocation.amount > 0 ? granteeColors[grantee.address] : "#e0e0e0"
+        color:
+          allocation && allocation.amount > 0
+            ? granteeColors[grantee.address]
+            : "#e0e0e0",
       };
     });
-    
+
     // Also include any allocations for grantees that aren't in the visible list
     // (this can happen when filtering or pagination)
     if (newAllocation?.allocation) {
-      newAllocation.allocation.forEach(allocation => {
+      newAllocation.allocation.forEach((allocation) => {
         // If we already have this grantee in our data, skip it
-        if (data.some(item => item.id === allocation.grantee)) {
+        if (data.some((item) => item.id === allocation.grantee)) {
           return;
         }
-        
+
         // Add this allocation to our data
         data.push({
           id: allocation.grantee,
           name: allocation.grantee.substring(0, 6), // Use address as name if we don't have metadata
           value: allocation.amount,
-          color: granteeColors[allocation.grantee] || "#1f77b4"
+          color: granteeColors[allocation.grantee] || "#1f77b4",
         });
       });
     }
-    
+
     // Always add an entry for unallocated votes if there are any
     if (unallocatedVotes > 0) {
       data.push({
         id: "0xUnallocated",
         name: "Unallocated",
         value: unallocatedVotes,
-        color: "#e0e0e0" // Grey color for unallocated votes
+        color: "#e0e0e0", // Grey color for unallocated votes
       });
     }
-    
+
     // Filter out any entries with zero value to prevent empty wedges
     // EXCEPT keep unallocated votes even if they're zero (for consistency)
-    return data.filter(entry => entry.value > 0 || entry.id === "0xUnallocated");
+    return data.filter(
+      (entry) => entry.value > 0 || entry.id === "0xUnallocated",
+    );
   }, [grantees, newAllocation?.allocation, granteeColors, votingPower]);
 
   // Shared pie data that will be used by all charts
   const [sharedPieData, setSharedPieData] = useState<any[]>([]);
-  
+
   // Update the shared pie data whenever relevant data changes
   useEffect(() => {
     setSharedPieData(createConsistentPieData());
   }, [createConsistentPieData]);
-  
+
+  useEffect(() => setShowConnectionModal(shouldConnect), [shouldConnect]);
+
   const renderCustomPieChart = () => {
     if (!sharedPieData.length) return null;
-    
+
     return (
       <Pie
         data={sharedPieData}
@@ -464,10 +518,7 @@ export default function Index({
         blendStroke={true}
       >
         {sharedPieData.map((entry, index) => (
-          <Cell
-            key={`cell-${index}`}
-            fill={entry.color}
-          />
+          <Cell key={`cell-${index}`} fill={entry.color} />
         ))}
       </Pie>
     );
@@ -551,13 +602,13 @@ export default function Index({
             {grantees.map((grantee: Grantee) => {
               // Find if this grantee is in the ballot
               const ballotAllocation = newAllocation?.allocation?.find(
-                allocation => allocation.grantee === grantee.address
+                (allocation) => allocation.grantee === grantee.address,
               );
-              
+
               const isSelected = !!ballotAllocation;
               const allocationAmount = ballotAllocation?.amount || 0;
               const allocationPercentage = amountToPercentage(allocationAmount);
-              
+
               return (
                 <GranteeCard
                   key={`${grantee.address}-${grantee.id}`}
@@ -572,9 +623,12 @@ export default function Index({
                   flowRate={grantee.flowRate}
                   units={grantee.units}
                   network={network}
+                  token={token}
                   isSelected={isSelected}
                   allocationPercentage={allocationPercentage}
-                  onAllocationChange={(value) => handleAllocationChange(grantee.address, value)}
+                  onAllocationChange={(value) =>
+                    handleAllocationChange(grantee.address, value)
+                  }
                   onClick={() => handleGranteeSelection(grantee.address)}
                   votingPower={votingPower}
                   pieColor={granteeColors[grantee.address]}
@@ -593,60 +647,72 @@ export default function Index({
           )}
         </Stack>
       </Container>
-      
+
       {/* Vote Button with Pie Chart */}
       {newAllocation?.allocation && newAllocation.allocation.length > 0 && (
-        <div className="position-fixed" 
-             style={{ 
-               bottom: '2rem', 
-               right: '2rem', 
-               zIndex: 3 // just enought to be above the pie charts, but below the drawer 
-             }}>
-          <button 
+        <div
+          className="position-fixed"
+          style={{
+            bottom: "2rem",
+            right: "2rem",
+            zIndex: 3, // just enought to be above the pie charts, but below the drawer
+          }}
+        >
+          <button
             className="btn btn-primary d-flex align-items-center py-3 px-4 shadow-lg rounded-pill"
             onClick={handleVote}
-            style={{ 
-              minWidth: '200px',
-              transition: 'all 0.2s ease-in-out',
-              transform: 'scale(1)',
-              boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)'
+            style={{
+              minWidth: "200px",
+              transition: "all 0.2s ease-in-out",
+              transform: "scale(1)",
+              boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.05)';
-              e.currentTarget.style.boxShadow = '0 12px 20px rgba(0, 0, 0, 0.25)';
+              e.currentTarget.style.transform = "scale(1.05)";
+              e.currentTarget.style.boxShadow =
+                "0 12px 20px rgba(0, 0, 0, 0.25)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)';
+              e.currentTarget.style.transform = "scale(1)";
+              e.currentTarget.style.boxShadow = "0 8px 16px rgba(0, 0, 0, 0.2)";
             }}
           >
-            <div className="d-flex justify-content-center align-items-center me-3 bg-white rounded-circle" 
-                 style={{ width: '64px', height: '64px', overflow: 'hidden' }}>
+            <div
+              className="d-flex justify-content-center align-items-center me-3 bg-white rounded-circle"
+              style={{ width: "64px", height: "64px", overflow: "hidden" }}
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value, name) => [`${value} votes`, name]}
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      borderRadius: '4px',
-                      fontSize: '12px'
+                    contentStyle={{
+                      backgroundColor: "rgba(255, 255, 255, 0.9)",
+                      borderRadius: "4px",
+                      fontSize: "12px",
                     }}
                   />
                   {renderCustomPieChart()}
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div style={{ width: '14.5em' }}>
+            <div style={{ width: "14.5em" }}>
               <span className="fs-4 fw-semibold d-block">VOTE</span>
               <small className="fs-6 d-block text-white-50">
-                {sharedPieData.filter(entry => (entry.value > 0 && entry.id !== "0xUnallocated")).length} projects
+                {
+                  sharedPieData.filter(
+                    (entry) => entry.value > 0 && entry.id !== "0xUnallocated",
+                  ).length
+                }{" "}
+                projects
                 {(() => {
                   // Calculate unallocated votes
-                  const unallocated = sharedPieData.find(entry => entry.id === "0xUnallocated")?.value || 0;
+                  const unallocated =
+                    sharedPieData.find((entry) => entry.id === "0xUnallocated")
+                      ?.value || 0;
                   if (unallocated > 0) {
                     return ` (${unallocated} votes unallocated)`;
                   } else {
-                    return ' (all votes allocated)';
+                    return " (all votes allocated)";
                   }
                 })()}
               </small>
@@ -654,7 +720,7 @@ export default function Index({
           </button>
         </div>
       )}
-      
+
       {showDistributionPoolFunding ? (
         <DistributionPoolFunding
           network={network}
@@ -663,6 +729,31 @@ export default function Index({
       ) : newAllocation?.showBallot ? (
         <Ballot councilAddress={councilId as Address} />
       ) : null}
+      <Modal
+        show={showConnectionModal}
+        centered
+        onHide={() => setShowConnectionModal(false)}
+      >
+        <Modal.Header closeButton className="align-items-start border-0 pt-3">
+          <Modal.Title className="fs-5 fw-bold">
+            You're a recipient in this Flow Council but haven't connected.
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="fs-5">
+          Do you want to do that now, so your{" "}
+          <Link href="https://app.superfluid.finance/" target="_blank">
+            Super Token balance
+          </Link>{" "}
+          is reflected in real time?
+        </Modal.Body>
+        <Modal.Footer className="border-0">
+          <PoolConnectionButton
+            network={network}
+            poolAddress={gdaPool?.id ?? "0x"}
+            isConnected={!shouldConnect}
+          />
+        </Modal.Footer>
+      </Modal>
     </>
   );
 }

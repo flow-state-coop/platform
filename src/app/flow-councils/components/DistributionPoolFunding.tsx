@@ -6,6 +6,7 @@ import { useQuery, gql } from "@apollo/client";
 import {
   NativeAssetSuperToken,
   WrapperSuperToken,
+  SuperToken,
   Operation,
   Framework,
 } from "@superfluid-finance/sdk-core";
@@ -13,6 +14,7 @@ import duration from "dayjs/plugin/duration";
 import Offcanvas from "react-bootstrap/Offcanvas";
 import Accordion from "react-bootstrap/Accordion";
 import Stack from "react-bootstrap/Stack";
+import Image from "react-bootstrap/Image";
 import { Step } from "../types/distributionPoolFunding";
 import EditStream from "./distribution-pool-funding/EditStream";
 import TopUp from "./distribution-pool-funding/TopUp";
@@ -35,33 +37,8 @@ import {
 } from "@/lib/utils";
 import { SECONDS_IN_MONTH, ZERO_ADDRESS } from "@/lib/constants";
 
-const DISTRIBUTION_POOL_FUNDING_QUERY = gql`
-  query DistributionPoolFundingQuery($gdaPool: String!, $userAddress: String!) {
-    pool(id: $gdaPool) {
-      id
-      flowRate
-      adjustmentFlowRate
-      totalAmountFlowedDistributedUntilUpdatedAt
-      updatedAtTimestamp
-      totalUnits
-      token {
-        id
-      }
-      poolMembers {
-        account {
-          id
-        }
-        units
-      }
-      poolDistributors(where: { flowRate_not: "0" }) {
-        account {
-          id
-        }
-        flowRate
-        totalAmountFlowedDistributedUntilUpdatedAt
-        updatedAtTimestamp
-      }
-    }
+const SF_ACCOUNT_QUERY = gql`
+  query SFAccountQuery($userAddress: String!) {
     account(id: $userAddress) {
       accountTokenSnapshots {
         totalNetFlowRate
@@ -106,11 +83,14 @@ export default function DistributionPoolFunding(props: {
   );
   const [newFlowRate, setNewFlowRate] = useState("");
   const [wrapAmount, setWrapAmount] = useState("");
-  const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("0");
+  const [sfFramework, setSfFramework] = useState<Framework | null>(null);
+  const [superToken, setSuperToken] = useState<
+    NativeAssetSuperToken | WrapperSuperToken | SuperToken | null
+  >(null);
 
   const { address } = useAccount();
-  const { council, councilMetadata, token } = useCouncil();
+  const { council, councilMetadata, token, gdaPool } = useCouncil();
   const {
     areTransactionsLoading,
     completedTransactions,
@@ -146,18 +126,14 @@ export default function DistributionPoolFunding(props: {
       enabled: !isSuperTokenPure,
     },
   });
-  const { data: superfluidQueryRes } = useQuery(
-    DISTRIBUTION_POOL_FUNDING_QUERY,
-    {
-      client: getApolloClient("superfluid", network.id),
-      variables: {
-        gdaPool: council?.pool?.toLowerCase(),
-        userAddress: address?.toLowerCase() ?? "",
-      },
-      skip: !council?.pool,
-      pollInterval: 10000,
+  const { data: superfluidQueryRes } = useQuery(SF_ACCOUNT_QUERY, {
+    client: getApolloClient("superfluid", network.id),
+    variables: {
+      userAddress: address?.toLowerCase() ?? "",
     },
-  );
+    skip: !council?.pool,
+    pollInterval: 10000,
+  });
   const ethersProvider = useEthersProvider({ chainId: network.id });
   const ethersSigner = useEthersSigner({ chainId: network.id });
 
@@ -189,9 +165,9 @@ export default function DistributionPoolFunding(props: {
       : false;
 
   const flowRateToReceiver = useMemo(() => {
-    if (address && superfluidQueryRes?.pool) {
-      const distributor = superfluidQueryRes.pool.poolDistributors.find(
-        (distributor: { account: { id: string } }) =>
+    if (address && gdaPool) {
+      const distributor = gdaPool.poolDistributors.find(
+        (distributor: { account: { id: string }; flowRate: string }) =>
           distributor.account.id === address.toLowerCase(),
       );
 
@@ -201,7 +177,7 @@ export default function DistributionPoolFunding(props: {
     }
 
     return "0";
-  }, [address, superfluidQueryRes]);
+  }, [address, gdaPool]);
 
   const calcLiquidationEstimate = useCallback(
     (amountPerTimeInterval: string, timeInterval: TimeInterval) => {
@@ -248,91 +224,84 @@ export default function DistributionPoolFunding(props: {
     [calcLiquidationEstimate, amountPerTimeInterval, timeInterval],
   );
 
-  useEffect(() => {
-    (async () => {
-      if (
-        !address ||
-        !isAddress(distributionTokenAddress) ||
-        !newFlowRate ||
-        !ethersProvider ||
-        !ethersSigner
-      ) {
-        return;
-      }
+  const transactions = useMemo(() => {
+    if (
+      !address ||
+      !isAddress(distributionTokenAddress) ||
+      !sfFramework ||
+      !superToken ||
+      !newFlowRate ||
+      !ethersProvider ||
+      !ethersSigner
+    ) {
+      return [];
+    }
 
-      const sfFramework = await Framework.create({
-        chainId: network.id,
-        resolverAddress: network.superfluidResolver,
-        provider: ethersProvider,
-      });
-      const superToken = await sfFramework.loadSuperToken(
-        distributionTokenAddress,
-      );
-      const underlyingToken = superToken.underlyingToken;
+    const underlyingToken = superToken.underlyingToken;
 
-      const wrapAmountWei = parseEther(wrapAmount?.replace(/,/g, "") ?? "0");
-      const isWrapperSuperToken =
-        underlyingToken && underlyingToken.address !== ZERO_ADDRESS;
-      const approvalTransactionsCount =
-        isWrapperSuperToken &&
-        wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0)
-          ? 1
-          : 0;
-      const transactions: (() => Promise<void>)[] = [];
-      const operations: Operation[] = [];
+    const wrapAmountWei = parseEther(wrapAmount?.replace(/,/g, "") ?? "0");
+    const isWrapperSuperToken =
+      underlyingToken && underlyingToken.address !== ZERO_ADDRESS;
+    const approvalTransactionsCount =
+      isWrapperSuperToken &&
+      wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0)
+        ? 1
+        : 0;
+    const transactions: (() => Promise<void>)[] = [];
+    const operations: Operation[] = [];
 
-      if (wrapAmount && Number(wrapAmount?.replace(/,/g, "")) > 0) {
-        if (underlyingToken && approvalTransactionsCount > 0) {
-          transactions.push(async () => {
-            const tx = await underlyingToken
-              .approve({
-                receiver: distributionTokenAddress,
-                amount: wrapAmountWei.toString(),
-              })
-              .exec(ethersSigner);
-
-            await tx.wait();
-          });
-        }
-
-        if (isWrapperSuperToken) {
-          operations.push(
-            (superToken as WrapperSuperToken).upgrade({
+    if (wrapAmount && Number(wrapAmount?.replace(/,/g, "")) > 0) {
+      if (underlyingToken && approvalTransactionsCount > 0) {
+        transactions.push(async () => {
+          const tx = await underlyingToken
+            .approve({
+              receiver: distributionTokenAddress,
               amount: wrapAmountWei.toString(),
-            }),
-          );
-        } else {
-          transactions.push(async () => {
-            const tx = await (superToken as NativeAssetSuperToken)
-              .upgrade({
-                amount: wrapAmountWei.toString(),
-              })
-              .exec(ethersSigner);
+            })
+            .exec(ethersSigner);
 
-            await tx.wait();
-          });
-        }
+          await tx.wait();
+        });
       }
 
-      operations.push(
-        superToken.distributeFlow({
-          from: address,
-          pool: council?.pool ?? "",
-          requestedFlowRate: newFlowRate,
-        }),
-      );
+      if (isWrapperSuperToken) {
+        operations.push(
+          (superToken as WrapperSuperToken).upgrade({
+            amount: wrapAmountWei.toString(),
+          }),
+        );
+      } else {
+        transactions.push(async () => {
+          const tx = await (superToken as NativeAssetSuperToken)
+            .upgrade({
+              amount: wrapAmountWei.toString(),
+            })
+            .exec(ethersSigner);
 
-      transactions.push(async () => {
-        const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
+          await tx.wait();
+        });
+      }
+    }
 
-        await tx.wait();
-      });
+    operations.push(
+      superToken.distributeFlow({
+        from: address,
+        pool: council?.pool ?? "",
+        requestedFlowRate: newFlowRate,
+      }),
+    );
 
-      setTransactions(transactions);
-    })();
+    transactions.push(async () => {
+      const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
+
+      await tx.wait();
+    });
+
+    return transactions;
   }, [
     address,
-    network,
+    sfFramework,
+    superToken,
     wrapAmount,
     newFlowRate,
     ethersProvider,
@@ -385,6 +354,8 @@ export default function DistributionPoolFunding(props: {
         });
 
         setUnderlyingTokenAllowance(underlyingTokenAllowance ?? "0");
+        setSfFramework(sfFramework);
+        setSuperToken(superToken);
       }
     })();
   }, [address, ethersProvider, distributionTokenAddress, network]);
@@ -433,103 +404,130 @@ export default function DistributionPoolFunding(props: {
       </Offcanvas.Header>
       <Offcanvas.Body>
         <Stack direction="vertical" className="flex-grow-0">
-          <DistributionPoolDetails
-            gdaPool={superfluidQueryRes?.pool}
-            token={token}
-          />
-          <Accordion activeKey={step} className="mt-4">
-            <EditStream
-              isSelected={step === Step.SELECT_AMOUNT}
-              setStep={(step) => setStep(step)}
-              token={token}
-              network={network}
-              flowRateToReceiver={flowRateToReceiver}
-              amountPerTimeInterval={amountPerTimeInterval}
-              setAmountPerTimeInterval={(amount) => {
-                setAmountPerTimeInterval(amount);
-                updateWrapAmount(
-                  amount,
-                  timeInterval,
-                  calcLiquidationEstimate(amount, timeInterval),
-                );
-              }}
-              newFlowRate={newFlowRate}
-              wrapAmount={wrapAmount}
-              timeInterval={timeInterval}
-              setTimeInterval={(timeInterval) => {
-                setTimeInterval(timeInterval);
-                updateWrapAmount(
-                  amountPerTimeInterval,
-                  timeInterval,
-                  calcLiquidationEstimate(amountPerTimeInterval, timeInterval),
-                );
-              }}
-              superTokenBalance={superTokenBalance}
-              hasSufficientBalance={
-                !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
-              }
-            />
-            <TopUp
-              step={step}
-              setStep={(step) => setStep(step)}
-              newFlowRate={newFlowRate}
-              wrapAmount={wrapAmount}
-              isSuperTokenPure={isSuperTokenPure}
-              superTokenBalance={superTokenBalance}
-              minEthBalance={minEthBalance}
-              suggestedTokenBalance={suggestedTokenBalance}
-              hasSufficientEthBalance={hasSufficientEthBalance}
-              hasSufficientTokenBalance={hasSufficientTokenBalance}
-              hasSuggestedTokenBalance={hasSuggestedTokenBalance}
-              ethBalance={ethBalance}
-              underlyingTokenBalance={underlyingTokenBalance}
-              network={network}
-              superTokenInfo={token}
-            />
-            {!isSuperTokenPure && (
-              <Wrap
-                step={step}
-                setStep={setStep}
-                wrapAmount={wrapAmount}
-                setWrapAmount={setWrapAmount}
+          <DistributionPoolDetails gdaPool={gdaPool} token={token} />
+          {gdaPool &&
+          (Number(gdaPool.totalUnits) > 0 || BigInt(flowRateToReceiver) > 0) ? (
+            <Accordion activeKey={step} className="mt-4">
+              <EditStream
+                isSelected={step === Step.SELECT_AMOUNT}
+                setStep={(step) => setStep(step)}
                 token={token}
+                network={network}
+                flowRateToReceiver={flowRateToReceiver}
+                amountPerTimeInterval={amountPerTimeInterval}
+                setAmountPerTimeInterval={(amount) => {
+                  setAmountPerTimeInterval(amount);
+                  updateWrapAmount(
+                    amount,
+                    timeInterval,
+                    calcLiquidationEstimate(amount, timeInterval),
+                  );
+                }}
+                newFlowRate={newFlowRate}
+                wrapAmount={wrapAmount}
+                timeInterval={timeInterval}
+                setTimeInterval={(timeInterval) => {
+                  setTimeInterval(timeInterval);
+                  updateWrapAmount(
+                    amountPerTimeInterval,
+                    timeInterval,
+                    calcLiquidationEstimate(
+                      amountPerTimeInterval,
+                      timeInterval,
+                    ),
+                  );
+                }}
+                superTokenBalance={superTokenBalance}
+                hasSufficientBalance={
+                  !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
+                }
+              />
+              <TopUp
+                step={step}
+                setStep={(step) => setStep(step)}
+                newFlowRate={newFlowRate}
+                wrapAmount={wrapAmount}
+                isSuperTokenPure={isSuperTokenPure}
+                superTokenBalance={superTokenBalance}
+                minEthBalance={minEthBalance}
+                suggestedTokenBalance={suggestedTokenBalance}
+                hasSufficientEthBalance={hasSufficientEthBalance}
+                hasSufficientTokenBalance={hasSufficientTokenBalance}
+                hasSuggestedTokenBalance={hasSuggestedTokenBalance}
+                ethBalance={ethBalance}
+                underlyingTokenBalance={underlyingTokenBalance}
+                network={network}
+                superTokenInfo={token}
+              />
+              {!isSuperTokenPure && (
+                <Wrap
+                  step={step}
+                  setStep={setStep}
+                  wrapAmount={wrapAmount}
+                  setWrapAmount={setWrapAmount}
+                  token={token}
+                  superTokenBalance={superTokenBalance}
+                  underlyingTokenBalance={underlyingTokenBalance}
+                />
+              )}
+              <Review
+                step={step}
+                setStep={(step) => setStep(step)}
+                network={network}
+                receiver={council?.pool ?? ""}
+                transactions={transactions}
+                completedTransactions={completedTransactions}
+                areTransactionsLoading={areTransactionsLoading}
+                transactionError={transactionError}
+                executeTransactions={executeTransactions}
+                liquidationEstimate={liquidationEstimate}
+                netImpact={BigInt(0)}
+                token={token}
+                flowRateToReceiver={flowRateToReceiver}
+                amountPerTimeInterval={amountPerTimeInterval}
+                newFlowRate={newFlowRate}
+                wrapAmount={wrapAmount}
+                newFlowRateToFlowState={"0"}
+                flowRateToFlowState={"0"}
+                timeInterval={timeInterval}
+                supportFlowStateAmount={"0"}
+                supportFlowStateTimeInterval={TimeInterval.MONTH}
+                isSuperTokenPure={isSuperTokenPure}
                 superTokenBalance={superTokenBalance}
                 underlyingTokenBalance={underlyingTokenBalance}
               />
-            )}
-            <Review
-              step={step}
-              setStep={(step) => setStep(step)}
-              network={network}
-              receiver={council?.pool ?? ""}
-              transactions={transactions}
-              completedTransactions={completedTransactions}
-              areTransactionsLoading={areTransactionsLoading}
-              transactionError={transactionError}
-              executeTransactions={executeTransactions}
-              liquidationEstimate={liquidationEstimate}
-              netImpact={BigInt(0)}
-              token={token}
-              flowRateToReceiver={flowRateToReceiver}
-              amountPerTimeInterval={amountPerTimeInterval}
-              newFlowRate={newFlowRate}
-              wrapAmount={wrapAmount}
-              newFlowRateToFlowState={"0"}
-              flowRateToFlowState={"0"}
-              timeInterval={timeInterval}
-              supportFlowStateAmount={"0"}
-              supportFlowStateTimeInterval={TimeInterval.MONTH}
-              isSuperTokenPure={isSuperTokenPure}
-              superTokenBalance={superTokenBalance}
-              underlyingTokenBalance={underlyingTokenBalance}
-            />
-            <Success
-              step={step}
-              councilName={councilMetadata.name}
-              councilUiLink={`https://flowstate.network/flow-councils/${network?.id}/${council?.id}`}
-              newFlowRate={newFlowRate}
-            />
-          </Accordion>
+              <Success
+                step={step}
+                councilName={councilMetadata.name}
+                councilUiLink={`https://flowstate.network/flow-councils/${network?.id}/${council?.id}`}
+                newFlowRate={newFlowRate}
+              />
+            </Accordion>
+          ) : (
+            <Stack direction="vertical" className="bg-light rounded-4 mt-3 p-2">
+              <Stack
+                direction="horizontal"
+                gap={2}
+                className="align-items-center mt-1 ms-3 fs-4"
+              >
+                <Image src="/ballot.svg" alt="" width={32} height={32} />
+                Submit a ballot first
+              </Stack>
+              <p className="ms-3 mt-2">
+                Flow Councils can't distribute funding without at least one vote
+                submitted.
+              </p>
+              <p className="ms-3">
+                If you want to start all recipients with equal streams, you can
+                assign one vote to each then return here.
+              </p>
+              <p className="ms-3">
+                Otherwise, wait until a sufficient sample of Council members
+                have submitted their ballots before starting your funding
+                stream.
+              </p>
+            </Stack>
+          )}
         </Stack>
       </Offcanvas.Body>
     </Offcanvas>

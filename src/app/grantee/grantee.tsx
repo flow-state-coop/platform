@@ -214,11 +214,7 @@ export default function Grantee(props: GranteeProps) {
 
   return (
     <>
-      {!isMobile && (
-        <Stack direction="vertical" className="w-25 flex-grow-1">
-          <Sidebar />
-        </Stack>
-      )}
+      <Sidebar />
       <Stack direction="vertical" className={!isMobile ? "w-75" : "w-100"}>
         <Stack direction="vertical" gap={4} className="px-5 py-4 mb-5">
           {queryRes && queryRes.pool === null ? (

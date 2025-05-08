@@ -335,11 +335,7 @@ export default function Review(props: ReviewProps) {
 
   return (
     <>
-      {!isMobile && (
-        <Stack direction="vertical" className="w-25 flex-grow-1">
-          <Sidebar />
-        </Stack>
-      )}
+      <Sidebar />
       <Stack direction="vertical" className={!isMobile ? "w-75" : "w-100"}>
         <Stack direction="vertical" gap={4} className="px-5 py-4 mb-5">
           {!profileId || !chainId ? (
@@ -372,10 +368,14 @@ export default function Review(props: ReviewProps) {
               or return to <Link href="/sqf">Program Selection</Link>
             </Card.Text>
           ) : (
-            <Stack direction="vertical" gap={2}>
+            <Stack direction="vertical" gap={2} className="overflow-hidden">
               <Card.Text className="m-0">Application Link</Card.Text>
-              <Stack direction="horizontal" gap={2} className="me-auto mb-4">
-                <Badge className="d-flex align-items-center bg-transparent text-black border border-2 border-gray-500 p-2 fw-normal text-start h-100">
+              <Stack
+                direction="horizontal"
+                gap={2}
+                className="me-auto mb-4 w-100"
+              >
+                <Badge className="d-flex align-items-center bg-transparent text-black border border-2 border-gray-500 p-2 fw-normal text-start h-100 text-truncate">
                   {granteeRegistrationLink}
                 </Badge>
                 <CopyTooltip

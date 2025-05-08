@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { formatEther } from "viem";
 import { useAccount } from "wagmi";
 import { createVerifiedFetch } from "@helia/verified-fetch";
+import removeMarkdown from "remove-markdown";
 import { useClampText } from "use-clamp-text";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import Stack from "react-bootstrap/Stack";
@@ -10,10 +11,10 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Toast from "react-bootstrap/Toast";
 import { Network } from "@/types/network";
+import { Token } from "@/types/token";
 import { CouncilMember } from "../types/councilMember";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useCouncil from "../hooks/council";
-import { formatNumberWithCharSuffix } from "@/lib/utils";
 import { IPFS_GATEWAYS, SECONDS_IN_MONTH } from "@/lib/constants";
 import styles from './RangeSlider.module.css';
 
@@ -29,6 +30,7 @@ type GranteeProps = {
   flowRate: bigint;
   units: number;
   network: Network;
+  token: Token;
   isSelected: boolean;
   allocationPercentage?: number;
   onAllocationChange?: (value: number) => void;
@@ -51,6 +53,7 @@ export default function Grantee(props: GranteeProps) {
     flowRate,
     units,
     network,
+    token,
     isSelected,
     allocationPercentage = 0,
     onAllocationChange,
@@ -69,7 +72,7 @@ export default function Grantee(props: GranteeProps) {
   const { newAllocation, council, currentAllocation, dispatchNewAllocation } =
     useCouncil();
   const [descriptionRef, { noClamp, clampedText }] = useClampText({
-    text: description,
+    text: removeMarkdown(description).replace(/\r?\n|\r/g, " "),
     ellipsis: "...",
     lines: 4,
   });
@@ -87,10 +90,7 @@ export default function Grantee(props: GranteeProps) {
         allocation.grantee === granteeAddress,
     );
 
-  const monthlyFlow = formatNumberWithCharSuffix(
-    Number(formatEther(flowRate * BigInt(SECONDS_IN_MONTH))),
-    0,
-  );
+  const monthlyFlow = Number(formatEther(flowRate * BigInt(SECONDS_IN_MONTH)));
 
   useEffect(() => {
     (async () => {
@@ -288,7 +288,18 @@ export default function Grantee(props: GranteeProps) {
                 Current Stream
               </Card.Text>
               <Card.Text as="small" className="m-0">
-                {monthlyFlow} {network.tokens[0].symbol} /mo
+                {Intl.NumberFormat("en", {
+                  notation: monthlyFlow >= 1000 ? "compact" : void 0,
+                  maximumFractionDigits:
+                    monthlyFlow < 1
+                      ? 4
+                      : monthlyFlow < 10
+                        ? 3
+                        : monthlyFlow < 100
+                          ? 2
+                          : 1,
+                }).format(monthlyFlow)}{" "}
+                {token.symbol} /mo
               </Card.Text>
             </Stack>
           </Stack>
