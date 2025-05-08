@@ -16,7 +16,7 @@ import { CouncilMember } from "../types/councilMember";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useCouncil from "../hooks/council";
 import { IPFS_GATEWAYS, SECONDS_IN_MONTH } from "@/lib/constants";
-import styles from './RangeSlider.module.css';
+import styles from "./RangeSlider.module.css";
 
 type GranteeProps = {
   id: string;
@@ -37,6 +37,7 @@ type GranteeProps = {
   onClick?: () => void;
   votingPower?: number;
   pieColor?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   sharedPieData?: any[];
 };
 
@@ -60,7 +61,7 @@ export default function Grantee(props: GranteeProps) {
     onClick,
     votingPower = 100,
     pieColor = "rgb(36, 119, 137)",
-    sharedPieData = []
+    sharedPieData = [],
   } = props;
 
   const [logoUrl, setLogoUrl] = useState("");
@@ -126,7 +127,7 @@ export default function Grantee(props: GranteeProps) {
 
   const handleAllocation = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    
+
     if (onClick) onClick();
 
     setShowToast(true);
@@ -134,16 +135,16 @@ export default function Grantee(props: GranteeProps) {
 
   const handleCardClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    const isInteractive = 
-      target.tagName === 'BUTTON' || 
-      target.closest('button') || 
-      target.tagName === 'A' || 
-      target.closest('a') ||
-      target.tagName === 'INPUT' ||
-      target.closest('input') ||
+    const isInteractive =
+      target.tagName === "BUTTON" ||
+      target.closest("button") ||
+      target.tagName === "A" ||
+      target.closest("a") ||
+      target.tagName === "INPUT" ||
+      target.closest("input") ||
       target.classList.contains(styles.rangeSlider) ||
       target.closest(`.${styles.rangeSlider}`);
-    
+
     if (!isInteractive && isCouncilMember) {
       handleAllocation(e);
     }
@@ -160,14 +161,14 @@ export default function Grantee(props: GranteeProps) {
     if (!isSelected || !sharedPieData || sharedPieData.length === 0) {
       return null;
     }
-    
+
     // Create a modified version of the shared data that highlights only this grantee
-    const cardPieData = sharedPieData.map(entry => ({
+    const cardPieData = sharedPieData.map((entry) => ({
       ...entry,
       // Only use the grantee's color for this grantee, make all others grey
-      color: entry.id === granteeAddress ? pieColor : "#e0e0e0"
+      color: entry.id === granteeAddress ? pieColor : "#e0e0e0",
     }));
-    
+
     // Make sure we have at least some data to display
     if (cardPieData.length === 0) {
       // If no data, show a placeholder grey circle
@@ -191,22 +192,26 @@ export default function Grantee(props: GranteeProps) {
         </ResponsiveContainer>
       );
     }
-    
+
     // Check if we have a "remaining" wedge; if not, add one for unallocated votes
-    const hasRemainingWedge = cardPieData.some(entry => entry.id === "remaining");
-    const totalAllocated = cardPieData.reduce((sum, entry) => 
-      sum + (entry.id !== "remaining" ? entry.value : 0), 0);
-    
+    const hasRemainingWedge = cardPieData.some(
+      (entry) => entry.id === "remaining",
+    );
+    const totalAllocated = cardPieData.reduce(
+      (sum, entry) => sum + (entry.id !== "remaining" ? entry.value : 0),
+      0,
+    );
+
     // If there are unallocated votes but no remaining wedge, add one
     if (!hasRemainingWedge && totalAllocated < votingPower) {
       cardPieData.push({
         id: "remaining",
         name: "Unallocated",
         value: votingPower - totalAllocated,
-        color: "#e0e0e0"
+        color: "#e0e0e0",
       });
     }
-    
+
     return (
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
@@ -223,10 +228,7 @@ export default function Grantee(props: GranteeProps) {
             endAngle={270}
           >
             {cardPieData.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
-                fill={entry.color}
-              />
+              <Cell key={`cell-${index}`} fill={entry.color} />
             ))}
           </Pie>
         </PieChart>
@@ -308,26 +310,29 @@ export default function Grantee(props: GranteeProps) {
           <>
             <div className="d-flex justify-content-center text-center mt-1">
               <small className="text-muted">
-                {calculateAllocationVotes(allocationPercentage)} votes ({allocationPercentage}%)
+                {calculateAllocationVotes(allocationPercentage)} votes (
+                {allocationPercentage}%)
               </small>
             </div>
-            <div className="position-relative px-3" 
-                 style={{ 
-                   marginBottom: "-8px", 
-                   marginTop: "-21px", 
-                   zIndex: 5,
-                   touchAction: "none" // Prevent scroll/zoom on the container level
-                 }}
-                 onTouchStart={(e) => {
-                   // Prevent parent card from receiving touch events
-                   e.stopPropagation();
-                 }}
-                 onTouchMove={(e) => {
-                   e.stopPropagation();
-                 }}
-                 onTouchEnd={(e) => {
-                   e.stopPropagation();
-                 }}>
+            <div
+              className="position-relative px-3"
+              style={{
+                marginBottom: "-8px",
+                marginTop: "-21px",
+                zIndex: 5,
+                touchAction: "none", // Prevent scroll/zoom on the container level
+              }}
+              onTouchStart={(e) => {
+                // Prevent parent card from receiving touch events
+                e.stopPropagation();
+              }}
+              onTouchMove={(e) => {
+                e.stopPropagation();
+              }}
+              onTouchEnd={(e) => {
+                e.stopPropagation();
+              }}
+            >
               <input
                 type="range"
                 min="0"
@@ -340,55 +345,66 @@ export default function Grantee(props: GranteeProps) {
                   if (onAllocationChange) {
                     onAllocationChange(newPercentage);
                   }
-                  
+
                   // Also update the ballot allocation
                   if (newAllocation?.allocation) {
                     const granteeAllocation = newAllocation.allocation.find(
-                      allocation => allocation.grantee === granteeAddress
+                      (allocation) => allocation.grantee === granteeAddress,
                     );
-                    
+
                     if (granteeAllocation) {
                       // Convert percentage to absolute voting amount
-                      const votingAmount = calculateAllocationVotes(newPercentage);
-                      
+                      const votingAmount =
+                        calculateAllocationVotes(newPercentage);
+
                       // Check if updating would exceed total voting power
                       const otherAllocations = newAllocation.allocation.filter(
-                        allocation => allocation.grantee !== granteeAddress
+                        (allocation) => allocation.grantee !== granteeAddress,
                       );
-                      
+
                       const totalOtherVotes = otherAllocations.reduce(
-                        (sum, allocation) => sum + allocation.amount, 
-                        0
+                        (sum, allocation) => sum + allocation.amount,
+                        0,
                       );
-                      
+
                       // If the new allocation would exceed available votes, cap it
                       const maxAllowedVotes = votingPower - totalOtherVotes;
-                      const validVotingAmount = Math.min(votingAmount, maxAllowedVotes);
-                      
+                      const validVotingAmount = Math.min(
+                        votingAmount,
+                        maxAllowedVotes,
+                      );
+
                       // If the amount was capped, also update the UI percentage
-                      if (validVotingAmount !== votingAmount && onAllocationChange) {
-                        const validPercentage = (validVotingAmount / votingPower) * 100;
+                      if (
+                        validVotingAmount !== votingAmount &&
+                        onAllocationChange
+                      ) {
+                        const validPercentage =
+                          (validVotingAmount / votingPower) * 100;
                         onAllocationChange(validPercentage);
                       }
-                      
+
                       dispatchNewAllocation({
                         type: "update",
-                        allocation: { grantee: granteeAddress, amount: validVotingAmount }
+                        allocation: {
+                          grantee: granteeAddress,
+                          amount: validVotingAmount,
+                        },
                       });
                     }
                   }
                 }}
                 className={styles.rangeSlider}
-                style={{ 
+                style={{
                   cursor: "pointer",
-                  accentColor: pieColor
+                  accentColor: pieColor,
                 }}
                 onClick={(e) => e.stopPropagation()}
                 // Add touch event handlers to prevent screen scrolling
                 onTouchStart={(e) => {
                   e.stopPropagation();
                   // Prevent page scrolling when touching slider
-                  document.body.style.overflow = 'hidden';
+                  document.body.style.overflow = "hidden";
                   // Prevent default behavior which causes scrolling
                   e.preventDefault();
                 }}
@@ -402,35 +418,38 @@ export default function Grantee(props: GranteeProps) {
                   const rect = slider.getBoundingClientRect();
                   const position = (touch.clientX - rect.left) / rect.width;
                   // Calculate new value (clamped between 0-100)
-                  const newValue = Math.max(0, Math.min(100, Math.round(position * 100)));
+                  const newValue = Math.max(
+                    0,
+                    Math.min(100, Math.round(position * 100)),
+                  );
                   // Update slider value and trigger onChange
                   slider.value = newValue.toString();
                   // Trigger a change event to update the UI and state
-                  const changeEvent = new Event('change', { bubbles: true });
+                  const changeEvent = new Event("change", { bubbles: true });
                   slider.dispatchEvent(changeEvent);
                 }}
                 onTouchEnd={(e) => {
                   // Re-enable scrolling when touch is complete
-                  document.body.style.overflow = '';
+                  document.body.style.overflow = "";
                   e.stopPropagation();
                 }}
                 aria-label="Allocation percentage"
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={allocationPercentage}
-                />
+              />
             </div>
           </>
         )}
         <Card.Footer
           className="d-flex justify-content-between border-0 py-3"
-          style={{ 
-            fontSize: "15px", 
-            background: isSelected 
-              ? `linear-gradient(to right, ${pieColor} 0%, ${pieColor} ${allocationPercentage}%, rgb(65, 198, 223) ${allocationPercentage}%, rgb(65, 198, 223) 100%)` 
+          style={{
+            fontSize: "15px",
+            background: isSelected
+              ? `linear-gradient(to right, ${pieColor} 0%, ${pieColor} ${allocationPercentage}%, rgb(65, 198, 223) ${allocationPercentage}%, rgb(65, 198, 223) 100%)`
               : "rgb(215, 215, 220)",
             color: isSelected ? "white" : "inherit",
-            transition: "background 0.3s ease"
+            transition: "background 0.3s ease",
           }}
           onClick={(e) => handleAllocation(e)}
         >
@@ -441,8 +460,10 @@ export default function Grantee(props: GranteeProps) {
               className="justify-content-between w-100"
             >
               <div className="d-flex align-items-center">
-                <span className="fw-bold me-3">{allocationPercentage.toFixed(1)}%</span>
-                <div style={{ width: '32px', height: '32px' }}>
+                <span className="fw-bold me-3">
+                  {allocationPercentage.toFixed(1)}%
+                </span>
+                <div style={{ width: "32px", height: "32px" }}>
                   {renderGranteePieChart()}
                 </div>
               </div>
@@ -501,7 +522,12 @@ export default function Grantee(props: GranteeProps) {
                 target="_blank"
                 className="d-flex justify-content-center ms-auto p-0"
               >
-                <Image src="/open-new.svg" alt="Profile" width={28} height={28} />
+                <Image
+                  src="/open-new.svg"
+                  alt="Profile"
+                  width={28}
+                  height={28}
+                />
               </Button>
             </Stack>
           )}

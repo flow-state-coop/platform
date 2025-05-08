@@ -9,7 +9,6 @@ import {
   Pie,
   Cell,
   ResponsiveContainer,
-  Legend,
   Tooltip,
   Sector,
 } from "recharts";
@@ -60,6 +59,8 @@ export default function FlowCouncil({
     { id: string; allocation: number }[]
   >([]);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [sharedPieData, setSharedPieData] = useState<any[]>([]);
 
   const skipGrantees = useRef(0);
   const hasNextGrantee = useRef(true);
@@ -232,7 +233,7 @@ export default function FlowCouncil({
         setSelectedGrantees(newSelected);
       }
     }
-  }, [newAllocation?.allocation]);
+  }, [newAllocation?.allocation, selectedGrantees]);
 
   // Calculate the total voting power available
   const votingPower = currentAllocation?.votingPower || 100;
@@ -489,7 +490,6 @@ export default function FlowCouncil({
   }, [grantees, newAllocation?.allocation, granteeColors, votingPower]);
 
   // Shared pie data that will be used by all charts
-  const [sharedPieData, setSharedPieData] = useState<any[]>([]);
 
   // Update the shared pie data whenever relevant data changes
   useEffect(() => {
@@ -510,6 +510,7 @@ export default function FlowCouncil({
         outerRadius={28}
         dataKey="value"
         nameKey="name"
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         activeShape={(props: any) => <Sector {...props} />}
         labelLine={false}
         isAnimationActive={false}

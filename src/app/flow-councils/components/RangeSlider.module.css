@@ -45,7 +45,7 @@
   background: #ffffff;
   cursor: col-resize;
   border: none; /* Remove Firefox default border */
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 /* Edge support */
@@ -64,5 +64,5 @@
   border-radius: 14px;
   background: #ffffff;
   cursor: col-resize;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
