@@ -25,6 +25,25 @@ export default function BalancePlot(props: BalancePlotProps) {
 
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  const currentMonthlyFlow = Number(
+    formatEther(
+      !flowInfo
+        ? BigInt(0)
+        : (flowInfo.currentTotalFlowRate < 0
+            ? -flowInfo.currentTotalFlowRate
+            : flowInfo.currentTotalFlowRate) * BigInt(SECONDS_IN_MONTH),
+    ),
+  );
+  const newMonthlyFlow = Number(
+    formatEther(
+      !flowInfo
+        ? BigInt(0)
+        : (flowInfo.newTotalFlowRate < 0
+            ? -flowInfo.newTotalFlowRate
+            : flowInfo.newTotalFlowRate) * BigInt(SECONDS_IN_MONTH),
+    ),
+  );
+
   useEffect(() => {
     if (!flowInfo || !containerRef.current) {
       return;
@@ -172,40 +191,44 @@ export default function BalancePlot(props: BalancePlotProps) {
     <div className="p-3 bg-light rounded-4">
       {flowInfo && (
         <p className="w-100 mb-0 text-center text-info">
-          Current ={" "}
+          Now ={" "}
           {parseFloat(
             Number(formatEther(flowInfo.currentStartingBalance)).toFixed(2),
           )}{" "}
           {flowInfo.currentTotalFlowRate > 0 ? "+" : "-"}{" "}
-          {parseFloat(
-            Number(
-              formatEther(
-                (flowInfo.currentTotalFlowRate < 0
-                  ? -flowInfo.currentTotalFlowRate
-                  : flowInfo.currentTotalFlowRate) * BigInt(SECONDS_IN_MONTH),
-              ),
-            ).toFixed(4),
-          )}
+          {Intl.NumberFormat("en", {
+            notation: currentMonthlyFlow >= 1000 ? "compact" : void 0,
+            maximumFractionDigits:
+              currentMonthlyFlow < 1
+                ? 4
+                : currentMonthlyFlow < 10
+                  ? 3
+                  : currentMonthlyFlow < 100
+                    ? 2
+                    : 1,
+          }).format(currentMonthlyFlow)}
           /mo
         </p>
       )}
       {flowInfo &&
         flowInfo.currentTotalFlowRate !== flowInfo.newTotalFlowRate && (
           <p className="w-100 mb-1 text-center text-primary">
-            Proposed ={" "}
+            New ={" "}
             {parseFloat(
               Number(formatEther(flowInfo.newStartingBalance)).toFixed(2),
             )}{" "}
             {flowInfo.newTotalFlowRate > 0 ? "+" : "-"}{" "}
-            {parseFloat(
-              Number(
-                formatEther(
-                  (flowInfo.newTotalFlowRate < 0
-                    ? -flowInfo.newTotalFlowRate
-                    : flowInfo.newTotalFlowRate) * BigInt(SECONDS_IN_MONTH),
-                ),
-              ).toFixed(4),
-            )}
+            {Intl.NumberFormat("en", {
+              notation: newMonthlyFlow >= 1000 ? "compact" : void 0,
+              maximumFractionDigits:
+                newMonthlyFlow < 1
+                  ? 4
+                  : newMonthlyFlow < 10
+                    ? 3
+                    : newMonthlyFlow < 100
+                      ? 2
+                      : 1,
+            }).format(newMonthlyFlow)}
             /mo
           </p>
         )}
