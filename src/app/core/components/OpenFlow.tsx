@@ -24,7 +24,9 @@ import Spinner from "react-bootstrap/Spinner";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
 import { GDAPool } from "@/types/gdaPool";
-import BalancePlot, { BalancePlotFlowInfo } from "./BalancePlot";
+import BalancePlot, {
+  BalancePlotFlowInfo,
+} from "@/app/flow-splitters/components/BalancePlot";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
@@ -659,7 +661,7 @@ export default function OpenFlow(props: OpenFlowProps) {
             <Stack
               direction="horizontal"
               gap={1}
-              className="justify-content-center mt-1"
+              className="position-relative justify-content-center mt-1"
             >
               <Card.Text
                 className={`m-0 ${!hasSufficientSuperTokenBalance ? "text-danger" : "text-info"}`}
@@ -674,7 +676,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                 !showWrappingStep &&
                 hasSufficientSuperTokenBalance && (
                   <span
-                    className="bg-primary px-1 rounded-1 text-white cursor-pointer"
+                    className="position-absolute end-0 me-2 bg-primary px-1 rounded-1 text-white cursor-pointer"
                     style={{
                       fontSize: "0.6rem",
                     }}

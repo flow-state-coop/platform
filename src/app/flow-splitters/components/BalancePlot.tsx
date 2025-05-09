@@ -193,9 +193,7 @@ export default function BalancePlot(props: BalancePlotProps) {
       {flowInfo && (
         <p className="w-100 mb-0 text-center text-info">
           Now ={" "}
-          {parseFloat(
-            Number(formatEther(flowInfo.currentStartingBalance)).toFixed(2),
-          )}{" "}
+          {formatNumber(Number(formatEther(flowInfo.currentStartingBalance)))}{" "}
           {flowInfo.currentTotalFlowRate > 0 ? "+" : "-"}{" "}
           {formatNumber(currentMonthlyFlow)}
           /mo
@@ -205,9 +203,7 @@ export default function BalancePlot(props: BalancePlotProps) {
         flowInfo.currentTotalFlowRate !== flowInfo.newTotalFlowRate && (
           <p className="w-100 mb-1 text-center text-primary">
             New ={" "}
-            {parseFloat(
-              Number(formatEther(flowInfo.newStartingBalance)).toFixed(2),
-            )}{" "}
+            {formatNumber(Number(formatEther(flowInfo.newStartingBalance)))}{" "}
             {flowInfo.newTotalFlowRate > 0 ? "+" : "-"}{" "}
             {formatNumber(newMonthlyFlow)}
             /mo
