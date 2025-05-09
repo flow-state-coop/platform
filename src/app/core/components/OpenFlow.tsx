@@ -24,7 +24,9 @@ import Spinner from "react-bootstrap/Spinner";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
 import { GDAPool } from "@/types/gdaPool";
-import BalancePlot, { BalancePlotFlowInfo } from "./BalancePlot";
+import BalancePlot, {
+  BalancePlotFlowInfo,
+} from "@/app/flow-splitters/components/BalancePlot";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
@@ -37,6 +39,7 @@ import {
   fromTimeUnitsToSeconds,
   roundWeiAmount,
   isNumber,
+  formatNumber,
   convertStreamValueToInterval,
 } from "@/lib/utils";
 import { ZERO_ADDRESS, FLOW_STATE_RECEIVER } from "@/lib/constants";
@@ -658,7 +661,7 @@ export default function OpenFlow(props: OpenFlowProps) {
             <Stack
               direction="horizontal"
               gap={1}
-              className="justify-content-center mt-1"
+              className="position-relative justify-content-center mt-1"
             >
               <Card.Text
                 className={`m-0 ${!hasSufficientSuperTokenBalance ? "text-danger" : "text-info"}`}
@@ -667,15 +670,13 @@ export default function OpenFlow(props: OpenFlowProps) {
                 }}
               >
                 {token.symbol}:{" "}
-                {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
-                  Number(formatEther(superTokenBalance)),
-                )}
+                {formatNumber(Number(formatEther(superTokenBalance)))}
               </Card.Text>
               {!isSuperTokenPure &&
                 !showWrappingStep &&
                 hasSufficientSuperTokenBalance && (
                   <span
-                    className="bg-primary px-1 rounded-1 text-white cursor-pointer"
+                    className="position-absolute end-0 me-2 bg-primary px-1 rounded-1 text-white cursor-pointer"
                     style={{
                       fontSize: "0.6rem",
                     }}
@@ -777,9 +778,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                     ? ethBalance?.symbol
                     : underlyingTokenBalance?.symbol}
                   :{" "}
-                  {Intl.NumberFormat("en", {
-                    maximumFractionDigits: 4,
-                  }).format(
+                  {formatNumber(
                     Number(
                       isSuperTokenNative
                         ? ethBalance?.formatted
@@ -798,9 +797,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                     ? ethBalance?.symbol
                     : underlyingTokenBalance?.symbol}
                   :{" "}
-                  {Intl.NumberFormat("en", {
-                    maximumFractionDigits: 4,
-                  }).format(
+                  {formatNumber(
                     Number(
                       isSuperTokenNative
                         ? ethBalance?.formatted

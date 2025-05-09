@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { formatEther } from "viem";
 import * as Plot from "@observablehq/plot";
 import * as d3 from "d3";
+import { formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 export type BalancePlotFlowInfo = {
@@ -24,6 +25,25 @@ export default function BalancePlot(props: BalancePlotProps) {
   const { flowInfo } = props;
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const currentMonthlyFlow = Number(
+    formatEther(
+      !flowInfo
+        ? BigInt(0)
+        : (flowInfo.currentTotalFlowRate < 0
+            ? -flowInfo.currentTotalFlowRate
+            : flowInfo.currentTotalFlowRate) * BigInt(SECONDS_IN_MONTH),
+    ),
+  );
+  const newMonthlyFlow = Number(
+    formatEther(
+      !flowInfo
+        ? BigInt(0)
+        : (flowInfo.newTotalFlowRate < 0
+            ? -flowInfo.newTotalFlowRate
+            : flowInfo.newTotalFlowRate) * BigInt(SECONDS_IN_MONTH),
+    ),
+  );
 
   useEffect(() => {
     if (!flowInfo || !containerRef.current) {
@@ -172,40 +192,20 @@ export default function BalancePlot(props: BalancePlotProps) {
     <div className="p-3 bg-light rounded-4">
       {flowInfo && (
         <p className="w-100 mb-0 text-center text-info">
-          Current ={" "}
-          {parseFloat(
-            Number(formatEther(flowInfo.currentStartingBalance)).toFixed(2),
-          )}{" "}
+          Now ={" "}
+          {formatNumber(Number(formatEther(flowInfo.currentStartingBalance)))}{" "}
           {flowInfo.currentTotalFlowRate > 0 ? "+" : "-"}{" "}
-          {parseFloat(
-            Number(
-              formatEther(
-                (flowInfo.currentTotalFlowRate < 0
-                  ? -flowInfo.currentTotalFlowRate
-                  : flowInfo.currentTotalFlowRate) * BigInt(SECONDS_IN_MONTH),
-              ),
-            ).toFixed(4),
-          )}
+          {formatNumber(currentMonthlyFlow)}
           /mo
         </p>
       )}
       {flowInfo &&
         flowInfo.currentTotalFlowRate !== flowInfo.newTotalFlowRate && (
           <p className="w-100 mb-1 text-center text-primary">
-            Proposed ={" "}
-            {parseFloat(
-              Number(formatEther(flowInfo.newStartingBalance)).toFixed(2),
-            )}{" "}
+            New ={" "}
+            {formatNumber(Number(formatEther(flowInfo.newStartingBalance)))}{" "}
             {flowInfo.newTotalFlowRate > 0 ? "+" : "-"}{" "}
-            {parseFloat(
-              Number(
-                formatEther(
-                  (flowInfo.newTotalFlowRate < 0
-                    ? -flowInfo.newTotalFlowRate
-                    : flowInfo.newTotalFlowRate) * BigInt(SECONDS_IN_MONTH),
-                ),
-              ).toFixed(4),
-            )}
+            {formatNumber(newMonthlyFlow)}
             /mo
           </p>
         )}

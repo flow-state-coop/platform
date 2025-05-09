@@ -23,11 +23,7 @@ import { getApolloClient } from "@/lib/apollo";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { erc721CheckerAbi } from "@/lib/abi/erc721Checker";
 import { erc721Abi } from "@/lib/abi/erc721";
-import {
-  roundWeiAmount,
-  formatNumberWithCommas,
-  truncateStr,
-} from "@/lib/utils";
+import { roundWeiAmount, formatNumber, truncateStr } from "@/lib/utils";
 import {
   ZERO_ADDRESS,
   SECONDS_IN_MONTH,
@@ -302,7 +298,7 @@ export default function WalletBalance() {
           <Stack direction="horizontal" gap={2} className="align-items-center">
             <Image src="/wallet.svg" alt="Wallet" width={22} height={22} />
             <Card.Text className="m-0">
-              {formatEther(superTokenBalanceAllocation).slice(0, 8)}{" "}
+              {formatNumber(Number(formatEther(superTokenBalanceAllocation)))}{" "}
               {allocationTokenInfo?.symbol}
             </Card.Text>
           </Stack>
@@ -387,9 +383,7 @@ export default function WalletBalance() {
                   Matching Pool
                 </Card.Text>
                 <Card.Text className="w-33 m-0">
-                  {Intl.NumberFormat("en", {
-                    maximumFractionDigits: 6,
-                  }).format(
+                  {formatNumber(
                     Number(
                       formatEther(
                         BigInt(
@@ -454,9 +448,7 @@ export default function WalletBalance() {
                             )?.metadata.title}
                       </Card.Text>
                       <Card.Text className="w-33 m-0">
-                        {Intl.NumberFormat("en", {
-                          maximumFractionDigits: 6,
-                        }).format(
+                        {formatNumber(
                           Number(
                             formatEther(
                               BigInt(outflow.currentFlowRate) *
@@ -635,13 +627,13 @@ export default function WalletBalance() {
               width={24}
             />
             <Card.Text className="m-0 overflow-hidden text-truncate">
-              {formatNumberWithCommas(
-                parseFloat(
+              {formatNumber(
+                Number(
                   formatEther(
                     token === Token.ALLOCATION
                       ? superTokenBalanceAllocation
                       : superTokenBalanceMatching,
-                  ).slice(0, 8),
+                  ),
                 ),
               )}
             </Card.Text>
@@ -667,8 +659,8 @@ export default function WalletBalance() {
               width={24}
             />
             <Card.Text className="m-0">
-              {formatNumberWithCommas(
-                parseFloat(
+              {formatNumber(
+                Number(
                   roundWeiAmount(
                     BigInt(
                       token === Token.MATCHING

@@ -14,7 +14,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import {
   TimeInterval,
   fromTimeUnitsToSeconds,
-  formatNumberWithCommas,
+  formatNumber,
   roundWeiAmount,
 } from "@/lib/utils";
 
@@ -159,12 +159,12 @@ export default function TopUp(props: TopUpProps) {
                       : "text-warning"
                 }`}
               >
-                {formatNumberWithCommas(
-                  parseFloat(
+                {formatNumber(
+                  Number(
                     formatEther(
                       (underlyingTokenBalance?.value ?? BigInt(0)) +
                         superTokenBalance,
-                    ).slice(0, 8),
+                    ),
                   ),
                 )}
                 {hasSuggestedTokenBalance && (
@@ -178,9 +178,7 @@ export default function TopUp(props: TopUpProps) {
               </Card.Text>
               <Card.Text as="small" className="m-0 text-center">
                 Suggested{" "}
-                {formatNumberWithCommas(
-                  parseFloat(roundWeiAmount(suggestedTokenBalance, 6)),
-                )}
+                {formatNumber(Number(roundWeiAmount(suggestedTokenBalance, 6)))}
                 +
                 <br />
                 <span style={{ fontSize: "0.8rem" }}>(3 months stream)</span>
@@ -235,9 +233,7 @@ export default function TopUp(props: TopUpProps) {
                     }`}
                   >
                     {ethBalance
-                      ? formatNumberWithCommas(
-                          parseFloat(ethBalance.formatted.slice(0, 8)),
-                        )
+                      ? formatNumber(Number(ethBalance.formatted))
                       : "0"}
                     {hasSufficientEthBalance && (
                       <Image
@@ -311,12 +307,12 @@ export default function TopUp(props: TopUpProps) {
                           : "text-warning"
                     }`}
                   >
-                    {formatNumberWithCommas(
-                      parseFloat(
+                    {formatNumber(
+                      Number(
                         formatEther(
                           (underlyingTokenBalance?.value ?? BigInt(0)) +
                             superTokenBalance,
-                        ).slice(0, 8),
+                        ),
                       ),
                     )}
                     {hasSuggestedTokenBalance && (
@@ -330,8 +326,8 @@ export default function TopUp(props: TopUpProps) {
                   </Card.Text>
                   <Card.Text as="small" className="m-0 text-center">
                     Suggested{" "}
-                    {formatNumberWithCommas(
-                      parseFloat(roundWeiAmount(suggestedTokenBalance, 6)),
+                    {formatNumber(
+                      Number(roundWeiAmount(suggestedTokenBalance, 6)),
                     )}
                     +
                     <br />

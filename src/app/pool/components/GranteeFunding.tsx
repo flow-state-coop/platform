@@ -39,7 +39,7 @@ import {
   TimeInterval,
   unitOfTime,
   fromTimeUnitsToSeconds,
-  formatNumberWithCommas,
+  formatNumber,
   roundWeiAmount,
 } from "@/lib/utils";
 import {
@@ -458,9 +458,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
         4,
       );
 
-      setAmountPerTimeInterval(
-        formatNumberWithCommas(parseFloat(currentStreamValue)),
-      );
+      setAmountPerTimeInterval(formatNumber(Number(currentStreamValue)));
     })();
   }, [address, flowRateToReceiver]);
 
@@ -476,8 +474,8 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       );
 
       setSupportFlowStateAmount(
-        formatNumberWithCommas(
-          parseFloat(currentStreamValue) +
+        formatNumber(
+          Number(currentStreamValue) +
             poolFlowRateConfig.suggestedFlowStateDonation,
         ),
       );
@@ -572,8 +570,8 @@ export default function GranteeFunding(props: GranteeFundingProps) {
             : underlyingTokenBalance?.value;
 
           setWrapAmount(
-            formatNumberWithCommas(
-              parseFloat(
+            formatNumber(
+              Number(
                 formatUnits(
                   amount > 0 ? BigInt(amount) : BigInt(0),
                   underlyingTokenBalance?.decimals ?? 18,
@@ -583,8 +581,8 @@ export default function GranteeFunding(props: GranteeFundingProps) {
           );
         } else {
           setWrapAmount(
-            formatNumberWithCommas(
-              parseFloat(
+            formatNumber(
+              Number(
                 formatUnits(
                   weiAmount * BigInt(3),
                   underlyingTokenBalance?.decimals ?? 18,

@@ -12,7 +12,7 @@ import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Tooltip from "react-bootstrap/Tooltip";
 import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
-import { formatNumberWithCommas, isNumber } from "@/lib/utils";
+import { formatNumber, formatNumberWithCommas, isNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 export type WrapProps = {
@@ -198,10 +198,14 @@ export default function Wrap(props: WrapProps) {
                   }}
                 >
                   Remaining after wrapping{" "}
-                  {formatEther(
-                    underlyingTokenBalance?.value -
-                      parseEther(wrapAmount?.replace(/,/g, "")),
-                  ).slice(0, 8)}
+                  {formatNumber(
+                    Number(
+                      formatEther(
+                        underlyingTokenBalance?.value -
+                          parseEther(wrapAmount?.replace(/,/g, "")),
+                      ),
+                    ),
+                  )}
                 </i>
               ) : null}
               <Badge
@@ -217,7 +221,7 @@ export default function Wrap(props: WrapProps) {
             <Card.Text className="w-100 bg-white m-0 mb-2 px-2 pb-2 pt-1 rounded-bottom-4 text-end fs-6">
               Balance:{" "}
               {underlyingTokenBalance
-                ? underlyingTokenBalance.formatted.slice(0, 8)
+                ? formatNumber(Number(underlyingTokenBalance.formatted))
                 : ""}
             </Card.Text>
             <Badge
@@ -280,7 +284,7 @@ export default function Wrap(props: WrapProps) {
               </Badge>
             </Stack>
             <Card.Text className="w-100 bg-white m-0 px-2 pb-2 pt-1 rounded-bottom-4 text-end fs-6">
-              Balance: {formatEther(superTokenBalance).slice(0, 8)}
+              Balance: {formatNumber(Number(formatEther(superTokenBalance)))}
             </Card.Text>
           </Stack>
           {underlyingTokenBalance &&

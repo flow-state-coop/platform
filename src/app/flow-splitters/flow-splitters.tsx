@@ -21,7 +21,7 @@ import { Token } from "@/types/token";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";
-import { truncateStr } from "@/lib/utils";
+import { truncateStr, formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 type FlowSplittersProps = {
@@ -344,9 +344,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
                   className="justify-content-center"
                 >
                   <Card.Text className="m-0 fs-2 fw-bold">
-                    {Intl.NumberFormat("en", {
-                      notation: "compact",
-                    }).format(
+                    {formatNumber(
                       Number(
                         formatEther(pool.flowRate * BigInt(SECONDS_IN_MONTH)),
                       ),

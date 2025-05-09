@@ -19,7 +19,7 @@ import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
 import { Network } from "@/types/network";
 import {
-  formatNumberWithCommas,
+  formatNumber,
   fromTimeUnitsToSeconds,
   TimeInterval,
   roundWeiAmount,
@@ -258,20 +258,18 @@ export default function Review(props: ReviewProps) {
                   </Card.Text>
                   <Card.Text className="border-0 text-center fs-6">
                     New Balance:{" "}
-                    {(
+                    {formatNumber(
                       Number(
                         areTransactionsLoading && transactionDetailsSnapshot
                           ? transactionDetailsSnapshot.underlyingTokenBalance
                           : underlyingTokenBalance?.formatted,
                       ) -
-                      Number(
-                        areTransactionsLoading && transactionDetailsSnapshot
-                          ? transactionDetailsSnapshot.wrapAmount
-                          : wrapAmount?.replace(/,/g, ""),
-                      )
-                    )
-                      .toString()
-                      .slice(0, 8)}
+                        Number(
+                          areTransactionsLoading && transactionDetailsSnapshot
+                            ? transactionDetailsSnapshot.wrapAmount
+                            : wrapAmount?.replace(/,/g, ""),
+                        ),
+                    )}
                   </Card.Text>
                 </Stack>
                 <Image
@@ -302,14 +300,26 @@ export default function Review(props: ReviewProps) {
                     New Balance:{" "}
                     {areTransactionsLoading &&
                     transactionDetailsSnapshot?.wrapAmount
-                      ? formatEther(
-                          transactionDetailsSnapshot.superTokenBalance +
-                            parseEther(transactionDetailsSnapshot.wrapAmount),
-                        ).slice(0, 8)
-                      : formatEther(
-                          superTokenBalance +
-                            parseEther(wrapAmount?.replace(/,/g, "") ?? "0"),
-                        ).slice(0, 8)}
+                      ? formatNumber(
+                          Number(
+                            formatEther(
+                              transactionDetailsSnapshot.superTokenBalance +
+                                parseEther(
+                                  transactionDetailsSnapshot.wrapAmount,
+                                ),
+                            ),
+                          ),
+                        )
+                      : formatNumber(
+                          Number(
+                            formatEther(
+                              superTokenBalance +
+                                parseEther(
+                                  wrapAmount?.replace(/,/g, "") ?? "0",
+                                ),
+                            ),
+                          ),
+                        )}
                   </Card.Text>
                 </Stack>
               </Stack>
@@ -399,8 +409,8 @@ export default function Review(props: ReviewProps) {
                   className="mx-1"
                 />
                 <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
-                  {formatNumberWithCommas(
-                    parseFloat(
+                  {formatNumber(
+                    Number(
                       roundWeiAmount(
                         parseEther(
                           areTransactionsLoading && transactionDetailsSnapshot
@@ -632,8 +642,8 @@ export default function Review(props: ReviewProps) {
                       className="mx-1"
                     />
                     <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
-                      {formatNumberWithCommas(
-                        parseFloat(
+                      {formatNumber(
+                        Number(
                           convertStreamValueToInterval(
                             parseEther(
                               areTransactionsLoading &&

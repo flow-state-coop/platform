@@ -13,6 +13,7 @@ import Form from "react-bootstrap/Form";
 import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { Grantee } from "../pool";
+import { formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 type SankeyProps = {
@@ -226,12 +227,9 @@ export default function Sankey(props: SankeyProps) {
       .attr("fill", (d) => (d.value ? color(d.id) : "none"))
       .text(
         (d) =>
-          `${d.name.length > 50 ? d.name.slice(0, 50) + "..." : d.name} ${Intl.NumberFormat(
-            "en",
-            {
-              maximumFractionDigits: 4,
-            },
-          ).format(d.value ?? 0)}${
+          `${d.name.length > 50 ? d.name.slice(0, 50) + "..." : d.name} ${formatNumber(
+            d.value ?? 0,
+          )}${
             d.id === "Matching"
               ? " " + matchingToken + " " + "(" + totalDistributionsCount + ")"
               : d.id === "Direct"
@@ -503,9 +501,7 @@ export default function Sankey(props: SankeyProps) {
             (totalMatchingFlowRate * elapsedTimeInMillisecondsMatching) /
               BigInt(1000);
 
-          return `${(d as SankeyNode).name} ${Intl.NumberFormat("en", {
-            maximumFractionDigits: 4,
-          }).format(
+          return `${(d as SankeyNode).name} ${formatNumber(
             Number(formatEther(flowingAmountMatching)),
           )} ${matchingToken} (${totalDistributionsCount})`;
         }
@@ -535,9 +531,7 @@ export default function Sankey(props: SankeyProps) {
             })
             .reduce((a, b) => a + b, BigInt(0));
 
-          return `${(d as SankeyNode).name} ${Intl.NumberFormat("en", {
-            maximumFractionDigits: 4,
-          }).format(
+          return `${(d as SankeyNode).name} ${formatNumber(
             Number(formatEther(flowingAmountDirect)),
           )} ${allocationToken} (${totalDonationsCount})`;
         }
@@ -558,9 +552,9 @@ export default function Sankey(props: SankeyProps) {
             })
             .reduce((a, b) => a + b, BigInt(0));
 
-          return `${(d as SankeyNode).name} ${Intl.NumberFormat("en", {
-            maximumFractionDigits: 4,
-          }).format(Number(formatEther(flowingAmountUser)))}`;
+          return `${(d as SankeyNode).name} ${formatNumber(
+            Number(formatEther(flowingAmountUser)),
+          )}`;
         }
 
         const granteeIndex = grantees.findIndex(
@@ -587,16 +581,14 @@ export default function Sankey(props: SankeyProps) {
               elapsedTimeInMillisecondsDirect) /
               BigInt(1000);
 
-          return `${(d as SankeyNode).name} ${Intl.NumberFormat("en", {
-            maximumFractionDigits: 4,
-          }).format(
+          return `${(d as SankeyNode).name} ${formatNumber(
             Number(formatEther(flowingAmountMatching + flowingAmountDirect)),
           )}`;
         }
 
-        return `${(d as SankeyNode).name} ${Intl.NumberFormat("en", {
-          maximumFractionDigits: 4,
-        }).format((d as SankeyNode).value ?? 0)}`;
+        return `${(d as SankeyNode).name} ${formatNumber(
+          (d as SankeyNode).value ?? 0,
+        )}`;
       });
     };
 
