@@ -12,7 +12,7 @@ import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Tooltip from "react-bootstrap/Tooltip";
 import { Step } from "../../types/distributionPoolFunding";
 import { Token } from "@/types/token";
-import { formatNumberWithCommas, isNumber } from "@/lib/utils";
+import { formatNumber, formatNumberWithCommas, isNumber } from "@/lib/utils";
 
 export type WrapProps = {
   step: Step;
@@ -151,20 +151,7 @@ export default function Wrap(props: WrapProps) {
             <Card.Text className="w-100 bg-white m-0 mb-2 px-2 pb-2 rounded-bottom-4 text-end fs-6">
               Balance:{" "}
               {underlyingTokenBalance
-                ? Intl.NumberFormat("en", {
-                    notation:
-                      Number(underlyingTokenBalance.formatted) >= 1000
-                        ? "compact"
-                        : void 0,
-                    maximumFractionDigits:
-                      Number(underlyingTokenBalance.formatted) < 1
-                        ? 4
-                        : Number(underlyingTokenBalance.formatted) < 10
-                          ? 3
-                          : Number(underlyingTokenBalance.formatted) < 100
-                            ? 2
-                            : 1,
-                  }).format(Number(underlyingTokenBalance.formatted))
+                ? formatNumber(Number(underlyingTokenBalance.formatted))
                 : ""}
             </Card.Text>
             <Badge
@@ -200,21 +187,7 @@ export default function Wrap(props: WrapProps) {
               </Badge>
             </Stack>
             <Card.Text className="w-100 bg-white m-0 px-2 pb-2 rounded-bottom-4 text-end fs-6">
-              Balance:{" "}
-              {Intl.NumberFormat("en", {
-                notation:
-                  Number(formatEther(superTokenBalance)) >= 1000
-                    ? "compact"
-                    : void 0,
-                maximumFractionDigits:
-                  Number(formatEther(superTokenBalance)) < 1
-                    ? 4
-                    : Number(formatEther(superTokenBalance)) < 10
-                      ? 3
-                      : Number(formatEther(superTokenBalance)) < 100
-                        ? 2
-                        : 1,
-              }).format(Number(formatEther(superTokenBalance)))}
+              Balance: {formatNumber(Number(formatEther(superTokenBalance)))}
             </Card.Text>
           </Stack>
           {underlyingTokenBalance &&

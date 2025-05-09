@@ -8,8 +8,9 @@ import Jazzicon, { jsNumberForAddress } from "react-jazzicon";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
 import { truncateStr } from "@/lib/utils";
-import { SECONDS_IN_MONTH } from "@/lib/constants";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import { formatNumber } from "@/lib/utils";
+import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 type ActivityFeedProps = {
   poolSymbol: string;
@@ -286,10 +287,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                             15,
                           )}
                       </Link>
-                      :{" "}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(Number(memberUnitsUpdatedEvent.units))}{" "}
+                      : {formatNumber(Number(memberUnitsUpdatedEvent.units))}{" "}
                       {poolSymbol}{" "}
                       {Number(memberUnitsUpdatedEvent.units) === 1
                         ? "Share"
@@ -393,9 +391,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                       0
                         ? "+"
                         : ""}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(
+                      {formatNumber(
                         Number(memberUnitsUpdatedEvent.units) -
                           Number(memberUnitsUpdatedEvent.oldUnits),
                       )}{" "}
@@ -609,9 +605,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                   "0" ? (
                     <>
                       opened a{" "}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(
+                      {formatNumber(
                         Number(
                           formatEther(
                             BigInt(
@@ -627,9 +621,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                       .newDistributorToPoolFlowRate === "0" ? (
                     <>
                       closed a{" "}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(
+                      {formatNumber(
                         Number(
                           formatEther(
                             BigInt(
@@ -644,9 +636,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                   ) : (
                     <>
                       updated a stream from{" "}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(
+                      {formatNumber(
                         Number(
                           formatEther(
                             BigInt(
@@ -657,9 +647,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                         ),
                       )}{" "}
                       {token.symbol}/mo to{" "}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(
+                      {formatNumber(
                         Number(
                           formatEther(
                             BigInt(
@@ -749,9 +737,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                       )}
                   </Link>{" "}
                   instantly distributed{" "}
-                  {Intl.NumberFormat("en", {
-                    maximumFractionDigits: 4,
-                  }).format(
+                  {formatNumber(
                     Number(
                       formatEther(
                         BigInt(

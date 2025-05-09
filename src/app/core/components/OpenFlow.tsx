@@ -37,6 +37,7 @@ import {
   fromTimeUnitsToSeconds,
   roundWeiAmount,
   isNumber,
+  formatNumber,
   convertStreamValueToInterval,
 } from "@/lib/utils";
 import { ZERO_ADDRESS, FLOW_STATE_RECEIVER } from "@/lib/constants";
@@ -667,9 +668,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                 }}
               >
                 {token.symbol}:{" "}
-                {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
-                  Number(formatEther(superTokenBalance)),
-                )}
+                {formatNumber(Number(formatEther(superTokenBalance)))}
               </Card.Text>
               {!isSuperTokenPure &&
                 !showWrappingStep &&
@@ -777,9 +776,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                     ? ethBalance?.symbol
                     : underlyingTokenBalance?.symbol}
                   :{" "}
-                  {Intl.NumberFormat("en", {
-                    maximumFractionDigits: 4,
-                  }).format(
+                  {formatNumber(
                     Number(
                       isSuperTokenNative
                         ? ethBalance?.formatted
@@ -798,9 +795,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                     ? ethBalance?.symbol
                     : underlyingTokenBalance?.symbol}
                   :{" "}
-                  {Intl.NumberFormat("en", {
-                    maximumFractionDigits: 4,
-                  }).format(
+                  {formatNumber(
                     Number(
                       isSuperTokenNative
                         ? ethBalance?.formatted

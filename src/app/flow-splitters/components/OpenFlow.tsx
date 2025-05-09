@@ -37,6 +37,7 @@ import {
   fromTimeUnitsToSeconds,
   roundWeiAmount,
   isNumber,
+  formatNumber,
 } from "@/lib/utils";
 import { ZERO_ADDRESS } from "@/lib/constants";
 
@@ -593,9 +594,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                 }}
               >
                 {token.symbol}:{" "}
-                {Intl.NumberFormat("en", { maximumFractionDigits: 6 }).format(
-                  Number(formatEther(superTokenBalance)),
-                )}{" "}
+                {formatNumber(Number(formatEther(superTokenBalance)))}{" "}
                 {!hasSufficientSuperTokenBalance &&
                 Number(amountPerTimeInterval) > 0
                   ? "(Wrap below)"
@@ -705,9 +704,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                     ? ethBalance?.symbol
                     : underlyingTokenBalance?.symbol}
                   :{" "}
-                  {Intl.NumberFormat("en", {
-                    maximumFractionDigits: 6,
-                  }).format(
+                  {formatNumber(
                     Number(
                       isSuperTokenNative
                         ? ethBalance?.formatted
@@ -727,9 +724,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                     ? ethBalance?.symbol
                     : underlyingTokenBalance?.symbol}
                   :{" "}
-                  {Intl.NumberFormat("en", {
-                    maximumFractionDigits: 6,
-                  }).format(
+                  {formatNumber(
                     Number(
                       isSuperTokenNative
                         ? ethBalance?.formatted
@@ -749,9 +744,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                     ? ethBalance?.symbol
                     : underlyingTokenBalance?.symbol}
                   :{" "}
-                  {Intl.NumberFormat("en", {
-                    maximumFractionDigits: 6,
-                  }).format(
+                  {formatNumber(
                     Number(
                       isSuperTokenNative
                         ? ethBalance?.formatted

@@ -13,7 +13,7 @@ import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
 import { GDAPool } from "@/types/gdaPool";
 import useFlowingAmount from "@/hooks/flowingAmount";
-import { formatNumberWithCommas } from "@/lib/utils";
+import { formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 interface MatchingPoolDetailsProps {
@@ -86,12 +86,12 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
         <Stack direction="vertical" gap={1} className="w-25">
           <Card.Text className="m-0 pe-0">You</Card.Text>
           <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCommas(
-              parseFloat(
+            {formatNumber(
+              Number(
                 formatEther(
                   BigInt(userDistributionInfo?.flowRate ?? 0) *
                     BigInt(SECONDS_IN_MONTH),
-                ).slice(0, 8),
+                ),
               ),
             )}
           </Badge>
@@ -99,13 +99,13 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
         <Stack direction="vertical" gap={1} className="w-25">
           <Card.Text className="m-0 pe-0">Others</Card.Text>
           <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCommas(
-              parseFloat(
+            {formatNumber(
+              Number(
                 formatEther(
                   (BigInt(matchingPool?.flowRate ?? 0) -
                     BigInt(userDistributionInfo?.flowRate ?? 0)) *
                     BigInt(SECONDS_IN_MONTH),
-                ).slice(0, 8),
+                ),
               ),
             )}
           </Badge>
@@ -113,12 +113,12 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
         <Stack direction="vertical" gap={1} className="w-25">
           <Card.Text className="m-0 pe-0">All</Card.Text>
           <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCommas(
-              parseFloat(
+            {formatNumber(
+              Number(
                 formatEther(
                   BigInt(matchingPool?.flowRate ?? 0) *
                     BigInt(SECONDS_IN_MONTH),
-                ).slice(0, 8),
+                ),
               ),
             )}
           </Badge>
@@ -130,28 +130,19 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
       <Stack direction="horizontal" gap={1} className="fs-6 p-2">
         <Stack direction="vertical" gap={1} className="w-25">
           <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCommas(
-              parseFloat(formatEther(totalDistributedUser).slice(0, 8)),
-            )}
+            {formatNumber(Number(formatEther(totalDistributedUser)))}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
           <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCommas(
-              parseFloat(
-                formatEther(totalDistributedAll - totalDistributedUser).slice(
-                  0,
-                  8,
-                ),
-              ),
+            {formatNumber(
+              Number(formatEther(totalDistributedAll - totalDistributedUser)),
             )}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
           <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCommas(
-              parseFloat(formatEther(totalDistributedAll).slice(0, 8)),
-            )}
+            {formatNumber(Number(formatEther(totalDistributedAll)))}
           </Badge>
         </Stack>
         <Card.Text as="small" className="w-20">

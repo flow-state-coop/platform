@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { formatEther } from "viem";
 import * as Plot from "@observablehq/plot";
 import * as d3 from "d3";
+import { formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 export type BalancePlotFlowInfo = {
@@ -192,21 +193,9 @@ export default function BalancePlot(props: BalancePlotProps) {
       {flowInfo && (
         <p className="w-100 mb-0 text-center text-info">
           Now ={" "}
-          {parseFloat(
-            Number(formatEther(flowInfo.currentStartingBalance)).toFixed(2),
-          )}{" "}
+          {formatNumber(Number(formatEther(flowInfo.currentStartingBalance)))}{" "}
           {flowInfo.currentTotalFlowRate > 0 ? "+" : "-"}{" "}
-          {Intl.NumberFormat("en", {
-            notation: currentMonthlyFlow >= 1000 ? "compact" : void 0,
-            maximumFractionDigits:
-              currentMonthlyFlow < 1
-                ? 4
-                : currentMonthlyFlow < 10
-                  ? 3
-                  : currentMonthlyFlow < 100
-                    ? 2
-                    : 1,
-          }).format(currentMonthlyFlow)}
+          {formatNumber(currentMonthlyFlow)}
           /mo
         </p>
       )}
@@ -214,21 +203,9 @@ export default function BalancePlot(props: BalancePlotProps) {
         flowInfo.currentTotalFlowRate !== flowInfo.newTotalFlowRate && (
           <p className="w-100 mb-1 text-center text-primary">
             New ={" "}
-            {parseFloat(
-              Number(formatEther(flowInfo.newStartingBalance)).toFixed(2),
-            )}{" "}
+            {formatNumber(Number(formatEther(flowInfo.newStartingBalance)))}{" "}
             {flowInfo.newTotalFlowRate > 0 ? "+" : "-"}{" "}
-            {Intl.NumberFormat("en", {
-              notation: newMonthlyFlow >= 1000 ? "compact" : void 0,
-              maximumFractionDigits:
-                newMonthlyFlow < 1
-                  ? 4
-                  : newMonthlyFlow < 10
-                    ? 3
-                    : newMonthlyFlow < 100
-                      ? 2
-                      : 1,
-            }).format(newMonthlyFlow)}
+            {formatNumber(newMonthlyFlow)}
             /mo
           </p>
         )}
