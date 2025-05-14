@@ -269,41 +269,45 @@ export default function Review(props: ReviewProps) {
           ],
         });
 
-        await publicClient?.waitForTransactionReceipt({
+        const receipt = await publicClient?.waitForTransactionReceipt({
           hash,
           confirmations: 3,
         });
-      }
 
-      const res = await fetch("/api/flow-council/review", {
-        method: "POST",
-        body: JSON.stringify({
-          chainId,
-          councilId: council.id,
-          grantees: reviewingApplications
-            .map((reviewingApplication) => {
-              return {
-                address: reviewingApplication.address,
-                status: reviewingApplication.newStatus,
-              };
-            })
-            .concat(
-              cancelingApplications.map((cancelingApplication) => {
-                return {
-                  address: cancelingApplication.address,
-                  status: "CANCELED",
-                };
-              }),
-            ),
-        }),
-      });
+        if (receipt?.status === "success") {
+          const res = await fetch("/api/flow-council/review", {
+            method: "POST",
+            body: JSON.stringify({
+              chainId,
+              councilId: council.id,
+              grantees: reviewingApplications
+                .map((reviewingApplication) => {
+                  return {
+                    address: reviewingApplication.address,
+                    status: reviewingApplication.newStatus,
+                  };
+                })
+                .concat(
+                  cancelingApplications.map((cancelingApplication) => {
+                    return {
+                      address: cancelingApplication.address,
+                      status: "CANCELED",
+                    };
+                  }),
+                ),
+            }),
+          });
 
-      const json = await res.json();
+          const json = await res.json();
 
-      if (!json.success) {
-        setError(json.error);
-      } else {
-        setSuccess(true);
+          if (!json.success) {
+            setError(json.error);
+          } else {
+            setSuccess(true);
+          }
+        } else {
+          setError("Transaction Reverted");
+        }
       }
 
       fetchApplications();

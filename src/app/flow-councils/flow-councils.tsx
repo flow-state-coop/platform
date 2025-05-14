@@ -306,7 +306,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
     token?: Token;
   }) => {
     const [nameRef, { clampedText }] = useClampText({
-      text: council.metadata.name,
+      text: council.metadata?.name,
       ellipsis: "...",
       lines: 3,
     });
