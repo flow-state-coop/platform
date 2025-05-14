@@ -8,6 +8,10 @@ export default async function Page({
   searchParams: SearchParams;
 }) {
   return (
-    <Core chainId={DEFAULT_CHAIN_ID} edit={searchParams?.edit ? true : false} />
+    <Core
+      chainId={
+        searchParams.chainId ? Number(searchParams.chainId) : DEFAULT_CHAIN_ID
+      }
+    />
   );
 }

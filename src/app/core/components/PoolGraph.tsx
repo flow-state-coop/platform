@@ -24,6 +24,7 @@ import { GDAPool } from "@/types/gdaPool";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { truncateStr, formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH, FLOW_STATE_RECEIVER } from "@/lib/constants";
+import { useMediaQuery } from "@/hooks/mediaQuery";
 import "@xyflow/react/dist/style.css";
 
 type PoolGraphProps = {
@@ -33,6 +34,7 @@ type PoolGraphProps = {
   ensByAddress: {
     [key: string]: { name: string | null; avatar: string | null };
   };
+  showProjectDetails: () => void;
 };
 
 const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
@@ -134,6 +136,14 @@ function CustomNode(props: NodeProps<Node>) {
           <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
             {data?.label?.toString() ?? ""}
           </span>
+          {!!data?.isMobile && (
+            <span
+              className="text-decoration-underline"
+              style={{ fontSize: "0.8rem", fontWeight: "bold" }}
+            >
+              Details
+            </span>
+          )}
         </Stack>
         <Handle className="invisible" type="target" position={Position.Top} />
         <Handle
@@ -141,8 +151,20 @@ function CustomNode(props: NodeProps<Node>) {
           type="source"
           position={Position.Bottom}
         />
-        <NodeToolbar isVisible={selected} position={Position.Right}>
+        <NodeToolbar
+          isVisible={selected}
+          position={data.isMobile ? Position.Bottom : Position.Right}
+        >
           <Stack direction="vertical" gap={2}>
+            {!!data.isMobile && (
+              <Button
+                variant="light"
+                onClick={data?.showProjectDetails as () => void}
+                className="border border-dark"
+              >
+                Project Details
+              </Button>
+            )}
             <Button
               variant="light"
               onClick={() =>
@@ -191,7 +213,10 @@ function CustomNode(props: NodeProps<Node>) {
           type="source"
           position={Position.Bottom}
         />
-        <NodeToolbar isVisible={selected} position={Position.Right}>
+        <NodeToolbar
+          isVisible={selected}
+          position={data.isMobile ? Position.Bottom : Position.Right}
+        >
           <Stack direction="vertical" gap={2}>
             <Button
               variant="light"
@@ -346,7 +371,15 @@ function CustomEdge(props: EdgeProps<Edge>) {
 }
 
 export default function PoolGraph(props: PoolGraphProps) {
-  const { flowStateSafeInflowRate, pool, chainId, ensByAddress } = props;
+  const {
+    flowStateSafeInflowRate,
+    pool,
+    chainId,
+    ensByAddress,
+    showProjectDetails,
+  } = props;
+
+  const { isMobile } = useMediaQuery();
 
   const graph = useMemo(() => {
     if (!pool) {
@@ -377,6 +410,8 @@ export default function PoolGraph(props: PoolGraphProps) {
               Number(formatEther(BigInt(pool.flowRate))),
             isDistributor: true,
             chainId,
+            isMobile,
+            showProjectDetails,
           },
         },
       ])
@@ -403,6 +438,7 @@ export default function PoolGraph(props: PoolGraphProps) {
                   BigInt(pool.totalUnits)
                 : BigInt(0),
             chainId,
+            isMobile,
           },
         },
       ])
@@ -464,6 +500,7 @@ export default function PoolGraph(props: PoolGraphProps) {
             token: { address: pool.token.id, symbol: pool.token.symbol },
             flowRate: totalDonations,
             chainId,
+            isMobile,
           },
         },
         ...nodesFromPoolDistributors,
@@ -487,6 +524,7 @@ export default function PoolGraph(props: PoolGraphProps) {
               pool.totalAmountInstantlyDistributedUntilUpdatedAt,
             updatedAtTimestamp: pool.updatedAtTimestamp,
             chainId,
+            isMobile,
           },
         },
         ...nodesFromPoolMembers,
@@ -499,7 +537,14 @@ export default function PoolGraph(props: PoolGraphProps) {
     );
 
     return { nodes, edges };
-  }, [pool, chainId, ensByAddress, flowStateSafeInflowRate]);
+  }, [
+    pool,
+    chainId,
+    ensByAddress,
+    flowStateSafeInflowRate,
+    isMobile,
+    showProjectDetails,
+  ]);
 
   return (
     <div
@@ -507,6 +552,7 @@ export default function PoolGraph(props: PoolGraphProps) {
         width: "100%",
         height: "50vh",
         margin: "auto",
+        marginTop: 16,
       }}
     >
       <ReactFlow

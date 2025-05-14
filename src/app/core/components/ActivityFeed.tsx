@@ -197,8 +197,8 @@ export default function ActivityFeed(props: ActivityFeedProps) {
     events.push(poolCreationMemberUnitsUpdates);
     events.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
 
-    if (events.length > 100) {
-      events.length = 100;
+    if (events.length > 25) {
+      events.length = 25;
     }
 
     return events;
@@ -216,13 +216,13 @@ export default function ActivityFeed(props: ActivityFeedProps) {
     <Stack
       direction="vertical"
       gap={4}
-      className="mt-5 bg-light p-4 rounded-5 overflow-auto"
+      className="mt-3 mt-sm-5 bg-light p-4 rounded-5 overflow-auto"
       style={{
         fontSize: isMobile || isTablet ? "1rem" : "1.25rem",
         height: 600,
       }}
     >
-      <p className="m-0 fs-3">Activity</p>
+      <p className="m-0 fs-3">Recent Activity</p>
       {events.map((event, i) => {
         if (event.__typename === "FlowUpdatedEvent") {
           return (
