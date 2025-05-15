@@ -13,10 +13,12 @@ const ALLOCATION_QUERY = gql`
       orderBy: allocatedAt
       orderDirection: desc
     ) {
-      grantees {
-        account
+      votes {
+        grantee {
+          account
+        }
+        amount
       }
-      amounts
     }
   }
 `;
@@ -36,11 +38,17 @@ export default function useAllocationQuery(
     pollInterval: 10000,
   });
   const currentAllocation = allocationQueryRes?.allocations[0];
-  const allocation = currentAllocation?.grantees.map(
-    (grantee: { account: string }, i: number) => {
+  const allocation = currentAllocation?.votes.map(
+    ({
+      grantee: { account },
+      amount,
+    }: {
+      grantee: { account: string };
+      amount: string;
+    }) => {
       return {
-        grantee: grantee.account,
-        amount: Number(currentAllocation.amounts[i]),
+        grantee: account,
+        amount: Number(amount),
       };
     },
   );
