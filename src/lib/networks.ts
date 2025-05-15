@@ -184,7 +184,7 @@ const networks: Network[] = [
       "https://api.goldsky.com/api/public/project_cm2vlxq9s82qo01xtc11y9stm/subgraphs/flow-splitter-optimism-sepolia/0.0.1/gn",
     flowCouncilFactory: "0xe448a8926aeebd43ecd93c8f775a1a3115e0933b",
     flowCouncilSubgraph:
-      "https://api.0xgraph.xyz/api/public/76ce6edf-8ead-4af2-98b2-95c12af6f222/subgraphs/flow-council-optimism-sepolia/v0.1.9/gn",
+      "https://api.0xgraph.xyz/api/public/76ce6edf-8ead-4af2-98b2-95c12af6f222/subgraphs/flow-council-optimism-sepolia/v0.2.0/gn",
     flowStateEligibilityNft: "0x1059A20C7aA0B4576B631d064730dB2E02940535",
     flowStateEligibilityMinScore: 0.5,
     superfluidHost: "0xd399e2Fb5f4cf3722a11F65b88FAB6B2B8621005",
