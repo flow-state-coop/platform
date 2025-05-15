@@ -64,20 +64,28 @@ function Sidebar() {
         });
 
         for (const council of councilsQueryRes.councils) {
-          promises.push(
-            (async () => {
-              const metadataRes = await verifiedFetch(
-                `ipfs://${council.metadata}`,
-              );
-              const metadata = await metadataRes.json();
+          if (council.metadata) {
+            promises.push(
+              (async () => {
+                const metadataRes = await verifiedFetch(
+                  `ipfs://${council.metadata}`,
+                );
+                const metadata = await metadataRes.json();
 
-              councils.push({
-                id: council.id,
-                name: metadata.name,
-                description: metadata.description,
-              });
-            })(),
-          );
+                councils.push({
+                  id: council.id,
+                  name: metadata.name,
+                  description: metadata.description,
+                });
+              })(),
+            );
+          } else {
+            councils.push({
+              id: council.id,
+              name: "Flow Council",
+              description: "N/A",
+            });
+          }
         }
 
         await Promise.all(promises);

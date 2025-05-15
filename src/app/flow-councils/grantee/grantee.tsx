@@ -204,8 +204,8 @@ export default function Grantee(props: GranteeProps) {
         const metadata = await metadataRes.json();
 
         setCouncilMetadata({
-          name: metadata.name,
-          description: metadata.description,
+          name: metadata?.name ?? "Flow Council",
+          description: metadata?.description ?? "N/A",
         });
       } catch (err) {
         console.error(err);
