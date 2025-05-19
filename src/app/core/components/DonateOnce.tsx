@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Address, parseAbi, parseEther, parseUnits, formatEther } from "viem";
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
@@ -15,6 +15,7 @@ import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
+import Dropdown from "react-bootstrap/Dropdown";
 import Alert from "react-bootstrap/Alert";
 import Image from "react-bootstrap/Image";
 import Toast from "react-bootstrap/Toast";
@@ -22,15 +23,15 @@ import InputGroup from "react-bootstrap/InputGroup";
 import Spinner from "react-bootstrap/Spinner";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
-import { GDAPool } from "@/types/gdaPool";
-import InfoTooltip from "@/components/InfoTooltip";
+import CopyTooltip from "@/components/CopyTooltip";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
+import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
-import { formatNumber, isNumber } from "@/lib/utils";
-import { ZERO_ADDRESS } from "@/lib/constants";
+import { truncateStr, formatNumber, isNumber } from "@/lib/utils";
+import { ZERO_ADDRESS, FLOW_STATE_RECEIVER } from "@/lib/constants";
 
 dayjs().format();
 dayjs.extend(duration);
@@ -38,7 +39,6 @@ dayjs.extend(duration);
 type DonateOnceProps = {
   network: Network;
   token: Token;
-  pool?: GDAPool;
   handleClose?: () => void;
 };
 
@@ -61,8 +61,9 @@ const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
 `;
 
 export default function DonateOnce(props: DonateOnceProps) {
-  const { network, token, pool, handleClose } = props;
+  const { network, token, handleClose } = props;
 
+  const [selectedToken, setSelectedToken] = useState(token);
   const [amount, setAmount] = useState("");
   const [wrapAmount, setWrapAmount] = useState("");
   const [amountWei, setAmountWei] = useState(BigInt(0));
@@ -76,6 +77,7 @@ export default function DonateOnce(props: DonateOnceProps) {
 
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
+  const router = useRouter();
   const ethersProvider = useEthersProvider({ chainId: network.id });
   const ethersSigner = useEthersSigner({ chainId: network.id });
   const {
@@ -88,15 +90,15 @@ export default function DonateOnce(props: DonateOnceProps) {
     client: getApolloClient("superfluid", network.id),
     variables: {
       address: address?.toLowerCase() ?? "",
-      token: token?.address.toLowerCase() ?? "",
+      token: selectedToken?.address.toLowerCase() ?? "",
     },
     pollInterval: 10000,
-    skip: !address || !token,
+    skip: !address || !selectedToken,
   });
   const accountTokenSnapshot =
     superfluidQueryRes?.account?.accountTokenSnapshots[0] ?? null;
   const { data: realtimeBalanceOfNow } = useReadContract({
-    address: token?.address,
+    address: selectedToken?.address,
     functionName: "realtimeBalanceOfNow",
     abi: parseAbi([
       "function realtimeBalanceOfNow(address) returns (int256,uint256,uint256,uint256)",
@@ -155,7 +157,7 @@ export default function DonateOnce(props: DonateOnceProps) {
 
   useEffect(() => {
     (async () => {
-      if (!token || !ethersProvider || !address) {
+      if (!selectedToken || !ethersProvider || !address) {
         return;
       }
 
@@ -165,7 +167,7 @@ export default function DonateOnce(props: DonateOnceProps) {
         provider: ethersProvider,
       });
       const distributionSuperToken = await sfFramework.loadSuperToken(
-        isSuperTokenNative ? "ETHx" : token.address,
+        isSuperTokenNative ? "ETHx" : selectedToken.address,
       );
       const underlyingToken = distributionSuperToken.underlyingToken;
       const underlyingTokenAllowance = await underlyingToken?.allowance({
@@ -178,13 +180,12 @@ export default function DonateOnce(props: DonateOnceProps) {
       setSfFramework(sfFramework);
       setDistributionSuperToken(distributionSuperToken);
     })();
-  }, [address, network, ethersProvider, token, isSuperTokenNative]);
+  }, [address, network, ethersProvider, selectedToken, isSuperTokenNative]);
 
   useEffect(() => {
     (async () => {
       if (
         !address ||
-        !pool ||
         !underlyingTokenAllowance ||
         !distributionSuperToken ||
         !sfFramework ||
@@ -246,7 +247,7 @@ export default function DonateOnce(props: DonateOnceProps) {
       transactions.push(async () => {
         const tx = await distributionSuperToken
           .transfer({
-            receiver: address,
+            receiver: FLOW_STATE_RECEIVER,
             amount: amountWei.toString(),
           })
           .exec(ethersSigner);
@@ -259,7 +260,6 @@ export default function DonateOnce(props: DonateOnceProps) {
   }, [
     address,
     wrapAmount,
-    pool,
     amountWei,
     underlyingTokenBalance,
     underlyingTokenAllowance,
@@ -324,6 +324,73 @@ export default function DonateOnce(props: DonateOnceProps) {
           </Button>
         )}
       </Stack>
+      <Stack direction="horizontal" gap={2} className="mt-2 align-items-center">
+        <Image
+          src="/light-bulb.svg"
+          alt="Light Bulb"
+          width={36}
+          height={36}
+          style={{ transform: "rotate(-30deg)" }}
+        />
+        <Card.Text>
+          Did you know that donation streams to Flow State earn{" "}
+          <Card.Link href="https://claim.superfluid.org/claim" target="_blank">
+            SUP token rewards
+          </Card.Link>
+          ?
+        </Card.Text>
+      </Stack>
+      <Stack direction="vertical" gap={2} className="my-4">
+        <Card.Text className="m-0 fs-5">
+          {" "}
+          Recipient (Multi-Chain Safe)
+        </Card.Text>
+        <InputGroup className="align-items-center gap-2">
+          <Form.Control
+            disabled
+            value={truncateStr(FLOW_STATE_RECEIVER, 20)}
+            className="w-50 rounded-2 overflow-hidden"
+          />
+          <CopyTooltip
+            contentClick="Address copied"
+            contentHover="Copy address"
+            handleCopy={() =>
+              navigator.clipboard.writeText(FLOW_STATE_RECEIVER)
+            }
+            target={
+              <Image src="/copy-dark.svg" alt="Copy" width={24} height={24} />
+            }
+          />
+          <Button
+            variant="link"
+            href={`${network.blockExplorer}/address/${FLOW_STATE_RECEIVER}`}
+            target="_blank"
+            className="p-0"
+          >
+            <Image src="/open-new.svg" alt="Open" width={24} height={24} />
+          </Button>
+        </InputGroup>
+        <Dropdown className="my-2">
+          <Dropdown.Toggle
+            className="d-flex justify-content-between align-items-center w-100 bg-white text-dark"
+            style={{ border: "1px solid #dee2e6" }}
+          >
+            {network.name}
+          </Dropdown.Toggle>
+          <Dropdown.Menu>
+            {networks.map((network, i) => (
+              <Dropdown.Item
+                key={i}
+                onClick={() => {
+                  router.push(`/core/?chainId=${network.id}`);
+                }}
+              >
+                {network.name}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown>
+      </Stack>
       <Stack
         direction="horizontal"
         gap={2}
@@ -334,43 +401,30 @@ export default function DonateOnce(props: DonateOnceProps) {
             <Form.Control
               type="text"
               placeholder="0"
-              className="rounded-3"
+              className="rounded-3 rounded-end-0"
               value={amount}
               onChange={handleAmountSelection}
             />
-            <InputGroup.Text className="bg-transparent border-0 fw-bold pe-1">
-              {isSuperTokenPure
-                ? token.symbol
-                : isSuperTokenNative
-                  ? ethBalance?.symbol
-                  : underlyingTokenBalance?.symbol}
-            </InputGroup.Text>
-            {!isSuperTokenPure && (
-              <InfoTooltip
-                position={{ bottom: true }}
-                content={
-                  <>
-                    Like Flow Splitter streams, one-time distribtions are sent
-                    with Super Tokens (often a wrapped version of an ERC20 or
-                    native token).{" "}
-                    <Link
-                      href="https://docs.superfluid.finance/docs/concepts/overview/super-tokens"
-                      target="_blank"
-                      className="text-white"
-                    >
-                      Learn more
-                    </Link>
-                    .
-                    <br />
-                    <br />
-                    Just enter how much you want to send, and we'll use your
-                    underlying & Super Token balances to queue a wrap
-                    transaction as needed.
-                  </>
-                }
-                target={<Image src="/info.svg" alt="" width={14} height={14} />}
-              />
-            )}
+            <Dropdown>
+              <Dropdown.Toggle
+                className="d-flex justify-content-between align-items-center bg-white text-dark"
+                style={{ border: "1px solid #dee2e6" }}
+              >
+                {selectedToken.symbol}
+              </Dropdown.Toggle>
+              <Dropdown.Menu>
+                {network.tokens.map((token, i) => (
+                  <Dropdown.Item
+                    key={i}
+                    onClick={() => {
+                      setSelectedToken(token);
+                    }}
+                  >
+                    {token.symbol}
+                  </Dropdown.Item>
+                ))}
+              </Dropdown.Menu>
+            </Dropdown>
           </InputGroup>
           {!isSuperTokenPure && (
             <Card.Text
@@ -398,7 +452,7 @@ export default function DonateOnce(props: DonateOnceProps) {
               fontSize: "0.8rem",
             }}
           >
-            {token.symbol}:{" "}
+            {selectedToken.symbol}:{" "}
             {formatNumber(Number(formatEther(superTokenBalance)))}
             {!hasSufficientSuperTokenBalance && (
               <>
@@ -444,10 +498,10 @@ export default function DonateOnce(props: DonateOnceProps) {
             {isSuperTokenNative
               ? ethBalance?.symbol
               : underlyingTokenBalance?.symbol}{" "}
-            to {token.symbol}
+            to {selectedToken.symbol}
           </Card.Text>
           <Card.Text className="m-0 small">
-            2) Distribute {amount} {token.symbol}
+            2) Distribute {amount} {selectedToken.symbol}
           </Card.Text>
         </Stack>
       )}

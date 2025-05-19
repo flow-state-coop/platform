@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Address, parseAbi, parseEther, formatEther } from "viem";
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
@@ -23,7 +24,6 @@ import InputGroup from "react-bootstrap/InputGroup";
 import Spinner from "react-bootstrap/Spinner";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
-import { GDAPool } from "@/types/gdaPool";
 import BalancePlot, {
   BalancePlotFlowInfo,
 } from "@/app/flow-splitters/components/BalancePlot";
@@ -31,6 +31,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
+import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import {
@@ -50,12 +51,16 @@ dayjs.extend(duration);
 type OpenFlowProps = {
   network: Network;
   token: Token;
-  pool?: GDAPool;
+  selectToken: (token: Token) => void;
   handleClose?: () => void;
 };
 
 const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
-  query AccountTokenSnapshot($address: String, $token: String) {
+  query AccountTokenSnapshot(
+    $address: String
+    $token: String
+    $receiver: String
+  ) {
     account(id: $address) {
       accountTokenSnapshots(where: { token: $token }) {
         totalNetFlowRate
@@ -73,6 +78,11 @@ const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
           totalUnits
         }
       }
+      outflows(
+        where: { token: $token, receiver: $receiver, currentFlowRate_gt: "0" }
+      ) {
+        currentFlowRate
+      }
     }
     token(id: $token) {
       isNativeAssetSuperToken
@@ -82,7 +92,7 @@ const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
 `;
 
 export default function OpenFlow(props: OpenFlowProps) {
-  const { network, token, pool, handleClose } = props;
+  const { network, token, selectToken, handleClose } = props;
 
   const balancePlotFlowInfoSnapshot = useRef<BalancePlotFlowInfo | null>(null);
 
@@ -107,6 +117,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   const { address } = useAccount();
   const ethersProvider = useEthersProvider({ chainId: network.id });
   const ethersSigner = useEthersSigner({ chainId: network.id });
+  const router = useRouter();
   const {
     areTransactionsLoading,
     completedTransactions,
@@ -118,12 +129,15 @@ export default function OpenFlow(props: OpenFlowProps) {
     variables: {
       address: address?.toLowerCase() ?? "",
       token: token?.address.toLowerCase() ?? "",
+      receiver: FLOW_STATE_RECEIVER,
     },
     pollInterval: 10000,
     skip: !address || !token,
   });
   const accountTokenSnapshot =
     superfluidQueryRes?.account?.accountTokenSnapshots[0] ?? null;
+  const flowRateToReceiver =
+    superfluidQueryRes?.account?.outflows[0]?.currentFlowRate ?? "0";
   const poolMemberships = superfluidQueryRes?.account?.poolMemberships ?? null;
   const { data: realtimeBalanceOfNow } = useReadContract({
     address: token?.address,
@@ -199,21 +213,6 @@ export default function OpenFlow(props: OpenFlowProps) {
         TimeInterval.MONTH,
       ),
     ) < minDonationPerMonth;
-
-  const flowRateToReceiver = useMemo(() => {
-    if (address && pool) {
-      const distributor = pool.poolDistributors.find(
-        (distributor: { account: { id: string } }) =>
-          distributor.account.id === address.toLowerCase(),
-      );
-
-      if (distributor) {
-        return distributor.flowRate;
-      }
-    }
-
-    return "0";
-  }, [address, pool]);
 
   const canSubmit =
     (newFlowRate > 0 || BigInt(flowRateToReceiver) > 0) &&
@@ -406,7 +405,12 @@ export default function OpenFlow(props: OpenFlowProps) {
 
   useEffect(() => {
     (async () => {
-      if (!token.address || !ethersProvider || !address) {
+      if (
+        !token.address ||
+        !ethersProvider ||
+        !address ||
+        !network.tokens.find((t) => t.address === token.address)
+      ) {
         return;
       }
 
@@ -416,7 +420,7 @@ export default function OpenFlow(props: OpenFlowProps) {
         provider: ethersProvider,
       });
       const distributionSuperToken = await sfFramework.loadSuperToken(
-        isSuperTokenNative ? "ETHx" : token.address,
+        token.address,
       );
       const underlyingToken = distributionSuperToken.underlyingToken;
       const underlyingTokenAllowance = await underlyingToken?.allowance({
@@ -429,13 +433,12 @@ export default function OpenFlow(props: OpenFlowProps) {
       setSfFramework(sfFramework);
       setDistributionSuperToken(distributionSuperToken);
     })();
-  }, [address, network, ethersProvider, token, isSuperTokenNative]);
+  }, [address, network, ethersProvider, token]);
 
   useEffect(() => {
     (async () => {
       if (
         !address ||
-        !pool ||
         !underlyingTokenAllowance ||
         !distributionSuperToken ||
         !sfFramework ||
@@ -508,7 +511,6 @@ export default function OpenFlow(props: OpenFlowProps) {
   }, [
     address,
     wrapAmountPerTimeInterval,
-    pool,
     newFlowRate,
     underlyingTokenAllowance,
     sfFramework,
@@ -623,6 +625,64 @@ export default function OpenFlow(props: OpenFlowProps) {
             <Image src="/close.svg" alt="" width={24} height={24} />
           </Button>
         )}
+      </Stack>
+      <Stack direction="horizontal" gap={2} className="mt-2 align-items-center">
+        <Image
+          src="/light-bulb.svg"
+          alt="Light Bulb"
+          width={36}
+          height={36}
+          style={{ transform: "rotate(-30deg)" }}
+        />
+        <Card.Text>
+          Did you know that donation streams to Flow State earn{" "}
+          <Card.Link href="https://claim.superfluid.org/claim" target="_blank">
+            SUP token rewards
+          </Card.Link>
+          ?
+        </Card.Text>
+      </Stack>
+      <Stack direction="vertical" gap={2} className="my-4">
+        <Dropdown>
+          <Dropdown.Toggle
+            className="d-flex justify-content-between align-items-center w-100 bg-white text-dark"
+            style={{ border: "1px solid #dee2e6" }}
+          >
+            {network.name}
+          </Dropdown.Toggle>
+          <Dropdown.Menu>
+            {networks.map((network, i) => (
+              <Dropdown.Item
+                key={i}
+                onClick={() => {
+                  router.push(`/core/?chainId=${network.id}`);
+                }}
+              >
+                {network.name}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown>
+        <Dropdown>
+          <Dropdown.Toggle
+            className="d-flex justify-content-between align-items-center w-100 bg-white text-dark"
+            style={{ border: "1px solid #dee2e6" }}
+          >
+            {token.symbol}
+          </Dropdown.Toggle>
+          <Dropdown.Menu>
+            {network.tokens.map((token, i) => (
+              <Dropdown.Item
+                key={i}
+                onClick={() => {
+                  selectToken(token);
+                }}
+              >
+                {token.symbol}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown>
       </Stack>
       <Card.Text className="m-0">
         Flow Rate ({token?.symbol ?? "N/A"})

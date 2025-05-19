@@ -20,6 +20,7 @@ import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Jazzicon, { jsNumberForAddress } from "react-jazzicon";
+import { Token } from "@/types/token";
 import { GDAPool } from "@/types/gdaPool";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { truncateStr, formatNumber } from "@/lib/utils";
@@ -27,13 +28,14 @@ import { SECONDS_IN_MONTH, FLOW_STATE_RECEIVER } from "@/lib/constants";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import "@xyflow/react/dist/style.css";
 
-type PoolGraphProps = {
+type GraphProps = {
+  token: Token;
   pool: GDAPool;
   flowStateSafeInflowRate: `${number}`;
   chainId: number;
   ensByAddress: {
     [key: string]: { name: string | null; avatar: string | null };
-  };
+  } | null;
   showProjectDetails: () => void;
 };
 
@@ -99,7 +101,7 @@ function CustomNode(props: NodeProps<Node>) {
         <Stack
           direction="vertical"
           gap={1}
-          className="align-items-center bg-light p-3 rounded-4 border border-black cursor-pointer"
+          className="align-items-center bg-light p-3 rounded-4 cursor-pointer shadow"
         >
           <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
             {data?.label?.toString() ?? ""}
@@ -130,7 +132,7 @@ function CustomNode(props: NodeProps<Node>) {
         <Stack
           direction="vertical"
           gap={1}
-          className="align-items-center p-3 rounded-4 border border-black cursor-pointer"
+          className="align-items-center p-3 rounded-4 cursor-pointer shadow"
           style={{ background: "#a8d4fc" }}
         >
           <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
@@ -194,7 +196,7 @@ function CustomNode(props: NodeProps<Node>) {
         <Stack
           direction="vertical"
           gap={1}
-          className="align-items-center p-3 rounded-4 border border-black cursor-pointer"
+          className="align-items-center p-3 rounded-4 cursor-pointer shadow"
           style={{ background: "#fef3c7" }}
         >
           <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
@@ -254,11 +256,11 @@ function CustomNode(props: NodeProps<Node>) {
             alt="avatar"
             width={42}
             height={42}
-            className="rounded-circle border border-black"
+            className="rounded-circle shadow"
           />
         ) : (
           <Jazzicon
-            paperStyles={{ border: "1px solid black" }}
+            paperStyles={{ boxShadow: "0 .5rem 1rem rgba($black, .15)" }}
             diameter={42}
             seed={jsNumberForAddress(data.address as `0x${string}`)}
           />
@@ -370,10 +372,11 @@ function CustomEdge(props: EdgeProps<Edge>) {
   );
 }
 
-export default function PoolGraph(props: PoolGraphProps) {
+export default function Graph(props: GraphProps) {
   const {
-    flowStateSafeInflowRate,
+    token,
     pool,
+    flowStateSafeInflowRate,
     chainId,
     ensByAddress,
     showProjectDetails,
@@ -382,73 +385,98 @@ export default function PoolGraph(props: PoolGraphProps) {
   const { isMobile } = useMediaQuery();
 
   const graph = useMemo(() => {
+    /*
     if (!pool) {
       return { nodes: [], edges: [] };
     }
+     */
 
     const totalDonations = BigInt(flowStateSafeInflowRate);
 
-    const nodesFromPoolDistributors = pool.poolDistributors
-      .filter((distributor) => distributor.flowRate !== "0")
-      .map((x) => [
-        {
-          id: `${x.account.id}-distributor`,
-          position: { x: 0, y: 0 },
-          type: "custom",
-          data: {
-            isFlowStateSafe: true,
-            label:
-              x.account.id.toLowerCase() === FLOW_STATE_RECEIVER.toLowerCase()
-                ? "Flow State Safe"
-                : (ensByAddress[x.account.id]?.name ??
-                  truncateStr(x.account.id, 11)),
-            avatar: ensByAddress[x.account.id]?.avatar,
-            address: x.account.id,
-            flowRate: BigInt(x.flowRate),
-            percentage:
-              Number(formatEther(BigInt(x.flowRate))) /
-              Number(formatEther(BigInt(pool.flowRate))),
-            isDistributor: true,
-            chainId,
-            isMobile,
-            showProjectDetails,
+    const nodesFromPoolDistributors = pool
+      ? pool.poolDistributors
+          .filter((distributor) => distributor.flowRate !== "0")
+          .map((x) => [
+            {
+              id: `${x.account.id}-distributor`,
+              position: { x: 0, y: 0 },
+              type: "custom",
+              data: {
+                isFlowStateSafe: true,
+                label:
+                  x.account.id.toLowerCase() ===
+                  FLOW_STATE_RECEIVER.toLowerCase()
+                    ? "Flow State Safe"
+                    : (ensByAddress?.[x.account.id]?.name ??
+                      truncateStr(x.account.id, 11)),
+                avatar: ensByAddress?.[x.account.id]?.avatar,
+                address: x.account.id,
+                flowRate: BigInt(x.flowRate),
+                percentage:
+                  Number(formatEther(BigInt(x.flowRate))) /
+                  Number(formatEther(BigInt(pool.flowRate))),
+                isDistributor: true,
+                chainId,
+                isMobile,
+                showProjectDetails,
+              },
+            },
+          ])
+          .flat()
+      : [
+          {
+            id: `safe`,
+            position: { x: 0, y: 0 },
+            type: "custom",
+            data: {
+              isFlowStateSafe: true,
+              label: "Flow State Safe",
+              address: FLOW_STATE_RECEIVER,
+              flowRate: BigInt(flowStateSafeInflowRate),
+              percentage: 1,
+              isDistributor: true,
+              chainId,
+              isMobile,
+              showProjectDetails,
+            },
           },
-        },
-      ])
-      .flat();
+        ];
 
-    const nodesFromPoolMembers = pool.poolMembers
-      .filter((member) => member.units !== "0")
-      .map((x) => [
-        {
-          id: `${x.account.id}-member`,
-          position: { x: 0, y: 0 },
-          type: "custom",
-          data: {
-            label:
-              ensByAddress[x.account.id]?.name ?? truncateStr(x.account.id, 11),
-            avatar: ensByAddress[x.account.id]?.avatar,
-            address: x.account.id,
-            units: x.units,
-            totalUnits: pool.totalUnits,
-            token: { address: pool.token.id, symbol: pool.token.symbol },
-            flowRate:
-              BigInt(pool.totalUnits) > 0
-                ? (BigInt(pool.flowRate) * BigInt(x.units)) /
-                  BigInt(pool.totalUnits)
-                : BigInt(0),
-            chainId,
-            isMobile,
-          },
-        },
-      ])
-      .flat();
+    const nodesFromPoolMembers = pool
+      ? pool.poolMembers
+          .filter((member) => member.units !== "0")
+          .map((x) => [
+            {
+              id: `${x.account.id}-member`,
+              position: { x: 0, y: 0 },
+              type: "custom",
+              data: {
+                label:
+                  ensByAddress?.[x.account.id]?.name ??
+                  truncateStr(x.account.id, 11),
+                avatar: ensByAddress?.[x.account.id]?.avatar,
+                address: x.account.id,
+                units: x.units,
+                totalUnits: pool.totalUnits,
+                token: { address: pool.token.id, symbol: pool.token.symbol },
+                flowRate:
+                  BigInt(pool.totalUnits) > 0
+                    ? (BigInt(pool.flowRate) * BigInt(x.units)) /
+                      BigInt(pool.totalUnits)
+                    : BigInt(0),
+                chainId,
+                isMobile,
+              },
+            },
+          ])
+          .flat()
+      : [];
 
     const edgesFromFlowStateSafeDonor = [
       {
-        id: `donors-${FLOW_STATE_RECEIVER}-distributor`,
+        id: pool ? `donors-${FLOW_STATE_RECEIVER}-distributor` : "donors-safe",
         source: `donors`,
-        target: `${FLOW_STATE_RECEIVER}-distributor`,
+        target: pool ? `${FLOW_STATE_RECEIVER}-distributor` : "safe",
         type: "custom",
         data: {
           flowRate: totalDonations,
@@ -456,37 +484,41 @@ export default function PoolGraph(props: PoolGraphProps) {
       },
     ];
 
-    const edgesFromPoolDistributors = pool.poolDistributors
-      .map((x) => [
-        {
-          id: `${pool.token.id}-${x.account.id}-distributor-${pool.id}`,
-          source: `${x.account.id}-distributor`,
-          target: pool.id,
-          type: "custom",
-          data: {
-            flowRate: BigInt(x.flowRate),
-          },
-        },
-      ])
-      .flat();
+    const edgesFromPoolDistributors = pool
+      ? pool.poolDistributors
+          .map((x) => [
+            {
+              id: `${pool.token.id}-${x.account.id}-distributor-${pool.id}`,
+              source: `${x.account.id}-distributor`,
+              target: pool.id,
+              type: "custom",
+              data: {
+                flowRate: BigInt(x.flowRate),
+              },
+            },
+          ])
+          .flat()
+      : [];
 
-    const edgesFromPoolMembers = pool.poolMembers
-      .map((x) => [
-        {
-          id: `${pool.token.id}-${pool.id}-${x.account.id}-member`,
-          source: pool.id,
-          target: `${x.account.id}-member`,
-          type: "custom",
-          data: {
-            flowRate:
-              BigInt(pool.totalUnits) > 0
-                ? (BigInt(pool.flowRate) * BigInt(x.units)) /
-                  BigInt(pool.totalUnits)
-                : BigInt(0),
-          },
-        },
-      ])
-      .flat();
+    const edgesFromPoolMembers = pool
+      ? pool.poolMembers
+          .map((x) => [
+            {
+              id: `${pool.token.id}-${pool.id}-${x.account.id}-member`,
+              source: pool.id,
+              target: `${x.account.id}-member`,
+              type: "custom",
+              data: {
+                flowRate:
+                  BigInt(pool.totalUnits) > 0
+                    ? (BigInt(pool.flowRate) * BigInt(x.units)) /
+                      BigInt(pool.totalUnits)
+                    : BigInt(0),
+              },
+            },
+          ])
+          .flat()
+      : [];
 
     const { nodes, edges } = getLayoutedElements(
       [
@@ -497,36 +529,40 @@ export default function PoolGraph(props: PoolGraphProps) {
           data: {
             isFlowStateSafeDonor: true,
             label: "Direct Donations",
-            token: { address: pool.token.id, symbol: pool.token.symbol },
+            token: { address: token.address, symbol: token.symbol },
             flowRate: totalDonations,
             chainId,
             isMobile,
           },
         },
         ...nodesFromPoolDistributors,
-        {
-          id: pool.id,
-          position: { x: 0, y: 0 },
-          type: "custom",
-          data: {
-            address: pool.id,
-            isPool: true,
-            label: `${formatNumber(
-              Number(
-                formatEther(BigInt(pool.flowRate) * BigInt(SECONDS_IN_MONTH)),
-              ),
-            )} ${pool.token.symbol}/mo`,
-            token: { address: pool.token.id, symbol: pool.token.symbol },
-            flowRate: pool.flowRate,
-            totalAmountFlowedDistributedUntilUpdatedAt:
-              pool.totalAmountFlowedDistributedUntilUpdatedAt,
-            totalAmountInstantlyDistributedUntilUpdatedAt:
-              pool.totalAmountInstantlyDistributedUntilUpdatedAt,
-            updatedAtTimestamp: pool.updatedAtTimestamp,
-            chainId,
-            isMobile,
-          },
-        },
+        pool
+          ? {
+              id: pool.id,
+              position: { x: 0, y: 0 },
+              type: "custom",
+              data: {
+                address: pool.id,
+                isPool: true,
+                label: `${formatNumber(
+                  Number(
+                    formatEther(
+                      BigInt(pool.flowRate) * BigInt(SECONDS_IN_MONTH),
+                    ),
+                  ),
+                )} ${pool.token.symbol}/mo`,
+                token: { address: token.address, symbol: token.symbol },
+                flowRate: pool.flowRate,
+                totalAmountFlowedDistributedUntilUpdatedAt:
+                  pool.totalAmountFlowedDistributedUntilUpdatedAt,
+                totalAmountInstantlyDistributedUntilUpdatedAt:
+                  pool.totalAmountInstantlyDistributedUntilUpdatedAt,
+                updatedAtTimestamp: pool.updatedAtTimestamp,
+                chainId,
+                isMobile,
+              },
+            }
+          : [],
         ...nodesFromPoolMembers,
       ].flat(),
       [
@@ -540,6 +576,7 @@ export default function PoolGraph(props: PoolGraphProps) {
   }, [
     pool,
     chainId,
+    token,
     ensByAddress,
     flowStateSafeInflowRate,
     isMobile,

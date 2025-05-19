@@ -24,6 +24,7 @@ type ActivityFeedProps = {
   memberUnitsUpdatedEvents: MemberUnitsUpdatedEvent[];
   flowDistributionUpdatedEvents: FlowDistributionUpdatedEvent[];
   instantDistributionUpdatedEvents: InstantDistributionUpdatedEvent[];
+  receivedTransferEvents: ReceivedTransferEvent[];
   ensByAddress: {
     [key: Address]: { name: string | null; avatar: string | null };
   };
@@ -111,6 +112,15 @@ type InstantDistributionUpdatedEvent = {
   __typename: string;
 };
 
+type ReceivedTransferEvent = {
+  from: { id: `0x${string}` };
+  to: { id: `0x${string}` };
+  value: `${number}`;
+  timestamp: `${number}`;
+  transactionHash: `0x${string}`;
+  __typename: string;
+};
+
 export default function ActivityFeed(props: ActivityFeedProps) {
   const {
     poolSymbol,
@@ -124,6 +134,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
     poolAdminRemovedEvents,
     flowDistributionUpdatedEvents,
     instantDistributionUpdatedEvents,
+    receivedTransferEvents,
     ensByAddress,
   } = props;
   const { isMobile, isTablet } = useMediaQuery();
@@ -137,10 +148,11 @@ export default function ActivityFeed(props: ActivityFeedProps) {
       | PoolAdminRemovedEvent
       | FlowDistributionUpdatedEvent
       | InstantDistributionUpdatedEvent
+      | ReceivedTransferEvent
     > = [];
     const poolCreationMemberUnitsUpdates = {
       poolCreatedEvent,
-      timestamp: poolCreatedEvent.timestamp,
+      timestamp: poolCreatedEvent?.timestamp,
       memberUnitsUpdatedEvents: [] as MemberUnitsUpdatedEvent[],
       __typename: "PoolCreationMemberUnitsUpdates",
     };
@@ -194,7 +206,12 @@ export default function ActivityFeed(props: ActivityFeedProps) {
     events.push(...flowDistributionUpdatedEvents);
     events.push(...poolAdminAddedEvents);
     events.push(...poolAdminRemovedEvents);
-    events.push(poolCreationMemberUnitsUpdates);
+    events.push(...receivedTransferEvents);
+
+    if (poolCreatedEvent) {
+      events.push(poolCreationMemberUnitsUpdates);
+    }
+
     events.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
 
     if (events.length > 25) {
@@ -210,6 +227,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
     poolAdminRemovedEvents,
     flowDistributionUpdatedEvents,
     instantDistributionUpdatedEvents,
+    receivedTransferEvents,
   ]);
 
   return (
@@ -885,6 +903,80 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                 </p>
                 <Link
                   href={`${network.blockExplorer}/tx/${(event as InstantDistributionUpdatedEvent).transactionHash}`}
+                  target="_blank"
+                  className="text-info"
+                >
+                  {new Date(Number(event.timestamp) * 1000).toLocaleString(
+                    "en-US",
+                    {
+                      month: "short",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "numeric",
+                    },
+                  )}
+                </Link>
+              </Stack>
+            </Stack>
+          );
+        }
+
+        if (event.__typename === "TransferEvent") {
+          return (
+            <Stack direction="horizontal" gap={2} key={i}>
+              {ensByAddress[(event as ReceivedTransferEvent).from.id]
+                ?.avatar ? (
+                <Image
+                  src={
+                    ensByAddress[(event as ReceivedTransferEvent).from.id]
+                      .avatar ?? ""
+                  }
+                  alt=""
+                  width={isMobile || isTablet ? 36 : 24}
+                  height={isMobile || isTablet ? 36 : 24}
+                  className="rounded-circle align-self-center"
+                />
+              ) : (
+                <span
+                  style={{
+                    width: isMobile || isTablet ? 36 : 24,
+                    height: isMobile || isTablet ? 36 : 24,
+                  }}
+                >
+                  <Jazzicon
+                    paperStyles={{ border: "1px solid black" }}
+                    diameter={isMobile || isTablet ? 36 : 24}
+                    seed={jsNumberForAddress(
+                      (event as ReceivedTransferEvent).from.id,
+                    )}
+                  />
+                </span>
+              )}
+              <Stack
+                direction={isMobile || isTablet ? "vertical" : "horizontal"}
+                className="w-100 justify-content-between"
+              >
+                <p className="m-0">
+                  <Link
+                    href={`${network.blockExplorer}/address/${(event as ReceivedTransferEvent).from.id}`}
+                    target="_blank"
+                  >
+                    {ensByAddress[(event as ReceivedTransferEvent).from.id]
+                      ?.name ??
+                      truncateStr((event as ReceivedTransferEvent).from.id, 15)}
+                  </Link>{" "}
+                  donated{" "}
+                  {formatNumber(
+                    Number(
+                      formatEther(
+                        BigInt((event as ReceivedTransferEvent).value),
+                      ),
+                    ),
+                  )}{" "}
+                  {token.symbol}
+                </p>
+                <Link
+                  href={`${network.blockExplorer}/tx/${(event as ReceivedTransferEvent).transactionHash}`}
                   target="_blank"
                   className="text-info"
                 >
