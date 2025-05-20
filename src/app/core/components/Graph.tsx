@@ -23,6 +23,7 @@ import Jazzicon, { jsNumberForAddress } from "react-jazzicon";
 import { Token } from "@/types/token";
 import { GDAPool } from "@/types/gdaPool";
 import useFlowingAmount from "@/hooks/flowingAmount";
+import { networks } from "@/lib/networks";
 import { truncateStr, formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH, FLOW_STATE_RECEIVER } from "@/lib/constants";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -32,6 +33,7 @@ type GraphProps = {
   token: Token;
   pool: GDAPool;
   flowStateSafeInflowRate: `${number}`;
+  totalDonors: number;
   chainId: number;
   ensByAddress: {
     [key: string]: { name: string | null; avatar: string | null };
@@ -86,6 +88,7 @@ const edgeTypes = { custom: CustomEdge };
 function CustomNode(props: NodeProps<Node>) {
   const { selected, data } = props;
 
+  const network = networks.find((network) => network.id === data.chainId);
   const totalFlowed = useFlowingAmount(
     BigInt((data?.totalAmountFlowedDistributedUntilUpdatedAt as string) ?? 0) +
       BigInt(
@@ -102,11 +105,12 @@ function CustomNode(props: NodeProps<Node>) {
           direction="vertical"
           gap={1}
           className="align-items-center bg-light p-3 rounded-4 cursor-pointer shadow"
+          style={{ width: 230 }}
         >
           <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
             {data?.label?.toString() ?? ""}
           </span>
-          <span style={{ fontSize: "0.6rem" }}>
+          <span style={{ fontSize: "0.7rem" }}>
             {`${formatNumber(
               Number(
                 formatEther(
@@ -130,21 +134,26 @@ function CustomNode(props: NodeProps<Node>) {
     return (
       <>
         <Stack
-          direction="vertical"
-          gap={1}
+          direction="horizontal"
           className="align-items-center p-3 rounded-4 cursor-pointer shadow"
-          style={{ background: "#a8d4fc" }}
+          style={{ background: "#a8d4fc", width: 230 }}
         >
-          <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
-            {data?.label?.toString() ?? ""}
-          </span>
-          {!!data?.isMobile && (
-            <span
-              className="text-decoration-underline"
-              style={{ fontSize: "0.8rem", fontWeight: "bold" }}
-            >
-              Details
+          <Image src="/logo.png" alt="Logo" width={42} height={42} />
+          <Stack direction="vertical" gap={1} className="align-items-center">
+            <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
+              {data?.label?.toString() ?? ""}
             </span>
+            <span style={{ fontSize: "0.7rem" }}>
+              {truncateStr(data.address as string, 12)}
+            </span>
+          </Stack>
+          {!!data?.isMobile && (
+            <Button
+              variant="transparent"
+              className="position-absolute end-0 bottom-0 pe-2"
+            >
+              <Image src="/info-dark.svg" alt="Info" width={20} height={20} />
+            </Button>
           )}
         </Stack>
         <Handle className="invisible" type="target" position={Position.Top} />
@@ -194,20 +203,32 @@ function CustomNode(props: NodeProps<Node>) {
     return (
       <>
         <Stack
-          direction="vertical"
-          gap={1}
+          direction="horizontal"
           className="align-items-center p-3 rounded-4 cursor-pointer shadow"
-          style={{ background: "#fef3c7" }}
+          style={{ background: "#fef3c7", width: 230 }}
         >
-          <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
-            {data?.label?.toString() ?? ""}
-          </span>
-          <span style={{ fontSize: "0.6rem" }}>
-            Total{" "}
-            {`${formatNumber(
-              Number(formatEther(totalFlowed)),
-            )} ${(data.token as { symbol: string }).symbol}`}
-          </span>
+          {network && (
+            <Image
+              src={`${network.icon}`}
+              alt="Network"
+              width={42}
+              height={42}
+            />
+          )}
+          <Stack direction="vertical" gap={1} className="align-items-center">
+            <span
+              className="align-self-center"
+              style={{ fontSize: "0.8rem", fontWeight: "bold" }}
+            >
+              {data?.label?.toString() ?? ""}
+            </span>
+            <span style={{ fontSize: "0.7rem" }}>
+              Total{" "}
+              {`${formatNumber(
+                Number(formatEther(totalFlowed)),
+              )} ${(data.token as { symbol: string }).symbol}`}
+            </span>
+          </Stack>
         </Stack>
         <Handle className="invisible" type="target" position={Position.Top} />
         <Handle
@@ -377,6 +398,7 @@ export default function Graph(props: GraphProps) {
     token,
     pool,
     flowStateSafeInflowRate,
+    totalDonors,
     chainId,
     ensByAddress,
     showProjectDetails,
@@ -385,12 +407,6 @@ export default function Graph(props: GraphProps) {
   const { isMobile } = useMediaQuery();
 
   const graph = useMemo(() => {
-    /*
-    if (!pool) {
-      return { nodes: [], edges: [] };
-    }
-     */
-
     const totalDonations = BigInt(flowStateSafeInflowRate);
 
     const nodesFromPoolDistributors = pool
@@ -406,7 +422,7 @@ export default function Graph(props: GraphProps) {
                 label:
                   x.account.id.toLowerCase() ===
                   FLOW_STATE_RECEIVER.toLowerCase()
-                    ? "Flow State Safe"
+                    ? "Flow State"
                     : (ensByAddress?.[x.account.id]?.name ??
                       truncateStr(x.account.id, 11)),
                 avatar: ensByAddress?.[x.account.id]?.avatar,
@@ -430,7 +446,7 @@ export default function Graph(props: GraphProps) {
             type: "custom",
             data: {
               isFlowStateSafe: true,
-              label: "Flow State Safe",
+              label: "Flow State",
               address: FLOW_STATE_RECEIVER,
               flowRate: BigInt(flowStateSafeInflowRate),
               percentage: 1,
@@ -528,7 +544,7 @@ export default function Graph(props: GraphProps) {
           type: "custom",
           data: {
             isFlowStateSafeDonor: true,
-            label: "Direct Donations",
+            label: `${totalDonors} Active Donors`,
             token: { address: token.address, symbol: token.symbol },
             flowRate: totalDonations,
             chainId,
@@ -579,6 +595,7 @@ export default function Graph(props: GraphProps) {
     token,
     ensByAddress,
     flowStateSafeInflowRate,
+    totalDonors,
     isMobile,
     showProjectDetails,
   ]);

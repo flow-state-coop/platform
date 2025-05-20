@@ -68,6 +68,7 @@ const SAFE_QUERY = gql`
     account(id: $flowStateSafe) {
       accountTokenSnapshots(where: { token: $token }) {
         totalInflowRate
+        activeIncomingStreamCount
       }
       receivedTransferEvents(
         first: 25
@@ -478,6 +479,10 @@ export default function Core(props: CoreProps) {
                 flowStateSafeInflowRate={
                   safeQueryRes?.account?.accountTokenSnapshots[0]
                     ?.totalInflowRate ?? "0"
+                }
+                totalDonors={
+                  safeQueryRes?.account?.accountTokenSnapshots[0]
+                    ?.activeIncomingStreamCount ?? 0
                 }
                 token={selectedToken}
                 pool={gdaPoolQueryRes?.pool}
