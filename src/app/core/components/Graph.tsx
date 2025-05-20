@@ -138,7 +138,7 @@ function CustomNode(props: NodeProps<Node>) {
           className="align-items-center p-3 rounded-4 cursor-pointer shadow"
           style={{ background: "#a8d4fc", width: 230 }}
         >
-          <Image src="/logo.png" alt="Logo" width={42} height={42} />
+          <Image src="/logo-circle.svg" alt="Logo" width={42} height={42} />
           <Stack direction="vertical" gap={1} className="align-items-center">
             <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
               {data?.label?.toString() ?? ""}
