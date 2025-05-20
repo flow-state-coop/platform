@@ -39,6 +39,7 @@ dayjs.extend(duration);
 type DonateOnceProps = {
   network: Network;
   token: Token;
+  selectToken: (token: Token) => void;
   showOpenFlow: () => void;
   handleClose: () => void;
 };
@@ -62,9 +63,8 @@ const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
 `;
 
 export default function DonateOnce(props: DonateOnceProps) {
-  const { network, token, showOpenFlow, handleClose } = props;
+  const { network, token, selectToken, showOpenFlow, handleClose } = props;
 
-  const [selectedToken, setSelectedToken] = useState(token);
   const [amount, setAmount] = useState("");
   const [wrapAmount, setWrapAmount] = useState("");
   const [amountWei, setAmountWei] = useState(BigInt(0));
@@ -91,15 +91,15 @@ export default function DonateOnce(props: DonateOnceProps) {
     client: getApolloClient("superfluid", network.id),
     variables: {
       address: address?.toLowerCase() ?? "",
-      token: selectedToken?.address.toLowerCase() ?? "",
+      token: token?.address.toLowerCase() ?? "",
     },
     pollInterval: 10000,
-    skip: !address || !selectedToken,
+    skip: !address || !token,
   });
   const accountTokenSnapshot =
     superfluidQueryRes?.account?.accountTokenSnapshots[0] ?? null;
   const { data: realtimeBalanceOfNow } = useReadContract({
-    address: selectedToken?.address,
+    address: token?.address,
     functionName: "realtimeBalanceOfNow",
     abi: parseAbi([
       "function realtimeBalanceOfNow(address) returns (int256,uint256,uint256,uint256)",
@@ -158,7 +158,7 @@ export default function DonateOnce(props: DonateOnceProps) {
 
   useEffect(() => {
     (async () => {
-      if (!selectedToken || !ethersProvider || !address) {
+      if (!token || !ethersProvider || !address) {
         return;
       }
 
@@ -168,7 +168,7 @@ export default function DonateOnce(props: DonateOnceProps) {
         provider: ethersProvider,
       });
       const distributionSuperToken = await sfFramework.loadSuperToken(
-        isSuperTokenNative ? "ETHx" : selectedToken.address,
+        isSuperTokenNative ? "ETHx" : token.address,
       );
       const underlyingToken = distributionSuperToken.underlyingToken;
       const underlyingTokenAllowance = await underlyingToken?.allowance({
@@ -181,7 +181,7 @@ export default function DonateOnce(props: DonateOnceProps) {
       setSfFramework(sfFramework);
       setDistributionSuperToken(distributionSuperToken);
     })();
-  }, [address, network, ethersProvider, selectedToken, isSuperTokenNative]);
+  }, [address, network, ethersProvider, token, isSuperTokenNative]);
 
   useEffect(() => {
     (async () => {
@@ -423,14 +423,14 @@ export default function DonateOnce(props: DonateOnceProps) {
                 className="d-flex justify-content-between align-items-center bg-white text-dark"
                 style={{ border: "1px solid #dee2e6" }}
               >
-                {selectedToken.symbol}
+                {token.symbol}
               </Dropdown.Toggle>
               <Dropdown.Menu>
                 {network.tokens.map((token, i) => (
                   <Dropdown.Item
                     key={i}
                     onClick={() => {
-                      setSelectedToken(token);
+                      selectToken(token);
                     }}
                   >
                     {token.symbol}
@@ -465,7 +465,7 @@ export default function DonateOnce(props: DonateOnceProps) {
               fontSize: "0.8rem",
             }}
           >
-            {selectedToken.symbol}:{" "}
+            {token.symbol}:{" "}
             {formatNumber(Number(formatEther(superTokenBalance)))}
             {!hasSufficientSuperTokenBalance && (
               <>
@@ -511,10 +511,10 @@ export default function DonateOnce(props: DonateOnceProps) {
             {isSuperTokenNative
               ? ethBalance?.symbol
               : underlyingTokenBalance?.symbol}{" "}
-            to {selectedToken.symbol}
+            to {token.symbol}
           </Card.Text>
           <Card.Text className="m-0 small">
-            2) Distribute {amount} {selectedToken.symbol}
+            2) Distribute {amount} {token.symbol}
           </Card.Text>
         </Stack>
       )}

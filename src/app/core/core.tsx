@@ -397,6 +397,7 @@ export default function Core(props: CoreProps) {
                 <DonateOnce
                   network={network!}
                   token={selectedToken}
+                  selectToken={(token: Token) => setSelectedToken(token)}
                   showOpenFlow={() => setShowOpenFlow(true)}
                   handleClose={() => setShowDonateOnce(false)}
                 />
@@ -422,6 +423,7 @@ export default function Core(props: CoreProps) {
                 <DonateOnce
                   network={network!}
                   token={selectedToken}
+                  selectToken={(token: Token) => setSelectedToken(token)}
                   showOpenFlow={() => setShowOpenFlow(true)}
                   handleClose={() => setShowDonateOnce(false)}
                 />
