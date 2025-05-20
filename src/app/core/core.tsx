@@ -405,7 +405,7 @@ export default function Core(props: CoreProps) {
           </Offcanvas>
         ) : (
           <div
-            className="w-25 h-100 border-end border-2"
+            className="w-25 h-100 border-2"
             style={{
               boxShadow: "0.5rem 0 0.5rem -2px rgba(0,0,0,0.2)",
             }}
