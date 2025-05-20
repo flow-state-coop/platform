@@ -362,6 +362,101 @@ export default function Core(props: CoreProps) {
         direction={isMobile ? "vertical" : "horizontal"}
         className="align-items-start flex-grow-1"
       >
+        {isMobile && showProjectDetails && (
+          <Offcanvas
+            show={showProjectDetails}
+            placement="bottom"
+            className="h-100"
+            onHide={() => setShowProjectDetails(false)}
+          >
+            <Offcanvas.Header closeButton className="pb-0" />
+            <Offcanvas.Body>
+              <ProjectDetails />
+            </Offcanvas.Body>
+          </Offcanvas>
+        )}
+        {isMobile ? (
+          <Offcanvas
+            show={showOpenFlow || showDonateOnce}
+            placement="bottom"
+            className="h-100 px-1"
+            onHide={() =>
+              showOpenFlow ? setShowOpenFlow(false) : setShowDonateOnce(false)
+            }
+          >
+            <Offcanvas.Header closeButton className="pb-0" />
+            <Offcanvas.Body>
+              {showOpenFlow ? (
+                <OpenFlow
+                  network={network!}
+                  token={selectedToken}
+                  selectToken={(token) => setSelectedToken(token)}
+                />
+              ) : (
+                <DonateOnce
+                  network={network!}
+                  token={selectedToken}
+                  showOpenFlow={() => setShowOpenFlow(true)}
+                  handleClose={() => setShowDonateOnce(false)}
+                />
+              )}
+            </Offcanvas.Body>
+          </Offcanvas>
+        ) : (
+          <div
+            className="w-25 h-100 border-end border-2"
+            style={{
+              boxShadow: "0.5rem 0 0.5rem -2px rgba(0,0,0,0.2)",
+            }}
+          >
+            <Stack direction="vertical" className="mt-2 p-3">
+              {showOpenFlow ? (
+                <OpenFlow
+                  network={network!}
+                  token={selectedToken}
+                  selectToken={(token) => setSelectedToken(token)}
+                  handleClose={() => setShowOpenFlow(false)}
+                />
+              ) : showDonateOnce ? (
+                <DonateOnce
+                  network={network!}
+                  token={selectedToken}
+                  showOpenFlow={() => setShowOpenFlow(true)}
+                  handleClose={() => setShowDonateOnce(false)}
+                />
+              ) : (
+                <>
+                  <ProjectDetails />
+                  <Button
+                    className="w-100 mt-4 py-2 fs-5"
+                    onClick={() => {
+                      !address && openConnectModal
+                        ? openConnectModal()
+                        : connectedChain?.id !== network.id
+                          ? switchChain({ chainId: network.id })
+                          : setShowOpenFlow(true);
+                    }}
+                  >
+                    Open Flow
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="w-100 mt-3 py-2 fs-5"
+                    onClick={() => {
+                      !address && openConnectModal
+                        ? openConnectModal()
+                        : connectedChain?.id !== network.id
+                          ? switchChain({ chainId: network.id })
+                          : setShowDonateOnce(true);
+                    }}
+                  >
+                    Donate Once
+                  </Button>
+                </>
+              )}
+            </Stack>
+          </div>
+        )}
         <div
           className="h-100 px-4 mb-5"
           style={{ width: isMobile ? "100%" : "75%" }}
@@ -438,99 +533,6 @@ export default function Core(props: CoreProps) {
               />
             )}
         </div>
-        {isMobile && showProjectDetails && (
-          <Offcanvas
-            show={showProjectDetails}
-            placement="bottom"
-            className="h-100"
-            onHide={() => setShowProjectDetails(false)}
-          >
-            <Offcanvas.Header closeButton className="pb-0" />
-            <Offcanvas.Body>
-              <ProjectDetails />
-            </Offcanvas.Body>
-          </Offcanvas>
-        )}
-        {isMobile ? (
-          <Offcanvas
-            show={showOpenFlow || showDonateOnce}
-            placement="bottom"
-            className="h-100"
-            onHide={() =>
-              showOpenFlow ? setShowOpenFlow(false) : setShowDonateOnce(false)
-            }
-          >
-            <Offcanvas.Header closeButton className="pb-0" />
-            <Offcanvas.Body>
-              {showOpenFlow ? (
-                <OpenFlow
-                  network={network!}
-                  token={selectedToken}
-                  selectToken={(token) => setSelectedToken(token)}
-                />
-              ) : (
-                <DonateOnce
-                  network={network!}
-                  token={selectedToken}
-                  showOpenFlow={() => setShowOpenFlow(true)}
-                  handleClose={() => setShowDonateOnce(false)}
-                />
-              )}
-            </Offcanvas.Body>
-          </Offcanvas>
-        ) : (
-          <div
-            className="w-25 h-100 border-start border-2"
-            style={{ boxShadow: "-0.5rem 0px 0.5rem 0px rgba(0,0,0,0.2)" }}
-          >
-            <Stack direction="vertical" className="mt-2 p-2">
-              {showOpenFlow ? (
-                <OpenFlow
-                  network={network!}
-                  token={selectedToken}
-                  selectToken={(token) => setSelectedToken(token)}
-                  handleClose={() => setShowOpenFlow(false)}
-                />
-              ) : showDonateOnce ? (
-                <DonateOnce
-                  network={network!}
-                  token={selectedToken}
-                  showOpenFlow={() => setShowOpenFlow(true)}
-                  handleClose={() => setShowDonateOnce(false)}
-                />
-              ) : (
-                <>
-                  <ProjectDetails />
-                  <Button
-                    className="w-100 mt-4 py-2 fs-5"
-                    onClick={() => {
-                      !address && openConnectModal
-                        ? openConnectModal()
-                        : connectedChain?.id !== network.id
-                          ? switchChain({ chainId: network.id })
-                          : setShowOpenFlow(true);
-                    }}
-                  >
-                    Open Flow
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    className="w-100 mt-3 py-2 fs-5"
-                    onClick={() => {
-                      !address && openConnectModal
-                        ? openConnectModal()
-                        : connectedChain?.id !== network.id
-                          ? switchChain({ chainId: network.id })
-                          : setShowDonateOnce(true);
-                    }}
-                  >
-                    Donate Once
-                  </Button>
-                </>
-              )}
-            </Stack>
-          </div>
-        )}
       </Stack>
       <Modal
         show={showConnectionModal}

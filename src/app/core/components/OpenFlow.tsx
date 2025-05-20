@@ -617,11 +617,15 @@ export default function OpenFlow(props: OpenFlowProps) {
   };
 
   return (
-    <Stack direction="vertical" className="px-2">
+    <Stack direction="vertical">
       <Stack direction="horizontal" className="justify-content-between">
         <Card.Text className="fs-3 mb-0">Open Flow</Card.Text>
         {!isMobile && (
-          <Button variant="transparent" onClick={handleClose}>
+          <Button
+            variant="transparent"
+            onClick={handleClose}
+            className="p-0 float-end"
+          >
             <Image src="/close.svg" alt="" width={24} height={24} />
           </Button>
         )}
