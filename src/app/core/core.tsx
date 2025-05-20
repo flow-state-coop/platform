@@ -87,7 +87,7 @@ const SAFE_QUERY = gql`
       first: 25
       orderBy: timestamp
       orderDirection: asc
-      where: { receiver: $flowStateSafe }
+      where: { receiver: $flowStateSafe, token: $token }
     ) {
       flowRate
       oldFlowRate
@@ -469,7 +469,12 @@ export default function Core(props: CoreProps) {
                   selectToken={(token) => setSelectedToken(token)}
                 />
               ) : (
-                <DonateOnce network={network!} token={selectedToken} />
+                <DonateOnce
+                  network={network!}
+                  token={selectedToken}
+                  showOpenFlow={() => setShowOpenFlow(true)}
+                  handleClose={() => setShowDonateOnce(false)}
+                />
               )}
             </Offcanvas.Body>
           </Offcanvas>
@@ -490,6 +495,7 @@ export default function Core(props: CoreProps) {
                 <DonateOnce
                   network={network!}
                   token={selectedToken}
+                  showOpenFlow={() => setShowOpenFlow(true)}
                   handleClose={() => setShowDonateOnce(false)}
                 />
               ) : (

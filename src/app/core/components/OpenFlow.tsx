@@ -617,7 +617,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   };
 
   return (
-    <Stack direction="vertical">
+    <Stack direction="vertical" className="px-2">
       <Stack direction="horizontal" className="justify-content-between">
         <Card.Text className="fs-3 mb-0">Open Flow</Card.Text>
         {!isMobile && (
@@ -626,14 +626,12 @@ export default function OpenFlow(props: OpenFlowProps) {
           </Button>
         )}
       </Stack>
-      <Stack direction="horizontal" gap={2} className="mt-2 align-items-center">
-        <Image
-          src="/light-bulb.svg"
-          alt="Light Bulb"
-          width={36}
-          height={36}
-          style={{ transform: "rotate(-30deg)" }}
-        />
+      <Stack
+        direction="horizontal"
+        gap={3}
+        className="mt-2 align-items-center lh-sm"
+      >
+        <Image src="/sup.svg" alt="SUP" width={36} height={36} />
         <Card.Text>
           Did you know that donation streams to Flow State earn{" "}
           <Card.Link href="https://claim.superfluid.org/claim" target="_blank">

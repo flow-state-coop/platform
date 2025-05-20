@@ -39,7 +39,8 @@ dayjs.extend(duration);
 type DonateOnceProps = {
   network: Network;
   token: Token;
-  handleClose?: () => void;
+  showOpenFlow: () => void;
+  handleClose: () => void;
 };
 
 const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
@@ -61,7 +62,7 @@ const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
 `;
 
 export default function DonateOnce(props: DonateOnceProps) {
-  const { network, token, handleClose } = props;
+  const { network, token, showOpenFlow, handleClose } = props;
 
   const [selectedToken, setSelectedToken] = useState(token);
   const [amount, setAmount] = useState("");
@@ -315,7 +316,7 @@ export default function DonateOnce(props: DonateOnceProps) {
   };
 
   return (
-    <Stack direction="vertical">
+    <Stack direction="vertical" className="px-2">
       <Stack direction="horizontal" className="justify-content-between">
         <Card.Text className="fs-3 mb-0">Donate Once</Card.Text>
         {!isMobile && (
@@ -324,20 +325,28 @@ export default function DonateOnce(props: DonateOnceProps) {
           </Button>
         )}
       </Stack>
-      <Stack direction="horizontal" gap={2} className="mt-2 align-items-center">
-        <Image
-          src="/light-bulb.svg"
-          alt="Light Bulb"
-          width={36}
-          height={36}
-          style={{ transform: "rotate(-30deg)" }}
-        />
-        <Card.Text>
+      <Stack
+        direction="horizontal"
+        gap={3}
+        className="mt-2 align-items-center lh-sm"
+      >
+        <Image src="/sup.svg" alt="SUP" width={36} height={36} />
+        <Card.Text className="m-0">
           Did you know that donation streams to Flow State earn{" "}
           <Card.Link href="https://claim.superfluid.org/claim" target="_blank">
             SUP token rewards
           </Card.Link>
-          ?
+          ?{" "}
+          <span
+            className="p-0 text-decoration-underline cursor-pointer"
+            onClick={() => {
+              showOpenFlow();
+              handleClose();
+            }}
+          >
+            Try it
+          </span>
+          .
         </Card.Text>
       </Stack>
       <Stack direction="vertical" gap={2} className="my-4">
