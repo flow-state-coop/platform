@@ -4,34 +4,31 @@ import { useState, useEffect } from "react";
 import { Address, createPublicClient, http } from "viem";
 import { mainnet } from "viem/chains";
 import { normalize } from "viem/ens";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import { usePostHog } from "posthog-js/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
-import Image from "react-bootstrap/Image";
+import Offcanvas from "react-bootstrap/Offcanvas";
 import Spinner from "react-bootstrap/Spinner";
 import Modal from "react-bootstrap/Modal";
-import InfoTooltip from "@/components/InfoTooltip";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
 import ActivityFeed from "./components/ActivityFeed";
-import PoolGraph from "./components/PoolGraph";
+import Graph from "./components/Graph";
+import ProjectDetails from "./components/ProjectDetails";
 import OpenFlow from "./components/OpenFlow";
-import InstantDistribution from "@/app/flow-splitters/components/InstantDistribution";
+import DonateOnce from "./components/DonateOnce";
+import { Token } from "@/types/token";
 import { getApolloClient } from "@/lib/apollo";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { flowStateFlowSplitters } from "./lib/flowSplittersTable";
 import { networks } from "@/lib/networks";
-import { truncateStr } from "@/lib/utils";
 import { FLOW_STATE_RECEIVER } from "@/lib/constants";
 
 type CoreProps = {
   chainId: number;
-  edit: boolean;
 };
 
 const CORE_POOL_QUERY = gql`
@@ -45,18 +42,18 @@ const CORE_POOL_QUERY = gql`
         address
       }
       poolAdminRemovedEvents(
-        first: 1000
+        first: 25
         orderBy: timestamp
-        orderDirection: asc
+        orderDirection: desc
       ) {
         address
         timestamp
         transactionHash
       }
       poolAdminAddedEvents(
-        first: 1000
+        first: 25
         orderBy: timestamp
-        orderDirection: asc
+        orderDirection: desc
       ) {
         address
         timestamp
@@ -66,12 +63,8 @@ const CORE_POOL_QUERY = gql`
   }
 `;
 
-const SUPERFLUID_QUERY = gql`
-  query SuperfluidQuery(
-    $token: String!
-    $flowStateSafe: String!
-    $gdaPool: String!
-  ) {
+const SAFE_QUERY = gql`
+  query SafeQuery($token: String!, $flowStateSafe: String!) {
     token(id: $token) {
       id
       symbol
@@ -79,8 +72,40 @@ const SUPERFLUID_QUERY = gql`
     account(id: $flowStateSafe) {
       accountTokenSnapshots(where: { token: $token }) {
         totalInflowRate
+        activeIncomingStreamCount
+      }
+      receivedTransferEvents(
+        first: 25
+        orderBy: timestamp
+        orderDirection: desc
+        where: { token: $token }
+      ) {
+        from {
+          id
+        }
+        value
+        timestamp
+        transactionHash
       }
     }
+    flowUpdatedEvents(
+      first: 25
+      orderBy: timestamp
+      orderDirection: desc
+      where: { receiver: $flowStateSafe, token: $token }
+    ) {
+      flowRate
+      oldFlowRate
+      receiver
+      sender
+      timestamp
+      transactionHash
+    }
+  }
+`;
+
+const GDA_POOL_QUERY = gql`
+  query GDAPoolQuery($gdaPool: String!) {
     pool(id: $gdaPool) {
       id
       flowRate
@@ -95,7 +120,7 @@ const SUPERFLUID_QUERY = gql`
         units
         isConnected
       }
-      poolDistributors(first: 1000, where: { flowRate_not: "0" }) {
+      poolDistributors(first: 25, where: { flowRate_not: "0" }) {
         account {
           id
         }
@@ -111,7 +136,7 @@ const SUPERFLUID_QUERY = gql`
         name
       }
       memberUnitsUpdatedEvents(
-        first: 1000
+        first: 25
         orderBy: timestamp
         orderDirection: desc
       ) {
@@ -126,7 +151,7 @@ const SUPERFLUID_QUERY = gql`
         transactionHash
       }
       flowDistributionUpdatedEvents(
-        first: 1000
+        first: 25
         orderBy: timestamp
         orderDirection: desc
       ) {
@@ -141,7 +166,7 @@ const SUPERFLUID_QUERY = gql`
         transactionHash
       }
       instantDistributionUpdatedEvents(
-        first: 1000
+        first: 25
         orderBy: timestamp
         orderDirection: desc
       ) {
@@ -159,59 +184,64 @@ const SUPERFLUID_QUERY = gql`
 `;
 
 export default function Core(props: CoreProps) {
-  const { chainId, edit } = props;
+  const { chainId } = props;
 
-  const [showOpenFlow, setShowOpenFlow] = useState(edit);
-  const [showInstantDistribution, setShowInstantDistribution] = useState(false);
+  const network =
+    networks.find((network) => network.id === chainId) ?? networks[0];
+
+  const [showProjectDetails, setShowProjectDetails] = useState(false);
+  const [showOpenFlow, setShowOpenFlow] = useState(false);
+  const [showDonateOnce, setShowDonateOnce] = useState(false);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
+  const [selectedToken, setSelectedToken] = useState<Token>(
+    network.tokens.find((token) => token.symbol === "ETHx")!,
+  );
   const [ensByAddress, setEnsByAddress] = useState<{
     [key: Address]: { name: string | null; avatar: string | null };
   } | null>(null);
 
-  const network =
-    networks.find((network) => network.id === chainId) ?? networks[0];
-  const flowSplitter = flowStateFlowSplitters[network.id]["ETHx"];
+  const flowSplitter =
+    flowStateFlowSplitters[network.id]?.[selectedToken.symbol];
 
-  const router = useRouter();
-  const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
+  const { isMobile } = useMediaQuery();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
-  const { data: walletClient } = useWalletClient();
   const { address, chain: connectedChain } = useAccount();
-  const {
-    data: flowSplitterPoolQueryRes,
-    loading: flowSplitterPoolQueryLoading,
-  } = useQuery(CORE_POOL_QUERY, {
+  const { data: flowSplitterPoolQueryRes } = useQuery(CORE_POOL_QUERY, {
     client: getApolloClient("flowSplitter", chainId),
     variables: {
-      poolId: flowSplitter.id,
+      poolId: flowSplitter?.id,
       address: address?.toLowerCase() ?? "",
     },
+    skip: !flowSplitter,
     pollInterval: 10000,
   });
-  const poolAdmins = flowSplitterPoolQueryRes?.pools[0]?.poolAdmins;
   const pool = flowSplitterPoolQueryRes?.pools[0];
-  const { data: superfluidQueryRes, loading: superfluidQueryLoading } =
-    useQuery(SUPERFLUID_QUERY, {
+  const { data: safeQueryRes, loading: safeQueryLoading } = useQuery(
+    SAFE_QUERY,
+    {
       client: getApolloClient("superfluid", chainId),
       variables: {
-        token: pool?.token,
+        token: selectedToken.address.toLowerCase(),
         flowStateSafe: FLOW_STATE_RECEIVER,
+      },
+      pollInterval: 10000,
+    },
+  );
+  const { data: gdaPoolQueryRes, loading: gdaPoolQueryLoading } = useQuery(
+    GDA_POOL_QUERY,
+    {
+      client: getApolloClient("superfluid", chainId),
+      variables: {
         gdaPool: pool?.poolAddress,
       },
       pollInterval: 10000,
       skip: !pool,
-    });
+    },
+  );
   const postHog = usePostHog();
 
-  const poolToken = network?.tokens.find(
-    (token) => token.address.toLowerCase() === pool?.token,
-  ) ?? {
-    address: pool?.token ?? "",
-    symbol: superfluidQueryRes?.token.symbol ?? "N/A",
-    icon: "",
-  };
-  const poolMember = superfluidQueryRes?.pool?.poolMembers.find(
+  const poolMember = gdaPoolQueryRes?.pool?.poolMembers.find(
     (member: { account: { id: string } }) =>
       member.account.id === address?.toLowerCase(),
   );
@@ -219,40 +249,63 @@ export default function Core(props: CoreProps) {
 
   useEffect(() => setShowConnectionModal(shouldConnect), [shouldConnect]);
 
+  useEffect(
+    () =>
+      setSelectedToken(
+        network.tokens.find((token) => token.symbol === "ETHx")!,
+      ),
+    [network],
+  );
+
   useEffect(() => {
     const ensByAddress: {
       [key: Address]: { name: string | null; avatar: string | null };
     } = {};
     (async () => {
-      if (!pool || !superfluidQueryRes) {
+      if (!safeQueryRes) {
         return;
       }
 
       const addresses = [];
 
-      for (const memberUnitsUpdatedEvent of superfluidQueryRes.pool
-        .memberUnitsUpdatedEvents) {
-        addresses.push(memberUnitsUpdatedEvent.poolMember.account.id);
+      for (const flowUpdatedEvent of safeQueryRes.flowUpdatedEvents) {
+        addresses.push(flowUpdatedEvent.sender);
       }
 
-      for (const poolAdminAddedEvent of pool.poolAdminAddedEvents) {
-        addresses.push(poolAdminAddedEvent.address);
+      for (const receivedTransferEvent of safeQueryRes.account
+        .receivedTransferEvents) {
+        addresses.push(receivedTransferEvent.from.id);
       }
 
-      for (const poolAdminRemovedEvent of pool.poolAdminRemovedEvents) {
-        addresses.push(poolAdminRemovedEvent.address);
+      if (pool) {
+        for (const poolAdminAddedEvent of pool.poolAdminAddedEvents) {
+          addresses.push(poolAdminAddedEvent.address);
+        }
+
+        for (const poolAdminRemovedEvent of pool.poolAdminRemovedEvents) {
+          addresses.push(poolAdminRemovedEvent.address);
+        }
       }
 
-      for (const flowDistributionUpdatedEvent of superfluidQueryRes.pool
-        .flowDistributionUpdatedEvents) {
-        addresses.push(flowDistributionUpdatedEvent.poolDistributor.account.id);
-      }
+      if (gdaPoolQueryRes) {
+        for (const memberUnitsUpdatedEvent of gdaPoolQueryRes.pool
+          .memberUnitsUpdatedEvents) {
+          addresses.push(memberUnitsUpdatedEvent.poolMember.account.id);
+        }
 
-      for (const instantDistributionUpdatedEvent of superfluidQueryRes.pool
-        .instantDistributionUpdatedEvents) {
-        addresses.push(
-          instantDistributionUpdatedEvent.poolDistributor.account.id,
-        );
+        for (const flowDistributionUpdatedEvent of gdaPoolQueryRes.pool
+          .flowDistributionUpdatedEvents) {
+          addresses.push(
+            flowDistributionUpdatedEvent.poolDistributor.account.id,
+          );
+        }
+
+        for (const instantDistributionUpdatedEvent of gdaPoolQueryRes.pool
+          .instantDistributionUpdatedEvents) {
+          addresses.push(
+            instantDistributionUpdatedEvent.poolDistributor.account.id,
+          );
+        }
       }
 
       const publicClient = createPublicClient({
@@ -294,7 +347,13 @@ export default function Core(props: CoreProps) {
 
       setEnsByAddress(ensByAddress);
     })();
-  }, [pool, superfluidQueryRes]);
+  }, [pool, gdaPoolQueryRes, safeQueryRes]);
+
+  useEffect(() => {
+    if (connectedChain && connectedChain.id !== chainId) {
+      switchChain({ chainId });
+    }
+  }, [chainId, connectedChain, switchChain]);
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") {
@@ -302,208 +361,215 @@ export default function Core(props: CoreProps) {
     }
   }, [postHog, postHog.decideEndpointWasHit]);
 
-  const addToWallet = (args: {
-    address: string;
-    symbol: string;
-    decimals: number;
-    image: string;
-  }) => {
-    const { address, symbol, decimals, image } = args;
-
-    walletClient?.request({
-      method: "wallet_watchAsset",
-      params: {
-        type: "ERC20",
-        options: {
-          address,
-          symbol,
-          decimals,
-          image,
-        },
-      },
-    });
-  };
-
   return (
     <>
-      <Container
-        className="mx-auto p-0 px-4 mb-5"
-        style={{
-          maxWidth:
-            isMobile || isTablet
-              ? "100%"
-              : isSmallScreen
-                ? 1000
-                : isMediumScreen
-                  ? 1300
-                  : 1600,
-        }}
+      <Stack
+        direction={isMobile ? "vertical" : "horizontal"}
+        className="align-items-start flex-grow-1"
       >
-        {flowSplitterPoolQueryLoading ||
-        superfluidQueryLoading ||
-        !ensByAddress ? (
-          <span className="position-absolute top-50 start-50 translate-middle">
-            <Spinner />
-          </span>
-        ) : !network ? (
-          <p className="w-100 mt-5 fs-4 text-center">Pool Not Found</p>
-        ) : (
-          <>
-            <h1 className="d-flex flex-column flex-sm-row align-items-sm-center overflow-hidden gap-sm-1 mt-5 mb-1">
-              <span className="text-truncate">
-                {pool && pool.name !== "Superfluid Pool"
-                  ? pool.name
-                  : "Flow Splitter"}{" "}
-                <span className="d-none d-sm-inline-block">(</span>
-              </span>
-              <Stack direction="horizontal" gap={1}>
-                <Link
-                  href={`${network.superfluidExplorer}/pools/${pool.poolAddress}`}
-                  target="_blank"
-                >
-                  {truncateStr(pool.poolAddress, 14)}
-                </Link>
-                <span className="d-none d-sm-inline-block">)</span>
-                {poolAdmins.find(
-                  (admin: { address: string }) =>
-                    admin.address === address?.toLowerCase(),
-                ) && (
-                  <Button
-                    variant="transparent"
-                    className="mt-2 p-0 border-0"
-                    onClick={() =>
-                      router.push(
-                        `/flow-splitters/${chainId}/${flowSplitter.id}/admin`,
-                      )
-                    }
-                  >
-                    <InfoTooltip
-                      position={{ top: true }}
-                      target={<Image width={32} src="/edit.svg" alt="Edit" />}
-                      content={<>Edit</>}
-                    />
-                  </Button>
-                )}
-                <Button
-                  variant="transparent"
-                  className="d-flex align-items-center mt-2 p-0 border-0"
-                  onClick={() => {
-                    !address && openConnectModal
-                      ? openConnectModal()
-                      : connectedChain?.id !== chainId
-                        ? switchChain({ chainId })
-                        : addToWallet({
-                            address: pool.poolAddress,
-                            symbol: pool.symbol,
-                            decimals: 0,
-                            image: "",
-                          });
-                  }}
-                >
-                  <InfoTooltip
-                    position={{ top: true }}
-                    target={<Image width={32} src="/wallet.svg" alt="wallet" />}
-                    content={<>Add to Wallet</>}
-                  />
-                </Button>
-              </Stack>
-            </h1>
-            <Stack direction="horizontal" gap={1} className="mb-5 fs-6">
-              Distributing{" "}
-              {!!poolToken.icon && (
-                <Image src={poolToken.icon} alt="" width={18} height={18} />
-              )}
-              {superfluidQueryRes?.token.symbol} on
-              <Image src={network.icon} alt="" width={18} height={18} />
-              {network.name}
+        {isMobile && showProjectDetails && (
+          <Offcanvas
+            show={showProjectDetails}
+            placement="bottom"
+            className="h-100"
+            onHide={() => setShowProjectDetails(false)}
+          >
+            <Offcanvas.Header closeButton className="pb-0" />
+            <Offcanvas.Body>
+              <ProjectDetails />
               <Button
-                variant="transparent"
-                className="d-flex align-items-center p-0 border-0"
+                className="w-100 mt-4 py-2 fs-5"
                 onClick={() => {
                   !address && openConnectModal
                     ? openConnectModal()
-                    : connectedChain?.id !== chainId
-                      ? switchChain({ chainId })
-                      : addToWallet({
-                          address: pool.token,
-                          symbol: superfluidQueryRes?.token.symbol,
-                          decimals: 18,
-                          image: poolToken?.icon ?? "",
-                        });
+                    : connectedChain?.id !== network.id
+                      ? switchChain({ chainId: network.id })
+                      : setShowOpenFlow(true);
                 }}
               >
-                <InfoTooltip
-                  position={{ top: true }}
-                  target={<Image width={24} src="/wallet.svg" alt="wallet" />}
-                  content={<>Add to Wallet</>}
-                />
+                Open Flow
               </Button>
+              <Button
+                variant="secondary"
+                className="w-100 mt-3 py-2 fs-5"
+                onClick={() => {
+                  !address && openConnectModal
+                    ? openConnectModal()
+                    : connectedChain?.id !== network.id
+                      ? switchChain({ chainId: network.id })
+                      : setShowDonateOnce(true);
+                }}
+              >
+                Donate Once
+              </Button>
+            </Offcanvas.Body>
+          </Offcanvas>
+        )}
+        {isMobile ? (
+          <Offcanvas
+            show={showOpenFlow || showDonateOnce}
+            placement="bottom"
+            className="h-100 px-1"
+            onHide={() =>
+              showOpenFlow ? setShowOpenFlow(false) : setShowDonateOnce(false)
+            }
+          >
+            <Offcanvas.Header closeButton className="pb-0" />
+            <Offcanvas.Body>
+              {showOpenFlow ? (
+                <OpenFlow
+                  network={network!}
+                  token={selectedToken}
+                  selectToken={(token) => setSelectedToken(token)}
+                />
+              ) : (
+                <DonateOnce
+                  network={network!}
+                  token={selectedToken}
+                  selectToken={(token: Token) => setSelectedToken(token)}
+                  showOpenFlow={() => setShowOpenFlow(true)}
+                  handleClose={() => setShowDonateOnce(false)}
+                />
+              )}
+            </Offcanvas.Body>
+          </Offcanvas>
+        ) : (
+          <div
+            className="w-25 h-100 border-2"
+            style={{
+              boxShadow: "0.5rem 0 0.5rem -2px rgba(0,0,0,0.2)",
+            }}
+          >
+            <Stack direction="vertical" className="mt-2 p-3">
+              {showOpenFlow ? (
+                <OpenFlow
+                  network={network!}
+                  token={selectedToken}
+                  selectToken={(token) => setSelectedToken(token)}
+                  handleClose={() => setShowOpenFlow(false)}
+                />
+              ) : showDonateOnce ? (
+                <DonateOnce
+                  network={network!}
+                  token={selectedToken}
+                  selectToken={(token: Token) => setSelectedToken(token)}
+                  showOpenFlow={() => setShowOpenFlow(true)}
+                  handleClose={() => setShowDonateOnce(false)}
+                />
+              ) : (
+                <>
+                  <ProjectDetails />
+                  <Button
+                    className="w-100 mt-4 py-2 fs-5"
+                    onClick={() => {
+                      !address && openConnectModal
+                        ? openConnectModal()
+                        : connectedChain?.id !== network.id
+                          ? switchChain({ chainId: network.id })
+                          : setShowOpenFlow(true);
+                    }}
+                  >
+                    Open Flow
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="w-100 mt-3 py-2 fs-5"
+                    onClick={() => {
+                      !address && openConnectModal
+                        ? openConnectModal()
+                        : connectedChain?.id !== network.id
+                          ? switchChain({ chainId: network.id })
+                          : setShowDonateOnce(true);
+                    }}
+                  >
+                    Donate Once
+                  </Button>
+                </>
+              )}
             </Stack>
-            {ensByAddress && (
-              <PoolGraph
+          </div>
+        )}
+        <div
+          className="h-100 px-4 mb-5"
+          style={{ width: isMobile ? "100%" : "75%" }}
+        >
+          {(!safeQueryRes ||
+            safeQueryLoading ||
+            gdaPoolQueryLoading ||
+            !ensByAddress) && (
+            <span className="d-flex justify-content-center align-items-center w-100 h-100">
+              <Spinner />
+            </span>
+          )}
+          {safeQueryRes &&
+            !safeQueryLoading &&
+            !gdaPoolQueryLoading &&
+            ensByAddress && (
+              <Graph
+                key={chainId}
                 flowStateSafeInflowRate={
-                  superfluidQueryRes?.account.accountTokenSnapshots[0]
-                    .totalInflowRate ?? "0"
+                  safeQueryRes?.account?.accountTokenSnapshots[0]
+                    ?.totalInflowRate ?? "0"
                 }
-                pool={superfluidQueryRes?.pool}
+                totalDonors={
+                  safeQueryRes?.account?.accountTokenSnapshots[0]
+                    ?.activeIncomingStreamCount ?? 0
+                }
+                token={selectedToken}
+                pool={gdaPoolQueryRes?.pool}
                 chainId={chainId}
                 ensByAddress={ensByAddress}
+                showProjectDetails={() => setShowProjectDetails(true)}
               />
             )}
+          {isMobile && (
             <Button
-              className="w-100 mt-5 py-2 fs-4"
-              onClick={() => {
-                !address && openConnectModal
-                  ? openConnectModal()
-                  : connectedChain?.id !== chainId
-                    ? switchChain({ chainId })
-                    : setShowOpenFlow(true);
-              }}
+              variant="primary"
+              className="w-100 mt-3"
+              onClick={() => setShowOpenFlow(true)}
             >
               Open Flow
             </Button>
-            {superfluidQueryRes?.pool && pool && ensByAddress && (
+          )}
+          {isMobile && (
+            <Button
+              variant="secondary"
+              className="w-100 mt-3"
+              onClick={() => setShowDonateOnce(true)}
+            >
+              Donate Once
+            </Button>
+          )}
+          {safeQueryRes &&
+            !safeQueryLoading &&
+            !gdaPoolQueryLoading &&
+            ensByAddress && (
               <ActivityFeed
-                poolSymbol={pool.symbol}
-                poolAddress={pool.poolAddress}
+                poolSymbol={pool?.symbol ?? ""}
+                poolAddress={pool?.poolAddress ?? ""}
                 network={network}
-                token={poolToken}
-                poolCreatedEvent={superfluidQueryRes?.pool.poolCreatedEvent}
-                poolAdminAddedEvents={pool.poolAdminAddedEvents}
-                poolAdminRemovedEvents={pool.poolAdminRemovedEvents}
+                token={selectedToken}
+                flowUpdatedEvents={safeQueryRes?.flowUpdatedEvents}
+                poolCreatedEvent={gdaPoolQueryRes?.pool.poolCreatedEvent}
+                poolAdminAddedEvents={pool?.poolAdminAddedEvents ?? []}
+                poolAdminRemovedEvents={pool?.poolAdminRemovedEvents ?? []}
                 flowDistributionUpdatedEvents={
-                  superfluidQueryRes?.pool.flowDistributionUpdatedEvents
+                  gdaPoolQueryRes?.pool.flowDistributionUpdatedEvents ?? []
                 }
                 instantDistributionUpdatedEvents={
-                  superfluidQueryRes?.pool.instantDistributionUpdatedEvents
+                  gdaPoolQueryRes?.pool.instantDistributionUpdatedEvents ?? []
                 }
                 memberUnitsUpdatedEvents={
-                  superfluidQueryRes?.pool.memberUnitsUpdatedEvents
+                  gdaPoolQueryRes?.pool.memberUnitsUpdatedEvents ?? []
+                }
+                receivedTransferEvents={
+                  safeQueryRes.account.receivedTransferEvents
                 }
                 ensByAddress={ensByAddress}
               />
             )}
-          </>
-        )}
-      </Container>
-      {showOpenFlow && (
-        <OpenFlow
-          show={showOpenFlow}
-          network={network!}
-          token={poolToken}
-          pool={superfluidQueryRes?.pool}
-          handleClose={() => setShowOpenFlow(false)}
-        />
-      )}
-      {showInstantDistribution && (
-        <InstantDistribution
-          show={showInstantDistribution}
-          network={network!}
-          token={poolToken}
-          pool={superfluidQueryRes?.pool}
-          handleClose={() => setShowInstantDistribution(false)}
-        />
-      )}
+        </div>
+      </Stack>
       <Modal
         show={showConnectionModal}
         centered
