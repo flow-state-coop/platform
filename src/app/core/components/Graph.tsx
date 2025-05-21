@@ -104,7 +104,7 @@ function CustomNode(props: NodeProps<Node>) {
         <Stack
           direction="vertical"
           gap={1}
-          className="align-items-center bg-light p-3 rounded-4 cursor-pointer shadow"
+          className="align-items-center bg-white p-3 rounded-4 cursor-pointer shadow"
           style={{ width: 230 }}
         >
           <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
@@ -135,8 +135,8 @@ function CustomNode(props: NodeProps<Node>) {
       <>
         <Stack
           direction="horizontal"
-          className="align-items-center p-3 rounded-4 cursor-pointer shadow"
-          style={{ background: "#a8d4fc", width: 230 }}
+          className="align-items-center bg-white p-3 rounded-4 cursor-pointer shadow"
+          style={{ width: 230 }}
         >
           <Image src="/logo-circle.svg" alt="Logo" width={42} height={42} />
           <Stack direction="vertical" gap={1} className="align-items-center">
@@ -204,8 +204,8 @@ function CustomNode(props: NodeProps<Node>) {
       <>
         <Stack
           direction="horizontal"
-          className="align-items-center p-3 rounded-4 cursor-pointer shadow"
-          style={{ background: "#fef3c7", width: 230 }}
+          className="align-items-center bg-white p-3 rounded-4 cursor-pointer shadow"
+          style={{ width: 230 }}
         >
           {network && (
             <Image
@@ -544,7 +544,7 @@ export default function Graph(props: GraphProps) {
           type: "custom",
           data: {
             isFlowStateSafeDonor: true,
-            label: `${totalDonors} Active Donors`,
+            label: `${totalDonors} Active Donor${totalDonors !== 1 ? "s" : ""}`,
             token: { address: token.address, symbol: token.symbol },
             flowRate: totalDonations,
             chainId,

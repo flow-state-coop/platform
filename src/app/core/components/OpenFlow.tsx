@@ -112,6 +112,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   >();
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("");
   const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
+  const [isDeletingFlow, setIsDeletingFlow] = useState(false);
 
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
@@ -616,6 +617,31 @@ export default function OpenFlow(props: OpenFlowProps) {
     }
   };
 
+  const handleDeleteFlow = async () => {
+    if (!distributionSuperToken || !ethersSigner) {
+      return;
+    }
+
+    setIsDeletingFlow(true);
+
+    try {
+      const tx = await editFlow(
+        distributionSuperToken,
+        FLOW_STATE_RECEIVER,
+        flowRateToReceiver,
+        "0",
+      ).exec(ethersSigner);
+
+      await tx.wait();
+
+      setSuccess(true);
+    } catch (err) {
+      console.error(err);
+    }
+
+    setIsDeletingFlow(false);
+  };
+
   return (
     <Stack direction="vertical">
       <Stack direction="horizontal" className="justify-content-between">
@@ -854,7 +880,9 @@ export default function OpenFlow(props: OpenFlowProps) {
         className="w-100 mt-4"
         onClick={handleSubmit}
       >
-        {areTransactionsLoading ? (
+        {isDeletingFlow ? (
+          <Spinner size="sm" />
+        ) : areTransactionsLoading ? (
           <>
             <Spinner size="sm" />{" "}
             {transactions.length > 1 && (
@@ -869,6 +897,16 @@ export default function OpenFlow(props: OpenFlowProps) {
           <>Submit</>
         )}
       </Button>
+      {Number(flowRateToReceiver) > 0 && (
+        <Button
+          variant="transparent"
+          className="w-100 text-primary text-decoration-underline border-0"
+          style={{ pointerEvents: isDeletingFlow ? "none" : "auto" }}
+          onClick={handleDeleteFlow}
+        >
+          Cancel stream
+        </Button>
+      )}
       <Toast
         show={success}
         delay={4000}

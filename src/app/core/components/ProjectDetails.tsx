@@ -16,7 +16,7 @@ export default function ProjectDetails() {
       <Stack direction="vertical" className="bg-light rounded-4 p-2">
         <Stack direction="horizontal" gap={2} className="align-items-center">
           <Image
-            src="/logo.png"
+            src="/logo-circle.svg"
             alt="logo"
             width={96}
             height={96}

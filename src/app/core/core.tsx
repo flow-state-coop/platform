@@ -44,13 +44,17 @@ const CORE_POOL_QUERY = gql`
       poolAdminRemovedEvents(
         first: 25
         orderBy: timestamp
-        orderDirection: asc
+        orderDirection: desc
       ) {
         address
         timestamp
         transactionHash
       }
-      poolAdminAddedEvents(first: 25, orderBy: timestamp, orderDirection: asc) {
+      poolAdminAddedEvents(
+        first: 25
+        orderBy: timestamp
+        orderDirection: desc
+      ) {
         address
         timestamp
         transactionHash
@@ -87,7 +91,7 @@ const SAFE_QUERY = gql`
     flowUpdatedEvents(
       first: 25
       orderBy: timestamp
-      orderDirection: asc
+      orderDirection: desc
       where: { receiver: $flowStateSafe, token: $token }
     ) {
       flowRate
@@ -373,6 +377,31 @@ export default function Core(props: CoreProps) {
             <Offcanvas.Header closeButton className="pb-0" />
             <Offcanvas.Body>
               <ProjectDetails />
+              <Button
+                className="w-100 mt-4 py-2 fs-5"
+                onClick={() => {
+                  !address && openConnectModal
+                    ? openConnectModal()
+                    : connectedChain?.id !== network.id
+                      ? switchChain({ chainId: network.id })
+                      : setShowOpenFlow(true);
+                }}
+              >
+                Open Flow
+              </Button>
+              <Button
+                variant="secondary"
+                className="w-100 mt-3 py-2 fs-5"
+                onClick={() => {
+                  !address && openConnectModal
+                    ? openConnectModal()
+                    : connectedChain?.id !== network.id
+                      ? switchChain({ chainId: network.id })
+                      : setShowDonateOnce(true);
+                }}
+              >
+                Donate Once
+              </Button>
             </Offcanvas.Body>
           </Offcanvas>
         )}
