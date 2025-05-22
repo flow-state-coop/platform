@@ -40,7 +40,7 @@ export default function Explore() {
         }}
       >
         <RoundCard
-          name="Flow State"
+          name="Core Contributors"
           image="/logo-circle.svg"
           roundType="Flow Guild"
           totalFunding="5.36"
@@ -48,7 +48,7 @@ export default function Explore() {
           link="/core"
         />
         <RoundCard
-          name="Octant Builder Accellerator"
+          name="Octant Builder Accelerator"
           image="/octant-circle.svg"
           roundType="Streaming Quadratic Funding"
           totalFunding="28.13"
