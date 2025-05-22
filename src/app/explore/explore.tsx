@@ -57,7 +57,7 @@ export default function Explore() {
         />
         <RoundCard
           name="GoodBuilders Program"
-          image="/good-dollar.svg"
+          image="/good-dollar.png"
           roundType="Flow Council"
           link="https://gooddollar.notion.site/GoodBuilders-Program-1a6f258232f080fea8a6e3760bb8f53d"
         />
