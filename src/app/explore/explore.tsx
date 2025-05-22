@@ -49,7 +49,7 @@ export default function Explore() {
         />
         <RoundCard
           name="Octant Builder Accellerator"
-          image="/octant.svg"
+          image="/octant-circle.svg"
           roundType="Streaming Quadratic Funding"
           totalFunding="28.13"
           tokenSymbol="ETHx"
@@ -57,7 +57,7 @@ export default function Explore() {
         />
         <RoundCard
           name="GoodBuilders Program"
-          image="/good-dollar.webp"
+          image="/good-dollar.svg"
           roundType="Flow Council"
           link="https://gooddollar.notion.site/GoodBuilders-Program-1a6f258232f080fea8a6e3760bb8f53d"
         />
@@ -69,7 +69,7 @@ export default function Explore() {
         />
         <RoundCard
           name="Greenpill Dev Guild"
-          image="/greenpill.svg"
+          image="/greenpill.png"
           roundType="Flow Guild"
           link="https://app.charmverse.io/greenpill-dev-guild/"
         />
