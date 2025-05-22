@@ -19,10 +19,6 @@ export default function HomePage() {
   const { chain: connectedChain } = useAccount();
   const postHog = usePostHog();
 
-  const handleScrollToPools = () => {
-    poolsRef?.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") {
       postHog.startSessionRecording();
@@ -94,9 +90,9 @@ export default function HomePage() {
           <Button
             className="bg-secondary mt-3 text-light fs-5 shadow"
             style={{ width: isMobile || isTablet ? "100%" : "75%" }}
-            onClick={handleScrollToPools}
+            onClick={() => router.push("/explore")}
           >
-            Fund Public Goods
+            Explore Campaigns
           </Button>
         </Stack>
         {!isMobile && !isTablet && (
