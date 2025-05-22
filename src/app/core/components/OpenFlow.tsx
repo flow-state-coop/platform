@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Address, parseAbi, parseEther, formatEther } from "viem";
+import { Address, parseUnits, parseEther, parseAbi, formatEther } from "viem";
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import {
@@ -185,23 +185,21 @@ export default function OpenFlow(props: OpenFlowProps) {
   });
 
   const hasSufficientSuperTokenBalance =
-    (isSuperTokenNative &&
-      ethBalance &&
-      ethBalance.value + superTokenBalance > BigInt(0)) ||
-    (!isSuperTokenPure &&
-      underlyingTokenBalance &&
-      underlyingTokenBalance.value + superTokenBalance > BigInt(0)) ||
-    superTokenBalance > BigInt(0)
-      ? true
-      : false;
+    superTokenBalance > BigInt(0) ? true : false;
   const hasSufficientWrappingBalance =
     (isSuperTokenNative &&
       ethBalance &&
-      ethBalance?.value >= parseEther(wrapAmountPerTimeInterval)) ||
+      ethBalance.value > parseEther(wrapAmountPerTimeInterval ?? 0)) ||
     (underlyingTokenBalance &&
-      underlyingTokenBalance?.value >= parseEther(wrapAmountPerTimeInterval))
+      underlyingTokenBalance.value >=
+        parseUnits(
+          wrapAmountPerTimeInterval,
+          underlyingTokenBalance.decimals,
+        )) ||
+    isSuperTokenPure
       ? true
       : false;
+
   const minDonationPerMonth = getPoolFlowRateConfig(
     token.symbol,
   ).minAllocationPerMonth;
@@ -214,15 +212,13 @@ export default function OpenFlow(props: OpenFlowProps) {
         TimeInterval.MONTH,
       ),
     ) < minDonationPerMonth;
-
   const canSubmit =
     (newFlowRate > 0 || BigInt(flowRateToReceiver) > 0) &&
     BigInt(flowRateToReceiver) !== newFlowRate &&
-    hasSufficientSuperTokenBalance &&
-    (!wrapAmountPerTimeInterval ||
-      wrapAmountPerTimeInterval === "0" ||
-      hasSufficientWrappingBalance) &&
-    !isAmountInsufficient;
+    ((hasSufficientSuperTokenBalance && hasSufficientWrappingBalance) ||
+      (wrapAmountPerTimeInterval &&
+        Number(wrapAmountPerTimeInterval) > 0 &&
+        hasSufficientWrappingBalance));
 
   const membershipsInflowRate = useMemo(() => {
     let membershipsInflowRate = BigInt(0);
