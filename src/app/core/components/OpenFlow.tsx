@@ -663,11 +663,11 @@ export default function OpenFlow(props: OpenFlowProps) {
       >
         <Image src="/sup.svg" alt="SUP" width={36} height={36} />
         <Card.Text>
-          Did you know that donation streams to Flow State earn{" "}
+          Did you know that donation streams to Flow State{" "}
           <Card.Link href="https://claim.superfluid.org/claim" target="_blank">
-            SUP token rewards
+            earn $SUP
           </Card.Link>
-          ?
+          ? Claim your reward stream increase daily.
         </Card.Text>
       </Stack>
       <Stack direction="vertical" gap={2} className="my-4">
