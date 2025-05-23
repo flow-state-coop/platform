@@ -1,28 +1,50 @@
 import { useRouter } from "next/navigation";
+import { formatEther } from "viem";
 import Card from "react-bootstrap/Card";
 import Image from "react-bootstrap/Image";
 import Stack from "react-bootstrap/Stack";
+import useFlowingAmount from "@/hooks/flowingAmount";
+import { formatNumber } from "@/lib/utils";
 
 type RoundCardProps = {
   name: string;
   roundType: string;
-  totalFunding?: string;
   tokenSymbol?: string;
   image: string;
   link: string;
+  totalStreamedUntilUpdatedAt?: string;
+  flowRate?: string;
+  updatedAt?: number;
 };
 
 export default function RoundCard(props: RoundCardProps) {
-  const { name, roundType, totalFunding, tokenSymbol, image, link } = props;
+  const {
+    name,
+    roundType,
+    tokenSymbol,
+    image,
+    link,
+    totalStreamedUntilUpdatedAt,
+    flowRate,
+    updatedAt,
+  } = props;
 
   const router = useRouter();
+
+  const totalAmountStreamed = useFlowingAmount(
+    BigInt(totalStreamedUntilUpdatedAt ?? 0),
+    updatedAt ?? 0,
+    BigInt(flowRate ?? 0),
+  );
 
   return (
     <Card
       className="border-0 rounded-4 shadow cursor-pointer"
       style={{ width: 360, height: 256 }}
       onClick={() =>
-        totalFunding ? router.push(link) : window.open(link, "_blank")
+        totalStreamedUntilUpdatedAt
+          ? router.push(link)
+          : window.open(link, "_blank")
       }
     >
       <Card.Header className="position-relative bg-transparent border-0 p-3">
@@ -41,10 +63,11 @@ export default function RoundCard(props: RoundCardProps) {
         <Card.Text className="text-center fs-6">{roundType}</Card.Text>
       </Card.Header>
       <Card.Body>
-        {totalFunding ? (
+        {totalAmountStreamed ? (
           <>
             <Card.Text className="fs-2 mb-1 fw-bold text-center">
-              {totalFunding}+ {tokenSymbol}
+              {formatNumber(Number(formatEther(totalAmountStreamed)), 4)}{" "}
+              {tokenSymbol}
             </Card.Text>
             <Card.Text className="fs-6 text-center">
               Total Funding Streamed
