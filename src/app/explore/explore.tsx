@@ -117,6 +117,7 @@ export default function Explore() {
     const form = e.currentTarget;
 
     setIsSubscribing(true);
+    setIsEmailInvalid(false);
     setMailingListSubError("");
     setValidated(true);
 
@@ -301,7 +302,16 @@ export default function Explore() {
             >
               <Form.Group className="position-relative">
                 <Stack direction={isMobile ? "vertical" : "horizontal"} gap={2}>
-                  <Form.Control type="email" required className="shadow-sm" />
+                  <Form.Control
+                    type="email"
+                    required
+                    className="shadow-sm"
+                    onChange={(e) => {
+                      if (e.target.form?.checkValidity()) {
+                        setIsEmailInvalid(false);
+                      }
+                    }}
+                  />
                   <Button type="submit" className="px-5">
                     {isSubscribing ? <Spinner size="sm" /> : "Submit"}
                   </Button>
