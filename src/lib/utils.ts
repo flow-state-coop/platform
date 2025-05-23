@@ -150,10 +150,18 @@ export function truncateStr(str: string, strLen: number) {
   );
 }
 
-export function formatNumber(n: number) {
+export function formatNumber(n: number, maxDigits?: number) {
   return Intl.NumberFormat("en", {
     notation: n >= 1000 ? "compact" : void 0,
-    maximumFractionDigits: n < 1 ? 4 : n < 10 ? 3 : n < 100 ? 2 : 1,
+    maximumFractionDigits: maxDigits
+      ? maxDigits
+      : n < 1
+        ? 4
+        : n < 10
+          ? 3
+          : n < 100
+            ? 2
+            : 1,
   }).format(n);
 }
 

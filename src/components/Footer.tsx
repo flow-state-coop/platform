@@ -6,7 +6,7 @@ import Image from "react-bootstrap/Image";
 export default function Footer() {
   return (
     <footer
-      className="d-flex flex-column align-items-center p-2"
+      className="d-flex flex-column align-items-center mt-5 p-2"
       style={{ boxShadow: "0 -0.5rem 1rem rgba(0,0,0,0.2)" }}
     >
       <Stack
