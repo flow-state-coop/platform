@@ -66,7 +66,7 @@ export default function RoundCard(props: RoundCardProps) {
         {totalAmountStreamed ? (
           <>
             <Card.Text className="fs-2 mb-1 fw-bold text-center">
-              {formatNumber(Number(formatEther(totalAmountStreamed)), 4)}{" "}
+              {formatNumber(Number(formatEther(totalAmountStreamed)), 6)}{" "}
               {tokenSymbol}
             </Card.Text>
             <Card.Text className="fs-6 text-center">
