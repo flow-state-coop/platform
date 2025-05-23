@@ -82,26 +82,33 @@ export default function Explore() {
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [mailingListSubSuccess, setMailingListSubSuccess] = useState(false);
   const [mailingListSubError, setMailingListSubError] = useState("");
+  const [isEmailInvalid, setIsEmailInvalid] = useState(false);
   const [validated, setValidated] = useState(false);
 
   const sfApolloClient = getApolloClient("superfluid", base.id);
 
-  const { data: sqfStreamQueryRes } = useQuery(SQF_STREAM_QUERY, {
-    client: sfApolloClient,
-    variables: {
-      gdaPool: SQF_ADDRESSES["octant"].gdaPool,
-      superapps: SQF_ADDRESSES["octant"].superApps,
+  const { data: sqfStreamQueryRes, loading: sqfStreamQueryLoading } = useQuery(
+    SQF_STREAM_QUERY,
+    {
+      client: sfApolloClient,
+      variables: {
+        gdaPool: SQF_ADDRESSES["octant"].gdaPool,
+        superapps: SQF_ADDRESSES["octant"].superApps,
+      },
+      pollInterval: 10000,
     },
-    pollInterval: 10000,
-  });
-  const { data: coreRoundQueryRes } = useQuery(CORE_ROUND_QUERY, {
-    client: sfApolloClient,
-    variables: {
-      safeAddress: FLOW_GUILD_ADDRESSES["core"].safe,
-      token: FLOW_GUILD_ADDRESSES["core"].token,
+  );
+  const { data: coreRoundQueryRes, loading: coreRoundQueryLoading } = useQuery(
+    CORE_ROUND_QUERY,
+    {
+      client: sfApolloClient,
+      variables: {
+        safeAddress: FLOW_GUILD_ADDRESSES["core"].safe,
+        token: FLOW_GUILD_ADDRESSES["core"].token,
+      },
+      pollInterval: 10000,
     },
-    pollInterval: 10000,
-  });
+  );
 
   const handleMailingListSub = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -133,6 +140,8 @@ export default function Explore() {
         console.error(err);
         setMailingListSubError("There was an error, please try again later");
       }
+    } else {
+      setIsEmailInvalid(true);
     }
 
     setIsSubscribing(false);
@@ -154,158 +163,176 @@ export default function Explore() {
     >
       <h1 className="mt-5">Explore</h1>
       <h2 className="fs-4 mb-4">Active streaming funding campaigns</h2>
-      <div
-        className="pb-5"
-        style={{
-          display: "grid",
-          columnGap: "1.5rem",
-          rowGap: "3rem",
-          gridTemplateColumns: isTablet
-            ? "repeat(1,minmax(0,1fr))"
-            : isSmallScreen
-              ? "repeat(2,minmax(0,1fr))"
-              : isMediumScreen
-                ? "repeat(3,minmax(0,1fr))"
-                : isBigScreen
-                  ? "repeat(4,minmax(0,1fr))"
-                  : "",
-        }}
-      >
-        <RoundCard
-          name="Core Contributors"
-          image="/logo-circle.svg"
-          roundType="Flow Guild"
-          totalStreamedUntilUpdatedAt={
-            coreRoundQueryRes?.account.accountTokenSnapshots[0]
-              .totalAmountStreamedInUntilUpdatedAt
-          }
-          flowRate={
-            coreRoundQueryRes?.account.accountTokenSnapshots[0].totalInflowRate
-          }
-          updatedAt={
-            coreRoundQueryRes?.account.accountTokenSnapshots[0]
-              .updatedAtTimestamp
-          }
-          tokenSymbol="ETHx"
-          link="/core"
-        />
-        <RoundCard
-          name="Octant Builder Accelerator"
-          image="/octant-circle.svg"
-          roundType="Streaming Quadratic Funding"
-          totalStreamedUntilUpdatedAt={(
-            BigInt(
-              sqfStreamQueryRes?.pool
-                .totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
-            ) +
-            BigInt(
-              sqfStreamQueryRes?.accounts
-                .map(
-                  (account: {
-                    accountTokenSnapshots: {
-                      totalAmountStreamedInUntilUpdatedAt: string;
-                    }[];
-                  }) =>
-                    BigInt(
-                      account.accountTokenSnapshots[0]
-                        .totalAmountStreamedInUntilUpdatedAt,
-                    ),
-                )
-                .reduce((a: bigint, b: bigint) => a + b) ?? 0,
-            )
-          ).toString()}
-          flowRate={(
-            BigInt(sqfStreamQueryRes?.pool.flowRate ?? 0) +
-            BigInt(
-              sqfStreamQueryRes?.accounts
-                .map(
-                  (account: {
-                    accountTokenSnapshots: { totalInflowRate: string }[];
-                  }) =>
-                    BigInt(
-                      account.accountTokenSnapshots[0].totalInflowRate ?? 0,
-                    ),
-                )
-                .reduce((a: bigint, b: bigint) => a + b) ?? 0,
-            )
-          ).toString()}
-          updatedAt={sqfStreamQueryRes?.pool.updatedAtTimestamp}
-          tokenSymbol="ETHx"
-          link="/octant"
-        />
-        <RoundCard
-          name="GoodBuilders Program"
-          image="/good-dollar.png"
-          roundType="Flow Council"
-          link="https://gooddollar.notion.site/GoodBuilders-Program-1a6f258232f080fea8a6e3760bb8f53d"
-        />
-        <RoundCard
-          name="Guild Guild"
-          image="/guild-guild.svg"
-          roundType="Flow Guild"
-          link="https://guildguild.xyz"
-        />
-        <RoundCard
-          name="Greenpill Dev Guild"
-          image="/greenpill.png"
-          roundType="Flow Guild"
-          link="https://app.charmverse.io/greenpill-dev-guild/"
-        />
-      </div>
-      <p className="text-center">
-        Launch your own{" "}
-        <Link href="/sqf" className="text-primary">
-          SQF
-        </Link>{" "}
-        or{" "}
-        <Link href="/flow-splitters/launch" className="text-primary">
-          Flow Splitter
-        </Link>{" "}
-        campaign.{" "}
-        <Link href="mailto:fund@flowstate.network" className="text-primary">
-          Get in touch
-        </Link>{" "}
-        to become eligible for $SUP sponsorship or run a white-glove campaign.
-      </p>
-      <Stack direction="vertical" className="align-items-center my-5">
-        <p className="mb-1 fs-4 fw-bold">Sign up for updates</p>
-        <p>
-          Be the first to know about product launches, new funding campaigns, & more
-          opportunities to earn $SUP on Flow State.
-        </p>
-        <Form
-          noValidate
-          validated={validated}
-          className="w-50 mt-2"
-          onSubmit={handleMailingListSub}
+      {sqfStreamQueryLoading || coreRoundQueryLoading ? (
+        <Stack
+          direction="horizontal"
+          className="justify-content-center my-5 py-5"
         >
-          <Form.Group className="position-relative">
-            <Stack direction={isMobile ? "vertical" : "horizontal"} gap={2}>
-              <Form.Control type="email" required className="shadow-sm" />
-              <Button type="submit" className="px-5">
-                {isSubscribing ? <Spinner size="sm" /> : "Submit"}
-              </Button>
-            </Stack>
-            <Form.Control.Feedback type="invalid">
-              Please insert a valid email address
-            </Form.Control.Feedback>
-            <Toast
-              show={mailingListSubSuccess}
-              delay={4000}
-              autohide={true}
-              onClose={() => setMailingListSubSuccess(false)}
-              className="position-absolute w-100 mt-2 bg-success px-3 py-2 fs-5 text-light"
+          <Spinner />
+        </Stack>
+      ) : (
+        <>
+          <div
+            className="pb-5"
+            style={{
+              display: "grid",
+              columnGap: "1.5rem",
+              rowGap: "3rem",
+              gridTemplateColumns: isTablet
+                ? "repeat(1,minmax(0,1fr))"
+                : isSmallScreen
+                  ? "repeat(2,minmax(0,1fr))"
+                  : isMediumScreen
+                    ? "repeat(3,minmax(0,1fr))"
+                    : isBigScreen
+                      ? "repeat(4,minmax(0,1fr))"
+                      : "",
+            }}
+          >
+            <RoundCard
+              name="Core Contributors"
+              image="/logo-circle.svg"
+              roundType="Flow Guild"
+              totalStreamedUntilUpdatedAt={
+                coreRoundQueryRes?.account.accountTokenSnapshots[0]
+                  .totalAmountStreamedInUntilUpdatedAt
+              }
+              flowRate={
+                coreRoundQueryRes?.account.accountTokenSnapshots[0]
+                  .totalInflowRate
+              }
+              updatedAt={
+                coreRoundQueryRes?.account.accountTokenSnapshots[0]
+                  .updatedAtTimestamp
+              }
+              tokenSymbol="ETHx"
+              link="/core"
+            />
+            <RoundCard
+              name="Octant Builder Accelerator"
+              image="/octant-circle.svg"
+              roundType="Streaming Quadratic Funding"
+              totalStreamedUntilUpdatedAt={(
+                BigInt(
+                  sqfStreamQueryRes?.pool
+                    .totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
+                ) +
+                BigInt(
+                  sqfStreamQueryRes?.accounts
+                    .map(
+                      (account: {
+                        accountTokenSnapshots: {
+                          totalAmountStreamedInUntilUpdatedAt: string;
+                        }[];
+                      }) =>
+                        BigInt(
+                          account.accountTokenSnapshots[0]
+                            .totalAmountStreamedInUntilUpdatedAt,
+                        ),
+                    )
+                    .reduce((a: bigint, b: bigint) => a + b) ?? 0,
+                )
+              ).toString()}
+              flowRate={(
+                BigInt(sqfStreamQueryRes?.pool.flowRate ?? 0) +
+                BigInt(
+                  sqfStreamQueryRes?.accounts
+                    .map(
+                      (account: {
+                        accountTokenSnapshots: { totalInflowRate: string }[];
+                      }) =>
+                        BigInt(
+                          account.accountTokenSnapshots[0].totalInflowRate ?? 0,
+                        ),
+                    )
+                    .reduce((a: bigint, b: bigint) => a + b) ?? 0,
+                )
+              ).toString()}
+              updatedAt={sqfStreamQueryRes?.pool.updatedAtTimestamp}
+              tokenSymbol="ETHx"
+              link="/octant"
+            />
+            <RoundCard
+              name="GoodBuilders Program"
+              image="/good-dollar.png"
+              roundType="Flow Council"
+              link="https://gooddollar.notion.site/GoodBuilders-Program-1a6f258232f080fea8a6e3760bb8f53d"
+            />
+            <RoundCard
+              name="Guild Guild"
+              image="/guild-guild.svg"
+              roundType="Flow Guild"
+              link="https://guildguild.xyz"
+            />
+            <RoundCard
+              name="Greenpill Dev Guild"
+              image="/greenpill.png"
+              roundType="Flow Guild"
+              link="https://app.charmverse.io/greenpill-dev-guild/"
+            />
+          </div>
+          <p className="text-center">
+            Launch your own{" "}
+            <Link href="/sqf" className="text-primary">
+              SQF
+            </Link>{" "}
+            or{" "}
+            <Link href="/flow-splitters/launch" className="text-primary">
+              Flow Splitter
+            </Link>{" "}
+            campaign.{" "}
+            <Link href="mailto:fund@flowstate.network" className="text-primary">
+              Get in touch
+            </Link>{" "}
+            to become eligible for $SUP sponsorship or run a white-glove
+            campaign.
+          </p>
+          <Stack direction="vertical" className="align-items-center my-5">
+            <p className="mb-1 fs-4 fw-bold">Sign up for updates</p>
+            <p>
+              Be the first to know about product launches, new funding
+              campaigns, & more opportunities to earn $SUP on Flow State.
+            </p>
+            <Form
+              noValidate
+              validated={validated}
+              className="w-50 mt-2"
+              onSubmit={handleMailingListSub}
             >
-              Success!
-            </Toast>
-            {mailingListSubError ? (
-              <Alert variant="danger" className="w-100 px-3 py-2 mt-2 mb-4">
-                {mailingListSubError}
-              </Alert>
-            ) : null}
-          </Form.Group>
-        </Form>
-      </Stack>
+              <Form.Group className="position-relative">
+                <Stack direction={isMobile ? "vertical" : "horizontal"} gap={2}>
+                  <Form.Control type="email" required className="shadow-sm" />
+                  <Button type="submit" className="px-5">
+                    {isSubscribing ? <Spinner size="sm" /> : "Submit"}
+                  </Button>
+                </Stack>
+                {isEmailInvalid && (
+                  <p
+                    className="text-danger mt-1"
+                    style={{ fontSize: "0.875rem" }}
+                  >
+                    Please insert a valid email address
+                  </p>
+                )}
+                <Toast
+                  show={mailingListSubSuccess}
+                  delay={4000}
+                  autohide={true}
+                  onClose={() => setMailingListSubSuccess(false)}
+                  className="position-absolute w-100 mt-2 bg-success px-3 py-2 fs-5 text-light"
+                >
+                  Success!
+                </Toast>
+                {mailingListSubError ? (
+                  <Alert variant="danger" className="w-100 px-3 py-2 mt-2 mb-4">
+                    {mailingListSubError}
+                  </Alert>
+                ) : null}
+              </Form.Group>
+            </Form>
+          </Stack>
+        </>
+      )}
     </Container>
   );
 }
