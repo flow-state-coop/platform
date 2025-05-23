@@ -164,7 +164,7 @@ export default function Explore() {
             ? "repeat(1,minmax(0,1fr))"
             : isSmallScreen
               ? "repeat(2,minmax(0,1fr))"
-              : isMediumScreen || isBigScreen
+              : isMediumScreen
                 ? "repeat(3,minmax(0,1fr))"
                 : isBigScreen
                   ? "repeat(4,minmax(0,1fr))"
