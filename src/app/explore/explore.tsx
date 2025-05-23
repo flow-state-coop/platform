@@ -261,17 +261,17 @@ export default function Explore() {
         <Link href="/flow-splitters/launch" className="text-primary">
           Flow Splitter
         </Link>{" "}
-        Campaign.{" "}
+        campaign.{" "}
         <Link href="mailto:fund@flowstate.network" className="text-primary">
           Get in touch
         </Link>{" "}
         to become eligible for $SUP sponsorship or run a white-glove campaign.
       </p>
       <Stack direction="vertical" className="align-items-center my-5">
-        <p className="mb-1 fs-4 fw-bold">Sign up for email updates</p>
+        <p className="mb-1 fs-4 fw-bold">Sign up for updates</p>
         <p>
-          Hear about our product launches, new funding campaigns, & more
-          opportunities to earn $SUP first.
+          Be the first to know about product launches, new funding campaigns, & more
+          opportunities to earn $SUP on Flow State.
         </p>
         <Form
           noValidate
