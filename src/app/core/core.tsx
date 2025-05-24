@@ -392,13 +392,13 @@ export default function Core(props: CoreProps) {
               <Button
                 variant="secondary"
                 className="w-100 mt-3 py-2 fs-5"
-                onClick={() => {
+                onClick={() =>
                   !address && openConnectModal
                     ? openConnectModal()
                     : connectedChain?.id !== network.id
                       ? switchChain({ chainId: network.id })
-                      : setShowDonateOnce(true);
-                }}
+                      : setShowDonateOnce(true)
+                }
               >
                 Donate Once
               </Button>
@@ -474,13 +474,13 @@ export default function Core(props: CoreProps) {
                   <Button
                     variant="secondary"
                     className="w-100 mt-3 py-2 fs-5"
-                    onClick={() => {
+                    onClick={() =>
                       !address && openConnectModal
                         ? openConnectModal()
                         : connectedChain?.id !== network.id
                           ? switchChain({ chainId: network.id })
-                          : setShowDonateOnce(true);
-                    }}
+                          : setShowDonateOnce(true)
+                    }
                   >
                     Donate Once
                   </Button>
@@ -523,22 +523,34 @@ export default function Core(props: CoreProps) {
               />
             )}
           {isMobile && (
-            <Button
-              variant="primary"
-              className="w-100 mt-3"
-              onClick={() => setShowOpenFlow(true)}
-            >
-              Open Flow
-            </Button>
-          )}
-          {isMobile && (
-            <Button
-              variant="secondary"
-              className="w-100 mt-3"
-              onClick={() => setShowDonateOnce(true)}
-            >
-              Donate Once
-            </Button>
+            <>
+              <Button
+                variant="primary"
+                className="w-100 mt-3"
+                onClick={() =>
+                  !address && openConnectModal
+                    ? openConnectModal()
+                    : connectedChain?.id !== network.id
+                      ? switchChain({ chainId: network.id })
+                      : setShowOpenFlow(true)
+                }
+              >
+                Open Flow
+              </Button>
+              <Button
+                variant="secondary"
+                className="w-100 mt-3"
+                onClick={() =>
+                  !address && openConnectModal
+                    ? openConnectModal()
+                    : connectedChain?.id !== network.id
+                      ? switchChain({ chainId: network.id })
+                      : setShowDonateOnce(true)
+                }
+              >
+                Donate Once
+              </Button>
+            </>
           )}
           {safeQueryRes &&
             !safeQueryLoading &&
