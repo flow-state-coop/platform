@@ -720,7 +720,7 @@ export default function Review(props: ReviewProps) {
                 />
                 <Card.Text className="text-danger small">
                   If I do not cancel this stream before my balance reaches zero,
-                  I will lose my 4-hour ETHx deposit.
+                  I will lose my 4-hour {allocationTokenInfo.symbol} deposit.
                 </Card.Text>
               </Stack>
             </Stack>

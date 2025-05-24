@@ -18,9 +18,12 @@ import Image from "react-bootstrap/Image";
 import Form from "react-bootstrap/Form";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
+import OverlayTrigger from "react-bootstrap/OverlayTrigger";
+import Tooltip from "react-bootstrap/Tooltip";
 import Alert from "react-bootstrap/Alert";
 import Toast from "react-bootstrap/Toast";
 import InputGroup from "react-bootstrap/InputGroup";
+import FormCheckInput from "react-bootstrap/FormCheckInput";
 import Spinner from "react-bootstrap/Spinner";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
@@ -113,6 +116,10 @@ export default function OpenFlow(props: OpenFlowProps) {
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("");
   const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
   const [isDeletingFlow, setIsDeletingFlow] = useState(false);
+  const [
+    hasAcceptedCloseLiquidationWarning,
+    setHasAcceptedCloseLiquidationWarning,
+  ] = useState(false);
 
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
@@ -212,13 +219,6 @@ export default function OpenFlow(props: OpenFlowProps) {
         TimeInterval.MONTH,
       ),
     ) < minDonationPerMonth;
-  const canSubmit =
-    (newFlowRate > 0 || BigInt(flowRateToReceiver) > 0) &&
-    BigInt(flowRateToReceiver) !== newFlowRate &&
-    ((hasSufficientSuperTokenBalance && hasSufficientWrappingBalance) ||
-      (wrapAmountPerTimeInterval &&
-        Number(wrapAmountPerTimeInterval) > 0 &&
-        hasSufficientWrappingBalance));
 
   const membershipsInflowRate = useMemo(() => {
     let membershipsInflowRate = BigInt(0);
@@ -324,6 +324,40 @@ export default function OpenFlow(props: OpenFlowProps) {
       address,
       flowRateToReceiver,
       membershipsInflowRate,
+    ],
+  );
+
+  const liquidationEstimate = useMemo(
+    () => calcLiquidationEstimate(newFlowRate, wrapAmountPerTimeInterval),
+    [newFlowRate, wrapAmountPerTimeInterval, calcLiquidationEstimate],
+  );
+
+  const isLiquidationClose = useMemo(
+    () =>
+      liquidationEstimate
+        ? dayjs
+            .unix(liquidationEstimate)
+            .isBefore(dayjs().add(dayjs.duration({ days: 2 })))
+        : false,
+    [liquidationEstimate],
+  );
+
+  const canSubmit = useMemo(
+    () =>
+      (newFlowRate > 0 || BigInt(flowRateToReceiver) > 0) &&
+      BigInt(flowRateToReceiver) !== newFlowRate &&
+      !isAmountInsufficient &&
+      ((hasSufficientSuperTokenBalance && hasSufficientWrappingBalance) ||
+        (wrapAmountPerTimeInterval &&
+          Number(wrapAmountPerTimeInterval) > 0 &&
+          hasSufficientWrappingBalance)),
+    [
+      newFlowRate,
+      flowRateToReceiver,
+      hasSufficientSuperTokenBalance,
+      hasSufficientWrappingBalance,
+      wrapAmountPerTimeInterval,
+      isAmountInsufficient,
     ],
   );
 
@@ -871,52 +905,112 @@ export default function OpenFlow(props: OpenFlowProps) {
           </Stack>
         </>
       )}
-      <Button
-        disabled={!canSubmit}
-        className="w-100 mt-4"
-        onClick={handleSubmit}
-      >
-        {isDeletingFlow ? (
-          <Spinner size="sm" />
-        ) : areTransactionsLoading ? (
-          <>
-            <Spinner size="sm" />{" "}
-            {transactions.length > 1 && (
-              <>
-                ({completedTransactions + 1}/{transactions.length})
-              </>
-            )}
-          </>
-        ) : canSubmit && transactions.length > 1 ? (
-          <>Submit ({transactions.length})</>
-        ) : (
-          <>Submit</>
+      <Stack direction="vertical" className="mt-4">
+        {canSubmit && !!liquidationEstimate && !isNaN(liquidationEstimate) && (
+          <Stack direction="horizontal" gap={1} className="mb-2">
+            <OverlayTrigger
+              overlay={
+                <Tooltip id="t-liquidation-info" className="fs-6">
+                  This is the current estimate for when your token balance will
+                  reach 0. Make sure to close your stream or wrap more tokens
+                  before this date to avoid loss of your buffer deposit. See the
+                  graph below to vizualize how your proposed transaction(s) will
+                  impact your balance over time.
+                </Tooltip>
+              }
+            >
+              <Image
+                src="/info.svg"
+                alt="liquidation info"
+                width={16}
+                height={16}
+              />
+            </OverlayTrigger>
+            <Card.Text className="m-0 fs-6">Wrap more by</Card.Text>
+            <Card.Text
+              className={`m-0 ms-1 fs-6 ${isLiquidationClose ? "text-danger" : ""}`}
+            >
+              {dayjs.unix(liquidationEstimate).format("MMMM D, YYYY")}
+            </Card.Text>
+          </Stack>
         )}
-      </Button>
-      {Number(flowRateToReceiver) > 0 && (
+        {canSubmit && isLiquidationClose && (
+          <Stack direction="vertical" className="mb-2">
+            <Card.Text className="text-danger small">
+              You've set a high stream rate relative to your balance! We
+              recommend that you set a lower rate or wrap more {token.symbol}.
+            </Card.Text>
+            <Stack
+              direction="horizontal"
+              gap={2}
+              className="align-items-center"
+            >
+              <FormCheckInput
+                checked={hasAcceptedCloseLiquidationWarning}
+                className="border-black"
+                onChange={() =>
+                  setHasAcceptedCloseLiquidationWarning(
+                    !hasAcceptedCloseLiquidationWarning,
+                  )
+                }
+              />
+              <Card.Text className="text-danger small">
+                If I do not cancel this stream before my balance reaches zero, I
+                will lose my 4-hour {token.symbol} deposit.
+              </Card.Text>
+            </Stack>
+          </Stack>
+        )}
         <Button
-          variant="transparent"
-          className="w-100 text-primary text-decoration-underline border-0"
-          style={{ pointerEvents: isDeletingFlow ? "none" : "auto" }}
-          onClick={handleDeleteFlow}
+          disabled={
+            !canSubmit ||
+            (isLiquidationClose && !hasAcceptedCloseLiquidationWarning)
+          }
+          className="w-100"
+          onClick={handleSubmit}
         >
-          Cancel stream
+          {isDeletingFlow ? (
+            <Spinner size="sm" />
+          ) : areTransactionsLoading ? (
+            <>
+              <Spinner size="sm" />{" "}
+              {transactions.length > 1 && (
+                <>
+                  ({completedTransactions + 1}/{transactions.length})
+                </>
+              )}
+            </>
+          ) : canSubmit && transactions.length > 1 ? (
+            <>Submit ({transactions.length})</>
+          ) : (
+            <>Submit</>
+          )}
         </Button>
-      )}
-      <Toast
-        show={success}
-        delay={4000}
-        autohide={true}
-        onClose={() => setSuccess(false)}
-        className="w-100 bg-success mt-3 p-3 fs-5 text-light"
-      >
-        Success!
-      </Toast>
-      {!!transactionError && (
-        <Alert variant="danger" className="w-100 mt-3 p-3 fs-5">
-          {transactionError}
-        </Alert>
-      )}
+        {Number(flowRateToReceiver) > 0 && (
+          <Button
+            variant="transparent"
+            className="w-100 text-primary text-decoration-underline border-0"
+            style={{ pointerEvents: isDeletingFlow ? "none" : "auto" }}
+            onClick={handleDeleteFlow}
+          >
+            Cancel stream
+          </Button>
+        )}
+        <Toast
+          show={success}
+          delay={4000}
+          autohide={true}
+          onClose={() => setSuccess(false)}
+          className="w-100 bg-success mt-3 p-3 fs-5 text-light"
+        >
+          Success!
+        </Toast>
+        {!!transactionError && (
+          <Alert variant="danger" className="w-100 mt-3 p-3 fs-5">
+            {transactionError}
+          </Alert>
+        )}
+      </Stack>
       {(accountTokenSnapshot &&
         accountTokenSnapshot.totalNetFlowRate !== "0") ||
       (newFlowRate !== BigInt(0) &&
