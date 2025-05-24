@@ -31,7 +31,7 @@ type PoolGraphProps = {
   chainId: number;
   ensByAddress: {
     [key: Address]: { name: string | null; avatar: string | null };
-  };
+  } | null;
 };
 
 const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
@@ -285,8 +285,9 @@ export default function PoolGraph(props: PoolGraphProps) {
           type: "custom",
           data: {
             label:
-              ensByAddress[x.account.id]?.name ?? truncateStr(x.account.id, 11),
-            avatar: ensByAddress[x.account.id]?.avatar,
+              ensByAddress?.[x.account.id]?.name ??
+              truncateStr(x.account.id, 11),
+            avatar: ensByAddress?.[x.account.id]?.avatar,
             address: x.account.id,
             flowRate: BigInt(x.flowRate),
             percentage:
@@ -308,8 +309,9 @@ export default function PoolGraph(props: PoolGraphProps) {
           type: "custom",
           data: {
             label:
-              ensByAddress[x.account.id]?.name ?? truncateStr(x.account.id, 11),
-            avatar: ensByAddress[x.account.id]?.avatar,
+              ensByAddress?.[x.account.id]?.name ??
+              truncateStr(x.account.id, 11),
+            avatar: ensByAddress?.[x.account.id]?.avatar,
             address: x.account.id,
             units: x.units,
             totalUnits: pool.totalUnits,

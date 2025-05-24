@@ -25,7 +25,7 @@ import { getApolloClient } from "@/lib/apollo";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { flowStateFlowSplitters } from "./lib/flowSplittersTable";
 import { networks } from "@/lib/networks";
-import { FLOW_STATE_RECEIVER } from "@/lib/constants";
+import { FLOW_STATE_RECEIVER, IPFS_GATEWAYS } from "@/lib/constants";
 
 type CoreProps = {
   chainId: number;
@@ -262,7 +262,7 @@ export default function Core(props: CoreProps) {
       [key: Address]: { name: string | null; avatar: string | null };
     } = {};
     (async () => {
-      if (!safeQueryRes) {
+      if (!safeQueryRes || (flowSplitter && !gdaPoolQueryRes)) {
         return;
       }
 
@@ -331,6 +331,10 @@ export default function Core(props: CoreProps) {
           ensNames.map((ensName) =>
             publicClient.getEnsAvatar({
               name: normalize(ensName ?? ""),
+              gatewayUrls: ["https://ccip.ens.xyz"],
+              assetGatewayUrls: {
+                ipfs: IPFS_GATEWAYS[0],
+              },
             }),
           ),
         );
@@ -347,7 +351,7 @@ export default function Core(props: CoreProps) {
 
       setEnsByAddress(ensByAddress);
     })();
-  }, [pool, gdaPoolQueryRes, safeQueryRes]);
+  }, [flowSplitter, pool, gdaPoolQueryRes, safeQueryRes]);
 
   useEffect(() => {
     if (connectedChain && connectedChain.id !== chainId) {
@@ -493,35 +497,29 @@ export default function Core(props: CoreProps) {
           className="h-100 px-4 mb-5"
           style={{ width: isMobile ? "100%" : "75%" }}
         >
-          {(!safeQueryRes ||
-            safeQueryLoading ||
-            gdaPoolQueryLoading ||
-            !ensByAddress) && (
+          {(!safeQueryRes || safeQueryLoading || gdaPoolQueryLoading) && (
             <span className="d-flex justify-content-center align-items-center w-100 h-100">
               <Spinner />
             </span>
           )}
-          {safeQueryRes &&
-            !safeQueryLoading &&
-            !gdaPoolQueryLoading &&
-            ensByAddress && (
-              <Graph
-                key={chainId}
-                flowStateSafeInflowRate={
-                  safeQueryRes?.account?.accountTokenSnapshots[0]
-                    ?.totalInflowRate ?? "0"
-                }
-                totalDonors={
-                  safeQueryRes?.account?.accountTokenSnapshots[0]
-                    ?.activeIncomingStreamCount ?? 0
-                }
-                token={selectedToken}
-                pool={gdaPoolQueryRes?.pool}
-                chainId={chainId}
-                ensByAddress={ensByAddress}
-                showProjectDetails={() => setShowProjectDetails(true)}
-              />
-            )}
+          {safeQueryRes && !safeQueryLoading && !gdaPoolQueryLoading && (
+            <Graph
+              key={chainId}
+              flowStateSafeInflowRate={
+                safeQueryRes?.account?.accountTokenSnapshots[0]
+                  ?.totalInflowRate ?? "0"
+              }
+              totalDonors={
+                safeQueryRes?.account?.accountTokenSnapshots[0]
+                  ?.activeIncomingStreamCount ?? 0
+              }
+              token={selectedToken}
+              pool={gdaPoolQueryRes?.pool}
+              chainId={chainId}
+              ensByAddress={ensByAddress}
+              showProjectDetails={() => setShowProjectDetails(true)}
+            />
+          )}
           {isMobile && (
             <>
               <Button
@@ -552,34 +550,31 @@ export default function Core(props: CoreProps) {
               </Button>
             </>
           )}
-          {safeQueryRes &&
-            !safeQueryLoading &&
-            !gdaPoolQueryLoading &&
-            ensByAddress && (
-              <ActivityFeed
-                poolSymbol={pool?.symbol ?? ""}
-                poolAddress={pool?.poolAddress ?? ""}
-                network={network}
-                token={selectedToken}
-                flowUpdatedEvents={safeQueryRes?.flowUpdatedEvents}
-                poolCreatedEvent={gdaPoolQueryRes?.pool.poolCreatedEvent}
-                poolAdminAddedEvents={pool?.poolAdminAddedEvents ?? []}
-                poolAdminRemovedEvents={pool?.poolAdminRemovedEvents ?? []}
-                flowDistributionUpdatedEvents={
-                  gdaPoolQueryRes?.pool.flowDistributionUpdatedEvents ?? []
-                }
-                instantDistributionUpdatedEvents={
-                  gdaPoolQueryRes?.pool.instantDistributionUpdatedEvents ?? []
-                }
-                memberUnitsUpdatedEvents={
-                  gdaPoolQueryRes?.pool.memberUnitsUpdatedEvents ?? []
-                }
-                receivedTransferEvents={
-                  safeQueryRes.account.receivedTransferEvents
-                }
-                ensByAddress={ensByAddress}
-              />
-            )}
+          {safeQueryRes && !safeQueryLoading && !gdaPoolQueryLoading && (
+            <ActivityFeed
+              poolSymbol={pool?.symbol ?? ""}
+              poolAddress={pool?.poolAddress ?? ""}
+              network={network}
+              token={selectedToken}
+              flowUpdatedEvents={safeQueryRes?.flowUpdatedEvents}
+              poolCreatedEvent={gdaPoolQueryRes?.pool.poolCreatedEvent}
+              poolAdminAddedEvents={pool?.poolAdminAddedEvents ?? []}
+              poolAdminRemovedEvents={pool?.poolAdminRemovedEvents ?? []}
+              flowDistributionUpdatedEvents={
+                gdaPoolQueryRes?.pool.flowDistributionUpdatedEvents ?? []
+              }
+              instantDistributionUpdatedEvents={
+                gdaPoolQueryRes?.pool.instantDistributionUpdatedEvents ?? []
+              }
+              memberUnitsUpdatedEvents={
+                gdaPoolQueryRes?.pool.memberUnitsUpdatedEvents ?? []
+              }
+              receivedTransferEvents={
+                safeQueryRes.account.receivedTransferEvents
+              }
+              ensByAddress={ensByAddress}
+            />
+          )}
         </div>
       </Stack>
       <Modal

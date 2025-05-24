@@ -26,6 +26,7 @@ import { getApolloClient } from "@/lib/apollo";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { truncateStr } from "@/lib/utils";
+import { IPFS_GATEWAYS } from "@/lib/constants";
 
 type FlowSplitterProps = {
   chainId: number;
@@ -252,6 +253,10 @@ export default function FlowSplitter(props: FlowSplitterProps) {
           ensNames.map((ensName) =>
             publicClient.getEnsAvatar({
               name: normalize(ensName ?? ""),
+              gatewayUrls: ["https://ccip.ens.xyz"],
+              assetGatewayUrls: {
+                ipfs: IPFS_GATEWAYS[0],
+              },
             }),
           ),
         );
@@ -313,9 +318,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
                   : 1600,
         }}
       >
-        {flowSplitterPoolQueryLoading ||
-        superfluidQueryLoading ||
-        !ensByAddress ? (
+        {flowSplitterPoolQueryLoading || superfluidQueryLoading ? (
           <span className="position-absolute top-50 start-50 translate-middle">
             <Spinner />
           </span>
@@ -411,13 +414,11 @@ export default function FlowSplitter(props: FlowSplitterProps) {
                 />
               </Button>
             </Stack>
-            {ensByAddress && (
-              <PoolGraph
-                pool={superfluidQueryRes?.pool}
-                chainId={chainId}
-                ensByAddress={ensByAddress}
-              />
-            )}
+            <PoolGraph
+              pool={superfluidQueryRes?.pool}
+              chainId={chainId}
+              ensByAddress={ensByAddress}
+            />
             <Button
               className="w-100 mt-5 py-2 fs-4"
               onClick={() => {
@@ -443,7 +444,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
             >
               Send Distribution
             </Button>
-            {superfluidQueryRes?.pool && pool && ensByAddress && (
+            {superfluidQueryRes?.pool && pool && (
               <ActivityFeed
                 poolSymbol={pool.symbol}
                 poolAddress={pool.poolAddress}
