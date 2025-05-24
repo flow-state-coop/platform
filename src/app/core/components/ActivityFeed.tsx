@@ -27,7 +27,7 @@ type ActivityFeedProps = {
   receivedTransferEvents: ReceivedTransferEvent[];
   ensByAddress: {
     [key: Address]: { name: string | null; avatar: string | null };
-  };
+  } | null;
 };
 
 type FlowUpdatedEvent = {
@@ -248,10 +248,10 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "FlowUpdatedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              {ensByAddress[(event as FlowUpdatedEvent).sender]?.avatar ? (
+              {ensByAddress?.[(event as FlowUpdatedEvent).sender]?.avatar ? (
                 <Image
                   src={
-                    ensByAddress[(event as FlowUpdatedEvent).sender].avatar ??
+                    ensByAddress?.[(event as FlowUpdatedEvent).sender].avatar ??
                     ""
                   }
                   alt=""
@@ -284,7 +284,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as FlowUpdatedEvent).sender}`}
                     target="_blank"
                   >
-                    {ensByAddress[(event as FlowUpdatedEvent).sender]?.name ??
+                    {ensByAddress?.[(event as FlowUpdatedEvent).sender]?.name ??
                       truncateStr((event as FlowUpdatedEvent).sender, 15)}
                   </Link>{" "}
                   {(event as FlowUpdatedEvent).oldFlowRate === "0" ? (
@@ -405,11 +405,12 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     className="align-items-center"
                     key={i}
                   >
-                    {ensByAddress[memberUnitsUpdatedEvent.poolMember.account.id]
-                      ?.avatar ? (
+                    {ensByAddress?.[
+                      memberUnitsUpdatedEvent.poolMember.account.id
+                    ]?.avatar ? (
                       <Image
                         src={
-                          ensByAddress[
+                          ensByAddress?.[
                             memberUnitsUpdatedEvent.poolMember.account.id
                           ].avatar ?? ""
                         }
@@ -434,7 +435,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                         href={`${network.blockExplorer}/address/${memberUnitsUpdatedEvent.poolMember.account.id}`}
                         target="_blank"
                       >
-                        {ensByAddress[
+                        {ensByAddress?.[
                           memberUnitsUpdatedEvent.poolMember.account.id
                         ]?.name ??
                           truncateStr(
@@ -503,11 +504,12 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     className="align-items-center"
                     key={i}
                   >
-                    {ensByAddress[memberUnitsUpdatedEvent.poolMember.account.id]
-                      ?.avatar ? (
+                    {ensByAddress?.[
+                      memberUnitsUpdatedEvent.poolMember.account.id
+                    ]?.avatar ? (
                       <Image
                         src={
-                          ensByAddress[
+                          ensByAddress?.[
                             memberUnitsUpdatedEvent.poolMember.account.id
                           ].avatar ?? ""
                         }
@@ -532,7 +534,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                         href={`${network.blockExplorer}/address/${memberUnitsUpdatedEvent.poolMember.account.id}`}
                         target="_blank"
                       >
-                        {ensByAddress[
+                        {ensByAddress?.[
                           memberUnitsUpdatedEvent.poolMember.account.id
                         ]?.name ??
                           truncateStr(
@@ -568,11 +570,11 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "PoolAdminAddedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              {ensByAddress[(event as PoolAdminAddedEvent).address as Address]
+              {ensByAddress?.[(event as PoolAdminAddedEvent).address as Address]
                 ?.avatar ? (
                 <Image
                   src={
-                    ensByAddress[
+                    ensByAddress?.[
                       (event as PoolAdminAddedEvent).address as Address
                     ].avatar ?? ""
                   }
@@ -606,7 +608,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as PoolAdminAddedEvent).address}`}
                     target="_blank"
                   >
-                    {ensByAddress[
+                    {ensByAddress?.[
                       (event as PoolAdminAddedEvent).address as Address
                     ]?.name ??
                       truncateStr((event as PoolAdminAddedEvent).address, 15)}
@@ -636,11 +638,12 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "PoolAdminRemovedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              {ensByAddress[(event as PoolAdminRemovedEvent).address as Address]
-                ?.avatar ? (
+              {ensByAddress?.[
+                (event as PoolAdminRemovedEvent).address as Address
+              ]?.avatar ? (
                 <Image
                   src={
-                    ensByAddress[
+                    ensByAddress?.[
                       (event as PoolAdminRemovedEvent).address as Address
                     ].avatar ?? ""
                   }
@@ -674,7 +677,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as PoolAdminRemovedEvent).address}`}
                     target="_blank"
                   >
-                    {ensByAddress[
+                    {ensByAddress?.[
                       (event as PoolAdminRemovedEvent).address as Address
                     ]?.name ??
                       truncateStr((event as PoolAdminRemovedEvent).address, 15)}
@@ -704,13 +707,13 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "FlowDistributionUpdatedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              {ensByAddress[
+              {ensByAddress?.[
                 (event as FlowDistributionUpdatedEvent).poolDistributor.account
                   .id
               ]?.avatar ? (
                 <Image
                   src={
-                    ensByAddress[
+                    ensByAddress?.[
                       (event as FlowDistributionUpdatedEvent).poolDistributor
                         .account.id
                     ].avatar ?? ""
@@ -746,7 +749,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as FlowDistributionUpdatedEvent).poolDistributor.account.id}`}
                     target="_blank"
                   >
-                    {ensByAddress[
+                    {ensByAddress?.[
                       (event as FlowDistributionUpdatedEvent).poolDistributor
                         .account.id
                     ]?.name ??
@@ -839,13 +842,13 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "InstantDistributionUpdatedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              {ensByAddress[
+              {ensByAddress?.[
                 (event as InstantDistributionUpdatedEvent).poolDistributor
                   .account.id
               ]?.avatar ? (
                 <Image
                   src={
-                    ensByAddress[
+                    ensByAddress?.[
                       (event as InstantDistributionUpdatedEvent).poolDistributor
                         .account.id
                     ].avatar ?? ""
@@ -881,7 +884,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as FlowDistributionUpdatedEvent).poolDistributor.account.id}`}
                     target="_blank"
                   >
-                    {ensByAddress[
+                    {ensByAddress?.[
                       (event as InstantDistributionUpdatedEvent).poolDistributor
                         .account.id
                     ]?.name ??
@@ -927,11 +930,11 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "TransferEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              {ensByAddress[(event as ReceivedTransferEvent).from.id]
+              {ensByAddress?.[(event as ReceivedTransferEvent).from.id]
                 ?.avatar ? (
                 <Image
                   src={
-                    ensByAddress[(event as ReceivedTransferEvent).from.id]
+                    ensByAddress?.[(event as ReceivedTransferEvent).from.id]
                       .avatar ?? ""
                   }
                   alt=""
@@ -964,7 +967,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as ReceivedTransferEvent).from.id}`}
                     target="_blank"
                   >
-                    {ensByAddress[(event as ReceivedTransferEvent).from.id]
+                    {ensByAddress?.[(event as ReceivedTransferEvent).from.id]
                       ?.name ??
                       truncateStr((event as ReceivedTransferEvent).from.id, 15)}
                   </Link>{" "}

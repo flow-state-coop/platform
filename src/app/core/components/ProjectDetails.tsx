@@ -29,7 +29,7 @@ export default function ProjectDetails() {
         <Stack
           direction="horizontal"
           gap={1}
-          className="align-items-end text-info fs-6"
+          className="align-items-end mt-1 text-info fs-6"
         >
           <Button
             variant="link"
