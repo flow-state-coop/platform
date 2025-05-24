@@ -262,7 +262,7 @@ export default function Core(props: CoreProps) {
       [key: Address]: { name: string | null; avatar: string | null };
     } = {};
     (async () => {
-      if (!safeQueryRes) {
+      if (!safeQueryRes || (flowSplitter && !gdaPoolQueryRes)) {
         return;
       }
 
@@ -351,7 +351,7 @@ export default function Core(props: CoreProps) {
 
       setEnsByAddress(ensByAddress);
     })();
-  }, [pool, gdaPoolQueryRes, safeQueryRes]);
+  }, [flowSplitter, pool, gdaPoolQueryRes, safeQueryRes]);
 
   useEffect(() => {
     if (connectedChain && connectedChain.id !== chainId) {
