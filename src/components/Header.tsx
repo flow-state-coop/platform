@@ -32,7 +32,7 @@ export default function Header() {
             pathname?.startsWith("/flow-councils/membership") ||
             pathname?.startsWith("/flow-councils/review") ||
             pathname?.startsWith("/grantee") ||
-            pathname?.startsWith("/core") ||
+            pathname?.startsWith("/flow-guilds") ||
             pathname?.startsWith("/terms") ||
             pathname?.startsWith("/privacy") ||
             pathname?.startsWith("/conduct")

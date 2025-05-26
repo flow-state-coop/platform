@@ -13,7 +13,6 @@ const networks: Network[] = [
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/base-mainnet/protocol-v1",
     onRampLabel: "base",
-    flowStateCoreGda: "0xDa52BaD6d11f5027c1ee45798c9c7e733b96F43b",
     pay16zPool: "0x7B0d808456100a6015423C8BF8759509c1252129",
     flowSplitter: "0x25B64C200cf3362BaC6961353D38A1dbEB42e60E",
     flowSplitterSubgraph:
@@ -70,7 +69,6 @@ const networks: Network[] = [
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/optimism-mainnet/protocol-v1",
     onRampLabel: "optimism",
-    flowStateCoreGda: "0x",
     pay16zPool: "0x",
     flowSplitter: "0x25B64C200cf3362BaC6961353D38A1dbEB42e60E",
     flowSplitterSubgraph:
@@ -126,7 +124,6 @@ const networks: Network[] = [
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/arbitrum-one/protocol-v1",
     onRampLabel: "arbitrum",
-    flowStateCoreGda: "0x",
     pay16zPool: "0x",
     flowSplitter: "0x25B64C200cf3362BaC6961353D38A1dbEB42e60E",
     flowSplitterSubgraph:
@@ -177,7 +174,6 @@ const networks: Network[] = [
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/optimism-sepolia/protocol-v1",
     onRampLabel: "optimism",
-    flowStateCoreGda: "0xe70150912e11BB4E3A27dBB786DdEDD9783Bc93A",
     pay16zPool: "0x1f4c05f5a7900d4cfbc9dd892e8ce61d9727ce8c",
     flowSplitter: "0xd53B8Bed28E122eA20dCC90d3991a614EC163a21",
     flowSplitterSubgraph:

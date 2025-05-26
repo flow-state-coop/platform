@@ -208,7 +208,7 @@ export default function HomePage() {
           </Button>
           <Button
             variant="link"
-            href="/core"
+            href="/flow-guilds/core"
             className="d-flex flex-column flex-center rounded-4 p-2 p-sm-4 shadow cursor-pointer text-decoration-none"
             style={{
               width: isMobile ? "100%" : "40%",
