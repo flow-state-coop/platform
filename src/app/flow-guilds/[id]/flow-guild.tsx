@@ -15,24 +15,25 @@ import Offcanvas from "react-bootstrap/Offcanvas";
 import Spinner from "react-bootstrap/Spinner";
 import Modal from "react-bootstrap/Modal";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
-import ActivityFeed from "./components/ActivityFeed";
-import Graph from "./components/Graph";
-import ProjectDetails from "./components/ProjectDetails";
-import OpenFlow from "./components/OpenFlow";
-import DonateOnce from "./components/DonateOnce";
+import ActivityFeed from "../components/ActivityFeed";
+import Graph from "../components/Graph";
+import ProjectDetails from "../components/ProjectDetails";
+import OpenFlow from "../components/OpenFlow";
+import DonateOnce from "../components/DonateOnce";
 import { Token } from "@/types/token";
 import { getApolloClient } from "@/lib/apollo";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import { flowStateFlowSplitters } from "./lib/flowSplittersTable";
+import { FlowGuildConfig } from "../lib/flowGuildConfig";
 import { networks } from "@/lib/networks";
-import { FLOW_STATE_RECEIVER, IPFS_GATEWAYS } from "@/lib/constants";
+import { IPFS_GATEWAYS } from "@/lib/constants";
 
-type CoreProps = {
+type FlowGuildProps = {
+  flowGuildConfig: FlowGuildConfig;
   chainId: number;
 };
 
-const CORE_POOL_QUERY = gql`
-  query CorePoolQuery($poolId: String!) {
+const FLOW_GUILD_POOL_QUERY = gql`
+  query FlowGuildPoolQuery($poolId: String!) {
     pools(where: { id: $poolId }) {
       poolAddress
       name
@@ -64,12 +65,12 @@ const CORE_POOL_QUERY = gql`
 `;
 
 const SAFE_QUERY = gql`
-  query SafeQuery($token: String!, $flowStateSafe: String!) {
+  query SafeQuery($token: String!, $safe: String!) {
     token(id: $token) {
       id
       symbol
     }
-    account(id: $flowStateSafe) {
+    account(id: $safe) {
       accountTokenSnapshots(where: { token: $token }) {
         totalInflowRate
         activeIncomingStreamCount
@@ -92,7 +93,7 @@ const SAFE_QUERY = gql`
       first: 25
       orderBy: timestamp
       orderDirection: desc
-      where: { receiver: $flowStateSafe, token: $token }
+      where: { receiver: $safe, token: $token }
     ) {
       flowRate
       oldFlowRate
@@ -183,8 +184,8 @@ const GDA_POOL_QUERY = gql`
   }
 `;
 
-export default function Core(props: CoreProps) {
-  const { chainId } = props;
+export default function FlowGuild(props: FlowGuildProps) {
+  const { flowGuildConfig, chainId } = props;
 
   const network =
     networks.find((network) => network.id === chainId) ?? networks[0];
@@ -194,20 +195,22 @@ export default function Core(props: CoreProps) {
   const [showDonateOnce, setShowDonateOnce] = useState(false);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [selectedToken, setSelectedToken] = useState<Token>(
-    network.tokens.find((token) => token.symbol === "ETHx")!,
+    network.tokens.find(
+      (token) => token.symbol === flowGuildConfig.defaultToken,
+    ) ?? network.tokens[0],
   );
   const [ensByAddress, setEnsByAddress] = useState<{
     [key: Address]: { name: string | null; avatar: string | null };
   } | null>(null);
 
   const flowSplitter =
-    flowStateFlowSplitters[network.id]?.[selectedToken.symbol];
+    flowGuildConfig.flowSplitters[network.id]?.[selectedToken.symbol];
 
   const { isMobile } = useMediaQuery();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
   const { address, chain: connectedChain } = useAccount();
-  const { data: flowSplitterPoolQueryRes } = useQuery(CORE_POOL_QUERY, {
+  const { data: flowSplitterPoolQueryRes } = useQuery(FLOW_GUILD_POOL_QUERY, {
     client: getApolloClient("flowSplitter", chainId),
     variables: {
       poolId: flowSplitter?.id,
@@ -223,7 +226,7 @@ export default function Core(props: CoreProps) {
       client: getApolloClient("superfluid", chainId),
       variables: {
         token: selectedToken.address.toLowerCase(),
-        flowStateSafe: FLOW_STATE_RECEIVER,
+        safe: flowGuildConfig.safe,
       },
       pollInterval: 10000,
     },
@@ -252,9 +255,11 @@ export default function Core(props: CoreProps) {
   useEffect(
     () =>
       setSelectedToken(
-        network.tokens.find((token) => token.symbol === "ETHx")!,
+        network.tokens.find(
+          (token) => token.symbol === flowGuildConfig.defaultToken,
+        ) ?? network.tokens[0],
       ),
-    [network],
+    [network, flowGuildConfig],
   );
 
   useEffect(() => {
@@ -272,9 +277,11 @@ export default function Core(props: CoreProps) {
         addresses.push(flowUpdatedEvent.sender);
       }
 
-      for (const receivedTransferEvent of safeQueryRes.account
-        .receivedTransferEvents) {
-        addresses.push(receivedTransferEvent.from.id);
+      if (safeQueryRes.account) {
+        for (const receivedTransferEvent of safeQueryRes.account
+          .receivedTransferEvents) {
+          addresses.push(receivedTransferEvent.from.id);
+        }
       }
 
       if (pool) {
@@ -380,7 +387,7 @@ export default function Core(props: CoreProps) {
           >
             <Offcanvas.Header closeButton className="pb-0" />
             <Offcanvas.Body>
-              <ProjectDetails />
+              <ProjectDetails flowGuildConfig={flowGuildConfig} />
               <Button
                 className="w-100 mt-4 py-2 fs-5"
                 onClick={() => {
@@ -422,12 +429,14 @@ export default function Core(props: CoreProps) {
             <Offcanvas.Body>
               {showOpenFlow ? (
                 <OpenFlow
+                  flowGuildConfig={flowGuildConfig}
                   network={network!}
                   token={selectedToken}
                   selectToken={(token) => setSelectedToken(token)}
                 />
               ) : (
                 <DonateOnce
+                  flowGuildConfig={flowGuildConfig}
                   network={network!}
                   token={selectedToken}
                   selectToken={(token: Token) => setSelectedToken(token)}
@@ -447,6 +456,7 @@ export default function Core(props: CoreProps) {
             <Stack direction="vertical" className="mt-2 p-3">
               {showOpenFlow ? (
                 <OpenFlow
+                  flowGuildConfig={flowGuildConfig}
                   network={network!}
                   token={selectedToken}
                   selectToken={(token) => setSelectedToken(token)}
@@ -454,6 +464,7 @@ export default function Core(props: CoreProps) {
                 />
               ) : showDonateOnce ? (
                 <DonateOnce
+                  flowGuildConfig={flowGuildConfig}
                   network={network!}
                   token={selectedToken}
                   selectToken={(token: Token) => setSelectedToken(token)}
@@ -462,7 +473,7 @@ export default function Core(props: CoreProps) {
                 />
               ) : (
                 <>
-                  <ProjectDetails />
+                  <ProjectDetails flowGuildConfig={flowGuildConfig} />
                   <Button
                     className="w-100 mt-4 py-2 fs-5"
                     onClick={() => {
@@ -505,7 +516,8 @@ export default function Core(props: CoreProps) {
           {safeQueryRes && !safeQueryLoading && !gdaPoolQueryLoading && (
             <Graph
               key={chainId}
-              flowStateSafeInflowRate={
+              flowGuildConfig={flowGuildConfig}
+              safeInflowRate={
                 safeQueryRes?.account?.accountTokenSnapshots[0]
                   ?.totalInflowRate ?? "0"
               }
@@ -570,7 +582,7 @@ export default function Core(props: CoreProps) {
                 gdaPoolQueryRes?.pool.memberUnitsUpdatedEvents ?? []
               }
               receivedTransferEvents={
-                safeQueryRes.account.receivedTransferEvents
+                safeQueryRes.account?.receivedTransferEvents ?? []
               }
               ensByAddress={ensByAddress}
             />

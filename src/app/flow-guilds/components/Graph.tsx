@@ -25,14 +25,16 @@ import { GDAPool } from "@/types/gdaPool";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { networks } from "@/lib/networks";
 import { truncateStr, formatNumber } from "@/lib/utils";
-import { SECONDS_IN_MONTH, FLOW_STATE_RECEIVER } from "@/lib/constants";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import { FlowGuildConfig } from "../lib/flowGuildConfig";
+import { SECONDS_IN_MONTH } from "@/lib/constants";
 import "@xyflow/react/dist/style.css";
 
 type GraphProps = {
+  flowGuildConfig: FlowGuildConfig;
   token: Token;
   pool: GDAPool;
-  flowStateSafeInflowRate: `${number}`;
+  safeInflowRate: `${number}`;
   totalDonors: number;
   chainId: number;
   ensByAddress: {
@@ -98,7 +100,7 @@ function CustomNode(props: NodeProps<Node>) {
     BigInt((data?.flowRate as string) ?? 0),
   );
 
-  if (data.isFlowStateSafeDonor) {
+  if (data.isSafeDonor) {
     return (
       <>
         <Stack
@@ -130,7 +132,7 @@ function CustomNode(props: NodeProps<Node>) {
     );
   }
 
-  if (data.isFlowStateSafe) {
+  if (data.isSafe) {
     return (
       <>
         <Stack
@@ -138,7 +140,7 @@ function CustomNode(props: NodeProps<Node>) {
           className="align-items-center bg-white p-3 rounded-4 cursor-pointer shadow"
           style={{ width: 230 }}
         >
-          <Image src="/logo-circle.svg" alt="Logo" width={42} height={42} />
+          <Image src={data.logo as string} alt="Logo" width={42} height={42} />
           <Stack direction="vertical" gap={1} className="align-items-center">
             <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
               {data?.label?.toString() ?? ""}
@@ -395,9 +397,10 @@ function CustomEdge(props: EdgeProps<Edge>) {
 
 export default function Graph(props: GraphProps) {
   const {
+    flowGuildConfig,
     token,
     pool,
-    flowStateSafeInflowRate,
+    safeInflowRate,
     totalDonors,
     chainId,
     ensByAddress,
@@ -407,7 +410,7 @@ export default function Graph(props: GraphProps) {
   const { isMobile } = useMediaQuery();
 
   const graph = useMemo(() => {
-    const totalDonations = BigInt(flowStateSafeInflowRate);
+    const totalDonations = BigInt(safeInflowRate);
 
     const nodesFromPoolDistributors = pool
       ? pool.poolDistributors
@@ -418,14 +421,17 @@ export default function Graph(props: GraphProps) {
               position: { x: 0, y: 0 },
               type: "custom",
               data: {
-                isFlowStateSafe: true,
+                isSafe: x.account.id === flowGuildConfig.safe,
                 label:
-                  x.account.id.toLowerCase() ===
-                  FLOW_STATE_RECEIVER.toLowerCase()
-                    ? "Flow State"
+                  x.account.id === flowGuildConfig.safe
+                    ? flowGuildConfig.name
                     : (ensByAddress?.[x.account.id]?.name ??
                       truncateStr(x.account.id, 11)),
                 avatar: ensByAddress?.[x.account.id]?.avatar,
+                logo:
+                  x.account.id === flowGuildConfig.safe
+                    ? flowGuildConfig.logo
+                    : "",
                 address: x.account.id,
                 flowRate: BigInt(x.flowRate),
                 percentage:
@@ -445,10 +451,11 @@ export default function Graph(props: GraphProps) {
             position: { x: 0, y: 0 },
             type: "custom",
             data: {
-              isFlowStateSafe: true,
-              label: "Flow State",
-              address: FLOW_STATE_RECEIVER,
-              flowRate: BigInt(flowStateSafeInflowRate),
+              isSafe: true,
+              label: flowGuildConfig.name,
+              logo: flowGuildConfig.logo,
+              address: flowGuildConfig.safe,
+              flowRate: BigInt(safeInflowRate),
               percentage: 1,
               isDistributor: true,
               chainId,
@@ -488,11 +495,11 @@ export default function Graph(props: GraphProps) {
           .flat()
       : [];
 
-    const edgesFromFlowStateSafeDonor = [
+    const edgesFromSafeDonors = [
       {
-        id: pool ? `donors-${FLOW_STATE_RECEIVER}-distributor` : "donors-safe",
+        id: pool ? `donors-${flowGuildConfig.safe}-distributor` : "donors-safe",
         source: `donors`,
-        target: pool ? `${FLOW_STATE_RECEIVER}-distributor` : "safe",
+        target: pool ? `${flowGuildConfig.safe}-distributor` : "safe",
         type: "custom",
         data: {
           flowRate: totalDonations,
@@ -543,7 +550,7 @@ export default function Graph(props: GraphProps) {
           position: { x: 0, y: 0 },
           type: "custom",
           data: {
-            isFlowStateSafeDonor: true,
+            isSafeDonor: true,
             label: `${totalDonors} Active Donor${totalDonors !== 1 ? "s" : ""}`,
             token: { address: token.address, symbol: token.symbol },
             flowRate: totalDonations,
@@ -582,7 +589,7 @@ export default function Graph(props: GraphProps) {
         ...nodesFromPoolMembers,
       ].flat(),
       [
-        ...edgesFromFlowStateSafeDonor,
+        ...edgesFromSafeDonors,
         ...edgesFromPoolDistributors,
         ...edgesFromPoolMembers,
       ].flat(),
@@ -593,8 +600,9 @@ export default function Graph(props: GraphProps) {
     pool,
     chainId,
     token,
+    flowGuildConfig,
     ensByAddress,
-    flowStateSafeInflowRate,
+    safeInflowRate,
     totalDonors,
     isMobile,
     showProjectDetails,

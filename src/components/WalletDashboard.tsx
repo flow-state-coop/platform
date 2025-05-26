@@ -479,7 +479,7 @@ export default function WalletBalance() {
                       {outflow.receiver.id === FLOW_STATE_RECEIVER ? (
                         <Button
                           variant="transparent"
-                          href={`/core/?chainId=${chainId}`}
+                          href={`/flow-guilds/core/?chainId=${chainId}`}
                           target="_blank"
                           className="px-0 py-2"
                         >

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Address, parseUnits, parseEther, parseAbi, formatEther } from "viem";
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
@@ -46,12 +46,14 @@ import {
   formatNumber,
   convertStreamValueToInterval,
 } from "@/lib/utils";
-import { ZERO_ADDRESS, FLOW_STATE_RECEIVER } from "@/lib/constants";
+import { FlowGuildConfig } from "../lib/flowGuildConfig";
+import { ZERO_ADDRESS } from "@/lib/constants";
 
 dayjs().format();
 dayjs.extend(duration);
 
 type OpenFlowProps = {
+  flowGuildConfig: FlowGuildConfig;
   network: Network;
   token: Token;
   selectToken: (token: Token) => void;
@@ -95,7 +97,7 @@ const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
 `;
 
 export default function OpenFlow(props: OpenFlowProps) {
-  const { network, token, selectToken, handleClose } = props;
+  const { flowGuildConfig, network, token, selectToken, handleClose } = props;
 
   const balancePlotFlowInfoSnapshot = useRef<BalancePlotFlowInfo | null>(null);
 
@@ -121,6 +123,7 @@ export default function OpenFlow(props: OpenFlowProps) {
     setHasAcceptedCloseLiquidationWarning,
   ] = useState(false);
 
+  const urlParams = useParams();
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
   const ethersProvider = useEthersProvider({ chainId: network.id });
@@ -137,7 +140,7 @@ export default function OpenFlow(props: OpenFlowProps) {
     variables: {
       address: address?.toLowerCase() ?? "",
       token: token?.address.toLowerCase() ?? "",
-      receiver: FLOW_STATE_RECEIVER,
+      receiver: flowGuildConfig.safe,
     },
     pollInterval: 10000,
     skip: !address || !token,
@@ -160,6 +163,7 @@ export default function OpenFlow(props: OpenFlowProps) {
     },
   });
 
+  const guildId = urlParams.id;
   const balanceUntilUpdatedAt = realtimeBalanceOfNow?.[0];
   const updatedAtTimestamp = realtimeBalanceOfNow
     ? Number(realtimeBalanceOfNow[3])
@@ -525,7 +529,7 @@ export default function OpenFlow(props: OpenFlowProps) {
       operations.push(
         editFlow(
           distributionSuperToken,
-          FLOW_STATE_RECEIVER,
+          flowGuildConfig.safe,
           flowRateToReceiver,
           newFlowRate.toString(),
         ),
@@ -545,6 +549,7 @@ export default function OpenFlow(props: OpenFlowProps) {
     newFlowRate,
     underlyingTokenAllowance,
     sfFramework,
+    flowGuildConfig,
     ethersProvider,
     ethersSigner,
     distributionSuperToken,
@@ -657,7 +662,7 @@ export default function OpenFlow(props: OpenFlowProps) {
     try {
       const tx = await editFlow(
         distributionSuperToken,
-        FLOW_STATE_RECEIVER,
+        flowGuildConfig.safe,
         flowRateToReceiver,
         "0",
       ).exec(ethersSigner);
@@ -693,7 +698,7 @@ export default function OpenFlow(props: OpenFlowProps) {
       >
         <Image src="/sup.svg" alt="SUP" width={36} height={36} />
         <Card.Text>
-          Did you know that donation streams to Flow State{" "}
+          Did you know that donation streams to {flowGuildConfig.name}{" "}
           <Card.Link href="https://claim.superfluid.org/claim" target="_blank">
             earn $SUP
           </Card.Link>
@@ -713,7 +718,7 @@ export default function OpenFlow(props: OpenFlowProps) {
               <Dropdown.Item
                 key={i}
                 onClick={() => {
-                  router.push(`/core/?chainId=${network.id}`);
+                  router.push(`/flow-guilds/${guildId}/?chainId=${network.id}`);
                 }}
               >
                 {network.name}

@@ -31,12 +31,14 @@ import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { truncateStr, formatNumber, isNumber } from "@/lib/utils";
-import { ZERO_ADDRESS, FLOW_STATE_RECEIVER } from "@/lib/constants";
+import { FlowGuildConfig } from "../lib/flowGuildConfig";
+import { ZERO_ADDRESS } from "@/lib/constants";
 
 dayjs().format();
 dayjs.extend(duration);
 
 type DonateOnceProps = {
+  flowGuildConfig: FlowGuildConfig;
   network: Network;
   token: Token;
   selectToken: (token: Token) => void;
@@ -63,7 +65,14 @@ const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
 `;
 
 export default function DonateOnce(props: DonateOnceProps) {
-  const { network, token, selectToken, showOpenFlow, handleClose } = props;
+  const {
+    flowGuildConfig,
+    network,
+    token,
+    selectToken,
+    showOpenFlow,
+    handleClose,
+  } = props;
 
   const [amount, setAmount] = useState("");
   const [wrapAmount, setWrapAmount] = useState("");
@@ -248,7 +257,7 @@ export default function DonateOnce(props: DonateOnceProps) {
       transactions.push(async () => {
         const tx = await distributionSuperToken
           .transfer({
-            receiver: FLOW_STATE_RECEIVER,
+            receiver: flowGuildConfig.safe,
             amount: amountWei.toString(),
           })
           .exec(ethersSigner);
@@ -262,6 +271,7 @@ export default function DonateOnce(props: DonateOnceProps) {
     address,
     wrapAmount,
     amountWei,
+    flowGuildConfig,
     underlyingTokenBalance,
     underlyingTokenAllowance,
     sfFramework,
@@ -336,7 +346,7 @@ export default function DonateOnce(props: DonateOnceProps) {
       >
         <Image src="/sup.svg" alt="SUP" width={36} height={36} />
         <Card.Text className="m-0">
-          Did you know that donation streams to Flow State earn{" "}
+          Did you know that donation streams to {flowGuildConfig.name} earn{" "}
           <Card.Link href="https://claim.superfluid.org/claim" target="_blank">
             SUP token rewards
           </Card.Link>
@@ -361,14 +371,14 @@ export default function DonateOnce(props: DonateOnceProps) {
         <InputGroup className="align-items-center gap-2">
           <Form.Control
             disabled
-            value={truncateStr(FLOW_STATE_RECEIVER, 20)}
+            value={truncateStr(flowGuildConfig.safe, 20)}
             className="w-50 rounded-2 overflow-hidden"
           />
           <CopyTooltip
             contentClick="Address copied"
             contentHover="Copy address"
             handleCopy={() =>
-              navigator.clipboard.writeText(FLOW_STATE_RECEIVER)
+              navigator.clipboard.writeText(flowGuildConfig.safe)
             }
             target={
               <Image src="/copy-dark.svg" alt="Copy" width={24} height={24} />
@@ -376,7 +386,7 @@ export default function DonateOnce(props: DonateOnceProps) {
           />
           <Button
             variant="link"
-            href={`${network.blockExplorer}/address/${FLOW_STATE_RECEIVER}`}
+            href={`${network.blockExplorer}/address/${flowGuildConfig.safe}`}
             target="_blank"
             className="p-0"
           >

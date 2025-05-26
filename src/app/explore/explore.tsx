@@ -207,7 +207,7 @@ export default function Explore() {
                   .updatedAtTimestamp
               }
               tokenSymbol="ETHx"
-              link="/core"
+              link="/flow-guilds/core"
             />
             <RoundCard
               name="Octant Builder Accelerator"
