@@ -124,7 +124,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   ] = useState(false);
 
   const urlParams = useParams();
-  const { isMobile } = useMediaQuery();
+  const { isMobile, isTablet } = useMediaQuery();
   const { address } = useAccount();
   const ethersProvider = useEthersProvider({ chainId: network.id });
   const ethersSigner = useEthersSigner({ chainId: network.id });
@@ -681,7 +681,7 @@ export default function OpenFlow(props: OpenFlowProps) {
     <Stack direction="vertical">
       <Stack direction="horizontal" className="justify-content-between">
         <Card.Text className="fs-3 mb-0">Open Flow</Card.Text>
-        {!isMobile && (
+        {!isMobile && !isTablet && (
           <Button
             variant="transparent"
             onClick={handleClose}

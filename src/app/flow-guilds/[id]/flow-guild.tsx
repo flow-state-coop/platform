@@ -206,7 +206,7 @@ export default function FlowGuild(props: FlowGuildProps) {
   const flowSplitter =
     flowGuildConfig.flowSplitters[network.id]?.[selectedToken.symbol];
 
-  const { isMobile } = useMediaQuery();
+  const { isMobile, isTablet } = useMediaQuery();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
   const { address, chain: connectedChain } = useAccount();
@@ -375,10 +375,10 @@ export default function FlowGuild(props: FlowGuildProps) {
   return (
     <>
       <Stack
-        direction={isMobile ? "vertical" : "horizontal"}
+        direction={isMobile || isTablet ? "vertical" : "horizontal"}
         className="align-items-start flex-grow-1"
       >
-        {isMobile && showProjectDetails && (
+        {(isMobile || isTablet) && showProjectDetails && (
           <Offcanvas
             show={showProjectDetails}
             placement="bottom"
@@ -416,7 +416,7 @@ export default function FlowGuild(props: FlowGuildProps) {
             </Offcanvas.Body>
           </Offcanvas>
         )}
-        {isMobile ? (
+        {isMobile || isTablet ? (
           <Offcanvas
             show={showOpenFlow || showDonateOnce}
             placement="bottom"
@@ -506,7 +506,7 @@ export default function FlowGuild(props: FlowGuildProps) {
         )}
         <div
           className="h-100 px-4 mb-5"
-          style={{ width: isMobile ? "100%" : "75%" }}
+          style={{ width: isMobile || isTablet ? "100%" : "75%" }}
         >
           {(!safeQueryRes || safeQueryLoading || gdaPoolQueryLoading) && (
             <span className="d-flex justify-content-center align-items-center w-100 h-100">
@@ -532,7 +532,7 @@ export default function FlowGuild(props: FlowGuildProps) {
               showProjectDetails={() => setShowProjectDetails(true)}
             />
           )}
-          {isMobile && (
+          {(isMobile || isTablet) && (
             <>
               <Button
                 variant="primary"

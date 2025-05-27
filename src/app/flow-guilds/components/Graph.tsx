@@ -408,7 +408,7 @@ export default function Graph(props: GraphProps) {
     showProjectDetails,
   } = props;
 
-  const { isMobile } = useMediaQuery();
+  const { isMobile, isTablet } = useMediaQuery();
 
   const graph = useMemo(() => {
     const totalDonations = BigInt(safeInflowRate);
@@ -440,7 +440,7 @@ export default function Graph(props: GraphProps) {
                   Number(formatEther(BigInt(pool.flowRate))),
                 isDistributor: true,
                 chainId,
-                isMobile,
+                isMobile: isMobile || isTablet,
                 showProjectDetails,
               },
             },
@@ -460,7 +460,7 @@ export default function Graph(props: GraphProps) {
               percentage: 1,
               isDistributor: true,
               chainId,
-              isMobile,
+              isMobile: isMobile || isTablet,
               showProjectDetails,
             },
           },
@@ -489,7 +489,7 @@ export default function Graph(props: GraphProps) {
                       BigInt(pool.totalUnits)
                     : BigInt(0),
                 chainId,
-                isMobile,
+                isMobile: isMobile || isTablet,
               },
             },
           ])
@@ -556,7 +556,7 @@ export default function Graph(props: GraphProps) {
             token: { address: token.address, symbol: token.symbol },
             flowRate: totalDonations,
             chainId,
-            isMobile,
+            isMobile: isMobile || isTablet,
           },
         },
         ...nodesFromPoolDistributors,
@@ -583,7 +583,7 @@ export default function Graph(props: GraphProps) {
                   pool.totalAmountInstantlyDistributedUntilUpdatedAt,
                 updatedAtTimestamp: pool.updatedAtTimestamp,
                 chainId,
-                isMobile,
+                isMobile: isMobile || isTablet,
               },
             }
           : [],
@@ -606,6 +606,7 @@ export default function Graph(props: GraphProps) {
     safeInflowRate,
     totalDonors,
     isMobile,
+    isTablet,
     showProjectDetails,
   ]);
 

@@ -85,7 +85,7 @@ export default function DonateOnce(props: DonateOnceProps) {
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("");
   const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
 
-  const { isMobile } = useMediaQuery();
+  const { isMobile, isTablet } = useMediaQuery();
   const { address } = useAccount();
   const router = useRouter();
   const ethersProvider = useEthersProvider({ chainId: network.id });
@@ -329,7 +329,7 @@ export default function DonateOnce(props: DonateOnceProps) {
     <Stack direction="vertical">
       <Stack direction="horizontal" className="justify-content-between">
         <Card.Text className="fs-3 mb-0">Donate Once</Card.Text>
-        {!isMobile && (
+        {!isMobile && !isTablet && (
           <Button
             variant="transparent"
             onClick={handleClose}
