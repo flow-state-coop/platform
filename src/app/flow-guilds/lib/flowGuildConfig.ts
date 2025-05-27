@@ -8,7 +8,7 @@ export type FlowGuildConfig = {
   website: string;
   github: string;
   twitter: string;
-  warpcast: string;
+  farcaster: string;
   telegram: string;
   discord: string;
   defaultChainId: number;
@@ -28,7 +28,7 @@ export const flowGuildConfigs: {
     website: "https://flowstate.network/flow-guilds/core",
     github: "https://github.com/flow-state-coop",
     twitter: "https://x.com/flowstatecoop",
-    warpcast: "https://warpcast.com/flowstatecoop",
+    farcaster: "https://farcaster.xyz/flowstatecoop",
     telegram: "https://t.me/flowstatecoop",
     discord: "",
     defaultChainId: 8453,
@@ -47,7 +47,7 @@ export const flowGuildConfigs: {
       "https://app.charmverse.io/greenpill-dev-guild/home-089855607278293",
     github: "https://github.com/greenpill-dev-guild",
     twitter: "https://x.com/gp_dev_guild",
-    warpcast: "https://warpcast.com/~/channel/greenpill-devs",
+    farcaster: "https://farcaster.xyz/~/channel/greenpill-devs",
     telegram: "",
     discord: "https://discord.gg/ZJjft2EKz7",
     defaultChainId: 10,

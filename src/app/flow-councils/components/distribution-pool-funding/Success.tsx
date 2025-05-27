@@ -47,7 +47,7 @@ export default function Success(props: SuccessProps) {
             className="d-flex flex-column align-items-center text-decoration-none fs-6 m-0 w-50"
             rel="noreferrer"
             target="_blank"
-            href={`https://warpcast.com/~/compose?text=I+just+opened+a+stream+to+the+${councilName}+distribution+pool+on+Flow+State.%0AJoin+me+in+supporting+these+public+goods+builders+at&embeds[]=${encodeURIComponent(councilUiLink)}`}
+            href={`https://farcaster.xyz/~/compose?text=I+just+opened+a+stream+to+the+${councilName}+distribution+pool+on+Flow+State.%0AJoin+me+in+supporting+these+public+goods+builders+at&embeds[]=${encodeURIComponent(councilUiLink)}`}
           >
             <Image
               src="/farcaster.svg"

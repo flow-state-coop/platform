@@ -196,11 +196,16 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
         {!!metadata.projectWarpcast && (
           <Button
             variant="link"
-            href={`https://warpcast.com/${metadata.projectWarpcast}`}
+            href={`https://farcaster.xyz/${metadata.projectWarpcast}`}
             target="_blank"
             className="p-0"
           >
-            <Image src="/warpcast.svg" alt="Warpcast" width={16} height={16} />
+            <Image
+              src="/farcaster.svg"
+              alt="Farcaster"
+              width={16}
+              height={16}
+            />
           </Button>
         )}
         {!!metadata.projectLens && (

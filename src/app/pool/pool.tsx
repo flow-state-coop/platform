@@ -50,7 +50,7 @@ export type Grantee = {
   metadata: ProjectMetadata;
   bannerCid: string;
   twitter: string;
-  warpcast: string;
+  farcaster: string;
   inflow: Inflow;
   matchingFlowRate: bigint;
   impactMatchingEstimate: bigint;
@@ -312,7 +312,7 @@ export default function Pool(props: PoolProps) {
         metadata: recipient.metadata,
         bannerCid: recipient.metadata.bannerImg,
         twitter: recipient.metadata.projectTwitter,
-        warpcast: recipient.metadata.projectWarpcast,
+        farcaster: recipient.metadata.projectWarpcast,
         inflow: superappAccount.accountTokenSnapshots[0],
         matchingFlowRate: memberFlowRate ?? BigInt(0),
         impactMatchingEstimate,
@@ -740,7 +740,9 @@ export default function Pool(props: PoolProps) {
               grantees[transactionPanelState.selectedGrantee].placeholderLogo
             }
             twitter={grantees[transactionPanelState.selectedGrantee].twitter}
-            warpcast={grantees[transactionPanelState.selectedGrantee].warpcast}
+            farcaster={
+              grantees[transactionPanelState.selectedGrantee].farcaster
+            }
             recipientAddress={
               grantees[transactionPanelState.selectedGrantee].recipientAddress
             }

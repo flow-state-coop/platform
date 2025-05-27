@@ -383,19 +383,19 @@ export default function Project(props: ProjectProps) {
           {!!project?.metadata.projectWarpcast && (
             <Button
               variant="link"
-              href={`https://warpcast.com/${project.metadata.projectWarpcast}`}
+              href={`https://farcaster.xyz/${project.metadata.projectWarpcast}`}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
               style={{ width: !isMobile ? "33%" : "" }}
             >
               <Image
-                src="/warpcast.svg"
-                alt="warpcast"
+                src="/farcaster.svg"
+                alt="farcaster"
                 width={16}
                 height={16}
               />
               <Card.Text className="text-truncate">
-                {`warpcast.com/${project.metadata.projectWarpcast}`}
+                {`farcaster.xyz/${project.metadata.projectWarpcast}`}
               </Card.Text>
             </Button>
           )}
