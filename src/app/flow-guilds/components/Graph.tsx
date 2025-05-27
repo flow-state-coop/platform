@@ -44,8 +44,8 @@ type GraphProps = {
 };
 
 const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-const nodeWidth = 60;
-const nodeHeight = 60;
+const nodeWidth = 100;
+const nodeHeight = 100;
 
 const getLayoutedElements = (
   nodes: Node[],
@@ -272,6 +272,7 @@ function CustomNode(props: NodeProps<Node>) {
         direction="vertical"
         gap={1}
         className="align-items-center cursor-pointer"
+        style={{ width: 200 }}
       >
         {data.avatar ? (
           <Image
