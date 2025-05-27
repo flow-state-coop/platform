@@ -38,10 +38,11 @@ export const flowGuildConfigs: {
       8453: { ETHx: { id: "0x3" }, USDCx: { id: "0x10" } },
     },
   },
-  ["greenpilldevs"]: {
-    id: "greenpilldevs",
+  ["greenpilldevguild"]: {
+    id: "greenpilldevguild",
     name: "Green Pill Dev Guild",
-    description: "Green Pill Dev Guild",
+    description:
+      "We unite builders dedicated to regenerative innovation, creating Ethereum-based tools and resources that empower regen communities.",
     logo: "/greenpill.png",
     website:
       "https://app.charmverse.io/greenpill-dev-guild/home-089855607278293",
@@ -53,6 +54,8 @@ export const flowGuildConfigs: {
     defaultChainId: 10,
     defaultToken: "USDGLOx",
     safe: "0xe09315a86ed0a39862158f5631b928145987fe05",
-    flowSplitters: {},
+    flowSplitters: {
+      10: { USDGLOx: { id: "0x5" } },
+    },
   },
 };
