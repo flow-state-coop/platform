@@ -35,14 +35,12 @@ const SQF_STREAM_QUERY = gql`
 `;
 
 const CORE_ROUND_QUERY = gql`
-  query CoreRoundQuery($safeAddress: String, $token: String) {
-    account(id: $safeAddress) {
+  query CoreRoundQuery($gdaPool: String) {
+    pool(id: $gdaPool) {
       id
-      accountTokenSnapshots(where: { token: $token }) {
-        totalAmountStreamedInUntilUpdatedAt
-        totalNetFlowRate
-        updatedAtTimestamp
-      }
+      flowRate
+      totalAmountFlowedDistributedUntilUpdatedAt
+      updatedAtTimestamp
     }
   }
 `;
@@ -70,8 +68,7 @@ const SQF_ADDRESSES = {
 
 const FLOW_GUILD_ADDRESSES = {
   ["core"]: {
-    safe: "0x0d9d26375b882e0ddb38a781a40e80945e3d0b9b",
-    token: "0x46fd5cfb4c12d87acd3a13e92baa53240c661d93",
+    gdaPool: "0x83b00619da1cd93f86884c156bf7fab046bda3f6",
   },
 };
 
@@ -103,8 +100,7 @@ export default function Explore() {
     {
       client: sfApolloClient,
       variables: {
-        safeAddress: FLOW_GUILD_ADDRESSES["core"].safe,
-        token: FLOW_GUILD_ADDRESSES["core"].token,
+        gdaPool: FLOW_GUILD_ADDRESSES["core"].gdaPool,
       },
       pollInterval: 10000,
     },
@@ -194,18 +190,14 @@ export default function Explore() {
               name="Core Contributors"
               image="/logo-circle.svg"
               roundType="Flow Guild"
-              totalStreamedUntilUpdatedAt={
-                coreRoundQueryRes?.account.accountTokenSnapshots[0]
-                  .totalAmountStreamedInUntilUpdatedAt
-              }
-              flowRate={
-                coreRoundQueryRes?.account.accountTokenSnapshots[0]
-                  .totalInflowRate
-              }
-              updatedAt={
-                coreRoundQueryRes?.account.accountTokenSnapshots[0]
-                  .updatedAtTimestamp
-              }
+              totalStreamedUntilUpdatedAt={BigInt(
+                coreRoundQueryRes?.pool
+                  .totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
+              ).toString()}
+              flowRate={BigInt(
+                coreRoundQueryRes?.pool.flowRate ?? 0,
+              ).toString()}
+              updatedAt={coreRoundQueryRes?.pool.updatedAtTimestamp}
               tokenSymbol="ETHx"
               link="/flow-guilds/core"
             />
