@@ -422,13 +422,13 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
             </InputGroup>
           </Form.Group>
           <Form.Group className="mb-4">
-            <Form.Label>Project Warpcast</Form.Label>
+            <Form.Label>Project Farcaster</Form.Label>
             <InputGroup>
-              <InputGroup.Text>warpcast.com/</InputGroup.Text>
+              <InputGroup.Text>farcaster.xyz/</InputGroup.Text>
               <Form.Control
                 type="text"
                 value={metadataForm.projectWarpcast}
-                placeholder="The Warpcast of your project"
+                placeholder="The Farcaster of your project"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,

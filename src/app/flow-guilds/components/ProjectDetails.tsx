@@ -76,16 +76,16 @@ export default function ProjectDetails(props: ProjectDetailsProps) {
               />
             </Button>
           )}
-          {!!flowGuildConfig.warpcast && (
+          {!!flowGuildConfig.farcaster && (
             <Button
               variant="link"
-              href={flowGuildConfig.warpcast}
+              href={flowGuildConfig.farcaster}
               target="_blank"
               className="p-0"
             >
               <Image
-                src="/warpcast.svg"
-                alt="Warpcast"
+                src="/farcaster.svg"
+                alt="Farcaster"
                 width={16}
                 height={16}
               />

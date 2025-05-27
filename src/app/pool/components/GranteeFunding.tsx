@@ -54,7 +54,7 @@ type GranteeFundingProps = {
   handleClose: () => void;
   metadata: ProjectMetadata;
   twitter: string;
-  warpcast: string;
+  farcaster: string;
   placeholderLogo: string;
   poolUiLink: string;
   framesLink: string;
@@ -92,7 +92,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     metadata,
     placeholderLogo,
     twitter,
-    warpcast,
+    farcaster,
     poolUiLink,
     framesLink,
     poolName,
@@ -761,7 +761,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               isFundingMatchingPool={false}
               granteeName={metadata.title}
               granteeTwitter={twitter ? `@${twitter}` : ""}
-              granteeWarpcast={warpcast ? `@${warpcast}` : ""}
+              granteeFarcaster={farcaster ? `@${farcaster}` : ""}
               poolName={poolName}
               poolUiLink={poolUiLink}
               framesLink={framesLink}
