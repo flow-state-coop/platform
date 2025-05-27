@@ -978,6 +978,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                         BigInt((event as ReceivedTransferEvent).value),
                       ),
                     ),
+                    6,
                   )}{" "}
                   {token.symbol}
                 </p>
