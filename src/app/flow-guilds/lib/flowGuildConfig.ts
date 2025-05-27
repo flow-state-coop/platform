@@ -42,7 +42,7 @@ export const flowGuildConfigs: {
     id: "greenpilldevguild",
     name: "Green Pill Dev Guild",
     description:
-      "We unites builders dedicated to regenerative innovation, creating Ethereum based tools and resources that empower regen communities.",
+      "We unite builders dedicated to regenerative innovation, creating Ethereum-based tools and resources that empower regen communities.",
     logo: "/greenpill.png",
     website:
       "https://app.charmverse.io/greenpill-dev-guild/home-089855607278293",
