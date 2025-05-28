@@ -23,7 +23,7 @@ export const flowGuildConfigs: {
   ["core"]: {
     id: "core",
     name: "Flow State",
-    description: `Flow State builds programmable money streaming tools for public goods and their builders.\n\nOpen a stream or send a one-time donation, so we can stay focused on creating impact. All streaming donations are eligible for [Superfluid SUP token rewards!](https://claim.superfluid.org/claim)`,
+    description: `Flow State builds programmable money streaming tools for public goods and their builders.\n\nOpen a stream or send a one-time donation, so we can stay focused on creating impact. All streaming donations are eligible for [Superfluid SUP token rewards](https://claim.superfluid.org/claim)!`,
     logo: "/logo-circle.svg",
     website: "https://flowstate.network/flow-guilds/core",
     github: "https://github.com/flow-state-coop",
@@ -40,9 +40,9 @@ export const flowGuildConfigs: {
   },
   ["greenpilldevguild"]: {
     id: "greenpilldevguild",
-    name: "Green Pill Dev Guild",
+    name: "Greenpill Dev Guild",
     description:
-      "We unite builders dedicated to regenerative innovation, creating Ethereum-based tools and resources that empower regen communities.",
+      "We unite builders dedicated to regenerative innovation, creating Ethereum-based tools and resources that empower regen communities.\n\nSupport our regenerative mission with a one-time donation or by opening a donation stream. All streaming supporters earn [Superfluid SUP token rewards](https://claim.superfluid.org/claim)!",
     logo: "/greenpill.png",
     website:
       "https://app.charmverse.io/greenpill-dev-guild/home-089855607278293",
@@ -53,7 +53,7 @@ export const flowGuildConfigs: {
     discord: "https://discord.gg/ZJjft2EKz7",
     defaultChainId: 10,
     defaultToken: "USDGLOx",
-    safe: "0xe09315a86ed0a39862158f5631b928145987fe05",
+    safe: "0x49fa954B6C2Cd14B4b3604EF1Cc17cED20a9E42C",
     flowSplitters: {
       10: { USDGLOx: { id: "0x5" } },
     },
