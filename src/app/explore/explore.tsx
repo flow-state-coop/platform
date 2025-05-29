@@ -231,7 +231,7 @@ export default function Explore(props: ExploreProps) {
               flowRate={BigInt(greenpillPool?.flowRate ?? 0).toString()}
               updatedAt={greenpillPool?.updatedAtTimestamp}
               tokenSymbol="USDGLOx"
-              link="https://app.charmverse.io/greenpill-dev-guild/"
+              link="/flow-guilds/greenpilldevguild"
             />
             <RoundCard
               name="GoodBuilders Program"
