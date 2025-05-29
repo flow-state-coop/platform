@@ -53,7 +53,7 @@ export const flowGuildConfigs: {
     discord: "https://discord.gg/ZJjft2EKz7",
     defaultChainId: 10,
     defaultToken: "USDGLOx",
-    safe: "0x49fa954B6C2Cd14B4b3604EF1Cc17cED20a9E42C",
+    safe: "0x49fa954b6c2cd14b4b3604ef1cc17ced20a9e42c",
     flowSplitters: {
       10: { USDGLOx: { id: "0x5" } },
     },
