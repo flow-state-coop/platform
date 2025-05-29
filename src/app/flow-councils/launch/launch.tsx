@@ -131,7 +131,7 @@ export default function Launch(props: LaunchProps) {
 
           setCustomTokenEntry({
             address: council.distributionToken,
-            symbol: superTokenQueryRes?.symbol ?? "N/A",
+            symbol: superTokenQueryRes?.token.symbol ?? "N/A",
             validationError: "",
           });
           setCustomTokenSelection(true);
@@ -336,7 +336,7 @@ export default function Launch(props: LaunchProps) {
                         src={
                           selectedToken?.icon ?? selectedNetwork.tokens[0].icon
                         }
-                        alt="Network Icon"
+                        alt="Token"
                         width={18}
                         height={18}
                       />
