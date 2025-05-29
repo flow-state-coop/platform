@@ -12,8 +12,14 @@ import Alert from "react-bootstrap/Alert";
 import Spinner from "react-bootstrap/Spinner";
 import Toast from "react-bootstrap/Toast";
 import RoundCard from "./components/RoundCard";
+import { GDAPool } from "@/types/gdaPool";
 import { getApolloClient } from "@/lib/apollo";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+
+type ExploreProps = {
+  corePool: GDAPool;
+  greenpillPool: GDAPool;
+};
 
 const SQF_STREAM_QUERY = gql`
   query SQFQuery($gdaPool: String, $superapps: [String]) {
@@ -30,17 +36,6 @@ const SQF_STREAM_QUERY = gql`
         updatedAtTimestamp
         totalInflowRate
       }
-    }
-  }
-`;
-
-const CORE_ROUND_QUERY = gql`
-  query CoreRoundQuery($gdaPool: String) {
-    pool(id: $gdaPool) {
-      id
-      flowRate
-      totalAmountFlowedDistributedUntilUpdatedAt
-      updatedAtTimestamp
     }
   }
 `;
@@ -66,13 +61,9 @@ const SQF_ADDRESSES = {
   },
 };
 
-const FLOW_GUILD_ADDRESSES = {
-  ["core"]: {
-    gdaPool: "0x83b00619da1cd93f86884c156bf7fab046bda3f6",
-  },
-};
+export default function Explore(props: ExploreProps) {
+  const { corePool, greenpillPool } = props;
 
-export default function Explore() {
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
 
@@ -82,25 +73,13 @@ export default function Explore() {
   const [isEmailInvalid, setIsEmailInvalid] = useState(false);
   const [validated, setValidated] = useState(false);
 
-  const sfApolloClient = getApolloClient("superfluid", base.id);
-
   const { data: sqfStreamQueryRes, loading: sqfStreamQueryLoading } = useQuery(
     SQF_STREAM_QUERY,
     {
-      client: sfApolloClient,
+      client: getApolloClient("superfluid", base.id),
       variables: {
         gdaPool: SQF_ADDRESSES["octant"].gdaPool,
         superapps: SQF_ADDRESSES["octant"].superApps,
-      },
-      pollInterval: 10000,
-    },
-  );
-  const { data: coreRoundQueryRes, loading: coreRoundQueryLoading } = useQuery(
-    CORE_ROUND_QUERY,
-    {
-      client: sfApolloClient,
-      variables: {
-        gdaPool: FLOW_GUILD_ADDRESSES["core"].gdaPool,
       },
       pollInterval: 10000,
     },
@@ -160,7 +139,7 @@ export default function Explore() {
     >
       <h1 className="mt-5">Explore</h1>
       <h2 className="fs-4 mb-4">Active streaming funding campaigns</h2>
-      {sqfStreamQueryLoading || coreRoundQueryLoading ? (
+      {sqfStreamQueryLoading ? (
         <Stack
           direction="horizontal"
           className="justify-content-center my-5 py-5"
@@ -191,13 +170,10 @@ export default function Explore() {
               image="/logo-circle.svg"
               roundType="Flow Guild"
               totalStreamedUntilUpdatedAt={BigInt(
-                coreRoundQueryRes?.pool
-                  .totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
+                corePool?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
               ).toString()}
-              flowRate={BigInt(
-                coreRoundQueryRes?.pool.flowRate ?? 0,
-              ).toString()}
-              updatedAt={coreRoundQueryRes?.pool.updatedAtTimestamp}
+              flowRate={BigInt(corePool?.flowRate ?? 0).toString()}
+              updatedAt={corePool?.updatedAtTimestamp}
               tokenSymbol="ETHx"
               link="/flow-guilds/core"
             />
@@ -246,6 +222,18 @@ export default function Explore() {
               link="/octant"
             />
             <RoundCard
+              name="Greenpill Dev Guild"
+              image="/greenpill.png"
+              roundType="Flow Guild"
+              totalStreamedUntilUpdatedAt={BigInt(
+                greenpillPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
+              ).toString()}
+              flowRate={BigInt(greenpillPool?.flowRate ?? 0).toString()}
+              updatedAt={greenpillPool?.updatedAtTimestamp}
+              tokenSymbol="USDGLOx"
+              link="https://app.charmverse.io/greenpill-dev-guild/"
+            />
+            <RoundCard
               name="GoodBuilders Program"
               image="/good-dollar.png"
               roundType="Flow Council"
@@ -256,12 +244,6 @@ export default function Explore() {
               image="/guild-guild.svg"
               roundType="Flow Guild"
               link="https://guildguild.xyz"
-            />
-            <RoundCard
-              name="Greenpill Dev Guild"
-              image="/greenpill.png"
-              roundType="Flow Guild"
-              link="https://app.charmverse.io/greenpill-dev-guild/"
             />
           </div>
           <p className="text-center">

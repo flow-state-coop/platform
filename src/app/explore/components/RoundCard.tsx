@@ -40,7 +40,7 @@ export default function RoundCard(props: RoundCardProps) {
   return (
     <Card
       className="border-0 rounded-4 shadow cursor-pointer"
-      style={{ width: 360, height: 256 }}
+      style={{ width: 380, height: 256 }}
       onClick={() =>
         totalStreamedUntilUpdatedAt
           ? router.push(link)
