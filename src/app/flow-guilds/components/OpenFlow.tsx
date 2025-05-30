@@ -991,7 +991,7 @@ export default function OpenFlow(props: OpenFlowProps) {
             <>Submit</>
           )}
         </Button>
-        {Number(flowRateToReceiver) > 0 && (
+        {BigInt(flowRateToReceiver) > 0 && (
           <Button
             variant="transparent"
             className="w-100 text-primary text-decoration-underline border-0"

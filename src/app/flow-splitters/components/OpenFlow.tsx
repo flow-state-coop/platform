@@ -103,6 +103,7 @@ export default function OpenFlow(props: OpenFlowProps) {
     NativeAssetSuperToken | WrapperSuperToken | SuperToken
   >();
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("");
+  const [isDeletingFlow, setIsDeletingFlow] = useState(false);
   const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
   const [
     hasAcceptedCloseLiquidationWarning,
@@ -569,6 +570,32 @@ export default function OpenFlow(props: OpenFlowProps) {
     }
   };
 
+  const handleDeleteFlow = async () => {
+    if (!distributionSuperToken || !ethersSigner || !address || !pool) {
+      return;
+    }
+
+    setIsDeletingFlow(true);
+
+    try {
+      const tx = await distributionSuperToken
+        .distributeFlow({
+          from: address,
+          pool: pool.id,
+          requestedFlowRate: "0",
+        })
+        .exec(ethersSigner);
+
+      await tx.wait();
+
+      setSuccess(true);
+    } catch (err) {
+      console.error(err);
+    }
+
+    setIsDeletingFlow(false);
+  };
+
   const handleSubmit = async () => {
     try {
       await executeTransactions(transactions);
@@ -855,7 +882,7 @@ export default function OpenFlow(props: OpenFlowProps) {
             className="w-100 mt-4"
             onClick={handleSubmit}
           >
-            {areTransactionsLoading ? (
+            {areTransactionsLoading || isDeletingFlow ? (
               <>
                 <Spinner size="sm" />{" "}
                 {transactions.length > 1 && (
@@ -870,6 +897,18 @@ export default function OpenFlow(props: OpenFlowProps) {
               <>Submit</>
             )}
           </Button>
+          <Stack direction="vertical">
+            {BigInt(flowRateToReceiver) > 0 && (
+              <Button
+                variant="transparent"
+                className="w-100 text-primary text-decoration-underline border-0 pb-0"
+                style={{ pointerEvents: isDeletingFlow ? "none" : "auto" }}
+                onClick={handleDeleteFlow}
+              >
+                Cancel stream
+              </Button>
+            )}
+          </Stack>
           <Toast
             show={success}
             delay={4000}

@@ -209,41 +209,55 @@ export default function EditStream(props: EditStreamProps) {
               </Dropdown.Menu>
             </Dropdown>
           </Stack>
-          {network && address ? (
-            <Button
-              variant={isDeletingStream ? "danger" : "primary"}
-              disabled={
-                !amountPerTimeInterval ||
-                Number(amountPerTimeInterval.replace(/,/g, "")) < 0 ||
-                (BigInt(flowRateToReceiver) === BigInt(0) &&
-                  Number(amountPerTimeInterval.replace(/,/g, "")) === 0) ||
-                newFlowRate === flowRateToReceiver
-              }
-              className="py-1 rounded-3 text-light"
-              onClick={() => {
-                if (connectedChain?.id !== network.id) {
-                  switchChain({ chainId: network.id });
-                } else {
-                  setStep(
-                    !hasSufficientBalance
-                      ? Step.TOP_UP
-                      : wrapAmount ||
-                          superTokenBalance <
-                            BigInt(newFlowRate) *
-                              BigInt(
-                                fromTimeUnitsToSeconds(1, TimeInterval.DAY),
-                              )
-                        ? Step.WRAP
-                        : Step.REVIEW,
-                  );
+          <Stack direction="vertical">
+            {network && address ? (
+              <Button
+                variant={isDeletingStream ? "danger" : "primary"}
+                disabled={
+                  !amountPerTimeInterval ||
+                  Number(amountPerTimeInterval.replace(/,/g, "")) < 0 ||
+                  (BigInt(flowRateToReceiver) === BigInt(0) &&
+                    Number(amountPerTimeInterval.replace(/,/g, "")) === 0) ||
+                  newFlowRate === flowRateToReceiver
                 }
-              }}
-            >
-              {isDeletingStream ? "Cancel Stream" : "Continue"}
-            </Button>
-          ) : (
-            <ConnectWallet />
-          )}
+                className="py-1 rounded-3 text-light"
+                onClick={() => {
+                  if (connectedChain?.id !== network.id) {
+                    switchChain({ chainId: network.id });
+                  } else {
+                    setStep(
+                      !hasSufficientBalance
+                        ? Step.TOP_UP
+                        : wrapAmount ||
+                            superTokenBalance <
+                              BigInt(newFlowRate) *
+                                BigInt(
+                                  fromTimeUnitsToSeconds(1, TimeInterval.DAY),
+                                )
+                          ? Step.WRAP
+                          : Step.REVIEW,
+                    );
+                  }
+                }}
+              >
+                {isDeletingStream ? "Cancel Stream" : "Continue"}
+              </Button>
+            ) : (
+              <ConnectWallet />
+            )}
+            {BigInt(flowRateToReceiver) > 0 && !isDeletingStream && (
+              <Button
+                variant="transparent"
+                className="w-100 text-primary text-decoration-underline border-0 pb-0"
+                onClick={() => {
+                  setAmountPerTimeInterval("0");
+                  setStep(Step.REVIEW);
+                }}
+              >
+                Cancel stream
+              </Button>
+            )}
+          </Stack>
         </Stack>
       </Accordion.Collapse>
     </Card>
