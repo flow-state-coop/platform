@@ -104,8 +104,8 @@ export default function GranteeApplicationCard(
       style={{
         height: 418,
         pointerEvents:
-          (hasApplied && status !== "PENDING" && status !== "APPROVED") ||
-          (!canReapply && (status === "REJECTED" || status === "CANCELED"))
+          (hasApplied && status !== "PENDING") ||
+          (canReapply && (status === "PENDING" || status === "APPROVED"))
             ? "none"
             : "auto",
       }}

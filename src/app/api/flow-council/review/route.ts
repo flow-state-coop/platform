@@ -65,7 +65,7 @@ export async function POST(request: Request) {
         .set({
           status: grantee.status,
         })
-        .where("address", "=", grantee.address.toLowerCase())
+        .where("owner", "=", grantee.owner.toLowerCase())
         .where("chainId", "=", chainId)
         .where("councilId", "=", councilId.toLowerCase())
         .execute();

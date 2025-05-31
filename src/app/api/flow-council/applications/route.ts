@@ -17,7 +17,8 @@ export async function POST(request: Request) {
 
     const applications = await db
       .selectFrom("applications")
-      .select("address")
+      .select("owner")
+      .select("recipient")
       .select("chainId")
       .select("councilId")
       .select("metadata")

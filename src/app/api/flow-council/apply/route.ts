@@ -8,14 +8,15 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    const { address, chainId, councilId, metadata } = await request.json();
+    const { owner, recipient, chainId, councilId, metadata } =
+      await request.json();
 
     const session = await getServerSession(authOptions);
     const network = networks.find((network) => network.id === chainId);
 
     if (
       !session?.address ||
-      session.address.toLowerCase() !== address.toLowerCase()
+      session.address.toLowerCase() !== owner.toLowerCase()
     ) {
       return new Response(
         JSON.stringify({ success: false, error: "Unauthenticated" }),
@@ -30,11 +31,11 @@ export async function POST(request: Request) {
 
     const application = await db
       .selectFrom("applications")
-      .select("address")
+      .select("owner")
       .select("chainId")
       .select("councilId")
       .select("status")
-      .where("address", "=", address.toLowerCase())
+      .where("owner", "=", owner.toLowerCase())
       .where("chainId", "=", network.id)
       .where("councilId", "=", councilId.toLowerCase())
       .executeTakeFirst();
@@ -43,7 +44,8 @@ export async function POST(request: Request) {
       await db
         .insertInto("applications")
         .values({
-          address: address.toLowerCase(),
+          owner: owner.toLowerCase(),
+          recipient: recipient.toLowerCase(),
           chainId: network.id,
           councilId: councilId.toLowerCase(),
           metadata,
@@ -55,17 +57,18 @@ export async function POST(request: Request) {
         .updateTable("applications")
         .set({
           metadata,
+          recipient: recipient.toLowerCase(),
           status: "PENDING",
         })
         .where("chainId", "=", network.id)
-        .where("address", "=", address.toLowerCase())
+        .where("owner", "=", owner.toLowerCase())
         .where("councilId", "=", councilId.toLowerCase())
         .execute();
     } else {
       return new Response(
         JSON.stringify({
           success: false,
-          message: `Already added as ${truncateStr(application.address, 14)}`,
+          message: `Already added as ${truncateStr(application.owner, 14)}`,
         }),
       );
     }

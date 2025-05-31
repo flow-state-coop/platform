@@ -36,7 +36,8 @@ type ReviewProps = {
 };
 
 type Application = {
-  address: string;
+  owner: string;
+  recipient: string;
   chainId: number;
   councilId: string;
   metadata: string;
@@ -44,13 +45,15 @@ type Application = {
 };
 
 type ReviewingApplication = {
-  address: string;
+  owner: string;
+  recipient: string;
   metadata: string;
   newStatus: Status;
 };
 
 type CancelingAppplication = {
-  address: string;
+  owner: string;
+  recipient: string;
 };
 
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
@@ -194,12 +197,13 @@ export default function Review(props: ReviewProps) {
 
     const _reviewingApplications = [...reviewingApplications];
     const index = _reviewingApplications.findIndex(
-      (application) => selectedApplication.address === application.address,
+      (application) => selectedApplication.owner === application.owner,
     );
 
     if (index === -1) {
       _reviewingApplications.push({
-        address: selectedApplication.address,
+        owner: selectedApplication.owner,
+        recipient: selectedApplication.recipient,
         metadata: selectedApplication.metadata,
         newStatus,
       });
@@ -219,7 +223,8 @@ export default function Review(props: ReviewProps) {
     const _cancelingApplications = [...cancelingApplications];
 
     _cancelingApplications.push({
-      address: selectedApplication.address,
+      owner: selectedApplication.owner,
+      recipient: selectedApplication.recipient,
     });
 
     setCancelingApplications(_cancelingApplications);
@@ -252,7 +257,7 @@ export default function Review(props: ReviewProps) {
             approvedApplications
               .map((application) => {
                 return {
-                  account: application.address as Address,
+                  account: application.recipient as Address,
                   metadata: application.metadata,
                   status: 0,
                 };
@@ -260,7 +265,7 @@ export default function Review(props: ReviewProps) {
               .concat(
                 cancelingApplications.map((cancelingApplication) => {
                   return {
-                    account: cancelingApplication.address as Address,
+                    account: cancelingApplication.recipient as Address,
                     metadata: "",
                     status: 1,
                   };
@@ -283,14 +288,14 @@ export default function Review(props: ReviewProps) {
               grantees: reviewingApplications
                 .map((reviewingApplication) => {
                   return {
-                    address: reviewingApplication.address,
+                    owner: reviewingApplication.owner,
                     status: reviewingApplication.newStatus,
                   };
                 })
                 .concat(
                   cancelingApplications.map((cancelingApplication) => {
                     return {
-                      address: cancelingApplication.address,
+                      owner: cancelingApplication.owner,
                       status: "CANCELED",
                     };
                   }),
@@ -407,7 +412,7 @@ export default function Review(props: ReviewProps) {
               <Table striped hover>
                 <thead>
                   <tr>
-                    <th>Address</th>
+                    <th>Owner</th>
                     <th>Name</th>
                     <th className="text-center">Review</th>
                     <th></th>
@@ -416,7 +421,7 @@ export default function Review(props: ReviewProps) {
                 <tbody>
                   {applications?.map((application: Application, i: number) => (
                     <tr key={i}>
-                      <td className="w-25">{application.address}</td>
+                      <td className="w-25">{application.owner}</td>
                       <td className="w-25">
                         {profiles && profiles[i]
                           ? profiles.find(
@@ -428,8 +433,7 @@ export default function Review(props: ReviewProps) {
                       <td className="w-25 text-center ps-0">
                         {reviewingApplications.find(
                           (reviewingApplication) =>
-                            application.address ===
-                            reviewingApplication.address,
+                            application.owner === reviewingApplication.owner,
                         )?.newStatus === "APPROVED" ? (
                           <Image
                             src="/success.svg"
@@ -442,13 +446,11 @@ export default function Review(props: ReviewProps) {
                           />
                         ) : reviewingApplications.find(
                             (reviewingApplication) =>
-                              application.address ===
-                              reviewingApplication.address,
+                              application.owner === reviewingApplication.owner,
                           )?.newStatus === "REJECTED" ||
                           cancelingApplications.find(
                             (cancelingApplication) =>
-                              application.address ===
-                              cancelingApplication.address,
+                              application.owner === cancelingApplication.owner,
                           ) ? (
                           <Image
                             src="/close.svg"
@@ -504,7 +506,7 @@ export default function Review(props: ReviewProps) {
                       <Col>
                         <Form.Label>Recipient Address</Form.Label>
                         <Form.Control
-                          value={selectedApplication.address}
+                          value={selectedApplication.recipient}
                           disabled
                         />
                       </Col>
