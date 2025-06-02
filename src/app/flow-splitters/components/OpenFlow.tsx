@@ -647,7 +647,7 @@ export default function OpenFlow(props: OpenFlowProps) {
               className="position-relative justify-content-center mt-1"
             >
               <Card.Text
-                className={`m-0 ${!hasSufficientSuperTokenBalance ? "text-danger" : "text-info"}`}
+                className={`m-0 ${!hasSufficientSuperTokenBalance && Number(amountPerTimeInterval) > 0 ? "text-danger" : "text-info"}`}
                 style={{
                   fontSize: "0.8rem",
                 }}
@@ -839,10 +839,8 @@ export default function OpenFlow(props: OpenFlowProps) {
                     height={16}
                   />
                 </OverlayTrigger>
-                <Card.Text className="m-0 fs-6">Wrap more by</Card.Text>
-                <Card.Text
-                  className={`m-0 ms-1 fs-6 ${isLiquidationClose ? "text-danger" : ""}`}
-                >
+                <Card.Text className="m-0 fs-6 fw-bold">
+                  Wrap more by{" "}
                   {dayjs.unix(liquidationEstimate).format("MMMM D, YYYY")}
                 </Card.Text>
               </Stack>
