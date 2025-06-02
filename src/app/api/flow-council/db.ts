@@ -8,7 +8,8 @@ interface Database {
 }
 
 interface ApplicationTable {
-  address: string;
+  owner: string;
+  recipient: string;
   chainId: number;
   councilId: string;
   metadata: string;
