@@ -412,7 +412,7 @@ export default function Review(props: ReviewProps) {
               <Table striped hover>
                 <thead>
                   <tr>
-                    <th>Owner</th>
+                    <th>Applicant</th>
                     <th>Name</th>
                     <th className="text-center">Review</th>
                     <th></th>
@@ -504,12 +504,21 @@ export default function Review(props: ReviewProps) {
                   <Form className="d-flex flex-column gap-4">
                     <Row>
                       <Col>
-                        <Form.Label>Recipient Address</Form.Label>
+                        <Form.Label>Applicant Address</Form.Label>
+                        <Form.Control
+                          value={selectedApplication.owner}
+                          disabled
+                        />
+                      </Col>
+                      <Col>
+                        <Form.Label>Funding Address</Form.Label>
                         <Form.Control
                           value={selectedApplication.recipient}
                           disabled
                         />
                       </Col>
+                    </Row>
+                    <Row>
                       <Col>
                         <Form.Label>Name</Form.Label>
                         <Form.Control
@@ -517,8 +526,6 @@ export default function Review(props: ReviewProps) {
                           disabled
                         />
                       </Col>
-                    </Row>
-                    <Row>
                       <Col>
                         <Form.Label>Website URL</Form.Label>
                         <Form.Control
@@ -526,10 +533,19 @@ export default function Review(props: ReviewProps) {
                           disabled
                         />
                       </Col>
+                    </Row>
+                    <Row>
                       <Col>
                         <Form.Label>Twitter</Form.Label>
                         <Form.Control
-                          value={`@${selectedApplicationProfile.metadata.projectTwitter}`}
+                          value={`@${selectedApplicationProfile.metadata.projectTwitter ?? ""}`}
+                          disabled
+                        />
+                      </Col>
+                      <Col>
+                        <Form.Label>Farcaster</Form.Label>
+                        <Form.Control
+                          value={`@${selectedApplicationProfile.metadata.projectWarpcast ?? ""}`}
                           disabled
                         />
                       </Col>
