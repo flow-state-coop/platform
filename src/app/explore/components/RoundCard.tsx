@@ -54,7 +54,7 @@ export default function RoundCard(props: RoundCardProps) {
             alt=""
             width={38}
             height={38}
-            className="position-absolute start-0 ms-2"
+            className="position-absolute start-0 ms-2 rounded-3"
           />
           <Card.Title className="w-100 mb-1 fs-5 fw-bold text-center">
             {name}
@@ -68,7 +68,7 @@ export default function RoundCard(props: RoundCardProps) {
             <Card.Text className="fs-2 mb-1 fw-bold text-center">
               {formatNumber(
                 Number(formatEther(totalAmountStreamed)),
-                tokenSymbol === "ETHX" ? 6 : 4,
+                tokenSymbol === "ETHx" ? 6 : 4,
               )}{" "}
               {tokenSymbol}
             </Card.Text>

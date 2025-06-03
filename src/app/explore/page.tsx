@@ -7,7 +7,9 @@ import { networks } from "@/lib/networks";
 const FLOW_GUILD_QUERY = gql`
   query FlowGuildQuery($safeAddress: String, $token: String) {
     account(id: $safeAddress) {
+      id
       accountTokenSnapshots(where: { token: $token }) {
+        id
         totalAmountStreamedInUntilUpdatedAt
         totalInflowRate
         updatedAtTimestamp

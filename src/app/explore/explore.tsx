@@ -247,7 +247,8 @@ export default function Explore(props: ExploreProps) {
                 guildGuildInflow?.totalInflowRate ?? 0,
               ).toString()}
               updatedAt={guildGuildInflow?.updatedAtTimestamp}
-              link="https://guildguild.xyz"
+              tokenSymbol="ETHx"
+              link="/flow-guilds/guild-guild"
             />
             <RoundCard
               name="GoodBuilders Program"
