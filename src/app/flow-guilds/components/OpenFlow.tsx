@@ -702,7 +702,8 @@ export default function OpenFlow(props: OpenFlowProps) {
           <Card.Link href="https://claim.superfluid.org/claim" target="_blank">
             earn $SUP
           </Card.Link>
-          ? Claim your reward stream increase daily. (min. $1 cumulative volume per token to qualify)
+          ? Claim your reward stream increase daily. (min. $1 cumulative volume
+          per token to qualify)
         </Card.Text>
       </Stack>
       <Stack direction="vertical" gap={2} className="my-4">
