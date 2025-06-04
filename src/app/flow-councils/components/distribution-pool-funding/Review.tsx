@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
 import { formatEther, parseEther } from "viem";
 import dayjs from "dayjs";
@@ -6,6 +6,7 @@ import Image from "next/image";
 import Card from "react-bootstrap/Card";
 import Accordion from "react-bootstrap/Accordion";
 import Stack from "react-bootstrap/Stack";
+import FormCheckInput from "react-bootstrap/FormCheckInput";
 import Spinner from "react-bootstrap/Spinner";
 import Button from "react-bootstrap/Button";
 import Alert from "react-bootstrap/Button";
@@ -103,6 +104,10 @@ export default function Review(props: ReviewProps) {
 
   const [transactionDetailsSnapshot, setTransactionDetailsSnapshot] =
     useState<TransactionDetailsSnapshot | null>(null);
+  const [
+    hasAcceptedCloseLiquidationWarning,
+    setHasAcceptedCloseLiquidationWarning,
+  ] = useState(false);
 
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -130,6 +135,16 @@ export default function Review(props: ReviewProps) {
       supportFlowStateTimeInterval,
       TimeInterval.MONTH,
     ),
+  );
+
+  const isLiquidationClose = useMemo(
+    () =>
+      liquidationEstimate
+        ? dayjs
+            .unix(liquidationEstimate)
+            .isBefore(dayjs().add(dayjs.duration({ days: 2 })))
+        : false,
+    [liquidationEstimate],
   );
 
   const handleSubmit = async () => {
@@ -477,7 +492,9 @@ export default function Review(props: ReviewProps) {
           ) : null}
           {!!liquidationEstimate && !isNaN(liquidationEstimate) && (
             <Stack direction="horizontal" gap={1} className="mt-1">
-              <Card.Text className="m-0 fs-6">Est. Liquidation</Card.Text>
+              <Card.Text className="m-0 fs-6 fw-bold">
+                Est. Liquidation
+              </Card.Text>
               <OverlayTrigger
                 overlay={
                   <Tooltip id="t-liquidation-info" className="fs-6">
@@ -495,7 +512,7 @@ export default function Review(props: ReviewProps) {
                   height={16}
                 />
               </OverlayTrigger>
-              <Card.Text className="m-0 ms-1 fs-6">
+              <Card.Text className="m-0 ms-1 fs-6 fw-bold">
                 {dayjs
                   .unix(
                     areTransactionsLoading &&
@@ -507,9 +524,40 @@ export default function Review(props: ReviewProps) {
               </Card.Text>
             </Stack>
           )}
+          {isLiquidationClose && (
+            <Stack direction="vertical">
+              <Card.Text className="text-danger small">
+                You've set a high stream rate relative to your balance! We
+                recommend that you set a lower rate or wrap more {token.symbol}.
+              </Card.Text>
+              <Stack
+                direction="horizontal"
+                gap={2}
+                className="align-items-center"
+              >
+                <FormCheckInput
+                  checked={hasAcceptedCloseLiquidationWarning}
+                  className="border-black"
+                  onChange={() =>
+                    setHasAcceptedCloseLiquidationWarning(
+                      !hasAcceptedCloseLiquidationWarning,
+                    )
+                  }
+                />
+                <Card.Text className="text-danger small">
+                  If I do not cancel this stream before my balance reaches zero,
+                  I will lose my 4-hour {token.symbol} deposit.
+                </Card.Text>
+              </Stack>
+            </Stack>
+          )}
           <Button
             variant={isDeletingStream ? "danger" : "primary"}
-            disabled={transactions.length === 0 || step === Step.SUCCESS}
+            disabled={
+              transactions.length === 0 ||
+              step === Step.SUCCESS ||
+              (isLiquidationClose && !hasAcceptedCloseLiquidationWarning)
+            }
             className="d-flex justify-content-center mt-2 py-1 rounded-3 fw-bold text-light"
             onClick={
               network && connectedChain?.id !== network.id

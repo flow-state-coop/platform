@@ -665,7 +665,9 @@ export default function Review(props: ReviewProps) {
           ) : null}
           {!!liquidationEstimate && !isNaN(liquidationEstimate) && (
             <Stack direction="horizontal" gap={1} className="mt-1">
-              <Card.Text className="m-0 fs-6">Est. Liquidation</Card.Text>
+              <Card.Text className="m-0 fs-6 fw-bold">
+                Est. Liquidation
+              </Card.Text>
               <OverlayTrigger
                 overlay={
                   <Tooltip id="t-liquidation-info" className="fs-6">
@@ -683,9 +685,7 @@ export default function Review(props: ReviewProps) {
                   height={16}
                 />
               </OverlayTrigger>
-              <Card.Text
-                className={`m-0 ms-1 fs-6 ${isLiquidationClose ? "text-danger" : ""}`}
-              >
+              <Card.Text className="m-0 ms-1 fs-6 fw-bold">
                 {dayjs
                   .unix(
                     areTransactionsLoading &&
