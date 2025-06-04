@@ -58,4 +58,23 @@ export const flowGuildConfigs: {
       10: { USDGLOx: { id: "0x5" } },
     },
   },
+  ["guild-guild"]: {
+    id: "guild-guild",
+    name: "Guild Guild",
+    description:
+      "A locus of coordination for gathering and distributing the means of Guilding on Ethereum.\n\n1. Organize knowledge commons and distribute best practices\n2. Support builders of tools and organizers of guilds\n3. Network Guilds for further coordination cost savings\n\nAll streaming supporters earn [Superfluid SUP token rewards](https://claim.superfluid.org/claim).",
+    logo: "/guild-guild.png",
+    website: "https://guildguild.xyz/",
+    github: "https://github.com/oovg/guildguildxyz",
+    twitter: "https://x.com/guildguild_eth",
+    farcaster: "",
+    telegram: "",
+    discord: "https://discord.gg/XbAqvWptsq",
+    defaultChainId: 42161,
+    defaultToken: "ETHx",
+    safe: "0x29f4c46e04b9d35724af08f314d936f44f52527c",
+    flowSplitters: {
+      42161: { ETHx: { id: "0x2" } },
+    },
+  },
 };

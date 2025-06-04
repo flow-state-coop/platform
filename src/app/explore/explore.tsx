@@ -12,13 +12,14 @@ import Alert from "react-bootstrap/Alert";
 import Spinner from "react-bootstrap/Spinner";
 import Toast from "react-bootstrap/Toast";
 import RoundCard from "./components/RoundCard";
-import { GDAPool } from "@/types/gdaPool";
+import { Inflow } from "@/types/inflow";
 import { getApolloClient } from "@/lib/apollo";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
 type ExploreProps = {
-  corePool: GDAPool;
-  greenpillPool: GDAPool;
+  coreInflow: Inflow;
+  greenpillInflow: Inflow;
+  guildGuildInflow: Inflow;
 };
 
 const SQF_STREAM_QUERY = gql`
@@ -62,7 +63,7 @@ const SQF_ADDRESSES = {
 };
 
 export default function Explore(props: ExploreProps) {
-  const { corePool, greenpillPool } = props;
+  const { coreInflow, greenpillInflow, guildGuildInflow } = props;
 
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
@@ -170,10 +171,10 @@ export default function Explore(props: ExploreProps) {
               image="/logo-circle.svg"
               roundType="Flow Guild"
               totalStreamedUntilUpdatedAt={BigInt(
-                corePool?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
+                coreInflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,
               ).toString()}
-              flowRate={BigInt(corePool?.flowRate ?? 0).toString()}
-              updatedAt={corePool?.updatedAtTimestamp}
+              flowRate={BigInt(coreInflow?.totalInflowRate ?? 0).toString()}
+              updatedAt={coreInflow?.updatedAtTimestamp}
               tokenSymbol="ETHx"
               link="/flow-guilds/core"
             />
@@ -226,24 +227,34 @@ export default function Explore(props: ExploreProps) {
               image="/greenpill.png"
               roundType="Flow Guild"
               totalStreamedUntilUpdatedAt={BigInt(
-                greenpillPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
+                greenpillInflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,
               ).toString()}
-              flowRate={BigInt(greenpillPool?.flowRate ?? 0).toString()}
-              updatedAt={greenpillPool?.updatedAtTimestamp}
+              flowRate={BigInt(
+                greenpillInflow?.totalInflowRate ?? 0,
+              ).toString()}
+              updatedAt={greenpillInflow?.updatedAtTimestamp}
               tokenSymbol="USDGLOx"
               link="/flow-guilds/greenpilldevguild"
+            />
+            <RoundCard
+              name="Guild Guild"
+              image="/guild-guild.png"
+              roundType="Flow Guild"
+              totalStreamedUntilUpdatedAt={BigInt(
+                guildGuildInflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,
+              ).toString()}
+              flowRate={BigInt(
+                guildGuildInflow?.totalInflowRate ?? 0,
+              ).toString()}
+              updatedAt={guildGuildInflow?.updatedAtTimestamp}
+              tokenSymbol="ETHx"
+              link="/flow-guilds/guild-guild"
             />
             <RoundCard
               name="GoodBuilders Program"
               image="/good-dollar.png"
               roundType="Flow Council"
               link="https://gooddollar.notion.site/GoodBuilders-Program-1a6f258232f080fea8a6e3760bb8f53d"
-            />
-            <RoundCard
-              name="Guild Guild"
-              image="/guild-guild.svg"
-              roundType="Flow Guild"
-              link="https://guildguild.xyz"
             />
           </div>
           <p className="text-center">
