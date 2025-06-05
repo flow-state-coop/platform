@@ -39,6 +39,7 @@ import {
 import {
   ZERO_ADDRESS,
   SECONDS_IN_MONTH,
+  MAX_FLOW_RATE,
   FLOW_STATE_RECEIVER,
   DEFAULT_CHAIN_ID,
 } from "@/lib/constants";
@@ -491,12 +492,13 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
 
   useEffect(() => {
     if (!areTransactionsLoading && amountPerTimeInterval) {
-      setNewFlowRate(
-        (
-          parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
-        ).toString(),
-      );
+      const newFlowRate =
+        parseEther(amountPerTimeInterval.replace(/,/g, "")) /
+        BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
+
+      if (newFlowRate < MAX_FLOW_RATE) {
+        setNewFlowRate(newFlowRate.toString());
+      }
     }
   }, [areTransactionsLoading, amountPerTimeInterval]);
 
@@ -615,12 +617,13 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
         setWrapAmount("");
       }
 
-      setNewFlowRate(
-        (
-          weiAmount /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
-        ).toString(),
-      );
+      const newFlowRate =
+        weiAmount /
+        BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
+
+      if (newFlowRate < MAX_FLOW_RATE) {
+        setNewFlowRate(newFlowRate.toString());
+      }
     }
   };
 
@@ -649,8 +652,17 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             flowRateToReceiver={flowRateToReceiver}
             amountPerTimeInterval={amountPerTimeInterval}
             setAmountPerTimeInterval={(amount) => {
-              setAmountPerTimeInterval(amount);
-              updateWrapAmount(amount, calcLiquidationEstimate(amount));
+              const newAmount =
+                parseEther(amount.replace(/,/g, "")) /
+                  BigInt(
+                    fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]),
+                  ) <
+                MAX_FLOW_RATE
+                  ? amount
+                  : amountPerTimeInterval;
+
+              setAmountPerTimeInterval(newAmount);
+              updateWrapAmount(newAmount, calcLiquidationEstimate(newAmount));
             }}
             newFlowRate={newFlowRate}
             wrapAmount={wrapAmount}

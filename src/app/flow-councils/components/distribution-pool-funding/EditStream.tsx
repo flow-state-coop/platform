@@ -67,7 +67,7 @@ export default function EditStream(props: EditStreamProps) {
       setAmountPerTimeInterval(
         `${
           parseFloat(valueWithoutCommas) < 1000
-            ? value.replace(/ /g, "")
+            ? valueWithoutCommas
             : formatNumberWithCommas(parseFloat(valueWithoutCommas))
         }`,
       );

@@ -47,7 +47,7 @@ import {
   convertStreamValueToInterval,
 } from "@/lib/utils";
 import { FlowGuildConfig } from "../lib/flowGuildConfig";
-import { ZERO_ADDRESS } from "@/lib/constants";
+import { ZERO_ADDRESS, MAX_FLOW_RATE } from "@/lib/constants";
 
 dayjs().format();
 dayjs.extend(duration);
@@ -567,19 +567,21 @@ export default function OpenFlow(props: OpenFlowProps) {
         parseEther(value) /
         BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
 
-      setAmountPerTimeInterval(value);
-      setNewFlowRate(newFlowRate);
+      if (newFlowRate < MAX_FLOW_RATE) {
+        setAmountPerTimeInterval(value);
+        setNewFlowRate(newFlowRate);
 
-      if (wrapAmountPerTimeInterval) {
-        setWrapTimeInterval(
-          parseFloat(
-            (
-              Number(wrapAmountPerTimeInterval) /
-              Number(formatEther(newFlowRate)) /
-              fromTimeUnitsToSeconds(1, unitOfTime[timeInterval])
-            ).toFixed(2),
-          ).toString(),
-        );
+        if (wrapAmountPerTimeInterval) {
+          setWrapTimeInterval(
+            parseFloat(
+              (
+                Number(wrapAmountPerTimeInterval) /
+                Number(formatEther(newFlowRate)) /
+                fromTimeUnitsToSeconds(1, unitOfTime[timeInterval])
+              ).toFixed(2),
+            ).toString(),
+          );
+        }
       }
     } else if (value === "") {
       setAmountPerTimeInterval("");
@@ -807,12 +809,13 @@ export default function OpenFlow(props: OpenFlowProps) {
               <Dropdown.Item
                 key={i}
                 onClick={() => {
-                  setNewFlowRate(
+                  const newFlowRate =
                     parseEther(amountPerTimeInterval) /
-                      BigInt(
-                        fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]),
-                      ),
-                  );
+                    BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
+
+                  if (newFlowRate < MAX_FLOW_RATE) {
+                    setNewFlowRate(newFlowRate);
+                  }
 
                   setTimeInterval(timeInterval);
                 }}

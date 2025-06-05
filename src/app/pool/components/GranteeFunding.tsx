@@ -40,12 +40,14 @@ import {
   unitOfTime,
   fromTimeUnitsToSeconds,
   formatNumber,
+  formatNumberWithCommas,
   roundWeiAmount,
 } from "@/lib/utils";
 import {
   ZERO_ADDRESS,
   SECONDS_IN_MONTH,
   FLOW_STATE_RECEIVER,
+  MAX_FLOW_RATE,
   DEFAULT_CHAIN_ID,
 } from "@/lib/constants";
 
@@ -491,12 +493,13 @@ export default function GranteeFunding(props: GranteeFundingProps) {
 
   useEffect(() => {
     if (!areTransactionsLoading && amountPerTimeInterval) {
-      setNewFlowRate(
-        (
-          parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
-        ).toString(),
-      );
+      const newFlowRate =
+        parseEther(amountPerTimeInterval.replace(/,/g, "")) /
+        BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
+
+      if (newFlowRate < MAX_FLOW_RATE) {
+        setNewFlowRate(newFlowRate.toString());
+      }
     }
   }, [areTransactionsLoading, amountPerTimeInterval]);
 
@@ -570,8 +573,8 @@ export default function GranteeFunding(props: GranteeFundingProps) {
             : underlyingTokenBalance?.value;
 
           setWrapAmount(
-            formatNumber(
-              Number(
+            formatNumberWithCommas(
+              parseFloat(
                 formatUnits(
                   amount > 0 ? BigInt(amount) : BigInt(0),
                   underlyingTokenBalance?.decimals ?? 18,
@@ -581,8 +584,8 @@ export default function GranteeFunding(props: GranteeFundingProps) {
           );
         } else {
           setWrapAmount(
-            formatNumber(
-              Number(
+            formatNumberWithCommas(
+              parseFloat(
                 formatUnits(
                   weiAmount * BigInt(3),
                   underlyingTokenBalance?.decimals ?? 18,
@@ -595,12 +598,13 @@ export default function GranteeFunding(props: GranteeFundingProps) {
         setWrapAmount("");
       }
 
-      setNewFlowRate(
-        (
-          weiAmount /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
-        ).toString(),
-      );
+      const newFlowRate =
+        weiAmount /
+        BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
+
+      if (newFlowRate < MAX_FLOW_RATE) {
+        setNewFlowRate(newFlowRate.toString());
+      }
     }
   };
 
@@ -639,8 +643,17 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               flowRateToReceiver={flowRateToReceiver}
               amountPerTimeInterval={amountPerTimeInterval}
               setAmountPerTimeInterval={(amount) => {
-                setAmountPerTimeInterval(amount);
-                updateWrapAmount(amount, calcLiquidationEstimate(amount));
+                const newAmount =
+                  parseEther(amount.replace(/,/g, "")) /
+                    BigInt(
+                      fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]),
+                    ) <
+                  MAX_FLOW_RATE
+                    ? amount
+                    : amountPerTimeInterval;
+
+                setAmountPerTimeInterval(newAmount);
+                updateWrapAmount(newAmount, calcLiquidationEstimate(newAmount));
               }}
               newFlowRate={newFlowRate}
               wrapAmount={wrapAmount}
