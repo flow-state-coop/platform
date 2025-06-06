@@ -611,19 +611,21 @@ export default function Configure(props: ConfigureProps) {
                   {eligibilityMethod}
                 </Dropdown.Toggle>
                 <Dropdown.Menu>
-                  <Dropdown.Item
-                    onClick={() => {
-                      setEligibilityMethod(EligibilityMethod.FLOW_STATE);
-                      setPoolConfigParameters({
-                        ...poolConfigParameters,
-                        nftAddress: network.flowStateEligibilityNft,
-                        nftMintUrl: "",
-                        flowStateEligibility: true,
-                      });
-                    }}
-                  >
-                    {EligibilityMethod.FLOW_STATE}
-                  </Dropdown.Item>
+                  {!!network.flowStateEligibilityNft && (
+                    <Dropdown.Item
+                      onClick={() => {
+                        setEligibilityMethod(EligibilityMethod.FLOW_STATE);
+                        setPoolConfigParameters({
+                          ...poolConfigParameters,
+                          nftAddress: network.flowStateEligibilityNft,
+                          nftMintUrl: "",
+                          flowStateEligibility: true,
+                        });
+                      }}
+                    >
+                      {EligibilityMethod.FLOW_STATE}
+                    </Dropdown.Item>
+                  )}
                   <Dropdown.Item
                     onClick={() => {
                       setEligibilityMethod(EligibilityMethod.NFT_GATING);
