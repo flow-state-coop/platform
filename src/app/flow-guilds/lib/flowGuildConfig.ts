@@ -55,7 +55,7 @@ export const flowGuildConfigs: {
     defaultToken: "ETHx",
     safe: "0x49fa954b6c2cd14b4b3604ef1cc17ced20a9e42c",
     flowSplitters: {
-      10: { ETHx: { id: "0x6" }, USDGLOx: { id: "0x05" } },
+      10: { ETHx: { id: "0x6" }, USDGLOx: { id: "0x5" } },
     },
   },
   ["guild-guild"]: {
