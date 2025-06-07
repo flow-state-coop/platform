@@ -30,7 +30,7 @@ const FLOW_GUILD_ADDRESSES = {
   },
   ["greenpill"]: {
     safeAddress: "0x49fa954b6c2cd14b4b3604ef1cc17ced20a9e42c",
-    token: "0x9f41d0aa24e599fd8d0c180ee3c0f609dc41c622",
+    token: "0x4ac8bd1bdae47beef2d1c6aa62229509b962aa0d",
   },
   ["guild-guild"]: {
     safeAddress: "0x29f4c46e04b9d35724af08f314d936f44f52527c",
