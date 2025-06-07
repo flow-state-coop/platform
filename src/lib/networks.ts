@@ -119,10 +119,10 @@ const networks: Network[] = [
       "https://subgraph-endpoints.superfluid.dev/celo-mainnet/protocol-v1",
     onRampLabel: "celo",
     flowSplitter: "0x787504063A14C7e8bA6538Cf33570649A499771D",
-    flowSplitterSubgraph: "https://subgraph.satsuma-prod.com/5f76bd3cffc1/tnrdd--434875/flow-splitter-celo/api",
+    flowSplitterSubgraph: "https://subgraph.satsuma-prod.com/flow-state/flow-splitter-celo/version/v0.0.2/api",
     flowCouncilFactory: "0x25B64C200cf3362BaC6961353D38A1dbEB42e60E",
     flowCouncilSubgraph:
-      "https://subgraph.satsuma-prod.com/5f76bd3cffc1/tnrdd--434875/flow-council-celo/api",
+      "https://subgraph.satsuma-prod.com/flow-state/flow-council-celo/version/v0.2.2/api",
     flowStateEligibilityNft: "",
     flowStateEligibilityMinScore: 15,
     superfluidHost: "0xA4Ff07cF81C02CFD356184879D953970cA957585",
