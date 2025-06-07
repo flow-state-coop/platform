@@ -52,10 +52,10 @@ export const flowGuildConfigs: {
     telegram: "",
     discord: "https://discord.gg/ZJjft2EKz7",
     defaultChainId: 10,
-    defaultToken: "USDGLOx",
+    defaultToken: "ETHx",
     safe: "0x49fa954b6c2cd14b4b3604ef1cc17ced20a9e42c",
     flowSplitters: {
-      10: { USDGLOx: { id: "0x5" } },
+      10: { ETHx: { id: "0x6" } },
     },
   },
   ["guild-guild"]: {

@@ -233,7 +233,7 @@ export default function Explore(props: ExploreProps) {
                 greenpillInflow?.totalInflowRate ?? 0,
               ).toString()}
               updatedAt={greenpillInflow?.updatedAtTimestamp}
-              tokenSymbol="USDGLOx"
+              tokenSymbol="ETHx"
               link="/flow-guilds/greenpilldevguild"
             />
             <RoundCard
