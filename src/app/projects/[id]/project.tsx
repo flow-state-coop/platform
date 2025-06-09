@@ -261,7 +261,7 @@ export default function Project(props: ProjectProps) {
   if (!network) {
     return (
       <span className="mx-auto align-self-start mt-5 fs-3">
-        Network no supported
+        Network not supported
       </span>
     );
   }
