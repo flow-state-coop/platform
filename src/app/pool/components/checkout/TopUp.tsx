@@ -64,6 +64,7 @@ export default function TopUp(props: TopUpProps) {
   const { isMobile } = useMediaQuery();
 
   const isUnderlyingTokenNative = underlyingTokenBalance?.symbol === "ETH";
+  const isSupertokenPure = !underlyingTokenBalance;
 
   return (
     <Card className="bg-light rounded-0 border-0 border-bottom border-info">
@@ -350,7 +351,24 @@ export default function TopUp(props: TopUpProps) {
           <Button
             variant="transparent"
             className="mt-4 text-info"
-            onClick={() => setStep(Step.WRAP)}
+            onClick={() =>
+              setStep(
+                !isSupertokenPure &&
+                  (wrapAmount ||
+                    superTokenBalance <
+                      BigInt(newFlowRate) *
+                        BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
+                  ? Step.WRAP
+                  : !isFundingMatchingPool &&
+                      !isFundingFlowStateCore &&
+                      !isEligible
+                    ? Step.ELIGIBILITY
+                    : !sessionStorage.getItem("skipSupportFlowState") &&
+                        !localStorage.getItem("skipSupportFlowState")
+                      ? Step.SUPPORT
+                      : Step.REVIEW,
+              )
+            }
           >
             Skip
           </Button>
@@ -359,10 +377,11 @@ export default function TopUp(props: TopUpProps) {
             disabled={!hasSufficientEthBalance || !hasSufficientTokenBalance}
             onClick={() =>
               setStep(
-                wrapAmount ||
-                  superTokenBalance <
-                    BigInt(newFlowRate) *
-                      BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY))
+                !isSupertokenPure &&
+                  (wrapAmount ||
+                    superTokenBalance <
+                      BigInt(newFlowRate) *
+                        BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
                   ? Step.WRAP
                   : !isFundingMatchingPool &&
                       !isFundingFlowStateCore &&

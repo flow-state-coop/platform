@@ -545,6 +545,7 @@ export default function DistributionPoolFunding(props: {
                   );
                 }}
                 superTokenBalance={superTokenBalance}
+                isSuperTokenPure={isSuperTokenPure}
                 hasSufficientBalance={
                   !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
                 }

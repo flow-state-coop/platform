@@ -33,6 +33,7 @@ export type EditStreamProps = {
   setAmountPerTimeInterval: (amount: string) => void;
   setTimeInterval: (timeInterval: TimeInterval) => void;
   superTokenBalance: bigint;
+  isSuperTokenPure: boolean;
   hasSufficientBalance: boolean;
 };
 
@@ -50,6 +51,7 @@ export default function EditStream(props: EditStreamProps) {
     timeInterval,
     setTimeInterval,
     superTokenBalance,
+    isSuperTokenPure,
     hasSufficientBalance,
   } = props;
 
@@ -228,12 +230,13 @@ export default function EditStream(props: EditStreamProps) {
                     setStep(
                       !hasSufficientBalance
                         ? Step.TOP_UP
-                        : wrapAmount ||
-                            superTokenBalance <
-                              BigInt(newFlowRate) *
-                                BigInt(
-                                  fromTimeUnitsToSeconds(1, TimeInterval.DAY),
-                                )
+                        : !isSuperTokenPure &&
+                            (wrapAmount ||
+                              superTokenBalance <
+                                BigInt(newFlowRate) *
+                                  BigInt(
+                                    fromTimeUnitsToSeconds(1, TimeInterval.DAY),
+                                  ))
                           ? Step.WRAP
                           : Step.REVIEW,
                     );

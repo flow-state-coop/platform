@@ -667,6 +667,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             newFlowRate={newFlowRate}
             wrapAmount={wrapAmount}
             isFundingMatchingPool={true}
+            isPureSuperToken={isPureSuperToken}
             superTokenBalance={superTokenBalance}
             hasSufficientBalance={
               !!hasSufficientEthBalance && !!hasSuggestedTokenBalance

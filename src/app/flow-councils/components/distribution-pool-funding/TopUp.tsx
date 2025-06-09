@@ -296,7 +296,17 @@ export default function TopUp(props: TopUpProps) {
             <Button
               variant="transparent"
               className="mt-4 text-info"
-              onClick={() => setStep(Step.WRAP)}
+              onClick={() =>
+                setStep(
+                  !isSuperTokenPure &&
+                    (wrapAmount ||
+                      superTokenBalance <
+                        BigInt(newFlowRate) *
+                          BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
+                    ? Step.WRAP
+                    : Step.REVIEW,
+                )
+              }
             >
               Skip
             </Button>
@@ -306,10 +316,11 @@ export default function TopUp(props: TopUpProps) {
             disabled={!hasSufficientEthBalance || !hasSufficientTokenBalance}
             onClick={() =>
               setStep(
-                wrapAmount ||
-                  superTokenBalance <
-                    BigInt(newFlowRate) *
-                      BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY))
+                !isSuperTokenPure &&
+                  (wrapAmount ||
+                    superTokenBalance <
+                      BigInt(newFlowRate) *
+                        BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
                   ? Step.WRAP
                   : Step.REVIEW,
               )
