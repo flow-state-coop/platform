@@ -499,9 +499,9 @@ export default function Review(props: ReviewProps) {
                 overlay={
                   <Tooltip id="t-liquidation-info" className="fs-6">
                     This is the current estimate for when your token balance
-                    will reach 0. Make sure to close your stream or wrap more
-                    tokens before this date to avoid loss of your buffer
-                    deposit.
+                    will reach 0. Make sure to close your stream or{" "}
+                    {isSuperTokenPure ? "deposit" : "wrap"} more tokens before
+                    this date to avoid loss of your buffer deposit.
                   </Tooltip>
                 }
               >
@@ -528,7 +528,8 @@ export default function Review(props: ReviewProps) {
             <Stack direction="vertical">
               <Card.Text className="text-danger small">
                 You've set a high stream rate relative to your balance! We
-                recommend that you set a lower rate or wrap more {token.symbol}.
+                recommend that you set a lower rate or{" "}
+                {isSuperTokenPure ? "deposit" : "wrap"} more {token.symbol}.
               </Card.Text>
               <Stack
                 direction="horizontal"
