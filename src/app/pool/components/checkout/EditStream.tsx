@@ -30,7 +30,7 @@ export type EditStreamProps = {
   wrapAmount: string;
   setAmountPerTimeInterval: (amount: string) => void;
   isFundingMatchingPool?: boolean;
-  isFundingFlowStateCore?: boolean;
+  isPureSuperToken?: boolean;
   isEligible?: boolean;
   superTokenBalance: bigint;
   hasSufficientBalance: boolean;
@@ -48,7 +48,7 @@ export default function EditStream(props: EditStreamProps) {
     newFlowRate,
     wrapAmount,
     isFundingMatchingPool,
-    isFundingFlowStateCore,
+    isPureSuperToken,
     isEligible,
     superTokenBalance,
     hasSufficientBalance,
@@ -239,16 +239,15 @@ export default function EditStream(props: EditStreamProps) {
                     setStep(
                       !hasSufficientBalance
                         ? Step.TOP_UP
-                        : wrapAmount ||
-                            superTokenBalance <
-                              BigInt(newFlowRate) *
-                                BigInt(
-                                  fromTimeUnitsToSeconds(1, TimeInterval.DAY),
-                                )
+                        : !isPureSuperToken &&
+                            (wrapAmount ||
+                              superTokenBalance <
+                                BigInt(newFlowRate) *
+                                  BigInt(
+                                    fromTimeUnitsToSeconds(1, TimeInterval.DAY),
+                                  ))
                           ? Step.WRAP
-                          : !isFundingMatchingPool &&
-                              !isFundingFlowStateCore &&
-                              !isEligible
+                          : !isFundingMatchingPool && !isEligible
                             ? Step.ELIGIBILITY
                             : !sessionStorage.getItem("skipSupportFlowState") &&
                                 !localStorage.getItem("skipSupportFlowState")

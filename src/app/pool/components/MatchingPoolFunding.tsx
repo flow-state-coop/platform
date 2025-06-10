@@ -577,6 +577,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       );
 
       if (
+        !isPureSuperToken &&
         weiAmount > 0 &&
         liquidationEstimate &&
         dayjs
@@ -668,6 +669,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             newFlowRate={newFlowRate}
             wrapAmount={wrapAmount}
             isFundingMatchingPool={true}
+            isPureSuperToken={isPureSuperToken}
             superTokenBalance={superTokenBalance}
             hasSufficientBalance={
               !!hasSufficientEthBalance && !!hasSuggestedTokenBalance

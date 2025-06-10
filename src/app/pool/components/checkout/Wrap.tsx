@@ -22,7 +22,6 @@ export type WrapProps = {
   setWrapAmount: (amount: string) => void;
   newFlowRate: string;
   isFundingMatchingPool?: boolean;
-  isFundingFlowStateCore?: boolean;
   isEligible?: boolean;
   token: Token;
   superTokenBalance: bigint;
@@ -43,7 +42,6 @@ export default function Wrap(props: WrapProps) {
     newFlowRate,
     token,
     isFundingMatchingPool,
-    isFundingFlowStateCore,
     isEligible,
     superTokenBalance,
     underlyingTokenBalance,
@@ -320,9 +318,7 @@ export default function Wrap(props: WrapProps) {
                 onClick={() => {
                   setWrapAmount("");
                   setStep(
-                    !isFundingMatchingPool &&
-                      !isFundingFlowStateCore &&
-                      !isEligible
+                    !isFundingMatchingPool && !isEligible
                       ? Step.ELIGIBILITY
                       : !sessionStorage.getItem("skipSupportFlowState") &&
                           !localStorage.getItem("skipSupportFlowState")
@@ -349,14 +345,11 @@ export default function Wrap(props: WrapProps) {
               className="w-50 py-1 rounded-3 text-light"
               onClick={() =>
                 setStep(
-                  !isFundingMatchingPool &&
-                    !isFundingFlowStateCore &&
-                    !isEligible
+                  !isFundingMatchingPool && !isEligible
                     ? Step.ELIGIBILITY
                     : !sessionStorage.getItem("skipSupportFlowState") &&
                         !localStorage.getItem("skipSupportFlowState")
-                      ? //? Step.SUPPORT
-                        Step.REVIEW
+                      ? Step.SUPPORT
                       : Step.REVIEW,
                 )
               }

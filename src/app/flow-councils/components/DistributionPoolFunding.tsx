@@ -442,6 +442,7 @@ export default function DistributionPoolFunding(props: {
       );
 
       if (
+        !isSuperTokenPure &&
         Number(amountPerTimeInterval.replace(/,/g, "")) > 0 &&
         liquidationEstimate &&
         dayjs
@@ -546,6 +547,7 @@ export default function DistributionPoolFunding(props: {
                   );
                 }}
                 superTokenBalance={superTokenBalance}
+                isSuperTokenPure={isSuperTokenPure}
                 hasSufficientBalance={
                   !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
                 }

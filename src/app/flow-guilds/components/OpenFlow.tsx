@@ -924,9 +924,10 @@ export default function OpenFlow(props: OpenFlowProps) {
               overlay={
                 <Tooltip id="t-liquidation-info" className="fs-6">
                   This is the current estimate for when your token balance will
-                  reach 0. Make sure to close your stream or wrap more tokens
-                  before this date to avoid loss of your buffer deposit. See the
-                  graph below to vizualize how your proposed transaction(s) will
+                  reach 0. Make sure to close your stream or{" "}
+                  {isSuperTokenPure ? "deposit" : "wrap"} more tokens before
+                  this date to avoid loss of your buffer deposit. See the graph
+                  below to vizualize how your proposed transaction(s) will
                   impact your balance over time.
                 </Tooltip>
               }
@@ -939,7 +940,7 @@ export default function OpenFlow(props: OpenFlowProps) {
               />
             </OverlayTrigger>
             <Card.Text className="m-0 fs-6 fw-bold">
-              Wrap more by{" "}
+              {isSuperTokenPure ? "Deposit" : "Wrap"} more by{" "}
               {dayjs.unix(liquidationEstimate).format("MMMM D, YYYY")}
             </Card.Text>
           </Stack>
@@ -948,7 +949,8 @@ export default function OpenFlow(props: OpenFlowProps) {
           <Stack direction="vertical" className="mb-2">
             <Card.Text className="text-danger small">
               You've set a high stream rate relative to your balance! We
-              recommend that you set a lower rate or wrap more {token.symbol}.
+              recommend that you set a lower rate or{" "}
+              {isSuperTokenPure ? "deposit" : "wrap"} more {token.symbol}.
             </Card.Text>
             <Stack
               direction="horizontal"
