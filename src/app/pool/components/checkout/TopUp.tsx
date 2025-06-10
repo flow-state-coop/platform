@@ -24,7 +24,6 @@ export type TopUpProps = {
   newFlowRate: string;
   wrapAmount: string;
   isFundingMatchingPool?: boolean;
-  isFundingFlowStateCore?: boolean;
   isEligible?: boolean;
   superTokenBalance: bigint;
   minEthBalance: number;
@@ -45,7 +44,6 @@ export default function TopUp(props: TopUpProps) {
     newFlowRate,
     wrapAmount,
     isFundingMatchingPool,
-    isFundingFlowStateCore,
     isEligible,
     superTokenBalance,
     suggestedTokenBalance,
@@ -359,9 +357,7 @@ export default function TopUp(props: TopUpProps) {
                       BigInt(newFlowRate) *
                         BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
                   ? Step.WRAP
-                  : !isFundingMatchingPool &&
-                      !isFundingFlowStateCore &&
-                      !isEligible
+                  : !isFundingMatchingPool && !isEligible
                     ? Step.ELIGIBILITY
                     : !sessionStorage.getItem("skipSupportFlowState") &&
                         !localStorage.getItem("skipSupportFlowState")
@@ -383,9 +379,7 @@ export default function TopUp(props: TopUpProps) {
                       BigInt(newFlowRate) *
                         BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
                   ? Step.WRAP
-                  : !isFundingMatchingPool &&
-                      !isFundingFlowStateCore &&
-                      !isEligible
+                  : !isFundingMatchingPool && !isEligible
                     ? Step.ELIGIBILITY
                     : !sessionStorage.getItem("skipSupportFlowState") &&
                         !localStorage.getItem("skipSupportFlowState")

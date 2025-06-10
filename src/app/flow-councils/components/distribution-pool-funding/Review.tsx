@@ -239,9 +239,16 @@ export default function Review(props: ReviewProps) {
                 >
                   <Image src={token.icon} alt="done" width={28} height={28} />
                   <Card.Text className="m-0 border-0 text-center fs-5">
-                    {areTransactionsLoading && transactionDetailsSnapshot
-                      ? transactionDetailsSnapshot.wrapAmount
-                      : wrapAmount}{" "}
+                    {formatNumber(
+                      Number(
+                        areTransactionsLoading && transactionDetailsSnapshot
+                          ? transactionDetailsSnapshot.wrapAmount?.replace(
+                              /,/g,
+                              "",
+                            )
+                          : wrapAmount.replace(/,/g, ""),
+                      ),
+                    )}{" "}
                     <br /> {underlyingTokenBalance?.symbol ?? "N/A"}
                   </Card.Text>
                   <Card.Text className="border-0 text-center fs-6">
@@ -274,9 +281,16 @@ export default function Review(props: ReviewProps) {
                 >
                   <Image src={token.icon} alt="done" width={28} height={28} />
                   <Card.Text className="m-0 border-0 text-center fs-5">
-                    {areTransactionsLoading && transactionDetailsSnapshot
-                      ? transactionDetailsSnapshot.wrapAmount
-                      : wrapAmount}{" "}
+                    {formatNumber(
+                      Number(
+                        areTransactionsLoading && transactionDetailsSnapshot
+                          ? transactionDetailsSnapshot.wrapAmount?.replace(
+                              /,/g,
+                              "",
+                            )
+                          : wrapAmount.replace(/,/g, ""),
+                      ),
+                    )}{" "}
                     <br /> {token.symbol}
                   </Card.Text>
                   <Card.Text className="border-0 text-center fs-6">

@@ -51,7 +51,6 @@ export type ReviewProps = {
   supportFlowStateAmount: string;
   supportFlowStateTimeInterval: TimeInterval;
   isFundingMatchingPool?: boolean;
-  isFundingFlowStateCore?: boolean;
   liquidationEstimate: number | null;
   matchingTokenInfo: Token;
   allocationTokenInfo: Token;
@@ -107,7 +106,6 @@ export default function Review(props: ReviewProps) {
     matchingTokenInfo,
     allocationTokenInfo,
     isFundingMatchingPool,
-    isFundingFlowStateCore,
     isPureSuperToken,
     superTokenBalance,
     underlyingTokenBalance,
@@ -216,12 +214,10 @@ export default function Review(props: ReviewProps) {
               style={{ fontFamily: "Helvetica" }}
             >
               {isFundingMatchingPool && isPureSuperToken
-                ? 3
-                : isFundingMatchingPool ||
-                    isFundingFlowStateCore ||
-                    isPureSuperToken
-                  ? 4
-                  : 5}
+                ? 4
+                : isFundingMatchingPool || isPureSuperToken
+                  ? 5
+                  : 6}
             </Card.Text>
           )}
         </Badge>
@@ -251,9 +247,16 @@ export default function Review(props: ReviewProps) {
                     height={28}
                   />
                   <Card.Text className="m-0 border-0 text-center fs-5">
-                    {areTransactionsLoading && transactionDetailsSnapshot
-                      ? transactionDetailsSnapshot.wrapAmount
-                      : wrapAmount}{" "}
+                    {formatNumber(
+                      Number(
+                        areTransactionsLoading && transactionDetailsSnapshot
+                          ? transactionDetailsSnapshot.wrapAmount?.replace(
+                              /,/g,
+                              "",
+                            )
+                          : wrapAmount.replace(/,/g, ""),
+                      ),
+                    )}{" "}
                     <br /> {underlyingTokenBalance?.symbol ?? "N/A"}
                   </Card.Text>
                   <Card.Text className="border-0 text-center fs-6">
@@ -291,9 +294,16 @@ export default function Review(props: ReviewProps) {
                     height={28}
                   />
                   <Card.Text className="m-0 border-0 text-center fs-5">
-                    {areTransactionsLoading && transactionDetailsSnapshot
-                      ? transactionDetailsSnapshot.wrapAmount
-                      : wrapAmount}{" "}
+                    {formatNumber(
+                      Number(
+                        areTransactionsLoading && transactionDetailsSnapshot
+                          ? transactionDetailsSnapshot.wrapAmount?.replace(
+                              /,/g,
+                              "",
+                            )
+                          : wrapAmount.replace(/,/g, ""),
+                      ),
+                    )}{" "}
                     <br /> {allocationTokenInfo.symbol}
                   </Card.Text>
                   <Card.Text className="border-0 text-center fs-6">
@@ -340,9 +350,7 @@ export default function Review(props: ReviewProps) {
                 : "A."}{" "}
               {isFundingMatchingPool
                 ? "Edit Matching Stream"
-                : isFundingFlowStateCore
-                  ? "Edit Flow State Core Stream"
-                  : "Edit Grantee Stream"}
+                : "Edit Grantee Stream"}
             </Card.Text>
           </Stack>
           <Stack direction="horizontal" className="justify-content-around px-2">
@@ -390,9 +398,7 @@ export default function Review(props: ReviewProps) {
             <Stack
               direction="horizontal"
               className={`mt-2 bg-purple p-2 ${
-                !isFundingMatchingPool && !isFundingFlowStateCore
-                  ? "rounded-top-4"
-                  : "rounded-4"
+                !isFundingMatchingPool ? "rounded-top-4" : "rounded-4"
               }`}
             >
               <Card.Text className="w-33 m-0 fs-6">New Stream</Card.Text>
@@ -425,7 +431,7 @@ export default function Review(props: ReviewProps) {
               </Stack>
               <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>
             </Stack>
-            {!isFundingMatchingPool && !isFundingFlowStateCore && (
+            {!isFundingMatchingPool && (
               <>
                 <Stack
                   direction="horizontal"
@@ -623,9 +629,7 @@ export default function Review(props: ReviewProps) {
                 <Stack
                   direction="horizontal"
                   className={`mt-2 bg-purple p-2 ${
-                    !isFundingMatchingPool && !isFundingFlowStateCore
-                      ? "rounded-top-4"
-                      : "rounded-4"
+                    !isFundingMatchingPool ? "rounded-top-4" : "rounded-4"
                   }`}
                 >
                   <Card.Text className="w-33 m-0 fs-6">New Stream</Card.Text>
