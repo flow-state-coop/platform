@@ -144,9 +144,10 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       refetchInterval: 10000,
     },
   });
-  const isNativeSuperToken = allocationTokenSymbol === "ETHx";
+  const isNativeSuperToken =
+    allocationTokenSymbol === "ETHx" || allocationTokenSymbol === "CELOx";
   const isPureSuperToken =
-    allocationTokenSymbol !== "ETHx" && !allocationSuperToken?.underlyingToken;
+    !isNativeSuperToken && !allocationSuperToken?.underlyingToken;
   const { data: underlyingTokenBalance } = useBalance({
     address,
     chainId: network?.id ?? DEFAULT_CHAIN_ID,

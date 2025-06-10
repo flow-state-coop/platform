@@ -5,26 +5,34 @@ import { SessionProvider } from "next-auth/react";
 import { http } from "viem";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
-import { base, optimism, arbitrum, optimismSepolia } from "wagmi/chains";
+import { arbitrum, base, celo, optimism, optimismSepolia } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { DonorParamsContextProvider } from "@/context/DonorParams";
 import { FlowCouncilContextProvider } from "@/context/FlowCouncil";
-import { WALLET_CONNECT_PROJECT_ID } from "../lib/constants";
+import { networks } from "@/lib/networks";
+import { WALLET_CONNECT_PROJECT_ID } from "@/lib/constants";
 import "@rainbow-me/rainbowkit/styles.css";
 import "@/styles.scss";
 
 const config = getDefaultConfig({
   appName: "Flow State",
   projectId: WALLET_CONNECT_PROJECT_ID,
-  chains: [base, optimism, arbitrum, optimismSepolia],
+  chains: [arbitrum, base, celo, optimism, optimismSepolia],
   ssr: true,
   transports: {
-    [base.id]: http("https://base-rpc.publicnode.com"),
-    [optimism.id]: http("https://optimism-rpc.publicnode.com"),
-    [arbitrum.id]: http("https://arbitrum.meowrpc.com"),
-    [optimismSepolia.id]: http("https://optimism-sepolia-rpc.publicnode.com"),
+    [arbitrum.id]: http(
+      networks.find((network) => network.id === arbitrum.id)!.rpcUrl,
+    ),
+    [base.id]: http(networks.find((network) => network.id === base.id)!.rpcUrl),
+    [celo.id]: http(networks.find((network) => network.id === celo.id)!.rpcUrl),
+    [optimism.id]: http(
+      networks.find((network) => network.id === optimism.id)!.rpcUrl,
+    ),
+    [optimismSepolia.id]: http(
+      networks.find((network) => network.id === optimismSepolia.id)!.rpcUrl,
+    ),
   },
 });
 

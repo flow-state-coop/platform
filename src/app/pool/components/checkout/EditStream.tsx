@@ -59,7 +59,8 @@ export default function EditStream(props: EditStreamProps) {
 
   const isDeletingStream =
     BigInt(flowRateToReceiver) > 0 && BigInt(newFlowRate) === BigInt(0);
-  const isNativeSuperToken = token.symbol === "ETHx";
+  const isNativeSuperToken =
+    token.symbol === "ETHx" || token.symbol === "CELOx";
   const minAllocationPerMonth = getPoolFlowRateConfig(
     token.symbol,
   ).minAllocationPerMonth;

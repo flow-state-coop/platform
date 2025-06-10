@@ -12,7 +12,6 @@ export type Network = {
   superfluidDashboard: string;
   superfluidSubgraph: string;
   onRampLabel: string;
-  pay16zPool: string;
   flowSplitter: Address;
   flowSplitterSubgraph: string;
   flowCouncilFactory: string;

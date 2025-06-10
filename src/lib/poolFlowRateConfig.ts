@@ -12,6 +12,12 @@ export function getPoolFlowRateConfig(token: string) {
         flowRateScaling: BigInt(1e6),
         suggestedFlowStateDonation: 5,
       };
+    case "CELOx":
+      return {
+        minAllocationPerMonth: 3,
+        flowRateScaling: BigInt(1e6),
+        suggestedFlowStateDonation: 5,
+      };
     case "DEGENx":
       return {
         minAllocationPerMonth: 500,

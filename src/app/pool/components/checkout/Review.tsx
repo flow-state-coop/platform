@@ -144,8 +144,7 @@ export default function Review(props: ReviewProps) {
       liquidationEstimate,
       amountPerTimeInterval: amountPerTimeInterval.replace(/,/g, ""),
       matchingMultiplier:
-        matchingTokenInfo.symbol === "ETHx" &&
-        allocationTokenInfo.symbol === "ETHx"
+        matchingTokenInfo.symbol === allocationTokenInfo.symbol
           ? parseFloat(
               (
                 Number(formatEther(BigInt(netImpact))) /
@@ -470,74 +469,71 @@ export default function Review(props: ReviewProps) {
                   </Stack>
                   <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>
                 </Stack>
-                {matchingTokenInfo.symbol === "ETHx" &&
-                  allocationTokenInfo.symbol === "ETHx" && (
+                {matchingTokenInfo.symbol === allocationTokenInfo.symbol && (
+                  <Stack
+                    direction="horizontal"
+                    className="bg-light border-top border-secondary p-2"
+                  >
+                    <Card.Text className="w-33 m-0 fs-6">
+                      QF Multiplier
+                    </Card.Text>
                     <Stack
                       direction="horizontal"
-                      className="bg-light border-top border-secondary p-2"
+                      gap={1}
+                      className="justify-content-end w-50 p-2"
                     >
-                      <Card.Text className="w-33 m-0 fs-6">
-                        QF Multiplier
-                      </Card.Text>
-                      <Stack
-                        direction="horizontal"
-                        gap={1}
-                        className="justify-content-end w-50 p-2"
+                      <Badge
+                        className={`${
+                          BigInt(
+                            areTransactionsLoading && transactionDetailsSnapshot
+                              ? transactionDetailsSnapshot.newFlowRate
+                              : newFlowRate,
+                          ) <
+                          BigInt(
+                            areTransactionsLoading && transactionDetailsSnapshot
+                              ? transactionDetailsSnapshot.flowRateToReceiver
+                              : flowRateToReceiver,
+                          )
+                            ? "bg-danger"
+                            : "bg-primary"
+                        } w-75 ps-2 pe-2 py-2 fs-6 text-start`}
                       >
-                        <Badge
-                          className={`${
-                            BigInt(
-                              areTransactionsLoading &&
-                                transactionDetailsSnapshot
-                                ? transactionDetailsSnapshot.newFlowRate
-                                : newFlowRate,
-                            ) <
-                            BigInt(
-                              areTransactionsLoading &&
-                                transactionDetailsSnapshot
-                                ? transactionDetailsSnapshot.flowRateToReceiver
-                                : flowRateToReceiver,
-                            )
-                              ? "bg-danger"
-                              : "bg-primary"
-                          } w-75 ps-2 pe-2 py-2 fs-6 text-start`}
-                        >
-                          {parseFloat(
-                            (
-                              Number(
-                                formatEther(
+                        {parseFloat(
+                          (
+                            Number(
+                              formatEther(
+                                BigInt(
+                                  areTransactionsLoading &&
+                                    transactionDetailsSnapshot
+                                    ? transactionDetailsSnapshot.netImpact
+                                    : netImpact,
+                                ),
+                              ),
+                            ) /
+                            Number(
+                              formatEther(
+                                BigInt(
+                                  areTransactionsLoading &&
+                                    transactionDetailsSnapshot
+                                    ? transactionDetailsSnapshot.newFlowRate
+                                    : newFlowRate,
+                                ) -
                                   BigInt(
                                     areTransactionsLoading &&
                                       transactionDetailsSnapshot
-                                      ? transactionDetailsSnapshot.netImpact
-                                      : netImpact,
+                                      ? transactionDetailsSnapshot.flowRateToReceiver
+                                      : flowRateToReceiver,
                                   ),
-                                ),
-                              ) /
-                              Number(
-                                formatEther(
-                                  BigInt(
-                                    areTransactionsLoading &&
-                                      transactionDetailsSnapshot
-                                      ? transactionDetailsSnapshot.newFlowRate
-                                      : newFlowRate,
-                                  ) -
-                                    BigInt(
-                                      areTransactionsLoading &&
-                                        transactionDetailsSnapshot
-                                        ? transactionDetailsSnapshot.flowRateToReceiver
-                                        : flowRateToReceiver,
-                                    ),
-                                ),
-                              )
-                            ).toFixed(2),
-                          )}
-                          x
-                        </Badge>
-                      </Stack>
-                      <span className="w-20 ms-1" />
+                              ),
+                            )
+                          ).toFixed(2),
+                        )}
+                        x
+                      </Badge>
                     </Stack>
-                  )}
+                    <span className="w-20 ms-1" />
+                  </Stack>
+                )}
               </>
             )}
           </Stack>

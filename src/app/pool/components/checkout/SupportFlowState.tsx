@@ -62,7 +62,8 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
   const { address } = useAccount();
   const { isMobile } = useMediaQuery();
 
-  const isNativeSuperToken = token.symbol === "ETHx";
+  const isNativeSuperToken =
+    token.symbol === "ETHx" || token.symbol === "CELOx";
   const isDeletingStream =
     BigInt(flowRateToFlowState) > 0 &&
     BigInt(newFlowRateToFlowState) === BigInt(0);
