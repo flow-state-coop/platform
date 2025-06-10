@@ -51,7 +51,8 @@ export default function Wrap(props: WrapProps) {
 
   const { address } = useAccount();
 
-  const isNativeSuperToken = token.symbol === "ETHx";
+  const isNativeSuperToken =
+    token.symbol === "ETHx" || token.symbol === "CELOx";
   const wrapDurationEstimate =
     BigInt(newFlowRate) > 0
       ? Number(wrapAmount?.replace(/,/g, "") ?? "0") /

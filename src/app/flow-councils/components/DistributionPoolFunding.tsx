@@ -142,7 +142,8 @@ export default function DistributionPoolFunding(props: {
       refetchInterval: 10000,
     },
   });
-  const isSuperTokenNative = token.symbol === "ETHx";
+  const isSuperTokenNative =
+    token.symbol === "ETHx" || token.symbol === "CELOx";
   const isSuperTokenPure =
     !isSuperTokenNative && underlyingTokenAddress === ZERO_ADDRESS;
   const { data: underlyingTokenBalance } = useBalance({

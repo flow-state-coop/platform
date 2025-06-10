@@ -120,9 +120,10 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       refetchInterval: 10000,
     },
   });
-  const isNativeSuperToken = matchingTokenSymbol === "ETHx";
+  const isNativeSuperToken =
+    matchingTokenSymbol === "ETHx" || matchingTokenSymbol === "CELOx";
   const isPureSuperToken =
-    matchingTokenSymbol !== "ETHx" && !matchingSuperToken?.underlyingToken;
+    !isNativeSuperToken && !matchingSuperToken?.underlyingToken;
   const { data: underlyingTokenBalance } = useBalance({
     address,
     token: (matchingSuperToken?.underlyingToken?.address as Address) ?? void 0,

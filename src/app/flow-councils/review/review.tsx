@@ -277,6 +277,7 @@ export default function Review(props: ReviewProps) {
         const receipt = await publicClient?.waitForTransactionReceipt({
           hash,
           confirmations: 3,
+          retryCount: 10,
         });
 
         if (receipt?.status === "success") {
