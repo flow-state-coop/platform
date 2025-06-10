@@ -576,6 +576,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       );
 
       if (
+        !isPureSuperToken &&
         weiAmount > 0 &&
         liquidationEstimate &&
         dayjs

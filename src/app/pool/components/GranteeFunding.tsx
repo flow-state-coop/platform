@@ -557,6 +557,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       );
 
       if (
+        !isPureSuperToken &&
         weiAmount > 0 &&
         liquidationEstimate &&
         dayjs
