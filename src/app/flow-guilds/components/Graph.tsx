@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { formatEther } from "viem";
 import {
   ReactFlow,
@@ -90,6 +91,7 @@ const edgeTypes = { custom: CustomEdge };
 function CustomNode(props: NodeProps<Node>) {
   const { selected, data } = props;
 
+  const router = useRouter();
   const network = networks.find((network) => network.id === data.chainId);
   const totalFlowed = useFlowingAmount(
     BigInt((data?.totalAmountFlowedDistributedUntilUpdatedAt as string) ?? 0) +
@@ -251,6 +253,17 @@ function CustomNode(props: NodeProps<Node>) {
               className="border border-dark"
             >
               Copy address
+            </Button>
+            <Button
+              variant="light"
+              onClick={() =>
+                router.push(
+                  `/flow-splitters/${data.chainId}/${data.flowSpitterId}/admin`,
+                )
+              }
+              className="border border-dark"
+            >
+              Configuration
             </Button>
             <Button
               variant="light"
@@ -577,6 +590,8 @@ export default function Graph(props: GraphProps) {
                 )} ${pool.token.symbol}/mo`,
                 token: { address: token.address, symbol: token.symbol },
                 flowRate: pool.flowRate,
+                flowSpitterId:
+                  flowGuildConfig.flowSplitters[chainId]?.[token.symbol]?.id,
                 totalAmountFlowedDistributedUntilUpdatedAt:
                   pool.totalAmountFlowedDistributedUntilUpdatedAt,
                 totalAmountInstantlyDistributedUntilUpdatedAt:
