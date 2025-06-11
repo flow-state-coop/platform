@@ -368,7 +368,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
                 >
                   <InfoTooltip
                     position={{ top: true }}
-                    target={<Image width={32} src="/tune.svg" alt="Edit" />}
+                    target={<Image width={32} src="/tune.svg" alt="Configuration" />}
                     content={<>Edit</>}
                   />
                 </Button>
