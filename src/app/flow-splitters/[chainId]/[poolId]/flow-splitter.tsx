@@ -40,9 +40,6 @@ const FLOW_SPLITTER_POOL_QUERY = gql`
       name
       symbol
       token
-      poolAdmins {
-        address
-      }
       poolAdminRemovedEvents(orderBy: timestamp, orderDirection: asc) {
         address
         timestamp
@@ -167,7 +164,6 @@ export default function FlowSplitter(props: FlowSplitterProps) {
     },
     pollInterval: 10000,
   });
-  const poolAdmins = flowSplitterPoolQueryRes?.pools[0]?.poolAdmins;
   const pool = flowSplitterPoolQueryRes?.pools[0];
   const { data: superfluidQueryRes, loading: superfluidQueryLoading } =
     useQuery(SUPERFLUID_QUERY, {
@@ -340,25 +336,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
                 >
                   {truncateStr(pool.poolAddress, 14)}
                 </Link>
-                <span className="d-none d-sm-inline-block">)</span>
-                {poolAdmins.find(
-                  (admin: { address: string }) =>
-                    admin.address === address?.toLowerCase(),
-                ) && (
-                  <Button
-                    variant="transparent"
-                    className="mt-2 p-0 border-0"
-                    onClick={() =>
-                      router.push(`/flow-splitters/${chainId}/${poolId}/admin`)
-                    }
-                  >
-                    <InfoTooltip
-                      position={{ top: true }}
-                      target={<Image width={32} src="/edit.svg" alt="Edit" />}
-                      content={<>Edit</>}
-                    />
-                  </Button>
-                )}
+                <span className="d-none d-sm-inline-block me-1">)</span>
                 <Button
                   variant="transparent"
                   className="d-flex align-items-center mt-2 p-0 border-0"
@@ -379,6 +357,19 @@ export default function FlowSplitter(props: FlowSplitterProps) {
                     position={{ top: true }}
                     target={<Image width={32} src="/wallet.svg" alt="wallet" />}
                     content={<>Add to Wallet</>}
+                  />
+                </Button>
+                <Button
+                  variant="transparent"
+                  className="mt-2 p-0 border-0"
+                  onClick={() =>
+                    router.push(`/flow-splitters/${chainId}/${poolId}/admin`)
+                  }
+                >
+                  <InfoTooltip
+                    position={{ top: true }}
+                    target={<Image width={32} src="/tune.svg" alt="Edit" />}
+                    content={<>Edit</>}
                   />
                 </Button>
               </Stack>

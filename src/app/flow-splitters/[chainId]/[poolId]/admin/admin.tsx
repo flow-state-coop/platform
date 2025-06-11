@@ -28,8 +28,6 @@ import Spinner from "react-bootstrap/Spinner";
 import FormCheck from "react-bootstrap/FormCheck";
 import Form from "react-bootstrap/Form";
 import InfoTooltip from "@/components/InfoTooltip";
-import OpenFlow from "@/app/flow-splitters/components/OpenFlow";
-import InstantDistribution from "@/app/flow-splitters/components/InstantDistribution";
 import { getApolloClient } from "@/lib/apollo";
 import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -101,9 +99,6 @@ export default function Admin(props: AdminProps) {
     { address: "", units: "", validationError: "" },
   ]);
   const [membersToRemove, setMembersToRemove] = useState<MemberEntry[]>([]);
-  const [showCoreConfig, setShowCoreConfig] = useState(false);
-  const [showOpenFlow, setShowOpenFlow] = useState(false);
-  const [showInstantDistribution, setShowInstantDistribution] = useState(false);
   const [transactionSuccess, setTransactionSuccess] = useState("");
   const [transactionError, setTransactionError] = useState("");
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
@@ -158,6 +153,10 @@ export default function Admin(props: AdminProps) {
       memberEntry.validationError === "" &&
       memberEntry.address !== "" &&
       memberEntry.units !== "",
+  );
+  const isAdmin = !!poolAdmins?.find(
+    (poolAdmin: { address: string }) =>
+      poolAdmin.address === address?.toLowerCase(),
   );
 
   const totalUnits = useMemo(
@@ -469,16 +468,12 @@ export default function Admin(props: AdminProps) {
           <span className="position-absolute top-50 start-50 translate-middle">
             <Spinner />
           </span>
-        ) : !poolAdmins?.find(
-            (poolAdmin: { address: string }) =>
-              poolAdmin.address === address?.toLowerCase(),
-          ) || !network ? (
-          <p className="w-100 mt-5 fs-4 text-center">Pool Admin Not Found</p>
+        ) : !network ? (
+          <p className="w-100 mt-5 fs-4 text-center">Network Not Found</p>
         ) : (
           <>
             <h1 className="d-flex flex-column flex-sm-row align-items-sm-center overflow-hidden gap-sm-1 mt-5 mb-1">
               <span className="text-truncate">
-                Edit{" "}
                 {pool && pool.name !== "Superfluid Pool"
                   ? pool.name
                   : "Flow Splitter"}{" "}
@@ -520,169 +515,130 @@ export default function Admin(props: AdminProps) {
               <Image src={network.icon} alt="" width={18} height={18} />
               {network.name}
             </Stack>
-            <Button
-              className="w-100 mt-5 py-2 fs-4"
-              onClick={() => {
-                !address && openConnectModal
-                  ? openConnectModal()
-                  : connectedChain?.id !== chainId
-                    ? switchChain({ chainId })
-                    : setShowOpenFlow(true);
-              }}
-            >
-              Open Flow
-            </Button>
-            <Button
-              variant="secondary"
-              className="w-100 mt-3 py-2 fs-4"
-              onClick={() => {
-                !address && openConnectModal
-                  ? openConnectModal()
-                  : connectedChain?.id !== chainId
-                    ? switchChain({ chainId })
-                    : setShowInstantDistribution(true);
-              }}
-            >
-              Send Distribution
-            </Button>
             <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
-              <Card.Header
-                className="d-flex justify-content-between align-items-center bg-transparent border-0 rounded-4 p-0 fs-4 cursor-pointer"
-                onClick={() => setShowCoreConfig(!showCoreConfig)}
-              >
-                Core Configuration{" "}
-                <Image
-                  src={showCoreConfig ? "/expand-less.svg" : "/expand-more.svg"}
-                  alt=""
-                  width={42}
-                  height={42}
-                />
-              </Card.Header>
-              {showCoreConfig && (
-                <Card.Body className="p-0">
-                  <Card.Text className="text-info">
-                    Configuration in this section cannot be edited after
-                    deployment.
-                  </Card.Text>
+              <Card.Body className="p-0">
+                <Card.Text className="text-info">
+                  Configuration in this section cannot be edited after
+                  deployment.
+                </Card.Text>
+                <Dropdown>
+                  <Dropdown.Toggle
+                    className="d-flex justify-content-between align-items-center bg-white text-dark border border-2"
+                    style={{ width: 156, paddingTop: 12, paddingBottom: 12 }}
+                    disabled
+                  >
+                    <Stack
+                      direction="horizontal"
+                      gap={1}
+                      className="align-items-center"
+                    >
+                      <Image
+                        src={network.icon}
+                        alt="Network Icon"
+                        width={18}
+                        height={18}
+                      />
+                      {network.name}
+                    </Stack>
+                  </Dropdown.Toggle>
+                </Dropdown>
+                <Stack
+                  direction={isMobile ? "vertical" : "horizontal"}
+                  gap={isMobile ? 1 : 3}
+                  className="align-items-start mt-2"
+                >
                   <Dropdown>
                     <Dropdown.Toggle
                       className="d-flex justify-content-between align-items-center bg-white text-dark border border-2"
-                      style={{ width: 156, paddingTop: 12, paddingBottom: 12 }}
                       disabled
+                      style={{
+                        width: 156,
+                        paddingTop: 12,
+                        paddingBottom: 12,
+                      }}
                     >
                       <Stack
                         direction="horizontal"
                         gap={1}
                         className="align-items-center"
                       >
-                        <Image
-                          src={network.icon}
-                          alt="Network Icon"
-                          width={18}
-                          height={18}
-                        />
-                        {network.name}
+                        {poolToken && (
+                          <Image
+                            src={poolToken.icon}
+                            alt="Network Icon"
+                            width={18}
+                            height={18}
+                          />
+                        )}
+                        {superfluidQueryRes?.token.symbol}
                       </Stack>
                     </Dropdown.Toggle>
                   </Dropdown>
-                  <Stack
-                    direction={isMobile ? "vertical" : "horizontal"}
-                    gap={isMobile ? 1 : 3}
-                    className="align-items-start mt-2"
-                  >
-                    <Dropdown>
-                      <Dropdown.Toggle
-                        className="d-flex justify-content-between align-items-center bg-white text-dark border border-2"
-                        disabled
-                        style={{
-                          width: 156,
-                          paddingTop: 12,
-                          paddingBottom: 12,
-                        }}
-                      >
-                        <Stack
-                          direction="horizontal"
-                          gap={1}
-                          className="align-items-center"
-                        >
-                          {poolToken && (
-                            <Image
-                              src={poolToken.icon}
-                              alt="Network Icon"
-                              width={18}
-                              height={18}
-                            />
-                          )}
-                          {superfluidQueryRes?.token.symbol}
-                        </Stack>
-                      </Dropdown.Toggle>
-                    </Dropdown>
-                    <Stack direction="vertical" className="align-self-sm-end">
-                      <Form.Control
-                        type="text"
-                        disabled
-                        value={superfluidQueryRes?.token.id}
-                        style={{
-                          width: !isMobile ? "50%" : "",
-                          paddingTop: 12,
-                          paddingBottom: 12,
-                        }}
-                      />
-                    </Stack>
+                  <Stack direction="vertical" className="align-self-sm-end">
+                    <Form.Control
+                      type="text"
+                      disabled
+                      value={superfluidQueryRes?.token.id}
+                      style={{
+                        width: !isMobile ? "50%" : "",
+                        paddingTop: 12,
+                        paddingBottom: 12,
+                      }}
+                    />
                   </Stack>
-                  <Stack direction="vertical" className="mt-4">
-                    <Form.Label className="d-flex gap-1 mb-2 fs-5">
-                      Share Transferability
-                      <InfoTooltip
-                        position={{ top: true }}
-                        target={
-                          <Image
-                            src="/info.svg"
-                            alt="Info"
-                            width={14}
-                            height={14}
-                            className="align-top"
-                          />
-                        }
-                        content={
-                          <>
-                            Should recipients be able to transfer (or trade)
-                            their shares?
-                            <br />
-                            <br />
-                            Carefully consider the implications with your
-                            Contract Admin selection below and your particular
-                            use case before choosing to enable transferability.
-                            This is not editable after launch.
-                          </>
-                        }
+                </Stack>
+                <Stack direction="vertical" className="mt-4">
+                  <Form.Label className="d-flex gap-1 mb-2 fs-5">
+                    Share Transferability
+                    <InfoTooltip
+                      position={{ top: true }}
+                      target={
+                        <Image
+                          src="/info.svg"
+                          alt="Info"
+                          width={14}
+                          height={14}
+                          className="align-top"
+                        />
+                      }
+                      content={
+                        <>
+                          Should recipients be able to transfer (or trade) their
+                          shares?
+                          <br />
+                          <br />
+                          Carefully consider the implications with your Contract
+                          Admin selection below and your particular use case
+                          before choosing to enable transferability. This is not
+                          editable after launch.
+                        </>
+                      }
+                    />
+                  </Form.Label>
+                  <Stack direction="horizontal" gap={5}>
+                    <FormCheck type="radio">
+                      <FormCheck.Input
+                        type="radio"
+                        disabled
+                        checked={!unitsTrasnferability}
                       />
-                    </Form.Label>
-                    <Stack direction="horizontal" gap={5}>
-                      <FormCheck type="radio">
-                        <FormCheck.Input
-                          type="radio"
-                          disabled
-                          checked={!unitsTrasnferability}
-                        />
-                        <FormCheck.Label>
-                          Non-Transferable (Admin Only)
-                        </FormCheck.Label>
-                      </FormCheck>
-                      <FormCheck type="radio">
-                        <FormCheck.Input
-                          type="radio"
-                          disabled
-                          checked={!!unitsTrasnferability}
-                        />
-                        <FormCheck.Label>
-                          Transferable by Recipients
-                        </FormCheck.Label>
-                      </FormCheck>
-                    </Stack>
+                      <FormCheck.Label>
+                        Non-Transferable (Admin Only)
+                      </FormCheck.Label>
+                    </FormCheck>
+                    <FormCheck type="radio">
+                      <FormCheck.Input
+                        type="radio"
+                        disabled
+                        checked={!!unitsTrasnferability}
+                      />
+                      <FormCheck.Label>
+                        Transferable by Recipients
+                      </FormCheck.Label>
+                    </FormCheck>
                   </Stack>
-                </Card.Body>
-              )}
+                </Stack>
+              </Card.Body>
             </Card>
             <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
               <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-4">
@@ -719,6 +675,7 @@ export default function Admin(props: AdminProps) {
                       <FormCheck.Input
                         type="radio"
                         checked={!poolConfig.immutable}
+                        disabled={!isAdmin}
                         onChange={() =>
                           setPoolConfig({
                             ...poolConfig,
@@ -732,6 +689,7 @@ export default function Admin(props: AdminProps) {
                       <FormCheck.Input
                         type="radio"
                         checked={!!poolConfig.immutable}
+                        disabled={!isAdmin}
                         onChange={() =>
                           setPoolConfig({
                             ...poolConfig,
@@ -759,6 +717,7 @@ export default function Admin(props: AdminProps) {
                               key={i}
                               type="text"
                               value={adminEntry.address}
+                              disabled={!isAdmin}
                               style={{
                                 width: !isMobile ? "50%" : "",
                                 paddingTop: 12,
@@ -791,7 +750,8 @@ export default function Admin(props: AdminProps) {
                             />
                             <Button
                               variant="transparent"
-                              className="p-0"
+                              className="p-0 border-0"
+                              disabled={!isAdmin}
                               onClick={() => {
                                 setAdminsEntry((prev) =>
                                   prev.filter(
@@ -821,7 +781,8 @@ export default function Admin(props: AdminProps) {
                       ))}
                       <Button
                         variant="transparent"
-                        className="p-0 text-primary text-decoration-underline"
+                        disabled={!isAdmin}
+                        className="p-0 text-primary text-decoration-underline border-0"
                         onClick={() =>
                           setAdminsEntry((prev) =>
                             prev.concat({
@@ -882,12 +843,13 @@ export default function Admin(props: AdminProps) {
                         <Form.Control
                           type="text"
                           disabled={
-                            superfluidQueryRes?.pool?.poolMembers
+                            !isAdmin ||
+                            (superfluidQueryRes?.pool?.poolMembers
                               .map((member: { account: { id: string } }) =>
                                 member.account.id.toLowerCase(),
                               )
                               .includes(memberEntry.address.toLowerCase()) &&
-                            !memberEntry.validationError
+                              !memberEntry.validationError)
                           }
                           placeholder={
                             isMobile ? "Address" : "Recipient Address"
@@ -934,6 +896,7 @@ export default function Admin(props: AdminProps) {
                         type="text"
                         inputMode="numeric"
                         placeholder="Shares"
+                        disabled={!isAdmin}
                         value={memberEntry.units}
                         style={{ paddingTop: 12, paddingBottom: 12 }}
                         onChange={(e) => {
@@ -992,7 +955,8 @@ export default function Admin(props: AdminProps) {
                         />
                         <Button
                           variant="transparent"
-                          className="p-0"
+                          disabled={!isAdmin}
+                          className="p-0 border-0"
                           onClick={() => removeMemberEntry(memberEntry, i)}
                         >
                           <Image
@@ -1048,6 +1012,7 @@ export default function Admin(props: AdminProps) {
                         />
                         <Button
                           variant="transparent"
+                          disabled={!isAdmin}
                           className="p-0"
                           onClick={() => {
                             setMembersToRemove((prev) =>
@@ -1073,7 +1038,8 @@ export default function Admin(props: AdminProps) {
                 <Stack direction="horizontal" gap={isMobile ? 2 : 4}>
                   <Button
                     variant="transparent"
-                    className="d-flex align-items-center w-100 p-0 text-primary text-decoration-underline"
+                    disabled={!isAdmin}
+                    className="d-flex align-items-center w-100 p-0 text-primary text-decoration-underline border-0"
                     onClick={() =>
                       setMembersEntry((prev) =>
                         prev.concat({
@@ -1138,19 +1104,22 @@ export default function Admin(props: AdminProps) {
                   >
                     Export Current
                   </Card.Link>
-                  <Form.Label
-                    htmlFor="upload-csv"
-                    className="bg-primary text-white text-center m-0 px-5 py-2 rounded-3 cursor-pointer"
-                  >
-                    Upload CSV
-                  </Form.Label>
-                  <Form.Control
-                    type="file"
-                    id="upload-csv"
-                    accept=".csv"
-                    hidden
-                    onChange={handleCsvUpload}
-                  />
+                  <>
+                    <Form.Label
+                      htmlFor="upload-csv"
+                      className={`text-white text-center m-0 px-5 py-2 rounded-3 ${isAdmin ? "bg-primary cursor-pointer" : "bg-info opacity-75"}`}
+                    >
+                      Upload CSV
+                    </Form.Label>
+                    <Form.Control
+                      type="file"
+                      id="upload-csv"
+                      accept=".csv"
+                      hidden
+                      disabled={!isAdmin}
+                      onChange={handleCsvUpload}
+                    />
+                  </>
                 </Stack>
                 <Card.Link
                   href="https://docs.google.com/spreadsheets/d/13oBKSJzKfW0yC8ghiZ_3EYWrjlZ9g8BU-mV91ezG_XU/edit?gid=0#gid=0"
@@ -1212,36 +1181,6 @@ export default function Admin(props: AdminProps) {
           </>
         )}
       </Container>
-      {showOpenFlow && (
-        <OpenFlow
-          show={showOpenFlow}
-          network={network!}
-          token={
-            poolToken ?? {
-              address: pool?.token ?? "",
-              symbol: superfluidQueryRes?.token.symbol ?? "N/A",
-              icon: "",
-            }
-          }
-          pool={superfluidQueryRes?.pool}
-          handleClose={() => setShowOpenFlow(false)}
-        />
-      )}
-      {showInstantDistribution && (
-        <InstantDistribution
-          show={showInstantDistribution}
-          network={network!}
-          token={
-            poolToken ?? {
-              address: pool?.token ?? "",
-              symbol: superfluidQueryRes?.token.symbol ?? "N/A",
-              icon: "",
-            }
-          }
-          pool={superfluidQueryRes?.pool}
-          handleClose={() => setShowInstantDistribution(false)}
-        />
-      )}
     </>
   );
 }
