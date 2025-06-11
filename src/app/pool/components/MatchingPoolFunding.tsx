@@ -34,6 +34,7 @@ import {
   unitOfTime,
   fromTimeUnitsToSeconds,
   formatNumber,
+  formatNumberWithCommas,
   roundWeiAmount,
 } from "@/lib/utils";
 import {
@@ -455,7 +456,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
         4,
       );
 
-      setAmountPerTimeInterval(formatNumber(Number(currentStreamValue)));
+      setAmountPerTimeInterval(formatNumberWithCommas(currentStreamValue));
     })();
   }, [address, flowRateToReceiver]);
 
@@ -472,9 +473,8 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
         );
 
         setSupportFlowStateAmount(
-          formatNumber(
-            Number(currentStreamValue) +
-              poolFlowRateConfig.suggestedFlowStateDonation,
+          formatNumberWithCommas(
+            currentStreamValue + poolFlowRateConfig.suggestedFlowStateDonation,
           ),
         );
       }

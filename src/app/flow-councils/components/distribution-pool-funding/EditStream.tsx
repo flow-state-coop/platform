@@ -70,7 +70,7 @@ export default function EditStream(props: EditStreamProps) {
         `${
           parseFloat(valueWithoutCommas) < 1000
             ? valueWithoutCommas
-            : formatNumberWithCommas(parseFloat(valueWithoutCommas))
+            : formatNumberWithCommas(valueWithoutCommas)
         }`,
       );
     } else if (value === "") {

@@ -74,8 +74,8 @@ export function shuffle<T>(arr: T[]) {
   return arr;
 }
 
-export function formatNumberWithCommas(n: number) {
-  const parts = (n < 0 ? -n : n).toString().split(".");
+export function formatNumberWithCommas(n: string) {
+  const parts = (BigInt(n) < 0 ? -n : n).toString().split(".");
   const whole = parts[0];
   const fractional = parts[1];
   let i = whole.length;
@@ -87,7 +87,7 @@ export function formatNumberWithCommas(n: number) {
     )}${result}`;
   }
 
-  return `${n < 0 ? "-" : ""}${result}${fractional ? "." : ""}${
+  return `${BigInt(n) < 0 ? "-" : ""}${result}${fractional ? "." : ""}${
     fractional ?? ""
   }`;
 }
