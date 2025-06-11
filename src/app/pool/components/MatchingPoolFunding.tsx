@@ -33,7 +33,7 @@ import {
   TimeInterval,
   unitOfTime,
   fromTimeUnitsToSeconds,
-  formatNumber,
+  formatNumberWithCommas,
   roundWeiAmount,
 } from "@/lib/utils";
 import {
@@ -455,7 +455,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
         4,
       );
 
-      setAmountPerTimeInterval(formatNumber(Number(currentStreamValue)));
+      setAmountPerTimeInterval(formatNumberWithCommas(currentStreamValue));
     })();
   }, [address, flowRateToReceiver]);
 
@@ -472,9 +472,8 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
         );
 
         setSupportFlowStateAmount(
-          formatNumber(
-            Number(currentStreamValue) +
-              poolFlowRateConfig.suggestedFlowStateDonation,
+          formatNumberWithCommas(
+            currentStreamValue + poolFlowRateConfig.suggestedFlowStateDonation,
           ),
         );
       }
@@ -594,23 +593,19 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             : underlyingTokenBalance?.value;
 
           setWrapAmount(
-            formatNumber(
-              Number(
-                formatUnits(
-                  amount > 0 ? BigInt(amount) : BigInt(0),
-                  underlyingTokenBalance?.decimals ?? 18,
-                ),
+            formatNumberWithCommas(
+              formatUnits(
+                amount > 0 ? BigInt(amount) : BigInt(0),
+                underlyingTokenBalance?.decimals ?? 18,
               ),
             ),
           );
         } else {
           setWrapAmount(
-            formatNumber(
-              Number(
-                formatUnits(
-                  weiAmount * BigInt(3),
-                  underlyingTokenBalance?.decimals ?? 18,
-                ),
+            formatNumberWithCommas(
+              formatUnits(
+                weiAmount * BigInt(3),
+                underlyingTokenBalance?.decimals ?? 18,
               ),
             ),
           );

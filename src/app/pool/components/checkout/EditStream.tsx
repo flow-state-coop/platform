@@ -74,7 +74,7 @@ export default function EditStream(props: EditStreamProps) {
         `${
           isNativeSuperToken && parseFloat(valueWithoutCommas) < 1000
             ? value.replace(/ /g, "")
-            : formatNumberWithCommas(parseFloat(valueWithoutCommas))
+            : formatNumberWithCommas(valueWithoutCommas)
         }`,
       );
     } else if (value === "") {
@@ -94,7 +94,12 @@ export default function EditStream(props: EditStreamProps) {
 
       setAmountPerTimeInterval(
         `${formatNumberWithCommas(
-          increment ? amount + 1 : amount - 1 <= 0 ? 0 : amount - 1,
+          (increment
+            ? amount + 1
+            : amount - 1 <= 0
+              ? 0
+              : amount - 1
+          ).toString(),
         )}`,
       );
     }

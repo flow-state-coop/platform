@@ -1,5 +1,5 @@
 import { useAccount } from "wagmi";
-import { formatEther, formatUnits } from "viem";
+import { formatEther, formatUnits, parseEther } from "viem";
 import Image from "next/image";
 import Card from "react-bootstrap/Card";
 import Accordion from "react-bootstrap/Accordion";
@@ -13,6 +13,7 @@ import Tooltip from "react-bootstrap/Tooltip";
 import { Step } from "../../types/distributionPoolFunding";
 import { Token } from "@/types/token";
 import { formatNumber, formatNumberWithCommas, isNumber } from "@/lib/utils";
+import { UINT256_MAX } from "@/lib/constants";
 
 export type WrapProps = {
   step: Step;
@@ -49,12 +50,15 @@ export default function Wrap(props: WrapProps) {
     const { value } = e.target;
     const valueWithoutCommas = value.replace(/,/g, "");
 
-    if (isNumber(valueWithoutCommas)) {
+    if (
+      isNumber(valueWithoutCommas) &&
+      parseEther(valueWithoutCommas) < UINT256_MAX
+    ) {
       setWrapAmount(
         `${
           isNativeSuperToken && parseFloat(valueWithoutCommas) < 1000
             ? value
-            : formatNumberWithCommas(parseFloat(valueWithoutCommas))
+            : formatNumberWithCommas(valueWithoutCommas)
         }`,
       );
     } else if (value === "") {

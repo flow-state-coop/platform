@@ -387,9 +387,7 @@ export default function DistributionPoolFunding(props: {
         4,
       );
 
-      setAmountPerTimeInterval(
-        formatNumberWithCommas(parseFloat(currentStreamValue)),
-      );
+      setAmountPerTimeInterval(formatNumberWithCommas(currentStreamValue));
     })();
   }, [address, flowRateToReceiver, timeInterval]);
 
@@ -460,23 +458,18 @@ export default function DistributionPoolFunding(props: {
 
           setWrapAmount(
             formatNumberWithCommas(
-              parseFloat(
-                formatUnits(
-                  amount > 0 ? BigInt(amount) : BigInt(0),
-                  underlyingTokenBalance?.decimals ?? 18,
-                ),
+              formatUnits(
+                amount > 0 ? BigInt(amount) : BigInt(0),
+                underlyingTokenBalance?.decimals ?? 18,
               ),
             ),
           );
         } else {
           setWrapAmount(
             formatNumberWithCommas(
-              parseFloat(
-                formatUnits(
-                  parseEther(amountPerTimeInterval.replace(/,/g, "")) *
-                    BigInt(3),
-                  underlyingTokenBalance?.decimals ?? 18,
-                ),
+              formatUnits(
+                parseEther(amountPerTimeInterval.replace(/,/g, "")) * BigInt(3),
+                underlyingTokenBalance?.decimals ?? 18,
               ),
             ),
           );

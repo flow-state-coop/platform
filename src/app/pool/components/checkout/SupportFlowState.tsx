@@ -80,7 +80,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
         `${
           isNativeSuperToken && parseFloat(valueWithoutCommas) < 1000
             ? value
-            : formatNumberWithCommas(parseFloat(valueWithoutCommas))
+            : formatNumberWithCommas(valueWithoutCommas)
         }`,
       );
     } else if (value === "") {
@@ -211,17 +211,15 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
               >
                 Current:{" "}
                 {formatNumberWithCommas(
-                  parseFloat(
-                    roundWeiAmount(
-                      BigInt(flowRateToFlowState) *
-                        BigInt(
-                          fromTimeUnitsToSeconds(
-                            1,
-                            unitOfTime[supportFlowStateTimeInterval],
-                          ),
+                  roundWeiAmount(
+                    BigInt(flowRateToFlowState) *
+                      BigInt(
+                        fromTimeUnitsToSeconds(
+                          1,
+                          unitOfTime[supportFlowStateTimeInterval],
                         ),
-                      4,
-                    ),
+                      ),
+                    4,
                   ),
                 )}
               </Card.Text>
@@ -238,7 +236,9 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                   }}
                   onClick={() =>
                     setSupportFlowStateAmount(
-                      formatNumberWithCommas(suggestedDonation * 2),
+                      formatNumberWithCommas(
+                        (suggestedDonation * 2).toString(),
+                      ),
                     )
                   }
                 >
@@ -252,7 +252,9 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                   }}
                   onClick={() =>
                     setSupportFlowStateAmount(
-                      formatNumberWithCommas(suggestedDonation * 5),
+                      formatNumberWithCommas(
+                        (suggestedDonation * 5).toString(),
+                      ),
                     )
                   }
                 >
@@ -266,7 +268,9 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                   }}
                   onClick={() =>
                     setSupportFlowStateAmount(
-                      formatNumberWithCommas(suggestedDonation * 10),
+                      formatNumberWithCommas(
+                        (suggestedDonation * 10).toString(),
+                      ),
                     )
                   }
                 >
