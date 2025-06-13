@@ -29,6 +29,7 @@ type MetadataForm = {
   projectTwitter: string;
   userGithub: string;
   projectGithub: string;
+  karmaGap: string;
   projectTelegram: string;
   projectWarpcast: string;
   projectGuild: string;
@@ -46,6 +47,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
     projectTwitter: "",
     userGithub: "",
     projectGithub: "",
+    karmaGap: "",
     projectTelegram: "",
     projectWarpcast: "",
     projectGuild: "",
@@ -355,7 +357,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
               <Form.Control
                 type="text"
                 value={metadataForm.website}
-                placeholder="Your project website"
+                placeholder="example.com"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -372,7 +374,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
               <Form.Control
                 type="text"
                 value={metadataForm.projectGithub}
-                placeholder="The Github org name your project is part of"
+                placeholder="your-github-org"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -389,11 +391,28 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
               <Form.Control
                 type="text"
                 value={metadataForm.userGithub}
-                placeholder="The Github username you use to contribute to the project"
+                placeholder="yourusername"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
                     userGithub: e.target.value,
+                  })
+                }
+              />
+            </InputGroup>
+          </Form.Group>
+          <Form.Group className="mb-4">
+            <Form.Label>Karma GAP</Form.Label>
+            <InputGroup>
+              <InputGroup.Text>https://gap.karmahq.xyz/project/</InputGroup.Text>
+              <Form.Control
+                type="text"
+                value={metadataForm.karmaGap}
+                placeholder="your-project-page"
+                onChange={(e) =>
+                  setMetadataForm({
+                    ...metadataForm,
+                    karmaGap: e.target.value,
                   })
                 }
               />
@@ -406,7 +425,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
               <Form.Control
                 type="text"
                 value={metadataForm.projectTwitter}
-                placeholder="Your project Twitter handle"
+                placeholder="Your project's Twitter handle"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -423,7 +442,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
               <Form.Control
                 type="text"
                 value={metadataForm.projectWarpcast}
-                placeholder="The Farcaster of your project"
+                placeholder="Your project's Farcaster handle"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -440,7 +459,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
               <Form.Control
                 type="text"
                 value={metadataForm.projectLens}
-                placeholder="The Lens of your project"
+                placeholder="Your project's Lens handle"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -457,7 +476,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
               <Form.Control
                 type="text"
                 value={metadataForm.projectGuild}
-                placeholder="The Guild ID of your project"
+                placeholder="Your project's Guild ID"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -474,7 +493,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
               <Form.Control
                 type="text"
                 value={metadataForm.projectTelegram}
-                placeholder="The Telegram of your project"
+                placeholder="Your project's Telegram ID"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -491,7 +510,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
               <Form.Control
                 type="text"
                 value={metadataForm.projectDiscord}
-                placeholder="The Discord invite to your server"
+                placeholder="Your project's Discord invite"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,

@@ -577,9 +577,24 @@ export default function Review(props: ReviewProps) {
                     </Row>
                     <Row>
                       <Col>
+                        <Form.Label>Karma GAP</Form.Label>
+                        <Form.Control
+                          value={
+                            selectedApplicationProfile.metadata.karmaGap
+                              ? `gap.karmahq.xyz/project/${selectedApplicationProfile.metadata.karmaGap}`
+                              : ""
+                          }
+                          disabled
+                        />
+                      </Col>
+                      <Col>
                         <Form.Label>Logo</Form.Label>
                         <Form.Control
-                          value={`https://gateway.pinata.cloud/ipfs/${selectedApplicationProfile.metadata.logoImg}`}
+                          value={
+                            selectedApplicationProfile.metadata.logoImg
+                              ? `https://gateway.pinata.cloud/ipfs/${selectedApplicationProfile.metadata.logoImg}`
+                              : ""
+                          }
                           disabled
                         />
                       </Col>
