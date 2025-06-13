@@ -93,7 +93,7 @@ function Sidebar() {
     <Stack
       direction="vertical"
       gap={4}
-      className="h-100 py-4 px-3 fs-5"
+      className="svh-100 py-4 px-3 fs-5"
       style={{ boxShadow: "0.5rem 0 0.5rem -2px rgba(0,0,0,0.2)" }}
     >
       <SidebarLinks />

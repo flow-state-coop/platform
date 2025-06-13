@@ -430,26 +430,33 @@ export default function Grantee(props: GranteeProps) {
               status: Status | null;
             },
             i: number,
-          ) => (
-            <GranteeApplicationCard
-              key={project.id}
-              name={project.metadata.title}
-              description={project.metadata.description}
-              logoCid={project.metadata.logoImg}
-              bannerCid={project.metadata.bannerImg}
-              status={project.status}
-              hasApplied={hasApplied}
-              canReapply={true}
-              isSelected={selectedProjectIndex === i}
-              selectProject={() =>
-                project?.status !== "PENDING" && project?.status !== "APPROVED"
-                  ? setSelectedProjectIndex(i)
-                  : void 0
-              }
-              updateProject={setShowProjectUpdateModal}
-              isTransactionConfirming={isSubmitting}
-            />
-          ),
+          ) => {
+            if (!project.metadata?.title) {
+              return null;
+            }
+
+            return (
+              <GranteeApplicationCard
+                key={project.id}
+                name={project.metadata.title}
+                description={project.metadata.description}
+                logoCid={project.metadata.logoImg}
+                bannerCid={project.metadata.bannerImg}
+                status={project.status}
+                hasApplied={hasApplied}
+                canReapply={true}
+                isSelected={selectedProjectIndex === i}
+                selectProject={() =>
+                  project?.status !== "PENDING" &&
+                  project?.status !== "APPROVED"
+                    ? setSelectedProjectIndex(i)
+                    : void 0
+                }
+                updateProject={setShowProjectUpdateModal}
+                isTransactionConfirming={isSubmitting}
+              />
+            );
+          },
         )}
         <Card
           className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer shadow"
