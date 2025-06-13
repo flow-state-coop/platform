@@ -29,6 +29,7 @@ type MetadataForm = {
   projectTwitter: string;
   userGithub: string;
   projectGithub: string;
+  karmaGap: string;
   projectTelegram: string;
   projectWarpcast: string;
   projectGuild: string;
@@ -46,6 +47,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
     projectTwitter: "",
     userGithub: "",
     projectGithub: "",
+    karmaGap: "",
     projectTelegram: "",
     projectWarpcast: "",
     projectGuild: "",
@@ -394,6 +396,23 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
                   setMetadataForm({
                     ...metadataForm,
                     userGithub: e.target.value,
+                  })
+                }
+              />
+            </InputGroup>
+          </Form.Group>
+          <Form.Group className="mb-4">
+            <Form.Label>Karma Gap</Form.Label>
+            <InputGroup>
+              <InputGroup.Text>gap.karmahq.xyz/project/</InputGroup.Text>
+              <Form.Control
+                type="text"
+                value={metadataForm.karmaGap}
+                placeholder="Your project Karma Gap"
+                onChange={(e) =>
+                  setMetadataForm({
+                    ...metadataForm,
+                    karmaGap: e.target.value,
                   })
                 }
               />
