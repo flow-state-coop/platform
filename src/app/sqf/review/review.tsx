@@ -529,7 +529,7 @@ export default function Review(props: ReviewProps) {
                     </Row>
                     <Row>
                       <Col>
-                        <Form.Label>Karma Gap</Form.Label>
+                        <Form.Label>Karma GAP</Form.Label>
                         <Form.Control
                           value={
                             selectedRecipient.metadata.karmaGap
