@@ -46,6 +46,7 @@ import {
   ZERO_ADDRESS,
   SECONDS_IN_MONTH,
   FLOW_STATE_RECEIVER,
+  MAX_FLOW_RATE,
   DEFAULT_CHAIN_ID,
 } from "@/lib/constants";
 
@@ -54,7 +55,7 @@ type GranteeFundingProps = {
   handleClose: () => void;
   metadata: ProjectMetadata;
   twitter: string;
-  warpcast: string;
+  farcaster: string;
   placeholderLogo: string;
   poolUiLink: string;
   framesLink: string;
@@ -92,7 +93,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     metadata,
     placeholderLogo,
     twitter,
-    warpcast,
+    farcaster,
     poolUiLink,
     framesLink,
     poolName,
@@ -142,9 +143,10 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       refetchInterval: 10000,
     },
   });
-  const isNativeSuperToken = allocationTokenSymbol === "ETHx";
+  const isNativeSuperToken =
+    allocationTokenSymbol === "ETHx" || allocationTokenSymbol === "CELOx";
   const isPureSuperToken =
-    allocationTokenSymbol !== "ETHx" && !allocationSuperToken?.underlyingToken;
+    !isNativeSuperToken && !allocationSuperToken?.underlyingToken;
   const { data: underlyingTokenBalance } = useBalance({
     address,
     chainId: network?.id ?? DEFAULT_CHAIN_ID,
@@ -458,9 +460,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
         4,
       );
 
-      setAmountPerTimeInterval(
-        formatNumberWithCommas(parseFloat(currentStreamValue)),
-      );
+      setAmountPerTimeInterval(formatNumberWithCommas(currentStreamValue));
     })();
   }, [address, flowRateToReceiver]);
 
@@ -477,8 +477,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
 
       setSupportFlowStateAmount(
         formatNumberWithCommas(
-          parseFloat(currentStreamValue) +
-            poolFlowRateConfig.suggestedFlowStateDonation,
+          currentStreamValue + poolFlowRateConfig.suggestedFlowStateDonation,
         ),
       );
     })();
@@ -493,12 +492,13 @@ export default function GranteeFunding(props: GranteeFundingProps) {
 
   useEffect(() => {
     if (!areTransactionsLoading && amountPerTimeInterval) {
-      setNewFlowRate(
-        (
-          parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
-        ).toString(),
-      );
+      const newFlowRate =
+        parseEther(amountPerTimeInterval.replace(/,/g, "")) /
+        BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
+
+      if (newFlowRate < MAX_FLOW_RATE) {
+        setNewFlowRate(newFlowRate.toString());
+      }
     }
   }, [areTransactionsLoading, amountPerTimeInterval]);
 
@@ -556,6 +556,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       );
 
       if (
+        !isPureSuperToken &&
         weiAmount > 0 &&
         liquidationEstimate &&
         dayjs
@@ -573,22 +574,18 @@ export default function GranteeFunding(props: GranteeFundingProps) {
 
           setWrapAmount(
             formatNumberWithCommas(
-              parseFloat(
-                formatUnits(
-                  amount > 0 ? BigInt(amount) : BigInt(0),
-                  underlyingTokenBalance?.decimals ?? 18,
-                ),
+              formatUnits(
+                amount > 0 ? BigInt(amount) : BigInt(0),
+                underlyingTokenBalance?.decimals ?? 18,
               ),
             ),
           );
         } else {
           setWrapAmount(
             formatNumberWithCommas(
-              parseFloat(
-                formatUnits(
-                  weiAmount * BigInt(3),
-                  underlyingTokenBalance?.decimals ?? 18,
-                ),
+              formatUnits(
+                weiAmount * BigInt(3),
+                underlyingTokenBalance?.decimals ?? 18,
               ),
             ),
           );
@@ -597,12 +594,13 @@ export default function GranteeFunding(props: GranteeFundingProps) {
         setWrapAmount("");
       }
 
-      setNewFlowRate(
-        (
-          weiAmount /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
-        ).toString(),
-      );
+      const newFlowRate =
+        weiAmount /
+        BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
+
+      if (newFlowRate < MAX_FLOW_RATE) {
+        setNewFlowRate(newFlowRate.toString());
+      }
     }
   };
 
@@ -641,8 +639,17 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               flowRateToReceiver={flowRateToReceiver}
               amountPerTimeInterval={amountPerTimeInterval}
               setAmountPerTimeInterval={(amount) => {
-                setAmountPerTimeInterval(amount);
-                updateWrapAmount(amount, calcLiquidationEstimate(amount));
+                const newAmount =
+                  parseEther(amount.replace(/,/g, "")) /
+                    BigInt(
+                      fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]),
+                    ) <
+                  MAX_FLOW_RATE
+                    ? amount
+                    : amountPerTimeInterval;
+
+                setAmountPerTimeInterval(newAmount);
+                updateWrapAmount(newAmount, calcLiquidationEstimate(newAmount));
               }}
               newFlowRate={newFlowRate}
               wrapAmount={wrapAmount}
@@ -763,7 +770,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               isFundingMatchingPool={false}
               granteeName={metadata.title}
               granteeTwitter={twitter ? `@${twitter}` : ""}
-              granteeWarpcast={warpcast ? `@${warpcast}` : ""}
+              granteeFarcaster={farcaster ? `@${farcaster}` : ""}
               poolName={poolName}
               poolUiLink={poolUiLink}
               framesLink={framesLink}

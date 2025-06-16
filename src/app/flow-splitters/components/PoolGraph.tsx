@@ -22,7 +22,7 @@ import Image from "react-bootstrap/Image";
 import Jazzicon, { jsNumberForAddress } from "react-jazzicon";
 import { GDAPool } from "@/types/gdaPool";
 import useFlowingAmount from "@/hooks/flowingAmount";
-import { truncateStr } from "@/lib/utils";
+import { truncateStr, formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 import "@xyflow/react/dist/style.css";
 
@@ -31,7 +31,7 @@ type PoolGraphProps = {
   chainId: number;
   ensByAddress: {
     [key: Address]: { name: string | null; avatar: string | null };
-  };
+  } | null;
 };
 
 const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
@@ -104,7 +104,7 @@ function CustomNode(props: NodeProps<Node>) {
           </span>
           <span style={{ fontSize: "0.6rem" }}>
             Total{" "}
-            {`${Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
+            {`${formatNumber(
               Number(formatEther(totalFlowed)),
             )} ${(data.token as { symbol: string }).symbol}`}
           </span>
@@ -184,9 +184,7 @@ function CustomNode(props: NodeProps<Node>) {
               gap={1}
               className="bg-light border border-dark rounded-2 p-2 text-center"
             >
-              {Intl.NumberFormat("en", {
-                maximumFractionDigits: 4,
-              }).format(
+              {formatNumber(
                 Number(
                   formatEther(
                     BigInt(data.flowRate as string) * BigInt(SECONDS_IN_MONTH),
@@ -215,9 +213,7 @@ function CustomNode(props: NodeProps<Node>) {
               </span>
               <span style={{ fontSize: "0.7rem" }}>
                 Current:{" "}
-                {Intl.NumberFormat("en", {
-                  maximumFractionDigits: 4,
-                }).format(
+                {formatNumber(
                   Number(
                     formatEther(
                       BigInt(data.flowRate as string) *
@@ -289,8 +285,9 @@ export default function PoolGraph(props: PoolGraphProps) {
           type: "custom",
           data: {
             label:
-              ensByAddress[x.account.id]?.name ?? truncateStr(x.account.id, 11),
-            avatar: ensByAddress[x.account.id]?.avatar,
+              ensByAddress?.[x.account.id]?.name ??
+              truncateStr(x.account.id, 11),
+            avatar: ensByAddress?.[x.account.id]?.avatar,
             address: x.account.id,
             flowRate: BigInt(x.flowRate),
             percentage:
@@ -312,8 +309,9 @@ export default function PoolGraph(props: PoolGraphProps) {
           type: "custom",
           data: {
             label:
-              ensByAddress[x.account.id]?.name ?? truncateStr(x.account.id, 11),
-            avatar: ensByAddress[x.account.id]?.avatar,
+              ensByAddress?.[x.account.id]?.name ??
+              truncateStr(x.account.id, 11),
+            avatar: ensByAddress?.[x.account.id]?.avatar,
             address: x.account.id,
             units: x.units,
             totalUnits: pool.totalUnits,
@@ -371,9 +369,7 @@ export default function PoolGraph(props: PoolGraphProps) {
           data: {
             address: pool.id,
             isPool: true,
-            label: `${Intl.NumberFormat("en", {
-              maximumFractionDigits: 4,
-            }).format(
+            label: `${formatNumber(
               Number(
                 formatEther(BigInt(pool.flowRate) * BigInt(SECONDS_IN_MONTH)),
               ),

@@ -1,5 +1,5 @@
 import { useAccount } from "wagmi";
-import { formatEther, formatUnits } from "viem";
+import { formatEther, formatUnits, parseEther } from "viem";
 import Image from "next/image";
 import Card from "react-bootstrap/Card";
 import Accordion from "react-bootstrap/Accordion";
@@ -12,7 +12,8 @@ import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Tooltip from "react-bootstrap/Tooltip";
 import { Step } from "../../types/distributionPoolFunding";
 import { Token } from "@/types/token";
-import { formatNumberWithCommas, isNumber } from "@/lib/utils";
+import { formatNumber, formatNumberWithCommas, isNumber } from "@/lib/utils";
+import { UINT256_MAX } from "@/lib/constants";
 
 export type WrapProps = {
   step: Step;
@@ -42,18 +43,22 @@ export default function Wrap(props: WrapProps) {
 
   const { address } = useAccount();
 
-  const isNativeSuperToken = token.symbol === "ETHx";
+  const isNativeSuperToken =
+    token.symbol === "ETHx" || token.symbol === "CELOx";
 
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
     const valueWithoutCommas = value.replace(/,/g, "");
 
-    if (isNumber(valueWithoutCommas)) {
+    if (
+      isNumber(valueWithoutCommas) &&
+      parseEther(valueWithoutCommas) < UINT256_MAX
+    ) {
       setWrapAmount(
         `${
           isNativeSuperToken && parseFloat(valueWithoutCommas) < 1000
             ? value
-            : formatNumberWithCommas(parseFloat(valueWithoutCommas))
+            : formatNumberWithCommas(valueWithoutCommas)
         }`,
       );
     } else if (value === "") {
@@ -151,20 +156,7 @@ export default function Wrap(props: WrapProps) {
             <Card.Text className="w-100 bg-white m-0 mb-2 px-2 pb-2 rounded-bottom-4 text-end fs-6">
               Balance:{" "}
               {underlyingTokenBalance
-                ? Intl.NumberFormat("en", {
-                    notation:
-                      Number(underlyingTokenBalance.formatted) >= 1000
-                        ? "compact"
-                        : void 0,
-                    maximumFractionDigits:
-                      Number(underlyingTokenBalance.formatted) < 1
-                        ? 4
-                        : Number(underlyingTokenBalance.formatted) < 10
-                          ? 3
-                          : Number(underlyingTokenBalance.formatted) < 100
-                            ? 2
-                            : 1,
-                  }).format(Number(underlyingTokenBalance.formatted))
+                ? formatNumber(Number(underlyingTokenBalance.formatted))
                 : ""}
             </Card.Text>
             <Badge
@@ -200,21 +192,7 @@ export default function Wrap(props: WrapProps) {
               </Badge>
             </Stack>
             <Card.Text className="w-100 bg-white m-0 px-2 pb-2 rounded-bottom-4 text-end fs-6">
-              Balance:{" "}
-              {Intl.NumberFormat("en", {
-                notation:
-                  Number(formatEther(superTokenBalance)) >= 1000
-                    ? "compact"
-                    : void 0,
-                maximumFractionDigits:
-                  Number(formatEther(superTokenBalance)) < 1
-                    ? 4
-                    : Number(formatEther(superTokenBalance)) < 10
-                      ? 3
-                      : Number(formatEther(superTokenBalance)) < 100
-                        ? 2
-                        : 1,
-              }).format(Number(formatEther(superTokenBalance)))}
+              Balance: {formatNumber(Number(formatEther(superTokenBalance)))}
             </Card.Text>
           </Stack>
           {underlyingTokenBalance &&

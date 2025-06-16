@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
 import { formatEther, parseEther } from "viem";
 import dayjs from "dayjs";
@@ -6,6 +6,7 @@ import Image from "next/image";
 import Card from "react-bootstrap/Card";
 import Accordion from "react-bootstrap/Accordion";
 import Stack from "react-bootstrap/Stack";
+import FormCheckInput from "react-bootstrap/FormCheckInput";
 import Spinner from "react-bootstrap/Spinner";
 import Button from "react-bootstrap/Button";
 import Alert from "react-bootstrap/Button";
@@ -20,6 +21,7 @@ import {
   TimeInterval,
   convertStreamValueToInterval,
   truncateStr,
+  formatNumber,
 } from "@/lib/utils";
 import { FLOW_STATE_RECEIVER } from "@/lib/constants";
 
@@ -102,6 +104,10 @@ export default function Review(props: ReviewProps) {
 
   const [transactionDetailsSnapshot, setTransactionDetailsSnapshot] =
     useState<TransactionDetailsSnapshot | null>(null);
+  const [
+    hasAcceptedCloseLiquidationWarning,
+    setHasAcceptedCloseLiquidationWarning,
+  ] = useState(false);
 
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -129,6 +135,16 @@ export default function Review(props: ReviewProps) {
       supportFlowStateTimeInterval,
       TimeInterval.MONTH,
     ),
+  );
+
+  const isLiquidationClose = useMemo(
+    () =>
+      liquidationEstimate
+        ? dayjs
+            .unix(liquidationEstimate)
+            .isBefore(dayjs().add(dayjs.duration({ days: 2 })))
+        : false,
+    [liquidationEstimate],
   );
 
   const handleSubmit = async () => {
@@ -223,27 +239,32 @@ export default function Review(props: ReviewProps) {
                 >
                   <Image src={token.icon} alt="done" width={28} height={28} />
                   <Card.Text className="m-0 border-0 text-center fs-5">
-                    {areTransactionsLoading && transactionDetailsSnapshot
-                      ? transactionDetailsSnapshot.wrapAmount
-                      : wrapAmount}{" "}
+                    {formatNumber(
+                      Number(
+                        areTransactionsLoading && transactionDetailsSnapshot
+                          ? transactionDetailsSnapshot.wrapAmount?.replace(
+                              /,/g,
+                              "",
+                            )
+                          : wrapAmount.replace(/,/g, ""),
+                      ),
+                    )}{" "}
                     <br /> {underlyingTokenBalance?.symbol ?? "N/A"}
                   </Card.Text>
                   <Card.Text className="border-0 text-center fs-6">
                     New Balance:{" "}
-                    {(
+                    {formatNumber(
                       Number(
                         areTransactionsLoading && transactionDetailsSnapshot
                           ? transactionDetailsSnapshot.underlyingTokenBalance
                           : underlyingTokenBalance?.formatted,
                       ) -
-                      Number(
-                        areTransactionsLoading && transactionDetailsSnapshot
-                          ? transactionDetailsSnapshot.wrapAmount
-                          : wrapAmount?.replace(/,/g, ""),
-                      )
-                    )
-                      .toString()
-                      .slice(0, 8)}
+                        Number(
+                          areTransactionsLoading && transactionDetailsSnapshot
+                            ? transactionDetailsSnapshot.wrapAmount
+                            : wrapAmount?.replace(/,/g, ""),
+                        ),
+                    )}
                   </Card.Text>
                 </Stack>
                 <Image
@@ -260,23 +281,42 @@ export default function Review(props: ReviewProps) {
                 >
                   <Image src={token.icon} alt="done" width={28} height={28} />
                   <Card.Text className="m-0 border-0 text-center fs-5">
-                    {areTransactionsLoading && transactionDetailsSnapshot
-                      ? transactionDetailsSnapshot.wrapAmount
-                      : wrapAmount}{" "}
+                    {formatNumber(
+                      Number(
+                        areTransactionsLoading && transactionDetailsSnapshot
+                          ? transactionDetailsSnapshot.wrapAmount?.replace(
+                              /,/g,
+                              "",
+                            )
+                          : wrapAmount.replace(/,/g, ""),
+                      ),
+                    )}{" "}
                     <br /> {token.symbol}
                   </Card.Text>
                   <Card.Text className="border-0 text-center fs-6">
                     New Balance:{" "}
                     {areTransactionsLoading &&
                     transactionDetailsSnapshot?.wrapAmount
-                      ? formatEther(
-                          transactionDetailsSnapshot.superTokenBalance +
-                            parseEther(transactionDetailsSnapshot.wrapAmount),
-                        ).slice(0, 8)
-                      : formatEther(
-                          superTokenBalance +
-                            parseEther(wrapAmount?.replace(/,/g, "") ?? "0"),
-                        ).slice(0, 8)}
+                      ? formatNumber(
+                          Number(
+                            formatEther(
+                              transactionDetailsSnapshot.superTokenBalance +
+                                parseEther(
+                                  transactionDetailsSnapshot.wrapAmount,
+                                ),
+                            ),
+                          ),
+                        )
+                      : formatNumber(
+                          Number(
+                            formatEther(
+                              superTokenBalance +
+                                parseEther(
+                                  wrapAmount?.replace(/,/g, "") ?? "0",
+                                ),
+                            ),
+                          ),
+                        )}
                   </Card.Text>
                 </Stack>
               </Stack>
@@ -355,17 +395,7 @@ export default function Review(props: ReviewProps) {
                   className="mx-1"
                 />
                 <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
-                  {Intl.NumberFormat("en", {
-                    notation: newMonthlyStream >= 1000 ? "compact" : void 0,
-                    maximumFractionDigits:
-                      newMonthlyStream < 1
-                        ? 4
-                        : newMonthlyStream < 10
-                          ? 3
-                          : newMonthlyStream < 100
-                            ? 2
-                            : 1,
-                  }).format(newMonthlyStream)}
+                  {formatNumber(newMonthlyStream)}
                 </Badge>
               </Stack>
               <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>
@@ -466,20 +496,7 @@ export default function Review(props: ReviewProps) {
                       className="mx-1"
                     />
                     <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
-                      {Intl.NumberFormat("en", {
-                        notation:
-                          newMonthlyStreamToFlowState >= 1000
-                            ? "compact"
-                            : void 0,
-                        maximumFractionDigits:
-                          newMonthlyStreamToFlowState < 1
-                            ? 4
-                            : newMonthlyStreamToFlowState < 10
-                              ? 3
-                              : newMonthlyStreamToFlowState < 100
-                                ? 2
-                                : 1,
-                      }).format(newMonthlyStreamToFlowState)}
+                      {formatNumber(newMonthlyStreamToFlowState)}
                     </Badge>
                   </Stack>
                   <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>
@@ -489,14 +506,16 @@ export default function Review(props: ReviewProps) {
           ) : null}
           {!!liquidationEstimate && !isNaN(liquidationEstimate) && (
             <Stack direction="horizontal" gap={1} className="mt-1">
-              <Card.Text className="m-0 fs-6">Est. Liquidation</Card.Text>
+              <Card.Text className="m-0 fs-6 fw-bold">
+                Est. Liquidation
+              </Card.Text>
               <OverlayTrigger
                 overlay={
                   <Tooltip id="t-liquidation-info" className="fs-6">
                     This is the current estimate for when your token balance
-                    will reach 0. Make sure to close your stream or wrap more
-                    tokens before this date to avoid loss of your buffer
-                    deposit.
+                    will reach 0. Make sure to close your stream or{" "}
+                    {isSuperTokenPure ? "deposit" : "wrap"} more tokens before
+                    this date to avoid loss of your buffer deposit.
                   </Tooltip>
                 }
               >
@@ -507,7 +526,7 @@ export default function Review(props: ReviewProps) {
                   height={16}
                 />
               </OverlayTrigger>
-              <Card.Text className="m-0 ms-1 fs-6">
+              <Card.Text className="m-0 ms-1 fs-6 fw-bold">
                 {dayjs
                   .unix(
                     areTransactionsLoading &&
@@ -519,9 +538,41 @@ export default function Review(props: ReviewProps) {
               </Card.Text>
             </Stack>
           )}
+          {isLiquidationClose && (
+            <Stack direction="vertical">
+              <Card.Text className="text-danger small">
+                You've set a high stream rate relative to your balance! We
+                recommend that you set a lower rate or{" "}
+                {isSuperTokenPure ? "deposit" : "wrap"} more {token.symbol}.
+              </Card.Text>
+              <Stack
+                direction="horizontal"
+                gap={2}
+                className="align-items-center"
+              >
+                <FormCheckInput
+                  checked={hasAcceptedCloseLiquidationWarning}
+                  className="border-black"
+                  onChange={() =>
+                    setHasAcceptedCloseLiquidationWarning(
+                      !hasAcceptedCloseLiquidationWarning,
+                    )
+                  }
+                />
+                <Card.Text className="text-danger small">
+                  If I do not cancel this stream before my balance reaches zero,
+                  I will lose my 4-hour {token.symbol} deposit.
+                </Card.Text>
+              </Stack>
+            </Stack>
+          )}
           <Button
             variant={isDeletingStream ? "danger" : "primary"}
-            disabled={transactions.length === 0 || step === Step.SUCCESS}
+            disabled={
+              transactions.length === 0 ||
+              step === Step.SUCCESS ||
+              (isLiquidationClose && !hasAcceptedCloseLiquidationWarning)
+            }
             className="d-flex justify-content-center mt-2 py-1 rounded-3 fw-bold text-light"
             onClick={
               network && connectedChain?.id !== network.id

@@ -31,7 +31,7 @@ import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
 import { getApolloClient } from "@/lib/apollo";
-import { isNumber } from "@/lib/utils";
+import { formatNumber, isNumber } from "@/lib/utils";
 import { ZERO_ADDRESS } from "@/lib/constants";
 
 dayjs().format();
@@ -397,7 +397,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
                   ? ethBalance?.symbol
                   : underlyingTokenBalance?.symbol}
                 :{" "}
-                {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
+                {formatNumber(
                   Number(
                     isSuperTokenNative
                       ? ethBalance?.formatted
@@ -413,14 +413,12 @@ export default function InstantDistribution(props: InstantDistributionProps) {
               }}
             >
               {token.symbol}:{" "}
-              {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
-                Number(formatEther(superTokenBalance)),
-              )}
+              {formatNumber(Number(formatEther(superTokenBalance)))}
               {!hasSufficientSuperTokenBalance && (
                 <>
                   {" "}
                   (need +
-                  {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
+                  {formatNumber(
                     Number(formatEther(amountWei - superTokenBalance)),
                   )}
                   )
@@ -456,10 +454,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
             className="justify-content-center mt-1 mb-2"
           >
             <Card.Text className="m-0 small">
-              1) Wrap{" "}
-              {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
-                Number(wrapAmount),
-              )}{" "}
+              1) Wrap {formatNumber(Number(wrapAmount))}{" "}
               {isSuperTokenNative
                 ? ethBalance?.symbol
                 : underlyingTokenBalance?.symbol}{" "}

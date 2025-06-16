@@ -12,7 +12,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import {
   TimeInterval,
   fromTimeUnitsToSeconds,
-  formatNumberWithCommas,
+  formatNumber,
   roundWeiAmount,
 } from "@/lib/utils";
 
@@ -139,12 +139,12 @@ export default function TopUp(props: TopUpProps) {
                       : "text-warning"
                 }`}
               >
-                {formatNumberWithCommas(
-                  parseFloat(
+                {formatNumber(
+                  Number(
                     formatEther(
                       (underlyingTokenBalance?.value ?? BigInt(0)) +
                         superTokenBalance,
-                    ).slice(0, 8),
+                    ),
                   ),
                 )}
                 {hasSuggestedTokenBalance && (
@@ -158,20 +158,7 @@ export default function TopUp(props: TopUpProps) {
               </Card.Text>
               <Card.Text as="small" className="m-0">
                 Suggested
-                {Intl.NumberFormat("en", {
-                  notation:
-                    Number(roundWeiAmount(suggestedTokenBalance, 4)) >= 1000
-                      ? "compact"
-                      : void 0,
-                  maximumFractionDigits:
-                    Number(roundWeiAmount(suggestedTokenBalance, 4)) < 1
-                      ? 4
-                      : Number(roundWeiAmount(suggestedTokenBalance, 4)) < 10
-                        ? 3
-                        : Number(roundWeiAmount(suggestedTokenBalance, 4)) < 100
-                          ? 2
-                          : 1,
-                }).format(
+                {formatNumber(
                   Number(roundWeiAmount(suggestedTokenBalance, 4)),
                 )}{" "}
               </Card.Text>
@@ -208,9 +195,7 @@ export default function TopUp(props: TopUpProps) {
                     }`}
                   >
                     {ethBalance
-                      ? formatNumberWithCommas(
-                          parseFloat(ethBalance.formatted.slice(0, 8)),
-                        )
+                      ? formatNumber(Number(ethBalance.formatted))
                       : "0"}
                     {hasSufficientEthBalance && (
                       <Image
@@ -270,28 +255,7 @@ export default function TopUp(props: TopUpProps) {
                           : "text-warning"
                     }`}
                   >
-                    {Intl.NumberFormat("en", {
-                      notation:
-                        Number(underlyingTokenBalance?.formatted ?? 0) +
-                          Number(formatEther(superTokenBalance)) >=
-                        1000
-                          ? "compact"
-                          : void 0,
-                      maximumFractionDigits:
-                        Number(underlyingTokenBalance?.formatted ?? 0) +
-                          Number(formatEther(superTokenBalance)) <
-                        1
-                          ? 4
-                          : Number(underlyingTokenBalance?.formatted ?? 0) +
-                                Number(formatEther(superTokenBalance)) <
-                              10
-                            ? 3
-                            : Number(underlyingTokenBalance?.formatted ?? 0) +
-                                  Number(formatEther(superTokenBalance)) <
-                                100
-                              ? 2
-                              : 1,
-                    }).format(
+                    {formatNumber(
                       Number(
                         formatEther(
                           (underlyingTokenBalance?.value ?? BigInt(0)) +
@@ -310,22 +274,9 @@ export default function TopUp(props: TopUpProps) {
                   </Card.Text>
                   <Card.Text as="small" className="m-0">
                     Suggested{" "}
-                    {Intl.NumberFormat("en", {
-                      notation:
-                        Number(roundWeiAmount(suggestedTokenBalance, 4)) >= 1000
-                          ? "compact"
-                          : void 0,
-                      maximumFractionDigits:
-                        Number(roundWeiAmount(suggestedTokenBalance, 4)) < 1
-                          ? 4
-                          : Number(roundWeiAmount(suggestedTokenBalance, 4)) <
-                              10
-                            ? 3
-                            : Number(roundWeiAmount(suggestedTokenBalance, 4)) <
-                                100
-                              ? 2
-                              : 1,
-                    }).format(Number(roundWeiAmount(suggestedTokenBalance, 4)))}
+                    {formatNumber(
+                      Number(roundWeiAmount(suggestedTokenBalance, 4)),
+                    )}
                   </Card.Text>
                   <Button
                     variant="link"
@@ -345,7 +296,17 @@ export default function TopUp(props: TopUpProps) {
             <Button
               variant="transparent"
               className="mt-4 text-info"
-              onClick={() => setStep(Step.WRAP)}
+              onClick={() =>
+                setStep(
+                  !isSuperTokenPure &&
+                    (wrapAmount ||
+                      superTokenBalance <
+                        BigInt(newFlowRate) *
+                          BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
+                    ? Step.WRAP
+                    : Step.REVIEW,
+                )
+              }
             >
               Skip
             </Button>
@@ -355,10 +316,11 @@ export default function TopUp(props: TopUpProps) {
             disabled={!hasSufficientEthBalance || !hasSufficientTokenBalance}
             onClick={() =>
               setStep(
-                wrapAmount ||
-                  superTokenBalance <
-                    BigInt(newFlowRate) *
-                      BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY))
+                !isSuperTokenPure &&
+                  (wrapAmount ||
+                    superTokenBalance <
+                      BigInt(newFlowRate) *
+                        BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
                   ? Step.WRAP
                   : Step.REVIEW,
               )

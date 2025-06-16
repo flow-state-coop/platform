@@ -8,23 +8,36 @@ import Jazzicon, { jsNumberForAddress } from "react-jazzicon";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
 import { truncateStr } from "@/lib/utils";
-import { SECONDS_IN_MONTH } from "@/lib/constants";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import { formatNumber } from "@/lib/utils";
+import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 type ActivityFeedProps = {
   poolSymbol: string;
   poolAddress: string;
   network: Network;
   token: Token;
+  flowUpdatedEvents: FlowUpdatedEvent[];
   poolCreatedEvent: PoolCreatedEvent;
   poolAdminAddedEvents: PoolAdminAddedEvent[];
   poolAdminRemovedEvents: PoolAdminRemovedEvent[];
   memberUnitsUpdatedEvents: MemberUnitsUpdatedEvent[];
   flowDistributionUpdatedEvents: FlowDistributionUpdatedEvent[];
   instantDistributionUpdatedEvents: InstantDistributionUpdatedEvent[];
+  receivedTransferEvents: ReceivedTransferEvent[];
   ensByAddress: {
     [key: Address]: { name: string | null; avatar: string | null };
-  };
+  } | null;
+};
+
+type FlowUpdatedEvent = {
+  flowRate: `${number}`;
+  oldFlowRate: `${number}`;
+  receiver: Address;
+  sender: Address;
+  timestamp: `${number}`;
+  transactionHash: `0x${string}`;
+  __typename: string;
 };
 
 type PoolCreationMemberUnitsUpdates = {
@@ -99,34 +112,47 @@ type InstantDistributionUpdatedEvent = {
   __typename: string;
 };
 
+type ReceivedTransferEvent = {
+  from: { id: `0x${string}` };
+  to: { id: `0x${string}` };
+  value: `${number}`;
+  timestamp: `${number}`;
+  transactionHash: `0x${string}`;
+  __typename: string;
+};
+
 export default function ActivityFeed(props: ActivityFeedProps) {
   const {
     poolSymbol,
     poolAddress,
     network,
     token,
+    flowUpdatedEvents,
     poolCreatedEvent,
     memberUnitsUpdatedEvents,
     poolAdminAddedEvents,
     poolAdminRemovedEvents,
     flowDistributionUpdatedEvents,
     instantDistributionUpdatedEvents,
+    receivedTransferEvents,
     ensByAddress,
   } = props;
   const { isMobile, isTablet } = useMediaQuery();
 
   const events = useMemo(() => {
     const events: Array<
+      | FlowUpdatedEvent
       | PoolCreationMemberUnitsUpdates
       | PoolUpdateMemberUnitsUpdates
       | PoolAdminAddedEvent
       | PoolAdminRemovedEvent
       | FlowDistributionUpdatedEvent
       | InstantDistributionUpdatedEvent
+      | ReceivedTransferEvent
     > = [];
     const poolCreationMemberUnitsUpdates = {
       poolCreatedEvent,
-      timestamp: poolCreatedEvent.timestamp,
+      timestamp: poolCreatedEvent?.timestamp,
       memberUnitsUpdatedEvents: [] as MemberUnitsUpdatedEvent[],
       __typename: "PoolCreationMemberUnitsUpdates",
     };
@@ -175,32 +201,162 @@ export default function ActivityFeed(props: ActivityFeedProps) {
       events.push(poolUpdateMemberUnitsUpdates);
     }
 
+    events.push(...flowUpdatedEvents);
     events.push(...instantDistributionUpdatedEvents);
     events.push(...flowDistributionUpdatedEvents);
     events.push(...poolAdminAddedEvents);
     events.push(...poolAdminRemovedEvents);
-    events.push(poolCreationMemberUnitsUpdates);
+    events.push(...receivedTransferEvents);
+
+    if (poolCreatedEvent) {
+      events.push(poolCreationMemberUnitsUpdates);
+    }
+
     events.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+
+    if (events.length > 25) {
+      events.length = 25;
+    }
 
     return events;
   }, [
+    flowUpdatedEvents,
     poolCreatedEvent,
     memberUnitsUpdatedEvents,
     poolAdminAddedEvents,
     poolAdminRemovedEvents,
     flowDistributionUpdatedEvents,
     instantDistributionUpdatedEvents,
+    receivedTransferEvents,
   ]);
 
   return (
     <Stack
       direction="vertical"
       gap={4}
-      className="mt-5 bg-light p-4 rounded-5"
-      style={{ fontSize: isMobile || isTablet ? "1rem" : "1.25rem" }}
+      className="mt-3 mt-sm-5 bg-light p-4 rounded-5 overflow-auto"
+      style={{
+        fontSize: isMobile || isTablet ? "1rem" : "1.25rem",
+        maxHeight: 600,
+      }}
     >
-      <p className="m-0 fs-3">Activity</p>
+      <p className="m-0 fs-3">Recent Activity</p>
+      {events.length === 0 && (
+        <p className="text-center">No transactions yet.</p>
+      )}
       {events.map((event, i) => {
+        if (event.__typename === "FlowUpdatedEvent") {
+          return (
+            <Stack direction="horizontal" gap={2} key={i}>
+              {ensByAddress?.[(event as FlowUpdatedEvent).sender]?.avatar ? (
+                <Image
+                  src={
+                    ensByAddress?.[(event as FlowUpdatedEvent).sender].avatar ??
+                    ""
+                  }
+                  alt=""
+                  width={isMobile || isTablet ? 36 : 24}
+                  height={isMobile || isTablet ? 36 : 24}
+                  className="rounded-circle align-self-center"
+                />
+              ) : (
+                <span
+                  style={{
+                    width: isMobile || isTablet ? 36 : 24,
+                    height: isMobile || isTablet ? 36 : 24,
+                  }}
+                >
+                  <Jazzicon
+                    paperStyles={{ border: "1px solid black" }}
+                    diameter={isMobile || isTablet ? 36 : 24}
+                    seed={jsNumberForAddress(
+                      (event as FlowUpdatedEvent).sender,
+                    )}
+                  />
+                </span>
+              )}
+              <Stack
+                direction={isMobile || isTablet ? "vertical" : "horizontal"}
+                className="w-100 justify-content-between"
+              >
+                <p className="m-0">
+                  <Link
+                    href={`${network.blockExplorer}/address/${(event as FlowUpdatedEvent).sender}`}
+                    target="_blank"
+                  >
+                    {ensByAddress?.[(event as FlowUpdatedEvent).sender]?.name ??
+                      truncateStr((event as FlowUpdatedEvent).sender, 15)}
+                  </Link>{" "}
+                  {(event as FlowUpdatedEvent).oldFlowRate === "0" ? (
+                    <>
+                      opened a{" "}
+                      {formatNumber(
+                        Number(
+                          formatEther(
+                            BigInt((event as FlowUpdatedEvent).flowRate) *
+                              BigInt(SECONDS_IN_MONTH),
+                          ),
+                        ),
+                      )}{" "}
+                      {token.symbol}/mo stream
+                    </>
+                  ) : (event as FlowUpdatedEvent).flowRate === "0" ? (
+                    <>
+                      closed a{" "}
+                      {formatNumber(
+                        Number(
+                          formatEther(
+                            BigInt((event as FlowUpdatedEvent).oldFlowRate) *
+                              BigInt(SECONDS_IN_MONTH),
+                          ),
+                        ),
+                      )}{" "}
+                      {token.symbol}/mo stream.
+                    </>
+                  ) : (
+                    <>
+                      updated a stream from{" "}
+                      {formatNumber(
+                        Number(
+                          formatEther(
+                            BigInt((event as FlowUpdatedEvent).oldFlowRate) *
+                              BigInt(SECONDS_IN_MONTH),
+                          ),
+                        ),
+                      )}{" "}
+                      {token.symbol}/mo to{" "}
+                      {formatNumber(
+                        Number(
+                          formatEther(
+                            BigInt((event as FlowUpdatedEvent).flowRate) *
+                              BigInt(SECONDS_IN_MONTH),
+                          ),
+                        ),
+                      )}{" "}
+                      {token.symbol}/mo
+                    </>
+                  )}
+                </p>
+                <Link
+                  href={`${network.blockExplorer}/tx/${(event as FlowUpdatedEvent).transactionHash}`}
+                  target="_blank"
+                  className="text-info"
+                >
+                  {new Date(Number(event.timestamp) * 1000).toLocaleString(
+                    "en-US",
+                    {
+                      month: "short",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "numeric",
+                    },
+                  )}
+                </Link>
+              </Stack>
+            </Stack>
+          );
+        }
+
         if (event.__typename === "PoolCreationMemberUnitsUpdates") {
           return (
             <Stack direction="vertical" gap={2} key={i}>
@@ -249,11 +405,12 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     className="align-items-center"
                     key={i}
                   >
-                    {ensByAddress[memberUnitsUpdatedEvent.poolMember.account.id]
-                      ?.avatar ? (
+                    {ensByAddress?.[
+                      memberUnitsUpdatedEvent.poolMember.account.id
+                    ]?.avatar ? (
                       <Image
                         src={
-                          ensByAddress[
+                          ensByAddress?.[
                             memberUnitsUpdatedEvent.poolMember.account.id
                           ].avatar ?? ""
                         }
@@ -278,7 +435,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                         href={`${network.blockExplorer}/address/${memberUnitsUpdatedEvent.poolMember.account.id}`}
                         target="_blank"
                       >
-                        {ensByAddress[
+                        {ensByAddress?.[
                           memberUnitsUpdatedEvent.poolMember.account.id
                         ]?.name ??
                           truncateStr(
@@ -286,10 +443,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                             15,
                           )}
                       </Link>
-                      :{" "}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(Number(memberUnitsUpdatedEvent.units))}{" "}
+                      : {formatNumber(Number(memberUnitsUpdatedEvent.units))}{" "}
                       {poolSymbol}{" "}
                       {Number(memberUnitsUpdatedEvent.units) === 1
                         ? "Share"
@@ -350,11 +504,12 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     className="align-items-center"
                     key={i}
                   >
-                    {ensByAddress[memberUnitsUpdatedEvent.poolMember.account.id]
-                      ?.avatar ? (
+                    {ensByAddress?.[
+                      memberUnitsUpdatedEvent.poolMember.account.id
+                    ]?.avatar ? (
                       <Image
                         src={
-                          ensByAddress[
+                          ensByAddress?.[
                             memberUnitsUpdatedEvent.poolMember.account.id
                           ].avatar ?? ""
                         }
@@ -379,7 +534,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                         href={`${network.blockExplorer}/address/${memberUnitsUpdatedEvent.poolMember.account.id}`}
                         target="_blank"
                       >
-                        {ensByAddress[
+                        {ensByAddress?.[
                           memberUnitsUpdatedEvent.poolMember.account.id
                         ]?.name ??
                           truncateStr(
@@ -393,9 +548,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                       0
                         ? "+"
                         : ""}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(
+                      {formatNumber(
                         Number(memberUnitsUpdatedEvent.units) -
                           Number(memberUnitsUpdatedEvent.oldUnits),
                       )}{" "}
@@ -417,11 +570,11 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "PoolAdminAddedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              {ensByAddress[(event as PoolAdminAddedEvent).address as Address]
+              {ensByAddress?.[(event as PoolAdminAddedEvent).address as Address]
                 ?.avatar ? (
                 <Image
                   src={
-                    ensByAddress[
+                    ensByAddress?.[
                       (event as PoolAdminAddedEvent).address as Address
                     ].avatar ?? ""
                   }
@@ -455,7 +608,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as PoolAdminAddedEvent).address}`}
                     target="_blank"
                   >
-                    {ensByAddress[
+                    {ensByAddress?.[
                       (event as PoolAdminAddedEvent).address as Address
                     ]?.name ??
                       truncateStr((event as PoolAdminAddedEvent).address, 15)}
@@ -485,11 +638,12 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "PoolAdminRemovedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              {ensByAddress[(event as PoolAdminRemovedEvent).address as Address]
-                ?.avatar ? (
+              {ensByAddress?.[
+                (event as PoolAdminRemovedEvent).address as Address
+              ]?.avatar ? (
                 <Image
                   src={
-                    ensByAddress[
+                    ensByAddress?.[
                       (event as PoolAdminRemovedEvent).address as Address
                     ].avatar ?? ""
                   }
@@ -523,7 +677,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as PoolAdminRemovedEvent).address}`}
                     target="_blank"
                   >
-                    {ensByAddress[
+                    {ensByAddress?.[
                       (event as PoolAdminRemovedEvent).address as Address
                     ]?.name ??
                       truncateStr((event as PoolAdminRemovedEvent).address, 15)}
@@ -553,13 +707,13 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "FlowDistributionUpdatedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              {ensByAddress[
+              {ensByAddress?.[
                 (event as FlowDistributionUpdatedEvent).poolDistributor.account
                   .id
               ]?.avatar ? (
                 <Image
                   src={
-                    ensByAddress[
+                    ensByAddress?.[
                       (event as FlowDistributionUpdatedEvent).poolDistributor
                         .account.id
                     ].avatar ?? ""
@@ -595,7 +749,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as FlowDistributionUpdatedEvent).poolDistributor.account.id}`}
                     target="_blank"
                   >
-                    {ensByAddress[
+                    {ensByAddress?.[
                       (event as FlowDistributionUpdatedEvent).poolDistributor
                         .account.id
                     ]?.name ??
@@ -609,9 +763,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                   "0" ? (
                     <>
                       opened a{" "}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(
+                      {formatNumber(
                         Number(
                           formatEther(
                             BigInt(
@@ -627,9 +779,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                       .newDistributorToPoolFlowRate === "0" ? (
                     <>
                       closed a{" "}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(
+                      {formatNumber(
                         Number(
                           formatEther(
                             BigInt(
@@ -644,9 +794,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                   ) : (
                     <>
                       updated a stream from{" "}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(
+                      {formatNumber(
                         Number(
                           formatEther(
                             BigInt(
@@ -657,9 +805,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                         ),
                       )}{" "}
                       {token.symbol}/mo to{" "}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(
+                      {formatNumber(
                         Number(
                           formatEther(
                             BigInt(
@@ -696,13 +842,13 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "InstantDistributionUpdatedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              {ensByAddress[
+              {ensByAddress?.[
                 (event as InstantDistributionUpdatedEvent).poolDistributor
                   .account.id
               ]?.avatar ? (
                 <Image
                   src={
-                    ensByAddress[
+                    ensByAddress?.[
                       (event as InstantDistributionUpdatedEvent).poolDistributor
                         .account.id
                     ].avatar ?? ""
@@ -738,7 +884,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as FlowDistributionUpdatedEvent).poolDistributor.account.id}`}
                     target="_blank"
                   >
-                    {ensByAddress[
+                    {ensByAddress?.[
                       (event as InstantDistributionUpdatedEvent).poolDistributor
                         .account.id
                     ]?.name ??
@@ -749,9 +895,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                       )}
                   </Link>{" "}
                   instantly distributed{" "}
-                  {Intl.NumberFormat("en", {
-                    maximumFractionDigits: 4,
-                  }).format(
+                  {formatNumber(
                     Number(
                       formatEther(
                         BigInt(
@@ -765,6 +909,81 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                 </p>
                 <Link
                   href={`${network.blockExplorer}/tx/${(event as InstantDistributionUpdatedEvent).transactionHash}`}
+                  target="_blank"
+                  className="text-info"
+                >
+                  {new Date(Number(event.timestamp) * 1000).toLocaleString(
+                    "en-US",
+                    {
+                      month: "short",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "numeric",
+                    },
+                  )}
+                </Link>
+              </Stack>
+            </Stack>
+          );
+        }
+
+        if (event.__typename === "TransferEvent") {
+          return (
+            <Stack direction="horizontal" gap={2} key={i}>
+              {ensByAddress?.[(event as ReceivedTransferEvent).from.id]
+                ?.avatar ? (
+                <Image
+                  src={
+                    ensByAddress?.[(event as ReceivedTransferEvent).from.id]
+                      .avatar ?? ""
+                  }
+                  alt=""
+                  width={isMobile || isTablet ? 36 : 24}
+                  height={isMobile || isTablet ? 36 : 24}
+                  className="rounded-circle align-self-center"
+                />
+              ) : (
+                <span
+                  style={{
+                    width: isMobile || isTablet ? 36 : 24,
+                    height: isMobile || isTablet ? 36 : 24,
+                  }}
+                >
+                  <Jazzicon
+                    paperStyles={{ border: "1px solid black" }}
+                    diameter={isMobile || isTablet ? 36 : 24}
+                    seed={jsNumberForAddress(
+                      (event as ReceivedTransferEvent).from.id,
+                    )}
+                  />
+                </span>
+              )}
+              <Stack
+                direction={isMobile || isTablet ? "vertical" : "horizontal"}
+                className="w-100 justify-content-between"
+              >
+                <p className="m-0">
+                  <Link
+                    href={`${network.blockExplorer}/address/${(event as ReceivedTransferEvent).from.id}`}
+                    target="_blank"
+                  >
+                    {ensByAddress?.[(event as ReceivedTransferEvent).from.id]
+                      ?.name ??
+                      truncateStr((event as ReceivedTransferEvent).from.id, 15)}
+                  </Link>{" "}
+                  donated{" "}
+                  {formatNumber(
+                    Number(
+                      formatEther(
+                        BigInt((event as ReceivedTransferEvent).value),
+                      ),
+                    ),
+                    6,
+                  )}{" "}
+                  {token.symbol}
+                </p>
+                <Link
+                  href={`${network.blockExplorer}/tx/${(event as ReceivedTransferEvent).transactionHash}`}
                   target="_blank"
                   className="text-info"
                 >

@@ -18,6 +18,7 @@ import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import Sidebar from "../components/Sidebar";
 import CopyTooltip from "@/components/CopyTooltip";
+import { ProjectMetadata } from "@/types/project";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -38,7 +39,7 @@ type Recipient = {
   anchorAddress: string;
   recipientAddress: string;
   metadataCid: string;
-  metadata: Metadata;
+  metadata: ProjectMetadata;
   status: Status;
 };
 
@@ -49,19 +50,6 @@ type ReviewingRecipient = {
 
 type CancelingRecipient = {
   id: string;
-};
-
-type Metadata = {
-  title: string;
-  logoImg: string;
-  bannerImg: string;
-  bannerImgData: string;
-  createdAt: number;
-  description: string;
-  website: string;
-  projectTwitter: string;
-  userGithub: string;
-  projectGithub: string;
 };
 
 type Status = "APPROVED" | "REJECTED" | "PENDING" | "CANCELED";
@@ -541,9 +529,24 @@ export default function Review(props: ReviewProps) {
                     </Row>
                     <Row>
                       <Col>
+                        <Form.Label>Karma GAP</Form.Label>
+                        <Form.Control
+                          value={
+                            selectedRecipient.metadata.karmaGap
+                              ? `gap.karmahq.xyz/project/${selectedRecipient.metadata.karmaGap}`
+                              : ""
+                          }
+                          disabled
+                        />
+                      </Col>
+                      <Col>
                         <Form.Label>Logo</Form.Label>
                         <Form.Control
-                          value={`https://gateway.pinata.cloud/ipfs/${selectedRecipient.metadata.logoImg}`}
+                          value={
+                            selectedRecipient.metadata.logoImg
+                              ? `https://gateway.pinata.cloud/ipfs/${selectedRecipient.metadata.logoImg}`
+                              : ""
+                          }
                           disabled
                         />
                       </Col>

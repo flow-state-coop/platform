@@ -22,7 +22,7 @@ import { ProjectMetadata } from "@/types/project";
 import { Token } from "@/types/token";
 import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
 import useFlowingAmount from "@/hooks/flowingAmount";
-import { formatNumberWithCommas } from "@/lib/utils";
+import { formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH, IPFS_GATEWAYS } from "@/lib/constants";
 
 interface GranteeDetailsProps {
@@ -196,11 +196,16 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
         {!!metadata.projectWarpcast && (
           <Button
             variant="link"
-            href={`https://warpcast.com/${metadata.projectWarpcast}`}
+            href={`https://farcaster.xyz/${metadata.projectWarpcast}`}
             target="_blank"
             className="p-0"
           >
-            <Image src="/warpcast.svg" alt="Warpcast" width={16} height={16} />
+            <Image
+              src="/farcaster.svg"
+              alt="Farcaster"
+              width={16}
+              height={16}
+            />
           </Button>
         )}
         {!!metadata.projectLens && (
@@ -264,12 +269,12 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             You ({allocationTokenInfo.symbol})
           </Card.Text>
           <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCommas(
-              parseFloat(
+            {formatNumber(
+              Number(
                 formatEther(
                   BigInt(userOutflow?.currentFlowRate ?? 0) *
                     BigInt(SECONDS_IN_MONTH),
-                ).slice(0, 8),
+                ),
               ),
             )}
           </Badge>
@@ -282,13 +287,13 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             Others ({allocationTokenInfo.symbol})
           </Card.Text>
           <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCommas(
-              parseFloat(
+            {formatNumber(
+              Number(
                 formatEther(
                   (BigInt(inflow?.totalInflowRate ?? 0) -
                     BigInt(userOutflow?.currentFlowRate ?? 0)) *
                     BigInt(SECONDS_IN_MONTH),
-                ).slice(0, 8),
+                ),
               ),
             )}
           </Badge>
@@ -301,13 +306,8 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             Match ({matchingTokenInfo.symbol})
           </Card.Text>
           <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCommas(
-              parseFloat(
-                formatEther(matchingFlowRate * BigInt(SECONDS_IN_MONTH)).slice(
-                  0,
-                  8,
-                ),
-              ),
+            {formatNumber(
+              Number(formatEther(matchingFlowRate * BigInt(SECONDS_IN_MONTH))),
             )}
           </Badge>
         </Stack>
@@ -318,23 +318,17 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
       <Stack direction="horizontal" gap={1} className="fs-6 p-2">
         <Stack direction="vertical" gap={1} className="w-33">
           <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCommas(
-              parseFloat(formatEther(totalAllocatedUser).slice(0, 8)),
-            )}
+            {formatNumber(Number(formatEther(totalAllocatedUser)))}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-33">
           <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCommas(
-              parseFloat(formatEther(totalAllocatedOthers).slice(0, 8)),
-            )}
+            {formatNumber(Number(formatEther(totalAllocatedOthers)))}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-33">
           <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
-            {formatNumberWithCommas(
-              parseFloat(formatEther(totalMatching).slice(0, 8)),
-            )}
+            {formatNumber(Number(formatEther(totalMatching)))}
           </Badge>
         </Stack>
         <Card.Text className="w-20 ms-1" style={{ fontSize: "0.7rem" }}>

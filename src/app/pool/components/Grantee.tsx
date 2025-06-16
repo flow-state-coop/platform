@@ -196,7 +196,8 @@ export default function Grantee(props: GranteeProps) {
               <Card.Text as="small" className="m-0 fw-bold">
                 Matching Multiplier
               </Card.Text>
-              {allocationTokenInfo.symbol === "ETHx" ? (
+              {allocationTokenInfo.symbol === "ETHx" ||
+              allocationTokenInfo.symbol === "CELOx" ? (
                 <Card.Text className="m-0 text-center">
                   x
                   {parseFloat(
@@ -206,7 +207,9 @@ export default function Grantee(props: GranteeProps) {
                           impactMatchingEstimate * BigInt(SECONDS_IN_MONTH),
                           18,
                         ),
-                      ) / getPoolFlowRateConfig("ETHx").minAllocationPerMonth
+                      ) /
+                      getPoolFlowRateConfig(allocationTokenInfo.symbol)
+                        .minAllocationPerMonth
                     ).toFixed(2),
                   )}
                 </Card.Text>

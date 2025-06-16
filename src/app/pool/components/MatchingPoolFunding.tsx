@@ -39,6 +39,7 @@ import {
 import {
   ZERO_ADDRESS,
   SECONDS_IN_MONTH,
+  MAX_FLOW_RATE,
   FLOW_STATE_RECEIVER,
   DEFAULT_CHAIN_ID,
 } from "@/lib/constants";
@@ -119,9 +120,10 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       refetchInterval: 10000,
     },
   });
-  const isNativeSuperToken = matchingTokenSymbol === "ETHx";
+  const isNativeSuperToken =
+    matchingTokenSymbol === "ETHx" || matchingTokenSymbol === "CELOx";
   const isPureSuperToken =
-    matchingTokenSymbol !== "ETHx" && !matchingSuperToken?.underlyingToken;
+    !isNativeSuperToken && !matchingSuperToken?.underlyingToken;
   const { data: underlyingTokenBalance } = useBalance({
     address,
     token: (matchingSuperToken?.underlyingToken?.address as Address) ?? void 0,
@@ -453,9 +455,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
         4,
       );
 
-      setAmountPerTimeInterval(
-        formatNumberWithCommas(parseFloat(currentStreamValue)),
-      );
+      setAmountPerTimeInterval(formatNumberWithCommas(currentStreamValue));
     })();
   }, [address, flowRateToReceiver]);
 
@@ -473,8 +473,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
 
         setSupportFlowStateAmount(
           formatNumberWithCommas(
-            parseFloat(currentStreamValue) +
-              poolFlowRateConfig.suggestedFlowStateDonation,
+            currentStreamValue + poolFlowRateConfig.suggestedFlowStateDonation,
           ),
         );
       }
@@ -493,12 +492,13 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
 
   useEffect(() => {
     if (!areTransactionsLoading && amountPerTimeInterval) {
-      setNewFlowRate(
-        (
-          parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
-        ).toString(),
-      );
+      const newFlowRate =
+        parseEther(amountPerTimeInterval.replace(/,/g, "")) /
+        BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
+
+      if (newFlowRate < MAX_FLOW_RATE) {
+        setNewFlowRate(newFlowRate.toString());
+      }
     }
   }, [areTransactionsLoading, amountPerTimeInterval]);
 
@@ -576,6 +576,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       );
 
       if (
+        !isPureSuperToken &&
         weiAmount > 0 &&
         liquidationEstimate &&
         dayjs
@@ -593,22 +594,18 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
 
           setWrapAmount(
             formatNumberWithCommas(
-              parseFloat(
-                formatUnits(
-                  amount > 0 ? BigInt(amount) : BigInt(0),
-                  underlyingTokenBalance?.decimals ?? 18,
-                ),
+              formatUnits(
+                amount > 0 ? BigInt(amount) : BigInt(0),
+                underlyingTokenBalance?.decimals ?? 18,
               ),
             ),
           );
         } else {
           setWrapAmount(
             formatNumberWithCommas(
-              parseFloat(
-                formatUnits(
-                  weiAmount * BigInt(3),
-                  underlyingTokenBalance?.decimals ?? 18,
-                ),
+              formatUnits(
+                weiAmount * BigInt(3),
+                underlyingTokenBalance?.decimals ?? 18,
               ),
             ),
           );
@@ -617,12 +614,13 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
         setWrapAmount("");
       }
 
-      setNewFlowRate(
-        (
-          weiAmount /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
-        ).toString(),
-      );
+      const newFlowRate =
+        weiAmount /
+        BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
+
+      if (newFlowRate < MAX_FLOW_RATE) {
+        setNewFlowRate(newFlowRate.toString());
+      }
     }
   };
 
@@ -651,12 +649,22 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             flowRateToReceiver={flowRateToReceiver}
             amountPerTimeInterval={amountPerTimeInterval}
             setAmountPerTimeInterval={(amount) => {
-              setAmountPerTimeInterval(amount);
-              updateWrapAmount(amount, calcLiquidationEstimate(amount));
+              const newAmount =
+                parseEther(amount.replace(/,/g, "")) /
+                  BigInt(
+                    fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]),
+                  ) <
+                MAX_FLOW_RATE
+                  ? amount
+                  : amountPerTimeInterval;
+
+              setAmountPerTimeInterval(newAmount);
+              updateWrapAmount(newAmount, calcLiquidationEstimate(newAmount));
             }}
             newFlowRate={newFlowRate}
             wrapAmount={wrapAmount}
             isFundingMatchingPool={true}
+            isPureSuperToken={isPureSuperToken}
             superTokenBalance={superTokenBalance}
             hasSufficientBalance={
               !!hasSufficientEthBalance && !!hasSuggestedTokenBalance

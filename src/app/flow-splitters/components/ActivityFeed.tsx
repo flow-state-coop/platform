@@ -8,8 +8,9 @@ import Jazzicon, { jsNumberForAddress } from "react-jazzicon";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
 import { truncateStr } from "@/lib/utils";
-import { SECONDS_IN_MONTH } from "@/lib/constants";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import { formatNumber } from "@/lib/utils";
+import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 type ActivityFeedProps = {
   poolSymbol: string;
@@ -24,7 +25,7 @@ type ActivityFeedProps = {
   instantDistributionUpdatedEvents: InstantDistributionUpdatedEvent[];
   ensByAddress: {
     [key: Address]: { name: string | null; avatar: string | null };
-  };
+  } | null;
 };
 
 type PoolCreationMemberUnitsUpdates = {
@@ -249,11 +250,12 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     className="align-items-center"
                     key={i}
                   >
-                    {ensByAddress[memberUnitsUpdatedEvent.poolMember.account.id]
-                      ?.avatar ? (
+                    {ensByAddress?.[
+                      memberUnitsUpdatedEvent.poolMember.account.id
+                    ]?.avatar ? (
                       <Image
                         src={
-                          ensByAddress[
+                          ensByAddress?.[
                             memberUnitsUpdatedEvent.poolMember.account.id
                           ].avatar ?? ""
                         }
@@ -278,7 +280,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                         href={`${network.blockExplorer}/address/${memberUnitsUpdatedEvent.poolMember.account.id}`}
                         target="_blank"
                       >
-                        {ensByAddress[
+                        {ensByAddress?.[
                           memberUnitsUpdatedEvent.poolMember.account.id
                         ]?.name ??
                           truncateStr(
@@ -286,10 +288,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                             15,
                           )}
                       </Link>
-                      :{" "}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(Number(memberUnitsUpdatedEvent.units))}{" "}
+                      : {formatNumber(Number(memberUnitsUpdatedEvent.units))}{" "}
                       {poolSymbol}{" "}
                       {Number(memberUnitsUpdatedEvent.units) === 1
                         ? "Share"
@@ -350,11 +349,12 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     className="align-items-center"
                     key={i}
                   >
-                    {ensByAddress[memberUnitsUpdatedEvent.poolMember.account.id]
-                      ?.avatar ? (
+                    {ensByAddress?.[
+                      memberUnitsUpdatedEvent.poolMember.account.id
+                    ]?.avatar ? (
                       <Image
                         src={
-                          ensByAddress[
+                          ensByAddress?.[
                             memberUnitsUpdatedEvent.poolMember.account.id
                           ].avatar ?? ""
                         }
@@ -379,7 +379,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                         href={`${network.blockExplorer}/address/${memberUnitsUpdatedEvent.poolMember.account.id}`}
                         target="_blank"
                       >
-                        {ensByAddress[
+                        {ensByAddress?.[
                           memberUnitsUpdatedEvent.poolMember.account.id
                         ]?.name ??
                           truncateStr(
@@ -393,9 +393,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                       0
                         ? "+"
                         : ""}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(
+                      {formatNumber(
                         Number(memberUnitsUpdatedEvent.units) -
                           Number(memberUnitsUpdatedEvent.oldUnits),
                       )}{" "}
@@ -417,11 +415,11 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "PoolAdminAddedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              {ensByAddress[(event as PoolAdminAddedEvent).address as Address]
+              {ensByAddress?.[(event as PoolAdminAddedEvent).address as Address]
                 ?.avatar ? (
                 <Image
                   src={
-                    ensByAddress[
+                    ensByAddress?.[
                       (event as PoolAdminAddedEvent).address as Address
                     ].avatar ?? ""
                   }
@@ -455,7 +453,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as PoolAdminAddedEvent).address}`}
                     target="_blank"
                   >
-                    {ensByAddress[
+                    {ensByAddress?.[
                       (event as PoolAdminAddedEvent).address as Address
                     ]?.name ??
                       truncateStr((event as PoolAdminAddedEvent).address, 15)}
@@ -485,11 +483,12 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "PoolAdminRemovedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              {ensByAddress[(event as PoolAdminRemovedEvent).address as Address]
-                ?.avatar ? (
+              {ensByAddress?.[
+                (event as PoolAdminRemovedEvent).address as Address
+              ]?.avatar ? (
                 <Image
                   src={
-                    ensByAddress[
+                    ensByAddress?.[
                       (event as PoolAdminRemovedEvent).address as Address
                     ].avatar ?? ""
                   }
@@ -523,7 +522,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as PoolAdminRemovedEvent).address}`}
                     target="_blank"
                   >
-                    {ensByAddress[
+                    {ensByAddress?.[
                       (event as PoolAdminRemovedEvent).address as Address
                     ]?.name ??
                       truncateStr((event as PoolAdminRemovedEvent).address, 15)}
@@ -553,13 +552,13 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "FlowDistributionUpdatedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              {ensByAddress[
+              {ensByAddress?.[
                 (event as FlowDistributionUpdatedEvent).poolDistributor.account
                   .id
               ]?.avatar ? (
                 <Image
                   src={
-                    ensByAddress[
+                    ensByAddress?.[
                       (event as FlowDistributionUpdatedEvent).poolDistributor
                         .account.id
                     ].avatar ?? ""
@@ -595,7 +594,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as FlowDistributionUpdatedEvent).poolDistributor.account.id}`}
                     target="_blank"
                   >
-                    {ensByAddress[
+                    {ensByAddress?.[
                       (event as FlowDistributionUpdatedEvent).poolDistributor
                         .account.id
                     ]?.name ??
@@ -609,9 +608,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                   "0" ? (
                     <>
                       opened a{" "}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(
+                      {formatNumber(
                         Number(
                           formatEther(
                             BigInt(
@@ -627,9 +624,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                       .newDistributorToPoolFlowRate === "0" ? (
                     <>
                       closed a{" "}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(
+                      {formatNumber(
                         Number(
                           formatEther(
                             BigInt(
@@ -644,9 +639,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                   ) : (
                     <>
                       updated a stream from{" "}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(
+                      {formatNumber(
                         Number(
                           formatEther(
                             BigInt(
@@ -657,9 +650,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                         ),
                       )}{" "}
                       {token.symbol}/mo to{" "}
-                      {Intl.NumberFormat("en", {
-                        maximumFractionDigits: 4,
-                      }).format(
+                      {formatNumber(
                         Number(
                           formatEther(
                             BigInt(
@@ -696,13 +687,13 @@ export default function ActivityFeed(props: ActivityFeedProps) {
         if (event.__typename === "InstantDistributionUpdatedEvent") {
           return (
             <Stack direction="horizontal" gap={2} key={i}>
-              {ensByAddress[
+              {ensByAddress?.[
                 (event as InstantDistributionUpdatedEvent).poolDistributor
                   .account.id
               ]?.avatar ? (
                 <Image
                   src={
-                    ensByAddress[
+                    ensByAddress?.[
                       (event as InstantDistributionUpdatedEvent).poolDistributor
                         .account.id
                     ].avatar ?? ""
@@ -738,7 +729,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     href={`${network.blockExplorer}/address/${(event as FlowDistributionUpdatedEvent).poolDistributor.account.id}`}
                     target="_blank"
                   >
-                    {ensByAddress[
+                    {ensByAddress?.[
                       (event as InstantDistributionUpdatedEvent).poolDistributor
                         .account.id
                     ]?.name ??
@@ -749,9 +740,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                       )}
                   </Link>{" "}
                   instantly distributed{" "}
-                  {Intl.NumberFormat("en", {
-                    maximumFractionDigits: 4,
-                  }).format(
+                  {formatNumber(
                     Number(
                       formatEther(
                         BigInt(

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
+import { isAddress } from "viem";
 import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useSession } from "next-auth/react";
@@ -15,7 +16,7 @@ import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Container from "react-bootstrap/Container";
-import FormCheck from "react-bootstrap/FormCheck";
+import Form from "react-bootstrap/Form";
 import Toast from "react-bootstrap/Toast";
 import Spinner from "react-bootstrap/Spinner";
 import ProjectCreationModal from "@/components/ProjectCreationModal";
@@ -36,7 +37,8 @@ type GranteeProps = {
 };
 
 type Application = {
-  address: string;
+  owner: string;
+  recipient: string;
   chainId: number;
   councilId: string;
   metadata: string;
@@ -115,6 +117,8 @@ export default function Grantee(props: GranteeProps) {
     description: "",
   });
   const [applications, setApplications] = useState<Application[]>([]);
+  const [customReceiver, setCustomReceiver] = useState("");
+  const [isCustomReceiver, setIsCustomReceiver] = useState(false);
   const [hasAgreedToCodeOfConduct, setHasAgreedToCodeOfConduct] =
     useState(false);
 
@@ -160,6 +164,8 @@ export default function Grantee(props: GranteeProps) {
     name: superfluidQueryRes?.token?.symbol ?? "N/A",
     icon: "",
   };
+  const isCustomReceiverInvalid =
+    isCustomReceiver && !isAddress(customReceiver);
 
   const projects = useMemo(
     () =>
@@ -172,7 +178,7 @@ export default function Grantee(props: GranteeProps) {
 
         for (const application of applications) {
           if (
-            application.address === address?.toLowerCase() &&
+            application.owner === address?.toLowerCase() &&
             application.metadata === profile.id
           ) {
             granteeStatus = application.status;
@@ -204,8 +210,8 @@ export default function Grantee(props: GranteeProps) {
         const metadata = await metadataRes.json();
 
         setCouncilMetadata({
-          name: metadata.name,
-          description: metadata.description,
+          name: metadata?.name ?? "Flow Council",
+          description: metadata?.description ?? "N/A",
         });
       } catch (err) {
         console.error(err);
@@ -232,7 +238,7 @@ export default function Grantee(props: GranteeProps) {
       setApplications(
         applications.filter(
           (application: Application) =>
-            application.address === address.toLowerCase(),
+            application.owner === address.toLowerCase(),
         ),
       );
     }
@@ -301,7 +307,11 @@ export default function Grantee(props: GranteeProps) {
       const res = await fetch("/api/flow-council/apply", {
         method: "POST",
         body: JSON.stringify({
-          address: session.address,
+          owner: session.address,
+          recipient:
+            isCustomReceiver && !isCustomReceiverInvalid
+              ? customReceiver
+              : session.address,
           chainId,
           councilId: council.id,
           metadata: project.id,
@@ -411,6 +421,7 @@ export default function Grantee(props: GranteeProps) {
               : isMediumScreen || isBigScreen
                 ? "repeat(3,minmax(0,1fr))"
                 : "",
+          marginBottom: 8,
         }}
       >
         {projects?.map(
@@ -419,26 +430,33 @@ export default function Grantee(props: GranteeProps) {
               status: Status | null;
             },
             i: number,
-          ) => (
-            <GranteeApplicationCard
-              key={project.id}
-              name={project.metadata.title}
-              description={project.metadata.description}
-              logoCid={project.metadata.logoImg}
-              bannerCid={project.metadata.bannerImg}
-              status={project.status}
-              hasApplied={hasApplied}
-              canReapply={true}
-              isSelected={selectedProjectIndex === i}
-              selectProject={() =>
-                project?.status !== "PENDING"
-                  ? setSelectedProjectIndex(i)
-                  : void 0
-              }
-              updateProject={setShowProjectUpdateModal}
-              isTransactionConfirming={isSubmitting}
-            />
-          ),
+          ) => {
+            if (!project.metadata?.title) {
+              return null;
+            }
+
+            return (
+              <GranteeApplicationCard
+                key={project.id}
+                name={project.metadata.title}
+                description={project.metadata.description}
+                logoCid={project.metadata.logoImg}
+                bannerCid={project.metadata.bannerImg}
+                status={project.status}
+                hasApplied={hasApplied}
+                canReapply={true}
+                isSelected={selectedProjectIndex === i}
+                selectProject={() =>
+                  project?.status !== "PENDING" &&
+                  project?.status !== "APPROVED"
+                    ? setSelectedProjectIndex(i)
+                    : void 0
+                }
+                updateProject={setShowProjectUpdateModal}
+                isTransactionConfirming={isSubmitting}
+              />
+            );
+          },
         )}
         <Card
           className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer shadow"
@@ -454,13 +472,48 @@ export default function Grantee(props: GranteeProps) {
           </Card.Text>
         </Card>
       </div>
+      <Stack direction="vertical">
+        <Card.Text className="mt-5 fs-3 fw-bold">
+          Additional Application Information
+        </Card.Text>
+        <Card.Text className="mb-2">
+          1) Do you want to receive funding for this round at the project owner
+          address?* (This cannot be changed during the round.)
+        </Card.Text>
+        <Stack direction="horizontal" gap={5} className="fs-5">
+          <Form.Check
+            type="radio"
+            label="Yes"
+            checked={!isCustomReceiver}
+            onChange={() => setIsCustomReceiver(false)}
+          />
+          <Form.Check
+            type="radio"
+            label="No"
+            checked={isCustomReceiver}
+            onChange={() => setIsCustomReceiver(true)}
+          />
+        </Stack>
+        <Form.Group className="mt-2">
+          <Form.Label className={`${!isCustomReceiver ? "text-info" : ""}`}>
+            Funding Address* (Must be self-custody! e.g., Safe multisig, browser
+            wallet EOA, etc.)
+          </Form.Label>
+          <Form.Control
+            type="text"
+            disabled={!isCustomReceiver}
+            value={isCustomReceiver ? customReceiver : address ? address : ""}
+            onChange={(e) => setCustomReceiver(e.target.value)}
+          />
+        </Form.Group>
+      </Stack>
       <Stack direction="vertical" gap={3} className="mt-5 text-light">
         <Stack
           direction="horizontal"
           gap={2}
           className="align-items-start text-dark"
         >
-          <FormCheck
+          <Form.Check
             onChange={() =>
               setHasAgreedToCodeOfConduct(!hasAgreedToCodeOfConduct)
             }
@@ -505,6 +558,7 @@ export default function Grantee(props: GranteeProps) {
             !session ||
             session.address !== address ||
             selectedProjectIndex === null ||
+            isCustomReceiverInvalid ||
             !hasAgreedToCodeOfConduct
           }
           onClick={() => {

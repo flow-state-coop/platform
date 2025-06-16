@@ -541,8 +541,8 @@ export default function FlowCouncil({
         }}
       >
         <RoundBanner
-          name={councilMetadata.name}
-          description={councilMetadata.description}
+          name={councilMetadata.name ?? "Flow Council"}
+          description={councilMetadata.description ?? "N/A"}
           chainId={chainId}
           distributionTokenInfo={token}
           gdaPool={gdaPool}

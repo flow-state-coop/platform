@@ -233,7 +233,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
           pool: council.pool,
           isConnected: poolMembership?.isConnected ?? false,
           units: BigInt(poolMembership?.units ?? 0),
-          metadata,
+          metadata: metadata ?? { name: "Flow Council", description: "N/A" },
         });
       };
 
@@ -306,7 +306,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
     token?: Token;
   }) => {
     const [nameRef, { clampedText }] = useClampText({
-      text: council.metadata.name,
+      text: council.metadata?.name,
       ellipsis: "...",
       lines: 3,
     });

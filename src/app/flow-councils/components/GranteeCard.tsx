@@ -15,6 +15,7 @@ import { Token } from "@/types/token";
 import { CouncilMember } from "../types/councilMember";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useCouncil from "../hooks/council";
+import { formatNumber } from "@/lib/utils";
 import { IPFS_GATEWAYS, SECONDS_IN_MONTH } from "@/lib/constants";
 import styles from "./RangeSlider.module.css";
 
@@ -290,18 +291,7 @@ export default function Grantee(props: GranteeProps) {
                 Current Stream
               </Card.Text>
               <Card.Text as="small" className="m-0">
-                {Intl.NumberFormat("en", {
-                  notation: monthlyFlow >= 1000 ? "compact" : void 0,
-                  maximumFractionDigits:
-                    monthlyFlow < 1
-                      ? 4
-                      : monthlyFlow < 10
-                        ? 3
-                        : monthlyFlow < 100
-                          ? 2
-                          : 1,
-                }).format(monthlyFlow)}{" "}
-                {token.symbol} /mo
+                {formatNumber(monthlyFlow)} {token.symbol} /mo
               </Card.Text>
             </Stack>
           </Stack>

@@ -19,7 +19,7 @@ import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
 import { Network } from "@/types/network";
 import {
-  formatNumberWithCommas,
+  formatNumber,
   fromTimeUnitsToSeconds,
   TimeInterval,
   roundWeiAmount,
@@ -51,7 +51,6 @@ export type ReviewProps = {
   supportFlowStateAmount: string;
   supportFlowStateTimeInterval: TimeInterval;
   isFundingMatchingPool?: boolean;
-  isFundingFlowStateCore?: boolean;
   liquidationEstimate: number | null;
   matchingTokenInfo: Token;
   allocationTokenInfo: Token;
@@ -107,7 +106,6 @@ export default function Review(props: ReviewProps) {
     matchingTokenInfo,
     allocationTokenInfo,
     isFundingMatchingPool,
-    isFundingFlowStateCore,
     isPureSuperToken,
     superTokenBalance,
     underlyingTokenBalance,
@@ -144,8 +142,7 @@ export default function Review(props: ReviewProps) {
       liquidationEstimate,
       amountPerTimeInterval: amountPerTimeInterval.replace(/,/g, ""),
       matchingMultiplier:
-        matchingTokenInfo.symbol === "ETHx" &&
-        allocationTokenInfo.symbol === "ETHx"
+        matchingTokenInfo.symbol === allocationTokenInfo.symbol
           ? parseFloat(
               (
                 Number(formatEther(BigInt(netImpact))) /
@@ -216,12 +213,10 @@ export default function Review(props: ReviewProps) {
               style={{ fontFamily: "Helvetica" }}
             >
               {isFundingMatchingPool && isPureSuperToken
-                ? 3
-                : isFundingMatchingPool ||
-                    isFundingFlowStateCore ||
-                    isPureSuperToken
-                  ? 4
-                  : 5}
+                ? 4
+                : isFundingMatchingPool || isPureSuperToken
+                  ? 5
+                  : 6}
             </Card.Text>
           )}
         </Badge>
@@ -251,27 +246,32 @@ export default function Review(props: ReviewProps) {
                     height={28}
                   />
                   <Card.Text className="m-0 border-0 text-center fs-5">
-                    {areTransactionsLoading && transactionDetailsSnapshot
-                      ? transactionDetailsSnapshot.wrapAmount
-                      : wrapAmount}{" "}
+                    {formatNumber(
+                      Number(
+                        areTransactionsLoading && transactionDetailsSnapshot
+                          ? transactionDetailsSnapshot.wrapAmount?.replace(
+                              /,/g,
+                              "",
+                            )
+                          : wrapAmount.replace(/,/g, ""),
+                      ),
+                    )}{" "}
                     <br /> {underlyingTokenBalance?.symbol ?? "N/A"}
                   </Card.Text>
                   <Card.Text className="border-0 text-center fs-6">
                     New Balance:{" "}
-                    {(
+                    {formatNumber(
                       Number(
                         areTransactionsLoading && transactionDetailsSnapshot
                           ? transactionDetailsSnapshot.underlyingTokenBalance
                           : underlyingTokenBalance?.formatted,
                       ) -
-                      Number(
-                        areTransactionsLoading && transactionDetailsSnapshot
-                          ? transactionDetailsSnapshot.wrapAmount
-                          : wrapAmount?.replace(/,/g, ""),
-                      )
-                    )
-                      .toString()
-                      .slice(0, 8)}
+                        Number(
+                          areTransactionsLoading && transactionDetailsSnapshot
+                            ? transactionDetailsSnapshot.wrapAmount
+                            : wrapAmount?.replace(/,/g, ""),
+                        ),
+                    )}
                   </Card.Text>
                 </Stack>
                 <Image
@@ -293,23 +293,42 @@ export default function Review(props: ReviewProps) {
                     height={28}
                   />
                   <Card.Text className="m-0 border-0 text-center fs-5">
-                    {areTransactionsLoading && transactionDetailsSnapshot
-                      ? transactionDetailsSnapshot.wrapAmount
-                      : wrapAmount}{" "}
+                    {formatNumber(
+                      Number(
+                        areTransactionsLoading && transactionDetailsSnapshot
+                          ? transactionDetailsSnapshot.wrapAmount?.replace(
+                              /,/g,
+                              "",
+                            )
+                          : wrapAmount.replace(/,/g, ""),
+                      ),
+                    )}{" "}
                     <br /> {allocationTokenInfo.symbol}
                   </Card.Text>
                   <Card.Text className="border-0 text-center fs-6">
                     New Balance:{" "}
                     {areTransactionsLoading &&
                     transactionDetailsSnapshot?.wrapAmount
-                      ? formatEther(
-                          transactionDetailsSnapshot.superTokenBalance +
-                            parseEther(transactionDetailsSnapshot.wrapAmount),
-                        ).slice(0, 8)
-                      : formatEther(
-                          superTokenBalance +
-                            parseEther(wrapAmount?.replace(/,/g, "") ?? "0"),
-                        ).slice(0, 8)}
+                      ? formatNumber(
+                          Number(
+                            formatEther(
+                              transactionDetailsSnapshot.superTokenBalance +
+                                parseEther(
+                                  transactionDetailsSnapshot.wrapAmount,
+                                ),
+                            ),
+                          ),
+                        )
+                      : formatNumber(
+                          Number(
+                            formatEther(
+                              superTokenBalance +
+                                parseEther(
+                                  wrapAmount?.replace(/,/g, "") ?? "0",
+                                ),
+                            ),
+                          ),
+                        )}
                   </Card.Text>
                 </Stack>
               </Stack>
@@ -330,9 +349,7 @@ export default function Review(props: ReviewProps) {
                 : "A."}{" "}
               {isFundingMatchingPool
                 ? "Edit Matching Stream"
-                : isFundingFlowStateCore
-                  ? "Edit Flow State Core Stream"
-                  : "Edit Grantee Stream"}
+                : "Edit Grantee Stream"}
             </Card.Text>
           </Stack>
           <Stack direction="horizontal" className="justify-content-around px-2">
@@ -380,9 +397,7 @@ export default function Review(props: ReviewProps) {
             <Stack
               direction="horizontal"
               className={`mt-2 bg-purple p-2 ${
-                !isFundingMatchingPool && !isFundingFlowStateCore
-                  ? "rounded-top-4"
-                  : "rounded-4"
+                !isFundingMatchingPool ? "rounded-top-4" : "rounded-4"
               }`}
             >
               <Card.Text className="w-33 m-0 fs-6">New Stream</Card.Text>
@@ -399,8 +414,8 @@ export default function Review(props: ReviewProps) {
                   className="mx-1"
                 />
                 <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
-                  {formatNumberWithCommas(
-                    parseFloat(
+                  {formatNumber(
+                    Number(
                       roundWeiAmount(
                         parseEther(
                           areTransactionsLoading && transactionDetailsSnapshot
@@ -415,7 +430,7 @@ export default function Review(props: ReviewProps) {
               </Stack>
               <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>
             </Stack>
-            {!isFundingMatchingPool && !isFundingFlowStateCore && (
+            {!isFundingMatchingPool && (
               <>
                 <Stack
                   direction="horizontal"
@@ -460,74 +475,71 @@ export default function Review(props: ReviewProps) {
                   </Stack>
                   <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>
                 </Stack>
-                {matchingTokenInfo.symbol === "ETHx" &&
-                  allocationTokenInfo.symbol === "ETHx" && (
+                {matchingTokenInfo.symbol === allocationTokenInfo.symbol && (
+                  <Stack
+                    direction="horizontal"
+                    className="bg-light border-top border-secondary p-2"
+                  >
+                    <Card.Text className="w-33 m-0 fs-6">
+                      QF Multiplier
+                    </Card.Text>
                     <Stack
                       direction="horizontal"
-                      className="bg-light border-top border-secondary p-2"
+                      gap={1}
+                      className="justify-content-end w-50 p-2"
                     >
-                      <Card.Text className="w-33 m-0 fs-6">
-                        QF Multiplier
-                      </Card.Text>
-                      <Stack
-                        direction="horizontal"
-                        gap={1}
-                        className="justify-content-end w-50 p-2"
+                      <Badge
+                        className={`${
+                          BigInt(
+                            areTransactionsLoading && transactionDetailsSnapshot
+                              ? transactionDetailsSnapshot.newFlowRate
+                              : newFlowRate,
+                          ) <
+                          BigInt(
+                            areTransactionsLoading && transactionDetailsSnapshot
+                              ? transactionDetailsSnapshot.flowRateToReceiver
+                              : flowRateToReceiver,
+                          )
+                            ? "bg-danger"
+                            : "bg-primary"
+                        } w-75 ps-2 pe-2 py-2 fs-6 text-start`}
                       >
-                        <Badge
-                          className={`${
-                            BigInt(
-                              areTransactionsLoading &&
-                                transactionDetailsSnapshot
-                                ? transactionDetailsSnapshot.newFlowRate
-                                : newFlowRate,
-                            ) <
-                            BigInt(
-                              areTransactionsLoading &&
-                                transactionDetailsSnapshot
-                                ? transactionDetailsSnapshot.flowRateToReceiver
-                                : flowRateToReceiver,
-                            )
-                              ? "bg-danger"
-                              : "bg-primary"
-                          } w-75 ps-2 pe-2 py-2 fs-6 text-start`}
-                        >
-                          {parseFloat(
-                            (
-                              Number(
-                                formatEther(
+                        {parseFloat(
+                          (
+                            Number(
+                              formatEther(
+                                BigInt(
+                                  areTransactionsLoading &&
+                                    transactionDetailsSnapshot
+                                    ? transactionDetailsSnapshot.netImpact
+                                    : netImpact,
+                                ),
+                              ),
+                            ) /
+                            Number(
+                              formatEther(
+                                BigInt(
+                                  areTransactionsLoading &&
+                                    transactionDetailsSnapshot
+                                    ? transactionDetailsSnapshot.newFlowRate
+                                    : newFlowRate,
+                                ) -
                                   BigInt(
                                     areTransactionsLoading &&
                                       transactionDetailsSnapshot
-                                      ? transactionDetailsSnapshot.netImpact
-                                      : netImpact,
+                                      ? transactionDetailsSnapshot.flowRateToReceiver
+                                      : flowRateToReceiver,
                                   ),
-                                ),
-                              ) /
-                              Number(
-                                formatEther(
-                                  BigInt(
-                                    areTransactionsLoading &&
-                                      transactionDetailsSnapshot
-                                      ? transactionDetailsSnapshot.newFlowRate
-                                      : newFlowRate,
-                                  ) -
-                                    BigInt(
-                                      areTransactionsLoading &&
-                                        transactionDetailsSnapshot
-                                        ? transactionDetailsSnapshot.flowRateToReceiver
-                                        : flowRateToReceiver,
-                                    ),
-                                ),
-                              )
-                            ).toFixed(2),
-                          )}
-                          x
-                        </Badge>
-                      </Stack>
-                      <span className="w-20 ms-1" />
+                              ),
+                            )
+                          ).toFixed(2),
+                        )}
+                        x
+                      </Badge>
                     </Stack>
-                  )}
+                    <span className="w-20 ms-1" />
+                  </Stack>
+                )}
               </>
             )}
           </Stack>
@@ -613,9 +625,7 @@ export default function Review(props: ReviewProps) {
                 <Stack
                   direction="horizontal"
                   className={`mt-2 bg-purple p-2 ${
-                    !isFundingMatchingPool && !isFundingFlowStateCore
-                      ? "rounded-top-4"
-                      : "rounded-4"
+                    !isFundingMatchingPool ? "rounded-top-4" : "rounded-4"
                   }`}
                 >
                   <Card.Text className="w-33 m-0 fs-6">New Stream</Card.Text>
@@ -632,8 +642,8 @@ export default function Review(props: ReviewProps) {
                       className="mx-1"
                     />
                     <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
-                      {formatNumberWithCommas(
-                        parseFloat(
+                      {formatNumber(
+                        Number(
                           convertStreamValueToInterval(
                             parseEther(
                               areTransactionsLoading &&
@@ -655,14 +665,16 @@ export default function Review(props: ReviewProps) {
           ) : null}
           {!!liquidationEstimate && !isNaN(liquidationEstimate) && (
             <Stack direction="horizontal" gap={1} className="mt-1">
-              <Card.Text className="m-0 fs-6">Est. Liquidation</Card.Text>
+              <Card.Text className="m-0 fs-6 fw-bold">
+                Est. Liquidation
+              </Card.Text>
               <OverlayTrigger
                 overlay={
                   <Tooltip id="t-liquidation-info" className="fs-6">
                     This is the current estimate for when your token balance
-                    will reach 0. Make sure to close your stream or wrap more
-                    tokens before this date to avoid loss of your buffer
-                    deposit.
+                    will reach 0. Make sure to close your stream or{" "}
+                    {isPureSuperToken ? "deposit" : "wrap"} more tokens before
+                    this date to avoid loss of your buffer deposit.
                   </Tooltip>
                 }
               >
@@ -673,9 +685,7 @@ export default function Review(props: ReviewProps) {
                   height={16}
                 />
               </OverlayTrigger>
-              <Card.Text
-                className={`m-0 ms-1 fs-6 ${isLiquidationClose ? "text-danger" : ""}`}
-              >
+              <Card.Text className="m-0 ms-1 fs-6 fw-bold">
                 {dayjs
                   .unix(
                     areTransactionsLoading &&
@@ -691,7 +701,8 @@ export default function Review(props: ReviewProps) {
             <Stack direction="vertical">
               <Card.Text className="text-danger small">
                 You've set a high stream rate relative to your balance! We
-                recommend that you set a lower rate or wrap more{" "}
+                recommend that you set a lower rate or{" "}
+                {isPureSuperToken ? "deposit" : "wrap"} more{" "}
                 {allocationTokenInfo.symbol}.
               </Card.Text>
               <Stack
@@ -710,7 +721,7 @@ export default function Review(props: ReviewProps) {
                 />
                 <Card.Text className="text-danger small">
                   If I do not cancel this stream before my balance reaches zero,
-                  I will lose my 4-hour ETHx deposit.
+                  I will lose my 4-hour {allocationTokenInfo.symbol} deposit.
                 </Card.Text>
               </Stack>
             </Stack>

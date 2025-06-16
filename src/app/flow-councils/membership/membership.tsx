@@ -364,7 +364,7 @@ export default function Membership(props: MembershipProps) {
                   >
                     No Limit
                   </Dropdown.Item>
-                  {[...Array(256)].map((_, i) => {
+                  {[...Array(51)].map((_, i) => {
                     if (i !== 0) {
                       return (
                         <Dropdown.Item

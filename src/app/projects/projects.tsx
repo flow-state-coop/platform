@@ -179,30 +179,38 @@ export default function Projects(props: ProjectsProps) {
                   </Card.Text>
                 </Card>
               ) : null}
-              {projects?.map((project: Project) => (
-                <ProjectCard
-                  key={project.id}
-                  name={project.metadata.title}
-                  description={project.metadata.description}
-                  logoCid={project.metadata.logoImg}
-                  bannerCid={project.metadata.bannerImg}
-                  selectProject={() => {
-                    router.push(`/projects/${project.id}/?chainId=${chainId}`);
-                  }}
-                  editProject={() =>
-                    router.push(
-                      `/projects/${project.id}/?chainId=${chainId}&edit=true`,
-                    )
-                  }
-                  canEdit={
-                    (!!owner &&
-                      !!address &&
-                      owner.toString().toLowerCase() ===
-                        address.toLowerCase()) ||
-                    (!owner && !!address)
-                  }
-                />
-              ))}
+              {projects?.map((project: Project) => {
+                if (!project.metadata?.title) {
+                  return null;
+                }
+
+                return (
+                  <ProjectCard
+                    key={project.id}
+                    name={project.metadata.title}
+                    description={project.metadata.description}
+                    logoCid={project.metadata.logoImg}
+                    bannerCid={project.metadata.bannerImg}
+                    selectProject={() => {
+                      router.push(
+                        `/projects/${project.id}/?chainId=${chainId}`,
+                      );
+                    }}
+                    editProject={() =>
+                      router.push(
+                        `/projects/${project.id}/?chainId=${chainId}&edit=true`,
+                      )
+                    }
+                    canEdit={
+                      (!!owner &&
+                        !!address &&
+                        owner.toString().toLowerCase() ===
+                          address.toLowerCase()) ||
+                      (!owner && !!address)
+                    }
+                  />
+                );
+              })}
             </div>
           </>
         )}

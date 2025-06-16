@@ -12,8 +12,8 @@ import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Tooltip from "react-bootstrap/Tooltip";
 import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
-import { formatNumberWithCommas, isNumber } from "@/lib/utils";
-import { SECONDS_IN_MONTH } from "@/lib/constants";
+import { formatNumber, formatNumberWithCommas, isNumber } from "@/lib/utils";
+import { SECONDS_IN_MONTH, UINT256_MAX } from "@/lib/constants";
 
 export type WrapProps = {
   step: Step;
@@ -22,7 +22,6 @@ export type WrapProps = {
   setWrapAmount: (amount: string) => void;
   newFlowRate: string;
   isFundingMatchingPool?: boolean;
-  isFundingFlowStateCore?: boolean;
   isEligible?: boolean;
   token: Token;
   superTokenBalance: bigint;
@@ -43,7 +42,6 @@ export default function Wrap(props: WrapProps) {
     newFlowRate,
     token,
     isFundingMatchingPool,
-    isFundingFlowStateCore,
     isEligible,
     superTokenBalance,
     underlyingTokenBalance,
@@ -51,7 +49,8 @@ export default function Wrap(props: WrapProps) {
 
   const { address } = useAccount();
 
-  const isNativeSuperToken = token.symbol === "ETHx";
+  const isNativeSuperToken =
+    token.symbol === "ETHx" || token.symbol === "CELOx";
   const wrapDurationEstimate =
     BigInt(newFlowRate) > 0
       ? Number(wrapAmount?.replace(/,/g, "") ?? "0") /
@@ -63,12 +62,15 @@ export default function Wrap(props: WrapProps) {
     const { value } = e.target;
     const valueWithoutCommas = value.replace(/,/g, "");
 
-    if (isNumber(valueWithoutCommas)) {
+    if (
+      isNumber(valueWithoutCommas) &&
+      parseEther(valueWithoutCommas) < UINT256_MAX
+    ) {
       setWrapAmount(
         `${
           isNativeSuperToken && parseFloat(valueWithoutCommas) < 1000
             ? value
-            : formatNumberWithCommas(parseFloat(valueWithoutCommas))
+            : formatNumberWithCommas(valueWithoutCommas)
         }`,
       );
     } else if (value === "") {
@@ -198,10 +200,14 @@ export default function Wrap(props: WrapProps) {
                   }}
                 >
                   Remaining after wrapping{" "}
-                  {formatEther(
-                    underlyingTokenBalance?.value -
-                      parseEther(wrapAmount?.replace(/,/g, "")),
-                  ).slice(0, 8)}
+                  {formatNumber(
+                    Number(
+                      formatEther(
+                        underlyingTokenBalance?.value -
+                          parseEther(wrapAmount?.replace(/,/g, "")),
+                      ),
+                    ),
+                  )}
                 </i>
               ) : null}
               <Badge
@@ -217,7 +223,7 @@ export default function Wrap(props: WrapProps) {
             <Card.Text className="w-100 bg-white m-0 mb-2 px-2 pb-2 pt-1 rounded-bottom-4 text-end fs-6">
               Balance:{" "}
               {underlyingTokenBalance
-                ? underlyingTokenBalance.formatted.slice(0, 8)
+                ? formatNumber(Number(underlyingTokenBalance.formatted))
                 : ""}
             </Card.Text>
             <Badge
@@ -280,7 +286,7 @@ export default function Wrap(props: WrapProps) {
               </Badge>
             </Stack>
             <Card.Text className="w-100 bg-white m-0 px-2 pb-2 pt-1 rounded-bottom-4 text-end fs-6">
-              Balance: {formatEther(superTokenBalance).slice(0, 8)}
+              Balance: {formatNumber(Number(formatEther(superTokenBalance)))}
             </Card.Text>
           </Stack>
           {underlyingTokenBalance &&
@@ -315,9 +321,7 @@ export default function Wrap(props: WrapProps) {
                 onClick={() => {
                   setWrapAmount("");
                   setStep(
-                    !isFundingMatchingPool &&
-                      !isFundingFlowStateCore &&
-                      !isEligible
+                    !isFundingMatchingPool && !isEligible
                       ? Step.ELIGIBILITY
                       : !sessionStorage.getItem("skipSupportFlowState") &&
                           !localStorage.getItem("skipSupportFlowState")
@@ -344,14 +348,11 @@ export default function Wrap(props: WrapProps) {
               className="w-50 py-1 rounded-3 text-light"
               onClick={() =>
                 setStep(
-                  !isFundingMatchingPool &&
-                    !isFundingFlowStateCore &&
-                    !isEligible
+                  !isFundingMatchingPool && !isEligible
                     ? Step.ELIGIBILITY
                     : !sessionStorage.getItem("skipSupportFlowState") &&
                         !localStorage.getItem("skipSupportFlowState")
-                      ? //? Step.SUPPORT
-                        Step.REVIEW
+                      ? Step.SUPPORT
                       : Step.REVIEW,
                 )
               }

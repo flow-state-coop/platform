@@ -1,5 +1,12 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Address, isAddress, parseAbi, parseEther, formatEther } from "viem";
+import {
+  Address,
+  isAddress,
+  parseAbi,
+  parseEther,
+  parseUnits,
+  formatUnits,
+} from "viem";
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import dayjs from "dayjs";
 import { useQuery, gql } from "@apollo/client";
@@ -35,10 +42,10 @@ import {
   formatNumberWithCommas,
   roundWeiAmount,
 } from "@/lib/utils";
-import { SECONDS_IN_MONTH, ZERO_ADDRESS } from "@/lib/constants";
+import { SECONDS_IN_MONTH, MAX_FLOW_RATE, ZERO_ADDRESS } from "@/lib/constants";
 
 const SF_ACCOUNT_QUERY = gql`
-  query SFAccountQuery($userAddress: String!) {
+  query SFAccountQuery($userAddress: String!, $token: String!) {
     account(id: $userAddress) {
       accountTokenSnapshots {
         totalNetFlowRate
@@ -49,6 +56,15 @@ const SF_ACCOUNT_QUERY = gql`
         updatedAtTimestamp
         token {
           id
+        }
+      }
+      poolMemberships(where: { pool_: { token: $token } }) {
+        units
+        isConnected
+        pool {
+          flowRate
+          adjustmentFlowRate
+          totalUnits
         }
       }
       outflows(
@@ -101,9 +117,24 @@ export default function DistributionPoolFunding(props: {
   const { data: underlyingTokenAddress } = useReadContract({
     address: distributionTokenAddress,
     abi: parseAbi(["function getUnderlyingToken() view returns (address)"]),
-
     functionName: "getUnderlyingToken",
   });
+  const { data: realtimeBalanceOfNow } = useReadContract({
+    address: distributionTokenAddress,
+    functionName: "realtimeBalanceOfNow",
+    abi: parseAbi([
+      "function realtimeBalanceOfNow(address) returns (int256,uint256,uint256,uint256)",
+    ]),
+    args: [address],
+    chainId: network.id,
+    query: {
+      refetchInterval: 10000,
+    },
+  });
+  const balanceUntilUpdatedAt = realtimeBalanceOfNow?.[0];
+  const updatedAtTimestamp = realtimeBalanceOfNow
+    ? Number(realtimeBalanceOfNow[3])
+    : null;
   const { data: ethBalance } = useBalance({
     address,
     chainId: network.id,
@@ -111,7 +142,8 @@ export default function DistributionPoolFunding(props: {
       refetchInterval: 10000,
     },
   });
-  const isSuperTokenNative = token.symbol === "ETHx";
+  const isSuperTokenNative =
+    token.symbol === "ETHx" || token.symbol === "CELOx";
   const isSuperTokenPure =
     !isSuperTokenNative && underlyingTokenAddress === ZERO_ADDRESS;
   const { data: underlyingTokenBalance } = useBalance({
@@ -130,6 +162,7 @@ export default function DistributionPoolFunding(props: {
     client: getApolloClient("superfluid", network.id),
     variables: {
       userAddress: address?.toLowerCase() ?? "",
+      token: token.address.toLowerCase(),
     },
     skip: !council?.pool,
     pollInterval: 10000,
@@ -137,6 +170,7 @@ export default function DistributionPoolFunding(props: {
   const ethersProvider = useEthersProvider({ chainId: network.id });
   const ethersSigner = useEthersSigner({ chainId: network.id });
 
+  const poolMemberships = superfluidQueryRes?.account?.poolMemberships ?? null;
   const userAccountSnapshot =
     superfluidQueryRes?.account?.accountTokenSnapshots?.find(
       (snapshot: { token: { id: string } }) =>
@@ -179,13 +213,39 @@ export default function DistributionPoolFunding(props: {
     return "0";
   }, [address, gdaPool]);
 
+  const membershipsInflowRate = useMemo(() => {
+    let membershipsInflowRate = BigInt(0);
+
+    if (poolMemberships) {
+      for (const poolMembership of poolMemberships) {
+        if (!poolMembership.isConnected) {
+          continue;
+        }
+
+        const adjustedFlowRate =
+          BigInt(poolMembership.pool.flowRate) -
+          BigInt(poolMembership.pool.adjustmentFlowRate);
+        const memberFlowRate =
+          BigInt(poolMembership.pool.totalUnits) > 0
+            ? (BigInt(poolMembership.units) * adjustedFlowRate) /
+              BigInt(poolMembership.pool.totalUnits)
+            : BigInt(0);
+
+        membershipsInflowRate += memberFlowRate;
+      }
+    }
+
+    return membershipsInflowRate;
+  }, [poolMemberships]);
+
   const calcLiquidationEstimate = useCallback(
     (amountPerTimeInterval: string, timeInterval: TimeInterval) => {
       if (address) {
         const newFlowRate =
           parseEther(amountPerTimeInterval.replace(/,/g, "")) /
           BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
-        const accountFlowRate = userAccountSnapshot?.totalNetFlowRate ?? "0";
+        const accountFlowRate =
+          userAccountSnapshot?.totalNetFlowRate ?? "0" + membershipsInflowRate;
 
         if (
           BigInt(-accountFlowRate) -
@@ -193,20 +253,21 @@ export default function DistributionPoolFunding(props: {
             BigInt(newFlowRate) >
           BigInt(0)
         ) {
-          const updatedAtTimestamp = userAccountSnapshot
-            ? userAccountSnapshot.updatedAtTimestamp * 1000
-            : Date.now();
-          const date = dayjs(new Date(updatedAtTimestamp));
+          const date = dayjs(
+            new Date(
+              updatedAtTimestamp ? updatedAtTimestamp * 1000 : Date.now(),
+            ),
+          );
 
           return date
             .add(
               dayjs.duration({
                 seconds: Number(
-                  (BigInt(userAccountSnapshot?.balanceUntilUpdatedAt ?? "0") +
+                  (BigInt(balanceUntilUpdatedAt ?? "0") +
                     parseEther(wrapAmount?.replace(/,/g, "") ?? "0")) /
                     (BigInt(-accountFlowRate) -
                       BigInt(flowRateToReceiver) +
-                      BigInt(newFlowRate)),
+                      newFlowRate),
                 ),
               }),
             )
@@ -216,7 +277,15 @@ export default function DistributionPoolFunding(props: {
 
       return null;
     },
-    [userAccountSnapshot, address, wrapAmount, flowRateToReceiver],
+    [
+      userAccountSnapshot,
+      balanceUntilUpdatedAt,
+      updatedAtTimestamp,
+      membershipsInflowRate,
+      address,
+      wrapAmount,
+      flowRateToReceiver,
+    ],
   );
 
   const liquidationEstimate = useMemo(
@@ -318,20 +387,19 @@ export default function DistributionPoolFunding(props: {
         4,
       );
 
-      setAmountPerTimeInterval(
-        formatNumberWithCommas(parseFloat(currentStreamValue)),
-      );
+      setAmountPerTimeInterval(formatNumberWithCommas(currentStreamValue));
     })();
   }, [address, flowRateToReceiver, timeInterval]);
 
   useEffect(() => {
     if (!areTransactionsLoading && amountPerTimeInterval) {
-      setNewFlowRate(
-        (
-          parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]))
-        ).toString(),
-      );
+      const newFlowRate =
+        parseEther(amountPerTimeInterval.replace(/,/g, "")) /
+        BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
+
+      if (newFlowRate < MAX_FLOW_RATE) {
+        setNewFlowRate(newFlowRate.toString());
+      }
     }
   }, [areTransactionsLoading, amountPerTimeInterval, timeInterval]);
 
@@ -366,32 +434,57 @@ export default function DistributionPoolFunding(props: {
     liquidationEstimate: number | null,
   ) => {
     if (amountPerTimeInterval) {
+      const weiAmount = parseUnits(
+        amountPerTimeInterval.replace(/,/g, ""),
+        underlyingTokenBalance?.decimals ?? 18,
+      );
+
       if (
+        !isSuperTokenPure &&
         Number(amountPerTimeInterval.replace(/,/g, "")) > 0 &&
         liquidationEstimate &&
         dayjs
           .unix(liquidationEstimate)
           .isBefore(dayjs().add(dayjs.duration({ months: 3 })))
       ) {
-        setWrapAmount(
-          formatNumberWithCommas(
-            parseFloat(
-              formatEther(
-                parseEther(amountPerTimeInterval.replace(/,/g, "")) * BigInt(3),
+        if (
+          underlyingTokenBalance?.value &&
+          underlyingTokenBalance.value <= weiAmount * BigInt(3)
+        ) {
+          const amount = isSuperTokenNative
+            ? underlyingTokenBalance.value -
+              parseEther(minEthBalance.toString())
+            : underlyingTokenBalance?.value;
+
+          setWrapAmount(
+            formatNumberWithCommas(
+              formatUnits(
+                amount > 0 ? BigInt(amount) : BigInt(0),
+                underlyingTokenBalance?.decimals ?? 18,
               ),
             ),
-          ),
-        );
+          );
+        } else {
+          setWrapAmount(
+            formatNumberWithCommas(
+              formatUnits(
+                parseEther(amountPerTimeInterval.replace(/,/g, "")) * BigInt(3),
+                underlyingTokenBalance?.decimals ?? 18,
+              ),
+            ),
+          );
+        }
       } else {
         setWrapAmount("");
       }
 
-      setNewFlowRate(
-        (
-          parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]))
-        ).toString(),
-      );
+      const newFlowRate =
+        parseEther(amountPerTimeInterval.replace(/,/g, "")) /
+        BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
+
+      if (newFlowRate < MAX_FLOW_RATE) {
+        setNewFlowRate(newFlowRate.toString());
+      }
     }
   };
 
@@ -416,11 +509,20 @@ export default function DistributionPoolFunding(props: {
                 flowRateToReceiver={flowRateToReceiver}
                 amountPerTimeInterval={amountPerTimeInterval}
                 setAmountPerTimeInterval={(amount) => {
-                  setAmountPerTimeInterval(amount);
+                  const newAmount =
+                    parseEther(amount.replace(/,/g, "")) /
+                      BigInt(
+                        fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]),
+                      ) <
+                    MAX_FLOW_RATE
+                      ? amount
+                      : amountPerTimeInterval;
+
+                  setAmountPerTimeInterval(newAmount);
                   updateWrapAmount(
-                    amount,
+                    newAmount,
                     timeInterval,
-                    calcLiquidationEstimate(amount, timeInterval),
+                    calcLiquidationEstimate(newAmount, timeInterval),
                   );
                 }}
                 newFlowRate={newFlowRate}
@@ -438,6 +540,7 @@ export default function DistributionPoolFunding(props: {
                   );
                 }}
                 superTokenBalance={superTokenBalance}
+                isSuperTokenPure={isSuperTokenPure}
                 hasSufficientBalance={
                   !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
                 }

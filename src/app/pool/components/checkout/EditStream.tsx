@@ -30,7 +30,7 @@ export type EditStreamProps = {
   wrapAmount: string;
   setAmountPerTimeInterval: (amount: string) => void;
   isFundingMatchingPool?: boolean;
-  isFundingFlowStateCore?: boolean;
+  isPureSuperToken?: boolean;
   isEligible?: boolean;
   superTokenBalance: bigint;
   hasSufficientBalance: boolean;
@@ -48,7 +48,7 @@ export default function EditStream(props: EditStreamProps) {
     newFlowRate,
     wrapAmount,
     isFundingMatchingPool,
-    isFundingFlowStateCore,
+    isPureSuperToken,
     isEligible,
     superTokenBalance,
     hasSufficientBalance,
@@ -59,7 +59,8 @@ export default function EditStream(props: EditStreamProps) {
 
   const isDeletingStream =
     BigInt(flowRateToReceiver) > 0 && BigInt(newFlowRate) === BigInt(0);
-  const isNativeSuperToken = token.symbol === "ETHx";
+  const isNativeSuperToken =
+    token.symbol === "ETHx" || token.symbol === "CELOx";
   const minAllocationPerMonth = getPoolFlowRateConfig(
     token.symbol,
   ).minAllocationPerMonth;
@@ -73,7 +74,7 @@ export default function EditStream(props: EditStreamProps) {
         `${
           isNativeSuperToken && parseFloat(valueWithoutCommas) < 1000
             ? value.replace(/ /g, "")
-            : formatNumberWithCommas(parseFloat(valueWithoutCommas))
+            : formatNumberWithCommas(valueWithoutCommas)
         }`,
       );
     } else if (value === "") {
@@ -93,7 +94,12 @@ export default function EditStream(props: EditStreamProps) {
 
       setAmountPerTimeInterval(
         `${formatNumberWithCommas(
-          increment ? amount + 1 : amount - 1 <= 0 ? 0 : amount - 1,
+          (increment
+            ? amount + 1
+            : amount - 1 <= 0
+              ? 0
+              : amount - 1
+          ).toString(),
         )}`,
       );
     }
@@ -217,50 +223,63 @@ export default function EditStream(props: EditStreamProps) {
                 Minimum Donation = {minAllocationPerMonth} {token.symbol}/mo
               </Alert>
             )}
-          {network && address ? (
-            <Button
-              variant={isDeletingStream ? "danger" : "primary"}
-              disabled={
-                !amountPerTimeInterval ||
-                Number(amountPerTimeInterval.replace(/,/g, "")) < 0 ||
-                (BigInt(flowRateToReceiver) === BigInt(0) &&
-                  Number(amountPerTimeInterval.replace(/,/g, "")) === 0) ||
-                (!isDeletingStream &&
-                  Number(amountPerTimeInterval) < minAllocationPerMonth) ||
-                newFlowRate === flowRateToReceiver
-              }
-              className="py-1 rounded-3 text-light"
-              onClick={() => {
-                if (connectedChain?.id !== network.id) {
-                  switchChain({ chainId: network.id });
-                } else {
-                  setStep(
-                    !hasSufficientBalance
-                      ? Step.TOP_UP
-                      : wrapAmount ||
-                          superTokenBalance <
-                            BigInt(newFlowRate) *
-                              BigInt(
-                                fromTimeUnitsToSeconds(1, TimeInterval.DAY),
-                              )
-                        ? Step.WRAP
-                        : !isFundingMatchingPool &&
-                            !isFundingFlowStateCore &&
-                            !isEligible
-                          ? Step.ELIGIBILITY
-                          : !sessionStorage.getItem("skipSupportFlowState") &&
-                              !localStorage.getItem("skipSupportFlowState")
-                            ? Step.SUPPORT
-                            : Step.REVIEW,
-                  );
+          <Stack direction="vertical">
+            {network && address ? (
+              <Button
+                variant={isDeletingStream ? "danger" : "primary"}
+                disabled={
+                  !amountPerTimeInterval ||
+                  Number(amountPerTimeInterval.replace(/,/g, "")) < 0 ||
+                  (BigInt(flowRateToReceiver) === BigInt(0) &&
+                    Number(amountPerTimeInterval.replace(/,/g, "")) === 0) ||
+                  (!isDeletingStream &&
+                    Number(amountPerTimeInterval) < minAllocationPerMonth) ||
+                  newFlowRate === flowRateToReceiver
                 }
-              }}
-            >
-              {isDeletingStream ? "Cancel Stream" : "Continue"}
-            </Button>
-          ) : (
-            <ConnectWallet />
-          )}
+                className="py-1 rounded-3 text-light"
+                onClick={() => {
+                  if (connectedChain?.id !== network.id) {
+                    switchChain({ chainId: network.id });
+                  } else {
+                    setStep(
+                      !hasSufficientBalance
+                        ? Step.TOP_UP
+                        : !isPureSuperToken &&
+                            (wrapAmount ||
+                              superTokenBalance <
+                                BigInt(newFlowRate) *
+                                  BigInt(
+                                    fromTimeUnitsToSeconds(1, TimeInterval.DAY),
+                                  ))
+                          ? Step.WRAP
+                          : !isFundingMatchingPool && !isEligible
+                            ? Step.ELIGIBILITY
+                            : !sessionStorage.getItem("skipSupportFlowState") &&
+                                !localStorage.getItem("skipSupportFlowState")
+                              ? Step.SUPPORT
+                              : Step.REVIEW,
+                    );
+                  }
+                }}
+              >
+                {isDeletingStream ? "Cancel Stream" : "Continue"}
+              </Button>
+            ) : (
+              <ConnectWallet />
+            )}
+            {BigInt(flowRateToReceiver) > 0 && !isDeletingStream && (
+              <Button
+                variant="transparent"
+                className="w-100 text-primary text-decoration-underline border-0 pb-0"
+                onClick={() => {
+                  setAmountPerTimeInterval("0");
+                  setStep(Step.REVIEW);
+                }}
+              >
+                Cancel stream
+              </Button>
+            )}
+          </Stack>
         </Stack>
       </Accordion.Collapse>
     </Card>

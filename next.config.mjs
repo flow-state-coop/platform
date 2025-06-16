@@ -9,6 +9,11 @@ const nextConfig = {
         permanent: true,
       },
       {
+        source: "/core",
+        destination: "/flow-guilds/core",
+        permanent: true,
+      },
+      {
         source: "/admin",
         destination: "/sqf",
         permanent: true,

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
-import { Address, parseAbi, parseEther, formatEther } from "viem";
+import { useRouter, useParams } from "next/navigation";
+import { Address, parseUnits, parseEther, parseAbi, formatEther } from "viem";
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import {
@@ -11,24 +12,29 @@ import {
 } from "@superfluid-finance/sdk-core";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
-import Offcanvas from "react-bootstrap/Offcanvas";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
+import Image from "react-bootstrap/Image";
 import Form from "react-bootstrap/Form";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
+import OverlayTrigger from "react-bootstrap/OverlayTrigger";
+import Tooltip from "react-bootstrap/Tooltip";
 import Alert from "react-bootstrap/Alert";
 import Toast from "react-bootstrap/Toast";
 import InputGroup from "react-bootstrap/InputGroup";
+import FormCheckInput from "react-bootstrap/FormCheckInput";
 import Spinner from "react-bootstrap/Spinner";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
-import { GDAPool } from "@/types/gdaPool";
-import BalancePlot, { BalancePlotFlowInfo } from "./BalancePlot";
+import BalancePlot, {
+  BalancePlotFlowInfo,
+} from "@/app/flow-splitters/components/BalancePlot";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
+import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import {
@@ -37,23 +43,29 @@ import {
   fromTimeUnitsToSeconds,
   roundWeiAmount,
   isNumber,
+  formatNumber,
   convertStreamValueToInterval,
 } from "@/lib/utils";
-import { ZERO_ADDRESS, FLOW_STATE_RECEIVER } from "@/lib/constants";
+import { FlowGuildConfig } from "../lib/flowGuildConfig";
+import { ZERO_ADDRESS, MAX_FLOW_RATE } from "@/lib/constants";
 
 dayjs().format();
 dayjs.extend(duration);
 
 type OpenFlowProps = {
-  show: boolean;
+  flowGuildConfig: FlowGuildConfig;
   network: Network;
   token: Token;
-  pool?: GDAPool;
-  handleClose: () => void;
+  selectToken: (token: Token) => void;
+  handleClose?: () => void;
 };
 
 const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
-  query AccountTokenSnapshot($address: String, $token: String) {
+  query AccountTokenSnapshot(
+    $address: String
+    $token: String
+    $receiver: String
+  ) {
     account(id: $address) {
       accountTokenSnapshots(where: { token: $token }) {
         totalNetFlowRate
@@ -71,6 +83,11 @@ const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
           totalUnits
         }
       }
+      outflows(
+        where: { token: $token, receiver: $receiver, currentFlowRate_gt: "0" }
+      ) {
+        currentFlowRate
+      }
     }
     token(id: $token) {
       isNativeAssetSuperToken
@@ -80,7 +97,7 @@ const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
 `;
 
 export default function OpenFlow(props: OpenFlowProps) {
-  const { show, network, token, pool, handleClose } = props;
+  const { flowGuildConfig, network, token, selectToken, handleClose } = props;
 
   const balancePlotFlowInfoSnapshot = useRef<BalancePlotFlowInfo | null>(null);
 
@@ -100,11 +117,18 @@ export default function OpenFlow(props: OpenFlowProps) {
   >();
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("");
   const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
+  const [isDeletingFlow, setIsDeletingFlow] = useState(false);
+  const [
+    hasAcceptedCloseLiquidationWarning,
+    setHasAcceptedCloseLiquidationWarning,
+  ] = useState(false);
 
-  const { isMobile } = useMediaQuery();
+  const urlParams = useParams();
+  const { isMobile, isTablet } = useMediaQuery();
   const { address } = useAccount();
   const ethersProvider = useEthersProvider({ chainId: network.id });
   const ethersSigner = useEthersSigner({ chainId: network.id });
+  const router = useRouter();
   const {
     areTransactionsLoading,
     completedTransactions,
@@ -116,12 +140,15 @@ export default function OpenFlow(props: OpenFlowProps) {
     variables: {
       address: address?.toLowerCase() ?? "",
       token: token?.address.toLowerCase() ?? "",
+      receiver: flowGuildConfig.safe,
     },
     pollInterval: 10000,
     skip: !address || !token,
   });
   const accountTokenSnapshot =
     superfluidQueryRes?.account?.accountTokenSnapshots[0] ?? null;
+  const flowRateToReceiver =
+    superfluidQueryRes?.account?.outflows[0]?.currentFlowRate ?? "0";
   const poolMemberships = superfluidQueryRes?.account?.poolMemberships ?? null;
   const { data: realtimeBalanceOfNow } = useReadContract({
     address: token?.address,
@@ -136,6 +163,7 @@ export default function OpenFlow(props: OpenFlowProps) {
     },
   });
 
+  const guildId = urlParams.id;
   const balanceUntilUpdatedAt = realtimeBalanceOfNow?.[0];
   const updatedAtTimestamp = realtimeBalanceOfNow
     ? Number(realtimeBalanceOfNow[3])
@@ -168,23 +196,21 @@ export default function OpenFlow(props: OpenFlowProps) {
   });
 
   const hasSufficientSuperTokenBalance =
-    (isSuperTokenNative &&
-      ethBalance &&
-      ethBalance.value + superTokenBalance > BigInt(0)) ||
-    (!isSuperTokenPure &&
-      underlyingTokenBalance &&
-      underlyingTokenBalance.value + superTokenBalance > BigInt(0)) ||
-    superTokenBalance > BigInt(0)
-      ? true
-      : false;
+    superTokenBalance > BigInt(0) ? true : false;
   const hasSufficientWrappingBalance =
     (isSuperTokenNative &&
       ethBalance &&
-      ethBalance?.value >= parseEther(wrapAmountPerTimeInterval)) ||
+      ethBalance.value > parseEther(wrapAmountPerTimeInterval ?? 0)) ||
     (underlyingTokenBalance &&
-      underlyingTokenBalance?.value >= parseEther(wrapAmountPerTimeInterval))
+      underlyingTokenBalance.value >=
+        parseUnits(
+          wrapAmountPerTimeInterval,
+          underlyingTokenBalance.decimals,
+        )) ||
+    isSuperTokenPure
       ? true
       : false;
+
   const minDonationPerMonth = getPoolFlowRateConfig(
     token.symbol,
   ).minAllocationPerMonth;
@@ -197,30 +223,6 @@ export default function OpenFlow(props: OpenFlowProps) {
         TimeInterval.MONTH,
       ),
     ) < minDonationPerMonth;
-
-  const flowRateToReceiver = useMemo(() => {
-    if (address && pool) {
-      const distributor = pool.poolDistributors.find(
-        (distributor: { account: { id: string } }) =>
-          distributor.account.id === address.toLowerCase(),
-      );
-
-      if (distributor) {
-        return distributor.flowRate;
-      }
-    }
-
-    return "0";
-  }, [address, pool]);
-
-  const canSubmit =
-    (newFlowRate > 0 || BigInt(flowRateToReceiver) > 0) &&
-    BigInt(flowRateToReceiver) !== newFlowRate &&
-    hasSufficientSuperTokenBalance &&
-    (!wrapAmountPerTimeInterval ||
-      wrapAmountPerTimeInterval === "0" ||
-      hasSufficientWrappingBalance) &&
-    !isAmountInsufficient;
 
   const membershipsInflowRate = useMemo(() => {
     let membershipsInflowRate = BigInt(0);
@@ -329,6 +331,40 @@ export default function OpenFlow(props: OpenFlowProps) {
     ],
   );
 
+  const liquidationEstimate = useMemo(
+    () => calcLiquidationEstimate(newFlowRate, wrapAmountPerTimeInterval),
+    [newFlowRate, wrapAmountPerTimeInterval, calcLiquidationEstimate],
+  );
+
+  const isLiquidationClose = useMemo(
+    () =>
+      liquidationEstimate
+        ? dayjs
+            .unix(liquidationEstimate)
+            .isBefore(dayjs().add(dayjs.duration({ days: 2 })))
+        : false,
+    [liquidationEstimate],
+  );
+
+  const canSubmit = useMemo(
+    () =>
+      (newFlowRate > 0 || BigInt(flowRateToReceiver) > 0) &&
+      BigInt(flowRateToReceiver) !== newFlowRate &&
+      !isAmountInsufficient &&
+      ((hasSufficientSuperTokenBalance && hasSufficientWrappingBalance) ||
+        (wrapAmountPerTimeInterval &&
+          Number(wrapAmountPerTimeInterval) > 0 &&
+          hasSufficientWrappingBalance)),
+    [
+      newFlowRate,
+      flowRateToReceiver,
+      hasSufficientSuperTokenBalance,
+      hasSufficientWrappingBalance,
+      wrapAmountPerTimeInterval,
+      isAmountInsufficient,
+    ],
+  );
+
   const balancePlotFlowInfo = useMemo(() => {
     if (areTransactionsLoading && balancePlotFlowInfoSnapshot?.current) {
       return balancePlotFlowInfoSnapshot.current;
@@ -404,7 +440,12 @@ export default function OpenFlow(props: OpenFlowProps) {
 
   useEffect(() => {
     (async () => {
-      if (!token.address || !ethersProvider || !address) {
+      if (
+        !token.address ||
+        !ethersProvider ||
+        !address ||
+        !network.tokens.find((t) => t.address === token.address)
+      ) {
         return;
       }
 
@@ -414,7 +455,7 @@ export default function OpenFlow(props: OpenFlowProps) {
         provider: ethersProvider,
       });
       const distributionSuperToken = await sfFramework.loadSuperToken(
-        isSuperTokenNative ? "ETHx" : token.address,
+        token.address,
       );
       const underlyingToken = distributionSuperToken.underlyingToken;
       const underlyingTokenAllowance = await underlyingToken?.allowance({
@@ -427,13 +468,12 @@ export default function OpenFlow(props: OpenFlowProps) {
       setSfFramework(sfFramework);
       setDistributionSuperToken(distributionSuperToken);
     })();
-  }, [address, network, ethersProvider, token, isSuperTokenNative]);
+  }, [address, network, ethersProvider, token]);
 
   useEffect(() => {
     (async () => {
       if (
         !address ||
-        !pool ||
         !underlyingTokenAllowance ||
         !distributionSuperToken ||
         !sfFramework ||
@@ -489,7 +529,7 @@ export default function OpenFlow(props: OpenFlowProps) {
       operations.push(
         editFlow(
           distributionSuperToken,
-          FLOW_STATE_RECEIVER,
+          flowGuildConfig.safe,
           flowRateToReceiver,
           newFlowRate.toString(),
         ),
@@ -506,10 +546,10 @@ export default function OpenFlow(props: OpenFlowProps) {
   }, [
     address,
     wrapAmountPerTimeInterval,
-    pool,
     newFlowRate,
     underlyingTokenAllowance,
     sfFramework,
+    flowGuildConfig,
     ethersProvider,
     ethersSigner,
     distributionSuperToken,
@@ -527,19 +567,21 @@ export default function OpenFlow(props: OpenFlowProps) {
         parseEther(value) /
         BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
 
-      setAmountPerTimeInterval(value);
-      setNewFlowRate(newFlowRate);
+      if (newFlowRate < MAX_FLOW_RATE) {
+        setAmountPerTimeInterval(value);
+        setNewFlowRate(newFlowRate);
 
-      if (wrapAmountPerTimeInterval) {
-        setWrapTimeInterval(
-          parseFloat(
-            (
-              Number(wrapAmountPerTimeInterval) /
-              Number(formatEther(newFlowRate)) /
-              fromTimeUnitsToSeconds(1, unitOfTime[timeInterval])
-            ).toFixed(2),
-          ).toString(),
-        );
+        if (wrapAmountPerTimeInterval) {
+          setWrapTimeInterval(
+            parseFloat(
+              (
+                Number(wrapAmountPerTimeInterval) /
+                Number(formatEther(newFlowRate)) /
+                fromTimeUnitsToSeconds(1, unitOfTime[timeInterval])
+              ).toFixed(2),
+            ).toString(),
+          );
+        }
       }
     } else if (value === "") {
       setAmountPerTimeInterval("");
@@ -612,213 +654,336 @@ export default function OpenFlow(props: OpenFlowProps) {
     }
   };
 
+  const handleDeleteFlow = async () => {
+    if (!distributionSuperToken || !ethersSigner) {
+      return;
+    }
+
+    setIsDeletingFlow(true);
+
+    try {
+      const tx = await editFlow(
+        distributionSuperToken,
+        flowGuildConfig.safe,
+        flowRateToReceiver,
+        "0",
+      ).exec(ethersSigner);
+
+      await tx.wait();
+
+      setSuccess(true);
+    } catch (err) {
+      console.error(err);
+    }
+
+    setIsDeletingFlow(false);
+  };
+
   return (
-    <Offcanvas
-      show={show}
-      onHide={handleClose}
-      placement={isMobile ? "bottom" : "end"}
-      className={`${isMobile ? "w-100 h-100" : ""}`}
-    >
-      <Offcanvas.Header closeButton className="align-items-start">
-        <Stack direction="vertical">
-          <Offcanvas.Title className="fs-3 mb-0">Open Flow</Offcanvas.Title>
-          <Card.Text className="m-0 fs-6">
-            Support the Flow State Core by opening a stream to the team Safe.
-            Funds are split evenly between the contributors.
-            <br />
-            <br />
-            <Card.Link
-              href="https://docs.google.com/forms/u/1/d/e/1FAIpQLSdIIt9mUJTvc-4dOtpgYSTg9DMnT-jccfTCWEzyioEF5vXVDQ/viewform"
-              target="_blank"
-              className="text-primary"
-            >
-              Become a coop member
-            </Card.Link>{" "}
-            and start earning patronage for supporting public goods like us on
-            the Flow State platform.
-          </Card.Text>
-        </Stack>
-      </Offcanvas.Header>
-      <Offcanvas.Body>
-        <Card.Text className="m-0">
-          Flow Rate ({token?.symbol ?? "N/A"})
+    <Stack direction="vertical">
+      <Stack direction="horizontal" className="justify-content-between">
+        <Card.Text className="fs-3 mb-0">Open Flow</Card.Text>
+        {!isMobile && !isTablet && (
+          <Button
+            variant="transparent"
+            onClick={handleClose}
+            className="p-0 float-end"
+          >
+            <Image src="/close.svg" alt="" width={24} height={24} />
+          </Button>
+        )}
+      </Stack>
+      <Stack
+        direction="horizontal"
+        gap={3}
+        className="mt-2 align-items-center lh-sm"
+      >
+        <Image src="/sup.svg" alt="SUP" width={36} height={36} />
+        <Card.Text>
+          Did you know that donation streams to {flowGuildConfig.name}{" "}
+          <Card.Link href="https://claim.superfluid.org/claim" target="_blank">
+            earn $SUP
+          </Card.Link>
+          ? Claim your reward stream increase daily. (min. $1 cumulative volume
+          per token to qualify)
         </Card.Text>
-        <Stack
-          direction="horizontal"
-          gap={2}
-          className="align-items-start bg-light mt-2 p-3 rounded-4"
-        >
-          <Stack direction="vertical" className="w-50">
-            <Form.Control
-              type="text"
-              placeholder="0"
-              value={amountPerTimeInterval}
-              onChange={handleAmountSelection}
-            />
-            <Stack
-              direction="horizontal"
-              gap={1}
-              className="justify-content-center mt-1"
+      </Stack>
+      <Stack direction="vertical" gap={2} className="my-4">
+        <Dropdown>
+          <Dropdown.Toggle
+            className="d-flex justify-content-between align-items-center w-100 bg-white text-dark"
+            style={{ border: "1px solid #dee2e6" }}
+          >
+            {network.name}
+          </Dropdown.Toggle>
+          <Dropdown.Menu>
+            {networks.map((network, i) => (
+              <Dropdown.Item
+                key={i}
+                onClick={() => {
+                  router.push(`/flow-guilds/${guildId}/?chainId=${network.id}`);
+                }}
+              >
+                {network.name}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown>
+        <Dropdown>
+          <Dropdown.Toggle
+            className="d-flex justify-content-between align-items-center w-100 bg-white text-dark"
+            style={{ border: "1px solid #dee2e6" }}
+          >
+            {token.symbol}
+          </Dropdown.Toggle>
+          <Dropdown.Menu>
+            {network.tokens.map((token, i) => (
+              <Dropdown.Item
+                key={i}
+                onClick={() => {
+                  selectToken(token);
+                }}
+              >
+                {token.symbol}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown>
+      </Stack>
+      <Card.Text className="m-0">
+        Flow Rate ({token?.symbol ?? "N/A"})
+      </Card.Text>
+      <Stack
+        direction="horizontal"
+        gap={2}
+        className="align-items-start bg-light mt-2 p-3 rounded-4"
+      >
+        <Stack direction="vertical" className="w-50">
+          <Form.Control
+            type="text"
+            placeholder="0"
+            value={amountPerTimeInterval}
+            onChange={handleAmountSelection}
+          />
+          <Stack
+            direction="horizontal"
+            gap={1}
+            className="position-relative justify-content-center mt-1"
+          >
+            <Card.Text
+              className={`m-0 ${!hasSufficientSuperTokenBalance && newFlowRate ? "text-danger" : "text-info"}`}
+              style={{
+                fontSize: "0.8rem",
+              }}
             >
+              {token.symbol}:{" "}
+              {formatNumber(Number(formatEther(superTokenBalance)))}{" "}
+              {!hasSufficientSuperTokenBalance && newFlowRate && (
+                <>(Wrap below)</>
+              )}
+            </Card.Text>
+            {!isSuperTokenPure &&
+              !showWrappingStep &&
+              hasSufficientSuperTokenBalance && (
+                <span
+                  className="position-absolute end-0 me-2 bg-primary px-1 rounded-1 text-white cursor-pointer"
+                  style={{
+                    fontSize: "0.6rem",
+                  }}
+                  onClick={() => setShowWrappingStep(true)}
+                >
+                  +
+                </span>
+              )}
+          </Stack>
+        </Stack>
+        <Dropdown className="w-50">
+          <Dropdown.Toggle
+            className="d-flex justify-content-between align-items-center w-100 bg-white text-dark"
+            style={{ border: "1px solid #dee2e6" }}
+          >
+            {timeInterval}
+          </Dropdown.Toggle>
+          <Dropdown.Menu>
+            {Object.values(TimeInterval).map((timeInterval, i) => (
+              <Dropdown.Item
+                key={i}
+                onClick={() => {
+                  const newFlowRate =
+                    parseEther(amountPerTimeInterval) /
+                    BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
+
+                  if (newFlowRate < MAX_FLOW_RATE) {
+                    setNewFlowRate(newFlowRate);
+                  }
+
+                  setTimeInterval(timeInterval);
+                }}
+              >
+                {timeInterval}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown>
+      </Stack>
+      {isAmountInsufficient && (
+        <Alert variant="warning" className="mt-2 mb-0 py-2">
+          Minimum Donation = {minDonationPerMonth} {token.symbol}/mo
+        </Alert>
+      )}
+      {!isSuperTokenPure && showWrappingStep && !isAmountInsufficient && (
+        <>
+          <Card.Text className="mt-3 mb-2">
+            Wrap for Streaming (
+            {isSuperTokenNative
+              ? ethBalance?.symbol
+              : underlyingTokenBalance?.symbol}{" "}
+            to {token?.symbol ?? "N/A"})
+          </Card.Text>
+          <Stack direction="vertical" className="bg-light p-3 rounded-4">
+            <Stack direction="horizontal" gap={2} className="align-items-start">
+              <Stack direction="vertical" className="w-50">
+                <InputGroup>
+                  <Form.Control
+                    type="text"
+                    placeholder="0"
+                    value={wrapAmountPerTimeInterval}
+                    className="border-end-0"
+                    onChange={handleWrapAmountSelection}
+                  />
+                  <InputGroup.Text className="bg-white small">
+                    {isSuperTokenNative
+                      ? ethBalance?.symbol
+                      : underlyingTokenBalance?.symbol}
+                  </InputGroup.Text>
+                </InputGroup>
+              </Stack>
+              <span style={{ marginTop: 7 }}>=</span>
+              <Stack direction="vertical" className="w-50">
+                <InputGroup>
+                  <Form.Control
+                    type="text"
+                    placeholder="0"
+                    value={wrapTimeInterval}
+                    className="border-end-0"
+                    onChange={handleWrapTimeIntervalSelection}
+                  />
+                  <InputGroup.Text className="bg-white small">
+                    {`${unitOfTime[timeInterval].charAt(0).toUpperCase()}${unitOfTime[timeInterval].slice(1)}`}
+                  </InputGroup.Text>
+                </InputGroup>
+              </Stack>
+            </Stack>
+            {hasSufficientWrappingBalance ? (
               <Card.Text
-                className={`m-0 ${!hasSufficientSuperTokenBalance ? "text-danger" : "text-info"}`}
+                className="mt-1 mb-0 w-50 text-info text-center"
                 style={{
                   fontSize: "0.8rem",
                 }}
               >
-                {token.symbol}:{" "}
-                {Intl.NumberFormat("en", { maximumFractionDigits: 4 }).format(
-                  Number(formatEther(superTokenBalance)),
+                {isSuperTokenNative
+                  ? ethBalance?.symbol
+                  : underlyingTokenBalance?.symbol}
+                :{" "}
+                {formatNumber(
+                  Number(
+                    isSuperTokenNative
+                      ? ethBalance?.formatted
+                      : underlyingTokenBalance?.formatted,
+                  ),
                 )}
               </Card.Text>
-              {!isSuperTokenPure &&
-                !showWrappingStep &&
-                hasSufficientSuperTokenBalance && (
-                  <span
-                    className="bg-primary px-1 rounded-1 text-white cursor-pointer"
-                    style={{
-                      fontSize: "0.6rem",
-                    }}
-                    onClick={() => setShowWrappingStep(true)}
-                  >
-                    +
-                  </span>
-                )}
+            ) : (
+              <Card.Text
+                className="mt-1 mb-0 ms-2 ps-1 text-danger w-100 float-start text-nowrap"
+                style={{
+                  fontSize: "0.8rem",
+                }}
+              >
+                {isSuperTokenNative
+                  ? ethBalance?.symbol
+                  : underlyingTokenBalance?.symbol}
+                :{" "}
+                {formatNumber(
+                  Number(
+                    isSuperTokenNative
+                      ? ethBalance?.formatted
+                      : underlyingTokenBalance?.formatted,
+                  ),
+                )}{" "}
+                (Insufficient Balance)
+              </Card.Text>
+            )}
+          </Stack>
+        </>
+      )}
+      <Stack direction="vertical" className="mt-4">
+        {canSubmit && !!liquidationEstimate && !isNaN(liquidationEstimate) && (
+          <Stack direction="horizontal" gap={1} className="mb-2">
+            <OverlayTrigger
+              overlay={
+                <Tooltip id="t-liquidation-info" className="fs-6">
+                  This is the current estimate for when your token balance will
+                  reach 0. Make sure to close your stream or{" "}
+                  {isSuperTokenPure ? "deposit" : "wrap"} more tokens before
+                  this date to avoid loss of your buffer deposit. See the graph
+                  below to vizualize how your proposed transaction(s) will
+                  impact your balance over time.
+                </Tooltip>
+              }
+            >
+              <Image
+                src="/info.svg"
+                alt="liquidation info"
+                width={16}
+                height={16}
+              />
+            </OverlayTrigger>
+            <Card.Text className="m-0 fs-6 fw-bold">
+              {isSuperTokenPure ? "Deposit" : "Wrap"} more by{" "}
+              {dayjs.unix(liquidationEstimate).format("MMMM D, YYYY")}
+            </Card.Text>
+          </Stack>
+        )}
+        {canSubmit && isLiquidationClose && (
+          <Stack direction="vertical" className="mb-2">
+            <Card.Text className="text-danger small">
+              You've set a high stream rate relative to your balance! We
+              recommend that you set a lower rate or{" "}
+              {isSuperTokenPure ? "deposit" : "wrap"} more {token.symbol}.
+            </Card.Text>
+            <Stack
+              direction="horizontal"
+              gap={2}
+              className="align-items-center"
+            >
+              <FormCheckInput
+                checked={hasAcceptedCloseLiquidationWarning}
+                className="border-black"
+                onChange={() =>
+                  setHasAcceptedCloseLiquidationWarning(
+                    !hasAcceptedCloseLiquidationWarning,
+                  )
+                }
+              />
+              <Card.Text className="text-danger small">
+                If I do not cancel this stream before my balance reaches zero, I
+                will lose my 4-hour {token.symbol} deposit.
+              </Card.Text>
             </Stack>
           </Stack>
-          <Dropdown className="w-50">
-            <Dropdown.Toggle
-              className="d-flex justify-content-between align-items-center w-100 bg-white text-dark"
-              style={{ border: "1px solid #dee2e6" }}
-            >
-              {timeInterval}
-            </Dropdown.Toggle>
-            <Dropdown.Menu>
-              {Object.values(TimeInterval).map((timeInterval, i) => (
-                <Dropdown.Item
-                  key={i}
-                  onClick={() => {
-                    setNewFlowRate(
-                      parseEther(amountPerTimeInterval) /
-                        BigInt(
-                          fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]),
-                        ),
-                    );
-
-                    setTimeInterval(timeInterval);
-                  }}
-                >
-                  {timeInterval}
-                </Dropdown.Item>
-              ))}
-            </Dropdown.Menu>
-          </Dropdown>
-        </Stack>
-        {isAmountInsufficient && (
-          <Alert variant="warning" className="mt-2 mb-0 py-2">
-            Minimum Donation = {minDonationPerMonth} {token.symbol}/mo
-          </Alert>
-        )}
-        {!isSuperTokenPure && showWrappingStep && !isAmountInsufficient && (
-          <>
-            <Card.Text className="mt-3 mb-2">
-              Wrap for Streaming (
-              {isSuperTokenNative
-                ? ethBalance?.symbol
-                : underlyingTokenBalance?.symbol}{" "}
-              to {token?.symbol ?? "N/A"})
-            </Card.Text>
-            <Stack direction="vertical" className="bg-light p-3 rounded-4">
-              <Stack
-                direction="horizontal"
-                gap={2}
-                className="align-items-start"
-              >
-                <Stack direction="vertical" className="w-50">
-                  <InputGroup>
-                    <Form.Control
-                      type="text"
-                      placeholder="0"
-                      value={wrapAmountPerTimeInterval}
-                      className="border-end-0"
-                      onChange={handleWrapAmountSelection}
-                    />
-                    <InputGroup.Text className="bg-white small">
-                      {isSuperTokenNative
-                        ? ethBalance?.symbol
-                        : underlyingTokenBalance?.symbol}
-                    </InputGroup.Text>
-                  </InputGroup>
-                </Stack>
-                <span style={{ marginTop: 7 }}>=</span>
-                <Stack direction="vertical" className="w-50">
-                  <InputGroup>
-                    <Form.Control
-                      type="text"
-                      placeholder="0"
-                      value={wrapTimeInterval}
-                      className="border-end-0"
-                      onChange={handleWrapTimeIntervalSelection}
-                    />
-                    <InputGroup.Text className="bg-white small">
-                      {`${unitOfTime[timeInterval].charAt(0).toUpperCase()}${unitOfTime[timeInterval].slice(1)}`}
-                    </InputGroup.Text>
-                  </InputGroup>
-                </Stack>
-              </Stack>
-              {hasSufficientWrappingBalance ? (
-                <Card.Text
-                  className="mt-1 mb-0 w-50 text-info text-center"
-                  style={{
-                    fontSize: "0.8rem",
-                  }}
-                >
-                  {isSuperTokenNative
-                    ? ethBalance?.symbol
-                    : underlyingTokenBalance?.symbol}
-                  :{" "}
-                  {Intl.NumberFormat("en", {
-                    maximumFractionDigits: 4,
-                  }).format(
-                    Number(
-                      isSuperTokenNative
-                        ? ethBalance?.formatted
-                        : underlyingTokenBalance?.formatted,
-                    ),
-                  )}
-                </Card.Text>
-              ) : (
-                <Card.Text
-                  className="mt-1 mb-0 ms-2 ps-1 text-danger w-100 float-start text-nowrap"
-                  style={{
-                    fontSize: "0.8rem",
-                  }}
-                >
-                  {isSuperTokenNative
-                    ? ethBalance?.symbol
-                    : underlyingTokenBalance?.symbol}
-                  :{" "}
-                  {Intl.NumberFormat("en", {
-                    maximumFractionDigits: 4,
-                  }).format(
-                    Number(
-                      isSuperTokenNative
-                        ? ethBalance?.formatted
-                        : underlyingTokenBalance?.formatted,
-                    ),
-                  )}{" "}
-                  (Insufficient Balance)
-                </Card.Text>
-              )}
-            </Stack>
-          </>
         )}
         <Button
-          disabled={!canSubmit}
-          className="w-100 mt-4"
+          disabled={
+            !canSubmit ||
+            (isLiquidationClose && !hasAcceptedCloseLiquidationWarning)
+          }
+          className="w-100"
           onClick={handleSubmit}
         >
-          {areTransactionsLoading ? (
+          {isDeletingFlow ? (
+            <Spinner size="sm" />
+          ) : areTransactionsLoading ? (
             <>
               <Spinner size="sm" />{" "}
               {transactions.length > 1 && (
@@ -833,6 +998,16 @@ export default function OpenFlow(props: OpenFlowProps) {
             <>Submit</>
           )}
         </Button>
+        {BigInt(flowRateToReceiver) > 0 && (
+          <Button
+            variant="transparent"
+            className="w-100 text-primary text-decoration-underline border-0"
+            style={{ pointerEvents: isDeletingFlow ? "none" : "auto" }}
+            onClick={handleDeleteFlow}
+          >
+            Cancel stream
+          </Button>
+        )}
         <Toast
           show={success}
           delay={4000}
@@ -847,24 +1022,24 @@ export default function OpenFlow(props: OpenFlowProps) {
             {transactionError}
           </Alert>
         )}
-        {(accountTokenSnapshot &&
-          accountTokenSnapshot.totalNetFlowRate !== "0") ||
-        (newFlowRate !== BigInt(0) &&
-          (superTokenBalance > 0 || wrapAmountPerTimeInterval > "0")) ? (
-          <>
-            <Card.Text className="mt-4 mb-2">
-              Your {token.symbol} Balance Over Time
-            </Card.Text>
-            <BalancePlot
-              flowInfo={
-                areTransactionsLoading && balancePlotFlowInfoSnapshot?.current
-                  ? balancePlotFlowInfoSnapshot.current
-                  : balancePlotFlowInfo
-              }
-            />
-          </>
-        ) : null}
-      </Offcanvas.Body>
-    </Offcanvas>
+      </Stack>
+      {(accountTokenSnapshot &&
+        accountTokenSnapshot.totalNetFlowRate !== "0") ||
+      (newFlowRate !== BigInt(0) &&
+        (superTokenBalance > 0 || wrapAmountPerTimeInterval > "0")) ? (
+        <>
+          <Card.Text className="mt-4 mb-2">
+            Your {token.symbol} Balance Over Time
+          </Card.Text>
+          <BalancePlot
+            flowInfo={
+              areTransactionsLoading && balancePlotFlowInfoSnapshot?.current
+                ? balancePlotFlowInfoSnapshot.current
+                : balancePlotFlowInfo
+            }
+          />
+        </>
+      ) : null}
+    </Stack>
   );
 }

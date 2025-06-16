@@ -14,7 +14,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import {
   TimeInterval,
   fromTimeUnitsToSeconds,
-  formatNumberWithCommas,
+  formatNumber,
   roundWeiAmount,
 } from "@/lib/utils";
 
@@ -24,7 +24,6 @@ export type TopUpProps = {
   newFlowRate: string;
   wrapAmount: string;
   isFundingMatchingPool?: boolean;
-  isFundingFlowStateCore?: boolean;
   isEligible?: boolean;
   superTokenBalance: bigint;
   minEthBalance: number;
@@ -45,7 +44,6 @@ export default function TopUp(props: TopUpProps) {
     newFlowRate,
     wrapAmount,
     isFundingMatchingPool,
-    isFundingFlowStateCore,
     isEligible,
     superTokenBalance,
     suggestedTokenBalance,
@@ -64,6 +62,7 @@ export default function TopUp(props: TopUpProps) {
   const { isMobile } = useMediaQuery();
 
   const isUnderlyingTokenNative = underlyingTokenBalance?.symbol === "ETH";
+  const isSupertokenPure = !underlyingTokenBalance;
 
   return (
     <Card className="bg-light rounded-0 border-0 border-bottom border-info">
@@ -159,12 +158,12 @@ export default function TopUp(props: TopUpProps) {
                       : "text-warning"
                 }`}
               >
-                {formatNumberWithCommas(
-                  parseFloat(
+                {formatNumber(
+                  Number(
                     formatEther(
                       (underlyingTokenBalance?.value ?? BigInt(0)) +
                         superTokenBalance,
-                    ).slice(0, 8),
+                    ),
                   ),
                 )}
                 {hasSuggestedTokenBalance && (
@@ -178,9 +177,7 @@ export default function TopUp(props: TopUpProps) {
               </Card.Text>
               <Card.Text as="small" className="m-0 text-center">
                 Suggested{" "}
-                {formatNumberWithCommas(
-                  parseFloat(roundWeiAmount(suggestedTokenBalance, 6)),
-                )}
+                {formatNumber(Number(roundWeiAmount(suggestedTokenBalance, 6)))}
                 +
                 <br />
                 <span style={{ fontSize: "0.8rem" }}>(3 months stream)</span>
@@ -235,9 +232,7 @@ export default function TopUp(props: TopUpProps) {
                     }`}
                   >
                     {ethBalance
-                      ? formatNumberWithCommas(
-                          parseFloat(ethBalance.formatted.slice(0, 8)),
-                        )
+                      ? formatNumber(Number(ethBalance.formatted))
                       : "0"}
                     {hasSufficientEthBalance && (
                       <Image
@@ -311,12 +306,12 @@ export default function TopUp(props: TopUpProps) {
                           : "text-warning"
                     }`}
                   >
-                    {formatNumberWithCommas(
-                      parseFloat(
+                    {formatNumber(
+                      Number(
                         formatEther(
                           (underlyingTokenBalance?.value ?? BigInt(0)) +
                             superTokenBalance,
-                        ).slice(0, 8),
+                        ),
                       ),
                     )}
                     {hasSuggestedTokenBalance && (
@@ -330,8 +325,8 @@ export default function TopUp(props: TopUpProps) {
                   </Card.Text>
                   <Card.Text as="small" className="m-0 text-center">
                     Suggested{" "}
-                    {formatNumberWithCommas(
-                      parseFloat(roundWeiAmount(suggestedTokenBalance, 6)),
+                    {formatNumber(
+                      Number(roundWeiAmount(suggestedTokenBalance, 6)),
                     )}
                     +
                     <br />
@@ -354,7 +349,22 @@ export default function TopUp(props: TopUpProps) {
           <Button
             variant="transparent"
             className="mt-4 text-info"
-            onClick={() => setStep(Step.WRAP)}
+            onClick={() =>
+              setStep(
+                !isSupertokenPure &&
+                  (wrapAmount ||
+                    superTokenBalance <
+                      BigInt(newFlowRate) *
+                        BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
+                  ? Step.WRAP
+                  : !isFundingMatchingPool && !isEligible
+                    ? Step.ELIGIBILITY
+                    : !sessionStorage.getItem("skipSupportFlowState") &&
+                        !localStorage.getItem("skipSupportFlowState")
+                      ? Step.SUPPORT
+                      : Step.REVIEW,
+              )
+            }
           >
             Skip
           </Button>
@@ -363,14 +373,13 @@ export default function TopUp(props: TopUpProps) {
             disabled={!hasSufficientEthBalance || !hasSufficientTokenBalance}
             onClick={() =>
               setStep(
-                wrapAmount ||
-                  superTokenBalance <
-                    BigInt(newFlowRate) *
-                      BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY))
+                !isSupertokenPure &&
+                  (wrapAmount ||
+                    superTokenBalance <
+                      BigInt(newFlowRate) *
+                        BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
                   ? Step.WRAP
-                  : !isFundingMatchingPool &&
-                      !isFundingFlowStateCore &&
-                      !isEligible
+                  : !isFundingMatchingPool && !isEligible
                     ? Step.ELIGIBILITY
                     : !sessionStorage.getItem("skipSupportFlowState") &&
                         !localStorage.getItem("skipSupportFlowState")
