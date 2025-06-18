@@ -29,6 +29,7 @@ export default function Header() {
             isTablet ||
             pathname?.startsWith("/sqf") ||
             pathname?.startsWith("/flow-councils/launch") ||
+            pathname?.startsWith("/flow-councils/permissions") ||
             pathname?.startsWith("/flow-councils/membership") ||
             pathname?.startsWith("/flow-councils/review") ||
             pathname?.startsWith("/grantee") ||

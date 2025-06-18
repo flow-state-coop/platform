@@ -84,18 +84,6 @@ export default function PoolInfo(props: PoolInfoProps) {
               }
             />
           </Stack>
-
-          {(!isMobile || showFullInfo) && (
-            <Button
-              variant="secondary"
-              className="p-2 text-light"
-              style={{ width: "auto" }}
-              onClick={showDistributionPoolFunding}
-            >
-              Grow the Pie
-            </Button>
-          )}
-
           {isMobile && !showFullInfo && (
             <Button
               variant="transparent"
@@ -146,6 +134,16 @@ export default function PoolInfo(props: PoolInfoProps) {
               gap={4}
               className="justify-content-end w-100 mt-3"
             >
+              {(!isMobile || showFullInfo) && (
+                <Button
+                  variant="secondary"
+                  className="p-2 text-light"
+                  style={{ width: isMobile ? "100%" : 180 }}
+                  onClick={showDistributionPoolFunding}
+                >
+                  Grow the Pie
+                </Button>
+              )}
               {grantee && (
                 <Button
                   variant="link"

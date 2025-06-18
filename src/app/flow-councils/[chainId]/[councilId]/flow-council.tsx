@@ -27,22 +27,7 @@ import { Grantee, SortingMethod } from "../../types/grantee";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useCouncil from "../../hooks/council";
 import { networks } from "@/lib/networks";
-import { shuffle, getPlaceholderImageSrc } from "@/lib/utils";
-
-// Generate a deterministic color based on string input
-const generateColor = (str: string): string => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-
-  // Generate HSL color with good saturation and lightness for visibility
-  const h = Math.abs(hash % 360);
-  const s = 65 + (hash % 20); // 65-85% saturation
-  const l = 40 + (hash % 10); // 40-50% lightness for darker/richer colors
-
-  return `hsl(${h}, ${s}%, ${l}%)`;
-};
+import { shuffle, getPlaceholderImageSrc, generateColor } from "@/lib/utils";
 
 export default function FlowCouncil({
   chainId,
@@ -266,23 +251,21 @@ export default function FlowCouncil({
 
   // Handle grantee selection
   const handleGranteeSelection = (granteeAddress: `0x${string}`) => {
-    console.log("Selecting grantee:", granteeAddress);
     const isCurrentlySelected = newAllocation?.allocation?.some(
       (a) => a.grantee === granteeAddress,
     );
+    const isInCurrentAllocation = currentAllocation?.allocation?.some(
+      (a) => a.grantee === granteeAddress,
+    );
 
-    if (!isCurrentlySelected) {
+    if (!isCurrentlySelected || isInCurrentAllocation) {
       // Calculate how many votes to allocate to the new grantee
       let newGranteeVotes = 0;
 
-      // Check if the grantee is already in currentAllocation (important to prevent duplication)
-      const isInCurrentAllocation = currentAllocation?.allocation?.some(
-        (a) => a.grantee === granteeAddress,
-      );
-
       if (!newAllocation?.allocation || newAllocation.allocation.length === 0) {
         // If this is the first grantee, give half the votes
-        newGranteeVotes = votingPower / 2;
+        newGranteeVotes = 1;
+        //newGranteeVotes = votingPower / 2;
       } else {
         // Take votes evenly from other grantees
         const totalAllocated = newAllocation.allocation.reduce(
@@ -316,24 +299,16 @@ export default function FlowCouncil({
                 amount: newAmount,
               },
             });
+
+            return;
           });
         }
       }
 
-      if (isInCurrentAllocation) {
-        // If the grantee is already in currentAllocation, use update instead of add
-        dispatchNewAllocation({
-          type: "update",
-          allocation: { grantee: granteeAddress, amount: newGranteeVotes },
-        });
-      } else {
-        // Only use "add" with currentAllocation for truly new grantees
-        // We're deliberately NOT passing currentAllocation here to prevent duplication
-        dispatchNewAllocation({
-          type: "add",
-          allocation: { grantee: granteeAddress, amount: newGranteeVotes },
-        });
-      }
+      dispatchNewAllocation({
+        type: "add",
+        allocation: { grantee: granteeAddress, amount: newGranteeVotes },
+      });
     }
   };
 
@@ -606,14 +581,12 @@ export default function FlowCouncil({
                 (allocation) => allocation.grantee === grantee.address,
               );
 
-              const isSelected = !!ballotAllocation;
-              const allocationAmount = ballotAllocation?.amount || 0;
+              const allocationAmount = ballotAllocation?.amount ?? 0;
               const allocationPercentage = amountToPercentage(allocationAmount);
 
               return (
                 <GranteeCard
                   key={`${grantee.address}-${grantee.id}`}
-                  id={grantee.id}
                   granteeAddress={grantee.address}
                   name={grantee.metadata.title}
                   description={grantee.metadata.description}
@@ -623,17 +596,14 @@ export default function FlowCouncil({
                   placeholderBanner={grantee.placeholderBanner}
                   flowRate={grantee.flowRate}
                   units={grantee.units}
-                  network={network}
                   token={token}
-                  isSelected={isSelected}
                   allocationPercentage={allocationPercentage}
                   onAllocationChange={(value) =>
                     handleAllocationChange(grantee.address, value)
                   }
                   onClick={() => handleGranteeSelection(grantee.address)}
                   votingPower={votingPower}
-                  pieColor={granteeColors[grantee.address]}
-                  sharedPieData={sharedPieData}
+                  granteeColor={granteeColors[grantee.address]}
                 />
               );
             })}
