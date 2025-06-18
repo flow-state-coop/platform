@@ -38,6 +38,30 @@ export const flowGuildConfigs: {
       8453: { ETHx: { id: "0x3" }, USDCx: { id: "0x10" } },
     },
   },
+  ["chonesguild"]: {
+    id: "chonesguild",
+    name: "Chones Guild",
+    description: `Chones, ecosystem weaving\
+      \n- connects many communities and organizations\
+      \n- maintains mycelial communication and resource sharing\
+      \n- cross pollinates information and ideas\
+      \n- achieved with human to human care\
+      \n\n The Chones Guild is an experiment that aims to accelerate this activity across ecosystems.\
+      \n\n All streaming supporters earn [Superfluid SUP token rewards](https://claim.superfluid.org/claim)!`,
+    logo: "/chones-guild.svg",
+    website: "https://chones.xyz/",
+    github: "https://github.com/Chones-Weaving",
+    twitter: "https://x.com/ChonesWeaving/",
+    farcaster: "https://farcaster.xyz/~/channel/chones",
+    telegram: "",
+    discord: "",
+    defaultChainId: 42161,
+    defaultToken: "ETHx",
+    safe: "0xc40f7733f0ea30bb6f797c88444769e00775d021",
+    flowSplitters: {
+      42161: { ETHx: { id: "0x3" } },
+    },
+  },
   ["greenpilldevguild"]: {
     id: "greenpilldevguild",
     name: "Greenpill Dev Guild",
