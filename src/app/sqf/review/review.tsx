@@ -23,7 +23,7 @@ import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
-import { networks } from "@/lib/networks";
+import { networks } from "../lib/networks";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { erc20Abi } from "@/lib/abi/erc20";
 import { ZERO_ADDRESS } from "@/lib/constants";
