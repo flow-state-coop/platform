@@ -20,6 +20,7 @@ type ExploreProps = {
   coreInflow: Inflow;
   greenpillInflow: Inflow;
   guildGuildInflow: Inflow;
+  chonesGuildInflow: Inflow;
 };
 
 const SQF_STREAM_QUERY = gql`
@@ -63,7 +64,7 @@ const SQF_ADDRESSES = {
 };
 
 export default function Explore(props: ExploreProps) {
-  const { coreInflow, greenpillInflow, guildGuildInflow } = props;
+  const { coreInflow, greenpillInflow, guildGuildInflow, chonesGuildInflow } = props;
 
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
@@ -249,6 +250,20 @@ export default function Explore(props: ExploreProps) {
               updatedAt={guildGuildInflow?.updatedAtTimestamp}
               tokenSymbol="ETHx"
               link="/flow-guilds/guild-guild"
+            />
+              <RoundCard
+              name="Chones Guild"
+              image="/chones-guild.svg"
+              roundType="Flow Guild"
+              totalStreamedUntilUpdatedAt={BigInt(
+                guildGuildInflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,
+              ).toString()}
+              flowRate={BigInt(
+                chonesGuildInflow?.totalInflowRate ?? 0,
+              ).toString()}
+              updatedAt={chonesGuildInflow?.updatedAtTimestamp}
+              tokenSymbol="ETHx"
+              link="/flow-guilds/chonesguild"
             />
             <RoundCard
               name="GoodBuilders Program"
