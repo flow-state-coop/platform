@@ -41,7 +41,7 @@ export const flowGuildConfigs: {
   ["chonesguild"]: {
     id: "chonesguild",
     name: "Chones Guild",
-    description: `Chones, ecosystem weaving\
+    description: `Chones, ecosystem weaving:\
       \n- connects many communities and organizations\
       \n- maintains mycelial communication and resource sharing\
       \n- cross pollinates information and ideas\
