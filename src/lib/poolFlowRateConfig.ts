@@ -30,12 +30,6 @@ export function getPoolFlowRateConfig(token: string) {
         flowRateScaling: BigInt(1e6),
         suggestedFlowStateDonation: 100,
       };
-    case "MPULSEx":
-      return {
-        minAllocationPerMonth: 0.0001,
-        flowRateScaling: BigInt(1e6),
-        suggestedFlowStateDonation: 0.001,
-      };
     default:
       return {
         minAllocationPerMonth: 1,

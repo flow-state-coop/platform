@@ -103,10 +103,10 @@ export default function Grantee(props: GranteeProps) {
 
   return (
     <Card
-      className="rounded-4 overflow-hidden cursor-pointer"
+      className="rounded-4 overflow-hidden cursor-pointer shadow"
       style={{
-        height: 418,
-        border: isSelected ? "1px solid #247789" : "1px solid #212529",
+        height: 438,
+        border: isSelected ? "1px solid #247789" : "",
         boxShadow: isSelected ? "0px 0px 0px 2px #247789" : "",
       }}
       onClick={selectGrantee}
@@ -123,7 +123,7 @@ export default function Grantee(props: GranteeProps) {
         width={52}
         height={52}
         className="rounded-3 position-absolute border border-2 border-light bg-white"
-        style={{ bottom: 288, left: 16 }}
+        style={{ bottom: 308, left: 16 }}
       />
       <Card.Body className="mt-3 pb-0">
         <Card.Text
@@ -156,7 +156,10 @@ export default function Grantee(props: GranteeProps) {
               {monthlyAllocation}
             </Card.Text>
             <Card.Text as="small" className="m-0">
-              {allocationTokenInfo.symbol}/mo
+              {allocationTokenInfo.symbol}
+            </Card.Text>
+            <Card.Text as="small" className="m-0">
+              /mo
             </Card.Text>
           </Stack>
           <Stack direction="vertical" className="align-items-center w-33">
@@ -167,7 +170,10 @@ export default function Grantee(props: GranteeProps) {
               {monthlyMatching}
             </Card.Text>
             <Card.Text as="small" className="m-0">
-              {matchingTokenInfo.symbol}/mo
+              {matchingTokenInfo.symbol}
+            </Card.Text>
+            <Card.Text as="small" className="m-0">
+              /mo
             </Card.Text>
           </Stack>
         </Stack>

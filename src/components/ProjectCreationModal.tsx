@@ -404,7 +404,9 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
           <Form.Group className="mb-4">
             <Form.Label>Karma GAP</Form.Label>
             <InputGroup>
-              <InputGroup.Text>https://gap.karmahq.xyz/project/</InputGroup.Text>
+              <InputGroup.Text>
+                https://gap.karmahq.xyz/project/
+              </InputGroup.Text>
               <Form.Control
                 type="text"
                 value={metadataForm.karmaGap}

@@ -19,7 +19,6 @@ import { getApolloClient } from "@/lib/apollo";
 import { Inflow } from "@/types/inflow";
 import { Outflow } from "@/types/outflow";
 import { ProjectMetadata } from "@/types/project";
-import { Token } from "@/types/token";
 import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { formatNumber } from "@/lib/utils";
@@ -34,8 +33,6 @@ interface GranteeDetailsProps {
   matchingPool: GDAPool;
   matchingFlowRate: bigint;
   userOutflow: Outflow | null;
-  allocationTokenInfo: Token;
-  matchingTokenInfo: Token;
   recipientId: string;
   chainId?: number;
 }
@@ -58,8 +55,6 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
     matchingPool,
     matchingFlowRate,
     userOutflow,
-    allocationTokenInfo,
-    matchingTokenInfo,
     recipientId,
     chainId,
   } = props;
@@ -266,7 +261,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
       <Stack direction="horizontal" gap={1} className="fs-6 p-2 pb-0">
         <Stack direction="vertical" gap={1} className="w-33">
           <Card.Text className="m-0 pe-0" style={{ fontSize: "0.7rem" }}>
-            You ({allocationTokenInfo.symbol})
+            You
           </Card.Text>
           <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumber(
@@ -284,7 +279,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             className="m-0 pe-0 text-nowrap"
             style={{ fontSize: "0.7rem" }}
           >
-            Others ({allocationTokenInfo.symbol})
+            Others
           </Card.Text>
           <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumber(
@@ -303,7 +298,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             className="m-0 pe-0 text-nowrap"
             style={{ fontSize: "0.7rem" }}
           >
-            Match ({matchingTokenInfo.symbol})
+            Match
           </Card.Text>
           <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
             {formatNumber(
