@@ -625,8 +625,6 @@ export default function GranteeFunding(props: GranteeFundingProps) {
             matchingPool={matchingPool}
             matchingFlowRate={matchingFlowRate}
             userOutflow={userOutflow}
-            allocationTokenInfo={allocationTokenInfo}
-            matchingTokenInfo={matchingTokenInfo}
             recipientId={recipientId}
             chainId={network?.id}
           />

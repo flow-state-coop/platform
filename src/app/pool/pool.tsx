@@ -25,7 +25,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useDonorParams from "@/hooks/donorParams";
 import { erc721CheckerAbi } from "@/lib/abi/erc721Checker";
 import { erc721Abi } from "@/lib/abi/erc721";
-import { networks } from "@/lib/networks";
+import { networks } from "@/app/sqf/lib/networks";
 import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import { getApolloClient } from "@/lib/apollo";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";

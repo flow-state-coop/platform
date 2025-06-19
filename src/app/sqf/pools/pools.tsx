@@ -11,7 +11,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Sidebar from "../components/Sidebar";
 import { useClampText } from "use-clamp-text";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import { networks } from "@/lib/networks";
+import { networks } from "../lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 
 type PoolsProps = {

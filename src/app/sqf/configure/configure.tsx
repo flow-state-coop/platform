@@ -32,7 +32,7 @@ import Card from "react-bootstrap/Card";
 import Sidebar from "../components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
-import { networks } from "@/lib/networks";
+import { networks } from "../lib/networks";
 import { strategyBytecode } from "@/lib/strategyBytecode";
 import { erc721CheckerBytecode } from "@/lib/erc721CheckerBytecode";
 import { strategyAbi } from "@/lib/abi/strategy";

@@ -23,7 +23,7 @@ import useFlowingAmount from "@/hooks/flowingAmount";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { isNumber } from "@/lib/utils";
-import { networks } from "@/lib/networks";
+import { networks } from "../lib/networks";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { gdaForwarderAbi } from "@/lib/abi/gdaForwarder";
 import { SECONDS_IN_MONTH, ZERO_ADDRESS } from "@/lib/constants";
