@@ -36,7 +36,7 @@ const FLOW_GUILD_ADDRESSES = {
     safeAddress: "0x29f4c46e04b9d35724af08f314d936f44f52527c",
     token: "0xe6c8d111337d0052b9d88bf5d7d55b7f8385acd3",
   },
-    ["chonesguild"]: {
+  ["chonesguild"]: {
     safeAddress: "0xc40f7733f0ea30bb6f797c88444769e00775d021",
     token: "0xe6c8d111337d0052b9d88bf5d7d55b7f8385acd3",
   },
@@ -67,7 +67,7 @@ export default async function Page() {
       token: FLOW_GUILD_ADDRESSES["guild-guild"].token,
     },
   );
-    const chonesGuildQueryRes = await request<{ account: Account }>(
+  const chonesGuildQueryRes = await request<{ account: Account }>(
     networks.find((network) => network.id === arbitrum.id)!.superfluidSubgraph,
     FLOW_GUILD_QUERY,
     {
