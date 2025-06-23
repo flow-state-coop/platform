@@ -155,12 +155,18 @@ export default function Grantee(props: GranteeProps) {
             <Card.Text as="small" className="m-0">
               {monthlyAllocation}
             </Card.Text>
-            <Card.Text as="small" className="m-0">
-              {allocationTokenInfo.symbol}
-            </Card.Text>
-            <Card.Text as="small" className="m-0">
-              /mo
-            </Card.Text>
+            <Stack
+              direction="horizontal"
+              gap={1}
+              className="flex-wrap justify-content-center"
+            >
+              <Card.Text as="small" className="m-0">
+                {allocationTokenInfo.symbol}
+              </Card.Text>
+              <Card.Text as="small" className="m-0">
+                /mo
+              </Card.Text>
+            </Stack>
           </Stack>
           <Stack direction="vertical" className="align-items-center w-33">
             <Card.Text as="small" className="m-0 fw-bold">
@@ -169,12 +175,18 @@ export default function Grantee(props: GranteeProps) {
             <Card.Text as="small" className="m-0">
               {monthlyMatching}
             </Card.Text>
-            <Card.Text as="small" className="m-0">
-              {matchingTokenInfo.symbol}
-            </Card.Text>
-            <Card.Text as="small" className="m-0">
-              /mo
-            </Card.Text>
+            <Stack
+              direction="horizontal"
+              gap={1}
+              className="flex-wrap justify-content-center"
+            >
+              <Card.Text as="small" className="m-0">
+                {matchingTokenInfo.symbol}
+              </Card.Text>
+              <Card.Text as="small" className="m-0">
+                /mo
+              </Card.Text>
+            </Stack>
           </Stack>
         </Stack>
       </Card.Body>

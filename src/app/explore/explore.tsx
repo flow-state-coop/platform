@@ -64,7 +64,8 @@ const SQF_ADDRESSES = {
 };
 
 export default function Explore(props: ExploreProps) {
-  const { coreInflow, greenpillInflow, guildGuildInflow, chonesGuildInflow } = props;
+  const { coreInflow, greenpillInflow, guildGuildInflow, chonesGuildInflow } =
+    props;
 
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
@@ -251,7 +252,7 @@ export default function Explore(props: ExploreProps) {
               tokenSymbol="ETHx"
               link="/flow-guilds/guild-guild"
             />
-              <RoundCard
+            <RoundCard
               name="Chones Guild"
               image="/chones-guild.svg"
               roundType="Flow Guild"
