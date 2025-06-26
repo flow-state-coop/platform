@@ -1,7 +1,12 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import { Address, parseEventLogs } from "viem";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import {
+  useAccount,
+  useSwitchChain,
+  usePublicClient,
+  useWriteContract,
+} from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
@@ -17,6 +22,7 @@ import { registryAbi } from "@/lib/abi/registry";
 
 type ProjectCreationModalProps = {
   show: boolean;
+  chainId: number;
   handleClose: () => void;
   registryAddress: string;
   setNewProfileId: (newProfileId: string) => void;
@@ -39,7 +45,8 @@ type MetadataForm = {
 };
 
 export default function ProjectCreationModal(props: ProjectCreationModalProps) {
-  const { show, handleClose, registryAddress, setNewProfileId } = props;
+  const { show, chainId, handleClose, registryAddress, setNewProfileId } =
+    props;
 
   const [metadataForm, setMetadataForm] = useState<MetadataForm>({
     title: "",
@@ -66,8 +73,9 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
   const fileInputRefBanner = useRef<HTMLInputElement>(null);
 
   const { openConnectModal } = useConnectModal();
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
   const { writeContractAsync } = useWriteContract();
+  const { switchChain } = useSwitchChain();
   const publicClient = usePublicClient();
 
   const handleFileUploadLogo = () => {
@@ -548,7 +556,13 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
         <Button
           disabled={!metadataForm.title}
           className="w-25 text-light"
-          onClick={address ? handleCreateProject : openConnectModal}
+          onClick={() =>
+            !address && openConnectModal
+              ? openConnectModal()
+              : connectedChain?.id !== chainId
+                ? switchChain({ chainId })
+                : handleCreateProject()
+          }
         >
           {isCreatingProject ? <Spinner size="sm" /> : "Create"}
         </Button>

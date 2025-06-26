@@ -1,7 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Address } from "viem";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import {
+  useAccount,
+  useSwitchChain,
+  usePublicClient,
+  useWriteContract,
+} from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
@@ -20,6 +25,7 @@ import { IPFS_GATEWAYS } from "@/lib/constants";
 
 type ProjectUpdateModalProps = {
   show: boolean;
+  chainId: number;
   handleClose: () => void;
   registryAddress: string;
   project: Project;
@@ -42,7 +48,7 @@ type MetadataForm = {
 };
 
 export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
-  const { show, handleClose, registryAddress, project } = props;
+  const { show, chainId, handleClose, registryAddress, project } = props;
   const { metadata: projectMetadata } = project;
 
   const [metadataForm, setMetadataForm] = useState<MetadataForm>({
@@ -70,7 +76,8 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
   const fileInputRefBanner = useRef<HTMLInputElement>(null);
 
   const { openConnectModal } = useConnectModal();
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
+  const { switchChain } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
 
@@ -551,7 +558,13 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
         <Button
           disabled={!metadataForm.title}
           className="w-25 text-light"
-          onClick={address ? handleUpdateProject : openConnectModal}
+          onClick={() =>
+            !address && openConnectModal
+              ? openConnectModal()
+              : connectedChain?.id !== chainId
+                ? switchChain({ chainId })
+                : handleUpdateProject()
+          }
         >
           {isCreatingProject ? <Spinner size="sm" /> : "Update"}
         </Button>

@@ -29,9 +29,11 @@ export default function Header() {
             isTablet ||
             pathname?.startsWith("/sqf") ||
             pathname?.startsWith("/flow-councils/launch") ||
+            pathname?.startsWith("/flow-councils/permissions") ||
             pathname?.startsWith("/flow-councils/membership") ||
             pathname?.startsWith("/flow-councils/review") ||
-            pathname?.startsWith("/gooddollar/launch") ||
+            pathname?.startsWith("/gooddollar/admin") ||
+            pathname?.startsWith("/gooddollar/permissions") ||
             pathname?.startsWith("/gooddollar/membership") ||
             pathname?.startsWith("/gooddollar/review") ||
             pathname?.startsWith("/grantee") ||

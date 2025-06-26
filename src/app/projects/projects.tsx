@@ -218,6 +218,7 @@ export default function Projects(props: ProjectsProps) {
       {network && (
         <ProjectCreationModal
           show={showProjectCreationModal}
+          chainId={network.id}
           handleClose={() => setShowProjectCreationModal(false)}
           registryAddress={network.alloRegistry}
           setNewProfileId={() => null}

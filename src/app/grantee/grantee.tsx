@@ -384,6 +384,7 @@ export default function Grantee(props: GranteeProps) {
         </Stack>
         <ProjectCreationModal
           show={showProjectCreationModal}
+          chainId={network.id}
           handleClose={() => setShowProjectCreationModal(false)}
           registryAddress={network?.alloRegistry}
           setNewProfileId={(newProfileId) => setNewProfileId(newProfileId)}
@@ -391,6 +392,7 @@ export default function Grantee(props: GranteeProps) {
         {selectedProjectIndex !== null && (
           <ProjectUpdateModal
             show={showProjectUpdateModal}
+            chainId={network.id}
             handleClose={() => setShowProjectUpdateModal(false)}
             registryAddress={network?.alloRegistry}
             project={projects[selectedProjectIndex]}
