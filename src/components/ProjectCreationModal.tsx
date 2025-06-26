@@ -26,6 +26,7 @@ type MetadataForm = {
   title: string;
   description: string;
   website: string;
+  appLink: string;
   projectTwitter: string;
   userGithub: string;
   projectGithub: string;
@@ -44,6 +45,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
     title: "",
     description: "",
     website: "",
+    appLink: "",
     projectTwitter: "",
     userGithub: "",
     projectGithub: "",
@@ -134,6 +136,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
           extractGithubUsername(metadataForm.projectGithub) ??
           metadataForm.projectGithub,
         website: metadataForm.website ? `https://${metadataForm.website}` : "",
+        appLink: metadataForm.appLink ? `https://${metadataForm.appLink}` : "",
         logoImg,
         bannerImg,
         logoImgData: {},
@@ -362,6 +365,23 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
                   setMetadataForm({
                     ...metadataForm,
                     website: e.target.value,
+                  })
+                }
+              />
+            </InputGroup>
+          </Form.Group>
+          <Form.Group className="mb-4">
+            <Form.Label>Application Link</Form.Label>
+            <InputGroup>
+              <InputGroup.Text>https://</InputGroup.Text>
+              <Form.Control
+                type="text"
+                value={metadataForm.appLink}
+                placeholder="app.example.com"
+                onChange={(e) =>
+                  setMetadataForm({
+                    ...metadataForm,
+                    appLink: e.target.value,
                   })
                 }
               />

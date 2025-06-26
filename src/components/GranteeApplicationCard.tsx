@@ -91,7 +91,9 @@ export default function GranteeApplicationCard(
   return (
     <Card
       className={`d-flex justify-content-center align-items-center border-2 fs-4 overflow-hidden cursor-pointer ${
-        isSelected
+        isSelected &&
+        (!hasApplied ||
+          (canReapply && (status === "REJECTED" || status === "CANCELED")))
           ? "border-5 border-primary"
           : status === "APPROVED"
             ? "border-5 border-success"
@@ -104,10 +106,7 @@ export default function GranteeApplicationCard(
       style={{
         height: 418,
         pointerEvents:
-          (hasApplied && status !== "PENDING") ||
-          (canReapply && (status === "PENDING" || status === "APPROVED"))
-            ? "none"
-            : "auto",
+          hasApplied && !canReapply && status !== "PENDING" ? "none" : "auto",
       }}
       onClick={selectProject}
     >
