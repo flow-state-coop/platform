@@ -8,6 +8,7 @@ import { createVerifiedFetch } from "@helia/verified-fetch";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
 import Dropdown from "react-bootstrap/Dropdown";
+import Spinner from "react-bootstrap/Spinner";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
 import Image from "react-bootstrap/Image";
@@ -66,12 +67,15 @@ export default function Admin(props: AdminProps) {
 
   const router = useRouter();
   const { isMobile } = useMediaQuery();
-  const { data: councilQueryRes } = useQuery(COUNCIL_QUERY, {
-    client: getApolloClient("flowCouncil", selectedNetwork.id),
-    variables: { councilId: councilId?.toLowerCase() },
-    pollInterval: 4000,
-    skip: !councilId,
-  });
+  const { data: councilQueryRes, loading: councilQueryLoading } = useQuery(
+    COUNCIL_QUERY,
+    {
+      client: getApolloClient("flowCouncil", selectedNetwork.id),
+      variables: { councilId: councilId?.toLowerCase() },
+      pollInterval: 4000,
+      skip: !councilId,
+    },
+  );
   const [checkSuperToken] = useLazyQuery(SUPERTOKEN_QUERY, {
     client: getApolloClient("superfluid", selectedNetwork.id),
   });
@@ -124,18 +128,20 @@ export default function Admin(props: AdminProps) {
   return (
     <>
       <Sidebar />
-      {!council ? (
+      {councilQueryLoading || !council ? (
         <Stack
           direction="vertical"
           className={!isMobile ? "w-75 px-5" : "w-100 px-4"}
           style={{
             justifyContent: "center",
             alignItems: "center",
-            fontWeight: "bold",
-            fontSize: "2rem",
           }}
         >
-          Council Not Found
+          {councilQueryLoading ? (
+            <Spinner />
+          ) : (
+            <Card.Text className="fw-bold fs-1">Council Not Found</Card.Text>
+          )}
         </Stack>
       ) : (
         <Stack
