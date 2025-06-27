@@ -4,11 +4,13 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { isAddress } from "viem";
 import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
-import removeMarkdown from "remove-markdown";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useSession } from "next-auth/react";
 import { gql, useQuery } from "@apollo/client";
 import { createVerifiedFetch } from "@helia/verified-fetch";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehyperExternalLinks from "rehype-external-links";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
@@ -402,9 +404,19 @@ export default function Grantee(props: GranteeProps) {
           />
         </Button>
       </Stack>
-      <Card.Text className="mt-2 mb-5">
-        {removeMarkdown(councilMetadata.description).replace(/\r?\n|\r/g, " ")}
-      </Card.Text>
+      <Markdown
+        className="mt-2 mb-5"
+        skipHtml={true}
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
+        components={{
+          table: (props) => (
+            <table className="table table-striped" {...props} />
+          ),
+        }}
+      >
+        {councilMetadata.description}
+      </Markdown>
       <div
         style={{
           display: "grid",
