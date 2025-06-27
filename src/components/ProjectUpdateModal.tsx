@@ -71,6 +71,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
   const [projectLogoError, setProjectLogoError] = useState("");
   const [projectBannerError, setProjectBannerError] = useState("");
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [validated, setValidated] = useState(false);
 
   const fileInputRefLogo = useRef<HTMLInputElement>(null);
   const fileInputRefBanner = useRef<HTMLInputElement>(null);
@@ -80,6 +81,15 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
   const { switchChain } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
+
+  const isValid =
+    !!metadataForm.title &&
+    !!metadataForm.description &&
+    !!metadataForm.website &&
+    !!metadataForm.appLink &&
+    !!metadataForm.userGithub &&
+    !!projectLogoBlob &&
+    !!projectBannerBlob;
 
   useEffect(() => {
     (async () => {
@@ -199,6 +209,18 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
     }
   };
 
+  const handleSubmit = () => {
+    setValidated(true);
+
+    if (!address && openConnectModal) {
+      openConnectModal();
+    } else if (connectedChain?.id !== chainId) {
+      switchChain({ chainId });
+    } else if (isValid) {
+      handleUpdateProject();
+    }
+  };
+
   return (
     <Modal show={show} size="lg" centered scrollable onHide={handleClose}>
       <Modal.Header closeButton className="border-0">
@@ -211,6 +233,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
             <Form.Control
               type="text"
               value={metadataForm.title}
+              isInvalid={validated && !metadataForm.title}
               placeholder="Your project name"
               onChange={(e) =>
                 setMetadataForm({ ...metadataForm, title: e.target.value })
@@ -219,7 +242,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
           </Form.Group>
           <Form.Group className="mb-4">
             <Form.Label>
-              Project Description{" "}
+              Project Description*{" "}
               <Link
                 href="https://www.markdownguide.org/basic-syntax/"
                 target="_blank"
@@ -233,6 +256,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
               as="textarea"
               rows={6}
               value={metadataForm.description}
+              isInvalid={validated && !metadataForm.description}
               placeholder="Your project description"
               onChange={(e) =>
                 setMetadataForm({
@@ -244,11 +268,12 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
           </Form.Group>
           <Form.Group className="d-flex flex-column mb-4">
             <Form.Label>
-              Project Logo (1:1 Aspect Ratio, No larger than 256 KB)
+              Project Logo* (1:1 Aspect Ratio, No larger than 256 KB)
             </Form.Label>
             <Form.Control
               type="file"
               hidden
+              isInvalid={validated && !metadataForm.description}
               accept=".png,.jpeg,.jpg"
               ref={fileInputRefLogo}
               onChange={handleFileUploadLogo}
@@ -263,7 +288,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
                 style={{
                   width: 256,
                   height: 128,
-                  border: "1px dashed #adb5bd",
+                  border: `1px dashed ${validated && !projectLogoBlob ? "#dc3545" : "#adb5bd"}`,
                   color: "#adb5bd",
                 }}
                 onClick={() => fileInputRefLogo.current?.click()}
@@ -306,11 +331,12 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
           </Form.Group>
           <Form.Group className="d-flex flex-column mb-4">
             <Form.Label>
-              Project Banner (3:1 Aspect Ratio, No larger than 1 MB)
+              Project Banner* (3:1 Aspect Ratio, No larger than 1 MB)
             </Form.Label>
             <Form.Control
               type="file"
               hidden
+              isInvalid={validated && !metadataForm.description}
               accept=".png,.jpeg,.jpg"
               ref={fileInputRefBanner}
               onChange={handleFileUploadBanner}
@@ -325,7 +351,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
                 style={{
                   width: 256,
                   height: 128,
-                  border: "1px dashed #adb5bd",
+                  border: `1px dashed ${validated && !projectBannerBlob ? "#dc3545" : "#adb5bd"}`,
                   color: "#adb5bd",
                 }}
                 onClick={() => fileInputRefBanner.current?.click()}
@@ -366,13 +392,14 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
             </Stack>
           </Form.Group>
           <Form.Group className="mb-4">
-            <Form.Label>Project Website</Form.Label>
+            <Form.Label>Project Website*</Form.Label>
             <InputGroup>
               <InputGroup.Text>https://</InputGroup.Text>
               <Form.Control
                 type="text"
                 value={metadataForm.website}
                 placeholder="example.com"
+                isInvalid={validated && !metadataForm.website}
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -383,12 +410,13 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
             </InputGroup>
           </Form.Group>
           <Form.Group className="mb-4">
-            <Form.Label>Application Link</Form.Label>
+            <Form.Label>Application Link*</Form.Label>
             <InputGroup>
               <InputGroup.Text>https://</InputGroup.Text>
               <Form.Control
                 type="text"
                 value={metadataForm.appLink}
+                isInvalid={validated && !metadataForm.appLink}
                 placeholder="app.example.com"
                 onChange={(e) =>
                   setMetadataForm({
@@ -417,13 +445,14 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
             </InputGroup>
           </Form.Group>
           <Form.Group className="mb-4">
-            <Form.Label>Your Github Username</Form.Label>
+            <Form.Label>Your Github Username*</Form.Label>
             <InputGroup>
               <InputGroup.Text>https://github.com/</InputGroup.Text>
               <Form.Control
                 type="text"
                 value={metadataForm.userGithub}
                 placeholder="yourusername"
+                isInvalid={validated && !metadataForm.userGithub}
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -555,19 +584,20 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
         </Form>
       </Modal.Body>
       <Modal.Footer className="border-0">
-        <Button
-          disabled={!metadataForm.title}
-          className="w-25 text-light"
-          onClick={() =>
-            !address && openConnectModal
-              ? openConnectModal()
-              : connectedChain?.id !== chainId
-                ? switchChain({ chainId })
-                : handleUpdateProject()
-          }
-        >
-          {isCreatingProject ? <Spinner size="sm" /> : "Update"}
-        </Button>
+        <Stack direction="vertical" gap={2} className="align-items-end">
+          <Button
+            disabled={validated && !isValid}
+            className="w-25 text-light"
+            onClick={handleSubmit}
+          >
+            {isCreatingProject ? <Spinner size="sm" /> : "Update"}
+          </Button>
+          {validated && !isValid && (
+            <Card.Text className="text-danger">
+              *Please complete the required fields.
+            </Card.Text>
+          )}
+        </Stack>
       </Modal.Footer>
     </Modal>
   );

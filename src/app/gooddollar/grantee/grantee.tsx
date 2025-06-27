@@ -4,13 +4,11 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { isAddress } from "viem";
 import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
+import removeMarkdown from "remove-markdown";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useSession } from "next-auth/react";
 import { gql, useQuery } from "@apollo/client";
 import { createVerifiedFetch } from "@helia/verified-fetch";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehyperExternalLinks from "rehype-external-links";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
@@ -362,7 +360,7 @@ export default function Grantee(props: GranteeProps) {
       <Stack
         direction="horizontal"
         gap={1}
-        className="align-items-center mb-2 fs-6"
+        className="align-items-center mb-2 fs-6 text-info"
       >
         Distributing{" "}
         {!!councilToken.icon && (
@@ -389,26 +387,23 @@ export default function Grantee(props: GranteeProps) {
         >
           <InfoTooltip
             position={{ top: true }}
-            target={<Image width={24} src="/wallet.svg" alt="wallet" />}
+            target={
+              <Image
+                width={24}
+                src="/wallet.svg"
+                alt="wallet"
+                style={{
+                  filter:
+                    "brightness(0) saturate(100%) invert(43%) sepia(17%) saturate(251%) hue-rotate(167deg) brightness(101%) contrast(86%)",
+                }}
+              />
+            }
             content={<>Add to Wallet</>}
           />
         </Button>
       </Stack>
-      <Markdown
-        className="fs-5 text-info"
-        skipHtml={true}
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
-        components={{
-          table: (props) => (
-            <table className="table table-striped" {...props} />
-          ),
-        }}
-      >
-        {councilMetadata.description}
-      </Markdown>
-      <Card.Text className="mt-4 fs-4">
-        Select or create a project to apply.
+      <Card.Text className="mt-2 mb-5">
+        {removeMarkdown(councilMetadata.description).replace(/\r?\n|\r/g, " ")}
       </Card.Text>
       <div
         style={{
@@ -476,7 +471,7 @@ export default function Grantee(props: GranteeProps) {
           1) Do you want to receive funding for this round at the project owner
           address?* (This cannot be changed during the round.)
         </Card.Text>
-        <Stack direction="horizontal" gap={5} className="fs-5">
+        <Stack direction="horizontal" gap={5} className="ms-4">
           <Form.Check
             type="radio"
             label="Yes"
@@ -490,18 +485,20 @@ export default function Grantee(props: GranteeProps) {
             onChange={() => setIsCustomReceiver(true)}
           />
         </Stack>
-        <Form.Group className="mt-2">
-          <Form.Label className={`${!isCustomReceiver ? "text-info" : ""}`}>
-            Funding Address* (Must be self-custody! e.g., Safe multisig, browser
-            wallet EOA, etc.)
-          </Form.Label>
-          <Form.Control
-            type="text"
-            disabled={!isCustomReceiver}
-            value={isCustomReceiver ? customReceiver : address ? address : ""}
-            onChange={(e) => setCustomReceiver(e.target.value)}
-          />
-        </Form.Group>
+        {isCustomReceiver && (
+          <Form.Group className="ms-4 mt-2">
+            <Form.Label className={`${!isCustomReceiver ? "text-info" : ""}`}>
+              Funding Address* (Must be self-custody! e.g., Safe multisig,
+              browser wallet EOA, etc.)
+            </Form.Label>
+            <Form.Control
+              type="text"
+              disabled={!isCustomReceiver}
+              value={isCustomReceiver ? customReceiver : address ? address : ""}
+              onChange={(e) => setCustomReceiver(e.target.value)}
+            />
+          </Form.Group>
+        )}
         <Card.Text className="mb-2 mt-4">
           2) Offchain & KYC Data Submission:
         </Card.Text>
