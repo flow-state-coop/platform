@@ -13,6 +13,7 @@ export type ProjectMetadata = {
   title: string;
   description: string;
   website: string;
+  appLink: string;
   logoImg: string;
   bannerImg: string;
   projectTwitter: string;

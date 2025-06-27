@@ -121,6 +121,7 @@ export default function Grantee(props: GranteeProps) {
   const [isCustomReceiver, setIsCustomReceiver] = useState(false);
   const [hasAgreedToCodeOfConduct, setHasAgreedToCodeOfConduct] =
     useState(false);
+  const [hasFilledForm, setHasFilledForm] = useState(false);
 
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
@@ -361,7 +362,7 @@ export default function Grantee(props: GranteeProps) {
       <Stack
         direction="horizontal"
         gap={1}
-        className="align-items-center mb-2 fs-6"
+        className="align-items-center mb-2 fs-6 text-info"
       >
         Distributing{" "}
         {!!councilToken.icon && (
@@ -388,13 +389,23 @@ export default function Grantee(props: GranteeProps) {
         >
           <InfoTooltip
             position={{ top: true }}
-            target={<Image width={24} src="/wallet.svg" alt="wallet" />}
+            target={
+              <Image
+                width={24}
+                src="/wallet.svg"
+                alt="wallet"
+                style={{
+                  filter:
+                    "brightness(0) saturate(100%) invert(43%) sepia(17%) saturate(251%) hue-rotate(167deg) brightness(101%) contrast(86%)",
+                }}
+              />
+            }
             content={<>Add to Wallet</>}
           />
         </Button>
       </Stack>
       <Markdown
-        className="fs-5 text-info"
+        className="mt-2 mb-5"
         skipHtml={true}
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
@@ -406,9 +417,6 @@ export default function Grantee(props: GranteeProps) {
       >
         {councilMetadata.description}
       </Markdown>
-      <Card.Text className="mt-4 fs-4">
-        Select or create a project to apply.
-      </Card.Text>
       <div
         style={{
           display: "grid",
@@ -475,7 +483,7 @@ export default function Grantee(props: GranteeProps) {
           1) Do you want to receive funding for this round at the project owner
           address?* (This cannot be changed during the round.)
         </Card.Text>
-        <Stack direction="horizontal" gap={5} className="fs-5">
+        <Stack direction="horizontal" gap={5} className="ms-4">
           <Form.Check
             type="radio"
             label="Yes"
@@ -489,20 +497,43 @@ export default function Grantee(props: GranteeProps) {
             onChange={() => setIsCustomReceiver(true)}
           />
         </Stack>
-        <Form.Group className="mt-2">
-          <Form.Label className={`${!isCustomReceiver ? "text-info" : ""}`}>
-            Funding Address* (Must be self-custody! e.g., Safe multisig, browser
-            wallet EOA, etc.)
-          </Form.Label>
-          <Form.Control
-            type="text"
-            disabled={!isCustomReceiver}
-            value={isCustomReceiver ? customReceiver : address ? address : ""}
-            onChange={(e) => setCustomReceiver(e.target.value)}
-          />
-        </Form.Group>
+        {isCustomReceiver && (
+          <Form.Group className="ms-4 mt-2">
+            <Form.Label className={`${!isCustomReceiver ? "text-info" : ""}`}>
+              Funding Address* (Must be self-custody! e.g., Safe multisig,
+              browser wallet EOA, etc.)
+            </Form.Label>
+            <Form.Control
+              type="text"
+              disabled={!isCustomReceiver}
+              value={isCustomReceiver ? customReceiver : address ? address : ""}
+              onChange={(e) => setCustomReceiver(e.target.value)}
+            />
+          </Form.Group>
+        )}
+        <Card.Text className="mb-2 mt-4">
+          2) Offchain & KYC Data Submission:
+        </Card.Text>
+        <iframe
+          src="https://gooddollar.notion.site/ebd/21df258232f080a2bdedcb72f90b2c53"
+          width="100%"
+          height="600"
+          frameBorder="0"
+          allowFullScreen
+          className="rounded-4 mt-1"
+        />
       </Stack>
-      <Stack direction="vertical" gap={3} className="mt-5 text-light">
+      <Stack direction="vertical" gap={2} className="mt-5 text-light">
+        <Stack
+          direction="horizontal"
+          gap={2}
+          className="align-items-start text-dark"
+        >
+          <Form.Check onChange={() => setHasFilledForm(!hasFilledForm)} />
+          <Card.Text>
+            I have submitted the required Offchain & KYC Info Form.
+          </Card.Text>
+        </Stack>
         <Stack
           direction="horizontal"
           gap={2}
@@ -523,7 +554,7 @@ export default function Grantee(props: GranteeProps) {
         </Stack>
         <Button
           variant="secondary"
-          className="d-flex justify-content-center align-items-center gap-2 py-2"
+          className="d-flex justify-content-center align-items-center gap-2 mt-3 py-2"
           disabled={!!session && session.address === address}
           onClick={() => {
             !address && openConnectModal
@@ -548,12 +579,14 @@ export default function Grantee(props: GranteeProps) {
           Sign In With Ethereum
         </Button>
         <Button
-          className="py-2 text-light"
+          className="py-2 text-light mt-1"
           disabled={
+            hasApplied ||
             !session ||
             session.address !== address ||
             selectedProjectIndex === null ||
             isCustomReceiverInvalid ||
+            !hasFilledForm ||
             !hasAgreedToCodeOfConduct
           }
           onClick={() => {
@@ -579,7 +612,7 @@ export default function Grantee(props: GranteeProps) {
       </Stack>
       <ProjectCreationModal
         show={showProjectCreationModal}
-        chainId={chainId}
+        chainId={network.id}
         handleClose={() => setShowProjectCreationModal(false)}
         registryAddress={network?.alloRegistry}
         setNewProfileId={(newProfileId) => setNewProfileId(newProfileId)}
@@ -587,7 +620,7 @@ export default function Grantee(props: GranteeProps) {
       {projects && selectedProjectIndex !== null && (
         <ProjectUpdateModal
           show={showProjectUpdateModal}
-          chainId={chainId}
+          chainId={network.id}
           handleClose={() => setShowProjectUpdateModal(false)}
           registryAddress={network?.alloRegistry}
           project={projects[selectedProjectIndex]}

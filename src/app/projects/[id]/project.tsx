@@ -509,6 +509,7 @@ export default function Project(props: ProjectProps) {
       {network && project && (
         <ProjectUpdateModal
           show={showProjectUpdateModal}
+          chainId={network.id}
           handleClose={() => setShowProjectUpdateModal(false)}
           registryAddress={network.alloRegistry}
           project={project}
