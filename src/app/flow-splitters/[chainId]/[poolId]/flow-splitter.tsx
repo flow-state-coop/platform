@@ -318,8 +318,8 @@ export default function FlowSplitter(props: FlowSplitterProps) {
           <span className="position-absolute top-50 start-50 translate-middle">
             <Spinner />
           </span>
-        ) : !network ? (
-          <p className="w-100 mt-5 fs-4 text-center">Pool Not Found</p>
+        ) : !network || !pool ? (
+          <p className="w-100 mt-5 fs-4 text-center">Flow Splitter Not Found</p>
         ) : (
           <>
             <h1 className="d-flex flex-column flex-sm-row align-items-sm-center overflow-hidden gap-sm-1 mt-5 mb-1">
