@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Stack from "react-bootstrap/Stack";
@@ -13,6 +13,9 @@ import Image from "react-bootstrap/Image";
 import { Program } from "@/types/program";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
+
+type Pool = { id: string; metadata: { name: string } };
 
 const PROGRAMS_QUERY = gql`
   query ProgramsQuery($address: String, $chainId: Int) {
@@ -22,11 +25,11 @@ const PROGRAMS_QUERY = gql`
         profileRolesByChainIdAndProfileId: {
           some: { address: { equalTo: $address } }
         }
-        tags: { contains: "program" }
+        tags: { contains: "allo" }
       }
     ) {
       id
-      metadata
+      metadataCid
       profileRolesByChainIdAndProfileId {
         address
         role
@@ -54,6 +57,8 @@ const POOLS_QUERY = gql`
 `;
 
 function Sidebar() {
+  const [programs, setPrograms] = useState<Program[] | null>(null);
+  const [pools, setPools] = useState<Pool[] | null>(null);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
 
   const pathname = usePathname();
@@ -85,13 +90,53 @@ function Sidebar() {
   });
 
   const isWrongNetwork = connectedChain?.id !== chainId;
-  const selectedProfile = programsQueryRes?.profiles?.find(
-    (profile: Program) => profile.id === profileId,
+  const selectedProfile = programs?.find(
+    (program: Program) => program.id === profileId,
   );
   const selectedPool = poolsQueryRes?.pools.find(
     (pool: { id: string }) => pool.id === poolId,
   );
   const isCreatingNewPool = pathname === "/sqf/configure" && !selectedPool;
+
+  useEffect(() => {
+    (async () => {
+      if (!programsQueryRes?.profiles) {
+        return;
+      }
+
+      const programs = [];
+
+      for (const profile of programsQueryRes.profiles) {
+        const metadata = await fetchIpfsJson(profile.metadataCid);
+
+        if (metadata?.type === "program") {
+          programs.push({ ...profile, metadata });
+        }
+      }
+
+      setPrograms(programs);
+    })();
+  }, [programsQueryRes]);
+
+  useEffect(() => {
+    (async () => {
+      if (!poolsQueryRes?.pools) {
+        return;
+      }
+
+      const pools = [];
+
+      for (const pool of poolsQueryRes.pools) {
+        const metadata = await fetchIpfsJson(pool.metadataCid);
+
+        if (metadata) {
+          pools.push({ ...pool, metadata });
+        }
+      }
+
+      setPools(pools);
+    })();
+  }, [poolsQueryRes]);
 
   const SidebarLinks = () => {
     return (
@@ -286,20 +331,18 @@ function Sidebar() {
                 </span>
               </Dropdown.Toggle>
               <Dropdown.Menu>
-                {programsQueryRes?.profiles?.map(
-                  (profile: Program, i: number) => (
-                    <Dropdown.Item
-                      key={i}
-                      onClick={() => {
-                        router.push(
-                          `/sqf/pools/?chainId=${chainId}&profileId=${profile.id}`,
-                        );
-                      }}
-                    >
-                      {profile?.metadata?.name ?? "N/A"}
-                    </Dropdown.Item>
-                  ),
-                )}
+                {programs?.map((profile: Program, i: number) => (
+                  <Dropdown.Item
+                    key={i}
+                    onClick={() => {
+                      router.push(
+                        `/sqf/pools/?chainId=${chainId}&profileId=${profile.id}`,
+                      );
+                    }}
+                  >
+                    {profile?.metadata?.name ?? "N/A"}
+                  </Dropdown.Item>
+                ))}
                 <Dropdown.Item onClick={() => router.push("/sqf/?new=true")}>
                   Create New
                 </Dropdown.Item>
@@ -342,7 +385,7 @@ function Sidebar() {
                 </span>
               </Dropdown.Toggle>
               <Dropdown.Menu>
-                {poolsQueryRes?.pools.map(
+                {pools?.map(
                   (
                     pool: { id: string; metadata: { name: string } },
                     i: number,
@@ -414,7 +457,7 @@ function Sidebar() {
             </span>
           </Dropdown.Toggle>
           <Dropdown.Menu>
-            {programsQueryRes?.profiles?.map((profile: Program, i: number) => (
+            {programs?.map((profile: Program, i: number) => (
               <Dropdown.Item
                 key={i}
                 onClick={() => {
@@ -468,20 +511,18 @@ function Sidebar() {
             </span>
           </Dropdown.Toggle>
           <Dropdown.Menu>
-            {poolsQueryRes?.pools.map(
-              (pool: { id: string; metadata: { name: string } }, i: number) => (
-                <Dropdown.Item
-                  key={i}
-                  onClick={() =>
-                    router.push(
-                      `/sqf/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${pool.id}`,
-                    )
-                  }
-                >
-                  {pool?.metadata?.name ?? "N/A"}
-                </Dropdown.Item>
-              ),
-            )}
+            {pools?.map((pool: Pool, i: number) => (
+              <Dropdown.Item
+                key={i}
+                onClick={() =>
+                  router.push(
+                    `/sqf/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${pool.id}`,
+                  )
+                }
+              >
+                {pool?.metadata?.name ?? "N/A"}
+              </Dropdown.Item>
+            ))}
             <Dropdown.Item
               onClick={() => {
                 router.push(

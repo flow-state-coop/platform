@@ -12,6 +12,8 @@ import Dropdown from "react-bootstrap/Dropdown";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import ProgramCreationModal from "./components/ProgramCreationModal";
+import { Program } from "@/types/program";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { networks } from "./lib/networks";
 
 const PROGRAMS_QUERY = gql`
@@ -22,11 +24,11 @@ const PROGRAMS_QUERY = gql`
         profileRolesByChainIdAndProfileId: {
           some: { address: { equalTo: $address } }
         }
-        tags: { contains: "program" }
+        tags: { contains: "allo" }
       }
     ) {
       id
-      metadata
+      metadataCid
       profileRolesByChainIdAndProfileId {
         address
         role
@@ -36,6 +38,7 @@ const PROGRAMS_QUERY = gql`
 `;
 
 export default function SQF() {
+  const [programs, setPrograms] = useState<Program[] | null>(null);
   const [showProgramCreationModal, setShowProgramCreationModal] =
     useState(false);
 
@@ -57,6 +60,26 @@ export default function SQF() {
   const network = networks.filter(
     (network) => network.id === connectedChain?.id,
   )[0];
+
+  useEffect(() => {
+    (async () => {
+      if (!queryRes?.profiles) {
+        return;
+      }
+
+      const programs = [];
+
+      for (const profile of queryRes.profiles) {
+        const metadata = await fetchIpfsJson(profile.metadataCid);
+
+        if (metadata?.type === "program") {
+          programs.push({ ...profile, metadata });
+        }
+      }
+
+      setPrograms(programs);
+    })();
+  }, [queryRes]);
 
   useEffect(() => {
     if (searchParams?.get("new")) {
@@ -122,38 +145,26 @@ export default function SQF() {
               ))}
             </Dropdown.Menu>
           </Dropdown>
-          {loading ? (
+          {loading || programs === null ? (
             <Spinner className="m-auto" />
           ) : (
             <Stack direction="horizontal" gap={5} className="flex-wrap">
-              {queryRes?.profiles?.map(
-                (
-                  profile: {
-                    id: string;
-                    metadata: { name: string };
-                    profileRolesByChainIdAndProfileId: {
-                      address: string;
-                      role: "OWNER" | "MEMBER";
-                    }[];
-                  },
-                  i: number,
-                ) => (
-                  <Card
-                    className="d-flex justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
-                    style={{ width: 256, height: 256 }}
-                    onClick={() => {
-                      router.push(
-                        `/sqf/pools/?chainId=${network?.id}&profileId=${profile.id}`,
-                      );
-                    }}
-                    key={i}
-                  >
-                    <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap">
-                      {profile.metadata.name}
-                    </Card.Text>
-                  </Card>
-                ),
-              )}
+              {programs?.map((program, i: number) => (
+                <Card
+                  className="d-flex justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
+                  style={{ width: 256, height: 256 }}
+                  onClick={() => {
+                    router.push(
+                      `/sqf/pools/?chainId=${network?.id}&profileId=${program.id}`,
+                    );
+                  }}
+                  key={i}
+                >
+                  <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap">
+                    {program.metadata.name}
+                  </Card.Text>
+                </Card>
+              ))}
               <Card
                 className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
                 style={{ width: 256, height: 256 }}

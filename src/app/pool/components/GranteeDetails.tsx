@@ -3,7 +3,6 @@ import { formatEther, Address } from "viem";
 import { useReadContract } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import { useClampText } from "use-clamp-text";
-import { createVerifiedFetch } from "@helia/verified-fetch";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
@@ -16,13 +15,14 @@ import rehyperExternalLinks from "rehype-external-links";
 import remarkGfm from "remark-gfm";
 import { GDAPool } from "@/types/gdaPool";
 import { getApolloClient } from "@/lib/apollo";
+import { fetchIpfsImage } from "@/lib/fetchIpfs";
 import { Inflow } from "@/types/inflow";
 import { Outflow } from "@/types/outflow";
 import { ProjectMetadata } from "@/types/project";
 import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { formatNumber } from "@/lib/utils";
-import { SECONDS_IN_MONTH, IPFS_GATEWAYS } from "@/lib/constants";
+import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 interface GranteeDetailsProps {
   metadata: ProjectMetadata;
@@ -112,19 +112,9 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
         return;
       }
 
-      try {
-        const verifiedFetch = await createVerifiedFetch({
-          gateways: IPFS_GATEWAYS,
-        });
+      const imageUrl = await fetchIpfsImage(metadata.logoImg);
 
-        const res = await verifiedFetch(`ipfs://${metadata.logoImg}`);
-        const imageBlob = await res.blob();
-        const imageUrl = URL.createObjectURL(imageBlob);
-
-        setImageUrl(imageUrl);
-      } catch (err) {
-        console.error(err);
-      }
+      setImageUrl(imageUrl);
     })();
   }, [metadata.logoImg]);
 

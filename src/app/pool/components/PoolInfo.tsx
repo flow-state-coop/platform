@@ -13,13 +13,13 @@ import remarkGfm from "remark-gfm";
 import Sankey from "./Sankey";
 import { Grantee } from "../pool";
 import useFlowingAmount from "@/hooks/flowingAmount";
-import { Pool } from "@/types/pool";
+import { PoolMetadata } from "@/types/pool";
 import { Token } from "@/types/token";
 import { GDAPool } from "@/types/gdaPool";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
-type PoolInfoProps = Pool & {
+type PoolInfoProps = PoolMetadata & {
   grantees: Grantee[];
   chainId: number;
   gdaPoolAddress: Address;

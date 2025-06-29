@@ -23,6 +23,7 @@ import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { networks } from "../lib/networks";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { superTokenAbi } from "@/lib/abi/superToken";
@@ -77,7 +78,6 @@ const RECIPIENTS_QUERY = gql`
       id
       recipientAddress
       anchorAddress
-      metadata
       metadataCid
       status
     }
@@ -115,6 +115,7 @@ export default function Review(props: ReviewProps) {
   const [cancelingRecipients, setCancelingRecipients] = useState<
     CancelingRecipient[]
   >([]);
+  const [recipients, setRecipients] = useState<Recipient[] | null>(null);
   const [selectedRecipient, setSelectedRecipient] = useState<Recipient | null>(
     null,
   );
@@ -147,7 +148,6 @@ export default function Review(props: ReviewProps) {
   });
   const wagmiConfig = useConfig();
 
-  const recipients = queryRes?.recipients ?? null;
   const pool = queryRes?.pool ?? null;
   const allocationToken = pool ? (pool.allocationToken as Address) : null;
   const network = networks.filter((network) => network.id === chainId)[0];
@@ -189,6 +189,26 @@ export default function Review(props: ReviewProps) {
         0,
     ),
   );
+
+  useEffect(() => {
+    (async () => {
+      if (!queryRes?.recipients) {
+        return;
+      }
+
+      const recipients = [];
+
+      for (const recipient of queryRes.recipients) {
+        const metadata = await fetchIpfsJson(recipient.metadataCid);
+
+        if (metadata) {
+          recipients.push({ ...recipient, metadata });
+        }
+      }
+
+      setRecipients(recipients);
+    })();
+  }, [queryRes?.recipients]);
 
   useEffect(() => {
     if (!pool) {
@@ -375,7 +395,7 @@ export default function Review(props: ReviewProps) {
               Program not found, please select one from{" "}
               <Link href="/sqf">Program Selection</Link>
             </Card.Text>
-          ) : loading || !chainId ? (
+          ) : loading || !chainId || !recipients ? (
             <Spinner className="m-auto" />
           ) : !poolId ? (
             <Card.Text>

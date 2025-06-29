@@ -20,9 +20,11 @@ import Spinner from "react-bootstrap/Spinner";
 import Sidebar from "../components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { Project } from "@/types/project";
+import { Pool } from "@/types/pool";
 import { networks } from "@/lib/networks";
 import { gdaForwarderAbi } from "@/lib/abi/gdaForwarder";
 import { getApolloClient } from "@/lib/apollo";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { truncateStr } from "@/lib/utils";
 
@@ -43,20 +45,19 @@ const PROJECTS_QUERY = gql`
         profileRolesByChainIdAndProfileId: {
           some: { address: { equalTo: $address } }
         }
-        tags: { contains: ["allo", "project"] }
+        tags: { contains: ["allo"] }
       }
     ) {
       id
       anchorAddress
       metadataCid
-      metadata
       profileRolesByChainIdAndProfileId {
         address
       }
     }
     pool(chainId: $chainId, id: $poolId) {
       strategyAddress
-      metadata
+      metadataCid
       matchingToken
       allocationToken
       recipientsByPoolIdAndChainId(
@@ -75,6 +76,8 @@ const PROJECTS_QUERY = gql`
 export default function GranteeTools(props: ToolsProps) {
   const { chainId, poolId, recipientId } = props;
 
+  const [profiles, setProfiles] = useState<Project[] | null>(null);
+  const [pool, setPool] = useState<Pool | null>(null);
   const [selectedProject, setSelectedProject] = useState<
     Project & { recipientId: string; status: string }
   >();
@@ -108,7 +111,6 @@ export default function GranteeTools(props: ToolsProps) {
       functionName: "isMemberConnected",
       args: [gdaPoolAddress ?? "0x", address ?? "0x"],
     });
-  const pool = queryRes?.pool ?? null;
   const allocationToken =
     network?.tokens.find(
       (token) =>
@@ -119,9 +121,9 @@ export default function GranteeTools(props: ToolsProps) {
       (token) =>
         token.address.toLowerCase() === pool?.matchingToken?.toLowerCase(),
     ) ?? null;
-  const recipients = pool?.recipientsByPoolIdAndChainId ?? null;
+  const recipients = queryRes?.pool?.recipientsByPoolIdAndChainId ?? null;
   const projects =
-    queryRes?.profiles?.map((profile: Project) => {
+    profiles?.map((profile: Project) => {
       let recipientId = null;
       let recipientStatus = null;
 
@@ -145,6 +147,33 @@ export default function GranteeTools(props: ToolsProps) {
     hostName
   }/pool/?poolId=${poolId}&chainId=${chainId}&recipientId=${selectedProject?.recipientId}`;
   const framesLink = `https://frames.flowstate.network/frames/grantee/${selectedProject?.recipientId}/${poolId}/${chainId}`;
+
+  useEffect(() => {
+    (async () => {
+      if (!queryRes?.profiles || !queryRes?.pool) {
+        return;
+      }
+
+      const profiles = [];
+      const pool = queryRes.pool;
+
+      for (const profile of queryRes.profiles) {
+        const metadata = await fetchIpfsJson(profile.metadataCid);
+
+        if (metadata) {
+          profiles.push({ ...profile, metadata });
+        }
+      }
+
+      const poolMetadata = await fetchIpfsJson(pool.metadataCid);
+
+      if (poolMetadata) {
+        setPool({ ...pool, metadata: poolMetadata });
+      }
+
+      setProfiles(profiles);
+    })();
+  }, [queryRes]);
 
   useEffect(() => {
     if (!projects || selectedProject) {
@@ -221,7 +250,7 @@ export default function GranteeTools(props: ToolsProps) {
       <Sidebar />
       <Stack direction="vertical" className={!isMobile ? "w-75" : "w-100"}>
         <Stack direction="vertical" className="px-5 py-4 mb-5">
-          {queryRes && queryRes.pool === null ? (
+          {!loading && profiles !== null ? (
             <>Pool not found</>
           ) : loading || !chainId || !poolId ? (
             <Spinner className="m-auto" />
@@ -269,7 +298,7 @@ export default function GranteeTools(props: ToolsProps) {
                       {selectedProject.metadata.title}
                     </Dropdown.Toggle>
                     <Dropdown.Menu>
-                      {projects.map(
+                      {projects?.map(
                         (
                           project: Project & {
                             recipientId: string;

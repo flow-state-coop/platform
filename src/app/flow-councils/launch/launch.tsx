@@ -8,7 +8,6 @@ import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "@wagmi/core";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { gql, useQuery, useLazyQuery } from "@apollo/client";
-import { createVerifiedFetch } from "@helia/verified-fetch";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
 import Toast from "react-bootstrap/Toast";
@@ -23,10 +22,10 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
 import { getApolloClient } from "@/lib/apollo";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { networks } from "@/lib/networks";
 import { councilFactoryAbi } from "@/lib/abi/councilFactory";
 import { pinJsonToIpfs } from "@/lib/ipfs";
-import { IPFS_GATEWAYS } from "@/lib/constants";
 
 type LaunchProps = { defaultNetwork: Network; councilId?: string };
 
@@ -105,39 +104,32 @@ export default function Launch(props: LaunchProps) {
         return;
       }
 
-      const verifiedFetch = await createVerifiedFetch({
-        gateways: IPFS_GATEWAYS,
-      });
+      const metadata = await fetchIpfsJson(council.metadata);
 
-      try {
-        const metadataRes = await verifiedFetch(`ipfs://${council.metadata}`);
-        const metadata = await metadataRes.json();
-
+      if (metadata) {
         setCouncilMetadata({
           name: metadata.name,
           description: metadata.description,
         });
+      }
 
-        const supportedToken = selectedNetwork.tokens.find(
-          (token) => token.address.toLowerCase() === council.distributionToken,
-        );
+      const supportedToken = selectedNetwork.tokens.find(
+        (token) => token.address.toLowerCase() === council.distributionToken,
+      );
 
-        if (supportedToken) {
-          setSelectedToken(supportedToken);
-        } else {
-          const { data: superTokenQueryRes } = await checkSuperToken({
-            variables: { token: council.distributionToken },
-          });
+      if (supportedToken) {
+        setSelectedToken(supportedToken);
+      } else {
+        const { data: superTokenQueryRes } = await checkSuperToken({
+          variables: { token: council.distributionToken },
+        });
 
-          setCustomTokenEntry({
-            address: council.distributionToken,
-            symbol: superTokenQueryRes?.token.symbol ?? "N/A",
-            validationError: "",
-          });
-          setCustomTokenSelection(true);
-        }
-      } catch (err) {
-        console.error(err);
+        setCustomTokenEntry({
+          address: council.distributionToken,
+          symbol: superTokenQueryRes?.token.symbol ?? "N/A",
+          validationError: "",
+        });
+        setCustomTokenSelection(true);
       }
     })();
   }, [council, selectedNetwork, checkSuperToken]);

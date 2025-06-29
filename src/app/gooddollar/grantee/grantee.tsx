@@ -7,7 +7,6 @@ import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useSession } from "next-auth/react";
 import { gql, useQuery } from "@apollo/client";
-import { createVerifiedFetch } from "@helia/verified-fetch";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehyperExternalLinks from "rehype-external-links";
@@ -28,7 +27,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useSiwe from "@/hooks/siwe";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
-import { IPFS_GATEWAYS } from "@/lib/constants";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
 
 type GranteeProps = {
   chainId?: number;
@@ -60,13 +59,12 @@ const PROJECTS_QUERY = gql`
         profileRolesByChainIdAndProfileId: {
           some: { address: { equalTo: $address } }
         }
-        tags: { contains: ["allo", "project"] }
+        tags: { contains: ["allo"] }
       }
     ) {
       id
       anchorAddress
       metadataCid
-      metadata
       profileRolesByChainIdAndProfileId(first: 1000) {
         address
       }
@@ -105,6 +103,7 @@ export default function Grantee(props: GranteeProps) {
   const [selectedProjectIndex, setSelectedProjectIndex] = useState<
     number | null
   >(null);
+  const [profiles, setProfiles] = useState<Project[] | null>(null);
   const [showProjectCreationModal, setShowProjectCreationModal] =
     useState(false);
   const [showProjectUpdateModal, setShowProjectUpdateModal] = useState(false);
@@ -170,7 +169,7 @@ export default function Grantee(props: GranteeProps) {
 
   const projects = useMemo(
     () =>
-      flowStateQueryRes?.profiles?.map((profile: Project) => {
+      profiles?.map((profile: Project) => {
         let granteeStatus = null;
 
         if (!applications) {
@@ -188,14 +187,33 @@ export default function Grantee(props: GranteeProps) {
 
         return { ...profile, status: granteeStatus };
       }) ?? null,
-    [flowStateQueryRes, address, applications],
+    [profiles, address, applications],
   );
 
-  const statuses = projects?.map(
-    (project: { status: Status }) => project?.status,
-  );
+  const statuses = projects?.map((project) => project?.status);
   const hasApplied =
-    statuses?.includes("APPROVED") || statuses?.includes("PENDING");
+    !!statuses &&
+    (!!statuses?.includes("APPROVED") || !!statuses?.includes("PENDING"));
+
+  useEffect(() => {
+    (async () => {
+      if (!flowStateQueryRes?.profiles) {
+        return;
+      }
+
+      const profiles = [];
+
+      for (const profile of flowStateQueryRes.profiles) {
+        const metadata = await fetchIpfsJson(profile.metadataCid);
+
+        if (metadata) {
+          profiles.push({ ...profile, metadata });
+        }
+      }
+
+      setProfiles(profiles);
+    })();
+  }, [flowStateQueryRes]);
 
   useEffect(() => {
     (async () => {
@@ -203,20 +221,12 @@ export default function Grantee(props: GranteeProps) {
         return;
       }
 
-      try {
-        const verifiedFetch = await createVerifiedFetch({
-          gateways: IPFS_GATEWAYS,
-        });
-        const metadataRes = await verifiedFetch(`ipfs://${council.metadata}`);
-        const metadata = await metadataRes.json();
+      const metadata = await fetchIpfsJson(council.metadata);
 
-        setCouncilMetadata({
-          name: metadata?.name ?? "Flow Council",
-          description: metadata?.description ?? "N/A",
-        });
-      } catch (err) {
-        console.error(err);
-      }
+      setCouncilMetadata({
+        name: metadata?.name ?? "Flow Council",
+        description: metadata?.description ?? "N/A",
+      });
     })();
   }, [council]);
 
@@ -250,13 +260,13 @@ export default function Grantee(props: GranteeProps) {
   }, [fetchApplications]);
 
   useEffect(() => {
-    if (!newProfileId || hasApplied) {
+    if (!newProfileId || hasApplied || !projects) {
       return;
     }
 
     const projectIndex = projects
-      .map((project: Project) => project.id)
-      .indexOf(newProfileId);
+      .map((project) => project?.id)
+      .indexOf(newProfileId as `0x${string}`);
 
     if (projectIndex > -1) {
       setSelectedProjectIndex(projectIndex);
@@ -291,7 +301,7 @@ export default function Grantee(props: GranteeProps) {
       throw Error("Account is not signed in");
     }
 
-    if (selectedProjectIndex === null) {
+    if (!projects || selectedProjectIndex === null) {
       throw Error("Invalid profile");
     }
 
@@ -315,7 +325,7 @@ export default function Grantee(props: GranteeProps) {
               : session.address,
           chainId,
           councilId: council.id,
-          metadata: project.id,
+          metadata: project?.id,
         }),
       });
       const json = await res.json();
@@ -432,35 +442,28 @@ export default function Grantee(props: GranteeProps) {
           marginBottom: 8,
         }}
       >
-        {projects?.map(
-          (
-            project: Project & {
-              status: Status | null;
-            },
-            i: number,
-          ) => {
-            if (!project.metadata?.title) {
-              return null;
-            }
+        {projects?.map((project, i: number) => {
+          if (!project || !project.metadata?.title) {
+            return null;
+          }
 
-            return (
-              <GranteeApplicationCard
-                key={project.id}
-                name={project.metadata.title}
-                description={project.metadata.description}
-                logoCid={project.metadata.logoImg}
-                bannerCid={project.metadata.bannerImg}
-                status={project.status}
-                hasApplied={hasApplied}
-                canReapply={true}
-                isSelected={selectedProjectIndex === i}
-                selectProject={() => setSelectedProjectIndex(i)}
-                updateProject={setShowProjectUpdateModal}
-                isTransactionConfirming={isSubmitting}
-              />
-            );
-          },
-        )}
+          return (
+            <GranteeApplicationCard
+              key={project.id}
+              name={project.metadata.title}
+              description={project.metadata.description}
+              logoCid={project.metadata.logoImg}
+              bannerCid={project.metadata.bannerImg}
+              status={project.status}
+              hasApplied={hasApplied}
+              canReapply={true}
+              isSelected={selectedProjectIndex === i}
+              selectProject={() => setSelectedProjectIndex(i)}
+              updateProject={setShowProjectUpdateModal}
+              isTransactionConfirming={isSubmitting}
+            />
+          );
+        })}
         <Card
           className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer shadow"
           style={{ height: 418 }}
@@ -617,16 +620,18 @@ export default function Grantee(props: GranteeProps) {
         registryAddress={network?.alloRegistry}
         setNewProfileId={(newProfileId) => setNewProfileId(newProfileId)}
       />
-      {projects && selectedProjectIndex !== null && (
-        <ProjectUpdateModal
-          show={showProjectUpdateModal}
-          chainId={network.id}
-          handleClose={() => setShowProjectUpdateModal(false)}
-          registryAddress={network?.alloRegistry}
-          project={projects[selectedProjectIndex]}
-          key={selectedProjectIndex}
-        />
-      )}
+      {projects &&
+        selectedProjectIndex !== null &&
+        projects[selectedProjectIndex] !== null && (
+          <ProjectUpdateModal
+            show={showProjectUpdateModal}
+            chainId={network.id}
+            handleClose={() => setShowProjectUpdateModal(false)}
+            registryAddress={network?.alloRegistry}
+            project={projects[selectedProjectIndex]}
+            key={selectedProjectIndex}
+          />
+        )}
     </Container>
   );
 }

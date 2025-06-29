@@ -16,12 +16,11 @@ import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
-import { createVerifiedFetch } from "@helia/verified-fetch";
 import { pinFileToIpfs, pinJsonToIpfs } from "@/lib/ipfs";
 import { Project } from "@/types/project";
+import { fetchIpfsImage } from "@/lib/fetchIpfs";
 import { extractTwitterHandle, extractGithubUsername } from "@/lib/utils";
 import { registryAbi } from "@/lib/abi/registry";
-import { IPFS_GATEWAYS } from "@/lib/constants";
 
 type ProjectUpdateModalProps = {
   show: boolean;
@@ -93,24 +92,20 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
 
   useEffect(() => {
     (async () => {
-      const verifiedFetch = await createVerifiedFetch({
-        gateways: IPFS_GATEWAYS,
-      });
-
       if (projectMetadata.logoImg) {
-        const logoImgRes = await verifiedFetch(
-          `ipfs://${projectMetadata.logoImg}`,
-        );
+        const logoImgUrl = await fetchIpfsImage(projectMetadata.logoImg);
+        const res = await fetch(logoImgUrl);
+        const blob = await res.blob();
 
-        setProjectLogoBlob(await logoImgRes.blob());
+        setProjectLogoBlob(blob);
       }
 
       if (projectMetadata.bannerImg) {
-        const bannerImgRes = await verifiedFetch(
-          `ipfs://${projectMetadata.bannerImg}`,
-        );
+        const bannerImgUrl = await fetchIpfsImage(projectMetadata.bannerImg);
+        const res = await fetch(bannerImgUrl);
+        const blob = await res.blob();
 
-        setProjectBannerBlob(await bannerImgRes.blob());
+        setProjectBannerBlob(blob);
       }
     })();
   }, [projectMetadata.logoImg, projectMetadata.bannerImg]);

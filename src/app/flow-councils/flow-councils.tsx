@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Address } from "viem";
 import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { gql, useQuery } from "@apollo/client";
-import { createVerifiedFetch } from "@helia/verified-fetch";
 import { useClampText } from "use-clamp-text";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
@@ -20,10 +19,10 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";
 import { truncateStr } from "@/lib/utils";
-import { IPFS_GATEWAYS } from "@/lib/constants";
 
 type FlowCouncilsProps = {
   defaultNetwork: Network;
@@ -178,21 +177,6 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
       skip: !address,
     });
 
-  const fetchMetadata = useCallback(async (council: Council) => {
-    const verifiedFetch = await createVerifiedFetch({
-      gateways: IPFS_GATEWAYS,
-    });
-
-    try {
-      const metadataRes = await verifiedFetch(`ipfs://${council.metadata}`);
-      const metadata = await metadataRes.json();
-
-      return metadata;
-    } catch (err) {
-      console.error(err);
-    }
-  }, []);
-
   useEffect(() => {
     if (supportedNetworkConnection) {
       setSelectedNetwork(supportedNetworkConnection);
@@ -214,12 +198,12 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
       const councils: Council[] = [];
       const sfPoolMemberships = superfluidQueryRes?.account?.poolMemberships;
 
-      const buildCouncil = async (council: Council) => {
+      const buildCouncil = async (council: Council & { metadata: string }) => {
         const poolMembership = sfPoolMemberships?.find(
           (membership: { pool: { id: string } }) =>
             membership.pool.id === council?.pool,
         );
-        const metadata = await fetchMetadata(council);
+        const metadata = await fetchIpfsJson(council.metadata);
 
         councils.push({
           id: council.id,
@@ -280,7 +264,6 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
     councilsMemberQueryRes,
     councilsGranteeQueryRes,
     superfluidQueryRes,
-    fetchMetadata,
   ]);
 
   const addToWallet = (token: Token) => {

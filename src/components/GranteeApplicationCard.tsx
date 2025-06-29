@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { createVerifiedFetch } from "@helia/verified-fetch";
 import { useClampText } from "use-clamp-text";
 import removeMarkdown from "remove-markdown";
 import Card from "react-bootstrap/Card";
@@ -7,7 +6,7 @@ import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
-import { IPFS_GATEWAYS } from "@/lib/constants";
+import { fetchIpfsImage } from "@/lib/fetchIpfs";
 import { getPlaceholderImageSrc } from "@/lib/utils";
 
 type GranteeApplicationCardProps = {
@@ -58,32 +57,16 @@ export default function GranteeApplicationCard(
 
   useEffect(() => {
     (async () => {
-      const verifiedFetch = await createVerifiedFetch({
-        gateways: IPFS_GATEWAYS,
-      });
-
       if (logoCid) {
-        try {
-          const logoRes = await verifiedFetch(`ipfs://${logoCid}`);
-          const logoBlob = await logoRes.blob();
-          const logoUrl = URL.createObjectURL(logoBlob);
+        const logoUrl = await fetchIpfsImage(logoCid);
 
-          setLogoUrl(logoUrl);
-        } catch (err) {
-          console.error(err);
-        }
+        setLogoUrl(logoUrl);
       }
 
       if (bannerCid) {
-        try {
-          const bannerRes = await verifiedFetch(`ipfs://${bannerCid}`);
-          const bannerBlob = await bannerRes.blob();
-          const bannerUrl = URL.createObjectURL(bannerBlob);
+        const bannerUrl = await fetchIpfsImage(bannerCid);
 
-          setBannerUrl(bannerUrl);
-        } catch (err) {
-          console.error(err);
-        }
+        setBannerUrl(bannerUrl);
       }
     })();
   }, [logoCid, bannerCid]);
