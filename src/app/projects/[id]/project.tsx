@@ -263,7 +263,7 @@ export default function Project(props: ProjectProps) {
         setBannerUrl(bannerUrl);
       }
     })();
-  }, [projectQueryRes]);
+  }, [projectQueryRes?.profile]);
 
   useEffect(() => {
     (async () => {
