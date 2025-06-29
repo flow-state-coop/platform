@@ -46,7 +46,7 @@ export const FlowCouncilContext = createContext<{
   council?: Council;
   councilMetadata: { name: string; description: string };
   currentAllocation?: CurrentAllocation;
-  flowStateProfiles?: FlowStateProfile[];
+  flowStateProfiles: FlowStateProfile[] | null;
   gdaPool?: GDAPool;
   token: Token;
   newAllocation?: NewAllocation;

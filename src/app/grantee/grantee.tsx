@@ -23,10 +23,12 @@ import ProjectUpdateModal from "@/components/ProjectUpdateModal";
 import GranteeApplicationCard from "@/components/GranteeApplicationCard";
 import Sidebar from "./components/Sidebar";
 import { Project } from "@/types/project";
+import { Pool } from "@/types/pool";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { alloAbi } from "@/lib/abi/allo";
 import { getApolloClient } from "@/lib/apollo";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { erc721CheckerAbi } from "@/lib/abi/erc721Checker";
 import { ZERO_ADDRESS } from "@/lib/constants";
@@ -35,8 +37,6 @@ type GranteeProps = {
   chainId: number | null;
   poolId: string | null;
 };
-
-type Status = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
 
 const PROJECTS_QUERY = gql`
   query ProjectsQuery($address: String!, $chainId: Int!, $poolId: String!) {
@@ -47,20 +47,19 @@ const PROJECTS_QUERY = gql`
         profileRolesByChainIdAndProfileId: {
           some: { address: { equalTo: $address } }
         }
-        tags: { contains: ["allo", "project"] }
+        tags: { contains: ["allo"] }
       }
     ) {
       id
       anchorAddress
       metadataCid
-      metadata
       profileRolesByChainIdAndProfileId(first: 1000) {
         address
       }
     }
     pool(chainId: $chainId, id: $poolId) {
       strategyAddress
-      metadata
+      metadataCid
       matchingToken
       allocationToken
       recipientsByPoolIdAndChainId(
@@ -79,6 +78,8 @@ const PROJECTS_QUERY = gql`
 export default function Grantee(props: GranteeProps) {
   const { chainId, poolId } = props;
 
+  const [profiles, setProfiles] = useState<Project[] | null>(null);
+  const [pool, setPool] = useState<Pool | null>(null);
   const [selectedProjectIndex, setSelectedProjectIndex] = useState<
     number | null
   >(null);
@@ -125,10 +126,9 @@ export default function Grantee(props: GranteeProps) {
   const publicClient = usePublicClient();
 
   const network = networks.filter((network) => network.id === chainId)[0];
-  const pool = queryRes?.pool ?? null;
-  const recipients = pool?.recipientsByPoolIdAndChainId ?? null;
+  const recipients = queryRes?.pool?.recipientsByPoolIdAndChainId ?? null;
   const projects =
-    queryRes?.profiles?.map((profile: Project) => {
+    profiles?.map((profile: Project) => {
       let recipientStatus = null;
       let recipientId = null;
 
@@ -148,20 +148,46 @@ export default function Grantee(props: GranteeProps) {
 
       return { ...profile, recipientId, status: recipientStatus };
     }) ?? null;
-  const statuses = projects?.map(
-    (project: { status: Status }) => project?.status,
-  );
+  const statuses = projects?.map((project) => project?.status);
   const hasApplied =
-    statuses?.includes("APPROVED") || statuses?.includes("PENDING");
+    !!statuses?.includes("APPROVED") || !!statuses?.includes("PENDING");
+
+  useEffect(() => {
+    (async () => {
+      if (!queryRes?.profiles || !queryRes?.pool) {
+        return;
+      }
+
+      const profiles = [];
+      const pool = queryRes.pool;
+
+      for (const profile of queryRes.profiles) {
+        const metadata = await fetchIpfsJson(profile.metadataCid);
+
+        if (metadata) {
+          profiles.push({ ...profile, metadata });
+        }
+      }
+
+      const poolMetadata = await fetchIpfsJson(pool.metadataCid);
+
+      if (poolMetadata) {
+        setPool({ ...pool, metadata: poolMetadata });
+      }
+
+      setProfiles(profiles);
+    })();
+  }, [queryRes]);
 
   useEffect(() => {
     if (!newProfileId || hasApplied) {
       return;
     }
 
-    const projectIndex = projects
-      .map((project: Project) => project.id)
-      .indexOf(newProfileId);
+    const projectIndex =
+      projects
+        ?.map((project) => project?.id)
+        .indexOf(newProfileId as `0x${string}`) ?? -1;
 
     if (projectIndex > -1) {
       setSelectedProjectIndex(projectIndex);
@@ -174,7 +200,11 @@ export default function Grantee(props: GranteeProps) {
       throw Error("Account is not connected");
     }
 
-    if (selectedProjectIndex === null) {
+    if (
+      selectedProjectIndex === null ||
+      !projects ||
+      !projects[selectedProjectIndex]
+    ) {
       throw Error("Invalid profile");
     }
 
@@ -185,7 +215,11 @@ export default function Grantee(props: GranteeProps) {
     const project = projects[selectedProjectIndex];
     const recipientData: `0x${string}` = encodeAbiParameters(
       parseAbiParameters("address, address, (uint256, string)"),
-      [project.anchorAddress, address, [BigInt(1), project.metadataCid]],
+      [
+        project.anchorAddress as Address,
+        address,
+        [BigInt(1), project.metadataCid],
+      ],
     );
 
     try {
@@ -217,7 +251,7 @@ export default function Grantee(props: GranteeProps) {
       <Sidebar />
       <Stack direction="vertical" className={!isMobile ? "w-75" : "w-100"}>
         <Stack direction="vertical" gap={4} className="px-5 py-4 mb-5">
-          {queryRes && queryRes.pool === null ? (
+          {!loading && recipients !== null ? (
             <>Pool not found</>
           ) : loading || !chainId || !poolId ? (
             <Spinner className="m-auto" />
@@ -232,13 +266,13 @@ export default function Grantee(props: GranteeProps) {
                   Select or create a project to apply to the pool
                 </Card.Text>
                 <Card.Text as="h2" className="fs-3">
-                  {pool?.metadata.name}
+                  {pool?.metadata?.name}
                 </Card.Text>
                 <Card.Text
                   className="overflow-hidden word-wrap"
                   style={{ maxHeight: "2lh" }}
                 >
-                  {pool?.metadata.description}
+                  {pool?.metadata?.description}
                 </Card.Text>
               </Card>
               <Dropdown>
@@ -288,41 +322,33 @@ export default function Grantee(props: GranteeProps) {
                           : "",
                   }}
                 >
-                  {projects?.map(
-                    (
-                      project: Project & {
-                        status: Status | null;
-                        recipientId: string;
-                      },
-                      i: number,
-                    ) => {
-                      if (!project.metadata?.title) {
-                        return null;
-                      }
+                  {projects?.map((project, i: number) => {
+                    if (!project || !project.metadata?.title) {
+                      return null;
+                    }
 
-                      return (
-                        <GranteeApplicationCard
-                          key={project.id}
-                          name={project.metadata.title}
-                          description={project.metadata.description}
-                          logoCid={project.metadata.logoImg}
-                          bannerCid={project.metadata.bannerImg}
-                          status={project.status}
-                          hasApplied={hasApplied}
-                          isSelected={selectedProjectIndex === i}
-                          selectProject={() =>
-                            project.status === "APPROVED"
-                              ? router.push(
-                                  `/grantee/tools/?chainId=${chainId}&poolId=${poolId}&recipientId=${project.recipientId}`,
-                                )
-                              : setSelectedProjectIndex(i)
-                          }
-                          updateProject={setShowProjectUpdateModal}
-                          isTransactionConfirming={isTransactionConfirming}
-                        />
-                      );
-                    },
-                  )}
+                    return (
+                      <GranteeApplicationCard
+                        key={project.id}
+                        name={project.metadata.title}
+                        description={project.metadata.description}
+                        logoCid={project.metadata.logoImg}
+                        bannerCid={project.metadata.bannerImg}
+                        status={project.status}
+                        hasApplied={hasApplied}
+                        isSelected={selectedProjectIndex === i}
+                        selectProject={() =>
+                          project.status === "APPROVED"
+                            ? router.push(
+                                `/grantee/tools/?chainId=${chainId}&poolId=${poolId}&recipientId=${project.recipientId}`,
+                              )
+                            : setSelectedProjectIndex(i)
+                        }
+                        updateProject={setShowProjectUpdateModal}
+                        isTransactionConfirming={isTransactionConfirming}
+                      />
+                    );
+                  })}
                   <Card
                     className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
                     style={{ height: 418 }}
@@ -367,7 +393,7 @@ export default function Grantee(props: GranteeProps) {
                   {isTransactionConfirming ? (
                     <Spinner size="sm" className="m-auto" />
                   ) : selectedProjectIndex !== null &&
-                    projects[selectedProjectIndex].status === "PENDING" ? (
+                    projects?.[selectedProjectIndex]?.status === "PENDING" ? (
                     "Update Application"
                   ) : (
                     "Apply"
@@ -389,16 +415,18 @@ export default function Grantee(props: GranteeProps) {
           registryAddress={network?.alloRegistry}
           setNewProfileId={(newProfileId) => setNewProfileId(newProfileId)}
         />
-        {selectedProjectIndex !== null && (
-          <ProjectUpdateModal
-            show={showProjectUpdateModal}
-            chainId={network.id}
-            handleClose={() => setShowProjectUpdateModal(false)}
-            registryAddress={network?.alloRegistry}
-            project={projects[selectedProjectIndex]}
-            key={selectedProjectIndex}
-          />
-        )}
+        {projects &&
+          selectedProjectIndex !== null &&
+          projects[selectedProjectIndex] && (
+            <ProjectUpdateModal
+              show={showProjectUpdateModal}
+              chainId={network.id}
+              handleClose={() => setShowProjectUpdateModal(false)}
+              registryAddress={network?.alloRegistry}
+              project={projects[selectedProjectIndex]}
+              key={selectedProjectIndex}
+            />
+          )}
       </Stack>
     </>
   );

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { createVerifiedFetch } from "@helia/verified-fetch";
 import { useClampText } from "use-clamp-text";
 import removeMarkdown from "remove-markdown";
 import Stack from "react-bootstrap/Stack";
@@ -9,7 +8,8 @@ import Image from "react-bootstrap/Image";
 import { Token } from "@/types/token";
 import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import { roundWeiAmount } from "@/lib/utils";
-import { IPFS_GATEWAYS, SECONDS_IN_MONTH } from "@/lib/constants";
+import { fetchIpfsImage } from "@/lib/fetchIpfs";
+import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 type GranteeProps = {
   name: string;
@@ -71,32 +71,16 @@ export default function Grantee(props: GranteeProps) {
 
   useEffect(() => {
     (async () => {
-      const verifiedFetch = await createVerifiedFetch({
-        gateways: IPFS_GATEWAYS,
-      });
-
       if (logoCid) {
-        try {
-          const logoRes = await verifiedFetch(`ipfs://${logoCid}`);
-          const logoBlob = await logoRes.blob();
-          const logoUrl = URL.createObjectURL(logoBlob);
+        const logoUrl = await fetchIpfsImage(logoCid);
 
-          setLogoUrl(logoUrl);
-        } catch (err) {
-          console.error(err);
-        }
+        setLogoUrl(logoUrl);
       }
 
       if (bannerCid) {
-        try {
-          const bannerRes = await verifiedFetch(`ipfs://${bannerCid}`);
-          const bannerBlob = await bannerRes.blob();
-          const bannerUrl = URL.createObjectURL(bannerBlob);
+        const bannerUrl = await fetchIpfsImage(bannerCid);
 
-          setBannerUrl(bannerUrl);
-        } catch (err) {
-          console.error(err);
-        }
+        setBannerUrl(bannerUrl);
       }
     })();
   }, [logoCid, bannerCid]);

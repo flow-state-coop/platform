@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount, useDisconnect, useReadContract } from "wagmi";
 import { formatEther, Address } from "viem";
@@ -18,11 +18,13 @@ import StreamDeletionModal from "@/app/pool/components/StreamDeletionModal";
 import useDonorParams from "@/hooks/donorParams";
 import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useFlowingAmount from "@/hooks/flowingAmount";
+import { Project } from "@/types/project";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { erc721CheckerAbi } from "@/lib/abi/erc721Checker";
 import { erc721Abi } from "@/lib/abi/erc721";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { roundWeiAmount, formatNumber, truncateStr } from "@/lib/utils";
 import {
   ZERO_ADDRESS,
@@ -47,14 +49,14 @@ dayjs.extend(advancedFormat);
 const FLOW_STATE_POOL_QUERY = gql`
   query PoolQuery($poolId: String!, $chainId: Int!) {
     pool(chainId: $chainId, id: $poolId) {
-      metadata
+      metadataCid
       recipientsByPoolIdAndChainId(
         first: 1000
         condition: { status: APPROVED }
       ) {
         id
         superappAddress
-        metadata
+        metadataCid
       }
     }
   }
@@ -112,6 +114,12 @@ const ACCOUNT_QUERY = gql`
 
 export default function WalletBalance() {
   const [showOffcanvas, setShowOffcanvas] = useState(false);
+  const [pool, setPool] = useState<{
+    metadata: { flowStateEligibility: boolean };
+  } | null>(null);
+  const [recipients, setRecipients] = useState<
+    (Project & { superappAddress: string })[] | null
+  >(null);
   const [streamDeletionModalState, setStreamDeletionModalState] = useState({
     show: false,
     isMatchingPool: false,
@@ -244,13 +252,42 @@ export default function WalletBalance() {
     [network, matchingToken],
   );
 
+  useEffect(() => {
+    (async () => {
+      if (
+        !flowStateQueryRes?.pool ||
+        !flowStateQueryRes?.recipientsByPoolIdAndChainId
+      ) {
+        return;
+      }
+
+      const recipients = [];
+
+      for (const recipient of flowStateQueryRes.recipients) {
+        const metadata = await fetchIpfsJson(recipient.metadataCid);
+
+        if (metadata) {
+          recipients.push({ ...recipient, metadata });
+        }
+      }
+
+      const poolMetadata = await fetchIpfsJson(flowStateQueryRes.pool);
+
+      if (poolMetadata) {
+        setPool({ ...flowStateQueryRes.pool, metadata: poolMetadata });
+      }
+
+      setRecipients(recipients);
+    })();
+  }, [flowStateQueryRes]);
+
   const handleNftMintRequest = async () => {
     try {
       setIsLoadingNftMint(true);
       setErrorNftMint("");
 
       const res = await fetch(
-        flowStateQueryRes?.pool.metadata.flowStateEligibility
+        pool?.metadata.flowStateEligibility
           ? "/api/flow-state-eligibility"
           : "/api/mint-nft",
         {
@@ -292,8 +329,8 @@ export default function WalletBalance() {
         onClick={handleShowOffcanvas}
         className="d-none d-sm-block border rounded-start shadow"
       >
-        {!superfluidQueryRes ? (
-          <Spinner size="sm" animation="border" role="status"></Spinner>
+        {!superfluidQueryRes || recipients === null || pool === null ? (
+          <Spinner size="sm" animation="border" role="status" />
         ) : (
           <Stack direction="horizontal" gap={2} className="align-items-center">
             <Image src="/wallet.svg" alt="Wallet" width={22} height={22} />
@@ -441,8 +478,8 @@ export default function WalletBalance() {
                       <Card.Text className="w-66 m-0 text-info text-truncate">
                         {outflow.receiver.id === FLOW_STATE_RECEIVER
                           ? "Flow State"
-                          : flowStateQueryRes.pool.recipientsByPoolIdAndChainId.find(
-                              (recipient: { superappAddress: string }) =>
+                          : recipients?.find(
+                              (recipient) =>
                                 recipient.superappAddress ===
                                 outflow.receiver.id,
                             )?.metadata.title}
@@ -496,9 +533,8 @@ export default function WalletBalance() {
                           className="px-0 py-2"
                           onClick={() => {
                             setShowOffcanvas(false);
-
                             router.push(
-                              `/pool/?chainId=${chainId}&poolId=${poolId}&recipientId=${flowStateQueryRes?.pool.recipientsByPoolIdAndChainId.find((recipient: { superappAddress: string }) => recipient.superappAddress === outflow.receiver.id)?.id}`,
+                              `/pool/?chainId=${chainId}&poolId=${poolId}&recipientId=${recipients?.find((recipient: { superappAddress: string }) => recipient.superappAddress === outflow.receiver.id)?.id}`,
                             );
                           }}
                         >
@@ -771,8 +807,7 @@ export default function WalletBalance() {
                   Claim NFT
                   {isLoadingNftMint && <Spinner size="sm" />}
                 </Button>
-              ) : flowStateQueryRes?.pool.metadata.flowStateEligibility &&
-                !nftBalance ? (
+              ) : pool?.metadata.flowStateEligibility && !nftBalance ? (
                 <>
                   <Button
                     variant="link"

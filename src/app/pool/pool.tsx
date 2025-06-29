@@ -15,6 +15,7 @@ import PoolInfo from "./components/PoolInfo";
 import Grantee from "./components/Grantee";
 import GranteeFunding from "./components/GranteeFunding";
 import MatchingPoolFunding from "./components/MatchingPoolFunding";
+import { Pool as PoolType } from "@/types/pool";
 import { Recipient } from "@/types/recipient";
 import { ProjectMetadata } from "@/types/project";
 import { Token } from "@/types/token";
@@ -29,6 +30,7 @@ import { networks } from "@/app/sqf/lib/networks";
 import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import { getApolloClient } from "@/lib/apollo";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { shuffle, getPlaceholderImageSrc } from "@/lib/utils";
 import {
   SECONDS_IN_MONTH,
@@ -71,7 +73,7 @@ const POOL_QUERY = gql`
   query PoolQuery($poolId: String!, $chainId: Int!) {
     pool(chainId: $chainId, id: $poolId) {
       id
-      metadata
+      metadataCid
       strategyAddress
       matchingToken
       allocationToken
@@ -82,7 +84,7 @@ const POOL_QUERY = gql`
       ) {
         id
         recipientAddress
-        metadata
+        metadataCid
         superappAddress
       }
     }
@@ -165,6 +167,8 @@ const GRANTEES_BATCH_SIZE = 20;
 export default function Pool(props: PoolProps) {
   const { poolId, chainId, recipientId, editPoolDistribution } = props;
 
+  const [pool, setPool] = useState<PoolType | null>(null);
+  const [recipients, setRecipients] = useState<Recipient[] | null>(null);
   const [grantees, setGrantees] = useState<Grantee[]>([]);
   const [directTotal, setDirectTotal] = useState(BigInt(0));
   const [sortingMethod, setSortingMethod] = useState(SortingMethod.RANDOM);
@@ -249,7 +253,6 @@ export default function Pool(props: PoolProps) {
       ? window.location.origin
       : "";
 
-  const pool = flowStateQueryRes?.pool ?? null;
   const matchingPool = superfluidQueryRes?.pool ?? null;
   const network = networks.find((network) => network.id === chainId);
   const isEligible = !!nftBalance;
@@ -258,14 +261,22 @@ export default function Pool(props: PoolProps) {
     () =>
       network?.tokens.find(
         (token) => pool?.allocationToken === token.address.toLowerCase(),
-      ) ?? { symbol: "N/A", address: pool?.allocationToken ?? "", icon: "" },
+      ) ?? {
+        symbol: "N/A",
+        address: (pool?.allocationToken as Address) ?? "",
+        icon: "",
+      },
     [network, pool],
   );
   const matchingTokenInfo = useMemo(
     () =>
       network?.tokens.find(
         (token) => pool?.matchingToken === token.address.toLowerCase(),
-      ) ?? { symbol: "N/A", address: pool?.matchingToken ?? "", icon: "" },
+      ) ?? {
+        symbol: "N/A",
+        address: (pool?.matchingToken as Address) ?? "",
+        icon: "",
+      },
     [network, pool],
   );
 
@@ -363,6 +374,36 @@ export default function Pool(props: PoolProps) {
   );
 
   useEffect(() => {
+    (async () => {
+      if (!flowStateQueryRes?.pool?.recipientsByPoolIdAndChainId) {
+        return;
+      }
+
+      const recipients = [];
+      const pool = flowStateQueryRes.pool ?? null;
+
+      for (const recipient of flowStateQueryRes.pool
+        .recipientsByPoolIdAndChainId) {
+        const metadata = await fetchIpfsJson(recipient.metadataCid);
+
+        if (metadata) {
+          recipients.push({ ...recipient, metadata });
+        }
+      }
+
+      const poolMetadata = await fetchIpfsJson(
+        flowStateQueryRes.pool.metadataCid,
+      );
+
+      if (poolMetadata) {
+        setPool({ ...pool, metadata: poolMetadata });
+      }
+
+      setRecipients(recipients);
+    })();
+  }, [flowStateQueryRes]);
+
+  useEffect(() => {
     if (superfluidQueryRes?.accounts.length > 0) {
       const calcDirectTotal = () => {
         let directTotal = BigInt(0);
@@ -398,7 +439,7 @@ export default function Pool(props: PoolProps) {
 
   useEffect(() => {
     if (
-      !flowStateQueryRes?.pool ||
+      !recipients ||
       !superfluidQueryRes?.accounts ||
       !superfluidQueryRes?.pool
     ) {
@@ -409,12 +450,12 @@ export default function Pool(props: PoolProps) {
       const grantees: Grantee[] = [];
 
       if (recipientId) {
-        const recipient =
-          flowStateQueryRes.pool.recipientsByPoolIdAndChainId.find(
-            (recipient: { id: string }) => recipient.id === recipientId,
-          );
+        const recipient = recipients.find(
+          (recipient: { id: string }) => recipient.id === recipientId,
+        );
         if (recipient) {
           const grantee = getGrantee(recipient);
+
           grantees.push(grantee);
         }
       }
@@ -426,15 +467,11 @@ export default function Pool(props: PoolProps) {
       ) {
         skipGrantees.current = i + 1;
 
-        if (
-          skipGrantees.current ==
-          flowStateQueryRes.pool.recipientsByPoolIdAndChainId.length
-        ) {
+        if (skipGrantees.current == recipients.length) {
           hasNextGrantee.current = false;
         }
 
-        const recipient =
-          flowStateQueryRes.pool.recipientsByPoolIdAndChainId[i];
+        const recipient = recipients[i];
 
         if (recipient && recipient.id === recipientId) {
           continue;
@@ -459,10 +496,9 @@ export default function Pool(props: PoolProps) {
         const grantees: Grantee[] = [];
 
         for (const i in prev) {
-          const recipient =
-            flowStateQueryRes.pool.recipientsByPoolIdAndChainId.find(
-              (recipient: { id: string }) => recipient.id === prev[i].id,
-            );
+          const recipient = recipients.find(
+            (recipient: { id: string }) => recipient.id === prev[i].id,
+          );
 
           if (recipient) {
             grantees[i] = getGrantee(recipient);
@@ -473,7 +509,7 @@ export default function Pool(props: PoolProps) {
       });
     }
   }, [
-    flowStateQueryRes,
+    recipients,
     superfluidQueryRes,
     inView,
     getGrantee,
@@ -763,10 +799,8 @@ export default function Pool(props: PoolProps) {
             isEligible={isEligible}
             network={network}
             requiredNftAddress={(requiredNftAddress as Address) ?? null}
-            flowStateEligibility={
-              flowStateQueryRes?.pool.metadata.flowStateEligibility ?? false
-            }
-            nftMintUrl={flowStateQueryRes?.pool.metadata.nftMintUrl ?? null}
+            flowStateEligibility={pool?.metadata.flowStateEligibility ?? false}
+            nftMintUrl={pool?.metadata.nftMintUrl ?? null}
             recipientId={grantees[transactionPanelState.selectedGrantee].id}
           />
         ) : null}

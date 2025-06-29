@@ -5,7 +5,6 @@ import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import Link from "next/link";
 import { useQuery, gql } from "@apollo/client";
-import { createVerifiedFetch } from "@helia/verified-fetch";
 import Stack from "react-bootstrap/Stack";
 import Offcanvas from "react-bootstrap/Offcanvas";
 import Dropdown from "react-bootstrap/Dropdown";
@@ -13,13 +12,14 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
-import { DEFAULT_CHAIN_ID, IPFS_GATEWAYS } from "@/lib/constants";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
+import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
 const COUNCIL_MANAGER_QUERY = gql`
   query FlowCouncilManagerQuery($address: String!) {
     councils(where: { councilManagers_: { account: $address } }) {
       id
-      metadata
+      metadataCid
     }
   }
 `;
@@ -58,40 +58,29 @@ function Sidebar() {
       const councils: Council[] = [];
       const promises = [];
 
-      try {
-        const verifiedFetch = await createVerifiedFetch({
-          gateways: IPFS_GATEWAYS,
-        });
+      for (const council of councilsQueryRes.councils) {
+        if (council.metadata) {
+          promises.push(
+            (async () => {
+              const metadata = await fetchIpfsJson(council.metadata);
 
-        for (const council of councilsQueryRes.councils) {
-          if (council.metadata) {
-            promises.push(
-              (async () => {
-                const metadataRes = await verifiedFetch(
-                  `ipfs://${council.metadata}`,
-                );
-                const metadata = await metadataRes.json();
-
-                councils.push({
-                  id: council.id,
-                  name: metadata.name,
-                  description: metadata.description,
-                });
-              })(),
-            );
-          } else {
-            councils.push({
-              id: council.id,
-              name: "Flow Council",
-              description: "N/A",
-            });
-          }
+              councils.push({
+                id: council.id,
+                name: metadata.name,
+                description: metadata.description,
+              });
+            })(),
+          );
+        } else {
+          councils.push({
+            id: council.id,
+            name: "Flow Council",
+            description: "N/A",
+          });
         }
-
-        await Promise.all(promises);
-      } catch (err) {
-        console.error(err);
       }
+
+      await Promise.all(promises);
 
       councils.sort((a, b) => {
         if (a.name < b.name) {

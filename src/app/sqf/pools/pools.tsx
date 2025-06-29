@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAccount, useSwitchChain } from "wagmi";
@@ -12,11 +13,17 @@ import Sidebar from "../components/Sidebar";
 import { useClampText } from "use-clamp-text";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "../lib/networks";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { getApolloClient } from "@/lib/apollo";
 
 type PoolsProps = {
   profileId: string | null;
   chainId: number | null;
+};
+
+type Pool = {
+  id: string;
+  metadata: { name: string; description: string };
 };
 
 const POOLS_QUERY = gql`
@@ -32,13 +39,15 @@ const POOLS_QUERY = gql`
       }
     ) {
       id
-      metadata
+      metadataCid
     }
   }
 `;
 
 export default function Pools(props: PoolsProps) {
   const { chainId, profileId } = props;
+
+  const [pools, setPools] = useState<Pool[] | null>(null);
 
   const router = useRouter();
   const { isMobile } = useMediaQuery();
@@ -56,6 +65,26 @@ export default function Pools(props: PoolsProps) {
   });
 
   const network = networks.filter((network) => network.id === chainId)[0];
+
+  useEffect(() => {
+    (async () => {
+      if (!queryRes?.pools) {
+        return;
+      }
+
+      const pools = [];
+
+      for (const pool of queryRes.pools) {
+        const metadata = await fetchIpfsJson(pool.metadataCid);
+
+        if (metadata) {
+          pools.push({ ...pool, metadata });
+        }
+      }
+
+      setPools(pools);
+    })();
+  }, [queryRes?.pools]);
 
   const PoolCard = (props: {
     pool: {
@@ -112,7 +141,7 @@ export default function Pools(props: PoolsProps) {
               Program not found, please select one from{" "}
               <Link href="/sqf">Program Selection</Link>
             </Card.Text>
-          ) : loading || !chainId || !profileId ? (
+          ) : loading || !chainId || !profileId || pools === null ? (
             <Spinner className="m-auto" />
           ) : !connectedChain ? (
             <>Please connect a wallet</>
@@ -133,15 +162,9 @@ export default function Pools(props: PoolsProps) {
               gap={5}
               className="flex-wrap justify-content-center justify-content-sm-start"
             >
-              {queryRes?.pools.map(
-                (
-                  pool: {
-                    id: string;
-                    metadata: { name: string; description: string };
-                  },
-                  i: number,
-                ) => <PoolCard pool={pool} key={i} />,
-              )}
+              {pools.map((pool: Pool, i: number) => (
+                <PoolCard pool={pool} key={i} />
+              ))}
               <Card
                 className="d-flex flex-column justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
                 style={{ width: 256, height: 256 }}

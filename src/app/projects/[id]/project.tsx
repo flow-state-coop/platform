@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { parseEther } from "viem";
 import { useAccount, useReadContracts } from "wagmi";
 import { gql, useQuery } from "@apollo/client";
-import { createVerifiedFetch } from "@helia/verified-fetch";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehyperExternalLinks from "rehype-external-links";
@@ -19,16 +18,28 @@ import Spinner from "react-bootstrap/Spinner";
 import ProjectUpdateModal from "@/components/ProjectUpdateModal";
 import PoolCard from "../components/PoolCard";
 import { GDAPool } from "@/types/gdaPool";
+import { Project as ProjectType } from "@/types/project";
 import { strategyAbi } from "@/lib/abi/strategy";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
+import { fetchIpfsJson, fetchIpfsImage } from "@/lib/fetchIpfs";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
 import { getPlaceholderImageSrc } from "@/lib/utils";
-import { IPFS_GATEWAYS, SECONDS_IN_MONTH } from "@/lib/constants";
+import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 type ProjectProps = { chainId: number | null; id: string | null };
+type Pool = {
+  id: string;
+  allocationToken: string;
+  matchingToken: string;
+  metadata: { name: string };
+  recipientsByPoolIdAndChainId: {
+    id: string;
+    recipientAddress: string;
+  }[];
+};
 
 const PROJECT_QUERY = gql`
   query ProjectQuery($id: String!, $chainId: Int!) {
@@ -36,7 +47,6 @@ const PROJECT_QUERY = gql`
       id
       anchorAddress
       metadataCid
-      metadata
       profileRolesByChainIdAndProfileId {
         address
         role
@@ -56,10 +66,10 @@ const POOLS_BY_ANCHOR_ADDRESS = gql`
       }
     ) {
       id
-      metadata
       allocationToken
       matchingToken
       strategyAddress
+      metadataCid
       recipientsByPoolIdAndChainId(first: 1000) {
         id
         status
@@ -106,6 +116,8 @@ export default function Project(props: ProjectProps) {
   const [showProjectUpdateModal, setShowProjectUpdateModal] = useState(false);
   const [logoUrl, setLogoUrl] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
+  const [project, setProject] = useState<ProjectType>();
+  const [pools, setPools] = useState<Pool[]>([]);
 
   const searchParams = useSearchParams();
   const postHog = usePostHog();
@@ -154,14 +166,17 @@ export default function Project(props: ProjectProps) {
     pollInterval: 10000,
   });
 
-  const project = projectQueryRes?.profile;
-  const pools = poolsQueryRes?.pools;
   const network = networks.filter((network) => network.id === chainId)[0];
   const placeholderLogo = getPlaceholderImageSrc();
   const placeholderBanner = getPlaceholderImageSrc();
 
   const matchingImpactEstimates = useMemo(() => {
-    if (!superfluidQueryRes?.pools || !pools || !network) {
+    if (
+      !superfluidQueryRes?.pools ||
+      pools.length === 0 ||
+      !network ||
+      !project
+    ) {
       return [];
     }
 
@@ -171,9 +186,9 @@ export default function Project(props: ProjectProps) {
     for (const i in matchingPools) {
       const matchingPool = matchingPools[i];
       const pool = pools[i];
-      const recipientAddress = pool.recipientsByPoolIdAndChainId.filter(
-        (recipient: { id: string }) => recipient.id === project.anchorAddress,
-      );
+      const recipientAddress = pool.recipientsByPoolIdAndChainId.find(
+        (recipient) => recipient.id === project.anchorAddress,
+      )?.recipientAddress;
       const adjustedFlowRate =
         BigInt(matchingPool.flowRate) - BigInt(matchingPool.adjustmentFlowRate);
       const member = matchingPool.poolMembers.find(
@@ -186,7 +201,7 @@ export default function Project(props: ProjectProps) {
             BigInt(matchingPool.totalUnits)
           : BigInt(0);
       const allocationToken = network?.tokens.find(
-        (token) => token.address.toLowerCase === pool.allocationToken,
+        (token) => token.address.toLowerCase() === pool.allocationToken,
       );
       const poolFlowRateConfig = getPoolFlowRateConfig(
         allocationToken?.symbol ?? "",
@@ -222,41 +237,53 @@ export default function Project(props: ProjectProps) {
 
   useEffect(() => {
     (async () => {
-      if (!project) {
+      if (!projectQueryRes?.profile) {
         return;
       }
 
-      const verifiedFetch = await createVerifiedFetch({
-        gateways: IPFS_GATEWAYS,
-      });
+      const metadata = await fetchIpfsJson(projectQueryRes.profile.metadataCid);
 
-      const { logoImg, bannerImg } = project.metadata;
+      if (!metadata) {
+        return;
+      }
+
+      setProject({ ...projectQueryRes.profile, metadata });
+
+      const { logoImg, bannerImg } = metadata;
 
       if (logoImg) {
-        try {
-          const logoRes = await verifiedFetch(`ipfs://${logoImg}`);
-          const logoBlob = await logoRes.blob();
-          const logoUrl = URL.createObjectURL(logoBlob);
+        const logoUrl = await fetchIpfsImage(logoImg);
 
-          setLogoUrl(logoUrl);
-        } catch (err) {
-          console.error(err);
-        }
+        setLogoUrl(logoUrl);
       }
 
       if (bannerImg) {
-        try {
-          const bannerRes = await verifiedFetch(`ipfs://${bannerImg}`);
-          const bannerBlob = await bannerRes.blob();
-          const bannerUrl = URL.createObjectURL(bannerBlob);
+        const bannerUrl = await fetchIpfsImage(bannerImg);
 
-          setBannerUrl(bannerUrl);
-        } catch (err) {
-          console.error(err);
-        }
+        setBannerUrl(bannerUrl);
       }
     })();
-  }, [project]);
+  }, [projectQueryRes?.profile]);
+
+  useEffect(() => {
+    (async () => {
+      if (!poolsQueryRes?.pools) {
+        return;
+      }
+
+      const pools = [];
+
+      for (const pool of poolsQueryRes.pools) {
+        const metadata = await fetchIpfsJson(pool.metadataCid);
+
+        if (metadata) {
+          pools.push({ ...pool, metadata });
+        }
+      }
+
+      setPools(pools);
+    })();
+  }, [poolsQueryRes?.pools]);
 
   if (!network) {
     return (
@@ -266,7 +293,7 @@ export default function Project(props: ProjectProps) {
     );
   }
 
-  if (loading) {
+  if (loading || !project) {
     return <Spinner className="m-auto" />;
   }
 
@@ -315,7 +342,7 @@ export default function Project(props: ProjectProps) {
             {project?.metadata?.title ?? "N/A"}
           </Card.Text>
           {project?.profileRolesByChainIdAndProfileId.find(
-            (profile: { role: "OWNER" | "MANAGER" }) =>
+            (profile: { role: "OWNER" | "MANAGER" | "MEMBER" }) =>
               profile.role === "OWNER",
           )?.address === address?.toLowerCase() && (
             <Button
@@ -329,7 +356,7 @@ export default function Project(props: ProjectProps) {
         </Stack>
         <Card.Text className="bg-transparent border-0 m-0 px-3 sm:px-0 fs-5 text-info text-truncate">
           {project?.profileRolesByChainIdAndProfileId.filter(
-            (profile: { role: "OWNER" | "MANAGER" }) =>
+            (profile: { role: "OWNER" | "MANAGER" | "MEMBER" }) =>
               profile.role === "OWNER",
           )[0]?.address ?? "N/A"}
         </Card.Text>
@@ -480,29 +507,15 @@ export default function Project(props: ProjectProps) {
           className="justify-content-center flex-wrap my-5"
         >
           {matchingImpactEstimates.length > 0
-            ? pools?.map(
-                (
-                  pool: {
-                    id: string;
-                    allocationToken: string;
-                    matchingToken: string;
-                    metadata: { name: string };
-                    recipientsByPoolIdAndChainId: {
-                      id: string;
-                      recipientAddress: string;
-                    }[];
-                  },
-                  i: number,
-                ) => (
-                  <PoolCard
-                    pool={pool}
-                    matchingPool={superfluidQueryRes?.pools[i]}
-                    project={project}
-                    network={network}
-                    key={i}
-                  />
-                ),
-              )
+            ? pools?.map((pool: Pool, i: number) => (
+                <PoolCard
+                  pool={pool}
+                  matchingPool={superfluidQueryRes?.pools[i]}
+                  project={project}
+                  network={network}
+                  key={i}
+                />
+              ))
             : null}
         </Stack>
       </Container>

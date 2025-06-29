@@ -39,7 +39,7 @@ export default function PoolCard(props: PoolCardProps) {
   const router = useRouter();
   const { address } = useAccount();
   const [poolNameRef, { clampedText }] = useClampText({
-    text: pool.metadata.name ?? "N/A",
+    text: pool.metadata?.name ?? "N/A",
     ellipsis: "...",
     lines: 2,
   });
@@ -159,7 +159,7 @@ export default function PoolCard(props: PoolCardProps) {
         <Button
           variant="link p-0"
           target="_blank"
-          href={`https://farcaster.xyz/~/compose?text=I+just+opened+a+donation+stream+to+${project.metadata.title}+in+the+${pool.metadata.name}+SQF+round%21+Support+public+goods+by+opening+your+stream+with+a+real%2Dtime+matching+multiplier+from+this+frame%3A&embeds[]=${encodeURIComponent(framesLink ?? "")}`}
+          href={`https://farcaster.xyz/~/compose?text=I+just+opened+a+donation+stream+to+${project.metadata.title}+in+the+${pool.metadata?.name}+SQF+round%21+Support+public+goods+by+opening+your+stream+with+a+real%2Dtime+matching+multiplier+from+this+frame%3A&embeds[]=${encodeURIComponent(framesLink ?? "")}`}
         >
           <Image src="/farcaster.svg" alt="farcaster" width={24} height={24} />
         </Button>
@@ -168,14 +168,14 @@ export default function PoolCard(props: PoolCardProps) {
           target="_blank"
           href={`https://twitter.com/intent/tweet?text=I%20just%20opened%20a%20donation%20stream%20to%20${
             project.metadata.title
-          }%20in%20the%20${pool.metadata.name}%20%23streamingqf%20round.%20Support%20public%20goods%20by%20opening%20your%20stream%20with%20a%20real-time%20matching%20multiplier%20here%3A%20${encodeURIComponent(poolUiLink)}`}
+          }%20in%20the%20${pool.metadata?.name}%20%23streamingqf%20round.%20Support%20public%20goods%20by%20opening%20your%20stream%20with%20a%20real-time%20matching%20multiplier%20here%3A%20${encodeURIComponent(poolUiLink)}`}
         >
           <Image src="/x-logo.svg" alt="x" width={20} height={20} />
         </Button>
         <Button
           variant="link p-0"
           target="_blank"
-          href={`https://hey.xyz/?text=I+just+opened+a+donation+stream+to+${project.metadata.title}+in+the+${pool.metadata.name}+SQF+round%21+Support+public+goods+by+opening+your+stream+with+a+real%2Dtime+matching+multiplier+from+this+frame%3A+%0A%0A${encodeURIComponent(framesLink ?? "")}`}
+          href={`https://hey.xyz/?text=I+just+opened+a+donation+stream+to+${project.metadata.title}+in+the+${pool.metadata?.name}+SQF+round%21+Support+public+goods+by+opening+your+stream+with+a+real%2Dtime+matching+multiplier+from+this+frame%3A+%0A%0A${encodeURIComponent(framesLink ?? "")}`}
         >
           <Image src="/hey.png" alt="lens" width={24} height={24} />
         </Button>
