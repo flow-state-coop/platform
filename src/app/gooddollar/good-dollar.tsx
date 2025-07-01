@@ -11,7 +11,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Dropdown from "react-bootstrap/Dropdown";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
 import GranteeCard from "@/app/flow-councils/components/GranteeCard";
-import RoundBanner from "@/app/flow-councils/components/RoundBanner";
+import RoundBanner from "./components/RoundBanner";
 import Ballot from "@/app/flow-councils/components/Ballot";
 import DistributionPoolFunding from "@/app/flow-councils/components/DistributionPoolFunding";
 import { ProjectMetadata } from "@/types/project";
@@ -206,6 +206,7 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
           name={councilMetadata.name ?? "Flow Council"}
           description={councilMetadata.description ?? "N/A"}
           chainId={chainId}
+          councilAddress={councilAddress}
           distributionTokenInfo={token}
           gdaPool={gdaPool}
           showDistributionPoolFunding={() =>
