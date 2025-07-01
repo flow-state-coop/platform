@@ -112,7 +112,7 @@ const networks: Network[] = [
     label: "celo",
     icon: "/celo.svg",
     blockExplorer: "https://celoscan.io",
-    rpcUrl: "https://celo.gateway.tenderly.co/",
+    rpcUrl: "https://celo.drpc.org",
     superfluidExplorer: "https://explorer.superfluid.finance/celo",
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
