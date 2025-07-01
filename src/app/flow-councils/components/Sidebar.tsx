@@ -19,7 +19,7 @@ const COUNCIL_MANAGER_QUERY = gql`
   query FlowCouncilManagerQuery($address: String!) {
     councils(where: { councilManagers_: { account: $address } }) {
       id
-      metadataCid
+      metadata
     }
   }
 `;
