@@ -139,7 +139,7 @@ export default function Review(props: ReviewProps) {
     pollInterval: 3000,
   });
 
-  const granteeApplicationLink = `${hostname}/flow-councils/grantee/?councilId=${councilId}&chainId=${chainId}`;
+  const granteeApplicationLink = `${hostname}/gooddollar/grantee/?chainId=${chainId}`;
   const council = councilQueryRes?.council;
   const selectedApplicationProfile =
     profiles && selectedApplication
@@ -381,7 +381,7 @@ export default function Review(props: ReviewProps) {
       <span className="m-auto fs-4 fw-bold">
         Council not found.{" "}
         <Link
-          href="/flow-councils/launch"
+          href="/gooddollar/launch"
           className="text-primary text-decoration-none"
         >
           Launch one
@@ -734,9 +734,7 @@ export default function Review(props: ReviewProps) {
                 variant="secondary"
                 className="fs-5"
                 style={{ pointerEvents: isSubmitting ? "none" : "auto" }}
-                onClick={() =>
-                  router.push(`/flow-councils/${chainId}/${councilId}`)
-                }
+                onClick={() => router.push(`/gooddollar/?chainId=${chainId}`)}
               >
                 Next
               </Button>
