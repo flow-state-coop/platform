@@ -124,7 +124,7 @@ export default function Membership(props: MembershipProps) {
       (a: { account: string }, b: { account: string }) =>
         a.account > b.account ? -1 : 1,
     );
-    const sortedMembersEntry = membersEntry.toSorted((a, b) =>
+    const sortedMembersEntry = [...membersEntry].sort((a, b) =>
       a.address.toLowerCase() > b.address.toLowerCase() ? -1 : 1,
     );
     const hasChangesMembers =
@@ -284,7 +284,7 @@ export default function Membership(props: MembershipProps) {
       <span className="m-auto fs-4 fw-bold">
         Council not found.{" "}
         <Link
-          href="/flow-councils/launch"
+          href="/gooddollar/launch"
           className="text-primary text-decoration-none"
         >
           Launch one
@@ -663,9 +663,7 @@ export default function Membership(props: MembershipProps) {
             className="fs-5"
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() =>
-              router.push(
-                `/flow-councils/review/?chainId=${chainId}&councilId=${councilId}`,
-              )
+              router.push(`/gooddollar/review/?chainId=${chainId}`)
             }
           >
             Next

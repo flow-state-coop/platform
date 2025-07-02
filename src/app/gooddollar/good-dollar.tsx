@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Address } from "viem";
-import { useAccount } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Modal from "react-bootstrap/Modal";
@@ -12,8 +12,8 @@ import Dropdown from "react-bootstrap/Dropdown";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
 import GranteeCard from "@/app/flow-councils/components/GranteeCard";
 import RoundBanner from "./components/RoundBanner";
-import Ballot from "@/app/flow-councils/components/Ballot";
-import DistributionPoolFunding from "@/app/flow-councils/components/DistributionPoolFunding";
+import Ballot from "./components/Ballot";
+import DistributionPoolFunding from "./components/DistributionPoolFunding";
 import { ProjectMetadata } from "@/types/project";
 import { Grantee, SortingMethod } from "@/app/flow-councils/types/grantee";
 import useCouncil from "@/app/flow-councils/hooks/council";
@@ -35,8 +35,8 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
   const network =
     networks.find((network) => network.id === Number(chainId)) ?? networks[0];
   const councilAddress = councilConfig[network.id]?.councilAddress;
-  useMediaQuery();
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
+  const { switchChain } = useSwitchChain();
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const {
@@ -185,6 +185,12 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
     setGrantees((prev) => sortGrantees(prev));
   }, [sortingMethod, sortGrantees]);
 
+  useEffect(() => {
+    if (address && connectedChain?.id !== chainId) {
+      switchChain({ chainId });
+    }
+  }, [address, connectedChain, chainId, switchChain]);
+
   useEffect(() => setShowConnectionModal(shouldConnect), [shouldConnect]);
 
   return (
@@ -298,7 +304,7 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
           hide={() => setShowDistributionPoolFunding(false)}
         />
       ) : newAllocation?.showBallot ? (
-        <Ballot councilAddress={councilAddress as Address} />
+        <Ballot chainId={chainId} councilAddress={councilAddress as Address} />
       ) : null}
       <Modal
         show={showConnectionModal}

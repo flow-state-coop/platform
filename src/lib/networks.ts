@@ -18,7 +18,7 @@ const networks: Network[] = [
       "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-splitter-arbitrum-one/v0.0.2/gn",
     flowCouncilFactory: "0xe6a6E24905e200F69b57cE3B01D5F65776a40DF3",
     flowCouncilSubgraph:
-      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-council-arbitrum-one/v0.2.2/gn",
+      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-council-arbitrum-one/v0.2.3/gn",
     flowStateEligibilityNft: "0x6Ee1Cc715EAB6a1a661d34C1439Fc7f05Aa5f435",
     flowStateEligibilityMinScore: 15,
     superfluidHost: "0xCf8Acb4eF033efF16E8080aed4c7D5B9285D2192",
@@ -68,7 +68,7 @@ const networks: Network[] = [
       "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-splitter-base/v0.0.2/gn",
     flowCouncilFactory: "0x73DD388BC769eD4975Cb4e6Cfd9a5b9474082875",
     flowCouncilSubgraph:
-      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-council-base/v0.2.2/gn",
+      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-council-base/v0.2.3/gn",
     flowStateEligibilityNft: "0xA72c184738842626a920A8935092b7b3f35A3082",
     flowStateEligibilityMinScore: 15,
     superfluidHost: "0x4C073B3baB6d8826b8C5b229f3cfdC1eC6E47E74",
@@ -163,7 +163,7 @@ const networks: Network[] = [
       "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-splitter-optimism/v0.0.2/gn",
     flowCouncilFactory: "0xeba33Eb3B2aa36EC81390b4e10b4f61b555f194b",
     flowCouncilSubgraph:
-      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-council-optimism/v0.2.2/gn",
+      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-council-optimism/v0.2.3/gn",
     flowStateEligibilityNft: "0x09A62710a3BFC83aae2956F1D5B2363e4773Db7a",
     flowStateEligibilityMinScore: 15,
     superfluidHost: "0x567c4B141ED61923967cA25Ef4906C8781069a10",
@@ -218,7 +218,7 @@ const networks: Network[] = [
       "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-splitter-optimism-sepolia/v0.0.2/gn",
     flowCouncilFactory: "0x0037c884f51714fEA8194E3C0c547894736bF8F2",
     flowCouncilSubgraph:
-      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-council-optimism-sepolia/v0.2.2/gn",
+      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-council-optimism-sepolia/v0.2.3/gn",
     flowStateEligibilityNft: "0x1059A20C7aA0B4576B631d064730dB2E02940535",
     flowStateEligibilityMinScore: 0.5,
     superfluidHost: "0xd399e2Fb5f4cf3722a11F65b88FAB6B2B8621005",

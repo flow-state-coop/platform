@@ -148,9 +148,9 @@ export function FlowCouncilContextProvider({
   children: React.ReactNode;
 }) {
   const { address } = useAccount();
+  const pathname = usePathname();
   const params = useParams();
   const searchParams = useSearchParams();
-  const pathname = usePathname();
   const chainId =
     pathname.startsWith("/gooddollar") && searchParams.get("chainId")
       ? searchParams.get("chainId")

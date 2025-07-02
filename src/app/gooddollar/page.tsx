@@ -1,5 +1,6 @@
 import GoodDollar from "./good-dollar";
 import { SearchParams } from "@/types/searchParams";
+import { DEFAULT_CHAIN_ID } from "./lib/constants";
 
 export default async function Page({
   searchParams,
@@ -8,7 +9,9 @@ export default async function Page({
 }) {
   return (
     <GoodDollar
-      chainId={searchParams.chainId ? Number(searchParams.chainId) : 42220}
+      chainId={
+        searchParams.chainId ? Number(searchParams.chainId) : DEFAULT_CHAIN_ID
+      }
     />
   );
 }
