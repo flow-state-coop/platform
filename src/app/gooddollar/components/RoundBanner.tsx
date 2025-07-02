@@ -1,6 +1,6 @@
 import { useState, useLayoutEffect } from "react";
 import { Address, formatEther } from "viem";
-import { useAccount, useReadContract } from "wagmi";
+import { useAccount, useReadContract, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import removeMarkdown from "remove-markdown";
 import Stack from "react-bootstrap/Stack";
@@ -19,7 +19,7 @@ import useFlowingAmount from "@/hooks/flowingAmount";
 import { formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
-type PoolInfoProps = {
+type RoundBannerProps = {
   name: string;
   description: string;
   chainId: number;
@@ -29,7 +29,7 @@ type PoolInfoProps = {
   showDistributionPoolFunding: () => void;
 };
 
-export default function PoolInfo(props: PoolInfoProps) {
+export default function RoundBanner(props: RoundBannerProps) {
   const {
     name,
     description,
@@ -46,7 +46,8 @@ export default function PoolInfo(props: PoolInfoProps) {
 
   const { council, dispatchNewAllocation } = useCouncil();
   const { isMobile } = useMediaQuery();
-  const { address } = useAccount();
+  const { switchChain } = useSwitchChain();
+  const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const {
     data: votingPower,
@@ -82,6 +83,10 @@ export default function PoolInfo(props: PoolInfoProps) {
       openConnectModal();
 
       return;
+    }
+
+    if (connectedChain?.id !== chainId) {
+      switchChain({ chainId });
     }
 
     setIsCheckingEligibility(true);
