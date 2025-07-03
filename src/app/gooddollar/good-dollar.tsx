@@ -8,11 +8,15 @@ import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Modal from "react-bootstrap/Modal";
 import Spinner from "react-bootstrap/Spinner";
+import Button from "react-bootstrap/Button";
 import Dropdown from "react-bootstrap/Dropdown";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
 import GranteeCard from "@/app/flow-councils/components/GranteeCard";
 import RoundBanner from "./components/RoundBanner";
+import InfoTooltip from "@/components/InfoTooltip";
 import Ballot from "./components/Ballot";
+import GranteeDetails from "@/app/flow-councils/components/GranteeDetails";
 import DistributionPoolFunding from "./components/DistributionPoolFunding";
 import { ProjectMetadata } from "@/types/project";
 import { Grantee, SortingMethod } from "@/app/flow-councils/types/grantee";
@@ -25,9 +29,14 @@ import { councilConfig } from "./lib/councilConfig";
 export default function GoodDollar({ chainId }: { chainId: number }) {
   const [grantees, setGrantees] = useState<Grantee[]>([]);
   const [sortingMethod, setSortingMethod] = useState(SortingMethod.RANDOM);
+  const [showGranteeDetails, setShowGranteeDetails] = useState<Grantee | null>(
+    null,
+  );
   const [showDistributionPoolFunding, setShowDistributionPoolFunding] =
     useState(false);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [sharedPieData, setSharedPieData] = useState<any[]>([]);
 
   const skipGrantees = useRef(0);
   const hasNextGrantee = useRef(true);
@@ -47,6 +56,7 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
     flowStateProfiles,
     gdaPool,
     token,
+    dispatchNewAllocation,
   } = useCouncil();
 
   const poolMember = gdaPool?.poolMembers.find(
@@ -54,7 +64,11 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
       member.account.id === address?.toLowerCase(),
   );
   const shouldConnect = !!poolMember && !poolMember.isConnected;
-  const votingPower = currentAllocation?.votingPower ?? 0;
+  const votingPower =
+    !!address && currentAllocation?.votingPower
+      ? currentAllocation.votingPower
+      : 0;
+  const currentAllocationStringified = JSON.stringify(currentAllocation);
 
   const getGrantee = useCallback(
     (recipient: {
@@ -202,6 +216,18 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
   ]);
 
   useEffect(() => {
+    const currentAllocation = JSON.parse(currentAllocationStringified);
+
+    if (currentAllocation?.allocation) {
+      dispatchNewAllocation({
+        type: "add",
+        currentAllocation,
+        showBallot: false,
+      });
+    }
+  }, [currentAllocationStringified, dispatchNewAllocation]);
+
+  useEffect(() => {
     setGrantees((prev) => sortGrantees(prev));
   }, [sortingMethod, sortGrantees]);
 
@@ -210,6 +236,62 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
       switchChain({ chainId });
     }
   }, [address, connectedChain, chainId, switchChain]);
+
+  const createConsistentPieData = useCallback(() => {
+    if (!grantees.length) {
+      return [];
+    }
+
+    const allocatedVotes = newAllocation?.allocation
+      ? newAllocation.allocation.reduce((sum, a) => sum + a.amount, 0)
+      : 0;
+    const unallocatedVotes = votingPower - allocatedVotes;
+    const data = grantees.map((grantee) => {
+      const allocation = newAllocation?.allocation?.find(
+        (a) => a.grantee === grantee.address,
+      );
+
+      return {
+        id: grantee.address,
+        name: grantee.metadata.title,
+        value: allocation ? allocation.amount : 0,
+        color:
+          allocation && allocation.amount > 0
+            ? granteeColors[grantee.address]
+            : "#e0e0e0",
+      };
+    });
+
+    if (newAllocation?.allocation) {
+      newAllocation.allocation.forEach((allocation) => {
+        if (data.some((item) => item.id === allocation.grantee)) {
+          return;
+        }
+
+        data.push({
+          id: allocation.grantee,
+          name: allocation.grantee.substring(0, 6),
+          value: allocation.amount,
+          color: granteeColors[allocation.grantee] || "#1f77b4",
+        });
+      });
+    }
+
+    if (unallocatedVotes > 0) {
+      data.push({
+        id: "0xdead",
+        name: "Unallocated",
+        value: unallocatedVotes,
+        color: "#e0e0e0",
+      });
+    }
+
+    return data.filter((entry) => entry.value > 0 || entry.id === "0xdead");
+  }, [grantees, newAllocation?.allocation, granteeColors, votingPower]);
+
+  useEffect(() => {
+    setSharedPieData(createConsistentPieData());
+  }, [createConsistentPieData]);
 
   useEffect(() => setShowConnectionModal(shouldConnect), [shouldConnect]);
 
@@ -303,6 +385,7 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
                 units={grantee.units}
                 token={token}
                 votingPower={votingPower}
+                showGranteeDetails={() => setShowGranteeDetails(grantee)}
                 granteeColor={granteeColors[grantee.address]}
               />
             ))}
@@ -317,7 +400,17 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
           )}
         </Stack>
       </Container>
-      {showDistributionPoolFunding ? (
+      {showGranteeDetails ? (
+        <GranteeDetails
+          key={showGranteeDetails.id}
+          chainId={chainId}
+          id={showGranteeDetails.id}
+          metadata={showGranteeDetails.metadata}
+          placeholderLogo={showGranteeDetails.placeholderLogo}
+          granteeAddress={showGranteeDetails.address}
+          hide={() => setShowGranteeDetails(null)}
+        />
+      ) : showDistributionPoolFunding ? (
         <DistributionPoolFunding
           network={network}
           hide={() => setShowDistributionPoolFunding(false)}
@@ -350,6 +443,92 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
           />
         </Modal.Footer>
       </Modal>
+      {newAllocation?.allocation && newAllocation.allocation.length > 0 && (
+        <Stack
+          direction="horizontal"
+          className="position-fixed"
+          style={{
+            width: isMobile ? "100%" : "auto",
+            justifyContent: isMobile ? "center" : "right",
+            bottom: "2rem",
+            right: isMobile ? "auto" : "2rem",
+            zIndex: 3,
+          }}
+        >
+          <InfoTooltip
+            position={{ top: true }}
+            content={<>Click to edit & submit your votes</>}
+            showOnMobile={false}
+            target={
+              <Button
+                className="btn btn-primary d-flex align-items-center gap-2 py-3 px-4 shadow-lg rounded-pill"
+                onClick={() => dispatchNewAllocation({ type: "show-ballot" })}
+                style={{
+                  width: isMobile ? 360 : 400,
+                  transition: "all 0.2s ease-in-out",
+                  transform: "scale(1)",
+                  boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "scale(1.05)";
+                  e.currentTarget.style.boxShadow =
+                    "0 12px 20px rgba(0, 0, 0, 0.25)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                  e.currentTarget.style.boxShadow =
+                    "0 8px 16px rgba(0, 0, 0, 0.2)";
+                }}
+              >
+                <Stack
+                  direction="horizontal"
+                  className="justify-content-center align-items-center bg-white rounded-circle"
+                  style={{ width: 64, height: 64, overflow: "hidden" }}
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      {sharedPieData ? (
+                        <Pie
+                          data={sharedPieData}
+                          dataKey="value"
+                          outerRadius={50}
+                        >
+                          {sharedPieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                      ) : null}
+                    </PieChart>
+                  </ResponsiveContainer>
+                </Stack>
+                <Stack direction="vertical">
+                  <span className="fs-4 fw-semibold d-block text-center">
+                    VOTE
+                  </span>
+                  <small className="fs-6 d-block text-white-50">
+                    {
+                      sharedPieData.filter(
+                        (entry) => entry.value > 0 && entry.id !== "0xdead",
+                      ).length
+                    }{" "}
+                    projects
+                    {(() => {
+                      const unallocated =
+                        sharedPieData.find((entry) => entry.id === "0xdead")
+                          ?.value || 0;
+                      if (unallocated > 0) {
+                        return ` (${unallocated} votes unallocated)`;
+                      } else {
+                        return " (all votes allocated)";
+                      }
+                    })()}
+                  </small>
+                </Stack>
+              </Button>
+            }
+          />
+        </Stack>
+      )}
     </>
   );
 }

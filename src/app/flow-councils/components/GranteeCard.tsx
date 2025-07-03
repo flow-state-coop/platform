@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { formatEther } from "viem";
-import { useAccount } from "wagmi";
 import removeMarkdown from "remove-markdown";
 import { useClampText } from "use-clamp-text";
 import Stack from "react-bootstrap/Stack";
@@ -8,8 +7,6 @@ import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import { Token } from "@/types/token";
-import { CouncilMember } from "../types/councilMember";
-import { useMediaQuery } from "@/hooks/mediaQuery";
 import { fetchIpfsImage } from "@/lib/fetchIpfs";
 import useCouncil from "../hooks/council";
 import { formatNumber } from "@/lib/utils";
@@ -26,8 +23,7 @@ type GranteeProps = {
   flowRate: bigint;
   units: number;
   token: Token;
-  onAllocationChange?: (value: number) => void;
-  onClick?: () => void;
+  showGranteeDetails: () => void;
   votingPower: number;
   granteeColor: string;
 };
@@ -44,8 +40,7 @@ export default function Grantee(props: GranteeProps) {
     flowRate,
     units,
     token,
-    onAllocationChange,
-    onClick,
+    showGranteeDetails,
     votingPower,
     granteeColor,
   } = props;
@@ -62,23 +57,27 @@ export default function Grantee(props: GranteeProps) {
   });
 
   const monthlyFlow = Number(formatEther(flowRate * BigInt(SECONDS_IN_MONTH)));
-  const granteeAllocation = newAllocation?.allocation.find(
-    (allocation) => allocation.grantee === granteeAddress,
+
+  const granteeAllocation = useMemo(
+    () =>
+      newAllocation?.allocation.find(
+        (allocation) => allocation.grantee === granteeAddress,
+      ),
+    [newAllocation, granteeAddress],
   );
 
   useEffect(() => {
-    if (!newAllocation) {
+    if (!newAllocation?.allocation) {
       return;
     }
 
-    const vote =
+    const votes =
       newAllocation.allocation.find(
-        (allocation) =>
-          allocation.grantee.toLowerCase() === granteeAddress.toLowerCase(),
+        (allocation) => allocation.grantee === granteeAddress,
       )?.amount ?? 0;
 
-    setPercentage((vote / votingPower) * 100);
-  }, [newAllocation]);
+    setPercentage((votes / votingPower) * 100);
+  }, [newAllocation, granteeAddress, votingPower]);
 
   useEffect(() => {
     (async () => {
@@ -96,15 +95,8 @@ export default function Grantee(props: GranteeProps) {
     })();
   }, [logoCid, bannerCid]);
 
-  const handleAllocation = (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-
-    if (onClick) onClick();
-  };
-
-  const calculateAllocationVotes = (percentage: number): number => {
-    return Math.round((percentage / 100) * votingPower);
-  };
+  const calculateAllocationVotes = (percentage: number): number =>
+    Math.round((percentage / 100) * votingPower);
 
   const handleSlide = (e: React.MouseEvent | React.TouchEvent) => {
     if (!granteeAllocation) {
@@ -114,7 +106,6 @@ export default function Grantee(props: GranteeProps) {
     e.stopPropagation();
     const container = e.currentTarget;
 
-    const containerWidth = container.clientWidth;
     const containerBoundingRect = container.getBoundingClientRect();
 
     const move = (e: Event) => {
@@ -171,7 +162,8 @@ export default function Grantee(props: GranteeProps) {
   return (
     <>
       <Card
-        className="rounded-4 overflow-hidden"
+        className="rounded-4 overflow-hidden cursor-pointer"
+        onClick={showGranteeDetails}
         style={{
           height: 420,
           border: "1px solid #212529",
@@ -225,7 +217,7 @@ export default function Grantee(props: GranteeProps) {
               </Card.Text>
             </Stack>
           </Stack>
-          {votingPower && (
+          {!!votingPower && (
             <Stack
               direction="horizontal"
               className="justify-content-center mt-4"
@@ -243,17 +235,15 @@ export default function Grantee(props: GranteeProps) {
             </Stack>
           )}
         </Card.Body>
-        <Card.Footer
-          className="position-relative border-0 px-0 py-0 rounded-3"
-          onClick={(e) => handleAllocation(e)}
-        >
-          {granteeAllocation ? (
+        <Card.Footer className="position-relative border-0 px-0 py-0 rounded-3">
+          {votingPower && granteeAllocation ? (
             <>
               <Stack
                 direction="horizontal"
                 className="w-100"
                 onMouseDown={handleSlide}
                 onTouchStart={handleSlide}
+                onClick={(e) => e.stopPropagation()}
                 style={{
                   width: "100%",
                   height: "100%",
@@ -273,7 +263,7 @@ export default function Grantee(props: GranteeProps) {
                 >
                   {percentage > 20 && (
                     <Card.Text
-                      className="fw-bold text-light px-3"
+                      className="fw-bold text-light px-3 unselectable"
                       style={{ pointerEvents: "none" }}
                     >
                       {percentage.toFixed(0)}%
@@ -286,12 +276,13 @@ export default function Grantee(props: GranteeProps) {
                   draggable={false}
                   onDragStart={(e) => e.preventDefault()}
                   onClick={(e) => {
+                    e.stopPropagation();
                     e.preventDefault();
                   }}
                 >
                   <Image
                     src="/drag.svg"
-                    alt="Drag"
+                    alt=""
                     width={32}
                     height={32}
                     style={{
@@ -309,15 +300,17 @@ export default function Grantee(props: GranteeProps) {
             >
               <Button
                 className="d-flex gap-1 align-items-center px-4"
-                onClick={() =>
+                onClick={(e) => {
+                  e.stopPropagation();
                   dispatchNewAllocation({
                     type: "add",
                     allocation: {
                       grantee: granteeAddress,
                       amount: 1,
                     },
-                  })
-                }
+                    showBallot: false,
+                  });
+                }}
               >
                 <Image
                   src="/add.svg"
@@ -332,7 +325,28 @@ export default function Grantee(props: GranteeProps) {
                 Add to Ballot
               </Button>
             </Stack>
-          ) : null}
+          ) : (
+            <Stack
+              direction="horizontal"
+              className="justify-content-end"
+              style={{
+                width: "100%",
+                height: 52,
+              }}
+            >
+              <Button
+                variant="transparent"
+                className="d-flex justify-content-center ms-auto p-0 pe-3"
+              >
+                <Image
+                  src="/open-new.svg"
+                  alt="Profile"
+                  width={28}
+                  height={28}
+                />
+              </Button>
+            </Stack>
+          )}
         </Card.Footer>
       </Card>
     </>

@@ -3,25 +3,21 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Address } from "viem";
-import { useAccount } from "wagmi";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  Sector,
-} from "recharts";
+import { useAccount, useSwitchChain } from "wagmi";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
+import Button from "react-bootstrap/Button";
 import Modal from "react-bootstrap/Modal";
 import Spinner from "react-bootstrap/Spinner";
 import Dropdown from "react-bootstrap/Dropdown";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
 import GranteeCard from "../../components/GranteeCard";
 import RoundBanner from "../../components/RoundBanner";
+import GranteeDetails from "../../components/GranteeDetails";
 import Ballot from "../../components/Ballot";
 import DistributionPoolFunding from "../../components/DistributionPoolFunding";
+import InfoTooltip from "@/components/InfoTooltip";
 import { ProjectMetadata } from "@/types/project";
 import { Grantee, SortingMethod } from "../../types/grantee";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -38,6 +34,9 @@ export default function FlowCouncil({
 }) {
   const [grantees, setGrantees] = useState<Grantee[]>([]);
   const [sortingMethod, setSortingMethod] = useState(SortingMethod.RANDOM);
+  const [showGranteeDetails, setShowGranteeDetails] = useState<Grantee | null>(
+    null,
+  );
   const [showDistributionPoolFunding, setShowDistributionPoolFunding] =
     useState(false);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
@@ -50,17 +49,18 @@ export default function FlowCouncil({
   const network =
     networks.find((network) => network.id === Number(chainId)) ?? networks[0];
   useMediaQuery();
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
+  const { switchChain } = useSwitchChain();
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const {
+    currentAllocation,
     newAllocation,
     council,
     councilMetadata,
     flowStateProfiles,
     gdaPool,
     token,
-    currentAllocation,
     dispatchNewAllocation,
   } = useCouncil();
 
@@ -69,7 +69,11 @@ export default function FlowCouncil({
       member.account.id === address?.toLowerCase(),
   );
   const shouldConnect = !!poolMember && !poolMember.isConnected;
-  const votingPower = currentAllocation?.votingPower ?? 0;
+  const votingPower =
+    !!address && currentAllocation?.votingPower
+      ? currentAllocation.votingPower
+      : 0;
+  const currentAllocationStringified = JSON.stringify(currentAllocation);
 
   const getGrantee = useCallback(
     (recipient: { id: string; address: string; metadata: ProjectMetadata }) => {
@@ -146,6 +150,18 @@ export default function FlowCouncil({
   }, [grantees]);
 
   useEffect(() => {
+    const currentAllocation = JSON.parse(currentAllocationStringified);
+
+    if (currentAllocation?.allocation) {
+      dispatchNewAllocation({
+        type: "add",
+        currentAllocation,
+        showBallot: false,
+      });
+    }
+  }, [currentAllocationStringified, dispatchNewAllocation]);
+
+  useEffect(() => {
     if (!council || !flowStateProfiles || !gdaPool) {
       return;
     }
@@ -213,25 +229,24 @@ export default function FlowCouncil({
   ]);
 
   useEffect(() => {
+    if (address && connectedChain?.id !== chainId) {
+      switchChain({ chainId });
+    }
+  }, [address, connectedChain, chainId, switchChain]);
+
+  useEffect(() => {
     setGrantees((prev) => sortGrantees(prev));
   }, [sortingMethod, sortGrantees]);
 
-  // Create a consistent pie chart data structure that all charts will use
-  // This ensures wedges appear in exactly the same positions in all charts
   const createConsistentPieData = useCallback(() => {
     if (!grantees.length) {
       return [];
     }
 
-    // First, calculate total allocated votes
     const allocatedVotes = newAllocation?.allocation
       ? newAllocation.allocation.reduce((sum, a) => sum + a.amount, 0)
       : 0;
-
-    // Calculate unallocated votes
     const unallocatedVotes = votingPower - allocatedVotes;
-
-    // Start with all grantees, even those without allocations
     const data = grantees.map((grantee) => {
       const allocation = newAllocation?.allocation?.find(
         (a) => a.grantee === grantee.address,
@@ -240,9 +255,7 @@ export default function FlowCouncil({
       return {
         id: grantee.address,
         name: grantee.metadata.title,
-        // If this grantee has an allocation, use it; otherwise 0
         value: allocation ? allocation.amount : 0,
-        // If this grantee has an allocation, use their color; otherwise gray
         color:
           allocation && allocation.amount > 0
             ? granteeColors[grantee.address]
@@ -250,77 +263,38 @@ export default function FlowCouncil({
       };
     });
 
-    // Also include any allocations for grantees that aren't in the visible list
-    // (this can happen when filtering or pagination)
     if (newAllocation?.allocation) {
       newAllocation.allocation.forEach((allocation) => {
-        // If we already have this grantee in our data, skip it
         if (data.some((item) => item.id === allocation.grantee)) {
           return;
         }
 
-        // Add this allocation to our data
         data.push({
           id: allocation.grantee,
-          name: allocation.grantee.substring(0, 6), // Use address as name if we don't have metadata
+          name: allocation.grantee.substring(0, 6),
           value: allocation.amount,
           color: granteeColors[allocation.grantee] || "#1f77b4",
         });
       });
     }
 
-    // Always add an entry for unallocated votes if there are any
     if (unallocatedVotes > 0) {
       data.push({
-        id: "0xUnallocated",
+        id: "0xdead",
         name: "Unallocated",
         value: unallocatedVotes,
-        color: "#e0e0e0", // Grey color for unallocated votes
+        color: "#e0e0e0",
       });
     }
 
-    // Filter out any entries with zero value to prevent empty wedges
-    // EXCEPT keep unallocated votes even if they're zero (for consistency)
-    return data.filter(
-      (entry) => entry.value > 0 || entry.id === "0xUnallocated",
-    );
+    return data.filter((entry) => entry.value > 0 || entry.id === "0xdead");
   }, [grantees, newAllocation?.allocation, granteeColors, votingPower]);
 
-  // Shared pie data that will be used by all charts
-
-  // Update the shared pie data whenever relevant data changes
   useEffect(() => {
     setSharedPieData(createConsistentPieData());
   }, [createConsistentPieData]);
 
   useEffect(() => setShowConnectionModal(shouldConnect), [shouldConnect]);
-
-  const renderCustomPieChart = () => {
-    if (!sharedPieData.length) return null;
-
-    return (
-      <Pie
-        data={sharedPieData}
-        cx="50%"
-        cy="50%"
-        innerRadius={0}
-        outerRadius={28}
-        dataKey="value"
-        nameKey="name"
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        activeShape={(props: any) => <Sector {...props} />}
-        labelLine={false}
-        isAnimationActive={false}
-        startAngle={-90}
-        endAngle={270}
-        blendStroke={true}
-      >
-        {sharedPieData.map((entry, index) => (
-          <Cell key={`cell-${index}`} fill={entry.color} />
-        ))}
-      </Pie>
-    );
-  };
 
   return (
     <>
@@ -411,6 +385,7 @@ export default function FlowCouncil({
                 units={grantee.units}
                 token={token}
                 votingPower={votingPower}
+                showGranteeDetails={() => setShowGranteeDetails(grantee)}
                 granteeColor={granteeColors[grantee.address]}
               />
             ))}
@@ -425,81 +400,17 @@ export default function FlowCouncil({
           )}
         </Stack>
       </Container>
-
-      {/* Vote Button with Pie Chart */}
-      {newAllocation?.allocation && newAllocation.allocation.length > 0 && (
-        <div
-          className="position-fixed"
-          style={{
-            bottom: "2rem",
-            right: "2rem",
-            zIndex: 3, // just enought to be above the pie charts, but below the drawer
-          }}
-        >
-          <button
-            className="btn btn-primary d-flex align-items-center py-3 px-4 shadow-lg rounded-pill"
-            onClick={() => dispatchNewAllocation({ type: "show-ballot" })}
-            style={{
-              minWidth: "200px",
-              transition: "all 0.2s ease-in-out",
-              transform: "scale(1)",
-              boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.05)";
-              e.currentTarget.style.boxShadow =
-                "0 12px 20px rgba(0, 0, 0, 0.25)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-              e.currentTarget.style.boxShadow = "0 8px 16px rgba(0, 0, 0, 0.2)";
-            }}
-          >
-            <div
-              className="d-flex justify-content-center align-items-center me-3 bg-white rounded-circle"
-              style={{ width: "64px", height: "64px", overflow: "hidden" }}
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Tooltip
-                    formatter={(value, name) => [`${value} votes`, name]}
-                    contentStyle={{
-                      backgroundColor: "rgba(255, 255, 255, 0.9)",
-                      borderRadius: "4px",
-                      fontSize: "12px",
-                    }}
-                  />
-                  {renderCustomPieChart()}
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div style={{ width: "14.5em" }}>
-              <span className="fs-4 fw-semibold d-block">VOTE</span>
-              <small className="fs-6 d-block text-white-50">
-                {
-                  sharedPieData.filter(
-                    (entry) => entry.value > 0 && entry.id !== "0xUnallocated",
-                  ).length
-                }{" "}
-                projects
-                {(() => {
-                  // Calculate unallocated votes
-                  const unallocated =
-                    sharedPieData.find((entry) => entry.id === "0xUnallocated")
-                      ?.value || 0;
-                  if (unallocated > 0) {
-                    return ` (${unallocated} votes unallocated)`;
-                  } else {
-                    return " (all votes allocated)";
-                  }
-                })()}
-              </small>
-            </div>
-          </button>
-        </div>
-      )}
-
-      {showDistributionPoolFunding ? (
+      {showGranteeDetails ? (
+        <GranteeDetails
+          key={showGranteeDetails.id}
+          id={showGranteeDetails.id}
+          chainId={chainId}
+          metadata={showGranteeDetails.metadata}
+          placeholderLogo={showGranteeDetails.placeholderLogo}
+          granteeAddress={showGranteeDetails.address}
+          hide={() => setShowGranteeDetails(null)}
+        />
+      ) : showDistributionPoolFunding ? (
         <DistributionPoolFunding
           network={network}
           hide={() => setShowDistributionPoolFunding(false)}
@@ -532,6 +443,92 @@ export default function FlowCouncil({
           />
         </Modal.Footer>
       </Modal>
+      {newAllocation?.allocation && newAllocation.allocation.length > 0 && (
+        <Stack
+          direction="horizontal"
+          className="position-fixed"
+          style={{
+            width: isMobile ? "100%" : "auto",
+            justifyContent: isMobile ? "center" : "right",
+            bottom: "2rem",
+            right: isMobile ? "auto" : "2rem",
+            zIndex: 3,
+          }}
+        >
+          <InfoTooltip
+            position={{ top: true }}
+            content={<>Click to edit & submit your votes</>}
+            showOnMobile={false}
+            target={
+              <Button
+                className="btn btn-primary d-flex align-items-center gap-2 py-3 px-4 shadow-lg rounded-pill"
+                onClick={() => dispatchNewAllocation({ type: "show-ballot" })}
+                style={{
+                  width: isMobile ? 360 : 400,
+                  transition: "all 0.2s ease-in-out",
+                  transform: "scale(1)",
+                  boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "scale(1.05)";
+                  e.currentTarget.style.boxShadow =
+                    "0 12px 20px rgba(0, 0, 0, 0.25)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                  e.currentTarget.style.boxShadow =
+                    "0 8px 16px rgba(0, 0, 0, 0.2)";
+                }}
+              >
+                <Stack
+                  direction="horizontal"
+                  className="justify-content-center align-items-center bg-white rounded-circle"
+                  style={{ width: 64, height: 64, overflow: "hidden" }}
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      {sharedPieData ? (
+                        <Pie
+                          data={sharedPieData}
+                          dataKey="value"
+                          outerRadius={50}
+                        >
+                          {sharedPieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                      ) : null}
+                    </PieChart>
+                  </ResponsiveContainer>
+                </Stack>
+                <Stack direction="vertical">
+                  <span className="fs-4 fw-semibold d-block text-center">
+                    VOTE
+                  </span>
+                  <small className="fs-6 d-block text-white-50">
+                    {
+                      sharedPieData.filter(
+                        (entry) => entry.value > 0 && entry.id !== "0xdead",
+                      ).length
+                    }{" "}
+                    projects
+                    {(() => {
+                      const unallocated =
+                        sharedPieData.find((entry) => entry.id === "0xdead")
+                          ?.value || 0;
+                      if (unallocated > 0) {
+                        return ` (${unallocated} votes unallocated)`;
+                      } else {
+                        return " (all votes allocated)";
+                      }
+                    })()}
+                  </small>
+                </Stack>
+              </Button>
+            }
+          />
+        </Stack>
+      )}
     </>
   );
 }
