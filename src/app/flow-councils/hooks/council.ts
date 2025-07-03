@@ -13,6 +13,7 @@ export default function useCouncil() {
     currentAllocation,
     newAllocation,
   } = useFlowCouncilContext();
+
   const dispatchNewAllocation = useAllocationDispatchContext();
 
   return {

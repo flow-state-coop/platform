@@ -1,25 +1,29 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Address } from "viem";
-import { useAccount } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
+import Button from "react-bootstrap/Button";
 import Modal from "react-bootstrap/Modal";
 import Spinner from "react-bootstrap/Spinner";
 import Dropdown from "react-bootstrap/Dropdown";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
 import GranteeCard from "../../components/GranteeCard";
 import RoundBanner from "../../components/RoundBanner";
+import GranteeDetails from "../../components/GranteeDetails";
 import Ballot from "../../components/Ballot";
 import DistributionPoolFunding from "../../components/DistributionPoolFunding";
+import InfoTooltip from "@/components/InfoTooltip";
 import { ProjectMetadata } from "@/types/project";
 import { Grantee, SortingMethod } from "../../types/grantee";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useCouncil from "../../hooks/council";
 import { networks } from "@/lib/networks";
-import { shuffle, getPlaceholderImageSrc } from "@/lib/utils";
+import { shuffle, getPlaceholderImageSrc, generateColor } from "@/lib/utils";
 
 export default function FlowCouncil({
   chainId,
@@ -30,9 +34,14 @@ export default function FlowCouncil({
 }) {
   const [grantees, setGrantees] = useState<Grantee[]>([]);
   const [sortingMethod, setSortingMethod] = useState(SortingMethod.RANDOM);
+  const [showGranteeDetails, setShowGranteeDetails] = useState<Grantee | null>(
+    null,
+  );
   const [showDistributionPoolFunding, setShowDistributionPoolFunding] =
     useState(false);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [sharedPieData, setSharedPieData] = useState<any[]>([]);
 
   const skipGrantees = useRef(0);
   const hasNextGrantee = useRef(true);
@@ -40,16 +49,19 @@ export default function FlowCouncil({
   const network =
     networks.find((network) => network.id === Number(chainId)) ?? networks[0];
   useMediaQuery();
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
+  const { switchChain } = useSwitchChain();
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const {
+    currentAllocation,
     newAllocation,
     council,
     councilMetadata,
     flowStateProfiles,
     gdaPool,
     token,
+    dispatchNewAllocation,
   } = useCouncil();
 
   const poolMember = gdaPool?.poolMembers.find(
@@ -57,6 +69,11 @@ export default function FlowCouncil({
       member.account.id === address?.toLowerCase(),
   );
   const shouldConnect = !!poolMember && !poolMember.isConnected;
+  const votingPower =
+    !!address && currentAllocation?.votingPower
+      ? currentAllocation.votingPower
+      : 0;
+  const currentAllocationStringified = JSON.stringify(currentAllocation);
 
   const getGrantee = useCallback(
     (recipient: { id: string; address: string; metadata: ProjectMetadata }) => {
@@ -76,7 +93,7 @@ export default function FlowCouncil({
 
       return {
         id: recipient.id,
-        address: recipient.address,
+        address: recipient.address as `0x${string}`,
         metadata: recipient.metadata,
         bannerCid: recipient.metadata.bannerImg,
         twitter: recipient.metadata.projectTwitter,
@@ -118,6 +135,32 @@ export default function FlowCouncil({
     [sortingMethod],
   );
 
+  const granteeColors = useMemo(() => {
+    if (grantees.length > 0) {
+      const colorMap: Record<string, string> = {};
+
+      grantees.forEach((grantee) => {
+        colorMap[grantee.address] = generateColor(grantee.address + grantee.id);
+      });
+
+      return colorMap;
+    }
+
+    return {};
+  }, [grantees]);
+
+  useEffect(() => {
+    const currentAllocation = JSON.parse(currentAllocationStringified);
+
+    if (currentAllocation?.allocation) {
+      dispatchNewAllocation({
+        type: "add",
+        currentAllocation,
+        showBallot: false,
+      });
+    }
+  }, [currentAllocationStringified, dispatchNewAllocation]);
+
   useEffect(() => {
     if (!council || !flowStateProfiles || !gdaPool) {
       return;
@@ -151,7 +194,7 @@ export default function FlowCouncil({
           grantees.push(
             getGrantee({
               id: profile.id,
-              address: councilGrantee.account,
+              address: councilGrantee.account as `0x${string}`,
               metadata: profile.metadata,
             }),
           );
@@ -168,7 +211,7 @@ export default function FlowCouncil({
         for (const i in prev) {
           grantees[i] = getGrantee({
             id: prev[i].id,
-            address: prev[i].address,
+            address: prev[i].address as `0x${string}`,
             metadata: prev[i].metadata,
           });
         }
@@ -186,8 +229,70 @@ export default function FlowCouncil({
   ]);
 
   useEffect(() => {
+    if (address && connectedChain?.id !== chainId) {
+      switchChain({ chainId });
+    }
+  }, [address, connectedChain, chainId, switchChain]);
+
+  useEffect(() => {
     setGrantees((prev) => sortGrantees(prev));
   }, [sortingMethod, sortGrantees]);
+
+  const createConsistentPieData = useCallback(() => {
+    if (!grantees.length) {
+      return [];
+    }
+
+    const allocatedVotes = newAllocation?.allocation
+      ? newAllocation.allocation.reduce((sum, a) => sum + a.amount, 0)
+      : 0;
+    const unallocatedVotes = votingPower - allocatedVotes;
+    const data = grantees.map((grantee) => {
+      const allocation = newAllocation?.allocation?.find(
+        (a) => a.grantee === grantee.address,
+      );
+
+      return {
+        id: grantee.address,
+        name: grantee.metadata.title,
+        value: allocation ? allocation.amount : 0,
+        color:
+          allocation && allocation.amount > 0
+            ? granteeColors[grantee.address]
+            : "#e0e0e0",
+      };
+    });
+
+    if (newAllocation?.allocation) {
+      newAllocation.allocation.forEach((allocation) => {
+        if (data.some((item) => item.id === allocation.grantee)) {
+          return;
+        }
+
+        data.push({
+          id: allocation.grantee,
+          name: allocation.grantee.substring(0, 6),
+          value: allocation.amount,
+          color: granteeColors[allocation.grantee] || "#1f77b4",
+        });
+      });
+    }
+
+    if (unallocatedVotes > 0) {
+      data.push({
+        id: "0xdead",
+        name: "Unallocated",
+        value: unallocatedVotes,
+        color: "#e0e0e0",
+      });
+    }
+
+    return data.filter((entry) => entry.value > 0 || entry.id === "0xdead");
+  }, [grantees, newAllocation?.allocation, granteeColors, votingPower]);
+
+  useEffect(() => {
+    setSharedPieData(createConsistentPieData());
+  }, [createConsistentPieData]);
 
   useEffect(() => setShowConnectionModal(shouldConnect), [shouldConnect]);
 
@@ -269,7 +374,6 @@ export default function FlowCouncil({
             {grantees.map((grantee: Grantee) => (
               <GranteeCard
                 key={`${grantee.address}-${grantee.id}`}
-                id={grantee.id}
                 granteeAddress={grantee.address}
                 name={grantee.metadata.title}
                 description={grantee.metadata.description}
@@ -279,9 +383,10 @@ export default function FlowCouncil({
                 placeholderBanner={grantee.placeholderBanner}
                 flowRate={grantee.flowRate}
                 units={grantee.units}
-                network={network}
                 token={token}
-                isSelected={false}
+                votingPower={votingPower}
+                showGranteeDetails={() => setShowGranteeDetails(grantee)}
+                granteeColor={granteeColors[grantee.address]}
               />
             ))}
           </div>
@@ -295,7 +400,17 @@ export default function FlowCouncil({
           )}
         </Stack>
       </Container>
-      {showDistributionPoolFunding ? (
+      {showGranteeDetails ? (
+        <GranteeDetails
+          key={showGranteeDetails.id}
+          id={showGranteeDetails.id}
+          chainId={chainId}
+          metadata={showGranteeDetails.metadata}
+          placeholderLogo={showGranteeDetails.placeholderLogo}
+          granteeAddress={showGranteeDetails.address}
+          hide={() => setShowGranteeDetails(null)}
+        />
+      ) : showDistributionPoolFunding ? (
         <DistributionPoolFunding
           network={network}
           hide={() => setShowDistributionPoolFunding(false)}
@@ -328,6 +443,92 @@ export default function FlowCouncil({
           />
         </Modal.Footer>
       </Modal>
+      {newAllocation?.allocation && newAllocation.allocation.length > 0 && (
+        <Stack
+          direction="horizontal"
+          className="position-fixed"
+          style={{
+            width: isMobile ? "100%" : "auto",
+            justifyContent: isMobile ? "center" : "right",
+            bottom: "2rem",
+            right: isMobile ? "auto" : "2rem",
+            zIndex: 3,
+          }}
+        >
+          <InfoTooltip
+            position={{ top: true }}
+            content={<>Click to edit & submit your votes</>}
+            showOnMobile={false}
+            target={
+              <Button
+                className="btn btn-primary d-flex align-items-center gap-2 py-3 px-4 shadow-lg rounded-pill"
+                onClick={() => dispatchNewAllocation({ type: "show-ballot" })}
+                style={{
+                  width: isMobile ? 360 : 400,
+                  transition: "all 0.2s ease-in-out",
+                  transform: "scale(1)",
+                  boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "scale(1.05)";
+                  e.currentTarget.style.boxShadow =
+                    "0 12px 20px rgba(0, 0, 0, 0.25)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                  e.currentTarget.style.boxShadow =
+                    "0 8px 16px rgba(0, 0, 0, 0.2)";
+                }}
+              >
+                <Stack
+                  direction="horizontal"
+                  className="justify-content-center align-items-center bg-white rounded-circle"
+                  style={{ width: 64, height: 64, overflow: "hidden" }}
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      {sharedPieData ? (
+                        <Pie
+                          data={sharedPieData}
+                          dataKey="value"
+                          outerRadius={50}
+                        >
+                          {sharedPieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                      ) : null}
+                    </PieChart>
+                  </ResponsiveContainer>
+                </Stack>
+                <Stack direction="vertical">
+                  <span className="fs-4 fw-semibold d-block text-center">
+                    VOTE
+                  </span>
+                  <small className="fs-6 d-block text-white-50">
+                    {
+                      sharedPieData.filter(
+                        (entry) => entry.value > 0 && entry.id !== "0xdead",
+                      ).length
+                    }{" "}
+                    projects
+                    {(() => {
+                      const unallocated =
+                        sharedPieData.find((entry) => entry.id === "0xdead")
+                          ?.value || 0;
+                      if (unallocated > 0) {
+                        return ` (${unallocated} votes unallocated)`;
+                      } else {
+                        return " (all votes allocated)";
+                      }
+                    })()}
+                  </small>
+                </Stack>
+              </Button>
+            }
+          />
+        </Stack>
+      )}
     </>
   );
 }

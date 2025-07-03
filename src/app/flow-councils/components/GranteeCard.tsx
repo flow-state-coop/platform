@@ -1,26 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { formatEther } from "viem";
-import { useAccount } from "wagmi";
 import removeMarkdown from "remove-markdown";
 import { useClampText } from "use-clamp-text";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
-import Toast from "react-bootstrap/Toast";
-import { Network } from "@/types/network";
 import { Token } from "@/types/token";
-import { CouncilMember } from "../types/councilMember";
-import { useMediaQuery } from "@/hooks/mediaQuery";
 import { fetchIpfsImage } from "@/lib/fetchIpfs";
 import useCouncil from "../hooks/council";
 import { formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 type GranteeProps = {
-  id: string;
   name: string;
-  granteeAddress: string;
+  granteeAddress: `0x${string}`;
   description: string;
   logoCid: string;
   bannerCid: string;
@@ -28,14 +22,14 @@ type GranteeProps = {
   placeholderBanner: string;
   flowRate: bigint;
   units: number;
-  network: Network;
   token: Token;
-  isSelected: boolean;
+  showGranteeDetails: () => void;
+  votingPower: number;
+  granteeColor: string;
 };
 
 export default function Grantee(props: GranteeProps) {
   const {
-    id,
     name,
     granteeAddress,
     description,
@@ -45,39 +39,45 @@ export default function Grantee(props: GranteeProps) {
     placeholderBanner,
     flowRate,
     units,
-    network,
     token,
-    isSelected,
+    showGranteeDetails,
+    votingPower,
+    granteeColor,
   } = props;
 
   const [logoUrl, setLogoUrl] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
-  const [showToast, setShowToast] = useState(false);
 
-  const { address } = useAccount();
-  const { isMobile } = useMediaQuery();
-  const { newAllocation, council, currentAllocation, dispatchNewAllocation } =
-    useCouncil();
+  const { newAllocation, dispatchNewAllocation } = useCouncil();
+  const [percentage, setPercentage] = useState(0);
   const [descriptionRef, { noClamp, clampedText }] = useClampText({
     text: removeMarkdown(description).replace(/\r?\n|\r/g, " "),
     ellipsis: "...",
     lines: 4,
   });
-  const isCouncilMember = !!council?.councilMembers?.find(
-    (councilMember: CouncilMember) =>
-      councilMember.account === address?.toLowerCase(),
-  );
-  const hasAllocated =
-    !!currentAllocation?.allocation?.find(
-      (allocation: { grantee: string }) =>
-        allocation.grantee === granteeAddress,
-    ) ||
-    !!newAllocation?.allocation?.find(
-      (allocation: { grantee: string }) =>
-        allocation.grantee === granteeAddress,
-    );
 
   const monthlyFlow = Number(formatEther(flowRate * BigInt(SECONDS_IN_MONTH)));
+
+  const granteeAllocation = useMemo(
+    () =>
+      newAllocation?.allocation.find(
+        (allocation) => allocation.grantee === granteeAddress,
+      ),
+    [newAllocation, granteeAddress],
+  );
+
+  useEffect(() => {
+    if (!newAllocation?.allocation) {
+      return;
+    }
+
+    const votes =
+      newAllocation.allocation.find(
+        (allocation) => allocation.grantee === granteeAddress,
+      )?.amount ?? 0;
+
+    setPercentage((votes / votingPower) * 100);
+  }, [newAllocation, granteeAddress, votingPower]);
 
   useEffect(() => {
     (async () => {
@@ -95,14 +95,80 @@ export default function Grantee(props: GranteeProps) {
     })();
   }, [logoCid, bannerCid]);
 
+  const calculateAllocationVotes = (percentage: number): number =>
+    Math.round((percentage / 100) * votingPower);
+
+  const handleSlide = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!granteeAllocation) {
+      return;
+    }
+
+    e.stopPropagation();
+    const container = e.currentTarget;
+
+    const containerBoundingRect = container.getBoundingClientRect();
+
+    const move = (e: Event) => {
+      const mouseEvent = e as MouseEvent;
+      const touchEvent = e as TouchEvent;
+      const clientX = touchEvent.touches
+        ? touchEvent.touches[0].clientX
+        : mouseEvent.clientX;
+      const containerPercentage = Math.max(
+        0,
+        ((clientX - 32 - containerBoundingRect.left) /
+          (containerBoundingRect.width - 32)) *
+          100,
+      );
+      const otherAllocations = newAllocation?.allocation.filter(
+        (allocation) => allocation.grantee !== granteeAddress,
+      );
+      const totalOtherVotes =
+        otherAllocations?.reduce(
+          (sum, allocation) => sum + allocation.amount,
+          0,
+        ) ?? 0;
+      const maxAllowedPercentage = Math.round(
+        ((votingPower - totalOtherVotes) / votingPower) * 100,
+      );
+      const newPercentage = Math.min(containerPercentage, maxAllowedPercentage);
+      const votingAmount = calculateAllocationVotes(newPercentage);
+      const maxAllowedVotes = votingPower - totalOtherVotes;
+      const validVotingAmount = Math.min(votingAmount, maxAllowedVotes);
+
+      dispatchNewAllocation({
+        type: "update",
+        allocation: {
+          grantee: granteeAddress,
+          amount: validVotingAmount,
+        },
+      });
+
+      setPercentage(newPercentage);
+    };
+
+    move(e.nativeEvent);
+
+    container.addEventListener("mousemove", move);
+    container.addEventListener("touchmove", move);
+    window.addEventListener("mouseup", () => {
+      container.removeEventListener("mousemove", move);
+    });
+    window.addEventListener("touchend", () => {
+      container.removeEventListener("touchmove", move);
+    });
+  };
+
   return (
     <>
       <Card
-        className="rounded-4 overflow-hidden"
+        className="rounded-4 overflow-hidden cursor-pointer"
+        onClick={showGranteeDetails}
         style={{
-          height: 400,
-          border: isSelected ? "1px solid #247789" : "1px solid #212529",
-          boxShadow: isSelected ? "0px 0px 0px 2px #247789" : "",
+          height: 420,
+          border: "1px solid #212529",
+          boxShadow: "0 0 12px rgba(36, 119, 137, 0.5)",
+          transition: "all 0.2s ease-in-out",
         }}
       >
         <Card.Img
@@ -117,7 +183,7 @@ export default function Grantee(props: GranteeProps) {
           width={52}
           height={52}
           className="rounded-3 position-absolute border border-2 border-light bg-white"
-          style={{ bottom: 270, left: 16 }}
+          style={{ bottom: 300, left: 16 }}
         />
         <Card.Body className="mt-3 pb-0">
           <Card.Text
@@ -151,109 +217,138 @@ export default function Grantee(props: GranteeProps) {
               </Card.Text>
             </Stack>
           </Stack>
-        </Card.Body>
-        <Card.Footer
-          className="d-flex justify-content-between border-0 py-3"
-          style={{ fontSize: "15px", background: "rgb(215, 215, 220)" }}
-        >
-          <Stack
-            direction="horizontal"
-            gap={2}
-            className="justify-content-between w-100"
-          >
-            {isCouncilMember && (
-              <Button
-                variant={hasAllocated ? "secondary" : "primary"}
-                onClick={() => {
-                  if (hasAllocated) {
-                    if (
-                      newAllocation?.allocation &&
-                      newAllocation.allocation.length > 0
-                    ) {
-                      dispatchNewAllocation({ type: "show-ballot" });
-                    } else {
-                      dispatchNewAllocation({
-                        type: "add",
-                        currentAllocation,
-                      });
-                    }
-                  } else {
-                    dispatchNewAllocation({
-                      type: "add",
-                      allocation: { grantee: granteeAddress, amount: 0 },
-                      currentAllocation,
-                    });
-                    setShowToast(true);
-                  }
+          {!!votingPower && (
+            <Stack
+              direction="horizontal"
+              className="justify-content-center mt-4"
+            >
+              <Card.Text
+                className="fw-bold small m-0"
+                style={{ color: granteeColor }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                 }}
-                className="d-flex justify-content-center align-items-center gap-1 w-33 px-5"
               >
-                {hasAllocated ? (
+                {calculateAllocationVotes(percentage)} votes
+              </Card.Text>
+            </Stack>
+          )}
+        </Card.Body>
+        <Card.Footer className="position-relative border-0 px-0 py-0 rounded-3">
+          {votingPower && granteeAllocation ? (
+            <>
+              <Stack
+                direction="horizontal"
+                className="w-100"
+                onMouseDown={handleSlide}
+                onTouchStart={handleSlide}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                }}
+              >
+                <Stack
+                  direction="horizontal"
+                  className="align-items-center rounded-start-3"
+                  style={{
+                    width: `${percentage}%`,
+                    height: 52,
+                    background: granteeColor,
+                    transition: "background 0.3s ease",
+                    cursor: "pointer",
+                    accentColor: granteeColor,
+                  }}
+                >
+                  {percentage > 20 && (
+                    <Card.Text
+                      className="fw-bold text-light px-3 unselectable"
+                      style={{ pointerEvents: "none" }}
+                    >
+                      {percentage.toFixed(0)}%
+                    </Card.Text>
+                  )}
+                </Stack>
+                <Button
+                  className={`p-0 h-100 border-0 rounded-end-3 ${percentage > 0 ? "rounded-start-0" : "rounded-start-3"}`}
+                  style={{ background: granteeColor }}
+                  draggable={false}
+                  onDragStart={(e) => e.preventDefault()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                  }}
+                >
                   <Image
-                    src="/success.svg"
-                    alt="Done"
-                    width={20}
-                    height={20}
+                    src="/drag.svg"
+                    alt=""
+                    width={32}
+                    height={32}
                     style={{
                       filter:
-                        "invert(100%) sepia(100%) saturate(0%) hue-rotate(160deg) brightness(103%) contrast(103%)",
+                        "invert(100%) sepia(0%) saturate(7497%) hue-rotate(175deg) brightness(103%) contrast(103%)",
                     }}
                   />
-                ) : (
-                  <Image
-                    src="/add.svg"
-                    alt="Add"
-                    width={16}
-                    height={16}
-                    style={{
-                      filter:
-                        "invert(100%) sepia(100%) saturate(2%) hue-rotate(281deg) brightness(107%) contrast(101%)",
-                    }}
-                  />
-                )}
+                </Button>
+              </Stack>
+            </>
+          ) : votingPower ? (
+            <Stack
+              direction="horizontal"
+              className="justify-content-center py-2"
+            >
+              <Button
+                className="d-flex gap-1 align-items-center px-4"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  dispatchNewAllocation({
+                    type: "add",
+                    allocation: {
+                      grantee: granteeAddress,
+                      amount: 1,
+                    },
+                    showBallot: false,
+                  });
+                }}
+              >
                 <Image
-                  src="/ballot.svg"
-                  alt="Cart"
-                  width={22}
-                  height={22}
+                  src="/add.svg"
+                  alt=""
+                  width={24}
+                  height={24}
                   style={{
                     filter:
-                      "invert(100%) sepia(100%) saturate(0%) hue-rotate(160deg) brightness(103%) contrast(103%)",
+                      "invert(100%) sepia(0%) saturate(7497%) hue-rotate(175deg) brightness(103%) contrast(103%)",
                   }}
                 />
+                Add to Ballot
               </Button>
-            )}
-            <Button
-              variant="link"
-              href={`https://flowstate.network/projects/${id}/?chainId=${network.id}`}
-              target="_blank"
-              className="d-flex justify-content-center ms-auto p-0"
+            </Stack>
+          ) : (
+            <Stack
+              direction="horizontal"
+              className="justify-content-end"
+              style={{
+                width: "100%",
+                height: 52,
+              }}
             >
-              <Image src="/open-new.svg" alt="Profile" width={28} height={28} />
-            </Button>
-          </Stack>
+              <Button
+                variant="transparent"
+                className="d-flex justify-content-center ms-auto p-0 pe-3"
+              >
+                <Image
+                  src="/open-new.svg"
+                  alt="Profile"
+                  width={28}
+                  height={28}
+                />
+              </Button>
+            </Stack>
+          )}
         </Card.Footer>
       </Card>
-      <Toast
-        show={showToast}
-        delay={3000}
-        autohide
-        style={{
-          position: "fixed",
-          top: 20,
-          right: isMobile ? "" : 20,
-          background: "rgb(219, 252.2, 221)",
-          color: "rgb(30, 96.4, 34)",
-          zIndex: 2,
-        }}
-        onClose={() => setShowToast(false)}
-      >
-        <Toast.Body>
-          <b>Added to ballot!</b>
-          <br />
-          Don't forget to submit it with a transaction.
-        </Toast.Body>
-      </Toast>
     </>
   );
 }
