@@ -17,13 +17,11 @@ export const SUPERVISUAL_BASE_URL = "https://graph.flowstate.network";
 export const OG_DEFAULT_IMAGE_URL =
   "https://opengraph.b-cdn.net/production/images/46f99288-6ea8-4768-af0c-4b716bc1bf02.png?token=_GzabZBVzFhqh2_MDikORxOyaHHx9NygbVgatN7KFHY&height=630&width=1200&expires=33264419569";
 export const IPFS_GATEWAYS = [
+  "https://ipfs.fleek.co",
   "https://silver-definite-penguin-424.mypinata.cloud",
-  "https://nftstorage.link",
-  "https://storry.tv",
   "https://4everland.io",
-  "https://cf-ipfs.com",
-  "https://ipfs.runfission.com",
-  "https://w3s.link",
-  "https://dweb.link",
-  "https://trustless-gateway.link",
+  "https://gateway.pinata.cloud",
+  "https://permaweb.eu.org",
+  "https://ipfs.io",
+  "https://nftstorage.link",
 ];

@@ -183,7 +183,7 @@ export default function Launch(props: LaunchProps) {
 
       const receipt = await publicClient.waitForTransactionReceipt({
         hash,
-        confirmations: 3,
+        confirmations: 5,
       });
       const poolId = parseEventLogs({
         abi: flowSplitterAbi,

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { createVerifiedFetch } from "@helia/verified-fetch";
 import { useClampText } from "use-clamp-text";
 import removeMarkdown from "remove-markdown";
 import Stack from "react-bootstrap/Stack";
@@ -9,7 +8,8 @@ import Image from "react-bootstrap/Image";
 import { Token } from "@/types/token";
 import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import { roundWeiAmount } from "@/lib/utils";
-import { IPFS_GATEWAYS, SECONDS_IN_MONTH } from "@/lib/constants";
+import { fetchIpfsImage } from "@/lib/fetchIpfs";
+import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 type GranteeProps = {
   name: string;
@@ -71,42 +71,26 @@ export default function Grantee(props: GranteeProps) {
 
   useEffect(() => {
     (async () => {
-      const verifiedFetch = await createVerifiedFetch({
-        gateways: IPFS_GATEWAYS,
-      });
-
       if (logoCid) {
-        try {
-          const logoRes = await verifiedFetch(`ipfs://${logoCid}`);
-          const logoBlob = await logoRes.blob();
-          const logoUrl = URL.createObjectURL(logoBlob);
+        const logoUrl = await fetchIpfsImage(logoCid);
 
-          setLogoUrl(logoUrl);
-        } catch (err) {
-          console.error(err);
-        }
+        setLogoUrl(logoUrl);
       }
 
       if (bannerCid) {
-        try {
-          const bannerRes = await verifiedFetch(`ipfs://${bannerCid}`);
-          const bannerBlob = await bannerRes.blob();
-          const bannerUrl = URL.createObjectURL(bannerBlob);
+        const bannerUrl = await fetchIpfsImage(bannerCid);
 
-          setBannerUrl(bannerUrl);
-        } catch (err) {
-          console.error(err);
-        }
+        setBannerUrl(bannerUrl);
       }
     })();
   }, [logoCid, bannerCid]);
 
   return (
     <Card
-      className="rounded-4 overflow-hidden cursor-pointer"
+      className="rounded-4 overflow-hidden cursor-pointer shadow"
       style={{
-        height: 418,
-        border: isSelected ? "1px solid #247789" : "1px solid #212529",
+        height: 438,
+        border: isSelected ? "1px solid #247789" : "",
         boxShadow: isSelected ? "0px 0px 0px 2px #247789" : "",
       }}
       onClick={selectGrantee}
@@ -123,7 +107,7 @@ export default function Grantee(props: GranteeProps) {
         width={52}
         height={52}
         className="rounded-3 position-absolute border border-2 border-light bg-white"
-        style={{ bottom: 288, left: 16 }}
+        style={{ bottom: 308, left: 16 }}
       />
       <Card.Body className="mt-3 pb-0">
         <Card.Text
@@ -155,9 +139,18 @@ export default function Grantee(props: GranteeProps) {
             <Card.Text as="small" className="m-0">
               {monthlyAllocation}
             </Card.Text>
-            <Card.Text as="small" className="m-0">
-              {allocationTokenInfo.symbol}/mo
-            </Card.Text>
+            <Stack
+              direction="horizontal"
+              gap={1}
+              className="flex-wrap justify-content-center"
+            >
+              <Card.Text as="small" className="m-0">
+                {allocationTokenInfo.symbol}
+              </Card.Text>
+              <Card.Text as="small" className="m-0">
+                /mo
+              </Card.Text>
+            </Stack>
           </Stack>
           <Stack direction="vertical" className="align-items-center w-33">
             <Card.Text as="small" className="m-0 fw-bold">
@@ -166,9 +159,18 @@ export default function Grantee(props: GranteeProps) {
             <Card.Text as="small" className="m-0">
               {monthlyMatching}
             </Card.Text>
-            <Card.Text as="small" className="m-0">
-              {matchingTokenInfo.symbol}/mo
-            </Card.Text>
+            <Stack
+              direction="horizontal"
+              gap={1}
+              className="flex-wrap justify-content-center"
+            >
+              <Card.Text as="small" className="m-0">
+                {matchingTokenInfo.symbol}
+              </Card.Text>
+              <Card.Text as="small" className="m-0">
+                /mo
+              </Card.Text>
+            </Stack>
           </Stack>
         </Stack>
       </Card.Body>

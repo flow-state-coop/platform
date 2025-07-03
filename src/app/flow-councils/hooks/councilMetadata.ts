@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { createVerifiedFetch } from "@helia/verified-fetch";
-import { IPFS_GATEWAYS } from "@/lib/constants";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
 
 export default function useCouncilMetadata(cid: string) {
   const [metadata, setMetadata] = useState({ name: "", description: "" });
@@ -11,17 +10,10 @@ export default function useCouncilMetadata(cid: string) {
         return;
       }
 
-      try {
-        const verifiedFetch = await createVerifiedFetch({
-          gateways: IPFS_GATEWAYS,
-        });
+      const metadata = await fetchIpfsJson(cid);
 
-        const metadataRes = await verifiedFetch(`ipfs://${cid}`);
-        const metadata = await metadataRes.json();
-
+      if (metadata) {
         setMetadata(metadata);
-      } catch (err) {
-        console.error(err);
       }
     })();
   }, [cid]);

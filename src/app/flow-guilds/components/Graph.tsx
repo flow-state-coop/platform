@@ -45,7 +45,7 @@ type GraphProps = {
 };
 
 const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-const nodeWidth = 100;
+const nodeWidth = 140;
 const nodeHeight = 100;
 
 const getLayoutedElements = (
@@ -305,9 +305,7 @@ function CustomNode(props: NodeProps<Node>) {
         <span style={{ fontSize: "0.7rem" }}>
           {data?.label?.toString() ?? ""}
         </span>
-        {data.isDistributor ? (
-          <span>{`${parseFloat(((data.percentage as number) * 100).toFixed(2))}%`}</span>
-        ) : (
+        {!data.isDistributor && (
           <span>{`${parseFloat(((Number(data.units) / Number(data.totalUnits)) * 100).toFixed(2))}%`}</span>
         )}
       </Stack>

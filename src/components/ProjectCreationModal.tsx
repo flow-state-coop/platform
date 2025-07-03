@@ -1,7 +1,12 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import { Address, parseEventLogs } from "viem";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import {
+  useAccount,
+  useSwitchChain,
+  usePublicClient,
+  useWriteContract,
+} from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
@@ -17,6 +22,7 @@ import { registryAbi } from "@/lib/abi/registry";
 
 type ProjectCreationModalProps = {
   show: boolean;
+  chainId: number;
   handleClose: () => void;
   registryAddress: string;
   setNewProfileId: (newProfileId: string) => void;
@@ -26,6 +32,7 @@ type MetadataForm = {
   title: string;
   description: string;
   website: string;
+  appLink: string;
   projectTwitter: string;
   userGithub: string;
   projectGithub: string;
@@ -38,12 +45,14 @@ type MetadataForm = {
 };
 
 export default function ProjectCreationModal(props: ProjectCreationModalProps) {
-  const { show, handleClose, registryAddress, setNewProfileId } = props;
+  const { show, chainId, handleClose, registryAddress, setNewProfileId } =
+    props;
 
   const [metadataForm, setMetadataForm] = useState<MetadataForm>({
     title: "",
     description: "",
     website: "",
+    appLink: "",
     projectTwitter: "",
     userGithub: "",
     projectGithub: "",
@@ -56,6 +65,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
   });
   const [projectLogoBlob, setProjectLogoBlob] = useState<Blob | null>(null);
   const [projectBannerBlob, setProjectBannerBlob] = useState<Blob | null>(null);
+  const [validated, setValidated] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [projectLogoError, setProjectLogoError] = useState("");
   const [projectBannerError, setProjectBannerError] = useState("");
@@ -64,9 +74,19 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
   const fileInputRefBanner = useRef<HTMLInputElement>(null);
 
   const { openConnectModal } = useConnectModal();
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
   const { writeContractAsync } = useWriteContract();
+  const { switchChain } = useSwitchChain();
   const publicClient = usePublicClient();
+
+  const isValid =
+    !!metadataForm.title &&
+    !!metadataForm.description &&
+    !!metadataForm.website &&
+    !!metadataForm.appLink &&
+    !!metadataForm.userGithub &&
+    !!projectLogoBlob &&
+    !!projectBannerBlob;
 
   const handleFileUploadLogo = () => {
     if (!fileInputRefLogo.current?.files) {
@@ -134,6 +154,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
           extractGithubUsername(metadataForm.projectGithub) ??
           metadataForm.projectGithub,
         website: metadataForm.website ? `https://${metadataForm.website}` : "",
+        appLink: metadataForm.appLink ? `https://${metadataForm.appLink}` : "",
         logoImg,
         bannerImg,
         logoImgData: {},
@@ -184,6 +205,18 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
     }
   };
 
+  const handleSubmit = () => {
+    setValidated(true);
+
+    if (!address && openConnectModal) {
+      openConnectModal();
+    } else if (connectedChain?.id !== chainId) {
+      switchChain({ chainId });
+    } else if (isValid) {
+      handleCreateProject();
+    }
+  };
+
   return (
     <Modal show={show} size="lg" centered scrollable onHide={handleClose}>
       <Modal.Header closeButton className="border-0">
@@ -197,6 +230,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
               type="text"
               value={metadataForm.title}
               placeholder="Your project name"
+              isInvalid={validated && !metadataForm.title}
               onChange={(e) =>
                 setMetadataForm({ ...metadataForm, title: e.target.value })
               }
@@ -204,7 +238,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
           </Form.Group>
           <Form.Group className="mb-4">
             <Form.Label>
-              Project Description{" "}
+              Project Description*{" "}
               <Link
                 href="https://www.markdownguide.org/basic-syntax/"
                 target="_blank"
@@ -219,6 +253,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
               rows={6}
               value={metadataForm.description}
               placeholder="Your project description"
+              isInvalid={validated && !metadataForm.description}
               onChange={(e) =>
                 setMetadataForm({
                   ...metadataForm,
@@ -229,13 +264,14 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
           </Form.Group>
           <Form.Group className="d-flex flex-column mb-4">
             <Form.Label>
-              Project Logo (1:1 Aspect Ratio, No larger than 256 KB)
+              Project Logo* (1:1 Aspect Ratio, No larger than 256 KB)
             </Form.Label>
             <Form.Control
               type="file"
               hidden
               accept=".png,.jpeg,.jpg"
               ref={fileInputRefLogo}
+              isInvalid={validated && !projectLogoBlob}
               onChange={handleFileUploadLogo}
             />
             <Stack
@@ -248,7 +284,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
                 style={{
                   width: 256,
                   height: 128,
-                  border: "1px dashed #adb5bd",
+                  border: `1px dashed ${validated && !projectLogoBlob ? "#dc3545" : "#adb5bd"}`,
                   color: "#adb5bd",
                 }}
                 onClick={() => fileInputRefLogo.current?.click()}
@@ -291,13 +327,14 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
           </Form.Group>
           <Form.Group className="d-flex flex-column mb-4">
             <Form.Label>
-              Project Banner (3:1 Aspect Ratio, No larger than 1 MB)
+              Project Banner* (3:1 Aspect Ratio, No larger than 1 MB)
             </Form.Label>
             <Form.Control
               type="file"
               hidden
               accept=".png,.jpeg,.jpg"
               ref={fileInputRefBanner}
+              isInvalid={validated && !projectLogoBlob}
               onChange={handleFileUploadBanner}
             />
             <Stack
@@ -310,7 +347,7 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
                 style={{
                   width: 256,
                   height: 128,
-                  border: "1px dashed #adb5bd",
+                  border: `1px dashed ${validated && !projectLogoBlob ? "#dc3545" : "#adb5bd"}`,
                   color: "#adb5bd",
                 }}
                 onClick={() => fileInputRefBanner.current?.click()}
@@ -351,17 +388,36 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
             </Stack>
           </Form.Group>
           <Form.Group className="mb-4">
-            <Form.Label>Project Website</Form.Label>
+            <Form.Label>Project Website*</Form.Label>
             <InputGroup>
               <InputGroup.Text>https://</InputGroup.Text>
               <Form.Control
                 type="text"
                 value={metadataForm.website}
                 placeholder="example.com"
+                isInvalid={validated && !metadataForm.website}
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
                     website: e.target.value,
+                  })
+                }
+              />
+            </InputGroup>
+          </Form.Group>
+          <Form.Group className="mb-4">
+            <Form.Label>Application Link*</Form.Label>
+            <InputGroup>
+              <InputGroup.Text>https://</InputGroup.Text>
+              <Form.Control
+                type="text"
+                value={metadataForm.appLink}
+                isInvalid={validated && !metadataForm.appLink}
+                placeholder="app.example.com"
+                onChange={(e) =>
+                  setMetadataForm({
+                    ...metadataForm,
+                    appLink: e.target.value,
                   })
                 }
               />
@@ -385,13 +441,14 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
             </InputGroup>
           </Form.Group>
           <Form.Group className="mb-4">
-            <Form.Label>Your Github Username</Form.Label>
+            <Form.Label>Your Github Username*</Form.Label>
             <InputGroup>
               <InputGroup.Text>https://github.com/</InputGroup.Text>
               <Form.Control
                 type="text"
                 value={metadataForm.userGithub}
                 placeholder="yourusername"
+                isInvalid={validated && !metadataForm.userGithub}
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -525,13 +582,20 @@ export default function ProjectCreationModal(props: ProjectCreationModalProps) {
         </Form>
       </Modal.Body>
       <Modal.Footer className="border-0">
-        <Button
-          disabled={!metadataForm.title}
-          className="w-25 text-light"
-          onClick={address ? handleCreateProject : openConnectModal}
-        >
-          {isCreatingProject ? <Spinner size="sm" /> : "Create"}
-        </Button>
+        <Stack direction="vertical" gap={2} className="align-items-end">
+          <Button
+            disabled={validated && !isValid}
+            className="w-25 text-light"
+            onClick={handleSubmit}
+          >
+            {isCreatingProject ? <Spinner size="sm" /> : "Create"}
+          </Button>
+          {validated && !isValid && (
+            <Card.Text className="text-danger">
+              *Please complete the required fields.
+            </Card.Text>
+          )}
+        </Stack>
       </Modal.Footer>
     </Modal>
   );

@@ -23,8 +23,10 @@ import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
-import { networks } from "@/lib/networks";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
+import { networks } from "../lib/networks";
 import { strategyAbi } from "@/lib/abi/strategy";
+import { superTokenAbi } from "@/lib/abi/superToken";
 import { erc20Abi } from "@/lib/abi/erc20";
 import { ZERO_ADDRESS } from "@/lib/constants";
 
@@ -76,7 +78,6 @@ const RECIPIENTS_QUERY = gql`
       id
       recipientAddress
       anchorAddress
-      metadata
       metadataCid
       status
     }
@@ -95,12 +96,12 @@ const SF_ACCOUNT_QUERY = gql`
         balanceUntilUpdatedAt
         updatedAtTimestamp
         totalNetFlowRate
-        token {
-          id
-          isNativeAssetSuperToken
-          underlyingAddress
-        }
       }
+    }
+    token(id: $token) {
+      id
+      isNativeAssetSuperToken
+      underlyingAddress
     }
   }
 `;
@@ -114,6 +115,7 @@ export default function Review(props: ReviewProps) {
   const [cancelingRecipients, setCancelingRecipients] = useState<
     CancelingRecipient[]
   >([]);
+  const [recipients, setRecipients] = useState<Recipient[] | null>(null);
   const [selectedRecipient, setSelectedRecipient] = useState<Recipient | null>(
     null,
   );
@@ -146,7 +148,6 @@ export default function Review(props: ReviewProps) {
   });
   const wagmiConfig = useConfig();
 
-  const recipients = queryRes?.recipients ?? null;
   const pool = queryRes?.pool ?? null;
   const allocationToken = pool ? (pool.allocationToken as Address) : null;
   const network = networks.filter((network) => network.id === chainId)[0];
@@ -169,9 +170,13 @@ export default function Review(props: ReviewProps) {
     pollInterval: 10000,
   });
 
+  const isAllocationTokenNativeSuperToken =
+    superfluidQueryRes?.token?.isNativeAssetSuperToken;
+  const allocationTokenUnderlying =
+    superfluidQueryRes?.token?.underlyingAddress;
   const isAllocationTokenPureSuperToken =
-    !superfluidQueryRes?.account?.token?.isNativeAssetSuperToken &&
-    superfluidQueryRes?.account?.token?.underlyingAddress === ZERO_ADDRESS;
+    !isAllocationTokenNativeSuperToken &&
+    allocationTokenUnderlying === ZERO_ADDRESS;
   const allocationTokenBalance = useFlowingAmount(
     BigInt(
       superfluidQueryRes?.account?.accountTokenSnapshots[0]
@@ -184,6 +189,26 @@ export default function Review(props: ReviewProps) {
         0,
     ),
   );
+
+  useEffect(() => {
+    (async () => {
+      if (!queryRes?.recipients) {
+        return;
+      }
+
+      const recipients = [];
+
+      for (const recipient of queryRes.recipients) {
+        const metadata = await fetchIpfsJson(recipient.metadataCid);
+
+        if (metadata) {
+          recipients.push({ ...recipient, metadata });
+        }
+      }
+
+      setRecipients(recipients);
+    })();
+  }, [queryRes?.recipients]);
 
   useEffect(() => {
     if (!pool) {
@@ -321,6 +346,45 @@ export default function Review(props: ReviewProps) {
     }
   };
 
+  const handleWrap = async () => {
+    if (!allocationToken) {
+      throw Error("Allocation token not found");
+    }
+
+    if (!initialSuperAppBalance) {
+      throw Error("Initial Superapp Balance not found");
+    }
+
+    if (!isAllocationTokenNativeSuperToken) {
+      await writeContract(wagmiConfig, {
+        address: allocationTokenUnderlying,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [allocationToken, initialSuperAppBalance * BigInt(25)],
+      });
+    }
+
+    const hash = await writeContract(wagmiConfig, {
+      address: allocationToken,
+      abi: superTokenAbi,
+      functionName: isAllocationTokenNativeSuperToken
+        ? "upgradeByETH"
+        : "upgrade",
+      args: isAllocationTokenNativeSuperToken
+        ? []
+        : [initialSuperAppBalance * BigInt(25)],
+      value: isAllocationTokenNativeSuperToken
+        ? initialSuperAppBalance * BigInt(25)
+        : BigInt(0),
+    });
+
+    await waitForTransactionReceipt(wagmiConfig, {
+      chainId: network.id,
+      hash: hash,
+      confirmations: 2,
+    });
+  };
+
   return (
     <>
       <Sidebar />
@@ -331,7 +395,7 @@ export default function Review(props: ReviewProps) {
               Program not found, please select one from{" "}
               <Link href="/sqf">Program Selection</Link>
             </Card.Text>
-          ) : loading || !chainId ? (
+          ) : loading || !chainId || !recipients ? (
             <Spinner className="m-auto" />
           ) : !poolId ? (
             <Card.Text>
@@ -603,7 +667,7 @@ export default function Review(props: ReviewProps) {
                 className="align-items-start mt-4"
               >
                 <Image src="/info.svg" alt="info" width={24} />
-                <Stack direction="vertical">
+                <Stack direction="vertical" className="justify-content-center">
                   <Card.Text className="m-0">
                     A small {allocationTokenSymbol} deposit transaction is
                     required before adding grantees to the pool.
@@ -625,13 +689,12 @@ export default function Review(props: ReviewProps) {
                     {!isAllocationTokenPureSuperToken && (
                       <>
                         or{" "}
-                        <Card.Link
-                          href="https://app.superfluid.finance/wrap?upgrade"
-                          target="_blank"
-                          className="text-primary text-decoration-none"
+                        <span
+                          className="p-0 text-primary cursor-pointer"
+                          onClick={handleWrap}
                         >
                           Wrap
-                        </Card.Link>
+                        </span>
                       </>
                     )}{" "}
                     to {allocationTokenSymbol}

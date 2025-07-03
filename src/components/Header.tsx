@@ -32,6 +32,10 @@ export default function Header() {
             pathname?.startsWith("/flow-councils/permissions") ||
             pathname?.startsWith("/flow-councils/membership") ||
             pathname?.startsWith("/flow-councils/review") ||
+            pathname?.startsWith("/gooddollar/admin") ||
+            pathname?.startsWith("/gooddollar/permissions") ||
+            pathname?.startsWith("/gooddollar/membership") ||
+            pathname?.startsWith("/gooddollar/review") ||
             pathname?.startsWith("/grantee") ||
             pathname?.startsWith("/flow-guilds") ||
             pathname?.startsWith("/terms") ||
@@ -56,7 +60,8 @@ export default function Header() {
         />
         <Stack direction="horizontal" gap={3}>
           <Suspense>
-            {params.chainId && params.councilId ? (
+            {pathname === "/gooddollar" ||
+            (params.chainId && params.councilId) ? (
               <FlowCouncilWallet />
             ) : (
               <ConnectWallet />

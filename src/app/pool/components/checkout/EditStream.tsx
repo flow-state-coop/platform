@@ -72,7 +72,7 @@ export default function EditStream(props: EditStreamProps) {
     if (isNumber(valueWithoutCommas)) {
       setAmountPerTimeInterval(
         `${
-          isNativeSuperToken && parseFloat(valueWithoutCommas) < 1000
+          isNativeSuperToken || parseFloat(valueWithoutCommas) < 1000
             ? value.replace(/ /g, "")
             : formatNumberWithCommas(valueWithoutCommas)
         }`,

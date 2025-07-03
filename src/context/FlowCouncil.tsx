@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useReducer } from "react";
-import { useParams } from "next/navigation";
+import { usePathname, useParams, useSearchParams } from "next/navigation";
 import { useAccount } from "wagmi";
 import { ProjectMetadata } from "@/types/project";
 import { GDAPool } from "@/types/gdaPool";
@@ -12,6 +12,7 @@ import useFlowStateProfilesQuery from "@/app/flow-councils/hooks/flowStateProfil
 import useFlowCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 import useGdaPoolQuery from "@/app/flow-councils/hooks/gdaPoolQuery";
 import { Token } from "@/types/token";
+import { councilConfig as goodDollarCouncilConfig } from "@/app/gooddollar/lib/councilConfig";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
 type Council = {
@@ -45,7 +46,7 @@ export const FlowCouncilContext = createContext<{
   council?: Council;
   councilMetadata: { name: string; description: string };
   currentAllocation?: CurrentAllocation;
-  flowStateProfiles?: FlowStateProfile[];
+  flowStateProfiles: FlowStateProfile[] | null;
   gdaPool?: GDAPool;
   token: Token;
   newAllocation?: NewAllocation;
@@ -147,9 +148,23 @@ export function FlowCouncilContextProvider({
   children: React.ReactNode;
 }) {
   const { address } = useAccount();
+  const pathname = usePathname();
   const params = useParams();
-  const chainId = params.chainId;
-  const councilId = params.councilId as string;
+  const searchParams = useSearchParams();
+  const chainId =
+    pathname.startsWith("/gooddollar") && searchParams.get("chainId")
+      ? searchParams.get("chainId")
+      : pathname.startsWith("/gooddollar")
+        ? 42220
+        : params.chainId
+          ? params.chainId.toString()
+          : DEFAULT_CHAIN_ID;
+  const councilId =
+    pathname.startsWith("/gooddollar") &&
+    chainId &&
+    goodDollarCouncilConfig[chainId]?.councilAddress
+      ? goodDollarCouncilConfig[chainId].councilAddress
+      : (params.councilId as string);
   const network =
     networks.find(
       (network) => network.id === Number(chainId ?? DEFAULT_CHAIN_ID),

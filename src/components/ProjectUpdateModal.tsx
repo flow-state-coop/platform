@@ -1,7 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Address } from "viem";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import {
+  useAccount,
+  useSwitchChain,
+  usePublicClient,
+  useWriteContract,
+} from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
@@ -11,15 +16,15 @@ import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
-import { createVerifiedFetch } from "@helia/verified-fetch";
 import { pinFileToIpfs, pinJsonToIpfs } from "@/lib/ipfs";
 import { Project } from "@/types/project";
+import { fetchIpfsImage } from "@/lib/fetchIpfs";
 import { extractTwitterHandle, extractGithubUsername } from "@/lib/utils";
 import { registryAbi } from "@/lib/abi/registry";
-import { IPFS_GATEWAYS } from "@/lib/constants";
 
 type ProjectUpdateModalProps = {
   show: boolean;
+  chainId: number;
   handleClose: () => void;
   registryAddress: string;
   project: Project;
@@ -29,6 +34,7 @@ type MetadataForm = {
   title: string;
   description: string;
   website: string;
+  appLink: string;
   projectTwitter: string;
   userGithub: string;
   projectGithub: string;
@@ -41,13 +47,14 @@ type MetadataForm = {
 };
 
 export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
-  const { show, handleClose, registryAddress, project } = props;
+  const { show, chainId, handleClose, registryAddress, project } = props;
   const { metadata: projectMetadata } = project;
 
   const [metadataForm, setMetadataForm] = useState<MetadataForm>({
     title: projectMetadata.title,
     description: projectMetadata.description,
     website: projectMetadata.website?.replace("https://", ""),
+    appLink: projectMetadata.appLink?.replace("https://", ""),
     projectTwitter: projectMetadata.projectTwitter,
     userGithub: projectMetadata.userGithub,
     projectGithub: projectMetadata.projectGithub,
@@ -63,35 +70,42 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
   const [projectLogoError, setProjectLogoError] = useState("");
   const [projectBannerError, setProjectBannerError] = useState("");
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [validated, setValidated] = useState(false);
 
   const fileInputRefLogo = useRef<HTMLInputElement>(null);
   const fileInputRefBanner = useRef<HTMLInputElement>(null);
 
   const { openConnectModal } = useConnectModal();
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
+  const { switchChain } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
 
+  const isValid =
+    !!metadataForm.title &&
+    !!metadataForm.description &&
+    !!metadataForm.website &&
+    !!metadataForm.appLink &&
+    !!metadataForm.userGithub &&
+    !!projectLogoBlob &&
+    !!projectBannerBlob;
+
   useEffect(() => {
     (async () => {
-      const verifiedFetch = await createVerifiedFetch({
-        gateways: IPFS_GATEWAYS,
-      });
-
       if (projectMetadata.logoImg) {
-        const logoImgRes = await verifiedFetch(
-          `ipfs://${projectMetadata.logoImg}`,
-        );
+        const logoImgUrl = await fetchIpfsImage(projectMetadata.logoImg);
+        const res = await fetch(logoImgUrl);
+        const blob = await res.blob();
 
-        setProjectLogoBlob(await logoImgRes.blob());
+        setProjectLogoBlob(blob);
       }
 
       if (projectMetadata.bannerImg) {
-        const bannerImgRes = await verifiedFetch(
-          `ipfs://${projectMetadata.bannerImg}`,
-        );
+        const bannerImgUrl = await fetchIpfsImage(projectMetadata.bannerImg);
+        const res = await fetch(bannerImgUrl);
+        const blob = await res.blob();
 
-        setProjectBannerBlob(await bannerImgRes.blob());
+        setProjectBannerBlob(blob);
       }
     })();
   }, [projectMetadata.logoImg, projectMetadata.bannerImg]);
@@ -162,6 +176,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
           extractGithubUsername(metadataForm.projectGithub) ??
           metadataForm.projectGithub,
         website: metadataForm.website ? `https://${metadataForm.website}` : "",
+        appLink: metadataForm.appLink ? `https://${metadataForm.appLink}` : "",
         logoImg,
         bannerImg,
         logoImgData: {},
@@ -189,6 +204,18 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
     }
   };
 
+  const handleSubmit = () => {
+    setValidated(true);
+
+    if (!address && openConnectModal) {
+      openConnectModal();
+    } else if (connectedChain?.id !== chainId) {
+      switchChain({ chainId });
+    } else if (isValid) {
+      handleUpdateProject();
+    }
+  };
+
   return (
     <Modal show={show} size="lg" centered scrollable onHide={handleClose}>
       <Modal.Header closeButton className="border-0">
@@ -201,6 +228,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
             <Form.Control
               type="text"
               value={metadataForm.title}
+              isInvalid={validated && !metadataForm.title}
               placeholder="Your project name"
               onChange={(e) =>
                 setMetadataForm({ ...metadataForm, title: e.target.value })
@@ -209,7 +237,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
           </Form.Group>
           <Form.Group className="mb-4">
             <Form.Label>
-              Project Description{" "}
+              Project Description*{" "}
               <Link
                 href="https://www.markdownguide.org/basic-syntax/"
                 target="_blank"
@@ -223,6 +251,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
               as="textarea"
               rows={6}
               value={metadataForm.description}
+              isInvalid={validated && !metadataForm.description}
               placeholder="Your project description"
               onChange={(e) =>
                 setMetadataForm({
@@ -234,11 +263,12 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
           </Form.Group>
           <Form.Group className="d-flex flex-column mb-4">
             <Form.Label>
-              Project Logo (1:1 Aspect Ratio, No larger than 256 KB)
+              Project Logo* (1:1 Aspect Ratio, No larger than 256 KB)
             </Form.Label>
             <Form.Control
               type="file"
               hidden
+              isInvalid={validated && !metadataForm.description}
               accept=".png,.jpeg,.jpg"
               ref={fileInputRefLogo}
               onChange={handleFileUploadLogo}
@@ -253,7 +283,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
                 style={{
                   width: 256,
                   height: 128,
-                  border: "1px dashed #adb5bd",
+                  border: `1px dashed ${validated && !projectLogoBlob ? "#dc3545" : "#adb5bd"}`,
                   color: "#adb5bd",
                 }}
                 onClick={() => fileInputRefLogo.current?.click()}
@@ -296,11 +326,12 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
           </Form.Group>
           <Form.Group className="d-flex flex-column mb-4">
             <Form.Label>
-              Project Banner (3:1 Aspect Ratio, No larger than 1 MB)
+              Project Banner* (3:1 Aspect Ratio, No larger than 1 MB)
             </Form.Label>
             <Form.Control
               type="file"
               hidden
+              isInvalid={validated && !metadataForm.description}
               accept=".png,.jpeg,.jpg"
               ref={fileInputRefBanner}
               onChange={handleFileUploadBanner}
@@ -315,7 +346,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
                 style={{
                   width: 256,
                   height: 128,
-                  border: "1px dashed #adb5bd",
+                  border: `1px dashed ${validated && !projectBannerBlob ? "#dc3545" : "#adb5bd"}`,
                   color: "#adb5bd",
                 }}
                 onClick={() => fileInputRefBanner.current?.click()}
@@ -356,17 +387,36 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
             </Stack>
           </Form.Group>
           <Form.Group className="mb-4">
-            <Form.Label>Project Website</Form.Label>
+            <Form.Label>Project Website*</Form.Label>
             <InputGroup>
               <InputGroup.Text>https://</InputGroup.Text>
               <Form.Control
                 type="text"
                 value={metadataForm.website}
                 placeholder="example.com"
+                isInvalid={validated && !metadataForm.website}
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
                     website: e.target.value,
+                  })
+                }
+              />
+            </InputGroup>
+          </Form.Group>
+          <Form.Group className="mb-4">
+            <Form.Label>Application Link*</Form.Label>
+            <InputGroup>
+              <InputGroup.Text>https://</InputGroup.Text>
+              <Form.Control
+                type="text"
+                value={metadataForm.appLink}
+                isInvalid={validated && !metadataForm.appLink}
+                placeholder="app.example.com"
+                onChange={(e) =>
+                  setMetadataForm({
+                    ...metadataForm,
+                    appLink: e.target.value,
                   })
                 }
               />
@@ -390,13 +440,14 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
             </InputGroup>
           </Form.Group>
           <Form.Group className="mb-4">
-            <Form.Label>Your Github Username</Form.Label>
+            <Form.Label>Your Github Username*</Form.Label>
             <InputGroup>
               <InputGroup.Text>https://github.com/</InputGroup.Text>
               <Form.Control
                 type="text"
                 value={metadataForm.userGithub}
                 placeholder="yourusername"
+                isInvalid={validated && !metadataForm.userGithub}
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -528,13 +579,20 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
         </Form>
       </Modal.Body>
       <Modal.Footer className="border-0">
-        <Button
-          disabled={!metadataForm.title}
-          className="w-25 text-light"
-          onClick={address ? handleUpdateProject : openConnectModal}
-        >
-          {isCreatingProject ? <Spinner size="sm" /> : "Update"}
-        </Button>
+        <Stack direction="vertical" gap={2} className="align-items-end">
+          <Button
+            disabled={validated && !isValid}
+            className="w-25 text-light"
+            onClick={handleSubmit}
+          >
+            {isCreatingProject ? <Spinner size="sm" /> : "Update"}
+          </Button>
+          {validated && !isValid && (
+            <Card.Text className="text-danger">
+              *Please complete the required fields.
+            </Card.Text>
+          )}
+        </Stack>
       </Modal.Footer>
     </Modal>
   );

@@ -5,6 +5,8 @@ const SCHEMA_NAME = "1";
 
 interface Database {
   applications: ApplicationTable;
+  supEpochs: SupEpochs;
+  supAddresses: SupAddresses;
 }
 
 interface ApplicationTable {
@@ -15,6 +17,22 @@ interface ApplicationTable {
   metadata: string;
   status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
 }
+
+interface SupEpochs {
+  id: number;
+  chainId: number;
+  startTimestamp: number;
+  endTimestamp: number;
+}
+
+interface SupAddresses {
+  address: string;
+  chainId: number;
+  epoch: number;
+  eventEmitted: SupEvent;
+}
+
+export type SupEvent = "voted" | "shared-vote" | "shared-distribution";
 
 export const db = new Kysely<Database>({
   dialect: new NeonDialect({

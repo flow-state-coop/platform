@@ -26,6 +26,8 @@ import CopyTooltip from "@/components/CopyTooltip";
 import useSiwe from "@/hooks/siwe";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { councilAbi } from "@/lib/abi/council";
+import { Project } from "@/types/project";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { getApolloClient } from "@/lib/apollo";
 
 type ReviewProps = {
@@ -85,7 +87,7 @@ const PROFILES_QUERY = gql`
       filter: { chainId: { equalTo: $chainId }, id: { in: $profileIds } }
     ) {
       id
-      metadata
+      metadataCid
     }
   }
 `;
@@ -93,6 +95,7 @@ const PROFILES_QUERY = gql`
 export default function Review(props: ReviewProps) {
   const { chainId, councilId, hostname, csfrToken } = props;
 
+  const [profiles, setProfiles] = useState<Project[] | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
   const [reviewingApplications, setReviewingApplications] = useState<
     ReviewingApplication[]
@@ -138,7 +141,6 @@ export default function Review(props: ReviewProps) {
 
   const granteeApplicationLink = `${hostname}/flow-councils/grantee/?councilId=${councilId}&chainId=${chainId}`;
   const council = councilQueryRes?.council;
-  const profiles = flowStateQueryRes?.profiles;
   const selectedApplicationProfile =
     profiles && selectedApplication
       ? profiles.find(
@@ -185,6 +187,26 @@ export default function Review(props: ReviewProps) {
 
     return false;
   }, [address, council]);
+
+  useEffect(() => {
+    (async () => {
+      if (!flowStateQueryRes?.profiles) {
+        return;
+      }
+
+      const profiles = [];
+
+      for (const profile of flowStateQueryRes.profiles) {
+        const metadata = await fetchIpfsJson(profile.metadataCid);
+
+        if (metadata) {
+          profiles.push({ ...profile, metadata });
+        }
+      }
+
+      setProfiles(profiles);
+    })();
+  }, [flowStateQueryRes]);
 
   useEffect(() => {
     fetchApplications();
@@ -246,6 +268,9 @@ export default function Review(props: ReviewProps) {
 
       const approvedApplications = reviewingApplications.filter(
         (reviewingApplication) => reviewingApplication.newStatus === "APPROVED",
+      );
+      const rejectedApplications = reviewingApplications.filter(
+        (reviewingApplication) => reviewingApplication.newStatus === "REJECTED",
       );
 
       if (approvedApplications.length > 0 || cancelingApplications.length > 0) {
@@ -313,6 +338,28 @@ export default function Review(props: ReviewProps) {
           }
         } else {
           setError("Transaction Reverted");
+        }
+      } else if (rejectedApplications.length > 0) {
+        const res = await fetch("/api/flow-council/review", {
+          method: "POST",
+          body: JSON.stringify({
+            chainId,
+            councilId: council.id,
+            grantees: rejectedApplications.map((reviewingApplication) => {
+              return {
+                owner: reviewingApplication.owner,
+                status: reviewingApplication.newStatus,
+              };
+            }),
+          }),
+        });
+
+        const json = await res.json();
+
+        if (!json.success) {
+          setError(json.error);
+        } else {
+          setSuccess(true);
         }
       }
 
@@ -428,7 +475,7 @@ export default function Review(props: ReviewProps) {
                           ? profiles.find(
                               (p: { id: string }) =>
                                 p.id === application.metadata,
-                            ).metadata.title
+                            )?.metadata.title
                           : "N/A"}
                       </td>
                       <td className="w-25 text-center ps-0">
@@ -496,153 +543,170 @@ export default function Review(props: ReviewProps) {
                 </tbody>
               </Table>
             </div>
-            {selectedApplication !== null &&
-              selectedApplicationProfile !== null && (
-                <Stack
-                  direction="vertical"
-                  className="mt-4 border border-3 border-gray rounded-4 p-4"
-                >
-                  <Form className="d-flex flex-column gap-4">
-                    <Row>
-                      <Col>
-                        <Form.Label>Applicant Address</Form.Label>
-                        <Form.Control
-                          value={selectedApplication.owner}
-                          disabled
-                        />
-                      </Col>
-                      <Col>
-                        <Form.Label>Funding Address</Form.Label>
-                        <Form.Control
-                          value={selectedApplication.recipient}
-                          disabled
-                        />
-                      </Col>
-                    </Row>
-                    <Row>
-                      <Col>
-                        <Form.Label>Name</Form.Label>
-                        <Form.Control
-                          value={selectedApplicationProfile.metadata.title}
-                          disabled
-                        />
-                      </Col>
-                      <Col>
-                        <Form.Label>Website URL</Form.Label>
-                        <Form.Control
-                          value={selectedApplicationProfile.metadata.website}
-                          disabled
-                        />
-                      </Col>
-                    </Row>
-                    <Row>
-                      <Col>
-                        <Form.Label>Twitter</Form.Label>
-                        <Form.Control
-                          value={`@${selectedApplicationProfile.metadata.projectTwitter ?? ""}`}
-                          disabled
-                        />
-                      </Col>
-                      <Col>
-                        <Form.Label>Farcaster</Form.Label>
-                        <Form.Control
-                          value={`@${selectedApplicationProfile.metadata.projectWarpcast ?? ""}`}
-                          disabled
-                        />
-                      </Col>
-                    </Row>
-                    <Row>
-                      <Col>
-                        <Form.Label>Github User URL</Form.Label>
-                        <Form.Control
-                          value={
-                            selectedApplicationProfile.metadata.userGithub
-                              ? `https://github.com/${selectedApplicationProfile.metadata.userGithub}`
-                              : ""
-                          }
-                          disabled
-                        />
-                      </Col>
-                      <Col>
-                        <Form.Label>Github Org URL</Form.Label>
-                        <Form.Control
-                          value={
-                            selectedApplicationProfile.metadata.projectGithub
-                              ? `https://github.com/${selectedApplicationProfile.metadata.projectGithub}`
-                              : ""
-                          }
-                          disabled
-                        />
-                      </Col>
-                    </Row>
-                    <Row>
-                      <Col>
-                        <Form.Label>Karma GAP</Form.Label>
-                        <Form.Control
-                          value={
-                            selectedApplicationProfile.metadata.karmaGap
-                              ? `gap.karmahq.xyz/project/${selectedApplicationProfile.metadata.karmaGap}`
-                              : ""
-                          }
-                          disabled
-                        />
-                      </Col>
-                      <Col>
-                        <Form.Label>Logo</Form.Label>
-                        <Form.Control
-                          value={
-                            selectedApplicationProfile.metadata.logoImg
-                              ? `https://gateway.pinata.cloud/ipfs/${selectedApplicationProfile.metadata.logoImg}`
-                              : ""
-                          }
-                          disabled
-                        />
-                      </Col>
-                    </Row>
-                    <Row>
-                      <Col>
-                        <Form.Label>Description</Form.Label>
-                        <Form.Control
-                          as="textarea"
-                          rows={4}
-                          disabled
-                          style={{ resize: "none" }}
-                          value={
-                            selectedApplicationProfile.metadata.description
-                          }
-                        />
-                      </Col>
-                    </Row>
-                  </Form>
-                  <Stack direction="horizontal" gap={2} className="w-50 mt-4">
-                    {selectedApplication.status === "APPROVED" ? (
+            {selectedApplication !== null && selectedApplicationProfile && (
+              <Stack
+                direction="vertical"
+                className="mt-4 border border-3 border-gray rounded-4 p-4"
+              >
+                <Form className="d-flex flex-column gap-4">
+                  <Row>
+                    <Col>
+                      <Form.Label>Applicant Address</Form.Label>
+                      <Form.Control
+                        value={selectedApplication.owner}
+                        disabled
+                      />
+                    </Col>
+                    <Col>
+                      <Form.Label>Funding Address</Form.Label>
+                      <Form.Control
+                        value={selectedApplication.recipient}
+                        disabled
+                      />
+                    </Col>
+                  </Row>
+                  <Row>
+                    <Col>
+                      <Form.Label>Name</Form.Label>
+                      <Form.Control
+                        value={selectedApplicationProfile.metadata.title}
+                        disabled
+                      />
+                    </Col>
+                    <Col>
+                      <Form.Label>Website URL</Form.Label>
+                      <Form.Control
+                        value={selectedApplicationProfile.metadata.website}
+                        disabled
+                      />
+                    </Col>
+                  </Row>
+                  <Row>
+                    <Col>
+                      <Form.Label>Twitter</Form.Label>
+                      <Form.Control
+                        value={`@${selectedApplicationProfile.metadata.projectTwitter ?? ""}`}
+                        disabled
+                      />
+                    </Col>
+                    <Col>
+                      <Form.Label>Farcaster</Form.Label>
+                      <Form.Control
+                        value={`@${selectedApplicationProfile.metadata.projectWarpcast ?? ""}`}
+                        disabled
+                      />
+                    </Col>
+                  </Row>
+                  <Row>
+                    <Col>
+                      <Form.Label>Github User URL</Form.Label>
+                      <Form.Control
+                        value={
+                          selectedApplicationProfile.metadata.userGithub
+                            ? `https://github.com/${selectedApplicationProfile.metadata.userGithub}`
+                            : ""
+                        }
+                        disabled
+                      />
+                    </Col>
+                    <Col>
+                      <Form.Label>Github Org URL</Form.Label>
+                      <Form.Control
+                        value={
+                          selectedApplicationProfile.metadata.projectGithub
+                            ? `https://github.com/${selectedApplicationProfile.metadata.projectGithub}`
+                            : ""
+                        }
+                        disabled
+                      />
+                    </Col>
+                  </Row>
+                  <Row>
+                    <Col>
+                      <Form.Label>Karma GAP</Form.Label>
+                      <Form.Control
+                        value={
+                          selectedApplicationProfile.metadata.karmaGap
+                            ? `gap.karmahq.xyz/project/${selectedApplicationProfile.metadata.karmaGap}`
+                            : ""
+                        }
+                        disabled
+                      />
+                    </Col>
+                    <Col>
+                      <Form.Label>Application Link</Form.Label>
+                      <Form.Control
+                        value={selectedApplicationProfile.metadata.appLink}
+                        disabled
+                      />
+                    </Col>
+                  </Row>
+                  <Row>
+                    <Col>
+                      <Form.Label>Logo</Form.Label>
+                      <Form.Control
+                        value={
+                          selectedApplicationProfile.metadata.logoImg
+                            ? `https://gateway.pinata.cloud/ipfs/${selectedApplicationProfile.metadata.logoImg}`
+                            : ""
+                        }
+                        disabled
+                      />
+                    </Col>
+                    <Col>
+                      <Form.Label>Banner</Form.Label>
+                      <Form.Control
+                        value={
+                          selectedApplicationProfile.metadata.bannerImg
+                            ? `https://gateway.pinata.cloud/ipfs/${selectedApplicationProfile.metadata.bannerImg}`
+                            : ""
+                        }
+                        disabled
+                      />
+                    </Col>
+                  </Row>
+                  <Row>
+                    <Col>
+                      <Form.Label>Description</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={4}
+                        disabled
+                        style={{ resize: "none" }}
+                        value={selectedApplicationProfile.metadata.description}
+                      />
+                    </Col>
+                  </Row>
+                </Form>
+                <Stack direction="horizontal" gap={2} className="w-50 mt-4">
+                  {selectedApplication.status === "APPROVED" ? (
+                    <Button
+                      variant="danger"
+                      className="w-50"
+                      onClick={handleCancelSelection}
+                    >
+                      Kick from Pool
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        className="w-50 text-light"
+                        onClick={() => handleReviewSelection("APPROVED")}
+                      >
+                        Accept
+                      </Button>
                       <Button
                         variant="danger"
                         className="w-50"
-                        onClick={handleCancelSelection}
+                        onClick={() => handleReviewSelection("REJECTED")}
                       >
-                        Kick from Pool
-                      </Button>
-                    ) : (
-                      <>
-                        <Button
-                          className="w-50 text-light"
-                          onClick={() => handleReviewSelection("APPROVED")}
-                        >
-                          Accept
-                        </Button>
-                        <Button
-                          variant="danger"
-                          className="w-50"
-                          onClick={() => handleReviewSelection("REJECTED")}
-                        >
-                          Reject
-                        </Button>{" "}
-                      </>
-                    )}
-                  </Stack>
+                        Reject
+                      </Button>{" "}
+                    </>
+                  )}
                 </Stack>
-              )}
+              </Stack>
+            )}
             <Stack direction="vertical" gap={3} className="my-4">
               <Button
                 className="fs-5"

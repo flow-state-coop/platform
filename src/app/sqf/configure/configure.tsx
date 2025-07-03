@@ -32,7 +32,8 @@ import Card from "react-bootstrap/Card";
 import Sidebar from "../components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
-import { networks } from "@/lib/networks";
+import { networks } from "../lib/networks";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { strategyBytecode } from "@/lib/strategyBytecode";
 import { erc721CheckerBytecode } from "@/lib/erc721CheckerBytecode";
 import { strategyAbi } from "@/lib/abi/strategy";
@@ -80,7 +81,7 @@ const POOL_BY_ID_QUERY = gql`
       }
     ) {
       strategyAddress
-      metadata
+      metadataCid
     }
     profile(chainId: $chainId, id: $profileId) {
       profileRolesByChainIdAndProfileId {
@@ -93,6 +94,15 @@ const POOL_BY_ID_QUERY = gql`
 export default function Configure(props: ConfigureProps) {
   const { chainId, profileId, poolId, showNextButton } = props;
 
+  const [pool, setPool] = useState<{
+    strategyAddress: string;
+    metadata: {
+      name: string;
+      description: string;
+      nftMintUrl: string;
+      flowStateEligibility: boolean;
+    };
+  } | null>(null);
   const [areTransactionsLoading, setAreTransactionsLoading] = useState(false);
   const [transactionsCompleted, setTransactionsCompleted] = useState(0);
   const [totalTransactions, setTotalTransactions] = useState(0);
@@ -143,7 +153,6 @@ export default function Configure(props: ConfigureProps) {
   const publicClient = usePublicClient();
 
   const network = networks.filter((network) => network.id === chainId)[0];
-  const pool = queryRes?.pools ? queryRes?.pools[0] : null;
   const profile = queryRes?.profile ?? null;
   const isNotAllowed =
     !!pool ||
@@ -184,6 +193,19 @@ export default function Configure(props: ConfigureProps) {
       };
     });
   }, [network]);
+
+  useEffect(() => {
+    (async () => {
+      if (!queryRes?.pools) {
+        return;
+      }
+
+      const pool = queryRes.pools[0] ?? null;
+      const metadata = await fetchIpfsJson(pool.metadataCid);
+
+      setPool({ ...pool, metadata });
+    })();
+  }, [queryRes?.pools]);
 
   useEffect(() => {
     (async () => {

@@ -3,6 +3,7 @@ import dynamic from "next/dynamic";
 
 import type { SearchParams } from "@/types/searchParams";
 import { gql, request } from "graphql-request";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import removeMarkdown from "remove-markdown";
 import { DEFAULT_CHAIN_ID, DEFAULT_POOL_ID } from "@/lib/constants";
 
@@ -10,12 +11,12 @@ const Pool = dynamic(() => import("./pool"), { ssr: false });
 
 type Recipient = {
   id: string;
-  metadata: { title: string; description: string; bannerImg: string };
+  metadataCid: string;
 };
 
 type Pool = {
   pool: {
-    metadata: { name: string; description: string };
+    metadataCid: string;
     recipientsByPoolIdAndChainId: Recipient[];
   };
 };
@@ -33,10 +34,10 @@ export async function generateMetadata(
     const query = gql`
       query Pool($poolId: String!, $chainId: Int!) {
         pool(id: $poolId, chainId: $chainId) {
-          metadata
+          metadataCid
           recipientsByPoolIdAndChainId {
             id
-            metadata
+            metadataCid
           }
         }
       }
@@ -50,27 +51,27 @@ export async function generateMetadata(
     const recipient = res.pool.recipientsByPoolIdAndChainId.find(
       (recipient) => recipient.id === recipientId,
     );
+    const recipientMetadata = await fetchIpfsJson(recipient?.metadataCid ?? "");
+    const poolMetadata = await fetchIpfsJson(res.pool.metadataCid);
     const images =
-      recipient && recipient.metadata.bannerImg
+      recipientMetadata && recipientMetadata.bannerImg
         ? [
             {
-              url: `/api/og-image/?cid=${recipient.metadata.bannerImg}`,
+              url: `/api/og-image/?cid=${recipientMetadata.bannerImg}`,
               width: 1200,
               height: 630,
             },
           ]
         : [...previousImages];
     const description = removeMarkdown(
-      recipient
-        ? recipient.metadata.description
-        : res.pool.metadata.description,
+      recipient ? recipientMetadata.description : poolMetadata.description,
     ).replace(/\r?\n|\r/g, " ");
 
     return {
       openGraph: {
         title: recipient
-          ? `Support ${recipient.metadata.title} in the ${res.pool.metadata.name} streaming funding round`
-          : `${res.pool.metadata.name} on Flow State`,
+          ? `Support ${recipientMetadata.title} in the ${poolMetadata.name} streaming funding round`
+          : `${poolMetadata.name} on Flow State`,
         description:
           description.length > 160
             ? `${description.slice(0, 160)}...`
@@ -80,8 +81,8 @@ export async function generateMetadata(
       twitter: {
         card: "summary_large_image",
         title: recipient
-          ? `Support ${recipient.metadata.title} in the ${res.pool.metadata.name} streaming funding round`
-          : `${res.pool.metadata.name} on Flow State`,
+          ? `Support ${recipientMetadata.title} in the ${poolMetadata.name} streaming funding round`
+          : `${poolMetadata.name} on Flow State`,
         description:
           description.length > 160
             ? `${description.slice(0, 160)}...`

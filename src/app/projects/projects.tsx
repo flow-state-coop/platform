@@ -16,6 +16,7 @@ import ProjectCreationModal from "@/components/ProjectCreationModal";
 import ProjectCard from "@/components/ProjectCard";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { Project } from "@/types/project";
+import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 
@@ -32,13 +33,12 @@ const PROJECTS_QUERY = gql`
         profileRolesByChainIdAndProfileId: {
           some: { address: { equalTo: $address } }
         }
-        tags: { contains: ["allo", "project"] }
+        tags: { contains: ["allo"] }
       }
     ) {
       id
       anchorAddress
       metadataCid
-      metadata
       profileRolesByChainIdAndProfileId {
         address
       }
@@ -51,6 +51,7 @@ export default function Projects(props: ProjectsProps) {
 
   const [showProjectCreationModal, setShowProjectCreationModal] =
     useState(false);
+  const [projects, setProjects] = useState<Project[] | null>(null);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -75,8 +76,27 @@ export default function Projects(props: ProjectsProps) {
     pollInterval: 3000,
   });
 
-  const projects = queryRes?.profiles;
   const network = networks.find((network) => network.id === chainId);
+
+  useEffect(() => {
+    (async () => {
+      if (!queryRes?.profiles) {
+        return;
+      }
+
+      const projects = [];
+
+      for (const profile of queryRes.profiles) {
+        const metadata = await fetchIpfsJson(profile.metadataCid);
+
+        if (metadata) {
+          projects.push({ ...profile, metadata });
+        }
+      }
+
+      setProjects(projects);
+    })();
+  }, [queryRes]);
 
   useEffect(() => {
     if (searchParams?.get("new")) {
@@ -104,7 +124,7 @@ export default function Projects(props: ProjectsProps) {
       }}
     >
       <Stack direction="vertical" gap={4} className="p-4">
-        {loading ? (
+        {loading || projects === null ? (
           <Spinner className="m-auto" />
         ) : (
           <>
@@ -218,6 +238,7 @@ export default function Projects(props: ProjectsProps) {
       {network && (
         <ProjectCreationModal
           show={showProjectCreationModal}
+          chainId={network.id}
           handleClose={() => setShowProjectCreationModal(false)}
           registryAddress={network.alloRegistry}
           setNewProfileId={() => null}
