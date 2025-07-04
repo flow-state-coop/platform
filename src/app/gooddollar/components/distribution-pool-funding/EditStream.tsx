@@ -84,7 +84,7 @@ export default function EditStream(props: EditStreamProps) {
     <Card className="bg-light rounded-0 rounded-top-4 border-0 border-bottom border-info">
       <Button
         variant="transparent"
-        className="d-flex align-items-center gap-2 p-3 pb-2 border-0 rounded-0 shadow-none"
+        className="d-flex gap-2 p-3 border-0 rounded-0 shadow-none"
         style={{
           pointerEvents: isSelected ? "none" : "auto",
         }}

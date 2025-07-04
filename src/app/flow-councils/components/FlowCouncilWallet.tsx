@@ -19,7 +19,7 @@ export default function FlowCouncilWallet() {
     (councilMember) => councilMember.account === address?.toLowerCase(),
   );
   const currentVotes =
-    currentAllocation?.allocation
+    newAllocation?.allocation
       ?.map((a) => a.amount)
       ?.reduce((a, b) => a + b, 0) ?? 0;
 
@@ -92,13 +92,7 @@ export default function FlowCouncilWallet() {
                         variant="transparent"
                         className="d-flex align-items-center gap-1 border rounded-3 shadow"
                         onClick={() =>
-                          newAllocation?.allocation &&
-                          newAllocation.allocation.length > 0
-                            ? dispatchNewAllocation({ type: "show-ballot" })
-                            : dispatchNewAllocation({
-                                type: "add",
-                                currentAllocation,
-                              })
+                          dispatchNewAllocation({ type: "show-ballot" })
                         }
                       >
                         {newAllocation?.allocation &&

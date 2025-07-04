@@ -28,7 +28,7 @@ type Council = {
   pool: string;
 };
 
-type Allocation = { grantee: string; amount: number };
+type Allocation = { grantee: `0x${string}`; amount: number };
 
 type FlowStateProfile = { id: string; metadata: ProjectMetadata };
 
@@ -56,6 +56,7 @@ export const AllocationDispatchContext = createContext<React.Dispatch<{
   type: string;
   allocation?: Allocation;
   currentAllocation?: CurrentAllocation;
+  showBallot?: boolean;
 }> | null>(null);
 
 export function useFlowCouncilContext() {
@@ -84,6 +85,7 @@ function newAllocationReducer(
     type: string;
     currentAllocation?: CurrentAllocation;
     allocation?: Allocation;
+    showBallot?: boolean;
   },
 ) {
   switch (action.type) {
@@ -96,7 +98,7 @@ function newAllocationReducer(
         return {
           ...newAllocation,
           allocation: action.currentAllocation.allocation,
-          showBallot: true,
+          showBallot: action.showBallot === false ? false : true,
         };
       }
 

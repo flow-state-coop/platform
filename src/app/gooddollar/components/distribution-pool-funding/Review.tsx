@@ -181,7 +181,7 @@ export default function Review(props: ReviewProps) {
     <Card className="bg-light rounded-0 rounded-bottom-4 border-0">
       <Button
         variant="transparent"
-        className="d-flex align-items-center gap-2 p-3 border-0 rounded-0 shadow-none"
+        className="d-flex gap-2 p-3 border-0 rounded-0 shadow-none"
         style={{
           pointerEvents: "none",
         }}

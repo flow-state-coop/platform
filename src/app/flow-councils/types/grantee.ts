@@ -2,7 +2,7 @@ import { ProjectMetadata } from "@/types/project";
 
 export type Grantee = {
   id: string;
-  address: string;
+  address: `0x${string}`;
   metadata: ProjectMetadata;
   bannerCid: string;
   twitter: string;

@@ -72,7 +72,7 @@ export default function Wrap(props: WrapProps) {
     <Card className="bg-light rounded-0 border-0 border-bottom border-info">
       <Button
         variant="transparent"
-        className="d-flex align-items-center gap-2 p-3 pb-2 border-0 rounded-0 shadow-none"
+        className="d-flex gap-2 p-3 border-0 rounded-0 shadow-none"
         onClick={() => setStep(Step.WRAP)}
         style={{
           pointerEvents:

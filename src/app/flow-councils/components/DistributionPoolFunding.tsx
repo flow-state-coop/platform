@@ -34,6 +34,7 @@ import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useCouncil from "../hooks/council";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
+import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import {
   TimeInterval,
@@ -105,6 +106,7 @@ export default function DistributionPoolFunding(props: {
     NativeAssetSuperToken | WrapperSuperToken | SuperToken | null
   >(null);
 
+  const { isMobile } = useMediaQuery();
   const { address } = useAccount();
   const { council, councilMetadata, token, gdaPool } = useCouncil();
   const {
@@ -489,7 +491,12 @@ export default function DistributionPoolFunding(props: {
   };
 
   return (
-    <Offcanvas show onHide={hide} placement="end">
+    <Offcanvas
+      show
+      onHide={hide}
+      placement={isMobile ? "bottom" : "end"}
+      style={{ height: "100%" }}
+    >
       <Offcanvas.Header closeButton className="pb-0">
         <Offcanvas.Title className="fs-3">
           Fund Distribution Pool

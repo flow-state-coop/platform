@@ -270,7 +270,7 @@ export default function Explore(props: ExploreProps) {
               name="GoodBuilders Program"
               image="/good-dollar.png"
               roundType="Flow Council"
-              link="https://gooddollar.notion.site/GoodBuilders-Program-1a6f258232f080fea8a6e3760bb8f53d"
+              link="https://gooddollar.notion.site/GoodBuilders-Program-Round-2-goes-streaming-200f258232f0802b960ad1dab7ad5fd2"
             />
           </div>
           <p className="text-center">
