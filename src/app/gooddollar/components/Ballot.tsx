@@ -11,6 +11,7 @@ import FormControl from "react-bootstrap/FormControl";
 import useCouncil from "@/app/flow-councils/hooks/council";
 import { SupEvent } from "@/app/api/flow-council/db";
 import useWriteAllocation from "@/app/flow-councils/hooks/writeAllocation";
+import { useMediaQuery } from "@/hooks/mediaQuery";
 import { isNumber } from "@/lib/utils";
 
 export default function Ballot({
@@ -24,6 +25,7 @@ export default function Ballot({
 
   const successCardRef = useRef<HTMLDivElement>(null);
 
+  const { isMobile } = useMediaQuery();
   const {
     council,
     currentAllocation,
@@ -149,8 +151,24 @@ export default function Ballot({
   return (
     <Offcanvas
       show
-      onHide={() => dispatchNewAllocation({ type: "hide-ballot" })}
-      placement="end"
+      onHide={() => {
+        const zeroAllocations = newAllocation?.allocation.filter(
+          (a) => a.amount === 0,
+        );
+
+        if (zeroAllocations) {
+          for (const allocation of zeroAllocations) {
+            dispatchNewAllocation({
+              type: "delete",
+              allocation,
+            });
+          }
+        }
+
+        dispatchNewAllocation({ type: "hide-ballot" });
+      }}
+      placement={isMobile ? "bottom" : "end"}
+      style={{ height: "100%" }}
     >
       <Offcanvas.Header closeButton className="pb-0 align-items-start">
         <Stack direction="vertical">

@@ -61,7 +61,7 @@ export default function TopUp(props: TopUpProps) {
     <Card className="bg-light rounded-0 border-0 border-bottom border-info">
       <Button
         variant="transparent"
-        className="d-flex align-items-center gap-2 p-3 border-0 rounded-0 shadow-none"
+        className="d-flex gap-2 p-3 border-0 rounded-0 shadow-none"
         onClick={() => setStep(Step.TOP_UP)}
         style={{
           pointerEvents:

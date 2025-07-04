@@ -10,6 +10,7 @@ import Alert from "react-bootstrap/Alert";
 import FormControl from "react-bootstrap/FormControl";
 import useCouncil from "../hooks/council";
 import useWriteAllocation from "../hooks/writeAllocation";
+import { useMediaQuery } from "@/hooks/mediaQuery";
 import { isNumber } from "@/lib/utils";
 
 export default function Ballot({
@@ -29,6 +30,7 @@ export default function Ballot({
     dispatchNewAllocation,
   } = useCouncil();
   const { address } = useAccount();
+  const { isMobile } = useMediaQuery();
   const { vote, isVoting, transactionError } =
     useWriteAllocation(councilAddress);
 
@@ -119,8 +121,24 @@ export default function Ballot({
   return (
     <Offcanvas
       show
-      onHide={() => dispatchNewAllocation({ type: "hide-ballot" })}
-      placement="end"
+      onHide={() => {
+        const zeroAllocations = newAllocation?.allocation.filter(
+          (a) => a.amount === 0,
+        );
+
+        if (zeroAllocations) {
+          for (const allocation of zeroAllocations) {
+            dispatchNewAllocation({
+              type: "delete",
+              allocation,
+            });
+          }
+        }
+
+        dispatchNewAllocation({ type: "hide-ballot" });
+      }}
+      placement={isMobile ? "bottom" : "end"}
+      style={{ height: "100%" }}
     >
       <Offcanvas.Header closeButton className="pb-0 align-items-start">
         <Stack direction="vertical">
