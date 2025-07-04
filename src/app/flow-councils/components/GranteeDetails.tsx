@@ -9,6 +9,7 @@ import rehyperExternalLinks from "rehype-external-links";
 import remarkGfm from "remark-gfm";
 import { fetchIpfsImage } from "@/lib/fetchIpfs";
 import useCouncil from "../hooks/council";
+import { useMediaQuery } from "@/hooks/mediaQuery";
 import { ProjectMetadata } from "@/types/project";
 
 type GranteeDetails = {
@@ -26,6 +27,7 @@ export default function GranteeDetails(props: GranteeDetails) {
 
   const [imageUrl, setImageUrl] = useState("");
 
+  const { isMobile } = useMediaQuery();
   const { dispatchNewAllocation } = useCouncil();
 
   useEffect(() => {
@@ -39,7 +41,12 @@ export default function GranteeDetails(props: GranteeDetails) {
   }, [metadata.logoImg]);
 
   return (
-    <Offcanvas show onHide={hide} placement="end">
+    <Offcanvas
+      show
+      onHide={hide}
+      placement={isMobile ? "bottom" : "end"}
+      style={{ height: "100%" }}
+    >
       <Offcanvas.Header closeButton className="pb-0">
         <Offcanvas.Title className="fs-3">Recipient Details</Offcanvas.Title>
       </Offcanvas.Header>

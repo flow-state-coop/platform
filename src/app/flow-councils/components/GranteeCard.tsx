@@ -95,9 +95,6 @@ export default function Grantee(props: GranteeProps) {
     })();
   }, [logoCid, bannerCid]);
 
-  const calculateAllocationVotes = (percentage: number): number =>
-    Math.round((percentage / 100) * votingPower);
-
   const handleSlide = (e: React.MouseEvent | React.TouchEvent) => {
     if (!granteeAllocation) {
       return;
@@ -114,33 +111,19 @@ export default function Grantee(props: GranteeProps) {
       const clientX = touchEvent.touches
         ? touchEvent.touches[0].clientX
         : mouseEvent.clientX;
-      const containerPercentage = Math.max(
+      const newPercentage = Math.max(
         0,
         ((clientX - 32 - containerBoundingRect.left) /
           (containerBoundingRect.width - 32)) *
           100,
       );
-      const otherAllocations = newAllocation?.allocation.filter(
-        (allocation) => allocation.grantee !== granteeAddress,
-      );
-      const totalOtherVotes =
-        otherAllocations?.reduce(
-          (sum, allocation) => sum + allocation.amount,
-          0,
-        ) ?? 0;
-      const maxAllowedPercentage = Math.round(
-        ((votingPower - totalOtherVotes) / votingPower) * 100,
-      );
-      const newPercentage = Math.min(containerPercentage, maxAllowedPercentage);
-      const votingAmount = calculateAllocationVotes(newPercentage);
-      const maxAllowedVotes = votingPower - totalOtherVotes;
-      const validVotingAmount = Math.min(votingAmount, maxAllowedVotes);
+      const votingAmount = Math.round((newPercentage / 100) * votingPower);
 
       dispatchNewAllocation({
         type: "update",
         allocation: {
           grantee: granteeAddress,
-          amount: validVotingAmount,
+          amount: votingAmount,
         },
       });
 
@@ -217,7 +200,7 @@ export default function Grantee(props: GranteeProps) {
               </Card.Text>
             </Stack>
           </Stack>
-          {!!votingPower && (
+          {!!votingPower && granteeAllocation && (
             <Stack
               direction="horizontal"
               className="justify-content-center mt-4"
@@ -230,7 +213,11 @@ export default function Grantee(props: GranteeProps) {
                   e.stopPropagation();
                 }}
               >
-                {calculateAllocationVotes(percentage)} votes
+                {granteeAllocation.amount === 1
+                  ? `${granteeAllocation.amount} vote`
+                  : granteeAllocation.amount > 1
+                    ? `${granteeAllocation.amount} votes`
+                    : null}
               </Card.Text>
             </Stack>
           )}
@@ -294,12 +281,10 @@ export default function Grantee(props: GranteeProps) {
               </Stack>
             </>
           ) : votingPower ? (
-            <Stack
-              direction="horizontal"
-              className="justify-content-center py-2"
-            >
+            <Stack direction="horizontal" className="justify-content-center">
               <Button
-                className="d-flex gap-1 align-items-center px-4"
+                className="d-flex gap-1 justify-content-center align-items-center w-100 px-4 rounded-3"
+                style={{ paddingTop: 14, paddingBottom: 14 }}
                 onClick={(e) => {
                   e.stopPropagation();
                   dispatchNewAllocation({
