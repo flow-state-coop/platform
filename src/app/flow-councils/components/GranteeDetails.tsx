@@ -18,12 +18,20 @@ type GranteeDetails = {
   placeholderLogo: string;
   granteeAddress: `0x${string}`;
   chainId: number;
+  canAddToBallot: boolean;
   hide: () => void;
 };
 
 export default function GranteeDetails(props: GranteeDetails) {
-  const { id, metadata, placeholderLogo, granteeAddress, chainId, hide } =
-    props;
+  const {
+    id,
+    metadata,
+    placeholderLogo,
+    granteeAddress,
+    chainId,
+    canAddToBallot,
+    hide,
+  } = props;
 
   const [imageUrl, setImageUrl] = useState("");
 
@@ -191,31 +199,33 @@ export default function GranteeDetails(props: GranteeDetails) {
               {metadata.description.replaceAll("•", "-")}
             </Markdown>
           </div>
-          <Button
-            className="d-flex gap-1 justify-content-center align-items-center px-4"
-            onClick={() =>
-              dispatchNewAllocation({
-                type: "add",
-                allocation: {
-                  grantee: granteeAddress,
-                  amount: 1,
-                },
-                showBallot: false,
-              })
-            }
-          >
-            <Image
-              src="/add.svg"
-              alt=""
-              width={24}
-              height={24}
-              style={{
-                filter:
-                  "invert(100%) sepia(0%) saturate(7497%) hue-rotate(175deg) brightness(103%) contrast(103%)",
-              }}
-            />
-            Add to Ballot
-          </Button>
+          {canAddToBallot && (
+            <Button
+              className="d-flex gap-1 justify-content-center align-items-center px-4"
+              onClick={() =>
+                dispatchNewAllocation({
+                  type: "add",
+                  allocation: {
+                    grantee: granteeAddress,
+                    amount: 1,
+                  },
+                  showBallot: false,
+                })
+              }
+            >
+              <Image
+                src="/add.svg"
+                alt=""
+                width={24}
+                height={24}
+                style={{
+                  filter:
+                    "invert(100%) sepia(0%) saturate(7497%) hue-rotate(175deg) brightness(103%) contrast(103%)",
+                }}
+              />
+              Add to Ballot
+            </Button>
+          )}
           <Button
             variant="link"
             href={`/projects/${id}/?chainId=${chainId}`}
