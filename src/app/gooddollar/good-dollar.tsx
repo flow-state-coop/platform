@@ -3,7 +3,8 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Address } from "viem";
-import { useAccount, useSwitchChain } from "wagmi";
+import { celo } from "viem/chains";
+import { useAccount, useBalance, useSwitchChain } from "wagmi";
 import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Modal from "react-bootstrap/Modal";
@@ -46,6 +47,10 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
   const councilAddress = councilConfig[network.id]?.councilAddress;
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
+  const { data: celoBalance } = useBalance({
+    address,
+    chainId: celo.id,
+  });
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const {
@@ -237,6 +242,26 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
   useEffect(() => {
     setGrantees((prev) => sortGrantees(prev));
   }, [sortingMethod, sortGrantees]);
+
+  useEffect(() => {
+    if (
+      address &&
+      votingPower &&
+      celoBalance &&
+      Number(celoBalance.formatted) < 0.1
+    ) {
+      fetch("https://goodserver.gooddollar.org/verify/topwallet", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          account: address,
+          chainId: celo.id,
+        }),
+      });
+    }
+  }, [celoBalance, address, votingPower]);
 
   useEffect(() => {
     if (address && connectedChain?.id !== chainId) {
@@ -487,6 +512,7 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
           metadata={showGranteeDetails.metadata}
           placeholderLogo={showGranteeDetails.placeholderLogo}
           granteeAddress={showGranteeDetails.address}
+          canAddToBallot={!!votingPower}
           hide={() => setShowGranteeDetails(null)}
         />
       ) : showDistributionPoolFunding ? (

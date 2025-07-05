@@ -256,14 +256,15 @@ export default function WalletBalance() {
     (async () => {
       if (
         !flowStateQueryRes?.pool ||
-        !flowStateQueryRes?.recipientsByPoolIdAndChainId
+        !flowStateQueryRes?.pool.recipientsByPoolIdAndChainId
       ) {
         return;
       }
 
       const recipients = [];
 
-      for (const recipient of flowStateQueryRes.recipients) {
+      for (const recipient of flowStateQueryRes.pool
+        .recipientsByPoolIdAndChainId) {
         const metadata = await fetchIpfsJson(recipient.metadataCid);
 
         if (metadata) {
@@ -271,7 +272,9 @@ export default function WalletBalance() {
         }
       }
 
-      const poolMetadata = await fetchIpfsJson(flowStateQueryRes.pool);
+      const poolMetadata = await fetchIpfsJson(
+        flowStateQueryRes.pool.metadataCid,
+      );
 
       if (poolMetadata) {
         setPool({ ...flowStateQueryRes.pool, metadata: poolMetadata });
