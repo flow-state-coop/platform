@@ -487,6 +487,7 @@ export default function FlowCouncil({
           metadata={showGranteeDetails.metadata}
           placeholderLogo={showGranteeDetails.placeholderLogo}
           granteeAddress={showGranteeDetails.address}
+          canAddToBallot={!!votingPower}
           hide={() => setShowGranteeDetails(null)}
         />
       ) : showDistributionPoolFunding ? (
