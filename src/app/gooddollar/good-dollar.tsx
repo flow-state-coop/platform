@@ -50,6 +50,7 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
   const { data: celoBalance } = useBalance({
     address,
     chainId: celo.id,
+    query: { refetchInterval: 10000 },
   });
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
@@ -250,14 +251,10 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
       celoBalance &&
       Number(celoBalance.formatted) < 0.1
     ) {
-      fetch("https://goodserver.gooddollar.org/verify/topwallet", {
+      fetch("/api/good-dollar/gas-top-up", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
-          account: address,
-          chainId: celo.id,
+          address,
         }),
       });
     }
