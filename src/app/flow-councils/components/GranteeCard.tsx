@@ -26,6 +26,7 @@ type GranteeProps = {
   showGranteeDetails: () => void;
   votingPower: number;
   granteeColor: string;
+  onAddToBallot: () => void;
 };
 
 export default function Grantee(props: GranteeProps) {
@@ -43,6 +44,7 @@ export default function Grantee(props: GranteeProps) {
     showGranteeDetails,
     votingPower,
     granteeColor,
+    onAddToBallot,
   } = props;
 
   const [logoUrl, setLogoUrl] = useState("");
@@ -295,6 +297,7 @@ export default function Grantee(props: GranteeProps) {
                     },
                     showBallot: false,
                   });
+                  setTimeout(onAddToBallot, 100);
                 }}
               >
                 <Image
