@@ -336,7 +336,14 @@ export default function Ballot({
             className="bg-light mt-5 p-4 rounded-4 border-0"
             ref={successCardRef}
           >
-            <Card.Text>Your ballot has been successfully submitted!</Card.Text>
+            <Card.Text>
+              Your ballot has been submitted.{" "}
+              <Card.Link href="https://claim.superfluid.org/" target="_blank">
+                Claim your $SUP rewards
+              </Card.Link>{" "}
+              for voting now (once per epoch). The next epoch starts on July
+              23rd.
+            </Card.Text>
             <Card.Text
               as="span"
               className="text-center"
@@ -345,7 +352,7 @@ export default function Ballot({
               &#x1F64F;
             </Card.Text>
             <Card.Text>
-              Tell more builders and voters about the round.
+              Share the GoodBuilders Round to earn a $SUP bonus!
             </Card.Text>
             <Stack direction="horizontal" className="justify-content-around">
               <Button
@@ -356,7 +363,7 @@ export default function Ballot({
                 <Card.Link
                   rel="noreferrer"
                   target="_blank"
-                  href={`https://twitter.com/intent/tweet?text=I%20voted%20in%20the%20GoodBuilders%20Program%20Round%202%20on%20%40flowstatecoop.%0A%0AI%27m%20earning%20%40Superfluid_HQ%20%24SUP%20every%20second%20for%20supporting%20public%20goods.%0A%0AYou%20can%20too%20%F0%9F%91%87%3A%20${encodeURIComponent(roundLink)}&url=https://x.com/flowstatecoop/status/1909243251246104641`}
+                  href={`https://twitter.com/intent/tweet?text=I%20just%20voted%20in%20the%20%40gooddollarorg%20Flow%20Council%20on%20%40flowstatecoop.%20Join%20me%20%26%20earn%20your%20share%20of%201M%20%24SUP%20from%20%40Superfluid_HQ%3A%20%20${encodeURIComponent(roundLink)}&url=https://x.com/gooddollarorg/status/1936092432061362416`}
                   data-size="large"
                 >
                   <Image
@@ -376,7 +383,7 @@ export default function Ballot({
                 <Card.Link
                   rel="noreferrer"
                   target="_blank"
-                  href={`https://farcaster.xyz/~/compose?text=I%20voted%20in%20the%20GoodBuilders%20Program%20Round%202%20on%20%40flowstatecoop.%0A%0AI%27m%20earning%20%40Superfluid_HQ%20%24SUP%20every%20second%20for%20supporting%20public%20goods.%0A%0AYou%20can%20too%20%F0%9F%91%87%3A%20&embeds[]=https://farcaster.xyz/flowstatecoop/0x87385e01&embeds[]=${roundLink}`}
+                  href={`https://farcaster.xyz/~/compose?text=I%20just%20voted%20in%20the%20%40gooddollar%20Flow%20Council%20on%20%40flowstatecoop.%20Join%20me%20%26%20earn%20your%20share%20of%201M%20%24SUP%20from%20%40superfluid%3A%20&embeds[]=${roundLink}`}
                 >
                   <Image
                     src="/farcaster.svg"
@@ -395,7 +402,7 @@ export default function Ballot({
                 <Card.Link
                   rel="noreferrer"
                   target="_blank"
-                  href={`https://hey.xyz/?text=I%20voted%20in%20the%20GoodBuilders%20Program%20Round%202%20on%20%40flowstatecoop.%0A%0AI%27m%20earning%20%40Superfluid_HQ%20%24SUP%20every%20second%20for%20supporting%20public%20goods.%0A%0AYou%20can%20too%20%F0%9F%91%87%3A%20${encodeURIComponent(roundLink)}`}
+                  href={`https://hey.xyz/?text=I%20just%20voted%20in%20the%20GoodBuilders%20Flow%20Council%20on%20%40flowstatecoop.%20Join%20me%20%26%20earn%20your%20share%20of%201M%20%24SUP%20from%20%40superfluid%3A%20${encodeURIComponent(roundLink)}`}
                 >
                   <Image src="/lens.svg" alt="lens" width={28} height={22} />
                 </Card.Link>
