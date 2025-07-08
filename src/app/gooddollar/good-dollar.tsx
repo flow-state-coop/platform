@@ -228,10 +228,14 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
       dispatchNewAllocation({
         type: "add",
         currentAllocation,
-        showBallot: false,
+        showBallot: !!newAllocation?.showBallot,
       });
     }
-  }, [currentAllocationStringified, dispatchNewAllocation]);
+  }, [
+    currentAllocationStringified,
+    newAllocation?.showBallot,
+    dispatchNewAllocation,
+  ]);
 
   useEffect(() => {
     setGrantees((prev) => sortGrantees(prev));
