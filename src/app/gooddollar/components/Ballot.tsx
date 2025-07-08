@@ -363,7 +363,7 @@ export default function Ballot({
                 <Card.Link
                   rel="noreferrer"
                   target="_blank"
-                  href={`https://twitter.com/intent/tweet?text=I%20just%20voted%20in%20the%20%40gooddollarorg%20Flow%20Council%20on%20%40flowstatecoop.%20Join%20me%20%26%20earn%20your%20share%20of%201M%20%24SUP%20from%20%40Superfluid_HQ%3A%20%20${encodeURIComponent(roundLink)}&url=https://x.com/gooddollarorg/status/1936092432061362416`}
+                  href={`https://twitter.com/intent/tweet?text=I%20just%20voted%20in%20the%20%40gooddollarorg%20Flow%20Council%20on%20%40flowstatecoop.%0A%0AJoin%20me%20%26%20earn%20your%20share%20of%201M%20%24SUP%20from%20%40Superfluid_HQ%3A%20%20${encodeURIComponent(roundLink)}&url=https://x.com/gooddollarorg/status/1936092432061362416`}
                   data-size="large"
                 >
                   <Image
