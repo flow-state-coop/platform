@@ -459,7 +459,7 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
           ) : (
             <>
               Your wallet is eligible for gas sponsorship from GoodDollar. You
-              should receive CELO to process your transaction shortly.
+              should receive CELO to cover several transactions shortly.
             </>
           )}
         </Toast>
