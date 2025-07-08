@@ -9,6 +9,7 @@ import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Modal from "react-bootstrap/Modal";
 import Spinner from "react-bootstrap/Spinner";
+import Toast from "react-bootstrap/Toast";
 import Dropdown from "react-bootstrap/Dropdown";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
 import GranteeCard from "@/app/flow-councils/components/GranteeCard";
@@ -35,6 +36,7 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
   const [showDistributionPoolFunding, setShowDistributionPoolFunding] =
     useState(false);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
+  const [gasTopUpSuccess, setGasTopUpSuccess] = useState<boolean | null>(null);
 
   const skipGrantees = useRef(0);
   const hasNextGrantee = useRef(true);
@@ -236,19 +238,25 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
   }, [sortingMethod, sortGrantees]);
 
   useEffect(() => {
-    if (
-      address &&
-      votingPower &&
-      celoBalance &&
-      Number(celoBalance.formatted) < 0.1
-    ) {
-      fetch("/api/good-dollar/gas-top-up", {
-        method: "POST",
-        body: JSON.stringify({
-          address,
-        }),
-      });
-    }
+    (async () => {
+      if (
+        address &&
+        votingPower &&
+        celoBalance &&
+        Number(celoBalance.formatted) < 0.075
+      ) {
+        const res = await fetch("/api/good-dollar/gas-top-up", {
+          method: "POST",
+          body: JSON.stringify({
+            address,
+          }),
+        });
+
+        const { success } = await res.json();
+
+        setGasTopUpSuccess(success);
+      }
+    })();
   }, [celoBalance, address, votingPower]);
 
   useEffect(() => {
@@ -433,6 +441,28 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
           votingPower={votingPower}
           voteBubbleRef={voteBubbleRef}
         />
+      )}
+      {gasTopUpSuccess !== null && (
+        <Toast
+          show
+          delay={8000}
+          autohide
+          onClose={() => setGasTopUpSuccess(null)}
+          className={`position-fixed end-0 top-0 mt-3 me-3 p-3 fs-5 text-light ${!gasTopUpSuccess ? "bg-danger" : "bg-success"}`}
+        >
+          {!gasTopUpSuccess ? (
+            <>
+              Your wallet isn't currently eligible for gas sponorship from
+              GoodDollar. You may need to deposit CELO to complete your next
+              transaction.
+            </>
+          ) : (
+            <>
+              Your wallet is eligible for gas sponsorship from GoodDollar. You
+              should receive CELO to cover several transactions shortly.
+            </>
+          )}
+        </Toast>
       )}
     </>
   );
