@@ -295,7 +295,6 @@ export default function Grantee(props: GranteeProps) {
                       grantee: granteeAddress,
                       amount: 1,
                     },
-                    showBallot: false,
                   });
                   setTimeout(onAddToBallot, 100);
                 }}

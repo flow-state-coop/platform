@@ -209,7 +209,6 @@ export default function GranteeDetails(props: GranteeDetails) {
                     grantee: granteeAddress,
                     amount: 1,
                   },
-                  showBallot: false,
                 })
               }
             >

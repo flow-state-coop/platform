@@ -1,6 +1,7 @@
 import {
   useFlowCouncilContext,
   useAllocationDispatchContext,
+  useShowBallotDispatchContext,
 } from "@/context/FlowCouncil";
 
 export default function useCouncil() {
@@ -10,11 +11,13 @@ export default function useCouncil() {
     flowStateProfiles,
     gdaPool,
     token,
+    showBallot,
     currentAllocation,
     newAllocation,
   } = useFlowCouncilContext();
 
   const dispatchNewAllocation = useAllocationDispatchContext();
+  const dispatchShowBallot = useShowBallotDispatchContext();
 
   return {
     council,
@@ -24,6 +27,8 @@ export default function useCouncil() {
     token,
     currentAllocation,
     newAllocation,
+    showBallot,
     dispatchNewAllocation,
+    dispatchShowBallot,
   };
 }

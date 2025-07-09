@@ -58,6 +58,7 @@ export default function FlowCouncil({
     flowStateProfiles,
     gdaPool,
     token,
+    showBallot,
     dispatchNewAllocation,
   } = useCouncil();
   const { voteBubbleRef, animateVoteBubble } = useAnimateVoteBubble();
@@ -154,7 +155,6 @@ export default function FlowCouncil({
       dispatchNewAllocation({
         type: "add",
         currentAllocation,
-        showBallot: false,
       });
     }
   }, [currentAllocationStringified, dispatchNewAllocation]);
@@ -376,7 +376,7 @@ export default function FlowCouncil({
           network={network}
           hide={() => setShowDistributionPoolFunding(false)}
         />
-      ) : newAllocation?.showBallot ? (
+      ) : showBallot ? (
         <Ballot councilAddress={councilId as Address} />
       ) : null}
       <Modal

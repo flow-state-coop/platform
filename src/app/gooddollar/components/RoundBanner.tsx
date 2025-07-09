@@ -44,7 +44,7 @@ export default function RoundBanner(props: RoundBannerProps) {
   const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
   const [hasCheckedEligibility, setHasCheckedEligibility] = useState(false);
 
-  const { council, dispatchNewAllocation } = useCouncil();
+  const { council, dispatchShowBallot } = useCouncil();
   const { isMobile } = useMediaQuery();
   const { switchChain } = useSwitchChain();
   const { address, chain: connectedChain } = useAccount();
@@ -209,7 +209,7 @@ export default function RoundBanner(props: RoundBannerProps) {
                   variant={hasCheckedEligibility ? "success" : "primary"}
                   className="d-flex gap-2 justify-content-center align-items-center p-2 text-light fs-5 text-decoration-none"
                   style={{ width: isMobile ? "100%" : 256 }}
-                  onClick={() => dispatchNewAllocation({ type: "show-ballot" })}
+                  onClick={() => dispatchShowBallot({ type: "show" })}
                 >
                   {hasCheckedEligibility && (
                     <Image

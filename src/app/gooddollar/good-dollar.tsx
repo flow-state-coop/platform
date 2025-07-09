@@ -61,6 +61,7 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
     flowStateProfiles,
     gdaPool,
     token,
+    showBallot,
     dispatchNewAllocation,
   } = useCouncil();
   const { voteBubbleRef, animateVoteBubble } = useAnimateVoteBubble();
@@ -228,14 +229,9 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
       dispatchNewAllocation({
         type: "add",
         currentAllocation,
-        showBallot: !!newAllocation?.showBallot,
       });
     }
-  }, [
-    currentAllocationStringified,
-    newAllocation?.showBallot,
-    dispatchNewAllocation,
-  ]);
+  }, [currentAllocationStringified, dispatchNewAllocation]);
 
   useEffect(() => {
     setGrantees((prev) => sortGrantees(prev));
@@ -304,6 +300,7 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
         onTouchEnd={clearUnallocated}
       >
         <RoundBanner
+          key={address}
           name={councilMetadata.name ?? "Flow Council"}
           description={councilMetadata.description ?? "N/A"}
           chainId={chainId}
@@ -410,7 +407,7 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
           network={network}
           hide={() => setShowDistributionPoolFunding(false)}
         />
-      ) : newAllocation?.showBallot ? (
+      ) : showBallot ? (
         <Ballot chainId={chainId} councilAddress={councilAddress as Address} />
       ) : null}
       <Modal
