@@ -32,6 +32,7 @@ export default function Ballot({
     newAllocation,
     flowStateProfiles,
     dispatchNewAllocation,
+    dispatchShowBallot,
   } = useCouncil();
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -165,7 +166,7 @@ export default function Ballot({
           }
         }
 
-        dispatchNewAllocation({ type: "hide-ballot" });
+        dispatchShowBallot({ type: "hide" });
       }}
       placement={isMobile ? "bottom" : "end"}
       style={{ height: "100%" }}

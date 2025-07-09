@@ -38,7 +38,6 @@ type CurrentAllocation = {
 };
 
 type NewAllocation = {
-  showBallot: boolean;
   allocation: Allocation[];
 };
 
@@ -50,13 +49,17 @@ export const FlowCouncilContext = createContext<{
   gdaPool?: GDAPool;
   token: Token;
   newAllocation?: NewAllocation;
+  showBallot: boolean;
 } | null>(null);
 
 export const AllocationDispatchContext = createContext<React.Dispatch<{
   type: string;
   allocation?: Allocation;
   currentAllocation?: CurrentAllocation;
-  showBallot?: boolean;
+}> | null>(null);
+
+export const ShowBallotDispatchContext = createContext<React.Dispatch<{
+  type: string;
 }> | null>(null);
 
 export function useFlowCouncilContext() {
@@ -79,13 +82,43 @@ export function useAllocationDispatchContext() {
   return context;
 }
 
+export function useShowBallotDispatchContext() {
+  const context = useContext(ShowBallotDispatchContext);
+
+  if (!context) {
+    throw Error("ShowBallotDispatch context was not found");
+  }
+
+  return context;
+}
+
+function showBallotReducer(
+  showBallot: boolean,
+  action: {
+    type: string;
+  },
+) {
+  switch (action.type) {
+    case "show": {
+      return true;
+    }
+
+    case "hide": {
+      return false;
+    }
+
+    default: {
+      throw Error(`Unknown action: ${action.type}`);
+    }
+  }
+}
+
 function newAllocationReducer(
   newAllocation: NewAllocation,
   action: {
     type: string;
     currentAllocation?: CurrentAllocation;
     allocation?: Allocation;
-    showBallot?: boolean;
   },
 ) {
   switch (action.type) {
@@ -98,7 +131,6 @@ function newAllocationReducer(
         return {
           ...newAllocation,
           allocation: action.currentAllocation.allocation,
-          showBallot: action.showBallot === false ? false : true,
         };
       }
 
@@ -131,12 +163,6 @@ function newAllocationReducer(
           (a) => a.grantee !== action.allocation?.grantee,
         ),
       };
-    }
-    case "show-ballot": {
-      return { ...newAllocation, showBallot: true };
-    }
-    case "hide-ballot": {
-      return { ...newAllocation, showBallot: false };
     }
     default: {
       throw Error(`Unknown action: ${action.type}`);
@@ -191,10 +217,13 @@ export function FlowCouncilContextProvider({
     icon: "",
   };
 
-  const [newAllocation, dispatch] = useReducer(newAllocationReducer, {
-    showBallot: false,
-    allocation: [],
-  });
+  const [newAllocation, dispatchNewAllocation] = useReducer(
+    newAllocationReducer,
+    {
+      allocation: [],
+    },
+  );
+  const [showBallot, dispatchShowBallot] = useReducer(showBallotReducer, false);
 
   return (
     <FlowCouncilContext.Provider
@@ -206,10 +235,13 @@ export function FlowCouncilContextProvider({
         flowStateProfiles,
         currentAllocation,
         newAllocation,
+        showBallot,
       }}
     >
-      <AllocationDispatchContext.Provider value={dispatch}>
-        {children}
+      <AllocationDispatchContext.Provider value={dispatchNewAllocation}>
+        <ShowBallotDispatchContext.Provider value={dispatchShowBallot}>
+          {children}
+        </ShowBallotDispatchContext.Provider>
       </AllocationDispatchContext.Provider>
     </FlowCouncilContext.Provider>
   );

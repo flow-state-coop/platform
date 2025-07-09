@@ -27,6 +27,7 @@ export default function Ballot({
     currentAllocation,
     newAllocation,
     flowStateProfiles,
+    dispatchShowBallot,
     dispatchNewAllocation,
   } = useCouncil();
   const { address } = useAccount();
@@ -135,7 +136,7 @@ export default function Ballot({
           }
         }
 
-        dispatchNewAllocation({ type: "hide-ballot" });
+        dispatchShowBallot({ type: "hide" });
       }}
       placement={isMobile ? "bottom" : "end"}
       style={{ height: "100%" }}

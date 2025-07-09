@@ -10,7 +10,7 @@ import useCouncil from "../hooks/council";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
 export default function FlowCouncilWallet() {
-  const { council, currentAllocation, newAllocation, dispatchNewAllocation } =
+  const { council, currentAllocation, newAllocation, dispatchShowBallot } =
     useCouncil();
   const { address } = useAccount();
   const { isMobile } = useMediaQuery();
@@ -91,9 +91,7 @@ export default function FlowCouncilWallet() {
                       <Button
                         variant="transparent"
                         className="d-flex align-items-center gap-1 border rounded-3 shadow"
-                        onClick={() =>
-                          dispatchNewAllocation({ type: "show-ballot" })
-                        }
+                        onClick={() => dispatchShowBallot({ type: "show" })}
                       >
                         {newAllocation?.allocation &&
                         newAllocation.allocation.length > 0 &&

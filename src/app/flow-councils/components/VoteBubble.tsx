@@ -18,7 +18,7 @@ export default function VoteBubble(props: VoteBubbleProps) {
   const { grantees, granteeColors, votingPower, voteBubbleRef } = props;
 
   const { isMobile, isTablet } = useMediaQuery();
-  const { newAllocation, council, dispatchNewAllocation } = useCouncil();
+  const { newAllocation, council, dispatchShowBallot } = useCouncil();
 
   const totalAllocatedProjects =
     newAllocation?.allocation.filter((allocation) => allocation.amount !== 0)
@@ -84,7 +84,7 @@ export default function VoteBubble(props: VoteBubbleProps) {
     return (
       <Button
         className="btn btn-primary d-flex align-items-center gap-2 py-3 px-4 shadow-lg rounded-pill"
-        onClick={() => dispatchNewAllocation({ type: "show-ballot" })}
+        onClick={() => dispatchShowBallot({ type: "show" })}
         style={{
           width: isMobile ? 360 : 400,
           transition: "all 0.2s ease-in-out",
