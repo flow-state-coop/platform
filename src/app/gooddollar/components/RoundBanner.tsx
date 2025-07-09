@@ -351,8 +351,8 @@ export default function RoundBanner(props: RoundBannerProps) {
                     className="text-primary"
                   >
                     GoodApp
-                  </Card.Link>
-                  {" "}or{" "}
+                  </Card.Link>{" "}
+                  or{" "}
                   <Card.Link
                     href="https://app.uniswap.org"
                     target="_blank"

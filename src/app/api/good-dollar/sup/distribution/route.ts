@@ -53,6 +53,13 @@ export async function GET(req: NextRequest) {
 
     if (distributors) {
       for (const distributor of distributors) {
+        if (
+          distributor.account.id ===
+          "0x4e31993d9f13f940828bf9ec2f643a7e55b21e8c"
+        ) {
+          continue;
+        }
+
         const currentPoints = Number(
           await stack.getPoints(distributor.account.id, {
             event: "distributed",
