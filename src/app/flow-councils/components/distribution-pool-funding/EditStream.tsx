@@ -122,7 +122,7 @@ export default function EditStream(props: EditStreamProps) {
             the <strong>rate</strong> you set here until you cancel or modify
             it.{" "}
             <Card.Link
-              href="https://docs.flowstate.network/donors-voters"
+              href="https://docs.flowstate.network/flow-councils/grow-the-pie"
               target="_blank"
               className="text-primary"
             >
