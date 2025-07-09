@@ -308,7 +308,7 @@ export default function RoundBanner(props: RoundBannerProps) {
               <ul className="mt-2">
                 <li>
                   Additional votes are distributed at the start of every
-                  two-week epoch (July 9th, July 23rd,...).
+                  two-week epoch (July 9th, July 23rd, ...).
                 </li>
               </ul>
               <li className="mt-3">
@@ -317,7 +317,7 @@ export default function RoundBanner(props: RoundBannerProps) {
               </li>
               <ul className="mt-2">
                 <li>
-                  Claim your share of a 
+                  Claim your share of a{" "}
                   <Card.Link
                     href="https://claim.superfluid.org"
                     target="_blank"
@@ -344,7 +344,7 @@ export default function RoundBanner(props: RoundBannerProps) {
               </ul>
               <ul className="mt-2">
                 <li>
-                  Buy more G$ on the 
+                  Buy more G$ on the{" "}
                   <Card.Link
                     href="https://gooddapp.org/#/swap/celoReserve"
                     target="_blank"
@@ -352,7 +352,7 @@ export default function RoundBanner(props: RoundBannerProps) {
                   >
                     GoodApp
                   </Card.Link>
-                  or 
+                  {" "}or{" "}
                   <Card.Link
                     href="https://app.uniswap.org"
                     target="_blank"
