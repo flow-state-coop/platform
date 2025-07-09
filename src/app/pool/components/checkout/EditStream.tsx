@@ -147,7 +147,7 @@ export default function EditStream(props: EditStreamProps) {
             subscriptions where the total cost is spread across and collected
             every second in the month.{" "}
             <Card.Link
-              href="https://docs.flowstate.network/donors-voters"
+              href="https://docs.flowstate.network/streaming-qf/donors"
               target="_blank"
               className="text-primary text-decoration-none"
             >
