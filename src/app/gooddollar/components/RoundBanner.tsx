@@ -291,7 +291,7 @@ export default function RoundBanner(props: RoundBannerProps) {
             <ul>
               <li>
                 GoodBuilders Round 2 is a continuous funding round. $85k in G$
-                will be dynamically allocated to builders through community vote
+                will be dynamically allocated to builders by community vote
                 between now and October 9!
               </li>
               <li className="mt-3">
@@ -344,21 +344,21 @@ export default function RoundBanner(props: RoundBannerProps) {
               </ul>
               <ul className="mt-2">
                 <li>
-                  Buy more G$ on
+                  Buy more G$ on the 
                   <Card.Link
-                    href="gooddapp.org"
+                    href="https://gooddapp.org/#/swap/celoReserve"
                     target="_blank"
                     className="text-primary"
                   >
-                    gooddapp.org
+                    GoodApp
                   </Card.Link>
-                  or
+                  or 
                   <Card.Link
-                    href="app.uniswap.org"
+                    href="https://app.uniswap.org"
                     target="_blank"
                     className="text-primary"
                   >
-                    app.uniswap.org
+                    Uniswap
                   </Card.Link>
                   .
                 </li>
