@@ -68,8 +68,8 @@ export default function DistributionPoolDetails(
     <Stack direction="vertical" className="bg-light rounded-4 p-2 pt-0">
       <Stack direction="horizontal" gap={2} className="align-items-center mt-3">
         <Image
-          src="/logo.png"
-          alt="SQF"
+          src="/good-dollar.png"
+          alt="GoodDollar"
           width={96}
           height={96}
           className="ms-2 rounded-4"
@@ -143,9 +143,12 @@ export default function DistributionPoolDetails(
         </Card.Text>
       </Stack>
       <Card.Text className="m-0 p-2 fs-6" style={{ maxWidth: 500 }}>
-        Lorem ipsum odor amet, consectetuer adipiscing elit. Tortor sem dictumst
-        suscipit ut, blandit fusce. Himenaeos rhoncus risus venenatis ad fames
-        viverra libero habitant fames.
+        GoodBuilders Round 2 is a 3-month continuous funding round on Celo for 
+        projects and builders integrating with the GoodDollar ecosystem in 
+        meaningful ways. 
+        Run by GoodDollar and Flow State, with support from KarmaGAP and Celo 
+        Public Goods, the round streams $70K USD + 50K CELO in G$ using 
+        GoodDollar’s native Superfluid capabilities.
       </Card.Text>
     </Stack>
   );
