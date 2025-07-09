@@ -317,7 +317,7 @@ export default function RoundBanner(props: RoundBannerProps) {
               </li>
               <ul className="mt-2">
                 <li>
-                  Claim your share of the
+                  Claim your share of a 
                   <Card.Link
                     href="https://claim.superfluid.org"
                     target="_blank"
@@ -343,23 +343,25 @@ export default function RoundBanner(props: RoundBannerProps) {
                 </li>
               </ul>
               <ul className="mt-2">
-                Buy more G$ on
-                <Card.Link
-                  href="gooddapp.org"
-                  target="_blank"
-                  className="text-primary"
-                >
-                  gooddapp.org
-                </Card.Link>
-                or
-                <Card.Link
-                  href="app.uniswap.org"
-                  target="_blank"
-                  className="text-primary"
-                >
-                  app.uniswap.org
-                </Card.Link>
-                .
+                <li>
+                  Buy more G$ on
+                  <Card.Link
+                    href="gooddapp.org"
+                    target="_blank"
+                    className="text-primary"
+                  >
+                    gooddapp.org
+                  </Card.Link>
+                  or
+                  <Card.Link
+                    href="app.uniswap.org"
+                    target="_blank"
+                    className="text-primary"
+                  >
+                    app.uniswap.org
+                  </Card.Link>
+                  .
+                </li>
               </ul>
               <li className="mt-3">
                 Ready to become a GoodBuilder?{" "}
