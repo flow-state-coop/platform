@@ -5,6 +5,7 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import removeMarkdown from "remove-markdown";
 import Stack from "react-bootstrap/Stack";
 import Spinner from "react-bootstrap/Spinner";
+import Modal from "react-bootstrap/Modal";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
@@ -41,6 +42,7 @@ export default function RoundBanner(props: RoundBannerProps) {
   } = props;
 
   const [showFullInfo, setShowFullInfo] = useState(true);
+  const [showInstructions, setShowInstructions] = useState(false);
   const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
   const [hasCheckedEligibility, setHasCheckedEligibility] = useState(false);
 
@@ -146,7 +148,15 @@ export default function RoundBanner(props: RoundBannerProps) {
             </Button>
           )}
         </Stack>
-        <Card.Text className="mb-4 fs-6">Flow Council Allocation</Card.Text>
+        <Button
+          variant="transparent"
+          className="p-0 shadow-none border-0"
+          onClick={() => setShowInstructions(true)}
+        >
+          <Card.Text className="mb-4 fs-6 text-primary text-start">
+            How to participate (& earn $SUP)
+          </Card.Text>
+        </Button>
         {(!isMobile || showFullInfo) && (
           <>
             <Table borderless>
@@ -265,6 +275,122 @@ export default function RoundBanner(props: RoundBannerProps) {
           </Button>
         )}
       </Stack>
+      {showInstructions && (
+        <Modal
+          show={showInstructions}
+          centered
+          size="lg"
+          onHide={() => setShowInstructions(false)}
+        >
+          <Modal.Header closeButton className="align-items-start border-0 pt-3">
+            <Modal.Title className="fs-5 fw-bold">
+              How to participate (and earn $SUP)
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="fs-5">
+            <ul>
+              <li>
+                GoodBuilders Round 2 is a continuous funding round. $85k in G$
+                will be dynamically allocated to builders by community vote
+                between now and October 9!
+              </li>
+              <li className="mt-3">
+                Earn votes by{" "}
+                <Card.Link
+                  href="https://goodwallet.xyz"
+                  target="_blank"
+                  className="text-primary"
+                >
+                  becoming a verified G$
+                </Card.Link>{" "}
+                user or opening a G$ stream to “Grow the Pie”.
+              </li>
+              <ul className="mt-2">
+                <li>
+                  Additional votes are distributed at the start of every
+                  two-week epoch (July 9th, July 23rd, ...).
+                </li>
+              </ul>
+              <li className="mt-3">
+                Earn Superfluid XP by voting in each epoch and/or maintaining a
+                donation stream.
+              </li>
+              <ul className="mt-2">
+                <li>
+                  Claim your share of a{" "}
+                  <Card.Link
+                    href="https://claim.superfluid.org"
+                    target="_blank"
+                    className="text-primary"
+                  >
+                    1M $SUP rewards stream
+                  </Card.Link>{" "}
+                  anytime you earn XP.
+                </li>
+              </ul>
+              <li className="mt-3">Don't have G$ to donate?</li>
+              <ul className="mt-2">
+                <li>
+                  <Card.Link
+                    href="https://goodwallet.xyz"
+                    target="_blank"
+                    className="text-primary"
+                  >
+                    Get verified and claim your daily G$ UBI
+                  </Card.Link>
+                  , then "Grow the Pie" with a donation stream. UBI is roughly
+                  60 G$/day. With daily claims, you can stream ~1,800 G$/month.
+                </li>
+              </ul>
+              <ul className="mt-2">
+                <li>
+                  Buy more G$ on the{" "}
+                  <Card.Link
+                    href="https://gooddapp.org/#/swap/celoReserve"
+                    target="_blank"
+                    className="text-primary"
+                  >
+                    GoodApp
+                  </Card.Link>
+                  {" "}or{" "}
+                  <Card.Link
+                    href="https://app.uniswap.org"
+                    target="_blank"
+                    className="text-primary"
+                  >
+                    Uniswap
+                  </Card.Link>
+                  .
+                </li>
+              </ul>
+              <li className="mt-3">
+                Ready to become a GoodBuilder?{" "}
+                <Card.Link
+                  href="https://ubi.gd/4epiAwf"
+                  target="_blank"
+                  className="text-primary"
+                >
+                  Read
+                </Card.Link>{" "}
+                &{" "}
+                <Card.Link
+                  href="https://flowstate.network/gooddollar/grantee"
+                  target="_blank"
+                  className="text-primary"
+                >
+                  apply
+                </Card.Link>
+                .
+              </li>
+            </ul>
+          </Modal.Body>
+          <Modal.Footer className="border-0">
+            <Button className="px-5" onClick={() => setShowInstructions(false)}>
+              Let's Go
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      )}
     </div>
   );
 }
