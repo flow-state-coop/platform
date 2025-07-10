@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import InfoTooltip from "@/components/InfoTooltip";
 import { Grantee } from "../types/grantee";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useCouncil from "../hooks/council";
@@ -17,7 +16,7 @@ type VoteBubbleProps = {
 export default function VoteBubble(props: VoteBubbleProps) {
   const { grantees, granteeColors, votingPower, voteBubbleRef } = props;
 
-  const { isMobile, isTablet } = useMediaQuery();
+  const { isMobile } = useMediaQuery();
   const { newAllocation, council, dispatchShowBallot } = useCouncil();
 
   const totalAllocatedProjects =
@@ -148,15 +147,7 @@ export default function VoteBubble(props: VoteBubbleProps) {
         zIndex: 3,
       }}
     >
-      {isMobile || isTablet ? (
-        <VoteButton />
-      ) : (
-        <InfoTooltip
-          position={{ top: true }}
-          content={<>Click to edit & submit your votes</>}
-          target={<VoteButton />}
-        />
-      )}
+      <VoteButton />
     </Stack>
   );
 }
