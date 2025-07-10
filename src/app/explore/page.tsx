@@ -1,7 +1,8 @@
 import Explore from "./explore";
-import { base, optimism, arbitrum } from "viem/chains";
+import { arbitrum, base, celo, optimism } from "viem/chains";
 import { gql, request } from "graphql-request";
 import { Inflow } from "@/types/inflow";
+import { GDAPool } from "@/types/gdaPool";
 import { networks } from "@/lib/networks";
 
 const FLOW_GUILD_QUERY = gql`
@@ -14,6 +15,17 @@ const FLOW_GUILD_QUERY = gql`
         totalInflowRate
         updatedAtTimestamp
       }
+    }
+  }
+`;
+
+const GDA_POOL_QUERY = gql`
+  query GDAPoolQuery($gdaPool: String) {
+    pool(id: $gdaPool) {
+      id
+      flowRate
+      totalAmountFlowedDistributedUntilUpdatedAt
+      updatedAtTimestamp
     }
   }
 `;
@@ -75,6 +87,13 @@ export default async function Page() {
       token: FLOW_GUILD_ADDRESSES["chonesguild"].token,
     },
   );
+  const goodDollarQueryRes = await request<{ pool: GDAPool }>(
+    networks.find((network) => network.id === celo.id)!.superfluidSubgraph,
+    GDA_POOL_QUERY,
+    {
+      gdaPool: "0xafcab1ab378354b8ce0dbd0ae2e2c0dea01dcf0b",
+    },
+  );
 
   return (
     <Explore
@@ -82,6 +101,7 @@ export default async function Page() {
       greenpillInflow={greenpillQueryRes.account.accountTokenSnapshots[0]}
       guildGuildInflow={guildGuildQueryRes.account.accountTokenSnapshots[0]}
       chonesGuildInflow={chonesGuildQueryRes.account.accountTokenSnapshots[0]}
+      goodDollarPool={goodDollarQueryRes.pool}
     />
   );
 }
