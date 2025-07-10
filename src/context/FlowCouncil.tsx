@@ -164,6 +164,11 @@ function newAllocationReducer(
         ),
       };
     }
+    case "clear": {
+      return {
+        allocation: [],
+      };
+    }
     default: {
       throw Error(`Unknown action: ${action.type}`);
     }

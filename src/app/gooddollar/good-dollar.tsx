@@ -223,6 +223,10 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
   ]);
 
   useEffect(() => {
+    dispatchNewAllocation({ type: "clear" });
+  }, [address, dispatchNewAllocation]);
+
+  useEffect(() => {
     const currentAllocation = JSON.parse(currentAllocationStringified);
 
     if (currentAllocation?.allocation) {
