@@ -183,7 +183,7 @@ export default function Explore(props: ExploreProps) {
               ).toString()}
               flowRate={BigInt(goodDollarPool?.flowRate ?? 0).toString()}
               updatedAt={goodDollarPool?.updatedAtTimestamp}
-              tokenSymbol="CELOx"
+              tokenSymbol="G$"
               link="/gooddollar"
             />
             <RoundCard
