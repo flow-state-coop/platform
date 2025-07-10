@@ -13,6 +13,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Toast from "react-bootstrap/Toast";
 import RoundCard from "./components/RoundCard";
 import { Inflow } from "@/types/inflow";
+import { GDAPool } from "@/types/gdaPool";
 import { getApolloClient } from "@/lib/apollo";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
@@ -21,6 +22,7 @@ type ExploreProps = {
   greenpillInflow: Inflow;
   guildGuildInflow: Inflow;
   chonesGuildInflow: Inflow;
+  goodDollarPool: GDAPool;
 };
 
 const SQF_STREAM_QUERY = gql`
@@ -64,8 +66,13 @@ const SQF_ADDRESSES = {
 };
 
 export default function Explore(props: ExploreProps) {
-  const { coreInflow, greenpillInflow, guildGuildInflow, chonesGuildInflow } =
-    props;
+  const {
+    coreInflow,
+    greenpillInflow,
+    guildGuildInflow,
+    chonesGuildInflow,
+    goodDollarPool,
+  } = props;
 
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
@@ -87,7 +94,6 @@ export default function Explore(props: ExploreProps) {
       pollInterval: 10000,
     },
   );
-
   const handleMailingListSub = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -168,6 +174,18 @@ export default function Explore(props: ExploreProps) {
                       : "",
             }}
           >
+            <RoundCard
+              name="GoodBuilders Program"
+              image="/good-dollar.png"
+              roundType="Flow Council"
+              totalStreamedUntilUpdatedAt={BigInt(
+                goodDollarPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
+              ).toString()}
+              flowRate={BigInt(goodDollarPool?.flowRate ?? 0).toString()}
+              updatedAt={goodDollarPool?.updatedAtTimestamp}
+              tokenSymbol="CELOx"
+              link="/gooddollar"
+            />
             <RoundCard
               name="Core Contributors"
               image="/logo-circle.svg"
@@ -265,12 +283,6 @@ export default function Explore(props: ExploreProps) {
               updatedAt={chonesGuildInflow?.updatedAtTimestamp}
               tokenSymbol="ETHx"
               link="/flow-guilds/chonesguild"
-            />
-            <RoundCard
-              name="GoodBuilders Program"
-              image="/good-dollar.png"
-              roundType="Flow Council"
-              link="https://gooddollar.notion.site/GoodBuilders-Program-Round-2-goes-streaming-200f258232f0802b960ad1dab7ad5fd2"
             />
           </div>
           <p className="text-center">
