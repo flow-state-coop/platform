@@ -37,7 +37,10 @@ export async function POST(request: Request) {
     const now = (Date.now() / 1000) | 0;
 
     const stack = new StackClient({
-      apiKey: config.stackApiKey,
+      apiKey:
+        network.id === 42220
+          ? process.env.STACK_API_KEY_CELO!
+          : process.env.STACK_API_KEY_OP_SEPOLIA!,
       pointSystemId: config.pointSystemId,
     });
 

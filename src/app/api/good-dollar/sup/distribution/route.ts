@@ -38,7 +38,10 @@ export async function GET(req: NextRequest) {
     const tokensPerDollar = network.id === 42220 ? 10000 : 1;
     const now = (Date.now() / 1000) | 0;
     const stack = new StackClient({
-      apiKey: config.stackApiKey,
+      apiKey:
+        network.id === 42220
+          ? process.env.STACK_API_KEY_CELO!
+          : process.env.STACK_API_KEY_OP_SEPOLIA!,
       pointSystemId: config.pointSystemId,
     });
     const queryRes = await request<{ pool: GDAPool }>(
