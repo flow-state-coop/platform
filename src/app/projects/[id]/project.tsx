@@ -393,6 +393,25 @@ export default function Project(props: ProjectProps) {
               </Card.Text>
             </Button>
           )}
+          {!!project?.metadata.karmaGap && (
+            <Button
+              variant="link"
+              href={`https://gap.karmahq.xyz/project/${project.metadata.karmaGap}`}
+              target="_blank"
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
+              style={{ width: !isMobile ? "33%" : "" }}
+            >
+              <Image
+                src="/karma-gap.svg"
+                alt="Karma Gap"
+                width={18}
+                height={18}
+              />
+              <Card.Text className="text-truncate">
+                {`gap.karmahq.xyz/project/${project.metadata.karmaGap}`}
+              </Card.Text>
+            </Button>
+          )}
           {!!project?.metadata.projectTwitter && (
             <Button
               variant="link"

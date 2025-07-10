@@ -80,7 +80,7 @@ export default function GranteeDetails(props: GranteeDetails) {
           </Stack>
           <Stack
             direction="horizontal"
-            gap={1}
+            gap={2}
             className="align-items-end text-info fs-6 px-2 mb-2"
           >
             {!!metadata.website && (
@@ -88,9 +88,9 @@ export default function GranteeDetails(props: GranteeDetails) {
                 variant="link"
                 href={metadata.website}
                 target="_blank"
-                className="ms-1 p-0"
+                className="p-0"
               >
-                <Image src="/web.svg" alt="Web" width={18} height={18} />
+                <Image src="/web.svg" alt="Web" width={20} height={20} />
               </Button>
             )}
             {!!metadata.projectGithub && (
@@ -98,7 +98,7 @@ export default function GranteeDetails(props: GranteeDetails) {
                 variant="link"
                 href={`https://github.com/${metadata.projectGithub}`}
                 target="_blank"
-                className="ms-1 p-0"
+                className="p-0"
               >
                 <Image src="/github.svg" alt="Github" width={18} height={18} />
               </Button>
@@ -183,6 +183,21 @@ export default function GranteeDetails(props: GranteeDetails) {
                 />
               </Button>
             )}
+            {!!metadata.karmaGap && (
+              <Button
+                variant="link"
+                href={`https://gap.karmahq.xyz/project/${metadata.karmaGap}`}
+                target="_blank"
+                className="p-0"
+              >
+                <Image
+                  src="/karma-gap.svg"
+                  alt="discord"
+                  width={20}
+                  height={20}
+                />
+              </Button>
+            )}
           </Stack>
           <div style={{ maxWidth: 500 }}>
             <Markdown
@@ -227,7 +242,11 @@ export default function GranteeDetails(props: GranteeDetails) {
           )}
           <Button
             variant="link"
-            href={`/projects/${id}/?chainId=${chainId}`}
+            href={
+              metadata?.karmaGap
+                ? `https://gap.karmahq.xyz/project/${metadata.karmaGap}`
+                : `/projects/${id}/?chainId=${chainId}`
+            }
             target="_blank"
             className="d-flex justify-content-center align-items-center gap-2 mt-2 bg-secondary text-light text-decoration-none"
           >
@@ -241,7 +260,7 @@ export default function GranteeDetails(props: GranteeDetails) {
                   "invert(100%) sepia(0%) saturate(7497%) hue-rotate(175deg) brightness(103%) contrast(103%)",
               }}
             />
-            Project Page
+            {metadata?.karmaGap ? "Karma GAP" : "Project Page"}
           </Button>
         </Stack>
       </Offcanvas.Body>
