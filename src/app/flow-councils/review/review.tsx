@@ -222,15 +222,17 @@ export default function Review(props: ReviewProps) {
       (application) => selectedApplication.owner === application.owner,
     );
 
-    if (index === -1) {
-      _reviewingApplications.push({
-        owner: selectedApplication.owner,
-        recipient: selectedApplication.recipient,
-        metadata: selectedApplication.metadata,
-        newStatus,
-      });
-    } else {
-      _reviewingApplications[index].newStatus = newStatus;
+    if (selectedApplication.status !== newStatus) {
+      if (index === -1) {
+        _reviewingApplications.push({
+          owner: selectedApplication.owner,
+          recipient: selectedApplication.recipient,
+          metadata: selectedApplication.metadata,
+          newStatus,
+        });
+      } else {
+        _reviewingApplications[index].newStatus = newStatus;
+      }
     }
 
     setReviewingApplications(_reviewingApplications);
@@ -535,6 +537,15 @@ export default function Review(props: ReviewProps) {
                             }}
                           >
                             Kick from Pool
+                          </Button>
+                        ) : application.status === "REJECTED" ? (
+                          <Button
+                            className="w-100 p-0"
+                            onClick={() => {
+                              setSelectedApplication(application);
+                            }}
+                          >
+                            View
                           </Button>
                         ) : null}
                       </td>
