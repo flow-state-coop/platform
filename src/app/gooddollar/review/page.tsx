@@ -1,6 +1,6 @@
 import type { SearchParams } from "@/types/searchParams";
 import Review from "./review";
-import { headers, cookies } from "next/headers";
+import { headers, cookies as nextCookies } from "next/headers";
 import { councilConfig } from "../lib/councilConfig";
 
 export default async function Page({
@@ -12,15 +12,14 @@ export default async function Page({
   const hostname = headersList.get("host");
   const chainId = searchParams.chainId ? Number(searchParams.chainId) : 42220;
   const councilId = councilConfig[chainId]?.councilAddress;
+  const cookies = await nextCookies();
 
   return (
     <Review
       chainId={chainId}
       councilId={councilId}
       hostname={hostname ?? ""}
-      csfrToken={
-        cookies().get("next-auth.csrf-token")?.value.split("|")[0] ?? ""
-      }
+      csfrToken={cookies.get("next-auth.csrf-token")?.value.split("|")[0] ?? ""}
     />
   );
 }

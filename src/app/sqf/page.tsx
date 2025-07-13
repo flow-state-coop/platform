@@ -1,6 +1,4 @@
-import dynamic from "next/dynamic";
-
-const SQF = dynamic(() => import("./sqf"), { ssr: false });
+import SQF from "./sqf";
 
 export default async function Page() {
   return <SQF />;

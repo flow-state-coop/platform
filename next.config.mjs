@@ -26,6 +26,15 @@ const nextConfig = {
 
     return config;
   },
+  sassOptions: {
+    silenceDeprecations: [
+      "import",
+      "global-builtin",
+      "color-functions",
+      "mixed-decls",
+      "legacy-js-api",
+    ],
+  },
 };
 
 export default nextConfig;
