@@ -1,13 +1,11 @@
 import type { Metadata, ResolvingMetadata } from "next";
-import dynamic from "next/dynamic";
 
 import type { SearchParams } from "@/types/searchParams";
 import { gql, request } from "graphql-request";
 import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import removeMarkdown from "remove-markdown";
+import Pool from "./pool";
 import { DEFAULT_CHAIN_ID, DEFAULT_POOL_ID } from "@/lib/constants";
-
-const Pool = dynamic(() => import("./pool"), { ssr: false });
 
 type Recipient = {
   id: string;

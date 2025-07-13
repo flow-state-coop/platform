@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies as nextCookies } from "next/headers";
 import type { SearchParams } from "@/types/searchParams";
 import Grantee from "./grantee";
 import { councilConfig } from "../lib/councilConfig";
@@ -10,14 +10,13 @@ export default async function Page({
 }) {
   const chainId = searchParams.chainId ? Number(searchParams.chainId) : 42220;
   const councilId = councilConfig[chainId]?.councilAddress;
+  const cookies = await nextCookies();
 
   return (
     <Grantee
       chainId={chainId}
       councilId={councilId}
-      csfrToken={
-        cookies().get("next-auth.csrf-token")?.value.split("|")[0] ?? ""
-      }
+      csfrToken={cookies.get("next-auth.csrf-token")?.value.split("|")[0] ?? ""}
     />
   );
 }

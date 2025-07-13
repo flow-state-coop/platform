@@ -1,4 +1,4 @@
-import { headers, cookies } from "next/headers";
+import { headers, cookies as nextCookies } from "next/headers";
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { SiweMessage } from "siwe";
@@ -26,10 +26,11 @@ const providers = [
           headersList.get("origin") ?? "https://flowstate.network",
         );
 
+        const cookies = await nextCookies();
         const result = await siwe.verify({
           signature: credentials?.signature || "",
           domain: nextAuthUrl.host,
-          nonce: cookies().get("next-auth.csrf-token")?.value.split("|")[0], // csfr
+          nonce: cookies.get("next-auth.csrf-token")?.value.split("|")[0], // csfr
         });
 
         if (result.success) {

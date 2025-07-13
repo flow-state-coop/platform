@@ -1,13 +1,9 @@
-import dynamic from "next/dynamic";
 import Stack from "react-bootstrap/Stack";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Providers from "./providers";
+import PostHog from "./posthog";
 import { OG_DEFAULT_IMAGE_URL } from "@/lib/constants";
-
-const PostHog = dynamic(() => import("./posthog"), {
-  ssr: false,
-});
 
 export const metadata = {
   metadataBase:

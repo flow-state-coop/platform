@@ -1,10 +1,6 @@
 import type { SearchParams } from "@/types/searchParams";
-import dynamic from "next/dynamic";
 import { networks } from "@/lib/networks";
-
-const Launch = dynamic(() => import("./launch"), {
-  ssr: false,
-});
+import Launch from "./launch";
 
 export default async function Page({
   searchParams,
