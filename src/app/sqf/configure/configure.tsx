@@ -416,6 +416,7 @@ export default function Configure(props: ConfigureProps) {
       const txReceipt = await waitForTransactionReceipt(wagmiConfig, {
         chainId: network?.id,
         hash,
+        confirmations: 3,
       });
       const topics = parseEventLogs({
         abi: alloAbi,
@@ -427,7 +428,7 @@ export default function Configure(props: ConfigureProps) {
       setAreTransactionsLoading(false);
 
       router.push(
-        `/sqf/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${topics[0].args.poolId.toString()}&new=true`,
+        `/sqf/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${topics[0].args.poolId.toString()}&showNextButton=true`,
       );
     } catch (err) {
       setTransactionsCompleted(0);

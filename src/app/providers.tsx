@@ -36,9 +36,9 @@ const config = getDefaultConfig({
   },
 });
 
-export default function Providers({ children }: { children: React.ReactNode }) {
-  const queryClient = new QueryClient();
+const queryClient = new QueryClient();
 
+export default function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
       api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,

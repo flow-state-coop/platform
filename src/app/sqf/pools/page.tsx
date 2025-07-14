@@ -4,12 +4,14 @@ import Pools from "./pools";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
+  const { profileId, chainId } = await searchParams;
+
   return (
     <Pools
-      profileId={searchParams.profileId ?? null}
-      chainId={searchParams.chainId ? Number(searchParams.chainId) : null}
+      profileId={profileId ?? null}
+      chainId={chainId ? Number(chainId) : null}
     />
   );
 }

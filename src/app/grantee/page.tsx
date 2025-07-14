@@ -4,12 +4,14 @@ import type { SearchParams } from "@/types/searchParams";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
+  const { chainId, poolId } = await searchParams;
+
   return (
     <Grantee
-      chainId={searchParams.chainId ? Number(searchParams.chainId) : null}
-      poolId={searchParams.poolId ?? null}
+      chainId={chainId ? Number(chainId) : null}
+      poolId={poolId ?? null}
     />
   );
 }

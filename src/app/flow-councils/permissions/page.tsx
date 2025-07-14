@@ -4,12 +4,9 @@ import Permissions from "./permissions";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
-  return (
-    <Permissions
-      chainId={Number(searchParams.chainId)}
-      councilId={searchParams.councilId}
-    />
-  );
+  const { chainId, councilId } = await searchParams;
+
+  return <Permissions chainId={Number(chainId)} councilId={councilId} />;
 }

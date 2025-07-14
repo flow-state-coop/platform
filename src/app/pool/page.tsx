@@ -96,16 +96,17 @@ export async function generateMetadata(
 export default async function Page({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
+  const { chainId, poolId, recipientId, editPoolDistribution } =
+    await searchParams;
+
   return (
     <Pool
-      chainId={
-        searchParams.chainId ? Number(searchParams.chainId) : DEFAULT_CHAIN_ID
-      }
-      poolId={searchParams.poolId ?? DEFAULT_POOL_ID}
-      recipientId={searchParams.recipientId ?? ""}
-      editPoolDistribution={searchParams.editPoolDistribution ? true : false}
+      chainId={chainId ? Number(chainId) : DEFAULT_CHAIN_ID}
+      poolId={poolId ?? DEFAULT_POOL_ID}
+      recipientId={recipientId ?? ""}
+      editPoolDistribution={editPoolDistribution ? true : false}
     />
   );
 }

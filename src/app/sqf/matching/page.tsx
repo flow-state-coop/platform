@@ -4,13 +4,15 @@ import Matching from "./matching";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
+  const { chainId, profileId, poolId } = await searchParams;
+
   return (
     <Matching
-      chainId={searchParams.chainId ? Number(searchParams.chainId) : null}
-      profileId={searchParams.profileId ?? null}
-      poolId={searchParams.poolId ?? null}
+      chainId={chainId ? Number(chainId) : null}
+      profileId={profileId ?? null}
+      poolId={poolId ?? null}
     />
   );
 }

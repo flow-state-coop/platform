@@ -7,7 +7,7 @@ export default async function Page({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
   const flowGuildConfig = flowGuildConfigs[params.id];
 
@@ -15,14 +15,12 @@ export default async function Page({
     return <div className="m-auto fs-1 fw-bold">Flow Guild Not Found</div>;
   }
 
+  const { chainId } = await searchParams;
+
   return (
     <FlowGuild
       flowGuildConfig={flowGuildConfig}
-      chainId={
-        searchParams.chainId
-          ? Number(searchParams.chainId)
-          : flowGuildConfig.defaultChainId
-      }
+      chainId={chainId ? Number(chainId) : flowGuildConfig.defaultChainId}
     />
   );
 }

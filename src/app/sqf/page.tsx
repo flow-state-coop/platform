@@ -1,5 +1,7 @@
+"use client";
+
 import SQF from "./sqf";
 
-export default async function Page() {
+export default function Page() {
   return <SQF />;
 }

@@ -4,12 +4,9 @@ import Membership from "./membership";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
-  return (
-    <Membership
-      chainId={Number(searchParams.chainId)}
-      councilId={searchParams.councilId}
-    />
-  );
+  const { chainId, councilId } = await searchParams;
+
+  return <Membership chainId={Number(chainId)} councilId={councilId} />;
 }
