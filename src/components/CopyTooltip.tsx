@@ -6,7 +6,7 @@ import Button from "react-bootstrap/Button";
 type CopyTooltipProps = {
   contentClick: string;
   contentHover: string;
-  target: JSX.Element;
+  target: React.JSX.Element;
   handleCopy: () => void;
 };
 

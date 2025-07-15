@@ -185,7 +185,7 @@ export default function Pool(props: PoolProps) {
   const skipGrantees = useRef(0);
   const granteesBatch = useRef(1);
   const hasNextGrantee = useRef(true);
-  const directTotalTimerId = useRef<NodeJS.Timeout>();
+  const directTotalTimerId = useRef<NodeJS.Timeout | null>(null);
 
   const [sentryRef, inView] = useInView();
 
@@ -426,7 +426,9 @@ export default function Pool(props: PoolProps) {
         return directTotal;
       };
 
-      clearInterval(directTotalTimerId.current);
+      if (directTotalTimerId.current) {
+        clearInterval(directTotalTimerId.current);
+      }
 
       directTotalTimerId.current = setInterval(
         () => setDirectTotal(calcDirectTotal()),
@@ -434,7 +436,11 @@ export default function Pool(props: PoolProps) {
       );
     }
 
-    return () => clearInterval(directTotalTimerId.current);
+    return () => {
+      if (directTotalTimerId.current) {
+        clearInterval(directTotalTimerId.current);
+      }
+    };
   }, [superfluidQueryRes, directTotalTimerId]);
 
   useEffect(() => {

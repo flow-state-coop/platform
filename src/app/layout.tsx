@@ -3,7 +3,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Providers from "./providers";
 import { OG_DEFAULT_IMAGE_URL } from "@/lib/constants";
-import PostHog from './posthog';
+import PostHog from "./posthog";
 
 export const metadata = {
   metadataBase:
@@ -42,7 +42,7 @@ export const metadata = {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html>
       <body>
         <Providers>
           <Header />
