@@ -251,7 +251,7 @@ export default function Grantee(props: GranteeProps) {
       <Sidebar />
       <Stack direction="vertical" className={!isMobile ? "w-75" : "w-100"}>
         <Stack direction="vertical" gap={4} className="px-5 py-4 mb-5">
-          {!loading && recipients !== null ? (
+          {!loading && recipients === null ? (
             <>Pool not found</>
           ) : loading || !chainId || !poolId ? (
             <Spinner className="m-auto" />
