@@ -5,6 +5,8 @@ type Params = {
   poolId: string;
 };
 
-export default async function Page({ params }: { params: Params }) {
-  return <Admin chainId={Number(params.chainId)} poolId={params.poolId} />;
+export default async function Page(params: Promise<Params>) {
+  const { chainId, poolId } = await params;
+
+  return <Admin chainId={Number(chainId)} poolId={poolId} />;
 }

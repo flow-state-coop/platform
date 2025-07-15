@@ -1,5 +1,4 @@
 import type { Metadata, ResolvingMetadata } from "next";
-
 import type { SearchParams } from "@/types/searchParams";
 import { gql, request } from "graphql-request";
 import { fetchIpfsJson } from "@/lib/fetchIpfs";
@@ -93,11 +92,7 @@ export async function generateMetadata(
   }
 }
 
-export default async function Page({
-  searchParams,
-}: {
-  searchParams: Promise<SearchParams>;
-}) {
+export default async function Page(searchParams: Promise<SearchParams>) {
   const { chainId, poolId, recipientId, editPoolDistribution } =
     await searchParams;
 

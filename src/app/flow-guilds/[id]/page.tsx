@@ -6,10 +6,11 @@ export default async function Page({
   params,
   searchParams,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
   searchParams: Promise<SearchParams>;
 }) {
-  const flowGuildConfig = flowGuildConfigs[params.id];
+  const { id } = await params;
+  const flowGuildConfig = flowGuildConfigs[id];
 
   if (!flowGuildConfig) {
     return <div className="m-auto fs-1 fw-bold">Flow Guild Not Found</div>;

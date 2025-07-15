@@ -29,6 +29,7 @@ export default function useCouncilQuery(network: Network, councilId: string) {
       councilId: councilId?.toLowerCase(),
     },
     pollInterval: 2000,
+    skip: !councilId,
   });
 
   return councilQueryRes?.council;
