@@ -1,5 +1,5 @@
 import Explore from "./explore";
-import { arbitrum, base, celo, optimism } from "viem/chains";
+import { base, celo, optimism } from "viem/chains";
 import { gql, request } from "graphql-request";
 import { Inflow } from "@/types/inflow";
 import { GDAPool } from "@/types/gdaPool";
@@ -44,14 +44,6 @@ const FLOW_GUILD_ADDRESSES = {
     safeAddress: "0x49fa954b6c2cd14b4b3604ef1cc17ced20a9e42c",
     token: "0x4ac8bd1bdae47beef2d1c6aa62229509b962aa0d",
   },
-  ["guild-guild"]: {
-    safeAddress: "0x29f4c46e04b9d35724af08f314d936f44f52527c",
-    token: "0xe6c8d111337d0052b9d88bf5d7d55b7f8385acd3",
-  },
-  ["chonesguild"]: {
-    safeAddress: "0xc40f7733f0ea30bb6f797c88444769e00775d021",
-    token: "0xe6c8d111337d0052b9d88bf5d7d55b7f8385acd3",
-  },
 };
 
 export default async function Page() {
@@ -71,22 +63,6 @@ export default async function Page() {
       token: FLOW_GUILD_ADDRESSES["greenpill"].token,
     },
   );
-  const guildGuildQueryRes = await request<{ account: Account }>(
-    networks.find((network) => network.id === arbitrum.id)!.superfluidSubgraph,
-    FLOW_GUILD_QUERY,
-    {
-      safeAddress: FLOW_GUILD_ADDRESSES["guild-guild"].safeAddress,
-      token: FLOW_GUILD_ADDRESSES["guild-guild"].token,
-    },
-  );
-  const chonesGuildQueryRes = await request<{ account: Account }>(
-    networks.find((network) => network.id === arbitrum.id)!.superfluidSubgraph,
-    FLOW_GUILD_QUERY,
-    {
-      safeAddress: FLOW_GUILD_ADDRESSES["chonesguild"].safeAddress,
-      token: FLOW_GUILD_ADDRESSES["chonesguild"].token,
-    },
-  );
   const goodDollarQueryRes = await request<{ pool: GDAPool }>(
     networks.find((network) => network.id === celo.id)!.superfluidSubgraph,
     GDA_POOL_QUERY,
@@ -99,8 +75,6 @@ export default async function Page() {
     <Explore
       coreInflow={coreQueryRes.account.accountTokenSnapshots[0]}
       greenpillInflow={greenpillQueryRes.account.accountTokenSnapshots[0]}
-      guildGuildInflow={guildGuildQueryRes.account.accountTokenSnapshots[0]}
-      chonesGuildInflow={chonesGuildQueryRes.account.accountTokenSnapshots[0]}
       goodDollarPool={goodDollarQueryRes.pool}
     />
   );

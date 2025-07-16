@@ -38,30 +38,6 @@ export const flowGuildConfigs: {
       8453: { ETHx: { id: "0x3" }, USDCx: { id: "0x10" } },
     },
   },
-  ["chonesguild"]: {
-    id: "chonesguild",
-    name: "Chones Guild",
-    description: `Chones, ecosystem weaving:\
-      \n- connects many communities and organizations\
-      \n- maintains mycelial communication and resource sharing\
-      \n- cross pollinates information and ideas\
-      \n- achieved with human to human care\
-      \n\n The Chones Guild is an experiment that aims to accelerate this activity across ecosystems.\
-      \n\n All streaming supporters earn [Superfluid SUP token rewards](https://claim.superfluid.org/claim)!`,
-    logo: "/chones-guild.svg",
-    website: "https://chones.xyz/",
-    github: "https://github.com/Chones-Weaving",
-    twitter: "https://x.com/ChonesWeaving/",
-    farcaster: "https://farcaster.xyz/~/channel/chones",
-    telegram: "",
-    discord: "",
-    defaultChainId: 42161,
-    defaultToken: "ETHx",
-    safe: "0xc40f7733f0ea30bb6f797c88444769e00775d021",
-    flowSplitters: {
-      42161: { ETHx: { id: "0x3" } },
-    },
-  },
   ["greenpilldevguild"]: {
     id: "greenpilldevguild",
     name: "Greenpill Dev Guild",
@@ -80,25 +56,6 @@ export const flowGuildConfigs: {
     safe: "0x49fa954b6c2cd14b4b3604ef1cc17ced20a9e42c",
     flowSplitters: {
       10: { ETHx: { id: "0x6" }, USDGLOx: { id: "0x5" } },
-    },
-  },
-  ["guild-guild"]: {
-    id: "guild-guild",
-    name: "Guild Guild",
-    description:
-      "A locus of coordination for gathering and distributing the means of Guilding on Ethereum.\n\n1. Organize knowledge commons and distribute best practices\n2. Support builders of tools and organizers of guilds\n3. Network Guilds for further coordination cost savings\n\nAll streaming supporters earn [Superfluid SUP token rewards](https://claim.superfluid.org/claim).",
-    logo: "/guild-guild.png",
-    website: "https://guildguild.xyz/",
-    github: "https://github.com/oovg/guildguildxyz",
-    twitter: "https://x.com/guildguild_eth",
-    farcaster: "",
-    telegram: "",
-    discord: "https://discord.gg/XbAqvWptsq",
-    defaultChainId: 42161,
-    defaultToken: "ETHx",
-    safe: "0x29f4c46e04b9d35724af08f314d936f44f52527c",
-    flowSplitters: {
-      42161: { ETHx: { id: "0x2" } },
     },
   },
 };
