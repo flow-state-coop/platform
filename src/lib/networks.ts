@@ -15,7 +15,7 @@ const networks: Network[] = [
     onRampLabel: "arbitrum",
     flowSplitter: "0xCbA99f104D17D06Ce4C80Be143f29b6fd44D3Ce9",
     flowSplitterSubgraph:
-      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-splitter-arbitrum-one/0.0.3/gn",
+      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-splitter-arbitrum-one/v0.0.3/gn",
     flowCouncilFactory: "0xe6a6E24905e200F69b57cE3B01D5F65776a40DF3",
     flowCouncilSubgraph:
       "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-council-arbitrum-one/v0.2.3/gn",
