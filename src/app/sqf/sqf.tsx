@@ -145,7 +145,7 @@ export default function SQF() {
               ))}
             </Dropdown.Menu>
           </Dropdown>
-          {loading || programs === null ? (
+          {address && (loading || programs === null) ? (
             <Spinner className="m-auto" />
           ) : (
             <Stack direction="horizontal" gap={5} className="flex-wrap">

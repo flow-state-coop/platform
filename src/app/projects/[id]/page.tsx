@@ -78,13 +78,11 @@ export default async function Page({
   params,
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
   params: Promise<{ id: string }>;
 }) {
-  return (
-    <Project
-      chainId={searchParams.chainId ? Number(searchParams.chainId) : null}
-      id={(await params).id ?? null}
-    />
-  );
+  const { id } = await params;
+  const { chainId } = await searchParams;
+
+  return <Project chainId={chainId ? Number(chainId) : null} id={id ?? null} />;
 }

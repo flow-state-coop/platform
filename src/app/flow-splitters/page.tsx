@@ -5,11 +5,12 @@ import { networks } from "@/lib/networks";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
+  const { chainId } = await searchParams;
+
   const defaultNetwork =
-    networks.find((network) => network.id === Number(searchParams.chainId)) ??
-    networks[1];
+    networks.find((network) => network.id === Number(chainId)) ?? networks[1];
 
   return <FlowSplitters defaultNetwork={defaultNetwork} />;
 }

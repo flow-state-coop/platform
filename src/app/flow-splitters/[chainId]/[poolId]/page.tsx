@@ -5,8 +5,8 @@ type Params = {
   poolId: string;
 };
 
-export default async function Page({ params }: { params: Params }) {
-  return (
-    <FlowSplitter chainId={Number(params.chainId)} poolId={params.poolId} />
-  );
+export default async function Page({ params }: { params: Promise<Params> }) {
+  const { chainId, poolId } = await params;
+
+  return <FlowSplitter chainId={Number(chainId)} poolId={poolId} />;
 }

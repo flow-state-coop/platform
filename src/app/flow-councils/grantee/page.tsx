@@ -5,14 +5,16 @@ import Grantee from "./grantee";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
   const cookies = await nextCookies();
 
+  const { chainId, councilId } = await searchParams;
+
   return (
     <Grantee
-      chainId={Number(searchParams.chainId)}
-      councilId={searchParams.councilId}
+      chainId={Number(chainId)}
+      councilId={councilId}
       csfrToken={cookies.get("next-auth.csrf-token")?.value.split("|")[0] ?? ""}
     />
   );

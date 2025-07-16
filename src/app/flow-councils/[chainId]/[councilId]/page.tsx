@@ -5,11 +5,8 @@ type Params = {
   councilId: string;
 };
 
-export default async function Page({ params }: { params: Params }) {
-  return (
-    <FlowCouncil
-      chainId={Number(params.chainId)}
-      councilId={params.councilId}
-    />
-  );
+export default async function Page({ params }: { params: Promise<Params> }) {
+  const { chainId, councilId } = await params;
+
+  return <FlowCouncil chainId={Number(chainId)} councilId={councilId} />;
 }

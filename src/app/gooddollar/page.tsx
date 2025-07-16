@@ -5,13 +5,9 @@ import { DEFAULT_CHAIN_ID } from "./lib/constants";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
-  return (
-    <GoodDollar
-      chainId={
-        searchParams.chainId ? Number(searchParams.chainId) : DEFAULT_CHAIN_ID
-      }
-    />
-  );
+  const { chainId } = await searchParams;
+
+  return <GoodDollar chainId={chainId ? Number(chainId) : DEFAULT_CHAIN_ID} />;
 }

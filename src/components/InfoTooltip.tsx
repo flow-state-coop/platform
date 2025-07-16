@@ -2,8 +2,8 @@ import { useState } from "react";
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
 
 export type InfoTooltipProps = {
-  content: JSX.Element;
-  target: JSX.Element;
+  content: React.JSX.Element;
+  target: React.JSX.Element;
   position?: { top?: boolean; bottom?: boolean; right?: boolean };
 };
 

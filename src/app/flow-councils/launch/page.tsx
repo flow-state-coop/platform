@@ -5,11 +5,12 @@ import { networks } from "@/lib/networks";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
-  const network =
-    networks.find((network) => network.id === Number(searchParams.chainId)) ??
-    networks[0];
+  const { chainId, councilId } = await searchParams;
 
-  return <Launch defaultNetwork={network} councilId={searchParams.councilId} />;
+  const network =
+    networks.find((network) => network.id === Number(chainId)) ?? networks[0];
+
+  return <Launch defaultNetwork={network} councilId={councilId} />;
 }

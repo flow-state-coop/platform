@@ -8,6 +8,7 @@ import { useQuery, gql } from "@apollo/client";
 import { useAccount } from "wagmi";
 import Dropdown from "react-bootstrap/Dropdown";
 import Offcanvas from "react-bootstrap/Offcanvas";
+import Spinner from "react-bootstrap/Spinner";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import { Program } from "@/types/program";
@@ -443,18 +444,22 @@ function Sidebar() {
             variant="transparent"
             className="d-flex justify-content-between align-items-center w-100 border border-2 overflow-hidden"
           >
-            <span
-              className="d-inline-block text-truncate"
-              style={{
-                color: !selectedProfile
-                  ? "#fff"
-                  : isWrongNetwork
-                    ? "#dee2e6"
-                    : "",
-              }}
-            >
-              {selectedProfile?.metadata?.name ?? "N/A"}
-            </span>
+            {!programs ? (
+              <Spinner size="sm" className="mx-auto p-2" />
+            ) : (
+              <span
+                className="d-inline-block text-truncate"
+                style={{
+                  color: !selectedProfile
+                    ? "#fff"
+                    : isWrongNetwork
+                      ? "#dee2e6"
+                      : "",
+                }}
+              >
+                {selectedProfile?.metadata?.name ?? "N/A"}
+              </span>
+            )}
           </Dropdown.Toggle>
           <Dropdown.Menu>
             {programs?.map((profile: Program, i: number) => (

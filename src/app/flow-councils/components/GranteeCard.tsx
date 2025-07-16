@@ -136,12 +136,20 @@ export default function Grantee(props: GranteeProps) {
 
     container.addEventListener("mousemove", move);
     container.addEventListener("touchmove", move);
-    window.addEventListener("mouseup", () => {
-      container.removeEventListener("mousemove", move);
-    });
-    window.addEventListener("touchend", () => {
-      container.removeEventListener("touchmove", move);
-    });
+    window.addEventListener(
+      "mouseup",
+      () => {
+        container.removeEventListener("mousemove", move);
+      },
+      { once: true },
+    );
+    window.addEventListener(
+      "touchend",
+      () => {
+        container.removeEventListener("touchmove", move);
+      },
+      { once: true },
+    );
   };
 
   return (

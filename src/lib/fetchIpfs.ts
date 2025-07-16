@@ -14,7 +14,7 @@ export const fetchIpfsJson = async (cid: string) => {
   const controller = new AbortController();
   const timerId = setTimeout(() => {
     controller.abort();
-  }, 30000);
+  }, 10000);
 
   try {
     const res = await verifiedFetch(`ipfs://${cid}`, {
