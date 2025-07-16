@@ -13,9 +13,9 @@ const networks: Network[] = [
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/arbitrum-one/protocol-v1",
     onRampLabel: "arbitrum",
-    flowSplitter: "0x25B64C200cf3362BaC6961353D38A1dbEB42e60E",
+    flowSplitter: "0xCbA99f104D17D06Ce4C80Be143f29b6fd44D3Ce9",
     flowSplitterSubgraph:
-      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-splitter-arbitrum-one/v0.0.2/gn",
+      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-splitter-arbitrum-one/v0.0.3/gn",
     flowCouncilFactory: "0xe6a6E24905e200F69b57cE3B01D5F65776a40DF3",
     flowCouncilSubgraph:
       "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-council-arbitrum-one/v0.2.3/gn",
@@ -118,7 +118,7 @@ const networks: Network[] = [
     superfluidSubgraph:
       "https://subgraph-endpoints.superfluid.dev/celo-mainnet/protocol-v1",
     onRampLabel: "celo",
-    flowSplitter: "0x787504063A14C7e8bA6538Cf33570649A499771D",
+    flowSplitter: "0x0e9ddfd2ffdb0ba1ac3340d865193a7b6d4ea147",
     flowSplitterSubgraph:
       "https://subgraph.satsuma-prod.com/9117a94551fa/flow-state/flow-splitter-celo/api",
     flowCouncilFactory: "0x25B64C200cf3362BaC6961353D38A1dbEB42e60E",
