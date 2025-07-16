@@ -20,6 +20,8 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 type ExploreProps = {
   coreInflow: Inflow;
   greenpillInflow: Inflow;
+  guildGuildInflow: Inflow;
+  chonesGuildInflow: Inflow;
   goodDollarPool: GDAPool;
 };
 
@@ -64,7 +66,13 @@ const SQF_ADDRESSES = {
 };
 
 export default function Explore(props: ExploreProps) {
-  const { coreInflow, greenpillInflow, goodDollarPool } = props;
+  const {
+    coreInflow,
+    greenpillInflow,
+    guildGuildInflow,
+    chonesGuildInflow,
+    goodDollarPool,
+  } = props;
 
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
@@ -247,6 +255,34 @@ export default function Explore(props: ExploreProps) {
               updatedAt={greenpillInflow?.updatedAtTimestamp}
               tokenSymbol="ETHx"
               link="/flow-guilds/greenpilldevguild"
+            />
+            <RoundCard
+              name="Guild Guild"
+              image="/guild-guild.png"
+              roundType="Flow Guild"
+              totalStreamedUntilUpdatedAt={BigInt(
+                guildGuildInflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,
+              ).toString()}
+              flowRate={BigInt(
+                guildGuildInflow?.totalInflowRate ?? 0,
+              ).toString()}
+              updatedAt={guildGuildInflow?.updatedAtTimestamp}
+              tokenSymbol="ETHx"
+              link="/flow-guilds/guild-guild"
+            />
+            <RoundCard
+              name="Chones Guild"
+              image="/chones-guild.svg"
+              roundType="Flow Guild"
+              totalStreamedUntilUpdatedAt={BigInt(
+                guildGuildInflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,
+              ).toString()}
+              flowRate={BigInt(
+                chonesGuildInflow?.totalInflowRate ?? 0,
+              ).toString()}
+              updatedAt={chonesGuildInflow?.updatedAtTimestamp}
+              tokenSymbol="ETHx"
+              link="/flow-guilds/chonesguild"
             />
           </div>
           <p className="text-center">
