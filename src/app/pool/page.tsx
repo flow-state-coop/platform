@@ -92,7 +92,11 @@ export async function generateMetadata(
   }
 }
 
-export default async function Page(searchParams: Promise<SearchParams>) {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   const { chainId, poolId, recipientId, editPoolDistribution } =
     await searchParams;
 
