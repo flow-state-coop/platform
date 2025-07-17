@@ -8,7 +8,7 @@ const COUNCIL_QUERY = gql`
       id
       pool
       metadata
-      councilMembers {
+      councilMembers(first: 1000) {
         account
         votingPower
       }
