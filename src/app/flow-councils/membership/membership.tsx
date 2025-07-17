@@ -41,7 +41,7 @@ const COUNCIL_QUERY = gql`
         account
         role
       }
-      councilMembers {
+      councilMembers(first:1000) {
         id
         account
         votingPower
