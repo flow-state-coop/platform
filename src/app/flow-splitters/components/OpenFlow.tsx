@@ -141,7 +141,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   const superTokenBalance = useFlowingAmount(
     BigInt(balanceUntilUpdatedAt ?? 0),
     updatedAtTimestamp ?? 0,
-    BigInt(accountTokenSnapshot?.totalNetFlowRate ?? 0),
+    BigInt((updatedAtTimestamp && accountTokenSnapshot?.totalNetFlowRate) ?? 0),
   );
   const isSuperTokenNative = superfluidQueryRes?.token?.isNativeAssetSuperToken;
   const isSuperTokenPure =
@@ -170,7 +170,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   const hasSufficientWrappingBalance =
     (isSuperTokenNative &&
       ethBalance &&
-      ethBalance.value > parseEther(wrapAmountPerTimeInterval ?? 0)) ||
+      ethBalance.value >= parseEther(wrapAmountPerTimeInterval ?? 0)) ||
     (underlyingTokenBalance &&
       underlyingTokenBalance.value >=
         parseUnits(
@@ -754,30 +754,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                   </InputGroup>
                 </Stack>
               </Stack>
-              {isSuperTokenNative &&
-              ethBalance &&
-              wrapAmountPerTimeInterval &&
-              ethBalance.value === parseEther(wrapAmountPerTimeInterval) ? (
-                <Card.Text
-                  className="mt-1 mb-0 ms-2 ps-1 text-danger w-100 float-start text-nowrap"
-                  style={{
-                    fontSize: "0.8rem",
-                  }}
-                >
-                  {isSuperTokenNative
-                    ? ethBalance?.symbol
-                    : underlyingTokenBalance?.symbol}
-                  :{" "}
-                  {formatNumber(
-                    Number(
-                      isSuperTokenNative
-                        ? ethBalance?.formatted
-                        : underlyingTokenBalance?.formatted,
-                    ),
-                  )}{" "}
-                  (Leave enough for gas)
-                </Card.Text>
-              ) : !hasSufficientWrappingBalance ? (
+              {!hasSufficientWrappingBalance ? (
                 <Card.Text
                   className="mt-1 mb-0 ms-2 ps-1 text-danger w-100 float-start text-nowrap"
                   style={{
@@ -820,7 +797,7 @@ export default function OpenFlow(props: OpenFlowProps) {
             </Stack>
           </>
         )}
-        <Stack direction="vertical" className="mt-4">
+        <Stack direction="vertical" className="mt-2">
           {canSubmit &&
             !!liquidationEstimate &&
             !isNaN(liquidationEstimate) && (
@@ -878,29 +855,36 @@ export default function OpenFlow(props: OpenFlowProps) {
               </Stack>
             </Stack>
           )}
-          <Button
-            disabled={
-              !canSubmit ||
-              (isLiquidationClose && !hasAcceptedCloseLiquidationWarning)
-            }
-            className="w-100 mt-4"
-            onClick={handleSubmit}
-          >
-            {areTransactionsLoading || isDeletingFlow ? (
-              <>
-                <Spinner size="sm" />{" "}
-                {transactions.length > 1 && (
-                  <>
-                    ({completedTransactions + 1}/{transactions.length})
-                  </>
-                )}
-              </>
-            ) : canSubmit && transactions.length > 1 ? (
-              <>Submit ({transactions.length})</>
-            ) : (
-              <>Submit</>
+          <Stack direction="vertical" className="mt-4">
+            {canSubmit && (!ethBalance || ethBalance.value === BigInt(0)) && (
+              <Alert variant="warning">
+                No ETH balance. Proceed if your gas will be sponsored.
+              </Alert>
             )}
-          </Button>
+            <Button
+              disabled={
+                !canSubmit ||
+                (isLiquidationClose && !hasAcceptedCloseLiquidationWarning)
+              }
+              className="w-100"
+              onClick={handleSubmit}
+            >
+              {areTransactionsLoading || isDeletingFlow ? (
+                <>
+                  <Spinner size="sm" />{" "}
+                  {transactions.length > 1 && (
+                    <>
+                      ({completedTransactions + 1}/{transactions.length})
+                    </>
+                  )}
+                </>
+              ) : canSubmit && transactions.length > 1 ? (
+                <>Submit ({transactions.length})</>
+              ) : (
+                <>Submit</>
+              )}
+            </Button>
+          </Stack>
           <Stack direction="vertical">
             {BigInt(flowRateToReceiver) > 0 && (
               <Button

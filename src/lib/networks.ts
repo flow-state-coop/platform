@@ -6,7 +6,7 @@ const networks: Network[] = [
     name: "Arbitrum One",
     label: "arbitrum-one",
     icon: "/arb.png",
-    rpcUrl: "https://arbitrum.meowrpc.com",
+    rpcUrl: "https://arb1.arbitrum.io/rpc",
     blockExplorer: "https://arbiscan.io/",
     superfluidExplorer: "https://explorer.superfluid.finance/arbitrum-one",
     superfluidDashboard: "https://app.superfluid.finance",
