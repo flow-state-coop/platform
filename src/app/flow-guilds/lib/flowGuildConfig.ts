@@ -58,7 +58,9 @@ export const flowGuildConfigs: {
     defaultChainId: 42161,
     defaultToken: "ETHx",
     safe: "0xc40f7733f0ea30bb6f797c88444769e00775d021",
-    flowSplitters: {},
+    flowSplitters: {
+      42161: { ETHx: { id: "0x2" } },
+    },
   },
   ["greenpilldevguild"]: {
     id: "greenpilldevguild",
