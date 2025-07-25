@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { formatEther } from "viem";
+import { getAddress, formatEther } from "viem";
 import { gql, request } from "graphql-request";
 import { StackClient } from "@stackso/js-core";
 import { networks } from "@/lib/networks";
@@ -55,6 +55,14 @@ export async function GET(req: NextRequest) {
     const events = [];
 
     if (distributors) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const currentPointsAll: any = await stack.getPoints(
+        distributors.map((x) => getAddress(x.account.id)),
+        {
+          event: "distributed",
+        },
+      );
+
       for (const distributor of distributors) {
         if (
           distributor.account.id ===
@@ -63,11 +71,11 @@ export async function GET(req: NextRequest) {
           continue;
         }
 
-        const currentPoints = Number(
-          await stack.getPoints(distributor.account.id, {
-            event: "distributed",
-          }),
-        );
+        const currentPoints =
+          currentPointsAll?.find(
+            (x: { address: string }) =>
+              x.address.toLowerCase() === distributor.account.id,
+          )?.amount ?? 0;
         const totalDistributed =
           BigInt(distributor.totalAmountFlowedDistributedUntilUpdatedAt) +
           BigInt(distributor.flowRate) *
@@ -95,7 +103,7 @@ export async function GET(req: NextRequest) {
       return new Response(
         JSON.stringify({
           success: true,
-          message: `Points updated`,
+          message: "Points updated",
         }),
       );
     }
@@ -103,10 +111,12 @@ export async function GET(req: NextRequest) {
     return new Response(
       JSON.stringify({
         success: false,
-        error: `Nothing to update`,
+        error: "Nothing to update",
       }),
     );
   } catch (err) {
+    console.error(err);
+
     return new Response(JSON.stringify({ success: false, error: err }));
   }
 }
