@@ -11,7 +11,7 @@ const SUPERFLUID_QUERY = gql`
       totalAmountFlowedDistributedUntilUpdatedAt
       updatedAtTimestamp
       totalUnits
-      poolMembers {
+      poolMembers(first: 1000) {
         account {
           id
         }
@@ -20,7 +20,7 @@ const SUPERFLUID_QUERY = gql`
         totalAmountReceivedUntilUpdatedAt
         isConnected
       }
-      poolDistributors {
+      poolDistributors(first: 1000) {
         account {
           id
         }
