@@ -17,6 +17,7 @@ import { councilAbi } from "@/lib/abi/council";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useCouncil from "@/app/flow-councils/hooks/council";
 import useFlowingAmount from "@/hooks/flowingAmount";
+import { networks } from "@/lib/networks";
 import { formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
@@ -73,6 +74,9 @@ export default function RoundBanner(props: RoundBannerProps) {
   const grantee = council?.grantees.find(
     (grantee) => grantee.account === address?.toLowerCase(),
   );
+  const superfluidExplorer = networks.find(
+    (network) => network.id === chainId,
+  )?.superfluidExplorer;
 
   useLayoutEffect(() => {
     if (!showFullInfo) {
@@ -171,7 +175,7 @@ export default function RoundBanner(props: RoundBannerProps) {
                   <th className="w-25 bg-transparent text-dark">
                     {isMobile ? "Total" : "Total Flow"}
                   </th>
-                  <th className="w-25 bg-transparent text-dark">Recipients</th>
+                  <th className="w-25 bg-transparent text-dark">Funders</th>
                 </tr>
               </thead>
               <tbody>
@@ -180,13 +184,18 @@ export default function RoundBanner(props: RoundBannerProps) {
                     {distributionTokenInfo.symbol}
                   </td>
                   <td className="w-25 bg-transparent">
-                    {formatNumber(Number(formatEther(distributionMonthly)))}
+                    <Card.Link
+                      href={`${superfluidExplorer}/pools/${gdaPool?.id}`}
+                      target="_blank"
+                    >
+                      {formatNumber(Number(formatEther(distributionMonthly)))}
+                    </Card.Link>
                   </td>
                   <td className="w-25 bg-transparent">
                     {formatNumber(Number(formatEther(distributionTotal)))}
                   </td>
                   <td className="w-25 bg-transparent">
-                    {council?.grantees?.length ?? 0}
+                    {formatNumber(council?.councilMembers?.length ?? 0)}
                   </td>
                 </tr>
               </tbody>
