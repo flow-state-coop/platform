@@ -133,7 +133,7 @@ export default function PoolInfo(props: PoolInfoProps) {
                     {formatNumber(Number(formatEther(distributionTotal)))}
                   </td>
                   <td className="w-25 bg-transparent">
-                    {formatNumber(council?.councilMembers?.length ?? 0)}
+                    {formatNumber(gdaPool?.poolDistributors.length ?? 0)}
                   </td>
                 </tr>
               </tbody>
