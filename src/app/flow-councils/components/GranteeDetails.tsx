@@ -7,10 +7,12 @@ import Image from "react-bootstrap/Image";
 import Markdown from "react-markdown";
 import rehyperExternalLinks from "rehype-external-links";
 import remarkGfm from "remark-gfm";
+import { ProjectMetadata } from "@/types/project";
 import { fetchIpfsImage } from "@/lib/fetchIpfs";
 import useCouncil from "../hooks/council";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import { ProjectMetadata } from "@/types/project";
+import { networks } from "@/lib/networks";
+import { truncateStr } from "@/lib/utils";
 
 type GranteeDetails = {
   id: string;
@@ -37,6 +39,10 @@ export default function GranteeDetails(props: GranteeDetails) {
 
   const { isMobile } = useMediaQuery();
   const { dispatchNewAllocation } = useCouncil();
+
+  const superfluidExplorer = networks.find(
+    (network) => network.id === chainId,
+  )?.superfluidExplorer;
 
   useEffect(() => {
     (async () => {
@@ -73,9 +79,18 @@ export default function GranteeDetails(props: GranteeDetails) {
               className="ms-2 rounded-4"
             />
             <Card className="bg-transparent border-0 ms-3">
-              <Card.Title className="fs-6 text-secondary">
+              <Card.Title className="fs-5 text-secondary m-0">
                 {metadata.title}
               </Card.Title>
+              <Card.Subtitle className="m-0">
+                <Card.Link
+                  href={`${superfluidExplorer}/accounts/${granteeAddress}`}
+                  target="_blank"
+                  className="text-info"
+                >
+                  {truncateStr(granteeAddress, 12)}
+                </Card.Link>
+              </Card.Subtitle>
             </Card>
           </Stack>
           <Stack
