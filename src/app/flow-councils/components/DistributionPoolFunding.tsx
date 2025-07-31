@@ -178,7 +178,6 @@ export default function DistributionPoolFunding(props: {
   });
   const ethersProvider = useEthersProvider({ chainId: network.id });
   const ethersSigner = useEthersSigner({ chainId: network.id });
-  const supportFlowStateConfig = getSupportFlowStateConfig(token.symbol);
 
   const poolMemberships = superfluidQueryRes?.account?.poolMemberships ?? null;
   const userAccountSnapshot =
@@ -211,9 +210,19 @@ export default function DistributionPoolFunding(props: {
     councilName: councilMetadata.name,
     councilUiLink: `https://flowstate.network/flow-councils/${network?.id}/${council?.id}`,
   });
-  const flowRateToFlowState = superfluidQueryRes?.account?.outflows?.find(
-    (outflow: { receiver: { id: string } }) =>
-      outflow.receiver.id === FLOW_STATE_RECEIVER,
+
+  const supportFlowStateConfig = useMemo(
+    () => getSupportFlowStateConfig(token.symbol),
+    [token.symbol],
+  );
+
+  const flowRateToFlowState = useMemo(
+    () =>
+      superfluidQueryRes?.account?.outflows?.find(
+        (outflow: { receiver: { id: string } }) =>
+          outflow.receiver.id === FLOW_STATE_RECEIVER,
+      )?.currentFlowRate ?? "0",
+    [superfluidQueryRes],
   );
 
   const flowRateToReceiver = useMemo(() => {
@@ -255,6 +264,43 @@ export default function DistributionPoolFunding(props: {
 
     return membershipsInflowRate;
   }, [poolMemberships]);
+
+  const editFlow = useCallback(
+    (
+      superToken: NativeAssetSuperToken | WrapperSuperToken,
+      receiver: string,
+      oldFlowRate: string,
+      newFlowRate: string,
+    ) => {
+      if (!address) {
+        throw Error("Could not find the account address");
+      }
+
+      let op: Operation;
+
+      if (BigInt(newFlowRate) === BigInt(0)) {
+        op = superToken.deleteFlow({
+          sender: address,
+          receiver,
+        });
+      } else if (BigInt(oldFlowRate) !== BigInt(0)) {
+        op = superToken.updateFlow({
+          sender: address,
+          receiver,
+          flowRate: newFlowRate,
+        });
+      } else {
+        op = superToken.createFlow({
+          sender: address,
+          receiver,
+          flowRate: newFlowRate,
+        });
+      }
+
+      return op;
+    },
+    [address],
+  );
 
   const calcLiquidationEstimate = useCallback(
     (amountPerTimeInterval: string) => {
@@ -378,10 +424,31 @@ export default function DistributionPoolFunding(props: {
       }),
     );
 
+    if (
+      newFlowRateToFlowState &&
+      newFlowRateToFlowState !== flowRateToFlowState
+    ) {
+      operations.push(
+        editFlow(
+          superToken as WrapperSuperToken,
+          FLOW_STATE_RECEIVER,
+          flowRateToFlowState,
+          newFlowRateToFlowState,
+        ),
+      );
+    }
+
     transactions.push(async () => {
       const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
 
       await tx.wait();
+
+      if (
+        newFlowRateToFlowState &&
+        newFlowRateToFlowState !== flowRateToFlowState
+      ) {
+        sessionStorage.setItem("skipSupportFlowState", "true");
+      }
     });
 
     return transactions;
@@ -391,11 +458,14 @@ export default function DistributionPoolFunding(props: {
     superToken,
     wrapAmount,
     newFlowRate,
+    newFlowRateToFlowState,
+    flowRateToFlowState,
     ethersProvider,
     ethersSigner,
     council?.pool,
     distributionTokenAddress,
     underlyingTokenAllowance,
+    editFlow,
   ]);
 
   useEffect(() => {
@@ -453,8 +523,7 @@ export default function DistributionPoolFunding(props: {
       }
 
       const currentStreamValue = roundWeiAmount(
-        BigInt(flowRateToFlowState?.currentFlowRate ?? 0) *
-          BigInt(SECONDS_IN_MONTH),
+        BigInt(flowRateToFlowState) * BigInt(SECONDS_IN_MONTH),
         4,
       );
 
@@ -637,9 +706,7 @@ export default function DistributionPoolFunding(props: {
                 supportFlowStateAmount={supportFlowStateAmount}
                 setSupportFlowStateAmount={setSupportFlowStateAmount}
                 newFlowRateToFlowState={newFlowRateToFlowState}
-                flowRateToFlowState={
-                  flowRateToFlowState?.currentFlowRate ?? "0"
-                }
+                flowRateToFlowState={flowRateToFlowState}
                 isSuperTokenPure={isSuperTokenPure}
               />
               <Review
@@ -661,9 +728,7 @@ export default function DistributionPoolFunding(props: {
                 newFlowRate={newFlowRate}
                 wrapAmount={wrapAmount}
                 newFlowRateToFlowState={newFlowRateToFlowState}
-                flowRateToFlowState={
-                  flowRateToFlowState?.currentFlowRate ?? "0"
-                }
+                flowRateToFlowState={flowRateToFlowState}
                 supportFlowStateAmount={supportFlowStateAmount}
                 isSuperTokenPure={isSuperTokenPure}
                 superTokenBalance={superTokenBalance}
