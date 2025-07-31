@@ -25,6 +25,11 @@ export function getSupportFlowStateConfig(token: string) {
         minAllocationPerMonth: 100,
         suggestedFlowStateDonation: 100,
       };
+    case "G$":
+      return {
+        minAllocationPerMonth: 0,
+        suggestedFlowStateDonation: 1000,
+      };
     default:
       return {
         minAllocationPerMonth: 1,

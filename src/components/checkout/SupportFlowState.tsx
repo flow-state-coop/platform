@@ -279,6 +279,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
             />
           </Stack>
           {Number(supportFlowStateAmount) > 0 &&
+            minDonationPerMonth &&
             Number(supportFlowStateAmount) < minDonationPerMonth && (
               <Alert variant="warning" className="mt-2 py-2">
                 Minimum Donation = {minDonationPerMonth} {token.symbol}/mo
@@ -304,7 +305,8 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
               disabled={
                 !supportFlowStateAmount ||
                 (!isDeletingStream &&
-                  Number(supportFlowStateAmount) < minDonationPerMonth)
+                  (Number(supportFlowStateAmount) === 0 ||
+                    Number(supportFlowStateAmount) < minDonationPerMonth))
               }
               className="w-50 py-1 rounded-3 text-light"
               onClick={() => setStep(Step.REVIEW)}
