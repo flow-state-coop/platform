@@ -775,7 +775,6 @@ export default function Pool(props: PoolProps) {
               grantees[transactionPanelState.selectedGrantee].superappAddress
             }
             poolUiLink={`${hostName}/pool/?poolId=${poolId}&chainId=${chainId}&recipientId=${grantees[transactionPanelState.selectedGrantee].id}`}
-            framesLink={`https://frames.flowstate.network/frames/grantee/${grantees[transactionPanelState.selectedGrantee].id}/${poolId}/${chainId}`}
             poolName={pool?.metadata.name ?? ""}
             metadata={grantees[transactionPanelState.selectedGrantee].metadata}
             placeholderLogo={

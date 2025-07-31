@@ -15,20 +15,20 @@ import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
 import { Network } from "@/types/network";
 import MatchingPoolDetails from "./MatchingPoolDetails";
-import EditStream from "./checkout/EditStream";
-import TopUp from "./checkout/TopUp";
-import Wrap from "./checkout/Wrap";
-import SupportFlowState from "./checkout/SupportFlowState";
-import Review from "./checkout/Review";
-import MatchingPoolNft from "./checkout/MatchingPoolNft";
-import Success from "./checkout/Success";
+import EditStream from "@/components/checkout/EditStream";
+import TopUp from "@/components/checkout/TopUp";
+import Wrap from "@/components/checkout/Wrap";
+import SupportFlowState from "@/components/checkout/SupportFlowState";
+import Review from "@/components/checkout/Review";
+import MatchingPoolNft from "@/components/checkout/MatchingPoolNft";
+import Success from "@/components/checkout/Success";
 import { useSuperfluidContext } from "@/context/Superfluid";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
-import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
+import { getSupportFlowStateConfig } from "@/lib/supportFlowStateConfig";
 import {
   TimeInterval,
   unitOfTime,
@@ -43,6 +43,7 @@ import {
   FLOW_STATE_RECEIVER,
   DEFAULT_CHAIN_ID,
 } from "@/lib/constants";
+import { getSocialShare } from "../lib/socialShare";
 
 type MatchingPoolFundingProps = {
   show: boolean;
@@ -95,9 +96,6 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
   const [newFlowRateToFlowState, setNewFlowRateToFlowState] = useState("");
   const [flowRateToFlowState, setFlowRateToFlowState] = useState("");
   const [supportFlowStateAmount, setSupportFlowStateAmount] = useState("");
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [supportFlowStateTimeInterval, setSupportFlowStateTimeInterval] =
-    useState<TimeInterval>(TimeInterval.MONTH);
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("0");
   const [matchingTokenSymbol, setMatchingTokenSymbol] = useState("");
   const [isMintingNft, setIsMintingNft] = useState(false);
@@ -122,7 +120,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
   });
   const isNativeSuperToken =
     matchingTokenSymbol === "ETHx" || matchingTokenSymbol === "CELOx";
-  const isPureSuperToken =
+  const isSuperTokenPure =
     !isNativeSuperToken && !matchingSuperToken?.underlyingToken;
   const { data: underlyingTokenBalance } = useBalance({
     address,
@@ -130,7 +128,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     chainId: network?.id ?? DEFAULT_CHAIN_ID,
     query: {
       refetchInterval: 10000,
-      enabled: !isPureSuperToken,
+      enabled: !isSuperTokenPure,
     },
   });
   const ethersProvider = useEthersProvider({ chainId: network?.id });
@@ -161,23 +159,28 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       ? true
       : false;
   const hasSufficientTokenBalance =
-    (!isPureSuperToken &&
+    (!isSuperTokenPure &&
       underlyingTokenBalance &&
       underlyingTokenBalance.value + superTokenBalance > BigInt(0)) ||
     superTokenBalance > BigInt(0)
       ? true
       : false;
   const hasSuggestedTokenBalance =
-    (isPureSuperToken &&
+    (isSuperTokenPure &&
       underlyingTokenBalance &&
       underlyingTokenBalance.value + superTokenBalance >
         suggestedTokenBalance) ||
     superTokenBalance > suggestedTokenBalance
       ? true
       : false;
+  const socialShare = getSocialShare({
+    isFundingDistributionPool: true,
+    roundName: poolName,
+    roundLink: poolUiLink,
+  });
 
-  const poolFlowRateConfig = useMemo(
-    () => getPoolFlowRateConfig(matchingTokenSymbol),
+  const supportFlowStateConfig = useMemo(
+    () => getSupportFlowStateConfig(matchingTokenSymbol),
     [matchingTokenSymbol],
   );
 
@@ -241,9 +244,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
           BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
         const newFlowRateToFlowState =
           parseEther(supportFlowStateAmount.replace(/,/g, "")) /
-          BigInt(
-            fromTimeUnitsToSeconds(1, unitOfTime[supportFlowStateTimeInterval]),
-          );
+          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
         const accountFlowRate = userAccountSnapshot?.totalNetFlowRate ?? "0";
 
         if (
@@ -289,7 +290,6 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       flowRateToReceiver,
       flowRateToFlowState,
       supportFlowStateAmount,
-      supportFlowStateTimeInterval,
     ],
   );
 
@@ -359,7 +359,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     const operations: Operation[] = [];
 
     if (
-      !isPureSuperToken &&
+      !isSuperTokenPure &&
       wrapAmount &&
       Number(wrapAmount?.replace(/,/g, "")) > 0
     ) {
@@ -444,7 +444,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
     sfFramework,
     ethersProvider,
     ethersSigner,
-    isPureSuperToken,
+    isSuperTokenPure,
     editFlow,
   ]);
 
@@ -473,7 +473,10 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
 
         setSupportFlowStateAmount(
           formatNumberWithCommas(
-            currentStreamValue + poolFlowRateConfig.suggestedFlowStateDonation,
+            `${
+              Number(currentStreamValue) +
+              supportFlowStateConfig.suggestedFlowStateDonation
+            }`,
           ),
         );
       }
@@ -481,9 +484,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
   }, [
     address,
     flowRateToFlowState,
-    supportFlowStateTimeInterval,
-    matchingTokenInfo.symbol,
-    poolFlowRateConfig,
+    supportFlowStateConfig,
     step,
     newFlowRate,
     handleNftMint,
@@ -511,20 +512,11 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       supportFlowStateAmount
         ? (
             parseEther(supportFlowStateAmount.replace(/,/g, "")) /
-            BigInt(
-              fromTimeUnitsToSeconds(
-                1,
-                unitOfTime[supportFlowStateTimeInterval],
-              ),
-            )
+            BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
           ).toString()
         : "",
     );
-  }, [
-    areTransactionsLoading,
-    supportFlowStateAmount,
-    supportFlowStateTimeInterval,
-  ]);
+  }, [areTransactionsLoading, supportFlowStateAmount]);
 
   useEffect(() => {
     (async () => {
@@ -576,7 +568,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
       );
 
       if (
-        !isPureSuperToken &&
+        !isSuperTokenPure &&
         weiAmount > 0 &&
         liquidationEstimate &&
         dayjs
@@ -663,19 +655,20 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             }}
             newFlowRate={newFlowRate}
             wrapAmount={wrapAmount}
-            isFundingMatchingPool={true}
-            isPureSuperToken={isPureSuperToken}
+            isFundingDistributionPool={true}
+            isSuperTokenPure={isSuperTokenPure}
             superTokenBalance={superTokenBalance}
             hasSufficientBalance={
               !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
             }
+            docsLink="https://docs.flowstate.network/streaming-qf/donors"
           />
           <TopUp
             step={step}
             setStep={(step) => setStep(step)}
             newFlowRate={newFlowRate}
             wrapAmount={wrapAmount}
-            isFundingMatchingPool={true}
+            isFundingDistributionPool={true}
             superTokenBalance={superTokenBalance}
             minEthBalance={minEthBalance}
             suggestedTokenBalance={suggestedTokenBalance}
@@ -684,12 +677,13 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             hasSuggestedTokenBalance={hasSuggestedTokenBalance}
             ethBalance={ethBalance}
             underlyingTokenBalance={
-              !isPureSuperToken ? underlyingTokenBalance : void 0
+              !isSuperTokenPure ? underlyingTokenBalance : void 0
             }
             network={network}
             superTokenInfo={matchingTokenInfo}
+            isSuperTokenPure={isSuperTokenPure}
           />
-          {!isPureSuperToken && (
+          {!isSuperTokenPure && (
             <Wrap
               step={step}
               setStep={setStep}
@@ -697,7 +691,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
               setWrapAmount={setWrapAmount}
               newFlowRate={newFlowRate}
               token={matchingTokenInfo}
-              isFundingMatchingPool={true}
+              isFundingDistributionPool={true}
               superTokenBalance={superTokenBalance}
               underlyingTokenBalance={underlyingTokenBalance}
             />
@@ -709,12 +703,10 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             setStep={(step) => setStep(step)}
             supportFlowStateAmount={supportFlowStateAmount}
             setSupportFlowStateAmount={setSupportFlowStateAmount}
-            supportFlowStateTimeInterval={supportFlowStateTimeInterval}
-            setSupportFlowStateTimeInterval={setSupportFlowStateTimeInterval}
             newFlowRateToFlowState={newFlowRateToFlowState}
             flowRateToFlowState={flowRateToFlowState}
-            isFundingMatchingPool={true}
-            isPureSuperToken={isPureSuperToken}
+            isFundingDistributionPool={true}
+            isSuperTokenPure={isSuperTokenPure}
           />
           <Review
             step={step}
@@ -728,8 +720,7 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             executeTransactions={executeTransactions}
             liquidationEstimate={liquidationEstimate}
             netImpact={BigInt(0)}
-            matchingTokenInfo={matchingTokenInfo}
-            allocationTokenInfo={matchingTokenInfo}
+            token={matchingTokenInfo}
             flowRateToReceiver={flowRateToReceiver}
             amountPerTimeInterval={amountPerTimeInterval}
             newFlowRateToFlowState={newFlowRateToFlowState}
@@ -737,9 +728,8 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
             newFlowRate={newFlowRate}
             wrapAmount={wrapAmount}
             supportFlowStateAmount={supportFlowStateAmount}
-            supportFlowStateTimeInterval={supportFlowStateTimeInterval}
-            isFundingMatchingPool={true}
-            isPureSuperToken={isPureSuperToken}
+            isFundingDistributionPool={true}
+            isSuperTokenPure={isSuperTokenPure}
             superTokenBalance={superTokenBalance}
             underlyingTokenBalance={underlyingTokenBalance}
           />
@@ -758,10 +748,8 @@ export default function MatchingPoolFunding(props: MatchingPoolFundingProps) {
           ) : null}
           <Success
             step={step}
-            isFundingMatchingPool={true}
-            poolName={poolName}
-            poolUiLink={poolUiLink}
             newFlowRate={newFlowRate}
+            socialShare={socialShare}
           />
         </Accordion>
       </Offcanvas.Body>

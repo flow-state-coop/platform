@@ -17,15 +17,15 @@ import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
 import { Network } from "@/types/network";
 import GranteeDetails from "./GranteeDetails";
-import EditStream from "./checkout/EditStream";
-import TopUp from "./checkout/TopUp";
-import Wrap from "./checkout/Wrap";
-import FlowStateEligibility from "./checkout/FlowStateEligibility";
-import MintNFT from "./checkout/MintNFT";
-import NFTGating from "./checkout/NFTGating";
-import SupportFlowState from "./checkout/SupportFlowState";
-import Review from "./checkout/Review";
-import Success from "./checkout/Success";
+import EditStream from "@/components/checkout/EditStream";
+import TopUp from "@/components/checkout/TopUp";
+import Wrap from "@/components/checkout/Wrap";
+import FlowStateEligibility from "@/components/checkout/FlowStateEligibility";
+import MintNFT from "@/components/checkout/MintNFT";
+import NFTGating from "@/components/checkout/NFTGating";
+import SupportFlowState from "@/components/checkout/SupportFlowState";
+import Review from "@/components/checkout/Review";
+import Success from "@/components/checkout/Success";
 import { useSuperfluidContext } from "@/context/Superfluid";
 import { ProjectMetadata } from "@/types/project";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -34,6 +34,7 @@ import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
 import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
+import { getSupportFlowStateConfig } from "@/lib/supportFlowStateConfig";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
 import {
   TimeInterval,
@@ -49,6 +50,7 @@ import {
   MAX_FLOW_RATE,
   DEFAULT_CHAIN_ID,
 } from "@/lib/constants";
+import { getSocialShare } from "../lib/socialShare";
 
 type GranteeFundingProps = {
   show: boolean;
@@ -58,7 +60,6 @@ type GranteeFundingProps = {
   farcaster: string;
   placeholderLogo: string;
   poolUiLink: string;
-  framesLink: string;
   poolName: string;
   receiver: string;
   recipientAddress: string;
@@ -95,7 +96,6 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     twitter,
     farcaster,
     poolUiLink,
-    framesLink,
     poolName,
     receiver,
     recipientAddress,
@@ -122,9 +122,6 @@ export default function GranteeFunding(props: GranteeFundingProps) {
   const [wrapAmount, setWrapAmount] = useState("");
   const [newFlowRateToFlowState, setNewFlowRateToFlowState] = useState("");
   const [supportFlowStateAmount, setSupportFlowStateAmount] = useState("");
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [supportFlowStateTimeInterval, setSupportFlowStateTimeInterval] =
-    useState<TimeInterval>(TimeInterval.MONTH);
   const [allocationTokenSymbol, setAllocationTokenSymbol] = useState("");
 
   const { isMobile } = useMediaQuery();
@@ -145,7 +142,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
   });
   const isNativeSuperToken =
     allocationTokenSymbol === "ETHx" || allocationTokenSymbol === "CELOx";
-  const isPureSuperToken =
+  const isSuperTokenPure =
     !isNativeSuperToken && !allocationSuperToken?.underlyingToken;
   const { data: underlyingTokenBalance } = useBalance({
     address,
@@ -154,7 +151,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       (allocationSuperToken?.underlyingToken?.address as Address) ?? void 0,
     query: {
       refetchInterval: 10000,
-      enabled: !isPureSuperToken,
+      enabled: !isSuperTokenPure,
     },
   });
   const ethersProvider = useEthersProvider({ chainId: network?.id });
@@ -185,14 +182,14 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       ? true
       : false;
   const hasSufficientTokenBalance =
-    (!isPureSuperToken &&
+    (!isSuperTokenPure &&
       underlyingTokenBalance &&
       underlyingTokenBalance.value + superTokenBalance > BigInt(0)) ||
     superTokenBalance > BigInt(0)
       ? true
       : false;
   const hasSuggestedTokenBalance =
-    (!isPureSuperToken &&
+    (!isSuperTokenPure &&
       underlyingTokenBalance &&
       underlyingTokenBalance.value + superTokenBalance >
         suggestedTokenBalance) ||
@@ -200,6 +197,13 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       ? true
       : false;
   const flowRateToReceiver = userOutflow?.currentFlowRate ?? "0";
+  const socialShare = getSocialShare({
+    granteeName: metadata.title,
+    granteeTwitter: twitter ? `@${twitter}` : "",
+    granteeFarcaster: farcaster ? `@${farcaster}` : "",
+    roundName: poolName,
+    roundLink: poolUiLink,
+  });
 
   const editFlow = useCallback(
     (
@@ -246,9 +250,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
           BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
         const newFlowRateToFlowState =
           parseEther(supportFlowStateAmount.replace(/,/g, "")) /
-          BigInt(
-            fromTimeUnitsToSeconds(1, unitOfTime[supportFlowStateTimeInterval]),
-          );
+          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
         const accountFlowRate = userAccountSnapshot?.totalNetFlowRate ?? "0";
 
         if (
@@ -294,12 +296,16 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       flowRateToReceiver,
       flowRateToFlowState,
       supportFlowStateAmount,
-      supportFlowStateTimeInterval,
     ],
   );
 
   const poolFlowRateConfig = useMemo(
     () => getPoolFlowRateConfig(allocationTokenSymbol),
+    [allocationTokenSymbol],
+  );
+
+  const supportFlowStateConfig = useMemo(
+    () => getSupportFlowStateConfig(allocationTokenSymbol),
     [allocationTokenSymbol],
   );
 
@@ -362,7 +368,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     const operations: Operation[] = [];
 
     if (
-      !isPureSuperToken &&
+      !isSuperTokenPure &&
       wrapAmount &&
       Number(wrapAmount?.replace(/,/g, "")) > 0
     ) {
@@ -447,7 +453,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
     underlyingTokenAllowance,
     allocationTokenSymbol,
     sfFramework,
-    isPureSuperToken,
+    isSuperTokenPure,
     ethersProvider,
     ethersSigner,
     editFlow,
@@ -477,18 +483,14 @@ export default function GranteeFunding(props: GranteeFundingProps) {
 
       setSupportFlowStateAmount(
         formatNumberWithCommas(
-          currentStreamValue + poolFlowRateConfig.suggestedFlowStateDonation,
+          `${
+            Number(currentStreamValue) +
+            supportFlowStateConfig.suggestedFlowStateDonation
+          }`,
         ),
       );
     })();
-  }, [
-    address,
-    flowRateToFlowState,
-    poolFlowRateConfig,
-    supportFlowStateTimeInterval,
-    step,
-    allocationTokenInfo.symbol,
-  ]);
+  }, [address, flowRateToFlowState, supportFlowStateConfig, step]);
 
   useEffect(() => {
     if (!areTransactionsLoading && amountPerTimeInterval) {
@@ -511,20 +513,11 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       supportFlowStateAmount
         ? (
             parseEther(supportFlowStateAmount.replace(/,/g, "")) /
-            BigInt(
-              fromTimeUnitsToSeconds(
-                1,
-                unitOfTime[supportFlowStateTimeInterval],
-              ),
-            )
+            BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
           ).toString()
         : "",
     );
-  }, [
-    areTransactionsLoading,
-    supportFlowStateAmount,
-    supportFlowStateTimeInterval,
-  ]);
+  }, [areTransactionsLoading, supportFlowStateAmount]);
 
   useEffect(() => {
     (async () => {
@@ -556,7 +549,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
       );
 
       if (
-        !isPureSuperToken &&
+        !isSuperTokenPure &&
         weiAmount > 0 &&
         liquidationEstimate &&
         dayjs
@@ -651,19 +644,18 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               }}
               newFlowRate={newFlowRate}
               wrapAmount={wrapAmount}
-              isFundingMatchingPool={false}
               isEligible={isEligible}
               superTokenBalance={superTokenBalance}
               hasSufficientBalance={
                 !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
               }
+              docsLink={"https://docs.flowstate.network/streaming-qf/donors"}
             />
             <TopUp
               step={step}
               setStep={(step) => setStep(step)}
               newFlowRate={newFlowRate}
               wrapAmount={wrapAmount}
-              isFundingMatchingPool={false}
               isEligible={isEligible}
               superTokenBalance={superTokenBalance}
               minEthBalance={minEthBalance}
@@ -673,12 +665,13 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               hasSuggestedTokenBalance={hasSuggestedTokenBalance}
               ethBalance={ethBalance}
               underlyingTokenBalance={
-                !isPureSuperToken ? underlyingTokenBalance : void 0
+                !isSuperTokenPure ? underlyingTokenBalance : void 0
               }
               network={network}
               superTokenInfo={allocationTokenInfo}
+              isSuperTokenPure={isSuperTokenPure}
             />
-            {!isPureSuperToken && (
+            {!isSuperTokenPure && (
               <Wrap
                 step={step}
                 setStep={setStep}
@@ -686,7 +679,6 @@ export default function GranteeFunding(props: GranteeFundingProps) {
                 setWrapAmount={setWrapAmount}
                 newFlowRate={newFlowRate}
                 token={allocationTokenInfo}
-                isFundingMatchingPool={false}
                 isEligible={isEligible}
                 superTokenBalance={superTokenBalance}
                 underlyingTokenBalance={underlyingTokenBalance}
@@ -699,7 +691,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
                 network={network}
                 requiredNftAddress={requiredNftAddress}
                 isEligible={isEligible}
-                isPureSuperToken={isPureSuperToken}
+                isSuperTokenPure={isSuperTokenPure}
               />
             ) : requiredNftAddress &&
               nftMintUrl?.startsWith("https://guild.xyz/octant-sqf-voter") ? (
@@ -709,7 +701,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
                 network={network}
                 requiredNftAddress={requiredNftAddress}
                 isEligible={isEligible}
-                isPureSuperToken={isPureSuperToken}
+                isSuperTokenPure={isSuperTokenPure}
               />
             ) : requiredNftAddress ? (
               <NFTGating
@@ -719,7 +711,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
                 requiredNftAddress={requiredNftAddress}
                 nftMintUrl={nftMintUrl}
                 isEligible={isEligible}
-                isPureSuperToken={isPureSuperToken}
+                isSuperTokenPure={isSuperTokenPure}
               />
             ) : null}
             <SupportFlowState
@@ -729,12 +721,9 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               setStep={(step) => setStep(step)}
               supportFlowStateAmount={supportFlowStateAmount}
               setSupportFlowStateAmount={setSupportFlowStateAmount}
-              supportFlowStateTimeInterval={supportFlowStateTimeInterval}
-              setSupportFlowStateTimeInterval={setSupportFlowStateTimeInterval}
               newFlowRateToFlowState={newFlowRateToFlowState}
               flowRateToFlowState={flowRateToFlowState}
-              isFundingMatchingPool={false}
-              isPureSuperToken={isPureSuperToken}
+              isSuperTokenPure={isSuperTokenPure}
             />
             <Review
               step={step}
@@ -748,8 +737,7 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               executeTransactions={executeTransactions}
               liquidationEstimate={liquidationEstimate}
               netImpact={netImpact}
-              matchingTokenInfo={matchingTokenInfo}
-              allocationTokenInfo={allocationTokenInfo}
+              token={allocationTokenInfo}
               flowRateToReceiver={flowRateToReceiver}
               amountPerTimeInterval={amountPerTimeInterval}
               newFlowRate={newFlowRate}
@@ -757,22 +745,17 @@ export default function GranteeFunding(props: GranteeFundingProps) {
               newFlowRateToFlowState={newFlowRateToFlowState}
               flowRateToFlowState={flowRateToFlowState}
               supportFlowStateAmount={supportFlowStateAmount}
-              supportFlowStateTimeInterval={supportFlowStateTimeInterval}
-              isFundingMatchingPool={false}
-              isPureSuperToken={isPureSuperToken}
+              isSuperTokenPure={isSuperTokenPure}
               superTokenBalance={superTokenBalance}
               underlyingTokenBalance={underlyingTokenBalance}
+              showQfMultiplier={
+                allocationTokenInfo.symbol === matchingTokenInfo.symbol
+              }
             />
             <Success
               step={step}
-              isFundingMatchingPool={false}
-              granteeName={metadata.title}
-              granteeTwitter={twitter ? `@${twitter}` : ""}
-              granteeFarcaster={farcaster ? `@${farcaster}` : ""}
-              poolName={poolName}
-              poolUiLink={poolUiLink}
-              framesLink={framesLink}
               newFlowRate={newFlowRate}
+              socialShare={socialShare}
             />
           </Accordion>
         </Offcanvas.Body>

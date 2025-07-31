@@ -2,28 +2,32 @@ import { useState, useMemo } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
 import { formatEther, parseEther } from "viem";
 import dayjs from "dayjs";
+import duration from "dayjs/plugin/duration";
 import Image from "next/image";
 import Card from "react-bootstrap/Card";
 import Accordion from "react-bootstrap/Accordion";
 import Stack from "react-bootstrap/Stack";
-import FormCheckInput from "react-bootstrap/FormCheckInput";
 import Spinner from "react-bootstrap/Spinner";
 import Button from "react-bootstrap/Button";
+import FormCheckInput from "react-bootstrap/FormCheckInput";
 import Alert from "react-bootstrap/Button";
 import Badge from "react-bootstrap/Badge";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Tooltip from "react-bootstrap/Tooltip";
 import CopyTooltip from "@/components/CopyTooltip";
-import { Step } from "../../types/distributionPoolFunding";
+import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
 import { Network } from "@/types/network";
 import {
-  TimeInterval,
-  convertStreamValueToInterval,
-  truncateStr,
   formatNumber,
+  fromTimeUnitsToSeconds,
+  roundWeiAmount,
+  truncateStr,
 } from "@/lib/utils";
 import { FLOW_STATE_RECEIVER } from "@/lib/constants";
+
+dayjs().format();
+dayjs.extend(duration);
 
 export type ReviewProps = {
   step: Step;
@@ -42,9 +46,8 @@ export type ReviewProps = {
   newFlowRateToFlowState: string;
   flowRateToFlowState: string;
   amountPerTimeInterval: string;
-  timeInterval: TimeInterval;
   supportFlowStateAmount: string;
-  supportFlowStateTimeInterval: TimeInterval;
+  isFundingDistributionPool?: boolean;
   liquidationEstimate: number | null;
   token: Token;
   isSuperTokenPure: boolean;
@@ -55,6 +58,7 @@ export type ReviewProps = {
     decimals: number;
     symbol: string;
   };
+  showQfMultiplier?: boolean;
 };
 
 type TransactionDetailsSnapshot = {
@@ -64,12 +68,12 @@ type TransactionDetailsSnapshot = {
   liquidationEstimate: number | null;
   amountPerTimeInterval: string;
   netImpact: bigint;
+  matchingMultiplier: number | null;
   newFlowRate: string;
   newFlowRateToFlowState: string;
   flowRateToFlowState: string;
   flowRateToReceiver: string;
   supportFlowStateAmount: string;
-  supportFlowStateTimeInterval: TimeInterval;
 };
 
 dayjs().format();
@@ -93,13 +97,13 @@ export default function Review(props: ReviewProps) {
     flowRateToFlowState,
     wrapAmount,
     supportFlowStateAmount,
-    supportFlowStateTimeInterval,
     amountPerTimeInterval,
-    timeInterval,
     token,
+    isFundingDistributionPool,
     isSuperTokenPure,
     superTokenBalance,
     underlyingTokenBalance,
+    showQfMultiplier,
   } = props;
 
   const [transactionDetailsSnapshot, setTransactionDetailsSnapshot] =
@@ -114,28 +118,6 @@ export default function Review(props: ReviewProps) {
 
   const isDeletingStream =
     BigInt(flowRateToReceiver) > 0 && BigInt(newFlowRate) === BigInt(0);
-  const newMonthlyStream = Number(
-    convertStreamValueToInterval(
-      parseEther(
-        areTransactionsLoading && transactionDetailsSnapshot
-          ? transactionDetailsSnapshot.amountPerTimeInterval
-          : amountPerTimeInterval.replace(/,/g, ""),
-      ),
-      timeInterval,
-      TimeInterval.MONTH,
-    ),
-  );
-  const newMonthlyStreamToFlowState = Number(
-    convertStreamValueToInterval(
-      parseEther(
-        areTransactionsLoading && transactionDetailsSnapshot
-          ? transactionDetailsSnapshot.supportFlowStateAmount
-          : supportFlowStateAmount.replace(/,/g, ""),
-      ),
-      supportFlowStateTimeInterval,
-      TimeInterval.MONTH,
-    ),
-  );
 
   const isLiquidationClose = useMemo(
     () =>
@@ -154,13 +136,22 @@ export default function Review(props: ReviewProps) {
       superTokenBalance,
       liquidationEstimate,
       amountPerTimeInterval: amountPerTimeInterval.replace(/,/g, ""),
+      matchingMultiplier: showQfMultiplier
+        ? parseFloat(
+            (
+              Number(formatEther(BigInt(netImpact))) /
+              Number(
+                formatEther(BigInt(newFlowRate) - BigInt(flowRateToReceiver)),
+              )
+            ).toFixed(2),
+          )
+        : null,
       netImpact,
       newFlowRate,
       flowRateToReceiver,
       newFlowRateToFlowState,
       flowRateToFlowState,
       supportFlowStateAmount,
-      supportFlowStateTimeInterval,
     });
 
     try {
@@ -214,7 +205,11 @@ export default function Review(props: ReviewProps) {
               className="m-auto text-light"
               style={{ fontFamily: "Helvetica" }}
             >
-              {isSuperTokenPure ? 3 : 4}
+              {isFundingDistributionPool && isSuperTokenPure
+                ? 4
+                : isFundingDistributionPool || isSuperTokenPure
+                  ? 5
+                  : 6}
             </Card.Text>
           )}
         </Badge>
@@ -334,7 +329,9 @@ export default function Review(props: ReviewProps) {
               ) > 0
                 ? "B."
                 : "A."}{" "}
-              Edit Distribution Pool Stream
+              {isFundingDistributionPool
+                ? "Edit Matching Stream"
+                : "Edit Grantee Stream"}
             </Card.Text>
           </Stack>
           <Stack direction="horizontal" className="justify-content-around px-2">
@@ -347,7 +344,9 @@ export default function Review(props: ReviewProps) {
           </Stack>
           <Stack direction="horizontal">
             <Badge className="d-flex justify-content-around align-items-center w-50 bg-white text-info py-3 rounded-3 border-0 text-center fs-6">
-              {truncateStr(address ?? "", 12)}
+              <Card.Text className="m-0 sensitive">
+                {truncateStr(address ?? "", 12)}
+              </Card.Text>
               <CopyTooltip
                 contentClick="Address copied"
                 contentHover="Copy address"
@@ -379,7 +378,9 @@ export default function Review(props: ReviewProps) {
           <Stack direction="vertical">
             <Stack
               direction="horizontal"
-              className="mt-2 bg-purple p-2 rounded-4"
+              className={`mt-2 bg-purple p-2 ${
+                !isFundingDistributionPool ? "rounded-top-4" : "rounded-4"
+              }`}
             >
               <Card.Text className="w-33 m-0 fs-6">New Stream</Card.Text>
               <Stack
@@ -395,11 +396,134 @@ export default function Review(props: ReviewProps) {
                   className="mx-1"
                 />
                 <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
-                  {formatNumber(newMonthlyStream)}
+                  {formatNumber(
+                    Number(
+                      roundWeiAmount(
+                        parseEther(
+                          areTransactionsLoading && transactionDetailsSnapshot
+                            ? transactionDetailsSnapshot.amountPerTimeInterval
+                            : amountPerTimeInterval.replace(/,/g, ""),
+                        ),
+                        4,
+                      ),
+                    ),
+                  )}
                 </Badge>
               </Stack>
               <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>
             </Stack>
+            {!isFundingDistributionPool && (
+              <>
+                <Stack
+                  direction="horizontal"
+                  className="bg-light border-top border-secondary p-2"
+                >
+                  <Card.Text className="w-33 m-0 fs-6">Est. Matching</Card.Text>
+                  <Stack
+                    direction="horizontal"
+                    gap={1}
+                    className="justify-content-end w-50 p-2"
+                  >
+                    <Image
+                      src={token.icon}
+                      alt="matching token"
+                      width={22}
+                      height={22}
+                      className="mx-1"
+                    />
+                    <Badge className="bg-secondary w-75 ps-2 pe-2 py-2 fs-6 text-start">
+                      {areTransactionsLoading &&
+                      transactionDetailsSnapshot?.netImpact
+                        ? `${
+                            transactionDetailsSnapshot.netImpact > 0 ? "+" : ""
+                          }${parseFloat(
+                            (
+                              Number(
+                                formatEther(
+                                  transactionDetailsSnapshot.netImpact,
+                                ),
+                              ) * fromTimeUnitsToSeconds(1, "months")
+                            ).toFixed(6),
+                          )}`
+                        : netImpact
+                          ? `${netImpact > 0 ? "+" : ""}${parseFloat(
+                              (
+                                Number(formatEther(netImpact)) *
+                                fromTimeUnitsToSeconds(1, "months")
+                              ).toFixed(6),
+                            )}`
+                          : 0}
+                    </Badge>
+                  </Stack>
+                  <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>
+                </Stack>
+                {showQfMultiplier && (
+                  <Stack
+                    direction="horizontal"
+                    className="bg-light border-top border-secondary p-2"
+                  >
+                    <Card.Text className="w-33 m-0 fs-6">
+                      QF Multiplier
+                    </Card.Text>
+                    <Stack
+                      direction="horizontal"
+                      gap={1}
+                      className="justify-content-end w-50 p-2"
+                    >
+                      <Badge
+                        className={`${
+                          BigInt(
+                            areTransactionsLoading && transactionDetailsSnapshot
+                              ? transactionDetailsSnapshot.newFlowRate
+                              : newFlowRate,
+                          ) <
+                          BigInt(
+                            areTransactionsLoading && transactionDetailsSnapshot
+                              ? transactionDetailsSnapshot.flowRateToReceiver
+                              : flowRateToReceiver,
+                          )
+                            ? "bg-danger"
+                            : "bg-primary"
+                        } w-75 ps-2 pe-2 py-2 fs-6 text-start`}
+                      >
+                        {parseFloat(
+                          (
+                            Number(
+                              formatEther(
+                                BigInt(
+                                  areTransactionsLoading &&
+                                    transactionDetailsSnapshot
+                                    ? transactionDetailsSnapshot.netImpact
+                                    : netImpact,
+                                ),
+                              ),
+                            ) /
+                            Number(
+                              formatEther(
+                                BigInt(
+                                  areTransactionsLoading &&
+                                    transactionDetailsSnapshot
+                                    ? transactionDetailsSnapshot.newFlowRate
+                                    : newFlowRate,
+                                ) -
+                                  BigInt(
+                                    areTransactionsLoading &&
+                                      transactionDetailsSnapshot
+                                      ? transactionDetailsSnapshot.flowRateToReceiver
+                                      : flowRateToReceiver,
+                                  ),
+                              ),
+                            )
+                          ).toFixed(2),
+                        )}
+                        x
+                      </Badge>
+                    </Stack>
+                    <span className="w-20 ms-1" />
+                  </Stack>
+                )}
+              </>
+            )}
           </Stack>
           {(areTransactionsLoading &&
             transactionDetailsSnapshot &&
@@ -434,7 +558,9 @@ export default function Review(props: ReviewProps) {
               </Stack>
               <Stack direction="horizontal">
                 <Badge className="d-flex justify-content-around align-items-center w-50 bg-white text-info py-3 rounded-3 border-0 text-center fs-6">
-                  {truncateStr(address ?? "", 12)}
+                  <Card.Text className="m-0 sensitive">
+                    {truncateStr(address ?? "", 12)}
+                  </Card.Text>
                   <CopyTooltip
                     contentClick="Address copied"
                     contentHover="Copy address"
@@ -480,7 +606,9 @@ export default function Review(props: ReviewProps) {
               <Stack direction="vertical">
                 <Stack
                   direction="horizontal"
-                  className="mt-2 bg-purple p-2 rounded-4"
+                  className={`mt-2 bg-purple p-2 ${
+                    !isFundingDistributionPool ? "rounded-top-4" : "rounded-4"
+                  }`}
                 >
                   <Card.Text className="w-33 m-0 fs-6">New Stream</Card.Text>
                   <Stack
@@ -496,7 +624,15 @@ export default function Review(props: ReviewProps) {
                       className="mx-1"
                     />
                     <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
-                      {formatNumber(newMonthlyStreamToFlowState)}
+                      {formatNumber(
+                        Number(
+                          parseEther(
+                            areTransactionsLoading && transactionDetailsSnapshot
+                              ? transactionDetailsSnapshot.supportFlowStateAmount
+                              : supportFlowStateAmount.replace(/,/g, ""),
+                          ),
+                        ),
+                      )}
                     </Badge>
                   </Stack>
                   <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>

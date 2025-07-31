@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from "react";
-import Link from "next/link";
 import { useAccount } from "wagmi";
 import { Address } from "viem";
 import Image from "next/image";
@@ -14,23 +13,27 @@ import { Network } from "@/types/network";
 import { truncateStr } from "@/lib/utils";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
-export type FlowStateEligibilityProps = {
+export type MintNFTProps = {
   step: Step;
   setStep: (step: Step) => void;
   network?: Network;
   requiredNftAddress: Address;
   isEligible: boolean;
-  isPureSuperToken: boolean;
+  isSuperTokenPure: boolean;
 };
 
-export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
+enum MintError {
+  FAIL = "There was an error minting the NFT. Please try again later.",
+}
+
+export default function MintNFT(props: MintNFTProps) {
   const {
     step,
     setStep,
     network,
     requiredNftAddress,
     isEligible,
-    isPureSuperToken,
+    isSuperTokenPure,
   } = props;
 
   const [isLoading, setIsLoading] = useState(false);
@@ -44,7 +47,7 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
       setIsLoading(true);
       setError("");
 
-      const res = await fetch("/api/flow-state-eligibility", {
+      const res = await fetch("/api/mint-nft", {
         method: "POST",
         body: JSON.stringify({
           address,
@@ -57,7 +60,7 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
       const data = await res.json();
 
       if (!data.success && !isFirstCheck) {
-        setError(data.error);
+        setError(MintError.FAIL);
       }
 
       setIsLoading(false);
@@ -65,7 +68,7 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
       console.info(data);
     } catch (err) {
       setIsLoading(false);
-      setError("There was an error. Please try again later.");
+      setError(MintError.FAIL);
 
       console.error(err);
     }
@@ -126,7 +129,7 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
               className="m-auto text-light"
               style={{ fontFamily: "Helvetica" }}
             >
-              {isPureSuperToken ? 3 : 4}
+              {isSuperTokenPure ? 3 : 4}
             </Card.Text>
           )}
         </Badge>
@@ -159,13 +162,9 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
                 />
               )}
               <Card.Text
-                className={`m-0 ${isEligible ? "text-success" : isFirstCheck ? "text-black" : "text-danger"}`}
+                className={`m-0 ${isEligible ? "text-success" : "text-danger"}`}
               >
-                {isEligible
-                  ? "Eligibile"
-                  : isFirstCheck
-                    ? "Checking Eligibility"
-                    : "Ineligible"}
+                {isEligible ? "Eligibile" : "Ineligible"}
               </Card.Text>
             </Stack>
             <Stack
@@ -191,36 +190,14 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
           {!isFirstCheck && (
             <>
               <Button
-                variant="link"
-                href="https://app.passport.xyz"
-                target="_blank"
-                className="bg-secondary text-light text-decoration-none"
-              >
-                {isEligible
-                  ? "Check Your Score"
-                  : `1. Earn Stamps (min = ${network?.flowStateEligibilityMinScore})`}
-              </Button>
-              <Button
                 disabled={isEligible}
                 className="d-flex justify-content-center align-items-center gap-2"
                 onClick={!isLoading ? handleNftMintRequest : void 0}
               >
-                {isEligible ? "Claim NFT" : "2. Claim NFT"}
+                Claim NFT
                 {isLoading && <Spinner size="sm" />}
               </Button>
-              {error && error === "Ineligible" ? (
-                <p className="mb-1 small text-center text-danger">
-                  Not yet eligible. Request manual verification in our{" "}
-                  <Link
-                    href="https://t.me/flowstatecoop"
-                    target="_blank"
-                    className="text-danger"
-                  >
-                    Telegram
-                  </Link>
-                  .
-                </p>
-              ) : (
+              {error && (
                 <p className="mb-1 small text-center text-danger">{error}</p>
               )}
               <Button

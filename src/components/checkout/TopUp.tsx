@@ -1,11 +1,13 @@
 import { formatEther } from "viem";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useAccount } from "wagmi";
 import Image from "next/image";
 import Card from "react-bootstrap/Card";
 import Accordion from "react-bootstrap/Accordion";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Badge from "react-bootstrap/Badge";
-import { Step } from "@/app/flow-councils/types/distributionPoolFunding";
+import { Step } from "@/types/checkout";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -21,7 +23,8 @@ export type TopUpProps = {
   setStep: (step: Step) => void;
   newFlowRate: string;
   wrapAmount: string;
-  isSuperTokenPure: boolean;
+  isFundingDistributionPool?: boolean;
+  isEligible?: boolean;
   superTokenBalance: bigint;
   minEthBalance: number;
   suggestedTokenBalance: bigint;
@@ -32,6 +35,7 @@ export type TopUpProps = {
   underlyingTokenBalance?: { value: bigint; formatted: string; symbol: string };
   network?: Network;
   superTokenInfo: Token;
+  isSuperTokenPure: boolean;
 };
 
 export default function TopUp(props: TopUpProps) {
@@ -40,7 +44,8 @@ export default function TopUp(props: TopUpProps) {
     setStep,
     newFlowRate,
     wrapAmount,
-    isSuperTokenPure,
+    isFundingDistributionPool,
+    isEligible,
     superTokenBalance,
     suggestedTokenBalance,
     minEthBalance,
@@ -51,8 +56,11 @@ export default function TopUp(props: TopUpProps) {
     underlyingTokenBalance,
     network,
     superTokenInfo,
+    isSuperTokenPure,
   } = props;
 
+  const { address } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const { isMobile } = useMediaQuery();
 
   const isUnderlyingTokenNative = underlyingTokenBalance?.symbol === "ETH";
@@ -109,6 +117,18 @@ export default function TopUp(props: TopUpProps) {
       </Button>
       <Accordion.Collapse eventKey={Step.TOP_UP} className="p-3 pt-0">
         <>
+          <Card.Text className="small mb-4">
+            Make sure you have enough {ethBalance?.symbol}{" "}
+            {!isUnderlyingTokenNative
+              ? `and ${underlyingTokenBalance?.symbol}`
+              : ""}{" "}
+            to pay for gas and to fund your stream. We recommend having at least
+            3 months of{" "}
+            {isUnderlyingTokenNative
+              ? ethBalance?.symbol
+              : underlyingTokenBalance?.symbol}{" "}
+            to stream.
+          </Card.Text>
           {isUnderlyingTokenNative ? (
             <Stack
               direction="vertical"
@@ -156,20 +176,38 @@ export default function TopUp(props: TopUpProps) {
                   />
                 )}
               </Card.Text>
-              <Card.Text as="small" className="m-0">
-                Suggested
-                {formatNumber(
-                  Number(roundWeiAmount(suggestedTokenBalance, 4)),
-                )}{" "}
+              <Card.Text as="small" className="m-0 text-center">
+                Suggested{" "}
+                {formatNumber(Number(roundWeiAmount(suggestedTokenBalance, 6)))}
+                +
+                <br />
+                <span style={{ fontSize: "0.8rem" }}>(3 months stream)</span>
               </Card.Text>
               <Button
                 variant="link"
-                href={`https://ramp.network/buy?defaultAsset=${network?.onRampLabel ?? ""}`}
+                href="https://app.across.to/bridge"
                 target="_blank"
-                rel="noreferrer"
-                className="d-flex justify-content-center align-items-center w-100 gap-1 bg-primary text-decoration-none rounded-3 text-light fs-6"
+                className="w-100 bg-secondary text-decoration-none rounded-3 text-light fs-6 overflow-hidden"
               >
-                <Image src="/swap.svg" alt="swap" width={16} height={16} />
+                <Card.Text className="m-0 text-truncate">
+                  Bridge to {network?.name}
+                </Card.Text>
+              </Button>
+              <Button
+                variant="link"
+                onClick={(e) => {
+                  if (!address) {
+                    e.preventDefault();
+
+                    if (openConnectModal) {
+                      openConnectModal();
+                    }
+                  }
+                }}
+                href={`https://pay.coinbase.com/buy/select-asset?appId=36e18bf4-7c5c-416f-a0a1-7eab5d8453e7&addresses={"${address}":["${network?.onRampLabel ?? "base"}"]}&assets=["ETH"]&presetFiatAmount=25`}
+                target="_blank"
+                className="w-100 bg-primary text-decoration-none rounded-3 text-light fs-6"
+              >
                 Buy {ethBalance?.symbol ?? "ETH"}
               </Button>
             </Stack>
@@ -206,23 +244,37 @@ export default function TopUp(props: TopUpProps) {
                       />
                     )}
                   </Card.Text>
-                  <Card.Text as="small" className="m-0">
+                  <Card.Text as="small" className="m-0 text-center">
                     Suggested {minEthBalance}
+                    <br />
+                    <br />
                   </Card.Text>
                   <Button
-                    className="d-flex justify-content-center align-items-center gap-1 w-100 text-light rounded-3 fs-6"
-                    href={`https://ramp.network/buy?defaultAsset=${network?.onRampLabel ?? ""}`}
+                    variant="link"
+                    href="https://app.across.to/bridge"
                     target="_blank"
+                    className="w-100 bg-secondary text-decoration-none rounded-3 text-light fs-6 overflow-hidden"
                   >
-                    <Image
-                      src="/credit-card.svg"
-                      width={24}
-                      height={24}
-                      alt="card"
-                    />
-                    <Card.Text className="m-0">
-                      Buy {ethBalance?.symbol ?? "ETH"}
+                    <Card.Text className="m-0 text-truncate">
+                      Bridge to {network?.name}
                     </Card.Text>
+                  </Button>
+                  <Button
+                    variant="link"
+                    onClick={(e) => {
+                      if (!address) {
+                        e.preventDefault();
+
+                        if (openConnectModal) {
+                          openConnectModal();
+                        }
+                      }
+                    }}
+                    href={`https://pay.coinbase.com/buy/select-asset?appId=36e18bf4-7c5c-416f-a0a1-7eab5d8453e7&addresses={"${address}":["${network?.onRampLabel ?? "base"}"]}&assets=["ETH"]&presetFiatAmount=25`}
+                    target="_blank"
+                    className="w-100 bg-primary text-decoration-none rounded-3 text-light fs-6"
+                  >
+                    Buy {ethBalance?.symbol ?? "ETH"}
                   </Button>
                 </Stack>
                 <Stack
@@ -272,45 +324,51 @@ export default function TopUp(props: TopUpProps) {
                       />
                     )}
                   </Card.Text>
-                  <Card.Text as="small" className="m-0">
+                  <Card.Text as="small" className="m-0 text-center">
                     Suggested{" "}
                     {formatNumber(
-                      Number(roundWeiAmount(suggestedTokenBalance, 4)),
+                      Number(roundWeiAmount(suggestedTokenBalance, 6)),
                     )}
+                    +
+                    <br />
+                    <span style={{ fontSize: "0.8rem" }}>
+                      (3 months stream)
+                    </span>
                   </Card.Text>
                   <Button
                     variant="link"
                     href={`https://jumper.exchange/?fromChain=${network?.id ?? ""}&fromToken=0x0000000000000000000000000000000000000000&toChain=${network?.id ?? ""}&toToken=${superTokenInfo.address}`}
                     target="_blank"
-                    rel="noreferrer"
-                    className="d-flex justify-content-center align-items-center w-100 gap-1 bg-primary text-decoration-none rounded-3 text-light fs-6"
+                    className="w-100 bg-primary text-decoration-none rounded-3 text-light fs-6"
                   >
-                    <Image src="/swap.svg" alt="swap" width={16} height={16} />
                     Get {superTokenInfo.symbol}
                   </Button>
                 </Stack>
               </Stack>
             </>
           )}
-          {(!isSuperTokenPure || hasSufficientTokenBalance) && (
-            <Button
-              variant="transparent"
-              className="mt-4 text-info"
-              onClick={() =>
-                setStep(
-                  !isSuperTokenPure &&
-                    (wrapAmount ||
-                      superTokenBalance <
-                        BigInt(newFlowRate) *
-                          BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
-                    ? Step.WRAP
-                    : Step.REVIEW,
-                )
-              }
-            >
-              Skip
-            </Button>
-          )}
+          <Button
+            variant="transparent"
+            className="mt-4 text-info"
+            onClick={() =>
+              setStep(
+                !isSuperTokenPure &&
+                  (wrapAmount ||
+                    superTokenBalance <
+                      BigInt(newFlowRate) *
+                        BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
+                  ? Step.WRAP
+                  : !isFundingDistributionPool && !isEligible
+                    ? Step.ELIGIBILITY
+                    : !sessionStorage.getItem("skipSupportFlowState") &&
+                        !localStorage.getItem("skipSupportFlowState")
+                      ? Step.SUPPORT
+                      : Step.REVIEW,
+              )
+            }
+          >
+            Skip
+          </Button>
           <Button
             className="w-50 mt-4 py-1 rounded-3 float-end text-light"
             disabled={!hasSufficientEthBalance || !hasSufficientTokenBalance}
@@ -322,7 +380,12 @@ export default function TopUp(props: TopUpProps) {
                       BigInt(newFlowRate) *
                         BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
                   ? Step.WRAP
-                  : Step.REVIEW,
+                  : !isFundingDistributionPool && !isEligible
+                    ? Step.ELIGIBILITY
+                    : !sessionStorage.getItem("skipSupportFlowState") &&
+                        !localStorage.getItem("skipSupportFlowState")
+                      ? Step.SUPPORT
+                      : Step.REVIEW,
               )
             }
           >

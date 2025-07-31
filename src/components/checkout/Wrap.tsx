@@ -1,5 +1,5 @@
 import { useAccount } from "wagmi";
-import { formatEther, formatUnits, parseEther } from "viem";
+import { formatEther, parseEther, parseUnits, formatUnits } from "viem";
 import Image from "next/image";
 import Card from "react-bootstrap/Card";
 import Accordion from "react-bootstrap/Accordion";
@@ -10,16 +10,19 @@ import Badge from "react-bootstrap/Badge";
 import Form from "react-bootstrap/Form";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Tooltip from "react-bootstrap/Tooltip";
-import { Step } from "@/app/flow-councils/types/distributionPoolFunding";
+import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
 import { formatNumber, formatNumberWithCommas, isNumber } from "@/lib/utils";
-import { UINT256_MAX } from "@/lib/constants";
+import { SECONDS_IN_MONTH, UINT256_MAX } from "@/lib/constants";
 
 export type WrapProps = {
   step: Step;
   setStep: (step: Step) => void;
   wrapAmount: string;
   setWrapAmount: (amount: string) => void;
+  newFlowRate: string;
+  isFundingDistributionPool?: boolean;
+  isEligible?: boolean;
   token: Token;
   superTokenBalance: bigint;
   underlyingTokenBalance?: {
@@ -36,7 +39,10 @@ export default function Wrap(props: WrapProps) {
     setStep,
     wrapAmount,
     setWrapAmount,
+    newFlowRate,
     token,
+    isFundingDistributionPool,
+    isEligible,
     superTokenBalance,
     underlyingTokenBalance,
   } = props;
@@ -45,6 +51,12 @@ export default function Wrap(props: WrapProps) {
 
   const isNativeSuperToken =
     token.symbol === "ETHx" || token.symbol === "CELOx";
+  const wrapDurationEstimate =
+    BigInt(newFlowRate) > 0
+      ? Number(wrapAmount?.replace(/,/g, "") ?? "0") /
+        Number(formatEther(BigInt(newFlowRate))) /
+        SECONDS_IN_MONTH
+      : null;
 
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
@@ -125,9 +137,11 @@ export default function Wrap(props: WrapProps) {
         <Stack direction="vertical" gap={3}>
           <Card.Text className="small mb-1">
             {token.symbol} is a wrapped version of{" "}
-            {underlyingTokenBalance?.symbol ?? "N/A"} that enables streaming
-            value transfer. After you open a stream, your {token.symbol} balance
-            will update accordingly every second.
+            {underlyingTokenBalance?.symbol ?? "N/A"} that enables multiple
+            incoming & outgoing streams from a single token balance. After you
+            open a stream, your {token.symbol} balance will update accordingly
+            every second as long as it stays above 0. You can wrap more & unwrap
+            anytime.
           </Card.Text>
           <Stack direction="vertical" className="position-relative">
             <Stack
@@ -143,6 +157,59 @@ export default function Wrap(props: WrapProps) {
                 className="bg-purple w-75 border-0 shadow-none"
                 onChange={handleAmountSelection}
               />
+              {underlyingTokenBalance &&
+              wrapAmount &&
+              underlyingTokenBalance?.value <
+                parseUnits(
+                  wrapAmount?.replace(/,/g, ""),
+                  underlyingTokenBalance.decimals,
+                ) ? (
+                <i
+                  className="ms-2 ps-1 text-danger"
+                  style={{
+                    position: "absolute",
+                    top: "38px",
+                    fontSize: "0.7rem",
+                  }}
+                >
+                  Not enough balance
+                </i>
+              ) : isNativeSuperToken &&
+                underlyingTokenBalance &&
+                wrapAmount &&
+                underlyingTokenBalance.value -
+                  parseEther(wrapAmount?.replace(/,/g, "")) <
+                  parseEther("0.00002") ? (
+                <i
+                  className="ms-2 ps-1 text-danger"
+                  style={{
+                    position: "absolute",
+                    top: "38px",
+                    fontSize: "0.7rem",
+                  }}
+                >
+                  Leave more for transaction costs
+                </i>
+              ) : underlyingTokenBalance && wrapAmount ? (
+                <i
+                  className="ms-2 ps-1"
+                  style={{
+                    position: "absolute",
+                    top: "38px",
+                    fontSize: "0.7rem",
+                  }}
+                >
+                  Remaining after wrapping{" "}
+                  {formatNumber(
+                    Number(
+                      formatEther(
+                        underlyingTokenBalance?.value -
+                          parseEther(wrapAmount?.replace(/,/g, "")),
+                      ),
+                    ),
+                  )}
+                </i>
+              ) : null}
               <Badge
                 as="div"
                 className="d-flex justify-content-center align-items-center w-25 gap-1 bg-light text-dark py-2 rounded-3"
@@ -153,7 +220,7 @@ export default function Wrap(props: WrapProps) {
                 </Card.Text>
               </Badge>
             </Stack>
-            <Card.Text className="w-100 bg-white m-0 mb-2 px-2 pb-2 rounded-bottom-4 text-end fs-6">
+            <Card.Text className="w-100 bg-white m-0 mb-2 px-2 pb-2 pt-1 rounded-bottom-4 text-end fs-6">
               Balance:{" "}
               {underlyingTokenBalance
                 ? formatNumber(Number(underlyingTokenBalance.formatted))
@@ -183,6 +250,33 @@ export default function Wrap(props: WrapProps) {
                 className="bg-white w-75 border-0 shadow-none"
                 onChange={handleAmountSelection}
               />
+              {wrapDurationEstimate && wrapDurationEstimate < 0.01 ? (
+                <i
+                  className="ms-2 ps-1 text-danger"
+                  style={{
+                    position: "absolute",
+                    bottom: "34px",
+                    fontSize: "0.7rem",
+                  }}
+                >
+                  {"<.01 months @ your stream rate"}
+                </i>
+              ) : wrapDurationEstimate ? (
+                <i
+                  className={`ms-2 ps-1 ${wrapDurationEstimate < 3 ? "text-warning" : ""}`}
+                  style={{
+                    position: "absolute",
+                    bottom: "34px",
+                    fontSize: "0.7rem",
+                  }}
+                >
+                  ~{parseFloat(wrapDurationEstimate.toFixed(2))}{" "}
+                  {parseFloat(wrapDurationEstimate.toFixed(2)) === 1
+                    ? "month"
+                    : "months"}{" "}
+                  @ your stream rate
+                </i>
+              ) : null}
               <Badge
                 as="div"
                 className="d-flex justify-content-center align-items-center gap-1 w-25 bg-light text-dark py-2 rounded-3"
@@ -191,7 +285,7 @@ export default function Wrap(props: WrapProps) {
                 <Card.Text className="p-0">{token.symbol}</Card.Text>
               </Badge>
             </Stack>
-            <Card.Text className="w-100 bg-white m-0 px-2 pb-2 rounded-bottom-4 text-end fs-6">
+            <Card.Text className="w-100 bg-white m-0 px-2 pb-2 pt-1 rounded-bottom-4 text-end fs-6">
               Balance: {formatNumber(Number(formatEther(superTokenBalance)))}
             </Card.Text>
           </Stack>
@@ -226,7 +320,14 @@ export default function Wrap(props: WrapProps) {
                 className="w-50 py-1 rounded-3 text-light"
                 onClick={() => {
                   setWrapAmount("");
-                  setStep(Step.REVIEW);
+                  setStep(
+                    !isFundingDistributionPool && !isEligible
+                      ? Step.ELIGIBILITY
+                      : !sessionStorage.getItem("skipSupportFlowState") &&
+                          !localStorage.getItem("skipSupportFlowState")
+                        ? Step.SUPPORT
+                        : Step.REVIEW,
+                  );
                 }}
               >
                 Skip
@@ -245,7 +346,16 @@ export default function Wrap(props: WrapProps) {
                 ) < Number(wrapAmount.replace(/,/g, ""))
               }
               className="w-50 py-1 rounded-3 text-light"
-              onClick={() => setStep(Step.REVIEW)}
+              onClick={() =>
+                setStep(
+                  !isFundingDistributionPool && !isEligible
+                    ? Step.ELIGIBILITY
+                    : !sessionStorage.getItem("skipSupportFlowState") &&
+                        !localStorage.getItem("skipSupportFlowState")
+                      ? Step.SUPPORT
+                      : Step.REVIEW,
+                )
+              }
             >
               Continue
             </Button>

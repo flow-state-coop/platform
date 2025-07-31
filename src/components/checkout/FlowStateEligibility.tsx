@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import Link from "next/link";
 import { useAccount } from "wagmi";
 import { Address } from "viem";
 import Image from "next/image";
@@ -13,27 +14,23 @@ import { Network } from "@/types/network";
 import { truncateStr } from "@/lib/utils";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
-export type MintNFTProps = {
+export type FlowStateEligibilityProps = {
   step: Step;
   setStep: (step: Step) => void;
   network?: Network;
   requiredNftAddress: Address;
   isEligible: boolean;
-  isPureSuperToken: boolean;
+  isSuperTokenPure: boolean;
 };
 
-enum MintError {
-  FAIL = "There was an error minting the NFT. Please try again later.",
-}
-
-export default function MintNFT(props: MintNFTProps) {
+export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
   const {
     step,
     setStep,
     network,
     requiredNftAddress,
     isEligible,
-    isPureSuperToken,
+    isSuperTokenPure,
   } = props;
 
   const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +44,7 @@ export default function MintNFT(props: MintNFTProps) {
       setIsLoading(true);
       setError("");
 
-      const res = await fetch("/api/mint-nft", {
+      const res = await fetch("/api/flow-state-eligibility", {
         method: "POST",
         body: JSON.stringify({
           address,
@@ -60,7 +57,7 @@ export default function MintNFT(props: MintNFTProps) {
       const data = await res.json();
 
       if (!data.success && !isFirstCheck) {
-        setError(MintError.FAIL);
+        setError(data.error);
       }
 
       setIsLoading(false);
@@ -68,7 +65,7 @@ export default function MintNFT(props: MintNFTProps) {
       console.info(data);
     } catch (err) {
       setIsLoading(false);
-      setError(MintError.FAIL);
+      setError("There was an error. Please try again later.");
 
       console.error(err);
     }
@@ -129,7 +126,7 @@ export default function MintNFT(props: MintNFTProps) {
               className="m-auto text-light"
               style={{ fontFamily: "Helvetica" }}
             >
-              {isPureSuperToken ? 3 : 4}
+              {isSuperTokenPure ? 3 : 4}
             </Card.Text>
           )}
         </Badge>
@@ -162,9 +159,13 @@ export default function MintNFT(props: MintNFTProps) {
                 />
               )}
               <Card.Text
-                className={`m-0 ${isEligible ? "text-success" : "text-danger"}`}
+                className={`m-0 ${isEligible ? "text-success" : isFirstCheck ? "text-black" : "text-danger"}`}
               >
-                {isEligible ? "Eligibile" : "Ineligible"}
+                {isEligible
+                  ? "Eligibile"
+                  : isFirstCheck
+                    ? "Checking Eligibility"
+                    : "Ineligible"}
               </Card.Text>
             </Stack>
             <Stack
@@ -190,14 +191,36 @@ export default function MintNFT(props: MintNFTProps) {
           {!isFirstCheck && (
             <>
               <Button
+                variant="link"
+                href="https://app.passport.xyz"
+                target="_blank"
+                className="bg-secondary text-light text-decoration-none"
+              >
+                {isEligible
+                  ? "Check Your Score"
+                  : `1. Earn Stamps (min = ${network?.flowStateEligibilityMinScore})`}
+              </Button>
+              <Button
                 disabled={isEligible}
                 className="d-flex justify-content-center align-items-center gap-2"
                 onClick={!isLoading ? handleNftMintRequest : void 0}
               >
-                Claim NFT
+                {isEligible ? "Claim NFT" : "2. Claim NFT"}
                 {isLoading && <Spinner size="sm" />}
               </Button>
-              {error && (
+              {error && error === "Ineligible" ? (
+                <p className="mb-1 small text-center text-danger">
+                  Not yet eligible. Request manual verification in our{" "}
+                  <Link
+                    href="https://t.me/flowstatecoop"
+                    target="_blank"
+                    className="text-danger"
+                  >
+                    Telegram
+                  </Link>
+                  .
+                </p>
+              ) : (
                 <p className="mb-1 small text-center text-danger">{error}</p>
               )}
               <Button

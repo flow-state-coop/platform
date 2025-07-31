@@ -1,17 +1,18 @@
 import Image from "next/image";
 import Card from "react-bootstrap/Card";
 import Stack from "react-bootstrap/Stack";
-import { Step } from "../../types/distributionPoolFunding";
+import Button from "react-bootstrap/Button";
+import { Step } from "@/types/checkout";
 
 export type SuccessProps = {
   step: Step;
-  councilName: string;
-  councilUiLink: string;
   newFlowRate: string;
+  socialShare: { twitter: string; farcaster: string; lens: string };
+  onClick?: () => void;
 };
 
 export default function Success(props: SuccessProps) {
-  const { step, councilName, councilUiLink, newFlowRate } = props;
+  const { step, newFlowRate, socialShare, onClick } = props;
 
   if (step === Step.SUCCESS && BigInt(newFlowRate) === BigInt(0)) {
     return (
@@ -29,25 +30,26 @@ export default function Success(props: SuccessProps) {
           &#x1F64F;
         </Card.Text>
         <Card.Text>
-          Help spread the word about Flow State by sharing your contribution
-          with your network:
+          Help spread the word about Streaming Quadratic Funding by sharing your
+          contribution with your network:
         </Card.Text>
         <Stack direction="horizontal" className="justify-content-around">
-          <Card.Link
-            className="d-flex flex-column align-items-center twitter-share-button text-decoration-none fs-6 m-0 w-50"
-            rel="noreferrer"
+          <Button
+            variant="link"
+            href={socialShare.twitter}
             target="_blank"
-            href={`https://twitter.com/intent/tweet?text=I%20just%20opened%20a%20stream%20to%20the%20${councilName}%20distribution%20pool%20on%20Flow%20State.%0AJoin%20me%20in%20supporting%20these%20public%20goods%20builders%20at%20${encodeURIComponent(councilUiLink)}`}
-            data-size="large"
+            className="d-flex flex-column align-items-center twitter-share-button text-decoration-none p-0 fs-6 m-0 w-50"
+            onClick={onClick}
           >
             <Image src="/x-logo.svg" alt="x social" width={28} height={22} />
             <span style={{ fontSize: "10px" }}>Post to X</span>
-          </Card.Link>
-          <Card.Link
-            className="d-flex flex-column align-items-center text-decoration-none fs-6 m-0 w-50"
-            rel="noreferrer"
+          </Button>
+          <Button
+            variant="link"
             target="_blank"
-            href={`https://farcaster.xyz/~/compose?text=I+just+opened+a+stream+to+the+${councilName}+distribution+pool+on+Flow+State.%0AJoin+me+in+supporting+these+public+goods+builders+at&embeds[]=${encodeURIComponent(councilUiLink)}`}
+            href={socialShare.farcaster}
+            className="d-flex flex-column align-items-center twitter-share-button text-decoration-none p-0 fs-6 m-0 w-50"
+            onClick={onClick}
           >
             <Image
               src="/farcaster.svg"
@@ -56,16 +58,17 @@ export default function Success(props: SuccessProps) {
               height={22}
             />
             <span style={{ fontSize: "10px" }}>Cast to Farcaster</span>
-          </Card.Link>
-          <Card.Link
-            className="d-flex flex-column align-items-center text-decoration-none fs-6 m-0 w-50"
-            rel="noreferrer"
+          </Button>
+          <Button
+            variant="link"
+            href={socialShare.lens}
             target="_blank"
-            href={`https://hey.xyz/?text=I+just+opened+a+stream+to+the+${councilName}+distribution+pool+on+Flow+State.%0AJoin+me+in+supporting+these+public+goods+builders+at+${encodeURIComponent(councilUiLink)}`}
+            className="d-flex flex-column align-items-center twitter-share-button text-decoration-none p-0 fs-6 m-0 w-50"
+            onClick={onClick}
           >
             <Image src="/lens.svg" alt="lens" width={28} height={22} />
             <span style={{ fontSize: "10px" }}>Post on Lens</span>
-          </Card.Link>
+          </Button>
         </Stack>
       </Card>
     );
