@@ -12,6 +12,7 @@ export default function useCouncil() {
     gdaPool,
     token,
     showBallot,
+    councilMember,
     currentAllocation,
     newAllocation,
   } = useFlowCouncilContext();
@@ -28,6 +29,7 @@ export default function useCouncil() {
     currentAllocation,
     newAllocation,
     showBallot,
+    councilMember,
     dispatchNewAllocation,
     dispatchShowBallot,
   };

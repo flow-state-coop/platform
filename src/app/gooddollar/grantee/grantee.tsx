@@ -79,11 +79,6 @@ const COUNCIL_QUERY = gql`
       maxAllocationsPerMember
       distributionToken
       metadata
-      councilMembers {
-        id
-        account
-        votingPower
-      }
     }
   }
 `;

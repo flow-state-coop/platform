@@ -12,11 +12,11 @@ const VOTE_QUERY = gql`
   query VoteQuery($councilId: String, $address: String) {
     allocations(
       where: { council: $councilId, councilMember_: { account: $address } }
-      orderBy: allocatedAt
+      orderBy: createdAtTimestamp
       orderDirection: desc
       first: 1
     ) {
-      allocatedAt
+      createdAtTimestamp
     }
   }
 `;
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     }
 
     const votesQueryRes = await graphQlRequest<{
-      allocations: { allocatedAt: string }[];
+      allocations: { createdAtTimestamp: string }[];
     }>(network.flowCouncilSubgraph, VOTE_QUERY, {
       councilId: config.councilAddress,
       address: address.toLowerCase(),
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
 
     if (
       !allocation ||
-      Number(allocation.allocatedAt) < currentEpoch.startTimestamp
+      Number(allocation.createdAtTimestamp) < currentEpoch.startTimestamp
     ) {
       return new Response(
         JSON.stringify({
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
     await stack.track(event, {
       account: address.toLowerCase(),
       points: 10,
-      uniqueId: `${address.toLowerCase()}-${allocation.allocatedAt}`,
+      uniqueId: `${address.toLowerCase()}-${allocation.createdAtTimestamp}`,
     });
 
     db.insertInto("supAddresses")

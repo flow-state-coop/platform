@@ -8,13 +8,14 @@ const COUNCIL_QUERY = gql`
       id
       pool
       metadata
-      councilMembers(first: 1000) {
-        account
-        votingPower
-      }
       grantees {
         metadata
         account
+        votes(first: 1000, orderBy: createdAtTimestamp, orderDirection: desc) {
+          votedBy
+          amount
+          createdAtTimestamp
+        }
       }
       distributionToken
       maxAllocationsPerMember

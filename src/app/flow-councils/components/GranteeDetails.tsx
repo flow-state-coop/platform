@@ -1,18 +1,25 @@
 import { useState, useEffect } from "react";
+import { Address, formatEther } from "viem";
+import { useReadContract } from "wagmi";
 import Offcanvas from "react-bootstrap/Offcanvas";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
+import Badge from "react-bootstrap/Badge";
 import Markdown from "react-markdown";
 import rehyperExternalLinks from "rehype-external-links";
 import remarkGfm from "remark-gfm";
 import { ProjectMetadata } from "@/types/project";
+import { Token } from "@/types/token";
 import { fetchIpfsImage } from "@/lib/fetchIpfs";
+import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
+import useFlowingAmount from "@/hooks/flowingAmount";
 import useCouncil from "../hooks/council";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
-import { truncateStr } from "@/lib/utils";
+import { truncateStr, formatNumber } from "@/lib/utils";
+import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 type GranteeDetails = {
   id: string;
@@ -20,6 +27,7 @@ type GranteeDetails = {
   placeholderLogo: string;
   granteeAddress: `0x${string}`;
   chainId: number;
+  token: Token;
   canAddToBallot: boolean;
   hide: () => void;
 };
@@ -28,6 +36,7 @@ export default function GranteeDetails(props: GranteeDetails) {
   const {
     id,
     metadata,
+    token,
     placeholderLogo,
     granteeAddress,
     chainId,
@@ -38,8 +47,32 @@ export default function GranteeDetails(props: GranteeDetails) {
   const [imageUrl, setImageUrl] = useState("");
 
   const { isMobile } = useMediaQuery();
-  const { dispatchNewAllocation } = useCouncil();
+  const { dispatchNewAllocation, gdaPool } = useCouncil();
+  const { data: totalAmountReceivedByMember, dataUpdatedAt } = useReadContract({
+    chainId,
+    address: gdaPool?.id as Address,
+    abi: superfluidPoolAbi,
+    functionName: "getTotalAmountReceivedByMember",
+    args: [granteeAddress as Address],
+    query: { enabled: !!gdaPool && !!granteeAddress },
+  });
 
+  const poolMember = gdaPool?.poolMembers.find(
+    (m) => m.account.id === granteeAddress.toLowerCase(),
+  );
+  const adjustedPoolFlowRate = gdaPool
+    ? BigInt(gdaPool.flowRate) - BigInt(gdaPool.adjustmentFlowRate)
+    : BigInt(0);
+  const memberFlowRate =
+    poolMember && gdaPool && BigInt(gdaPool.totalUnits) > 0
+      ? (BigInt(poolMember.units) * adjustedPoolFlowRate) /
+        BigInt(gdaPool.totalUnits)
+      : BigInt(0);
+  const totalFundingReceived = useFlowingAmount(
+    totalAmountReceivedByMember ?? BigInt(0),
+    dataUpdatedAt ? Math.round(dataUpdatedAt / 1000) : 0,
+    memberFlowRate,
+  );
   const superfluidExplorer = networks.find(
     (network) => network.id === chainId,
   )?.superfluidExplorer;
@@ -214,7 +247,46 @@ export default function GranteeDetails(props: GranteeDetails) {
               </Button>
             )}
           </Stack>
-          <div style={{ maxWidth: 500 }}>
+          <Stack direction="horizontal" gap={1} className="fs-6 p-2 pb-0">
+            <Stack direction="vertical" gap={1} className="w-33">
+              <Card.Text
+                className="m-0 pe-0 text-nowrap text-center"
+                style={{ fontSize: "0.7rem" }}
+              >
+                Votes
+              </Card.Text>
+              <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal text-center">
+                {formatNumber(Number(poolMember?.units ?? 0))}
+              </Badge>
+            </Stack>
+            <Stack direction="vertical" gap={1} className="w-33">
+              <Card.Text
+                className="m-0 pe-0 text-center"
+                style={{ fontSize: "0.7rem" }}
+              >
+                {token.symbol}/mo
+              </Card.Text>
+              <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal text-center">
+                {formatNumber(
+                  Number(
+                    formatEther(memberFlowRate * BigInt(SECONDS_IN_MONTH)),
+                  ),
+                )}
+              </Badge>
+            </Stack>
+            <Stack direction="vertical" gap={1} className="w-33">
+              <Card.Text
+                className="m-0 pe-0 text-nowrap text-center"
+                style={{ fontSize: "0.7rem" }}
+              >
+                Total
+              </Card.Text>
+              <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal text-center">
+                {formatNumber(Number(formatEther(totalFundingReceived)))}
+              </Badge>
+            </Stack>
+          </Stack>
+          <div style={{ maxWidth: 500 }} className="mt-2">
             <Markdown
               className="p-2"
               skipHtml={true}
