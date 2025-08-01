@@ -1,23 +1,22 @@
 import { useAccount, useSwitchChain } from "wagmi";
-import { parseEther } from "viem";
 import Card from "react-bootstrap/Card";
 import Accordion from "react-bootstrap/Accordion";
 import Stack from "react-bootstrap/Stack";
-import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import Badge from "react-bootstrap/Badge";
 import Form from "react-bootstrap/Form";
+import Alert from "react-bootstrap/Alert";
 import Image from "react-bootstrap/Image";
-import { Step } from "@/app/flow-councils/types/distributionPoolFunding";
+import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
 import { Network } from "@/types/network";
 import ConnectWallet from "@/components/ConnectWallet";
+import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import {
   TimeInterval,
   fromTimeUnitsToSeconds,
   isNumber,
   formatNumberWithCommas,
-  convertStreamValueToInterval,
 } from "@/lib/utils";
 
 export type EditStreamProps = {
@@ -29,12 +28,13 @@ export type EditStreamProps = {
   amountPerTimeInterval: string;
   newFlowRate: string;
   wrapAmount: string;
-  timeInterval: TimeInterval;
   setAmountPerTimeInterval: (amount: string) => void;
-  setTimeInterval: (timeInterval: TimeInterval) => void;
+  isFundingDistributionPool?: boolean;
+  isSuperTokenPure?: boolean;
+  isEligible?: boolean;
   superTokenBalance: bigint;
-  isSuperTokenPure: boolean;
   hasSufficientBalance: boolean;
+  docsLink: string;
 };
 
 export default function EditStream(props: EditStreamProps) {
@@ -48,11 +48,12 @@ export default function EditStream(props: EditStreamProps) {
     setAmountPerTimeInterval,
     newFlowRate,
     wrapAmount,
-    timeInterval,
-    setTimeInterval,
-    superTokenBalance,
+    isFundingDistributionPool,
     isSuperTokenPure,
+    isEligible,
+    superTokenBalance,
     hasSufficientBalance,
+    docsLink,
   } = props;
 
   const { address, chain: connectedChain } = useAccount();
@@ -60,6 +61,11 @@ export default function EditStream(props: EditStreamProps) {
 
   const isDeletingStream =
     BigInt(flowRateToReceiver) > 0 && BigInt(newFlowRate) === BigInt(0);
+  const isNativeSuperToken =
+    token.symbol === "ETHx" || token.symbol === "CELOx";
+  const minAllocationPerMonth = getPoolFlowRateConfig(
+    token.symbol,
+  ).minAllocationPerMonth;
 
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
@@ -68,15 +74,36 @@ export default function EditStream(props: EditStreamProps) {
     if (isNumber(valueWithoutCommas)) {
       setAmountPerTimeInterval(
         `${
-          parseFloat(valueWithoutCommas) < 1000
-            ? valueWithoutCommas
+          isNativeSuperToken || parseFloat(valueWithoutCommas) < 1000
+            ? value.replace(/ /g, "")
             : formatNumberWithCommas(valueWithoutCommas)
         }`,
       );
     } else if (value === "") {
       setAmountPerTimeInterval("");
     } else if (value === ".") {
-      setAmountPerTimeInterval("0.");
+      setAmountPerTimeInterval(isNativeSuperToken ? "0." : "0");
+    }
+  };
+
+  const handleAmountStepping = (stepping: { increment: boolean }) => {
+    const { increment } = stepping;
+
+    if (amountPerTimeInterval === "") {
+      setAmountPerTimeInterval(increment ? "1" : "0");
+    } else if (isNumber(amountPerTimeInterval.replace(/,/g, ""))) {
+      const amount = parseFloat(amountPerTimeInterval.replace(/,/g, ""));
+
+      setAmountPerTimeInterval(
+        `${formatNumberWithCommas(
+          (increment
+            ? amount + 1
+            : amount - 1 <= 0
+              ? 0
+              : amount - 1
+          ).toString(),
+        )}`,
+      );
     }
   };
 
@@ -122,9 +149,9 @@ export default function EditStream(props: EditStreamProps) {
             the <strong>rate</strong> you set here until you cancel or modify
             it.{" "}
             <Card.Link
-              href="https://docs.flowstate.network/flow-councils/grow-the-pie"
+              href={docsLink}
               target="_blank"
-              className="text-primary"
+              className="text-primary text-decoration-none"
             >
               Learn more here
             </Card.Link>
@@ -133,7 +160,7 @@ export default function EditStream(props: EditStreamProps) {
           <Stack direction="horizontal" gap={2}>
             <Badge className="d-flex align-items-center gap-1 bg-white text-dark w-50 rounded-3 px-3 py-2 fs-5 fw-normal">
               <Image
-                src={network?.icon ?? "/eth.svg"}
+                src={network?.icon ?? "/eth.png"}
                 alt="token"
                 width={20}
                 height={20}
@@ -141,13 +168,16 @@ export default function EditStream(props: EditStreamProps) {
               {network?.name ?? "N/A"}
             </Badge>
             <Badge className="d-flex align-items-center gap-1 bg-white text-dark w-50 rounded-3 px-3 py-2 fs-5 fw-normal">
-              {token.icon && (
-                <Image src={token.icon} alt="Token" width={20} height={20} />
-              )}
+              <Image
+                src={token.icon ?? "/eth.png"}
+                alt="token"
+                width={20}
+                height={20}
+              />
               {token.symbol}
             </Badge>
           </Stack>
-          <Stack direction="horizontal" gap={2}>
+          <Stack direction="horizontal" gap={2} className="align-items-stretch">
             <Stack direction="horizontal" className="w-50">
               <Form.Control
                 type="text"
@@ -155,62 +185,46 @@ export default function EditStream(props: EditStreamProps) {
                 disabled={!address || !flowRateToReceiver}
                 value={amountPerTimeInterval}
                 onChange={handleAmountSelection}
-                className="bg-white border-0 rounded-3 rounded-end-0 shadow-none"
+                className={`bg-white border-0 rounded-3 ${
+                  isNativeSuperToken ? "" : "rounded-end-0"
+                } shadow-none`}
               />
+              {!isNativeSuperToken && (
+                <>
+                  <Button
+                    disabled={!address || !flowRateToReceiver}
+                    variant="white"
+                    className="d-flex align-items-center bg-white border-0 rounded-0 fs-4 px-1 py-2"
+                    onClick={() => handleAmountStepping({ increment: false })}
+                  >
+                    <Image
+                      src="/remove.svg"
+                      alt="remove"
+                      width={20}
+                      height={20}
+                    />
+                  </Button>
+                  <Button
+                    disabled={!address || !flowRateToReceiver}
+                    variant="white"
+                    className="d-flex align-items-center bg-white border-0 rounded-0 rounded-end-3 fs-4 px-1 py-2"
+                    onClick={() => handleAmountStepping({ increment: true })}
+                  >
+                    <Image src="/add.svg" alt="add" width={20} height={20} />
+                  </Button>
+                </>
+              )}
             </Stack>
-            <Dropdown className="w-50">
-              <Dropdown.Toggle
-                variant="blue"
-                className="d-flex justify-content-between align-items-center w-100 bg-white border-0 rounded-3 fs-6"
-              >
-                {timeInterval}
-              </Dropdown.Toggle>
-              <Dropdown.Menu>
-                <Dropdown.Item
-                  onClick={() => {
-                    setAmountPerTimeInterval(
-                      convertStreamValueToInterval(
-                        parseEther(amountPerTimeInterval.replace(/,/g, "")),
-                        timeInterval,
-                        TimeInterval.DAY,
-                      ),
-                    );
-                    setTimeInterval(TimeInterval.DAY);
-                  }}
-                >
-                  {TimeInterval.DAY}
-                </Dropdown.Item>
-                <Dropdown.Item
-                  onClick={() => {
-                    setAmountPerTimeInterval(
-                      convertStreamValueToInterval(
-                        parseEther(amountPerTimeInterval.replace(/,/g, "")),
-                        timeInterval,
-                        TimeInterval.WEEK,
-                      ),
-                    );
-                    setTimeInterval(TimeInterval.WEEK);
-                  }}
-                >
-                  {TimeInterval.WEEK}
-                </Dropdown.Item>
-                <Dropdown.Item
-                  onClick={() => {
-                    setAmountPerTimeInterval(
-                      convertStreamValueToInterval(
-                        parseEther(amountPerTimeInterval.replace(/,/g, "")),
-                        timeInterval,
-                        TimeInterval.MONTH,
-                      ),
-                    );
-                    setTimeInterval(TimeInterval.MONTH);
-                  }}
-                >
-                  {TimeInterval.MONTH}
-                </Dropdown.Item>
-              </Dropdown.Menu>
-            </Dropdown>
+            <Badge className="d-flex align-items-center bg-white w-50 rounded-3 px-3 text-dark fs-6 fw-normal">
+              /month
+            </Badge>
           </Stack>
+          {Number(amountPerTimeInterval) > 0 &&
+            Number(amountPerTimeInterval) < minAllocationPerMonth && (
+              <Alert variant="warning" className="m-0 py-2">
+                Minimum Donation = {minAllocationPerMonth} {token.symbol}/mo
+              </Alert>
+            )}
           <Stack direction="vertical">
             {network && address ? (
               <Button
@@ -220,6 +234,8 @@ export default function EditStream(props: EditStreamProps) {
                   Number(amountPerTimeInterval.replace(/,/g, "")) < 0 ||
                   (BigInt(flowRateToReceiver) === BigInt(0) &&
                     Number(amountPerTimeInterval.replace(/,/g, "")) === 0) ||
+                  (!isDeletingStream &&
+                    Number(amountPerTimeInterval) < minAllocationPerMonth) ||
                   newFlowRate === flowRateToReceiver
                 }
                 className="py-1 rounded-3 text-light"
@@ -238,7 +254,12 @@ export default function EditStream(props: EditStreamProps) {
                                     fromTimeUnitsToSeconds(1, TimeInterval.DAY),
                                   ))
                           ? Step.WRAP
-                          : Step.REVIEW,
+                          : !isFundingDistributionPool && !isEligible
+                            ? Step.ELIGIBILITY
+                            : !sessionStorage.getItem("skipSupportFlowState") &&
+                                !localStorage.getItem("skipSupportFlowState")
+                              ? Step.SUPPORT
+                              : Step.REVIEW,
                     );
                   }
                 }}

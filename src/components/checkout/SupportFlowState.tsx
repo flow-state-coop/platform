@@ -1,5 +1,4 @@
 import { useAccount } from "wagmi";
-import { parseEther } from "viem";
 import dayjs from "dayjs";
 import Image from "next/image";
 import Card from "react-bootstrap/Card";
@@ -7,21 +6,20 @@ import Accordion from "react-bootstrap/Accordion";
 import Stack from "react-bootstrap/Stack";
 import FormControl from "react-bootstrap/FormControl";
 import FormCheck from "react-bootstrap/FormCheck";
-import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import Badge from "react-bootstrap/Badge";
 import Alert from "react-bootstrap/Alert";
 import { Step } from "@/types/checkout";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
-import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
+import { getSupportFlowStateConfig } from "@/lib/supportFlowStateConfig";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import {
   fromTimeUnitsToSeconds,
   unitOfTime,
   TimeInterval,
-  convertStreamValueToInterval,
   roundWeiAmount,
+  formatNumber,
   formatNumberWithCommas,
   isNumber,
 } from "@/lib/utils";
@@ -33,12 +31,10 @@ export type SupportFlowStateProps = {
   setStep: (step: Step) => void;
   supportFlowStateAmount: string;
   setSupportFlowStateAmount: (amount: string) => void;
-  supportFlowStateTimeInterval: TimeInterval;
-  setSupportFlowStateTimeInterval: (timeInterval: TimeInterval) => void;
   flowRateToFlowState: string;
   newFlowRateToFlowState: string;
-  isFundingMatchingPool: boolean;
-  isPureSuperToken: boolean;
+  isFundingDistributionPool?: boolean;
+  isSuperTokenPure: boolean;
 };
 
 dayjs().format();
@@ -51,12 +47,10 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
     setStep,
     supportFlowStateAmount,
     setSupportFlowStateAmount,
-    supportFlowStateTimeInterval,
-    setSupportFlowStateTimeInterval,
     flowRateToFlowState,
     newFlowRateToFlowState,
-    isFundingMatchingPool,
-    isPureSuperToken,
+    isFundingDistributionPool,
+    isSuperTokenPure,
   } = props;
 
   const { address } = useAccount();
@@ -67,9 +61,9 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
   const isDeletingStream =
     BigInt(flowRateToFlowState) > 0 &&
     BigInt(newFlowRateToFlowState) === BigInt(0);
-  const poolFlowRateConfig = getPoolFlowRateConfig(token.symbol);
-  const minDonationPerMonth = poolFlowRateConfig.minAllocationPerMonth;
-  const suggestedDonation = poolFlowRateConfig.suggestedFlowStateDonation;
+  const supportFlowStateConfig = getSupportFlowStateConfig(token.symbol);
+  const minDonationPerMonth = supportFlowStateConfig.minAllocationPerMonth;
+  const suggestedDonation = supportFlowStateConfig.suggestedFlowStateDonation;
 
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
@@ -129,9 +123,9 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
               className="m-auto text-light"
               style={{ fontFamily: "Helvetica" }}
             >
-              {isFundingMatchingPool && isPureSuperToken
+              {isFundingDistributionPool && isSuperTokenPure
                 ? 3
-                : isFundingMatchingPool || isPureSuperToken
+                : isFundingDistributionPool || isSuperTokenPure
                   ? 4
                   : 5}
             </Card.Text>
@@ -187,24 +181,24 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
               {token.symbol}
             </Badge>
           </Stack>
-          <Stack direction="horizontal" gap={2} className="mt-3">
+          <Stack
+            direction="horizontal"
+            gap={2}
+            className="align-items-start mt-3"
+          >
             <Stack
               direction="vertical"
               gap={1}
               className="position-relative w-50"
             >
-              <Stack direction="horizontal">
-                <FormControl
-                  type="text"
-                  placeholder="0"
-                  disabled={!address}
-                  value={supportFlowStateAmount}
-                  onChange={handleAmountSelection}
-                  className={`bg-white border-0 rounded-3 ${
-                    isNativeSuperToken ? "" : "rounded-end-0"
-                  } shadow-none`}
-                />
-              </Stack>
+              <FormControl
+                type="text"
+                placeholder="0"
+                disabled={!address}
+                value={supportFlowStateAmount}
+                onChange={handleAmountSelection}
+                className="bg-white border-0 rounded-3 shadow-none"
+              />
               <Card.Text
                 className="position-absolute m-0 text-info"
                 style={{ right: 8, fontSize: "0.6rem" }}
@@ -216,7 +210,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                       BigInt(
                         fromTimeUnitsToSeconds(
                           1,
-                          unitOfTime[supportFlowStateTimeInterval],
+                          unitOfTime[TimeInterval.MONTH],
                         ),
                       ),
                     4,
@@ -242,7 +236,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                     )
                   }
                 >
-                  {suggestedDonation * 2}
+                  {formatNumber(suggestedDonation * 2)}
                 </Button>
                 <Button
                   className="px-0 py-1"
@@ -258,7 +252,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                     )
                   }
                 >
-                  {suggestedDonation * 5}
+                  {formatNumber(suggestedDonation * 5)}
                 </Button>
                 <Button
                   className="px-0 py-1"
@@ -274,64 +268,19 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                     )
                   }
                 >
-                  {suggestedDonation * 10}
+                  {formatNumber(suggestedDonation * 10)}
                 </Button>
               </Stack>
             </Stack>
-            <Dropdown className="w-50 align-self-start">
-              <Dropdown.Toggle
-                variant="blue"
-                className="d-flex justify-content-between align-items-center w-100 bg-white border-0 rounded-3 fs-6"
-              >
-                {supportFlowStateTimeInterval}
-              </Dropdown.Toggle>
-              <Dropdown.Menu>
-                <Dropdown.Item
-                  onClick={() => {
-                    setSupportFlowStateAmount(
-                      convertStreamValueToInterval(
-                        parseEther(supportFlowStateAmount.replace(/,/g, "")),
-                        supportFlowStateTimeInterval,
-                        TimeInterval.DAY,
-                      ),
-                    );
-                    setSupportFlowStateTimeInterval(TimeInterval.DAY);
-                  }}
-                >
-                  {TimeInterval.DAY}
-                </Dropdown.Item>
-                <Dropdown.Item
-                  onClick={() => {
-                    setSupportFlowStateAmount(
-                      convertStreamValueToInterval(
-                        parseEther(supportFlowStateAmount.replace(/,/g, "")),
-                        supportFlowStateTimeInterval,
-                        TimeInterval.WEEK,
-                      ),
-                    );
-                    setSupportFlowStateTimeInterval(TimeInterval.WEEK);
-                  }}
-                >
-                  {TimeInterval.WEEK}
-                </Dropdown.Item>
-                <Dropdown.Item
-                  onClick={() => {
-                    setSupportFlowStateAmount(
-                      convertStreamValueToInterval(
-                        parseEther(supportFlowStateAmount.replace(/,/g, "")),
-                        supportFlowStateTimeInterval,
-                        TimeInterval.MONTH,
-                      ),
-                    );
-                    setSupportFlowStateTimeInterval(TimeInterval.MONTH);
-                  }}
-                >
-                  {TimeInterval.MONTH}
-                </Dropdown.Item>
-              </Dropdown.Menu>
-            </Dropdown>
+            <FormControl
+              type="text"
+              disabled
+              value="/month"
+              className="w-50 bg-white border-0 rounded-3 shadow-none"
+            />
           </Stack>
           {Number(supportFlowStateAmount) > 0 &&
+            minDonationPerMonth &&
             Number(supportFlowStateAmount) < minDonationPerMonth && (
               <Alert variant="warning" className="mt-2 py-2">
                 Minimum Donation = {minDonationPerMonth} {token.symbol}/mo
@@ -357,7 +306,8 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
               disabled={
                 !supportFlowStateAmount ||
                 (!isDeletingStream &&
-                  Number(supportFlowStateAmount) < minDonationPerMonth)
+                  (Number(supportFlowStateAmount) === 0 ||
+                    Number(supportFlowStateAmount) < minDonationPerMonth))
               }
               className="w-50 py-1 rounded-3 text-light"
               onClick={() => setStep(Step.REVIEW)}

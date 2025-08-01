@@ -22,12 +22,13 @@ import Offcanvas from "react-bootstrap/Offcanvas";
 import Accordion from "react-bootstrap/Accordion";
 import Stack from "react-bootstrap/Stack";
 import Image from "react-bootstrap/Image";
-import { Step } from "../types/distributionPoolFunding";
-import EditStream from "./distribution-pool-funding/EditStream";
-import TopUp from "./distribution-pool-funding/TopUp";
-import Wrap from "./distribution-pool-funding/Wrap";
-import Review from "./distribution-pool-funding/Review";
-import Success from "./distribution-pool-funding/Success";
+import { Step } from "@/types/checkout";
+import EditStream from "@/components/checkout/EditStream";
+import TopUp from "@/components/checkout/TopUp";
+import Wrap from "@/components/checkout/Wrap";
+import SupportFlowState from "@/components/checkout/SupportFlowState";
+import Review from "@/components/checkout/Review";
+import Success from "@/components/checkout/Success";
 import { Network } from "@/types/network";
 import DistributionPoolDetails from "./DistributionPoolDetails";
 import useFlowingAmount from "@/hooks/flowingAmount";
@@ -36,6 +37,7 @@ import useCouncil from "../hooks/council";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
+import { getSupportFlowStateConfig } from "@/lib/supportFlowStateConfig";
 import {
   TimeInterval,
   unitOfTime,
@@ -43,7 +45,13 @@ import {
   formatNumberWithCommas,
   roundWeiAmount,
 } from "@/lib/utils";
-import { SECONDS_IN_MONTH, MAX_FLOW_RATE, ZERO_ADDRESS } from "@/lib/constants";
+import {
+  SECONDS_IN_MONTH,
+  MAX_FLOW_RATE,
+  ZERO_ADDRESS,
+  FLOW_STATE_RECEIVER,
+} from "@/lib/constants";
+import { getSocialShare } from "../lib/socialShare";
 
 const SF_ACCOUNT_QUERY = gql`
   query SFAccountQuery($userAddress: String!, $token: String!) {
@@ -95,11 +103,10 @@ export default function DistributionPoolFunding(props: {
 
   const [step, setStep] = useState<Step>(Step.SELECT_AMOUNT);
   const [amountPerTimeInterval, setAmountPerTimeInterval] = useState("");
-  const [timeInterval, setTimeInterval] = useState<TimeInterval>(
-    TimeInterval.MONTH,
-  );
   const [newFlowRate, setNewFlowRate] = useState("");
   const [wrapAmount, setWrapAmount] = useState("");
+  const [newFlowRateToFlowState, setNewFlowRateToFlowState] = useState("");
+  const [supportFlowStateAmount, setSupportFlowStateAmount] = useState("");
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("0");
   const [sfFramework, setSfFramework] = useState<Framework | null>(null);
   const [superToken, setSuperToken] = useState<
@@ -199,6 +206,24 @@ export default function DistributionPoolFunding(props: {
     superTokenBalance > BigInt(0)
       ? true
       : false;
+  const socialShare = getSocialShare({
+    councilName: councilMetadata.name,
+    councilUiLink: `https://flowstate.network/flow-councils/${network?.id}/${council?.id}`,
+  });
+
+  const supportFlowStateConfig = useMemo(
+    () => getSupportFlowStateConfig(token.symbol),
+    [token.symbol],
+  );
+
+  const flowRateToFlowState = useMemo(
+    () =>
+      superfluidQueryRes?.account?.outflows?.find(
+        (outflow: { receiver: { id: string } }) =>
+          outflow.receiver.id === FLOW_STATE_RECEIVER,
+      )?.currentFlowRate ?? "0",
+    [superfluidQueryRes],
+  );
 
   const flowRateToReceiver = useMemo(() => {
     if (address && gdaPool) {
@@ -240,12 +265,49 @@ export default function DistributionPoolFunding(props: {
     return membershipsInflowRate;
   }, [poolMemberships]);
 
+  const editFlow = useCallback(
+    (
+      superToken: NativeAssetSuperToken | WrapperSuperToken,
+      receiver: string,
+      oldFlowRate: string,
+      newFlowRate: string,
+    ) => {
+      if (!address) {
+        throw Error("Could not find the account address");
+      }
+
+      let op: Operation;
+
+      if (BigInt(newFlowRate) === BigInt(0)) {
+        op = superToken.deleteFlow({
+          sender: address,
+          receiver,
+        });
+      } else if (BigInt(oldFlowRate) !== BigInt(0)) {
+        op = superToken.updateFlow({
+          sender: address,
+          receiver,
+          flowRate: newFlowRate,
+        });
+      } else {
+        op = superToken.createFlow({
+          sender: address,
+          receiver,
+          flowRate: newFlowRate,
+        });
+      }
+
+      return op;
+    },
+    [address],
+  );
+
   const calcLiquidationEstimate = useCallback(
-    (amountPerTimeInterval: string, timeInterval: TimeInterval) => {
+    (amountPerTimeInterval: string) => {
       if (address) {
         const newFlowRate =
           parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
+          BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
         const accountFlowRate =
           userAccountSnapshot?.totalNetFlowRate ?? "0" + membershipsInflowRate;
 
@@ -291,8 +353,8 @@ export default function DistributionPoolFunding(props: {
   );
 
   const liquidationEstimate = useMemo(
-    () => calcLiquidationEstimate(amountPerTimeInterval, timeInterval),
-    [calcLiquidationEstimate, amountPerTimeInterval, timeInterval],
+    () => calcLiquidationEstimate(amountPerTimeInterval),
+    [calcLiquidationEstimate, amountPerTimeInterval],
   );
 
   const transactions = useMemo(() => {
@@ -362,10 +424,31 @@ export default function DistributionPoolFunding(props: {
       }),
     );
 
+    if (
+      newFlowRateToFlowState &&
+      newFlowRateToFlowState !== flowRateToFlowState
+    ) {
+      operations.push(
+        editFlow(
+          superToken as WrapperSuperToken,
+          FLOW_STATE_RECEIVER,
+          flowRateToFlowState,
+          newFlowRateToFlowState,
+        ),
+      );
+    }
+
     transactions.push(async () => {
       const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
 
       await tx.wait();
+
+      if (
+        newFlowRateToFlowState &&
+        newFlowRateToFlowState !== flowRateToFlowState
+      ) {
+        sessionStorage.setItem("skipSupportFlowState", "true");
+      }
     });
 
     return transactions;
@@ -375,11 +458,14 @@ export default function DistributionPoolFunding(props: {
     superToken,
     wrapAmount,
     newFlowRate,
+    newFlowRateToFlowState,
+    flowRateToFlowState,
     ethersProvider,
     ethersSigner,
     council?.pool,
     distributionTokenAddress,
     underlyingTokenAllowance,
+    editFlow,
   ]);
 
   useEffect(() => {
@@ -391,19 +477,19 @@ export default function DistributionPoolFunding(props: {
 
       setAmountPerTimeInterval(formatNumberWithCommas(currentStreamValue));
     })();
-  }, [address, flowRateToReceiver, timeInterval]);
+  }, [address, flowRateToReceiver]);
 
   useEffect(() => {
     if (!areTransactionsLoading && amountPerTimeInterval) {
       const newFlowRate =
         parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-        BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
+        BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
 
       if (newFlowRate < MAX_FLOW_RATE) {
         setNewFlowRate(newFlowRate.toString());
       }
     }
-  }, [areTransactionsLoading, amountPerTimeInterval, timeInterval]);
+  }, [areTransactionsLoading, amountPerTimeInterval]);
 
   useEffect(() => {
     (async () => {
@@ -430,9 +516,45 @@ export default function DistributionPoolFunding(props: {
     })();
   }, [address, ethersProvider, distributionTokenAddress, network]);
 
+  useEffect(() => {
+    (async () => {
+      if (step !== Step.SUPPORT) {
+        return;
+      }
+
+      const currentStreamValue = roundWeiAmount(
+        BigInt(flowRateToFlowState) * BigInt(SECONDS_IN_MONTH),
+        4,
+      );
+
+      setSupportFlowStateAmount(
+        formatNumberWithCommas(
+          `${
+            Number(currentStreamValue) +
+            supportFlowStateConfig.suggestedFlowStateDonation
+          }`,
+        ),
+      );
+    })();
+  }, [address, flowRateToFlowState, supportFlowStateConfig, step]);
+
+  useEffect(() => {
+    if (areTransactionsLoading) {
+      return;
+    }
+
+    setNewFlowRateToFlowState(
+      supportFlowStateAmount
+        ? (
+            parseEther(supportFlowStateAmount.replace(/,/g, "")) /
+            BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]))
+          ).toString()
+        : "",
+    );
+  }, [areTransactionsLoading, supportFlowStateAmount]);
+
   const updateWrapAmount = (
     amountPerTimeInterval: string,
-    timeInterval: TimeInterval,
     liquidationEstimate: number | null,
   ) => {
     if (amountPerTimeInterval) {
@@ -482,7 +604,7 @@ export default function DistributionPoolFunding(props: {
 
       const newFlowRate =
         parseEther(amountPerTimeInterval.replace(/,/g, "")) /
-        BigInt(fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]));
+        BigInt(fromTimeUnitsToSeconds(1, unitOfTime[TimeInterval.MONTH]));
 
       if (newFlowRate < MAX_FLOW_RATE) {
         setNewFlowRate(newFlowRate.toString());
@@ -509,6 +631,7 @@ export default function DistributionPoolFunding(props: {
           (Number(gdaPool.totalUnits) > 0 || BigInt(flowRateToReceiver) > 0) ? (
             <Accordion activeKey={step} className="mt-4">
               <EditStream
+                isFundingDistributionPool={true}
                 isSelected={step === Step.SELECT_AMOUNT}
                 setStep={(step) => setStep(step)}
                 token={token}
@@ -519,7 +642,10 @@ export default function DistributionPoolFunding(props: {
                   const newAmount =
                     parseEther(amount.replace(/,/g, "")) /
                       BigInt(
-                        fromTimeUnitsToSeconds(1, unitOfTime[timeInterval]),
+                        fromTimeUnitsToSeconds(
+                          1,
+                          unitOfTime[TimeInterval.MONTH],
+                        ),
                       ) <
                     MAX_FLOW_RATE
                       ? amount
@@ -528,31 +654,20 @@ export default function DistributionPoolFunding(props: {
                   setAmountPerTimeInterval(newAmount);
                   updateWrapAmount(
                     newAmount,
-                    timeInterval,
-                    calcLiquidationEstimate(newAmount, timeInterval),
+                    calcLiquidationEstimate(newAmount),
                   );
                 }}
                 newFlowRate={newFlowRate}
                 wrapAmount={wrapAmount}
-                timeInterval={timeInterval}
-                setTimeInterval={(timeInterval) => {
-                  setTimeInterval(timeInterval);
-                  updateWrapAmount(
-                    amountPerTimeInterval,
-                    timeInterval,
-                    calcLiquidationEstimate(
-                      amountPerTimeInterval,
-                      timeInterval,
-                    ),
-                  );
-                }}
                 superTokenBalance={superTokenBalance}
                 isSuperTokenPure={isSuperTokenPure}
                 hasSufficientBalance={
                   !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
                 }
+                docsLink="https://docs.flowstate.network/flow-councils/grow-the-pie"
               />
               <TopUp
+                isFundingDistributionPool={true}
                 step={step}
                 setStep={(step) => setStep(step)}
                 newFlowRate={newFlowRate}
@@ -571,8 +686,10 @@ export default function DistributionPoolFunding(props: {
               />
               {!isSuperTokenPure && (
                 <Wrap
+                  isFundingDistributionPool={true}
                   step={step}
                   setStep={setStep}
+                  newFlowRate={newFlowRate}
                   wrapAmount={wrapAmount}
                   setWrapAmount={setWrapAmount}
                   token={token}
@@ -580,7 +697,20 @@ export default function DistributionPoolFunding(props: {
                   underlyingTokenBalance={underlyingTokenBalance}
                 />
               )}
+              <SupportFlowState
+                isFundingDistributionPool={true}
+                network={network}
+                token={token}
+                step={step}
+                setStep={(step) => setStep(step)}
+                supportFlowStateAmount={supportFlowStateAmount}
+                setSupportFlowStateAmount={setSupportFlowStateAmount}
+                newFlowRateToFlowState={newFlowRateToFlowState}
+                flowRateToFlowState={flowRateToFlowState}
+                isSuperTokenPure={isSuperTokenPure}
+              />
               <Review
+                isFundingDistributionPool={true}
                 step={step}
                 setStep={(step) => setStep(step)}
                 network={network}
@@ -597,19 +727,16 @@ export default function DistributionPoolFunding(props: {
                 amountPerTimeInterval={amountPerTimeInterval}
                 newFlowRate={newFlowRate}
                 wrapAmount={wrapAmount}
-                newFlowRateToFlowState={"0"}
-                flowRateToFlowState={"0"}
-                timeInterval={timeInterval}
-                supportFlowStateAmount={"0"}
-                supportFlowStateTimeInterval={TimeInterval.MONTH}
+                newFlowRateToFlowState={newFlowRateToFlowState}
+                flowRateToFlowState={flowRateToFlowState}
+                supportFlowStateAmount={supportFlowStateAmount}
                 isSuperTokenPure={isSuperTokenPure}
                 superTokenBalance={superTokenBalance}
                 underlyingTokenBalance={underlyingTokenBalance}
               />
               <Success
                 step={step}
-                councilName={councilMetadata.name}
-                councilUiLink={`https://flowstate.network/flow-councils/${network?.id}/${council?.id}`}
+                socialShare={socialShare}
                 newFlowRate={newFlowRate}
               />
             </Accordion>
