@@ -1,5 +1,4 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useAccount } from "wagmi";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import Stack from "react-bootstrap/Stack";
@@ -10,14 +9,14 @@ import useCouncil from "../hooks/council";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
 export default function FlowCouncilWallet() {
-  const { council, currentAllocation, newAllocation, dispatchShowBallot } =
-    useCouncil();
-  const { address } = useAccount();
+  const {
+    councilMember,
+    currentAllocation,
+    newAllocation,
+    dispatchShowBallot,
+  } = useCouncil();
   const { isMobile } = useMediaQuery();
 
-  const councilMember = council?.councilMembers.find(
-    (councilMember) => councilMember.account === address?.toLowerCase(),
-  );
   const currentVotes =
     newAllocation?.allocation
       ?.map((a) => a.amount)

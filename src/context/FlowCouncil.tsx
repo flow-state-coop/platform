@@ -8,6 +8,7 @@ import { GDAPool } from "@/types/gdaPool";
 import { networks } from "@/lib/networks";
 import useCouncilQuery from "@/app/flow-councils/hooks/councilQuery";
 import useAllocationQuery from "@/app/flow-councils/hooks/allocationQuery";
+import useCouncilMemberQuery from "@/app/flow-councils/hooks/councilMemberQuery";
 import useFlowStateProfilesQuery from "@/app/flow-councils/hooks/flowStateProfilesQuery";
 import useFlowCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 import useGdaPoolQuery from "@/app/flow-councils/hooks/gdaPoolQuery";
@@ -17,15 +18,20 @@ import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
 type Council = {
   id: string;
-  councilMembers: {
-    account: `0x${string}`;
-    votingPower: number;
-  }[];
   metadata: string;
   distributionToken: `0x${string}`;
-  grantees: { metadata: string; account: `0x${string}` }[];
+  grantees: {
+    metadata: string;
+    account: `0x${string}`;
+    votes: { votedBy: string; amount: string; createdAtTimestamp: string };
+  }[];
   maxAllocationsPerMember: number;
   pool: string;
+};
+
+type CouncilMember = {
+  account: `0x${string}`;
+  votingPower: number;
 };
 
 type Allocation = { grantee: `0x${string}`; amount: number };
@@ -44,6 +50,7 @@ type NewAllocation = {
 export const FlowCouncilContext = createContext<{
   council?: Council;
   councilMetadata: { name: string; description: string };
+  councilMember?: CouncilMember;
   currentAllocation?: CurrentAllocation;
   flowStateProfiles: FlowStateProfile[] | null;
   gdaPool?: GDAPool;
@@ -214,6 +221,11 @@ export function FlowCouncilContextProvider({
     councilId,
     address ?? "",
   );
+  const councilMember = useCouncilMemberQuery(
+    network,
+    councilId,
+    address ?? "",
+  );
   const token = network.tokens.find(
     (token) => token.address.toLowerCase() === council?.distributionToken,
   ) ?? {
@@ -238,6 +250,7 @@ export function FlowCouncilContextProvider({
         gdaPool,
         token,
         flowStateProfiles,
+        councilMember,
         currentAllocation,
         newAllocation,
         showBallot,

@@ -43,7 +43,7 @@ const FLOW_COUNCIL_MANAGER_QUERY = gql`
   query FlowCouncilManagerQuery($address: String!) {
     councils(
       first: 1000
-      orderBy: createdAt
+      orderBy: createdAtTimestamp
       orderDirection: desc
       where: { councilManagers_: { account: $address } }
     ) {
@@ -59,7 +59,7 @@ const FLOW_COUNCIL_MEMBER_QUERY = gql`
   query FlowCouncilMemberQuery($address: String!) {
     councils(
       first: 1000
-      orderBy: createdAt
+      orderBy: createdAtTimestamp
       orderDirection: desc
       where: { councilMembers_: { account: $address } }
     ) {
@@ -75,7 +75,7 @@ const FLOW_COUNCIL_GRANTEE_QUERY = gql`
   query FlowCouncilGranteeQuery($address: String!) {
     councils(
       first: 1000
-      orderBy: createdAt
+      orderBy: createdAtTimestamp
       orderDirection: desc
       where: { grantees_: { account: $address } }
     ) {

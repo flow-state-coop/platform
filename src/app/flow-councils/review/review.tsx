@@ -71,11 +71,6 @@ const COUNCIL_QUERY = gql`
         account
         role
       }
-      councilMembers {
-        id
-        account
-        votingPower
-      }
     }
   }
 `;

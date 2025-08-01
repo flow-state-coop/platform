@@ -10,7 +10,7 @@ const ALLOCATION_QUERY = gql`
     allocations(
       first: 1
       where: { council: $councilId, councilMember: $councilMember }
-      orderBy: allocatedAt
+      orderBy: createdAtTimestamp
       orderDirection: desc
     ) {
       votes {

@@ -28,6 +28,7 @@ export default function Ballot({
   const { isMobile } = useMediaQuery();
   const {
     council,
+    councilMember,
     currentAllocation,
     newAllocation,
     flowStateProfiles,
@@ -39,10 +40,7 @@ export default function Ballot({
   const { vote, isVoting, transactionError } =
     useWriteAllocation(councilAddress);
 
-  const votingPower =
-    council?.councilMembers.find(
-      (councilMember) => councilMember.account === address?.toLowerCase(),
-    )?.votingPower ?? 0;
+  const votingPower = councilMember?.votingPower ?? 0;
   const totalVotes =
     newAllocation?.allocation
       ?.map((a) => a.amount)

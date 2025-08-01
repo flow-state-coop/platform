@@ -398,8 +398,9 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
       {showGranteeDetails ? (
         <GranteeDetails
           key={showGranteeDetails.id}
-          chainId={chainId}
           id={showGranteeDetails.id}
+          chainId={chainId}
+          token={token}
           metadata={showGranteeDetails.metadata}
           placeholderLogo={showGranteeDetails.placeholderLogo}
           granteeAddress={showGranteeDetails.address}

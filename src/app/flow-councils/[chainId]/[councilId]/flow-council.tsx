@@ -369,6 +369,7 @@ export default function FlowCouncil({
           key={showGranteeDetails.id}
           id={showGranteeDetails.id}
           chainId={chainId}
+          token={token}
           metadata={showGranteeDetails.metadata}
           placeholderLogo={showGranteeDetails.placeholderLogo}
           granteeAddress={showGranteeDetails.address}
