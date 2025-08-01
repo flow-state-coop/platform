@@ -18,12 +18,7 @@ import CopyTooltip from "@/components/CopyTooltip";
 import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
 import { Network } from "@/types/network";
-import {
-  formatNumber,
-  fromTimeUnitsToSeconds,
-  roundWeiAmount,
-  truncateStr,
-} from "@/lib/utils";
+import { formatNumber, fromTimeUnitsToSeconds, truncateStr } from "@/lib/utils";
 import { FLOW_STATE_RECEIVER } from "@/lib/constants";
 
 dayjs().format();
@@ -151,7 +146,7 @@ export default function Review(props: ReviewProps) {
       flowRateToReceiver,
       newFlowRateToFlowState,
       flowRateToFlowState,
-      supportFlowStateAmount,
+      supportFlowStateAmount: supportFlowStateAmount.replace(/,/g, ""),
     });
 
     try {
@@ -398,15 +393,11 @@ export default function Review(props: ReviewProps) {
                 <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
                   {formatNumber(
                     Number(
-                      roundWeiAmount(
-                        parseEther(
-                          areTransactionsLoading && transactionDetailsSnapshot
-                            ? transactionDetailsSnapshot.amountPerTimeInterval
-                            : amountPerTimeInterval.replace(/,/g, ""),
-                        ),
-                        4,
-                      ),
+                      areTransactionsLoading && transactionDetailsSnapshot
+                        ? transactionDetailsSnapshot.amountPerTimeInterval
+                        : amountPerTimeInterval.replace(/,/g, ""),
                     ),
+                    4,
                   )}
                 </Badge>
               </Stack>
@@ -626,11 +617,9 @@ export default function Review(props: ReviewProps) {
                     <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
                       {formatNumber(
                         Number(
-                          parseEther(
-                            areTransactionsLoading && transactionDetailsSnapshot
-                              ? transactionDetailsSnapshot.supportFlowStateAmount
-                              : supportFlowStateAmount.replace(/,/g, ""),
-                          ),
+                          areTransactionsLoading && transactionDetailsSnapshot
+                            ? transactionDetailsSnapshot.supportFlowStateAmount
+                            : supportFlowStateAmount.replace(/,/g, ""),
                         ),
                       )}
                     </Badge>
