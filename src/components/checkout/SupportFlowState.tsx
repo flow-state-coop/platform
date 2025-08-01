@@ -19,6 +19,7 @@ import {
   unitOfTime,
   TimeInterval,
   roundWeiAmount,
+  formatNumber,
   formatNumberWithCommas,
   isNumber,
 } from "@/lib/utils";
@@ -235,7 +236,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                     )
                   }
                 >
-                  {suggestedDonation * 2}
+                  {formatNumber(suggestedDonation * 2)}
                 </Button>
                 <Button
                   className="px-0 py-1"
@@ -251,7 +252,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                     )
                   }
                 >
-                  {suggestedDonation * 5}
+                  {formatNumber(suggestedDonation * 5)}
                 </Button>
                 <Button
                   className="px-0 py-1"
@@ -267,7 +268,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                     )
                   }
                 >
-                  {suggestedDonation * 10}
+                  {formatNumber(suggestedDonation * 10)}
                 </Button>
               </Stack>
             </Stack>
