@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { base } from "viem/chains";
 import { useQuery, gql } from "@apollo/client";
@@ -44,6 +44,17 @@ const SQF_STREAM_QUERY = gql`
   }
 `;
 
+const GDA_POOL_QUERY = gql`
+  query GDAPoolQuery($gdaPool: String) {
+    pool(id: $gdaPool) {
+      id
+      flowRate
+      totalAmountFlowedDistributedUntilUpdatedAt
+      updatedAtTimestamp
+    }
+  }
+`;
+
 const SQF_ADDRESSES = {
   ["octant"]: {
     gdaPool: "0x8398c030be586c86759c4f1fc9f63df83c99813a",
@@ -64,6 +75,11 @@ const SQF_ADDRESSES = {
     ],
   },
 };
+
+const FLOW_CASTER_POOLS = [
+  "0x9ef9fe8bf503b10698322e3a135c0fa6decc5b5b",
+  "0x6719cbb70d0faa041f1056542af66066e3cc7a24",
+];
 
 export default function Explore(props: ExploreProps) {
   const {
@@ -94,6 +110,52 @@ export default function Explore(props: ExploreProps) {
       pollInterval: 10000,
     },
   );
+  const {
+    data: flowCasterCrackedDevsQueryRes,
+    loading: flowCasterCrackedDevsQueryLoading,
+  } = useQuery(GDA_POOL_QUERY, {
+    client: getApolloClient("superfluid", base.id),
+    variables: {
+      gdaPool: FLOW_CASTER_POOLS[0],
+    },
+    pollInterval: 10000,
+  });
+  const { data: flowCasterTeamQueryRes, loading: flowCasterTeamQueryLoading } =
+    useQuery(GDA_POOL_QUERY, {
+      client: getApolloClient("superfluid", base.id),
+      variables: {
+        gdaPool: FLOW_CASTER_POOLS[1],
+      },
+      pollInterval: 10000,
+    });
+
+  const flowCasterCrackedDevsPool = flowCasterCrackedDevsQueryRes?.pool;
+  const flowCasterTeamPool = flowCasterTeamQueryRes?.pool;
+
+  const flowCasterFlowInfo = useMemo(() => {
+    const now = (Date.now() / 1000) | 0;
+    const totalCrackedDevs = flowCasterCrackedDevsPool
+      ? BigInt(
+          flowCasterCrackedDevsPool.totalAmountFlowedDistributedUntilUpdatedAt,
+        ) +
+        BigInt(flowCasterCrackedDevsPool.flowRate) *
+          BigInt(now - flowCasterCrackedDevsPool.updatedAtTimestamp)
+      : BigInt(0);
+    const totalTeam = flowCasterTeamPool
+      ? BigInt(flowCasterTeamPool.totalAmountFlowedDistributedUntilUpdatedAt) +
+        BigInt(flowCasterTeamPool.flowRate) *
+          BigInt(now - flowCasterTeamPool.updatedAtTimestamp)
+      : BigInt(0);
+
+    return {
+      totalDistributed: totalCrackedDevs + totalTeam,
+      flowRate:
+        BigInt(flowCasterCrackedDevsPool?.flowRate ?? 0) +
+        BigInt(flowCasterTeamPool?.flowRate ?? 0),
+      updatedAt: now,
+    };
+  }, [flowCasterCrackedDevsPool, flowCasterTeamPool]);
+
   const handleMailingListSub = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -148,7 +210,9 @@ export default function Explore(props: ExploreProps) {
     >
       <h1 className="mt-5">Explore</h1>
       <h2 className="fs-4 mb-4">Active streaming funding campaigns</h2>
-      {sqfStreamQueryLoading ? (
+      {sqfStreamQueryLoading ||
+      flowCasterCrackedDevsQueryLoading ||
+      flowCasterTeamQueryLoading ? (
         <Stack
           direction="horizontal"
           className="justify-content-center my-5 py-5"
@@ -174,6 +238,16 @@ export default function Explore(props: ExploreProps) {
                       : "",
             }}
           >
+            <RoundCard
+              name="Flow Caster"
+              image="/logo-circle.svg"
+              roundType="Mini App"
+              totalStreamedUntilUpdatedAt={flowCasterFlowInfo.totalDistributed.toString()}
+              flowRate={flowCasterFlowInfo.flowRate.toString()}
+              updatedAt={flowCasterFlowInfo.updatedAt}
+              tokenSymbol="USDCx"
+              link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
+            />
             <RoundCard
               name="GoodBuilders Program"
               image="/good-dollar.png"
