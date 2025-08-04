@@ -5,7 +5,7 @@
       "schedule": "0 0 * * *"
     },
     {
-      "path": "/api/good-dollar/sup/distribution?chainId=11155420",
+      "path": "/api/flow-caster/sup",
       "schedule": "0 1 * * *"
     }
   ]
