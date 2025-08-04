@@ -97,6 +97,8 @@ export const flowGuildConfigs: {
     defaultChainId: 42161,
     defaultToken: "ETHx",
     safe: "0x29f4c46e04b9d35724af08f314d936f44f52527c",
-    flowSplitters: {},
+    flowSplitters: {
+      42161: { ETHx: { id: "0x3" } },
+    },
   },
 };
