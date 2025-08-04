@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     const stack = new StackClient({
       apiKey:
         network.id === 42220
-          ? process.env.STACK_API_KEY!
+          ? process.env.STACK_API_KEY_GOOD_DOLLAR!
           : process.env.STACK_API_KEY_OP_SEPOLIA!,
       pointSystemId: config.pointSystemId,
     });

@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
     const stack = new StackClient({
       apiKey:
         network.id === 8453
-          ? process.env.STACK_API_KEY!
+          ? process.env.STACK_API_KEY_FLOW_CASTER!
           : process.env.STACK_API_KEY_OP_SEPOLIA!,
       pointSystemId: PROGRAM_ID,
     });
