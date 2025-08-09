@@ -5,7 +5,7 @@
       "schedule": "0 22 * * *"
     },
     {
-      "path": "/api/flow-caster/sup",
+      "path": "/api/flow-caster/sup/distribution",
       "schedule": "0 23 * * *"
     }
   ]
