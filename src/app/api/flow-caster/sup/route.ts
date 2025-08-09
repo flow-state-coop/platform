@@ -29,7 +29,11 @@ const POOLS = [
 ];
 
 const getDistributors = async (subgraphEndpoint: string, timestamp: number) => {
-  const distributors: { address: string; totalDistributed: bigint }[] = [];
+  const distributors: {
+    address: string;
+    totalDistributed: bigint;
+    hasStreamToTeamPool: boolean;
+  }[] = [];
 
   for (const poolId of POOLS) {
     const queryRes = await request<{ pool: GDAPool }>(
@@ -49,12 +53,17 @@ const getDistributors = async (subgraphEndpoint: string, timestamp: number) => {
         BigInt(distributor.flowRate) *
           BigInt(timestamp - distributor.updatedAtTimestamp);
 
+      const hasStreamToTeamPool =
+        poolId === POOLS[1] && distributor.flowRate !== "0";
+
       if (existingDistributor) {
         existingDistributor.totalDistributed += totalDistributed;
+        existingDistributor.hasStreamToTeamPool = hasStreamToTeamPool;
       } else {
         distributors.push({
           address: distributor.account.id,
           totalDistributed,
+          hasStreamToTeamPool,
         });
       }
     }
@@ -110,7 +119,7 @@ export async function GET(req: NextRequest) {
           events.push({
             event: "distributed",
             payload: {
-              points: diff,
+              points: distributor.hasStreamToTeamPool ? diff * 2 : diff,
               account: distributor.address,
               uniqueId: `${distributor.address}-${now}`,
             },
