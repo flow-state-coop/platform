@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { base } from "viem/chains";
 import { useQuery, gql } from "@apollo/client";
@@ -16,6 +16,7 @@ import { Inflow } from "@/types/inflow";
 import { GDAPool } from "@/types/gdaPool";
 import { getApolloClient } from "@/lib/apollo";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import useMailingList from "@/hooks/mailingList";
 
 type ExploreProps = {
   coreInflow: Inflow;
@@ -93,12 +94,6 @@ export default function Explore(props: ExploreProps) {
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
 
-  const [isSubscribing, setIsSubscribing] = useState(false);
-  const [mailingListSubSuccess, setMailingListSubSuccess] = useState(false);
-  const [mailingListSubError, setMailingListSubError] = useState("");
-  const [isEmailInvalid, setIsEmailInvalid] = useState(false);
-  const [validated, setValidated] = useState(false);
-
   const { data: sqfStreamQueryRes, loading: sqfStreamQueryLoading } = useQuery(
     SQF_STREAM_QUERY,
     {
@@ -128,6 +123,16 @@ export default function Explore(props: ExploreProps) {
       },
       pollInterval: 10000,
     });
+  const {
+    isSubscribing,
+    isEmailInvalid,
+    setIsEmailInvalid,
+    mailingListSubSuccess,
+    setMailingListSubSuccess,
+    mailingListSubError,
+    validated,
+    handleMailingListSub,
+  } = useMailingList();
 
   const flowCasterCrackedDevsPool = flowCasterCrackedDevsQueryRes?.pool;
   const flowCasterTeamPool = flowCasterTeamQueryRes?.pool;
@@ -155,44 +160,6 @@ export default function Explore(props: ExploreProps) {
       updatedAt: now,
     };
   }, [flowCasterCrackedDevsPool, flowCasterTeamPool]);
-
-  const handleMailingListSub = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const form = e.currentTarget;
-
-    setIsSubscribing(true);
-    setIsEmailInvalid(false);
-    setMailingListSubError("");
-    setValidated(true);
-
-    if (form.checkValidity() === true) {
-      try {
-        const res = await fetch("/api/mailinglist", {
-          method: "POST",
-          body: JSON.stringify({
-            email: (form[0] as HTMLInputElement).value,
-          }),
-        });
-
-        const data = await res.json();
-
-        if (data.success) {
-          setMailingListSubSuccess(true);
-        } else {
-          setMailingListSubError(data.message);
-        }
-      } catch (err) {
-        console.error(err);
-        setMailingListSubError("There was an error, please try again later");
-      }
-    } else {
-      setIsEmailInvalid(true);
-    }
-
-    setIsSubscribing(false);
-  };
 
   return (
     <Container

@@ -5,7 +5,14 @@ import { SessionProvider } from "next-auth/react";
 import { http } from "viem";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
-import { arbitrum, base, celo, optimism, optimismSepolia } from "wagmi/chains";
+import {
+  mainnet,
+  arbitrum,
+  base,
+  celo,
+  optimism,
+  optimismSepolia,
+} from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
@@ -19,13 +26,14 @@ import "@/styles.scss";
 const config = getDefaultConfig({
   appName: "Flow State",
   projectId: WALLET_CONNECT_PROJECT_ID,
-  chains: [arbitrum, base, celo, optimism, optimismSepolia],
+  chains: [mainnet, arbitrum, base, celo, optimism, optimismSepolia],
   ssr: true,
   transports: {
     [arbitrum.id]: http(
       networks.find((network) => network.id === arbitrum.id)!.rpcUrl,
     ),
     [base.id]: http(networks.find((network) => network.id === base.id)!.rpcUrl),
+    [mainnet.id]: http("https://mainnet.infura.io"),
     [celo.id]: http(networks.find((network) => network.id === celo.id)!.rpcUrl),
     [optimism.id]: http(
       networks.find((network) => network.id === optimism.id)!.rpcUrl,

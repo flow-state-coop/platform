@@ -24,7 +24,7 @@ export default function useCouncilMemberQuery(
       councilId: councilId?.toLowerCase(),
       address: address.toLowerCase(),
     },
-    pollInterval: 2000,
+    pollInterval: 10000,
     skip: !councilId || !address,
   });
 

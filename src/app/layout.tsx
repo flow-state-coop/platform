@@ -1,3 +1,4 @@
+import { Archivo } from "next/font/google";
 import Stack from "react-bootstrap/Stack";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -40,9 +41,13 @@ export const metadata = {
   },
 };
 
+const archivo = Archivo({
+  subsets: ["latin"],
+});
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html>
+    <html className={archivo.className}>
       <body>
         <Providers>
           <Header />
