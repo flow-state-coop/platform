@@ -174,25 +174,33 @@ export default function Admin(props: AdminProps) {
       a.length === b.length && a.every((elem, i) => elem === b[i]);
 
     const sortedPoolAdmins = poolAdmins
-      ?.toSorted((a: { address: string }, b: { address: string }) =>
-        a.address > b.address ? -1 : 1,
-      )
-      .map((admin: { address: string }) => admin.address);
+      ? [...poolAdmins]
+          ?.sort((a: { address: string }, b: { address: string }) =>
+            a.address > b.address ? -1 : 1,
+          )
+          .map((admin: { address: string }) => admin.address)
+      : [];
     const sortedAdminsEntry = adminsEntry
-      .toSorted((a, b) =>
-        a.address.toLowerCase() > b.address.toLowerCase() ? -1 : 1,
-      )
-      .map((admin) => admin.address.toLowerCase());
+      ? [...adminsEntry]
+          .sort((a, b) =>
+            a.address.toLowerCase() > b.address.toLowerCase() ? -1 : 1,
+          )
+          .map((admin) => admin.address.toLowerCase())
+      : [];
     const hasChangesAdmins =
       poolConfig.immutable ||
       (sortedPoolAdmins && !compareArrays(sortedPoolAdmins, sortedAdminsEntry));
-    const sortedPoolMembers = superfluidQueryRes?.pool?.poolMembers?.toSorted(
-      (a: { account: { id: string } }, b: { account: { id: string } }) =>
-        a.account.id > b.account.id ? -1 : 1,
-    );
-    const sortedMembersEntry = membersEntry.toSorted((a, b) =>
-      a.address.toLowerCase() > b.address.toLowerCase() ? -1 : 1,
-    );
+    const sortedPoolMembers = superfluidQueryRes?.pool?.poolMembers
+      ? [...superfluidQueryRes.pool.poolMembers].sort(
+          (a: { account: { id: string } }, b: { account: { id: string } }) =>
+            a.account.id > b.account.id ? -1 : 1,
+        )
+      : [];
+    const sortedMembersEntry = membersEntry
+      ? [...membersEntry].sort((a, b) =>
+          a.address.toLowerCase() > b.address.toLowerCase() ? -1 : 1,
+        )
+      : [];
     const hasChangesMembers =
       sortedPoolMembers &&
       (!compareArrays(

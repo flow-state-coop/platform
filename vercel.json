@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/good-dollar/sup/distribution?chainId=42220",
-      "schedule": "0 0 * * *"
+      "schedule": "0 22 * * *"
     },
     {
-      "path": "/api/flow-caster/sup",
-      "schedule": "0 1 * * *"
+      "path": "/api/flow-caster/sup/distribution",
+      "schedule": "0 23 * * *"
     }
   ]
 }
