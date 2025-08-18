@@ -51,13 +51,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <body>
         <Providers>
           <Header />
-          <Stack
-            direction="horizontal"
-            className="flex-grow-1 align-items-start"
-            style={{ minHeight: "100svh" }}
-          >
-            {children}
-          </Stack>
+          <main>
+            <Stack
+              direction="horizontal"
+              className="flex-grow-1 align-items-start"
+              style={{ minHeight: "100svh" }}
+            >
+              {children}
+            </Stack>
+          </main>
           <Footer />
           <PostHog />
         </Providers>

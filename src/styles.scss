@@ -340,6 +340,12 @@ blockquote {
   background-repeat: no-repeat;
 }
 
+.explore-background {
+  background-image: url("/explore-background.svg");
+  background-size: 100% auto;
+  background-repeat: no-repeat;
+}
+
 .pool-info-background {
   background-image: linear-gradient(
       rgba(255, 255, 255, 0.5),

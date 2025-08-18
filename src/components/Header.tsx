@@ -40,7 +40,7 @@ export default function Header() {
             />
             <Image src="wordmark.svg" alt="Flow State" />
           </Stack>
-          {isMobile && (
+          {(isMobile || isTablet) && (
             <Button
               variant="outline-dark"
               className="ms-auto px-6 py-2 fs-lg fw-bold rounded-3 border-4"
@@ -49,65 +49,96 @@ export default function Header() {
               Menu
             </Button>
           )}
-          {!isMobile && (
+          {!isMobile && !isTablet && (
             <>
-              <Stack direction="horizontal" gap={2}>
-                <Button
-                  variant="transparent"
-                  className="px-10 py-4 fs-lg fw-bold"
-                  onClick={() => router.push("/?for-orgs=true")}
-                >
-                  For orgs
-                </Button>
-                <Button
-                  variant="transparent"
-                  className="px-10 py-4 fs-lg fw-bold"
-                  onClick={() => router.push("/?for-builders=true")}
-                >
-                  For builders
-                </Button>
-                <Button
-                  variant="transparent"
-                  className="px-10 py-4 fs-lg fw-bold"
-                  onClick={() => router.push("/?for-everyone=true")}
-                >
-                  For everyone
-                </Button>
-              </Stack>
-              <Stack direction="horizontal" gap={6}>
-                <Stack
-                  direction="horizontal"
-                  gap={6}
-                  className="justify-content-center"
-                >
+              {pathname === "/" ? (
+                <Stack direction="horizontal" gap={2}>
                   <Button
-                    variant="link"
-                    href="https://t.me/flowstatecoop"
-                    target="_blank"
-                    className="p-0"
+                    variant="transparent"
+                    className="px-10 py-4 fs-lg fw-bold"
+                    onClick={() => router.push("/?for-orgs=true")}
                   >
-                    <Image
-                      src="/telegram.svg"
-                      alt="Telegram"
-                      width={40}
-                      height={40}
-                    />
+                    For orgs
                   </Button>
                   <Button
-                    variant="link"
-                    href="https://discord.gg/CF5cdk7z67"
-                    target="_blank"
-                    className="p-0"
+                    variant="transparent"
+                    className="px-10 py-4 fs-lg fw-bold"
+                    onClick={() => router.push("/?for-builders=true")}
                   >
-                    <Image
-                      src="/discord.svg"
-                      alt="Discord"
-                      width={40}
-                      height={40}
-                    />
+                    For builders
+                  </Button>
+                  <Button
+                    variant="transparent"
+                    className="px-10 py-4 fs-lg fw-bold"
+                    onClick={() => router.push("/?for-everyone=true")}
+                  >
+                    For everyone
                   </Button>
                 </Stack>
+              ) : (
+                <Stack direction="horizontal" gap={2}>
+                  <Button
+                    variant="transparent"
+                    className="px-10 py-4 fs-lg fw-bold border-0"
+                    onClick={() => router.push("/flow-councils")}
+                  >
+                    Flow Council
+                  </Button>
+                  <Button
+                    variant="transparent"
+                    className="px-10 py-4 fs-lg fw-bold border-0"
+                    onClick={() => router.push("/flow-splitters")}
+                  >
+                    Flow Splitter
+                  </Button>
+                  <Button
+                    variant="transparent"
+                    className="px-10 py-4 fs-lg fw-bold border-0"
+                    onClick={() => router.push("/flow-guilds/core")}
+                  >
+                    Guild
+                  </Button>
+                </Stack>
+              )}
+              <Stack direction="horizontal" gap={6}>
+                {pathname === "/" && (
+                  <Stack
+                    direction="horizontal"
+                    gap={6}
+                    className="justify-content-center"
+                  >
+                    <Button
+                      variant="link"
+                      href="https://t.me/flowstatecoop"
+                      target="_blank"
+                      className="p-0"
+                    >
+                      <Image
+                        src="/telegram.svg"
+                        alt="Telegram"
+                        width={40}
+                        height={40}
+                      />
+                    </Button>
+                    <Button
+                      variant="link"
+                      href="https://discord.gg/CF5cdk7z67"
+                      target="_blank"
+                      className="p-0"
+                    >
+                      <Image
+                        src="/discord.svg"
+                        alt="Discord"
+                        width={40}
+                        height={40}
+                      />
+                    </Button>
+                  </Stack>
+                )}
                 <Suspense>
+                  {pathname !== "/" && !address && !isMobile && !isTablet && (
+                    <CreateCoinbaseWallet />
+                  )}
                   {pathname === "/" ? (
                     <Link href="/explore">
                       <Button className="px-10 py-4 rounded-3 text-white fs-lg fw-bold">
@@ -121,9 +152,6 @@ export default function Header() {
                     <ConnectWallet />
                   )}
                 </Suspense>
-                {pathname !== "/" && !address && !isMobile && (
-                  <CreateCoinbaseWallet />
-                )}
               </Stack>
             </>
           )}
@@ -155,15 +183,55 @@ export default function Header() {
           </Button>
         </Offcanvas.Header>
         <Offcanvas.Body className="d-flex flex-column align-items-center gap-10 mt-20 px-8">
-          <Button variant="transparent" className="px-10 py-4 fs-lg fw-bold">
-            For orgs
-          </Button>
-          <Button variant="transparent" className="px-10 py-4 fs-lg fw-bold">
-            For builders
-          </Button>
-          <Button variant="transparent" className="px-10 py-4 fs-lg fw-bold">
-            For everyone
-          </Button>
+          {pathname === "/" ? (
+            <>
+              <Button
+                variant="transparent"
+                className="px-10 py-4 fs-lg fw-bold border-0"
+                onClick={() => router.push("/?for-orgs=true")}
+              >
+                For orgs
+              </Button>
+              <Button
+                variant="transparent"
+                className="px-10 py-4 fs-lg fw-bold border-0"
+                onClick={() => router.push("/?for-builders=true")}
+              >
+                For builders
+              </Button>
+              <Button
+                variant="transparent"
+                className="px-10 py-4 fs-lg fw-bold border-0"
+                onClick={() => router.push("/?for-everyone=true")}
+              >
+                For everyone
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="transparent"
+                className="px-10 py-4 fs-lg fw-bold border-0"
+                onClick={() => router.push("/flow-councils")}
+              >
+                Flow Council
+              </Button>
+              <Button
+                variant="transparent"
+                className="px-10 py-4 fs-lg fw-bold border-0"
+                onClick={() => router.push("/flow-splitters")}
+              >
+                Flow Splitter
+              </Button>
+              <Button
+                variant="transparent"
+                className="px-10 py-4 fs-lg fw-bold border-0"
+                onClick={() => router.push("/flow-guilds/core")}
+              >
+                Guild
+              </Button>
+            </>
+          )}
           <Stack
             direction="horizontal"
             gap={6}
