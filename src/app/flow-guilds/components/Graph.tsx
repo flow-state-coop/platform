@@ -108,7 +108,7 @@ function CustomNode(props: NodeProps<Node>) {
         <Stack
           direction="vertical"
           gap={1}
-          className="align-items-center bg-white p-3 rounded-4 cursor-pointer shadow"
+          className="align-items-center bg-lace-100 p-3 rounded-4 cursor-pointer shadow"
           style={{ width: 230 }}
         >
           <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
@@ -139,7 +139,7 @@ function CustomNode(props: NodeProps<Node>) {
       <>
         <Stack
           direction="horizontal"
-          className="align-items-center bg-white p-3 rounded-4 cursor-pointer shadow"
+          className="align-items-center bg-lace-100 p-3 rounded-4 cursor-pointer shadow"
           style={{ width: 230 }}
         >
           <Image src={data.logo as string} alt="Logo" width={42} height={42} />
@@ -175,7 +175,7 @@ function CustomNode(props: NodeProps<Node>) {
               <Button
                 variant="light"
                 onClick={data?.showProjectDetails as () => void}
-                className="border border-dark"
+                className="border border-4 border-dark"
               >
                 Project Details
               </Button>
@@ -185,7 +185,7 @@ function CustomNode(props: NodeProps<Node>) {
               onClick={() =>
                 navigator.clipboard.writeText(data?.address?.toString() ?? "0x")
               }
-              className="border border-dark"
+              className="border border-4 border-dark fw-semi-bold"
             >
               Copy address
             </Button>
@@ -193,7 +193,7 @@ function CustomNode(props: NodeProps<Node>) {
               variant="light"
               href={`https://explorer.superfluid.finance/${data.chainId}/accounts/${data.address}`}
               target="_blank"
-              className="border border-dark"
+              className="border border-4 border-dark fw-semi-bold"
             >
               View in Explorer
             </Button>
@@ -208,7 +208,7 @@ function CustomNode(props: NodeProps<Node>) {
       <>
         <Stack
           direction="horizontal"
-          className="align-items-center bg-white p-3 rounded-4 cursor-pointer shadow"
+          className="align-items-center bg-lace-100 p-3 rounded-4 cursor-pointer shadow"
           style={{ width: 230 }}
         >
           {network && (
@@ -250,7 +250,7 @@ function CustomNode(props: NodeProps<Node>) {
               onClick={() =>
                 navigator.clipboard.writeText(data?.address?.toString() ?? "0x")
               }
-              className="border border-dark"
+              className="border border-4 border-dark fw-semi-bold"
             >
               Copy address
             </Button>
@@ -261,7 +261,7 @@ function CustomNode(props: NodeProps<Node>) {
                   `/flow-splitters/${data.chainId}/${data.flowSpitterId}/admin`,
                 )
               }
-              className="border border-dark"
+              className="border border-4 border-dark fw-semi-bold"
             >
               Configuration
             </Button>
@@ -269,7 +269,7 @@ function CustomNode(props: NodeProps<Node>) {
               variant="light"
               href={`https://explorer.superfluid.finance/${data.chainId}/pools/${data.address}`}
               target="_blank"
-              className="border border-dark"
+              className="border border-4 border-dark fw-semi-bold"
             >
               View in Explorer
             </Button>
@@ -320,7 +320,7 @@ function CustomNode(props: NodeProps<Node>) {
             <Stack
               direction="vertical"
               gap={1}
-              className="bg-light border border-dark rounded-2 p-2 text-center"
+              className="bg-light border border-dark border-4 rounded-2 p-2 fw-semi-bold text-center"
             >
               {formatNumber(
                 Number(
@@ -336,7 +336,7 @@ function CustomNode(props: NodeProps<Node>) {
             <Stack
               direction="vertical"
               gap={1}
-              className="bg-light border border-dark rounded-2 p-2 text-center"
+              className="bg-light border border-4 border-dark rounded-2 p-2 fw-semi-bold text-center"
             >
               <span>
                 {data.units as string}{" "}
@@ -365,7 +365,7 @@ function CustomNode(props: NodeProps<Node>) {
           )}
           <Button
             variant="light"
-            className="border border-dark"
+            className="border border-4 border-dark fw-semi-bold"
             onClick={() =>
               navigator.clipboard.writeText(data?.address?.toString() ?? "0x")
             }
@@ -376,7 +376,7 @@ function CustomNode(props: NodeProps<Node>) {
             variant="light"
             href={`https://explorer.superfluid.finance/${data.chainId}/accounts/${data.address}`}
             target="_blank"
-            className="border border-dark"
+            className="border border-4 border-dark fw-semi-bold"
           >
             View in Explorer
           </Button>

@@ -184,16 +184,14 @@ export default function Explore(props: ExploreProps) {
                 ? "repeat(1,minmax(0,1fr))"
                 : isSmallScreen
                   ? "repeat(2,minmax(0,1fr))"
-                  : isMediumScreen
+                  : isMediumScreen || isBigScreen
                     ? "repeat(3,minmax(0,1fr))"
-                    : isBigScreen
-                      ? "repeat(4,minmax(0,1fr))"
-                      : "",
+                    : "",
             }}
           >
             <RoundCard
               name="Flow Caster"
-              image="/logo-circle.svg"
+              image="/logo-blue.svg"
               roundType="Mini App"
               totalStreamedUntilUpdatedAt={flowCasterFlowInfo.totalDistributed.toString()}
               flowRate={flowCasterFlowInfo.flowRate.toString()}
@@ -215,7 +213,7 @@ export default function Explore(props: ExploreProps) {
             />
             <RoundCard
               name="Core Contributors"
-              image="/logo-circle.svg"
+              image="/logo-blue.svg"
               roundType="Flow Guild"
               totalStreamedUntilUpdatedAt={BigInt(
                 coreInflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,

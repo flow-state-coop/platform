@@ -189,9 +189,9 @@ export default function BalancePlot(props: BalancePlotProps) {
   }, [flowInfo]);
 
   return (
-    <div className="p-3 bg-light rounded-4">
+    <div className="p-3 bg-white rounded-4">
       {flowInfo && (
-        <p className="w-100 mb-0 text-center text-info">
+        <p className="w-100 mb-1 fw-semi-bold text-center text-info">
           Now ={" "}
           {formatNumber(Number(formatEther(flowInfo.currentStartingBalance)))}{" "}
           {flowInfo.currentTotalFlowRate > 0 ? "+" : "-"}{" "}
@@ -201,7 +201,7 @@ export default function BalancePlot(props: BalancePlotProps) {
       )}
       {flowInfo &&
         flowInfo.currentTotalFlowRate !== flowInfo.newTotalFlowRate && (
-          <p className="w-100 mb-1 text-center text-primary">
+          <p className="w-100 mb-2 fw-semi-bold text-center text-primary">
             New ={" "}
             {formatNumber(Number(formatEther(flowInfo.newStartingBalance)))}{" "}
             {flowInfo.newTotalFlowRate > 0 ? "+" : "-"}{" "}

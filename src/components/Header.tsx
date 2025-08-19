@@ -38,7 +38,7 @@ export default function Header() {
               height={isMobile || isTablet ? 48 : 64}
               onClick={() => router.push("/")}
             />
-            <Image src="wordmark.svg" alt="Flow State" />
+            <Image src="/wordmark.svg" alt="Flow State" />
           </Stack>
           {(isMobile || isTablet) && (
             <Button
@@ -172,7 +172,7 @@ export default function Header() {
               height={48}
               onClick={() => router.push("/")}
             />
-            <Image src="wordmark.svg" alt="Flow State" />
+            <Image src="/wordmark.svg" alt="Flow State" />
           </Stack>
           <Button
             variant="outline-dark"

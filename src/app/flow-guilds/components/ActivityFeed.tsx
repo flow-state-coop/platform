@@ -234,13 +234,12 @@ export default function ActivityFeed(props: ActivityFeedProps) {
     <Stack
       direction="vertical"
       gap={4}
-      className="mt-3 mt-sm-5 bg-light p-4 rounded-5 overflow-auto"
+      className="mt-6 mt-sm-10 lh-sm bg-lace-100 px-8 py-4 rounded-4 overflow-auto"
       style={{
-        fontSize: isMobile || isTablet ? "1rem" : "1.25rem",
         maxHeight: 600,
       }}
     >
-      <p className="m-0 fs-3">Recent Activity</p>
+      <p className="m-0 fs-4 fw-semi-bold">Recent Activity</p>
       {events.length === 0 && (
         <p className="text-center">No transactions yet.</p>
       )}
