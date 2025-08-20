@@ -143,7 +143,11 @@ function CustomNode(props: NodeProps<Node>) {
           style={{ width: 230 }}
         >
           <Image src={data.logo as string} alt="Logo" width={42} height={42} />
-          <Stack direction="vertical" gap={1} className="align-items-center">
+          <Stack
+            direction="vertical"
+            gap={1}
+            className="justify-content-center align-items-center"
+          >
             <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
               {data?.label?.toString() ?? ""}
             </span>
@@ -219,7 +223,11 @@ function CustomNode(props: NodeProps<Node>) {
               height={42}
             />
           )}
-          <Stack direction="vertical" gap={1} className="align-items-center">
+          <Stack
+            direction="vertical"
+            gap={1}
+            className="justify-content-center align-items-center"
+          >
             <span
               className="align-self-center"
               style={{ fontSize: "0.8rem", fontWeight: "bold" }}
@@ -302,7 +310,7 @@ function CustomNode(props: NodeProps<Node>) {
             seed={jsNumberForAddress(data.address as `0x${string}`)}
           />
         )}
-        <span style={{ fontSize: "0.7rem" }}>
+        <span className="fw-semi-bold" style={{ fontSize: "0.7rem" }}>
           {data?.label?.toString() ?? ""}
         </span>
         {!data.isDistributor && (

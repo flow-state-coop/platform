@@ -149,7 +149,7 @@ export default function Explore(props: ExploreProps) {
       <Stack
         direction="vertical"
         gap={6}
-        className="align-items-center px-2 py-20 px-lg-30 px-xxl-52 text-center"
+        className="align-items-center px-2 py-17 px-lg-30 px-xxl-52 text-center"
       >
         <h1
           className="m-0 fw-bold"

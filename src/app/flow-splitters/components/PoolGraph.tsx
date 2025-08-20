@@ -96,8 +96,7 @@ function CustomNode(props: NodeProps<Node>) {
         <Stack
           direction="vertical"
           gap={1}
-          className="align-items-center p-3 rounded-4 border border-black cursor-pointer"
-          style={{ background: "#fef3c7" }}
+          className="align-items-center p-3 rounded-4 cursor-pointer bg-lace-100 shadow"
         >
           <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
             {data?.label?.toString() ?? ""}
@@ -122,7 +121,7 @@ function CustomNode(props: NodeProps<Node>) {
               onClick={() =>
                 navigator.clipboard.writeText(data?.address?.toString() ?? "0x")
               }
-              className="border border-dark"
+              className="border border-4 border-dark fw-semi-bold"
             >
               Copy address
             </Button>
@@ -130,7 +129,7 @@ function CustomNode(props: NodeProps<Node>) {
               variant="light"
               href={`https://explorer.superfluid.finance/${data.chainId}/pools/${data.address}`}
               target="_blank"
-              className="border border-dark"
+              className="border border-4 border-dark fw-semi-bold"
             >
               View in Explorer
             </Button>
@@ -162,7 +161,7 @@ function CustomNode(props: NodeProps<Node>) {
             seed={jsNumberForAddress(data.address as `0x${string}`)}
           />
         )}
-        <span style={{ fontSize: "0.7rem" }}>
+        <span className="fw-semi-bold" style={{ fontSize: "0.7rem" }}>
           {data?.label?.toString() ?? ""}
         </span>
         {data.isDistributor ? (
@@ -182,7 +181,7 @@ function CustomNode(props: NodeProps<Node>) {
             <Stack
               direction="vertical"
               gap={1}
-              className="bg-light border border-dark rounded-2 p-2 text-center"
+              className="bg-light border border-4 border-dark rounded-2 p-2 text-center fw-semi-bold"
             >
               {formatNumber(
                 Number(
@@ -198,7 +197,7 @@ function CustomNode(props: NodeProps<Node>) {
             <Stack
               direction="vertical"
               gap={1}
-              className="bg-light border border-dark rounded-2 p-2 text-center"
+              className="bg-light border border-4 border-dark rounded-2 p-2 text-center fw-semi-bold"
             >
               <span>
                 {data.units as string}{" "}
@@ -227,7 +226,7 @@ function CustomNode(props: NodeProps<Node>) {
           )}
           <Button
             variant="light"
-            className="border border-dark"
+            className="border border-4 border-dark fw-semi-bold"
             onClick={() =>
               navigator.clipboard.writeText(data?.address?.toString() ?? "0x")
             }
@@ -238,7 +237,7 @@ function CustomNode(props: NodeProps<Node>) {
             variant="light"
             href={`https://explorer.superfluid.finance/${data.chainId}/accounts/${data.address}`}
             target="_blank"
-            className="border border-dark"
+            className="border border-4 border-dark fw-semi-bold"
           >
             View in Explorer
           </Button>

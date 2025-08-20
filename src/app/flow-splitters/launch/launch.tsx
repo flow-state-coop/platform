@@ -9,7 +9,6 @@ import Papa from "papaparse";
 import { writeContract } from "@wagmi/core";
 import { useLazyQuery, gql } from "@apollo/client";
 import { usePostHog } from "posthog-js/react";
-import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
@@ -84,7 +83,7 @@ export default function Launch(props: LaunchProps) {
   const [transactionerror, setTransactionError] = useState("");
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
 
-  const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
+  const { isMobile } = useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
@@ -202,23 +201,14 @@ export default function Launch(props: LaunchProps) {
 
   return (
     <>
-      <Container
-        className="mx-auto p-0 px-4 mb-5"
-        style={{
-          maxWidth:
-            isMobile || isTablet
-              ? "100%"
-              : isSmallScreen
-                ? 1000
-                : isMediumScreen
-                  ? 1300
-                  : 1600,
-        }}
+      <Stack
+        direction="vertical"
+        className="px-2 pt-17 pb-30 px-lg-30 px-xxl-52"
       >
-        <Card className="bg-light rounded-4 border-0 mt-5 px-3 px-sm-4 py-4">
+        <Card className="bg-lace-100 rounded-4 border-0 p-4">
           <Card.Header className="mb-3 bg-transparent border-0 rounded-4 p-0">
             <Stack direction="horizontal" gap={1} className="align-items-start">
-              <Card.Title className="mb-0 fs-1">
+              <Card.Title className="mb-0 fs-5 text-secondary fw-semi-bold">
                 Flow Splitter (beta)
               </Card.Title>
               <InfoTooltip
@@ -233,7 +223,7 @@ export default function Launch(props: LaunchProps) {
                   />
                 }
                 content={
-                  <>
+                  <p className="m-0 p-2">
                     Flow Splitter shares are implemented as ERC20 tokens (with 0
                     decimals). This means shares can show in your wallet &
                     across block explorers like other tokens... but they have
@@ -242,15 +232,17 @@ export default function Launch(props: LaunchProps) {
                     <br />
                     You can set a name and symbol to brand your Flow Splitter
                     for your use case.
-                  </>
+                  </p>
                 }
               />
             </Stack>
-            <Card.Text className="text-info">
+            <Card.Text className="text-info mt-1">
               The easiest way to split streams to your team, guild, DAO, or
-              community: Flow Splitters are onchain contracts that forward
-              incoming streams to recipients in real time based on their % of
-              shares in the Splitter.{" "}
+              community: <br />
+              Flow Splitters are onchain contracts that forward incoming streams
+              to recipients in real time based on their % of shares in the
+              Splitter.
+              <br />
               <Card.Link
                 href="https://docs.flowstate.network/platform/flow-splitters/"
                 target="_blank"
@@ -269,11 +261,12 @@ export default function Launch(props: LaunchProps) {
               .
             </Card.Text>
           </Card.Header>
-          <Card.Body className="p-0">
+          <Card.Body className="p-0 mt-5">
             <Form.Control
               type="text"
               placeholder="Name (Optional)"
               value={erc20Metadata.name}
+              className="border-0 fw-semi-bold"
               style={{
                 width: !isMobile ? "50%" : "",
                 paddingTop: 12,
@@ -287,7 +280,7 @@ export default function Launch(props: LaunchProps) {
               type="text"
               placeholder="Share Symbol (Optional)"
               value={erc20Metadata.symbol}
-              className="mt-3"
+              className="mt-3 border-0 fw-semi-bold"
               style={{
                 width: !isMobile ? "50%" : "",
                 paddingTop: 12,
@@ -299,19 +292,19 @@ export default function Launch(props: LaunchProps) {
             />
           </Card.Body>
         </Card>
-        <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-3 py-4">
-          <Card.Header className="bg-transparent border-0 rounded-4 p-0 fs-4">
+        <Card className="bg-lace-100 rounded-4 border-0 mt-8 p-4">
+          <Card.Header className="bg-transparent border-0 rounded-4 p-0 fs-5 text-secondary fw-semi-bold">
             Core Configuration
           </Card.Header>
           <Card.Body className="p-0">
-            <Card.Text className="text-info">
+            <Card.Text className="mt-2 text-info">
               Select the token your Flow Splitter will be used to distribute and
-              whether recipients can transfer their shares. Configuration in
-              this section cannot be edited after deployment.
+              whether recipients can transfer their shares. <br />
+              Configuration in this section cannot be edited after deployment.
             </Card.Text>
             <Dropdown>
               <Dropdown.Toggle
-                className="d-flex justify-content-between align-items-center bg-white text-dark border border-2"
+                className="d-flex justify-content-between align-items-center bg-white text-dark border-0 fw-semi-bold"
                 style={{ width: 156, paddingTop: 12, paddingBottom: 12 }}
               >
                 <Stack
@@ -328,10 +321,11 @@ export default function Launch(props: LaunchProps) {
                   {selectedNetwork.name}
                 </Stack>
               </Dropdown.Toggle>
-              <Dropdown.Menu>
+              <Dropdown.Menu className="border-0 lh-lg">
                 {networks.map((network, i) => (
                   <Dropdown.Item
                     key={i}
+                    className="fw-semi-bold"
                     onClick={() => {
                       setSelectedNetwork(network);
                       setSelectedToken(network.tokens[0]);
@@ -357,7 +351,7 @@ export default function Launch(props: LaunchProps) {
             >
               <Dropdown>
                 <Dropdown.Toggle
-                  className="d-flex justify-content-between align-items-center bg-white text-dark border border-2"
+                  className="d-flex justify-content-between align-items-center bg-white text-dark border-0 fw-semi-bold"
                   style={{ width: 156, paddingTop: 12, paddingBottom: 12 }}
                 >
                   <Stack
@@ -383,10 +377,11 @@ export default function Launch(props: LaunchProps) {
                           selectedNetwork.tokens[0].symbol)}
                   </Stack>
                 </Dropdown.Toggle>
-                <Dropdown.Menu>
+                <Dropdown.Menu className="border-0 lh-lg">
                   {selectedNetwork.tokens.map((token, i) => (
                     <Dropdown.Item
                       key={i}
+                      className="fw-semi-bold"
                       onClick={() => {
                         setCustomTokenSelection(false);
                         setSelectedToken(token);
@@ -403,7 +398,10 @@ export default function Launch(props: LaunchProps) {
                       </Stack>
                     </Dropdown.Item>
                   ))}
-                  <Dropdown.Item onClick={() => setCustomTokenSelection(true)}>
+                  <Dropdown.Item
+                    className="fw-semi-bold"
+                    onClick={() => setCustomTokenSelection(true)}
+                  >
                     Custom
                   </Dropdown.Item>
                 </Dropdown.Menu>
@@ -416,6 +414,7 @@ export default function Launch(props: LaunchProps) {
                   <Form.Control
                     type="text"
                     value={customTokenEntry.address}
+                    className="border-0 fw-semi-bold py-2"
                     style={{
                       width: !isMobile ? "50%" : "",
                       paddingTop: 12,
@@ -464,6 +463,7 @@ export default function Launch(props: LaunchProps) {
                   <Form.Control
                     type="text"
                     disabled
+                    className="border-0 fw-semi-bold py-3"
                     value={
                       selectedToken?.address ??
                       selectedNetwork.tokens[0].address
@@ -477,8 +477,8 @@ export default function Launch(props: LaunchProps) {
                 </Stack>
               )}
             </Stack>
-            <Stack direction="vertical" className="mt-4">
-              <Form.Label className="d-flex gap-1 mb-2 fs-5">
+            <Stack direction="vertical" className="mt-6">
+              <Form.Label className="d-flex gap-1 mb-2 fs-6 fw-semi-bold text-secondary">
                 Share Transferability
                 <InfoTooltip
                   position={{ top: true }}
@@ -492,7 +492,7 @@ export default function Launch(props: LaunchProps) {
                     />
                   }
                   content={
-                    <>
+                    <p className="fw-semi-bold">
                       Should recipients be able to transfer (or trade) their
                       distribution shares?
                       <br />
@@ -501,7 +501,7 @@ export default function Launch(props: LaunchProps) {
                       Admin selection below and your particular use case before
                       choosing to enable transferability. This is not editable
                       after launch.
-                    </>
+                    </p>
                   }
                 />
               </Form.Label>
@@ -517,7 +517,7 @@ export default function Launch(props: LaunchProps) {
                       })
                     }
                   />
-                  <FormCheck.Label>
+                  <FormCheck.Label className="fw-semi-bold">
                     Non-Transferable (Admin Only)
                   </FormCheck.Label>
                 </FormCheck>
@@ -532,14 +532,16 @@ export default function Launch(props: LaunchProps) {
                       })
                     }
                   />
-                  <FormCheck.Label>Transferable by Recipients</FormCheck.Label>
+                  <FormCheck.Label className="fw-semi-bold">
+                    Transferable by Recipients
+                  </FormCheck.Label>
                 </FormCheck>
               </Stack>
             </Stack>
           </Card.Body>
         </Card>
-        <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
-          <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-4">
+        <Card className="bg-lace-100 rounded-4 border-0 mt-8 p-4">
+          <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-5 text-secondary fw-semi-bold">
             Contract Admin
             <InfoTooltip
               position={{ top: true }}
@@ -553,7 +555,7 @@ export default function Launch(props: LaunchProps) {
                 />
               }
               content={
-                <>
+                <p className="m-0 p-2">
                   Set the address(es), including multisigs, that should be able
                   to update the shares of your Flow Splitter for your use case.
                   <br />
@@ -561,11 +563,11 @@ export default function Launch(props: LaunchProps) {
                   Admins can relinquish, transfer, or add others to the admin
                   role. If there are no admins, your Flow Splitter contract is
                   immutable.
-                </>
+                </p>
               }
             />
           </Card.Header>
-          <Card.Body className="p-0">
+          <Card.Body className="p-0 mt-4">
             <Form.Group>
               <Stack direction="horizontal" gap={5}>
                 <FormCheck type="radio">
@@ -579,7 +581,9 @@ export default function Launch(props: LaunchProps) {
                       })
                     }
                   />
-                  <FormCheck.Label>Admin</FormCheck.Label>
+                  <FormCheck.Label className="fw-semi-bold">
+                    Admin
+                  </FormCheck.Label>
                 </FormCheck>
                 <FormCheck type="radio">
                   <FormCheck.Input
@@ -592,7 +596,9 @@ export default function Launch(props: LaunchProps) {
                       })
                     }
                   />
-                  <FormCheck.Label>No Admin</FormCheck.Label>
+                  <FormCheck.Label className="fw-semi-bold">
+                    No Admin
+                  </FormCheck.Label>
                 </FormCheck>
               </Stack>
               {!poolConfig.immutable && (
@@ -612,6 +618,7 @@ export default function Launch(props: LaunchProps) {
                           key={i}
                           type="text"
                           value={adminEntry.address}
+                          className="border-0 fw-semi-bold"
                           style={{
                             width: !isMobile ? "50%" : "",
                             paddingTop: 12,
@@ -684,7 +691,7 @@ export default function Launch(props: LaunchProps) {
                       )
                     }
                   >
-                    <Card.Text className="mb-0 ms-sm-2 ps-sm-1">
+                    <Card.Text className="mb-0 ms-sm-2 ps-sm-1 fw-semi-bold">
                       Add another admin
                     </Card.Text>
                   </Button>
@@ -693,8 +700,8 @@ export default function Launch(props: LaunchProps) {
             </Form.Group>
           </Card.Body>
         </Card>
-        <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
-          <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-4">
+        <Card className="bg-lace-100 rounded-4 border-0 mt-8 p-4">
+          <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-5 text-secondary fw-semi-bold">
             Share Register
             <InfoTooltip
               position={{ top: true }}
@@ -708,7 +715,7 @@ export default function Launch(props: LaunchProps) {
                 />
               }
               content={
-                <>
+                <p className="m-0 p-2">
                   As tokens are streamed to the Flow Splitter, they're
                   proportionally distributed in real time to recipients
                   according to their percentage of the total outstanding shares.
@@ -717,7 +724,7 @@ export default function Launch(props: LaunchProps) {
                   Any changes to the total number of outstanding or a
                   recipient's shares will be reflected in the continuing stream
                   allocation.
-                </>
+                </p>
               }
             />
           </Card.Header>
@@ -735,6 +742,7 @@ export default function Launch(props: LaunchProps) {
                       type="text"
                       placeholder={isMobile ? "Address" : "Recipient Address"}
                       value={memberEntry.address}
+                      className="border-0 fw-semi-bold"
                       style={{
                         paddingTop: 12,
                         paddingBottom: 12,
@@ -780,7 +788,7 @@ export default function Launch(props: LaunchProps) {
                     inputMode="numeric"
                     placeholder="Shares"
                     value={memberEntry.units}
-                    className="text-center"
+                    className="text-center border-0 fw-semi-bold"
                     style={{
                       paddingTop: 12,
                       paddingBottom: 12,
@@ -828,7 +836,7 @@ export default function Launch(props: LaunchProps) {
                               ).toFixed(isMobile ? 1 : 2),
                             )}%`
                       }
-                      className="text-center"
+                      className="bg-white text-center border-0 fw-semi-bold"
                       style={{
                         paddingTop: 12,
                         paddingBottom: 12,
@@ -860,7 +868,7 @@ export default function Launch(props: LaunchProps) {
             <Stack direction="horizontal" gap={isMobile ? 2 : 4}>
               <Button
                 variant="transparent"
-                className="d-flex align-items-center w-100 p-0 text-primary text-decoration-underline"
+                className="d-flex align-items-center w-100 p-0 text-primary text-decoration-underline fw-semi-bold"
                 onClick={() =>
                   setMembersEntry((prev) =>
                     prev.concat({
@@ -879,7 +887,7 @@ export default function Launch(props: LaunchProps) {
                 <Form.Control
                   type="text"
                   disabled
-                  className="bg-transparent text-info text-center border-0"
+                  className="bg-transparent text-info text-center border-0 fw-semi-bold"
                   value={totalUnits}
                 />
               </Stack>
@@ -892,7 +900,7 @@ export default function Launch(props: LaunchProps) {
                   type="text"
                   disabled
                   value="100%"
-                  className="bg-transparent border-0 text-center"
+                  className="bg-transparent border-0 text-center fw-semi-bold"
                 />
                 <span className="p-0 opacity-0">
                   <Image src="/close.svg" alt="Remove" width={28} height={28} />
@@ -916,13 +924,13 @@ export default function Launch(props: LaunchProps) {
                 )}
                 target="_blank"
                 download="Flow_Splitter.csv"
-                className="m-0 bg-secondary px-5 py-2 rounded-3 text-light text-center text-decoration-none"
+                className="m-0 bg-secondary px-10 py-4 rounded-4 text-light text-center text-decoration-none fw-semi-bold"
               >
                 Export Current
               </Card.Link>
               <Form.Label
                 htmlFor="upload-csv"
-                className="bg-primary text-white text-center m-0 px-5 py-2 rounded-3 cursor-pointer"
+                className="bg-primary text-white text-center m-0 px-10 py-4 rounded-4 cursor-pointer fw-semi-bold"
               >
                 Upload CSV
               </Form.Label>
@@ -976,13 +984,13 @@ export default function Launch(props: LaunchProps) {
             <Card.Link
               href="https://docs.google.com/spreadsheets/d/13oBKSJzKfW0yC8ghiZ_3EYWrjlZ9g8BU-mV91ezG_XU/edit?gid=0#gid=0"
               target="_blank"
-              className="float-end mt-2 pe-1 text-primary"
+              className="float-end mt-2 pe-1 text-primary fw-semi-bold"
             >
               Template
             </Card.Link>
           </Card.Body>
         </Card>
-        <Stack direction="vertical" className="mt-4">
+        <Stack direction="vertical" className="mt-6">
           {poolConfig.immutable && (
             <Card.Text className="mb-1 text-danger">
               Warning: You've set your contract to "No Admin." You won't be able
@@ -995,7 +1003,7 @@ export default function Launch(props: LaunchProps) {
               (customTokenSelection && !!customTokenEntry.validationError) ||
               !isValidMembersEntry
             }
-            className="w-100 py-2 fs-5"
+            className="w-100 py-4 fs-6 fw-semi-bold rounded-4"
             onClick={() =>
               !address && openConnectModal
                 ? openConnectModal()
@@ -1012,11 +1020,11 @@ export default function Launch(props: LaunchProps) {
           </Button>
         </Stack>
         {transactionerror ? (
-          <Alert variant="danger" className="w-100 mt-3">
+          <Alert variant="danger" className="w-100 mt-3 fw-semi-bold">
             {transactionerror}
           </Alert>
         ) : null}
-      </Container>
+      </Stack>
     </>
   );
 }
