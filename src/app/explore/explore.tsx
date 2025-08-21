@@ -247,6 +247,7 @@ export default function Explore(props: ExploreProps) {
               updatedAt={flowCasterFlowInfo.updatedAt}
               tokenSymbol="USDCx"
               link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
+              showSupRewards={true}
             />
             <RoundCard
               name="GoodBuilders Program"
@@ -259,6 +260,7 @@ export default function Explore(props: ExploreProps) {
               updatedAt={goodDollarPool?.updatedAtTimestamp}
               tokenSymbol="G$"
               link="/gooddollar"
+              showSupRewards={true}
             />
             <RoundCard
               name="Core Contributors"

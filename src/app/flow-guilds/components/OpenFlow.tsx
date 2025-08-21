@@ -693,21 +693,6 @@ export default function OpenFlow(props: OpenFlowProps) {
           </Button>
         )}
       </Stack>
-      <Stack
-        direction="horizontal"
-        gap={3}
-        className="mt-2 align-items-center lh-sm"
-      >
-        <Image src="/sup.svg" alt="SUP" width={36} height={36} />
-        <Card.Text>
-          Did you know that donation streams to {flowGuildConfig.name}{" "}
-          <Card.Link href="https://claim.superfluid.org/claim" target="_blank">
-            earn $SUP
-          </Card.Link>
-          ? Claim your reward stream increase daily. (min. $1 cumulative volume
-          per token to qualify)
-        </Card.Text>
-      </Stack>
       <Stack direction="vertical" gap={2} className="my-4">
         <Dropdown>
           <Dropdown.Toggle
