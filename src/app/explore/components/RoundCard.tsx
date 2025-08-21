@@ -15,6 +15,7 @@ type RoundCardProps = {
   totalStreamedUntilUpdatedAt?: string;
   flowRate?: string;
   updatedAt?: number;
+  showSupRewards?: boolean;
 };
 
 export default function RoundCard(props: RoundCardProps) {
@@ -27,6 +28,7 @@ export default function RoundCard(props: RoundCardProps) {
     totalStreamedUntilUpdatedAt,
     flowRate,
     updatedAt,
+    showSupRewards,
   } = props;
 
   const totalAmountStreamed = useFlowingAmount(
@@ -81,14 +83,16 @@ export default function RoundCard(props: RoundCardProps) {
           )}
         </Card.Body>
         <Card.Footer className="bg-transparent border-0">
-          <Stack
-            direction="horizontal"
-            gap={2}
-            className="justify-content-end fw-bold"
-          >
-            <Image src="/sup.svg" alt="" width={32} height={32} />
-            Rewards
-          </Stack>
+          {showSupRewards && (
+            <Stack
+              direction="horizontal"
+              gap={2}
+              className="justify-content-end fw-bold"
+            >
+              <Image src="/sup.svg" alt="" width={32} height={32} />
+              Rewards
+            </Stack>
+          )}
         </Card.Footer>
       </Card>
     </Link>

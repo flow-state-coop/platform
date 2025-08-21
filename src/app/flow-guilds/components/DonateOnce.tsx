@@ -65,14 +65,7 @@ const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
 `;
 
 export default function DonateOnce(props: DonateOnceProps) {
-  const {
-    flowGuildConfig,
-    network,
-    token,
-    selectToken,
-    showOpenFlow,
-    handleClose,
-  } = props;
+  const { flowGuildConfig, network, token, selectToken, handleClose } = props;
 
   const [amount, setAmount] = useState("");
   const [wrapAmount, setWrapAmount] = useState("");
@@ -338,30 +331,6 @@ export default function DonateOnce(props: DonateOnceProps) {
             <Image src="/close.svg" alt="" width={24} height={24} />
           </Button>
         )}
-      </Stack>
-      <Stack
-        direction="horizontal"
-        gap={3}
-        className="mt-2 align-items-center lh-sm"
-      >
-        <Image src="/sup.svg" alt="SUP" width={36} height={36} />
-        <Card.Text className="m-0">
-          Did you know that donation streams to {flowGuildConfig.name} earn{" "}
-          <Card.Link href="https://claim.superfluid.org/claim" target="_blank">
-            SUP token rewards
-          </Card.Link>
-          ?{" "}
-          <span
-            className="p-0 text-decoration-underline cursor-pointer"
-            onClick={() => {
-              showOpenFlow();
-              handleClose();
-            }}
-          >
-            Try it
-          </span>
-          .
-        </Card.Text>
       </Stack>
       <Stack direction="vertical" gap={2} className="my-4">
         <Card.Text className="m-0 fs-5">
