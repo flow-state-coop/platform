@@ -296,7 +296,7 @@ export default function Permissions(props: PermissionsProps) {
 
   if (!councilId || !chainId || (!councilQueryResLoading && !council)) {
     return (
-      <span className="m-auto fs-4 fw-bold">
+      <span className="m-auto fs-5 fw-bold">
         Council not found.{" "}
         <Link
           href="/flow-councils/launch"
@@ -315,10 +315,12 @@ export default function Permissions(props: PermissionsProps) {
         direction="vertical"
         className={!isMobile ? "w-75 px-5" : "w-100 px-4"}
       >
-        <Card className="bg-light rounded-4 border-0 mt-4 p-4">
+        <Card className="bg-lace-99 rounded-4 border-0 mt-4 p-4">
           <Card.Header className="bg-transparent border-0 rounded-4 p-0">
-            <Card.Title className="fs-4">Council Permissions</Card.Title>
-            <Card.Text className="fs-6 text-info">
+            <Card.Title className="fs-5 fw-semi-bold">
+              Council Permissions
+            </Card.Title>
+            <Card.Text className="text-info">
               {isAdmin
                 ? "Manage privileged roles on your Flow Council (optional)"
                 : "(Read only—check your connected wallet's permissions to make changes)"}
@@ -374,6 +376,7 @@ export default function Permissions(props: PermissionsProps) {
                     disabled={!isAdmin}
                     placeholder="Manager Address"
                     value={managerEntry.address}
+                    className="border-0 bg-white py-4 rounded-4 fw-semi-bold"
                     style={{
                       paddingTop: 12,
                       paddingBottom: 12,
@@ -499,7 +502,7 @@ export default function Permissions(props: PermissionsProps) {
               <Stack direction="horizontal" gap={isMobile ? 2 : 4}>
                 <Button
                   variant="transparent"
-                  className="d-flex align-items-center w-100 p-0 text-primary text-decoration-underline"
+                  className="d-flex align-items-center w-100 p-0 text-primary text-decoration-underline fw-semi-bold"
                   onClick={() =>
                     setManagersEntry((prev) =>
                       prev.concat({
@@ -521,7 +524,7 @@ export default function Permissions(props: PermissionsProps) {
           </Card.Body>
         </Card>
         {isRemovingOnlySuperAdmin && (
-          <Card.Text className="text-danger mt-3 mb-0">
+          <Card.Text className="text-danger mt-4 mb-0">
             Warning: You've removed your only SuperAdmin. If you proceed, you
             won't be able to make any further changes to permissions
           </Card.Text>
@@ -529,7 +532,7 @@ export default function Permissions(props: PermissionsProps) {
         <Stack direction="vertical" gap={3} className="my-4">
           <Button
             disabled={!isAdmin || !hasChanges || !isValidManagersEntry}
-            className="fs-5"
+            className="py-4 rounded-4 fs-lg fw-semi-bold"
             onClick={() => {
               !address && openConnectModal
                 ? openConnectModal()
@@ -546,7 +549,7 @@ export default function Permissions(props: PermissionsProps) {
           </Button>
           <Button
             variant="secondary"
-            className="fs-5"
+            className="py-4 rounded-4 fs-lg fw-semi-bold"
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() =>
               router.push(
@@ -561,12 +564,15 @@ export default function Permissions(props: PermissionsProps) {
             delay={4000}
             autohide={true}
             onClose={() => setTransactionSuccess(false)}
-            className="w-100 bg-success p-3 fs-5 text-light"
+            className="w-100 bg-success p-4 fw-semi-bold text-light"
           >
             Success!
           </Toast>
           {transactionError ? (
-            <Alert variant="danger" className="w-100 mb-4">
+            <Alert
+              variant="danger"
+              className="w-100 mb-4 p-4 fw-semi-bold text-danger"
+            >
               {transactionError}
             </Alert>
           ) : null}

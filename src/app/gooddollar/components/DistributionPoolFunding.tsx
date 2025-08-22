@@ -21,7 +21,6 @@ import duration from "dayjs/plugin/duration";
 import Offcanvas from "react-bootstrap/Offcanvas";
 import Accordion from "react-bootstrap/Accordion";
 import Stack from "react-bootstrap/Stack";
-import Image from "react-bootstrap/Image";
 import { Step } from "@/types/checkout";
 import EditStream from "@/components/checkout/EditStream";
 import TopUp from "@/components/checkout/TopUp";
@@ -628,10 +627,11 @@ export default function DistributionPoolFunding(props: {
       show
       onHide={hide}
       placement={isMobile ? "bottom" : "end"}
+      className="p-4"
       style={{ height: "100%" }}
     >
-      <Offcanvas.Header closeButton className="pb-0">
-        <Offcanvas.Title className="fs-3">
+      <Offcanvas.Header closeButton className="mb-4">
+        <Offcanvas.Title className="fs-6 fw-semi-bold">
           Fund Distribution Pool
         </Offcanvas.Title>
       </Offcanvas.Header>
@@ -640,7 +640,7 @@ export default function DistributionPoolFunding(props: {
           <DistributionPoolDetails gdaPool={gdaPool} token={token} />
           {gdaPool &&
           (Number(gdaPool.totalUnits) > 0 || BigInt(flowRateToReceiver) > 0) ? (
-            <Accordion activeKey={step} className="mt-4">
+            <Accordion activeKey={step} className="mt-8">
               <EditStream
                 isFundingDistributionPool={true}
                 isSelected={step === Step.SELECT_AMOUNT}
@@ -753,28 +753,29 @@ export default function DistributionPoolFunding(props: {
               />
             </Accordion>
           ) : (
-            <Stack direction="vertical" className="bg-light rounded-4 mt-3 p-2">
+            <Stack
+              direction="vertical"
+              className="bg-lace-100 rounded-4 mt-8 p-4"
+            >
               <Stack
                 direction="horizontal"
                 gap={2}
-                className="align-items-center mt-1 ms-3 fs-4"
+                className="align-items-center mt-1 ms-3 fs-lg fw-semi-bold"
               >
-                <Image src="/ballot.svg" alt="" width={32} height={32} />
-                Submit a ballot first
+                <p className="ms-3 mt-2">
+                  Flow Councils can't distribute funding without at least one
+                  vote submitted.
+                </p>
+                <p className="ms-3">
+                  If you want to start all recipients with equal streams, you
+                  can assign one vote to each then return here.
+                </p>
+                <p className="ms-3">
+                  Otherwise, wait until a sufficient sample of Council members
+                  have submitted their ballots before starting your funding
+                  stream.
+                </p>
               </Stack>
-              <p className="ms-3 mt-2">
-                Flow Councils can't distribute funding without at least one vote
-                submitted.
-              </p>
-              <p className="ms-3">
-                If you want to start all recipients with equal streams, you can
-                assign one vote to each then return here.
-              </p>
-              <p className="ms-3">
-                Otherwise, wait until a sufficient sample of Council members
-                have submitted their ballots before starting your funding
-                stream.
-              </p>
             </Stack>
           )}
         </Stack>

@@ -270,7 +270,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
 
     return (
       <Card
-        className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-4 fs-6 shadow p-2"
+        className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-5 fs-6 shadow p-2"
         style={{ height: 400 }}
       >
         <Card.Header className="h-25 bg-white border-0 rounded-4 py-4">

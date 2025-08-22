@@ -164,10 +164,10 @@ export default function Review(props: ReviewProps) {
   };
 
   return (
-    <Card className="bg-light rounded-0 rounded-bottom-4 border-0">
+    <Card className="bg-lace-100 rounded-0 rounded-bottom-4 border-0">
       <Button
         variant="transparent"
-        className="d-flex gap-2 p-3 border-0 rounded-0 shadow-none"
+        className="d-flex gap-3 p-4 border-0 rounded-0 shadow-none text-secondary fs-lg fw-semi-bold"
         style={{
           pointerEvents: "none",
         }}
@@ -210,7 +210,7 @@ export default function Review(props: ReviewProps) {
         </Badge>
         {Step.REVIEW}
       </Button>
-      <Accordion.Collapse eventKey={Step.REVIEW} className="p-3 pt-0">
+      <Accordion.Collapse eventKey={Step.REVIEW} className="p-4 pt-0">
         <Stack direction="vertical" gap={2}>
           {Number(wrapAmount?.replace(/,/g, "")) > 0 && (
             <Stack direction="vertical" gap={1}>
@@ -225,10 +225,10 @@ export default function Review(props: ReviewProps) {
                 <Stack
                   direction="vertical"
                   gap={2}
-                  className="justify-content-center align-items-center bg-white p-2 rounded-4"
+                  className="justify-content-center align-items-center w-50 bg-white p-4 rounded-4"
                 >
                   <Image src={token.icon} alt="done" width={28} height={28} />
-                  <Card.Text className="m-0 border-0 text-center fs-5">
+                  <Card.Text className="m-0 border-0 text-center fs-lg fw-semi-bold">
                     {formatNumber(
                       Number(
                         areTransactionsLoading && transactionDetailsSnapshot
@@ -241,7 +241,7 @@ export default function Review(props: ReviewProps) {
                     )}{" "}
                     <br /> {underlyingTokenBalance?.symbol ?? "N/A"}
                   </Card.Text>
-                  <Card.Text className="border-0 text-center fs-6">
+                  <Card.Text className="border-0 text-center">
                     New Balance:{" "}
                     {formatNumber(
                       Number(
@@ -267,10 +267,10 @@ export default function Review(props: ReviewProps) {
                 <Stack
                   direction="vertical"
                   gap={2}
-                  className="justify-content-center align-items-center bg-white p-2 rounded-4"
+                  className="justify-content-center align-items-center w-50 bg-white p-4 rounded-4"
                 >
                   <Image src={token.icon} alt="done" width={28} height={28} />
-                  <Card.Text className="m-0 border-0 text-center fs-5">
+                  <Card.Text className="m-0 border-0 text-center fs-lg fw-semi-bold">
                     {formatNumber(
                       Number(
                         areTransactionsLoading && transactionDetailsSnapshot
@@ -283,7 +283,7 @@ export default function Review(props: ReviewProps) {
                     )}{" "}
                     <br /> {token.symbol}
                   </Card.Text>
-                  <Card.Text className="border-0 text-center fs-6">
+                  <Card.Text className="border-0 text-center">
                     New Balance:{" "}
                     {areTransactionsLoading &&
                     transactionDetailsSnapshot?.wrapAmount
@@ -310,7 +310,7 @@ export default function Review(props: ReviewProps) {
                   </Card.Text>
                 </Stack>
               </Stack>
-              <Card.Text className="border-0 text-center text-secondary fs-4">
+              <Card.Text className="my-2 border-0 text-center text-secondary fw-semi-bold">
                 1 {underlyingTokenBalance?.symbol ?? "N/A"} = 1 {token.symbol}
               </Card.Text>
             </Stack>
@@ -330,15 +330,11 @@ export default function Review(props: ReviewProps) {
             </Card.Text>
           </Stack>
           <Stack direction="horizontal" className="justify-content-around px-2">
-            <Card.Text className="m-0 border-0 text-center fs-4">
-              Sender
-            </Card.Text>
-            <Card.Text className="m-0 border-0 text-center fs-4">
-              Receiver
-            </Card.Text>
+            <Card.Text className="m-0 border-0 text-center">Sender</Card.Text>
+            <Card.Text className="m-0 border-0 text-center">Receiver</Card.Text>
           </Stack>
           <Stack direction="horizontal">
-            <Badge className="d-flex justify-content-around align-items-center w-50 bg-white text-info py-3 rounded-3 border-0 text-center fs-6">
+            <Badge className="d-flex justify-content-around align-items-center w-50 bg-white text-info px-3 py-4 rounded-4 border-0 text-center fw-semi-bold">
               <Card.Text className="m-0 sensitive">
                 {truncateStr(address ?? "", 12)}
               </Card.Text>
@@ -358,7 +354,7 @@ export default function Review(props: ReviewProps) {
               width={18}
               height={18}
             />
-            <Badge className="d-flex justify-content-around align-items-center w-50 bg-white px-2 py-3 rounded-3 border-0 text-center text-info fs-6">
+            <Badge className="d-flex justify-content-around align-items-center w-50 bg-white px-3 py-4 rounded-4 border-0 text-center text-info fw-semi-bold">
               {truncateStr(receiver, 12)}
               <CopyTooltip
                 contentClick="Address copied"
@@ -373,11 +369,11 @@ export default function Review(props: ReviewProps) {
           <Stack direction="vertical">
             <Stack
               direction="horizontal"
-              className={`mt-2 bg-purple p-2 ${
+              className={`mt-2 p-2 ${
                 !isFundingDistributionPool ? "rounded-top-4" : "rounded-4"
               }`}
             >
-              <Card.Text className="w-33 m-0 fs-6">New Stream</Card.Text>
+              <Card.Text className="w-33 m-0">New Stream</Card.Text>
               <Stack
                 direction="horizontal"
                 gap={1}
@@ -390,7 +386,7 @@ export default function Review(props: ReviewProps) {
                   height={22}
                   className="mx-1"
                 />
-                <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
+                <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-lg fw-semi-bold text-start overflow-hidden text-truncate">
                   {formatNumber(
                     Number(
                       areTransactionsLoading && transactionDetailsSnapshot
@@ -401,7 +397,7 @@ export default function Review(props: ReviewProps) {
                   )}
                 </Badge>
               </Stack>
-              <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>
+              <Card.Text className="w-20 m-0 ms-1">/mo</Card.Text>
             </Stack>
             {!isFundingDistributionPool && (
               <>
@@ -409,7 +405,7 @@ export default function Review(props: ReviewProps) {
                   direction="horizontal"
                   className="bg-light border-top border-secondary p-2"
                 >
-                  <Card.Text className="w-33 m-0 fs-6">Est. Matching</Card.Text>
+                  <Card.Text className="w-33 m-0">Est. Matching</Card.Text>
                   <Stack
                     direction="horizontal"
                     gap={1}
@@ -422,7 +418,7 @@ export default function Review(props: ReviewProps) {
                       height={22}
                       className="mx-1"
                     />
-                    <Badge className="bg-secondary w-75 ps-2 pe-2 py-2 fs-6 text-start">
+                    <Badge className="bg-secondary w-75 ps-2 pe-2 py-2 fs-lg fw-semi-bold text-start">
                       {areTransactionsLoading &&
                       transactionDetailsSnapshot?.netImpact
                         ? `${
@@ -446,16 +442,14 @@ export default function Review(props: ReviewProps) {
                           : 0}
                     </Badge>
                   </Stack>
-                  <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>
+                  <Card.Text className="w-20 m-0 ms-1">/mo</Card.Text>
                 </Stack>
                 {showQfMultiplier && (
                   <Stack
                     direction="horizontal"
                     className="bg-light border-top border-secondary p-2"
                   >
-                    <Card.Text className="w-33 m-0 fs-6">
-                      QF Multiplier
-                    </Card.Text>
+                    <Card.Text className="w-33 m-0">QF Multiplier</Card.Text>
                     <Stack
                       direction="horizontal"
                       gap={1}
@@ -475,7 +469,7 @@ export default function Review(props: ReviewProps) {
                           )
                             ? "bg-danger"
                             : "bg-primary"
-                        } w-75 ps-2 pe-2 py-2 fs-6 text-start`}
+                        } w-75 ps-2 pe-2 py-2 fs-lg fw-semi-bold text-start`}
                       >
                         {parseFloat(
                           (
@@ -540,15 +534,15 @@ export default function Review(props: ReviewProps) {
                 direction="horizontal"
                 className="justify-content-around px-2"
               >
-                <Card.Text className="m-0 border-0 text-center fs-4">
+                <Card.Text className="m-0 border-0 text-center">
                   Sender
                 </Card.Text>
-                <Card.Text className="m-0 border-0 text-center fs-4">
+                <Card.Text className="m-0 border-0 text-center">
                   Receiver
                 </Card.Text>
               </Stack>
               <Stack direction="horizontal">
-                <Badge className="d-flex justify-content-around align-items-center w-50 bg-white text-info py-3 rounded-3 border-0 text-center fs-6">
+                <Badge className="d-flex justify-content-around align-items-center w-50 bg-white text-info px-3 py-4 rounded-4 border-0 text-center fw-semi-bold">
                   <Card.Text className="m-0 sensitive">
                     {truncateStr(address ?? "", 12)}
                   </Card.Text>
@@ -575,7 +569,7 @@ export default function Review(props: ReviewProps) {
                   width={18}
                   height={18}
                 />
-                <Badge className="d-flex justify-content-around align-items-center w-50 bg-white px-2 py-3 rounded-3 border-0 text-center text-info fs-6">
+                <Badge className="d-flex justify-content-around gap-2 align-items-center w-50 bg-white px-3 py-4 rounded-4 border-0 text-center text-info fw-semi-bold">
                   flowstatecoop.eth
                   <CopyTooltip
                     contentClick="Address copied"
@@ -601,7 +595,7 @@ export default function Review(props: ReviewProps) {
                     !isFundingDistributionPool ? "rounded-top-4" : "rounded-4"
                   }`}
                 >
-                  <Card.Text className="w-33 m-0 fs-6">New Stream</Card.Text>
+                  <Card.Text className="w-33 m-0">New Stream</Card.Text>
                   <Stack
                     direction="horizontal"
                     gap={1}
@@ -614,7 +608,7 @@ export default function Review(props: ReviewProps) {
                       height={22}
                       className="mx-1"
                     />
-                    <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-6 text-start overflow-hidden text-truncate">
+                    <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-lg fw-semi-bold text-start overflow-hidden text-truncate">
                       {formatNumber(
                         Number(
                           areTransactionsLoading && transactionDetailsSnapshot
@@ -624,34 +618,34 @@ export default function Review(props: ReviewProps) {
                       )}
                     </Badge>
                   </Stack>
-                  <Card.Text className="w-20 m-0 ms-1 fs-6">/mo</Card.Text>
+                  <Card.Text className="w-20 m-0 ms-1">/mo</Card.Text>
                 </Stack>
               </Stack>
             </>
           ) : null}
           {!!liquidationEstimate && !isNaN(liquidationEstimate) && (
-            <Stack direction="horizontal" gap={1} className="mt-1">
-              <Card.Text className="m-0 fs-6 fw-bold">
-                Est. Liquidation
-              </Card.Text>
+            <Stack direction="horizontal" gap={1} className="mt-1 p-2">
+              <Card.Text className="m-0">Est. Liquidation</Card.Text>
               <OverlayTrigger
                 overlay={
-                  <Tooltip id="t-liquidation-info" className="fs-6">
-                    This is the current estimate for when your token balance
-                    will reach 0. Make sure to close your stream or{" "}
-                    {isSuperTokenPure ? "deposit" : "wrap"} more tokens before
-                    this date to avoid loss of your buffer deposit.
+                  <Tooltip id="t-liquidation-info">
+                    <p className="m-0 p-2">
+                      This is the current estimate for when your token balance
+                      will reach 0. Make sure to close your stream or{" "}
+                      {isSuperTokenPure ? "deposit" : "wrap"} more tokens before
+                      this date to avoid loss of your buffer deposit.
+                    </p>
                   </Tooltip>
                 }
               >
                 <Image
                   src="/info.svg"
                   alt="liquidation info"
-                  width={16}
-                  height={16}
+                  width={18}
+                  height={18}
                 />
               </OverlayTrigger>
-              <Card.Text className="m-0 ms-1 fs-6 fw-bold">
+              <Card.Text className="m-0 ms-1 fs-lg fw-semi-bold">
                 {dayjs
                   .unix(
                     areTransactionsLoading &&
@@ -698,7 +692,7 @@ export default function Review(props: ReviewProps) {
               step === Step.SUCCESS ||
               (isLiquidationClose && !hasAcceptedCloseLiquidationWarning)
             }
-            className="d-flex justify-content-center mt-2 py-1 rounded-3 fw-bold text-light"
+            className="d-flex justify-content-center mt-4 py-4 rounded-4 fw-semi-bold text-light"
             onClick={
               network && connectedChain?.id !== network.id
                 ? () => switchChain({ chainId: network.id })
@@ -716,8 +710,8 @@ export default function Review(props: ReviewProps) {
                   animation="border"
                   role="status"
                   className="p-2"
-                ></Spinner>
-                <Card.Text className="m-0">
+                />
+                <Card.Text className="m-0 fw-semi-bold">
                   {completedTransactions + 1}/{transactions.length}
                 </Card.Text>
               </Stack>
@@ -732,7 +726,7 @@ export default function Review(props: ReviewProps) {
           {transactionError && (
             <Alert
               variant="danger"
-              className="mt-2 rounded-3 text-wrap text-break"
+              className="mt-2 rounded-4 py-4 text-light fw-semi-bold text-wrap text-break"
               style={{ pointerEvents: "none" }}
             >
               {transactionError}

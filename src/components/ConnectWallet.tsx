@@ -80,7 +80,10 @@ export default function ConnectWallet() {
                     </Dropdown.Toggle>
                     <Dropdown.Menu className="py-0 border-4 border-dark">
                       <Link href="/projects" className="text-decoration-none">
-                        <Dropdown.Item className="p-3 rounded-top-2 fw-semi-bold text-dark">
+                        <Dropdown.Item
+                          as="span"
+                          className="p-3 rounded-top-2 fw-semi-bold text-dark"
+                        >
                           Projects
                         </Dropdown.Item>
                       </Link>
@@ -88,7 +91,10 @@ export default function ConnectWallet() {
                         href={`/flow-splitters/?chainId=${chain.id}`}
                         className="text-decoration-none"
                       >
-                        <Dropdown.Item className="p-3 rounded-bottom-2 fw-semi-bold text-dark">
+                        <Dropdown.Item
+                          as="span"
+                          className="p-3 rounded-bottom-2 fw-semi-bold text-dark"
+                        >
                           Flow Splitters
                         </Dropdown.Item>
                       </Link>

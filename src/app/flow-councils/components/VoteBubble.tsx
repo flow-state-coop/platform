@@ -82,7 +82,7 @@ export default function VoteBubble(props: VoteBubbleProps) {
   const VoteButton = () => {
     return (
       <Button
-        className="btn btn-primary d-flex align-items-center gap-2 py-3 px-4 shadow-lg rounded-pill"
+        className="btn d-flex align-items-center gap-2 py-5 px-4 shadow-lg rounded-pill"
         onClick={() => dispatchShowBallot({ type: "show" })}
         style={{
           width: isMobile ? 360 : 400,
@@ -116,10 +116,10 @@ export default function VoteBubble(props: VoteBubbleProps) {
             </PieChart>
           </ResponsiveContainer>
         </Stack>
-        <Stack direction="vertical">
-          <span className="fs-4 fw-semibold d-block text-center">VOTE</span>
-          <small
-            className={`fs-6 d-block ${totalAllocatedVotes > votingPower ? "text-warning" : "text-white-50"}`}
+        <Stack direction="vertical" gap={4}>
+          <span className="fs-6 fw-semi-bold d-block text-center">VOTE</span>
+          <span
+            className={`fs-lg d-block ${totalAllocatedVotes > votingPower ? "text-warning" : "text-white-50"}`}
           >
             {totalAllocatedProjects}
             {council?.maxAllocationsPerMember
@@ -128,7 +128,7 @@ export default function VoteBubble(props: VoteBubbleProps) {
             Project{totalAllocatedProjects > 1 ? "s" : ""},{" "}
             {totalAllocatedVotes}/{votingPower} Vote
             {totalAllocatedVotes > 1 ? "s" : ""}
-          </small>
+          </span>
         </Stack>
       </Button>
     );

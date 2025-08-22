@@ -125,13 +125,16 @@ export default function RoundBanner(props: RoundBannerProps) {
       style={{ maxWidth: "100vw" }}
     >
       <Stack direction="vertical" className="pb-4">
-        <Stack direction="horizontal" className="justify-content-between">
+        <Stack
+          direction="horizontal"
+          className="justify-content-between align-items-center mb-2"
+        >
           <Stack direction="horizontal" gap={1}>
-            <Card.Text className="m-0 fs-4 fw-bold">{name}</Card.Text>
+            <Card.Text className="m-0 fs-5 fw-bold">{name}</Card.Text>
             <InfoTooltip
-              content=<>
+              content=<p className="m-0 p-2">
                 {removeMarkdown(description).replace(/\r?\n|\r/g, " ")}
-              </>
+              </p>
               target={
                 <Image
                   src="/info.svg"
@@ -157,7 +160,7 @@ export default function RoundBanner(props: RoundBannerProps) {
           className="p-0 shadow-none border-0"
           onClick={() => setShowInstructions(true)}
         >
-          <Card.Text className="mb-4 fs-6 text-primary text-start">
+          <Card.Text className="mb-4 fw-semi-bold text-primary text-start">
             How to participate (& earn $SUP)
           </Card.Text>
         </Button>
@@ -203,12 +206,12 @@ export default function RoundBanner(props: RoundBannerProps) {
             <Stack
               direction={isMobile ? "vertical" : "horizontal"}
               gap={4}
-              className="justify-content-end w-100 mt-3"
+              className="justify-content-end w-100 mt-6"
             >
               <Button
                 variant="secondary"
-                className="p-2 text-light fs-5"
-                style={{ width: isMobile ? "100%" : 256 }}
+                className="py-4 rounded-4 fw-semi-bold text-light"
+                style={{ width: isMobile ? "100%" : 240 }}
                 onClick={showDistributionPoolFunding}
               >
                 Grow the Pie
@@ -218,15 +221,15 @@ export default function RoundBanner(props: RoundBannerProps) {
                   variant="link"
                   href={`https://flowstate.network/projects/${grantee.metadata}/?chainId=${chainId}&edit=true`}
                   target="_blank"
-                  className="bg-primary p-2 text-light fs-5 text-decoration-none"
-                  style={{ width: isMobile ? "100%" : 256 }}
+                  className="bg-primary py-4 rounded-4 text-light fw-semi-bold text-decoration-none"
+                  style={{ width: isMobile ? "100%" : 240 }}
                 >
                   Edit Builder Profile
                 </Button>
               ) : votingPower ? (
                 <Button
                   variant={hasCheckedEligibility ? "success" : "primary"}
-                  className="d-flex gap-2 justify-content-center align-items-center p-2 text-light fs-5 text-decoration-none"
+                  className="d-flex gap-2 justify-content-center align-items-center py-4 rounded-4 text-light fw-semi-bold text-decoration-none"
                   style={{ width: isMobile ? "100%" : 256 }}
                   onClick={() => dispatchShowBallot({ type: "show" })}
                 >
@@ -249,14 +252,14 @@ export default function RoundBanner(props: RoundBannerProps) {
                   variant="link"
                   href="https://goodwallet.xyz"
                   target="_blank"
-                  className="bg-primary p-2 text-light fs-5 text-decoration-none"
+                  className="bg-primary py-4 rounded-4 fw-semi-bold text-light text-decoration-none"
                   style={{ width: isMobile ? "100%" : 256 }}
                 >
                   Join to Vote
                 </Button>
               ) : (
                 <Button
-                  className="bg-primary p-2 text-light fs-5 text-decoration-none"
+                  className="bg-primary py-4 rounded-4 text-light fw-semi-bold text-decoration-none"
                   onClick={checkEligibility}
                   style={{
                     width: isMobile ? "100%" : 256,
@@ -290,13 +293,14 @@ export default function RoundBanner(props: RoundBannerProps) {
           centered
           size="lg"
           onHide={() => setShowInstructions(false)}
+          contentClassName="p-4"
         >
-          <Modal.Header closeButton className="align-items-start border-0 pt-3">
-            <Modal.Title className="fs-5 fw-bold">
+          <Modal.Header closeButton className="align-items-start border-0">
+            <Modal.Title className="fs-5 fw-semi-bold">
               How to participate (and earn $SUP)
             </Modal.Title>
           </Modal.Header>
-          <Modal.Body className="fs-5">
+          <Modal.Body className="fs-lg">
             <ul>
               <li>
                 GoodBuilders Round 2 is a continuous funding round. $85k in G$
@@ -394,7 +398,10 @@ export default function RoundBanner(props: RoundBannerProps) {
             </ul>
           </Modal.Body>
           <Modal.Footer className="border-0">
-            <Button className="px-5" onClick={() => setShowInstructions(false)}>
+            <Button
+              className="px-10 py-4 rounded-4 fw-semi-bold"
+              onClick={() => setShowInstructions(false)}
+            >
               Let's Go
             </Button>
           </Modal.Footer>

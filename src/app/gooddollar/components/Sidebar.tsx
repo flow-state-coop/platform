@@ -103,8 +103,7 @@ function Sidebar() {
       <Stack
         direction="vertical"
         gap={3}
-        className={`rounded-4 flex-grow-0 p-3 border ${selectedCouncil ? "border-black" : ""} shadow`}
-        style={{ color: !selectedCouncil ? "#dee2e6" : "" }}
+        className="rounded-4 flex-grow-0 mt-3"
       >
         <Link
           href={
@@ -112,7 +111,7 @@ function Sidebar() {
               ? `/gooddollar/admin/?chainId=${chainId}`
               : "/gooddollar/admin"
           }
-          className={`d-flex align-items-center text-decoration-none ${pathname === "/gooddollar/admin" ? "fw-bold" : ""}`}
+          className={`d-flex align-items-center text-decoration-none ${pathname === "/gooddollar/admin" ? "fw-semi-bold" : ""}`}
         >
           <Image
             src={`${pathname?.startsWith("/gooddollar/admin") ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
@@ -122,7 +121,7 @@ function Sidebar() {
             style={{
               filter:
                 !pathname?.startsWith("/gooddollar/admin") && !selectedCouncil
-                  ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
+                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
                   : "",
             }}
           />
@@ -130,7 +129,7 @@ function Sidebar() {
         </Link>
         <Link
           href={`/gooddollar/permissions/?chainId=${chainId}`}
-          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname === "/gooddollar/permissions" ? "fw-bold" : ""}`}
+          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname === "/gooddollar/permissions" ? "fw-mi-bold" : ""}`}
           style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
         >
           <Image
@@ -142,7 +141,7 @@ function Sidebar() {
               filter:
                 !pathname?.startsWith("/gooddollar/permissions") &&
                 !selectedCouncil
-                  ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
+                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
                   : "",
             }}
           />
@@ -150,7 +149,7 @@ function Sidebar() {
         </Link>
         <Link
           href={`/gooddollar/membership/?chainId=${chainId}`}
-          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname === "/gooddollar/membership" ? "fw-bold" : ""}`}
+          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname === "/gooddollar/membership" ? "fw-semi-bold" : ""}`}
           style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
         >
           <Image
@@ -162,7 +161,7 @@ function Sidebar() {
               filter:
                 !pathname?.startsWith("/gooddollar/membership") &&
                 !selectedCouncil
-                  ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
+                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
                   : "",
             }}
           />
@@ -170,7 +169,7 @@ function Sidebar() {
         </Link>
         <Link
           href={`/gooddollar/review/?chainId=${chainId}`}
-          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname === "/gooddollar/review" ? "fw-bold" : ""}`}
+          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname === "/gooddollar/review" ? "fw-semi-bold" : ""}`}
           style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
         >
           <Image
@@ -181,7 +180,7 @@ function Sidebar() {
             style={{
               filter:
                 !pathname?.startsWith("/gooddollar/review") && !selectedCouncil
-                  ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
+                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
                   : "",
             }}
           />
@@ -199,7 +198,7 @@ function Sidebar() {
             height={24}
             style={{
               filter: !selectedCouncil
-                ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
+                ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
                 : "",
             }}
           />
@@ -214,7 +213,7 @@ function Sidebar() {
       <Dropdown.Toggle
         disabled
         variant="transparent"
-        className="d-flex justify-content-between align-items-center w-100 border border-2 overflow-hidden"
+        className="d-flex justify-content-between align-items-center w-100 border border-4 border-dark  fw-semi-bold py-4 overflow-hidden"
       >
         <span
           className="d-inline-block text-truncate hidden"
@@ -237,6 +236,7 @@ function Sidebar() {
           left: -24,
           width: 48,
           height: 48,
+          zIndex: 10,
         }}
         onClick={() => setShowMobileSidebar(true)}
       >
@@ -260,14 +260,15 @@ function Sidebar() {
       <Offcanvas
         show={showMobileSidebar}
         onHide={() => setShowMobileSidebar(false)}
+        className="p-4"
         style={{ width: "100%" }}
       >
         <Offcanvas.Header closeButton>
-          <Offcanvas.Title className="fs-4 fw-bold">
+          <Offcanvas.Title className="fs-5 fw-semi-bold">
             Flow Council Admin
           </Offcanvas.Title>
         </Offcanvas.Header>
-        <Offcanvas.Body className="d-flex flex-column gap-4 px-3 py-4 fs-5">
+        <Offcanvas.Body className="d-flex flex-column gap-4 px-3 py-4 fs-6">
           <CouncilsDropdown />
           <SidebarLinks />
         </Offcanvas.Body>
@@ -276,15 +277,8 @@ function Sidebar() {
   }
 
   return (
-    <Stack
-      direction="vertical"
-      gap={4}
-      className="w-25 svh-100 py-4 px-3 fs-5"
-      style={{
-        boxShadow: "0.5rem 0 0.5rem -2px rgba(0,0,0,0.2)",
-      }}
-    >
-      <h1 className="fs-4 fw-bold">Flow Council Admin</h1>
+    <Stack direction="vertical" gap={4} className="w-25 svh-100 py-4 px-3 fs-5">
+      <h1 className="fs-5 fw-semi-bold">Flow Council Admin</h1>
       <CouncilsDropdown />
       <SidebarLinks />
     </Stack>

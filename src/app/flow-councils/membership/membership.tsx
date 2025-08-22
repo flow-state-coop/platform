@@ -300,10 +300,12 @@ export default function Membership(props: MembershipProps) {
         direction="vertical"
         className={!isMobile ? "w-75 px-5" : "w-100 px-4"}
       >
-        <Card className="bg-light rounded-4 border-0 mt-4 p-4">
+        <Card className="bg-lace-100 rounded-4 border-0 mt-4 p-4">
           <Card.Header className="bg-transparent border-0 rounded-4 p-0">
-            <Card.Title className="fs-4">Council Membership</Card.Title>
-            <Card.Text className="fs-6 text-info">
+            <Card.Title className="fs-5 fw-semi-bold">
+              Council Membership
+            </Card.Title>
+            <Card.Text className="text-info">
               {isManager
                 ? "Manage your council membership and how they can vote."
                 : "(Read only—check your connected wallet's permissions to make changes)"}
@@ -315,7 +317,7 @@ export default function Membership(props: MembershipProps) {
               gap={isMobile ? 1 : 4}
               className="align-items-sm-center"
             >
-              <Form.Label className="d-flex gap-1 mb-2 fs-5">
+              <Form.Label className="d-flex gap-2 mb-2 fs-lg">
                 Max Voting Spread
                 <InfoTooltip
                   position={{ top: true }}
@@ -329,20 +331,20 @@ export default function Membership(props: MembershipProps) {
                     />
                   }
                   content={
-                    <>
+                    <p className="m-0 p-2">
                       Optional: Restrict how many recipients a voter can spread
                       their votes across.
                       <br />
                       <br />
                       This can be used to force differentiated opinions.
-                    </>
+                    </p>
                   }
                 />
               </Form.Label>
               <Dropdown>
                 <Dropdown.Toggle
                   disabled={!isManager}
-                  className="d-flex justify-content-between align-items-center bg-white text-dark border"
+                  className="d-flex justify-content-between align-items-center bg-white text-dark border-0 py-4 fw-semi-bold"
                   style={{ width: 128 }}
                 >
                   {councilConfig.limitMaxAllocation
@@ -350,10 +352,11 @@ export default function Membership(props: MembershipProps) {
                     : "No Limit"}
                 </Dropdown.Toggle>
                 <Dropdown.Menu
-                  className="overflow-auto"
+                  className="overflow-auto border-0 lh-lg p-2"
                   style={{ height: 256 }}
                 >
                   <Dropdown.Item
+                    className="fw-semi-bold"
                     onClick={() => {
                       setCouncilConfig({
                         ...councilConfig,
@@ -369,6 +372,7 @@ export default function Membership(props: MembershipProps) {
                       return (
                         <Dropdown.Item
                           key={i}
+                          className="fw-semi-bold"
                           onClick={() => {
                             setCouncilConfig({
                               ...councilConfig,
@@ -399,7 +403,7 @@ export default function Membership(props: MembershipProps) {
                 inputMode="numeric"
                 placeholder="Votes"
                 value={votingPowerForAll}
-                className="text-center rounded-2 flex-grow-0 flex-shrink-0"
+                className="text-center rounded-4 py-4 fw-semi-bold flex-grow-0 flex-shrink-0 border-0"
                 style={{
                   width: isMobile ? 100 : 128,
                   paddingTop: 12,
@@ -419,7 +423,7 @@ export default function Membership(props: MembershipProps) {
               <Button
                 variant="transparent"
                 disabled={!isManager}
-                className="text-primary text-decoration-underline p-0 flex-grow-0 flex-shrink-0 border-0"
+                className="text-primary text-decoration-underline p-0 flex-grow-0 flex-shrink-0 border-0 fw-semi-bold"
                 style={{ width: 80, fontSize: "0.9rem" }}
                 onClick={() =>
                   setMembersEntry((prev) => {
@@ -429,7 +433,7 @@ export default function Membership(props: MembershipProps) {
                   })
                 }
               >
-                Apply to All
+                Apply All
               </Button>
             </Stack>
             {membersEntry.map((memberEntry, i) => (
@@ -452,6 +456,7 @@ export default function Membership(props: MembershipProps) {
                         )
                         .includes(memberEntry.address.toLowerCase())
                     }
+                    className="border-0 rounded-4 bg-white py-4 fw-semi-bold"
                     style={{
                       paddingTop: 12,
                       paddingBottom: 12,
@@ -481,7 +486,7 @@ export default function Membership(props: MembershipProps) {
                   />
                   {memberEntry.addressValidationError ? (
                     <Card.Text
-                      className="position-absolute mt-1 mb-0 ms-2 ps-1 text-danger"
+                      className="position-absolute mt-1 mb-0 ms-2 ps-1 text-danger fw-semi-bold"
                       style={{ bottom: 1, fontSize: "0.7rem" }}
                     >
                       {memberEntry.addressValidationError}
@@ -508,7 +513,7 @@ export default function Membership(props: MembershipProps) {
                         )
                         .includes(memberEntry.address.toLowerCase())
                     }
-                    className="flex-grow-0 text-center"
+                    className="flex-grow-0 text-center border-0 rounded-4 bg-white py-4 fw-semi-bold"
                     style={{
                       paddingTop: 12,
                       paddingBottom: 12,
@@ -540,7 +545,7 @@ export default function Membership(props: MembershipProps) {
                   />
                   {memberEntry.votesValidationError ? (
                     <Card.Text
-                      className="position-absolute w-100 mt-1 mb-0 text-center text-danger"
+                      className="position-absolute w-100 mt-1 mb-0 text-center text-danger fw-semi-bold"
                       style={{ bottom: 1, fontSize: "0.7rem" }}
                     >
                       {memberEntry.votesValidationError}
@@ -580,6 +585,7 @@ export default function Membership(props: MembershipProps) {
                     disabled
                     type="text"
                     value={memberEntry.address}
+                    className="border-0 rounded-4 bg-white py-4 fw-semi-bold"
                     style={{ paddingTop: 12, paddingBottom: 12 }}
                   />
                 </Stack>
@@ -587,7 +593,7 @@ export default function Membership(props: MembershipProps) {
                   type="text"
                   disabled
                   value="Removed"
-                  className="text-center flex-grow-0 flex-shrink-0"
+                  className="text-center flex-grow-0 rounded-4 py-4 fw-semi-bold bg-light border-0 flex-shrink-0"
                   style={{
                     width: isMobile ? 100 : 128,
                     paddingTop: 12,
@@ -621,7 +627,7 @@ export default function Membership(props: MembershipProps) {
               <Button
                 variant="transparent"
                 disabled={!isManager}
-                className="d-flex align-items-center w-100 p-0 text-primary text-decoration-underline border-0"
+                className="d-flex align-items-center w-100 p-0 fw-semi-bold text-primary text-decoration-underline border-0"
                 onClick={() =>
                   setMembersEntry((prev) =>
                     prev.concat({
@@ -640,10 +646,10 @@ export default function Membership(props: MembershipProps) {
             </Stack>
           </Card.Body>
         </Card>
-        <Stack direction="vertical" gap={3} className="my-4">
+        <Stack direction="vertical" gap={3} className="my-6">
           <Button
             disabled={!isManager || !hasChanges || !isValidMembersEntry}
-            className="fs-5"
+            className="fs-lg fw-semi-bold py-4 rounded-4"
             onClick={() => {
               !address && openConnectModal
                 ? openConnectModal()
@@ -660,7 +666,7 @@ export default function Membership(props: MembershipProps) {
           </Button>
           <Button
             variant="secondary"
-            className="fs-5"
+            className="fs-lg fw-semi-bold py-4 rounded-4"
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() =>
               router.push(
@@ -675,12 +681,15 @@ export default function Membership(props: MembershipProps) {
             delay={4000}
             autohide={true}
             onClose={() => setTransactionSuccess(false)}
-            className="w-100 bg-success p-3 fs-5 text-light"
+            className="w-100 bg-success p-4 fw-semi-bold text-light"
           >
             Success!
           </Toast>
           {transactionError ? (
-            <Alert variant="danger" className="w-100">
+            <Alert
+              variant="danger"
+              className="w-100 p-4 fw-semi-bold text-danger"
+            >
               {transactionError}
             </Alert>
           ) : null}

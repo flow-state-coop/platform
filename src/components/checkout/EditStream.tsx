@@ -108,10 +108,10 @@ export default function EditStream(props: EditStreamProps) {
   };
 
   return (
-    <Card className="bg-light rounded-0 rounded-top-4 border-0 border-bottom border-info">
+    <Card className="bg-lace-100 rounded-0 rounded-top-4 border-0 border-bottom border-white">
       <Button
         variant="transparent"
-        className="d-flex gap-2 p-3 border-0 rounded-0 shadow-none"
+        className="d-flex gap-3 p-4 border-0 rounded-0 shadow-none text-secondary fs-lg fw-semi-bold"
         style={{
           pointerEvents: isSelected ? "none" : "auto",
         }}
@@ -139,9 +139,11 @@ export default function EditStream(props: EditStreamProps) {
             <Image src="/success.svg" alt="done" width={16} />
           )}
         </Badge>
-        <Card.Text className="m-0">{Step.SELECT_AMOUNT}</Card.Text>
+        <Card.Text className="m-0 fs-lg fw-semi-bold">
+          {Step.SELECT_AMOUNT}
+        </Card.Text>
       </Button>
-      <Accordion.Collapse eventKey={Step.SELECT_AMOUNT} className="p-3 pt-0">
+      <Accordion.Collapse eventKey={Step.SELECT_AMOUNT} className="p-4 pt-0">
         <Stack gap={3}>
           <Card.Text className="small mb-1">
             Flow State donations are implemented as continuous money streams—not
@@ -158,7 +160,7 @@ export default function EditStream(props: EditStreamProps) {
             .
           </Card.Text>
           <Stack direction="horizontal" gap={2}>
-            <Badge className="d-flex align-items-center gap-1 bg-white text-dark w-50 rounded-3 px-3 py-2 fs-5 fw-normal">
+            <Badge className="d-flex align-items-center gap-2 bg-white text-dark w-50 rounded-4 px-3 py-4 fs-lg fw-semi-bold">
               <Image
                 src={network?.icon ?? "/eth.png"}
                 alt="token"
@@ -167,7 +169,7 @@ export default function EditStream(props: EditStreamProps) {
               />
               {network?.name ?? "N/A"}
             </Badge>
-            <Badge className="d-flex align-items-center gap-1 bg-white text-dark w-50 rounded-3 px-3 py-2 fs-5 fw-normal">
+            <Badge className="d-flex align-items-center gap-2 bg-white text-dark w-50 rounded-3 px-3 py-4 fs-lg fw-semi-bold">
               <Image
                 src={token.icon ?? "/eth.png"}
                 alt="token"
@@ -185,7 +187,7 @@ export default function EditStream(props: EditStreamProps) {
                 disabled={!address || !flowRateToReceiver}
                 value={amountPerTimeInterval}
                 onChange={handleAmountSelection}
-                className={`bg-white border-0 rounded-3 ${
+                className={`bg-white border-0 rounded-4 py-4 fw-semi-bold ${
                   isNativeSuperToken ? "" : "rounded-end-0"
                 } shadow-none`}
               />
@@ -194,7 +196,7 @@ export default function EditStream(props: EditStreamProps) {
                   <Button
                     disabled={!address || !flowRateToReceiver}
                     variant="white"
-                    className="d-flex align-items-center bg-white border-0 rounded-0 fs-4 px-1 py-2"
+                    className="d-flex align-items-center bg-white border-0 rounded-0 px-1 py-4"
                     onClick={() => handleAmountStepping({ increment: false })}
                   >
                     <Image
@@ -207,7 +209,7 @@ export default function EditStream(props: EditStreamProps) {
                   <Button
                     disabled={!address || !flowRateToReceiver}
                     variant="white"
-                    className="d-flex align-items-center bg-white border-0 rounded-0 rounded-end-3 fs-4 px-1 py-2"
+                    className="d-flex align-items-center bg-white border-0 rounded-0 rounded-end-3 px-1 py-4"
                     onClick={() => handleAmountStepping({ increment: true })}
                   >
                     <Image src="/add.svg" alt="add" width={20} height={20} />
@@ -215,17 +217,17 @@ export default function EditStream(props: EditStreamProps) {
                 </>
               )}
             </Stack>
-            <Badge className="d-flex align-items-center bg-white w-50 rounded-3 px-3 text-dark fs-6 fw-normal">
+            <Badge className="d-flex align-items-center bg-white w-50 rounded-3 px-3 py-4 text-dark fs-lg fw-semi-bold">
               /month
             </Badge>
           </Stack>
           {Number(amountPerTimeInterval) > 0 &&
             Number(amountPerTimeInterval) < minAllocationPerMonth && (
-              <Alert variant="warning" className="m-0 py-2">
+              <Alert variant="warning" className="m-0 px-3 py-4 fw-semi-bold">
                 Minimum Donation = {minAllocationPerMonth} {token.symbol}/mo
               </Alert>
             )}
-          <Stack direction="vertical">
+          <Stack direction="vertical" className="mt-4">
             {network && address ? (
               <Button
                 variant={isDeletingStream ? "danger" : "primary"}
@@ -238,7 +240,7 @@ export default function EditStream(props: EditStreamProps) {
                     Number(amountPerTimeInterval) < minAllocationPerMonth) ||
                   newFlowRate === flowRateToReceiver
                 }
-                className="py-1 rounded-3 text-light"
+                className="px-10 py-4 rounded-4 fw-semi-bold text-light"
                 onClick={() => {
                   if (connectedChain?.id !== network.id) {
                     switchChain({ chainId: network.id });
@@ -272,7 +274,7 @@ export default function EditStream(props: EditStreamProps) {
             {BigInt(flowRateToReceiver) > 0 && !isDeletingStream && (
               <Button
                 variant="transparent"
-                className="w-100 text-primary text-decoration-underline border-0 pb-0"
+                className="w-100 text-primary text-decoration-underline fw-semi-bold border-0 pb-0"
                 onClick={() => {
                   setAmountPerTimeInterval("0");
                   setStep(Step.REVIEW);

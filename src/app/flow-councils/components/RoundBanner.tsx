@@ -73,11 +73,11 @@ export default function PoolInfo(props: PoolInfoProps) {
           className="justify-content-between align-items-center mb-2"
         >
           <Stack direction="horizontal" gap={1}>
-            <Card.Text className="m-0 fs-4 fw-bold">{name}</Card.Text>
+            <Card.Text className="m-0 fs-5 fw-bold">{name}</Card.Text>
             <InfoTooltip
-              content=<>
+              content=<p className="m-0 p-2">
                 {removeMarkdown(description).replace(/\r?\n|\r/g, " ")}
-              </>
+              </p>
               target={
                 <Image
                   src="/info.svg"
@@ -98,7 +98,7 @@ export default function PoolInfo(props: PoolInfoProps) {
             </Button>
           )}
         </Stack>
-        <Card.Text className="mb-4 fs-6">Flow Council Allocation</Card.Text>
+        <Card.Text className="mb-6 fs-lg">Flow Council Allocation</Card.Text>
         {(!isMobile || showFullInfo) && (
           <>
             <Table borderless>
@@ -141,13 +141,13 @@ export default function PoolInfo(props: PoolInfoProps) {
             <Stack
               direction={isMobile ? "vertical" : "horizontal"}
               gap={4}
-              className="justify-content-end w-100 mt-3"
+              className="justify-content-end w-100 mt-4"
             >
               {(!isMobile || showFullInfo) && (
                 <Button
                   variant="secondary"
-                  className="p-2 text-light"
-                  style={{ width: isMobile ? "100%" : 180 }}
+                  className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
+                  style={{ width: isMobile ? "100%" : 240 }}
                   onClick={showDistributionPoolFunding}
                 >
                   Grow the Pie
@@ -158,8 +158,8 @@ export default function PoolInfo(props: PoolInfoProps) {
                   variant="link"
                   href={`https://flowstate.network/projects/${grantee.metadata}/?chainId=${chainId}&edit=true`}
                   target="_blank"
-                  className="bg-primary p-2 text-light fs-5 text-decoration-none"
-                  style={{ width: isMobile ? "100%" : 180 }}
+                  className="bg-primary py-4 text-light rounded-4 fs-lg fw-semi-bold text-decoration-none"
+                  style={{ width: isMobile ? "100%" : 240 }}
                 >
                   Edit Builder Profile
                 </Button>
