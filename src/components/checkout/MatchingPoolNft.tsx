@@ -15,7 +15,7 @@ export default function MatchingPoolNft(props: MatchingPoolNftProps) {
   const { isMinting, hasMinted, handleNftMint, error } = props;
 
   return (
-    <Card className="bg-light mt-4 p-4 rounded-4 border-0">
+    <Card className="bg-lace-100 rounded-0 border-0 border-bottom border-white">
       <Image
         src="/octant-sqf-voter.png"
         alt="SQF Voter"
@@ -29,7 +29,7 @@ export default function MatchingPoolNft(props: MatchingPoolNftProps) {
       </Card.Text>
       <Button
         variant={hasMinted ? "success" : "primary"}
-        className="mt-4"
+        className="mt-4 px-10 py-4 rounded-4 fw-semi-bold"
         onClick={handleNftMint}
         style={{ pointerEvents: isMinting || hasMinted ? "none" : "auto" }}
       >
@@ -58,7 +58,9 @@ export default function MatchingPoolNft(props: MatchingPoolNftProps) {
         )}
       </Button>
       {error && (
-        <Card.Text className="m-0 mt-2 text-center small">{error}</Card.Text>
+        <Card.Text className="m-0 mt-2 text-center small fw-semi-bold">
+          {error}
+        </Card.Text>
       )}
     </Card>
   );

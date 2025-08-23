@@ -652,7 +652,7 @@ export default function Sankey(props: SankeyProps) {
   return (
     <div>
       {dataset && (
-        <Form className="d-flex justify-content-end gap-2 fs-4">
+        <Form className="d-flex justify-content-end gap-2 fs-lg fw-semi-bold mt-4">
           <Form.Label className="cursor-pointer">{Mode.LIVE}</Form.Label>
           <Form.Switch
             defaultChecked={false}

@@ -249,165 +249,170 @@ export default function Grantee(props: GranteeProps) {
   return (
     <>
       <Sidebar />
-      <Stack direction="vertical" className={!isMobile ? "w-75" : "w-100"}>
-        <Stack direction="vertical" gap={4} className="px-5 py-4 mb-5">
-          {!loading && recipients === null ? (
-            <>Pool not found</>
-          ) : loading || !chainId || !poolId ? (
-            <Spinner className="m-auto" />
-          ) : !network ? (
-            <>Network not supported</>
-          ) : !connectedChain ? (
-            <>Please connect a wallet</>
-          ) : (
-            <>
-              <Card className="border-0">
-                <Card.Text as="h1" className="mb-3">
-                  Select or create a project to apply to the pool
-                </Card.Text>
-                <Card.Text as="h2" className="fs-3">
-                  {pool?.metadata?.name}
-                </Card.Text>
-                <Card.Text
-                  className="overflow-hidden word-wrap"
-                  style={{ maxHeight: "2lh" }}
-                >
-                  {pool?.metadata?.description}
-                </Card.Text>
-              </Card>
-              <Dropdown>
-                <Dropdown.Toggle
-                  variant="transparent"
-                  className={`d-flex justify-content-between align-items-center border border-2 ${isMobile || isTablet ? "" : "w-20"}`}
-                  disabled
-                >
-                  {network.name}
-                </Dropdown.Toggle>
-              </Dropdown>
-              <Card className="border-0">
-                <Card.Text className="m-0">
-                  - Donation Token:{" "}
-                  {network.tokens.find(
-                    (token) =>
-                      token.address.toLowerCase() ===
-                      pool?.allocationToken?.toLowerCase(),
-                  )?.symbol ?? "N/A"}
-                </Card.Text>
-                <Card.Text className="m-0">
-                  - Matching Token:{" "}
-                  {network.tokens.find(
-                    (token) =>
-                      token.address.toLowerCase() === pool?.matchingToken,
-                  )?.symbol ?? "N/A"}
-                </Card.Text>
-                <Card.Text>
-                  - Voter Eligibility NFT:{" "}
-                  {(requiredNftAddress as Address) ?? "N/A"}
-                </Card.Text>
-              </Card>
-              {loading ? (
-                <Spinner className="m-auto" />
-              ) : (
-                <div
-                  style={{
-                    display: "grid",
-                    columnGap: "1.5rem",
-                    rowGap: "3rem",
-                    gridTemplateColumns: isTablet
-                      ? "repeat(1,minmax(0,1fr))"
-                      : isSmallScreen
-                        ? "repeat(2,minmax(0,1fr))"
-                        : isMediumScreen || isBigScreen
-                          ? "repeat(3,minmax(0,1fr))"
-                          : "",
+      <Stack
+        direction="vertical"
+        className={!isMobile ? "w-75 px-10" : "w-100 px-4"}
+      >
+        {!loading && recipients === null ? (
+          <>Pool not found</>
+        ) : loading || !chainId || !poolId ? (
+          <Spinner className="m-auto" />
+        ) : !network ? (
+          <>Network not supported</>
+        ) : !connectedChain ? (
+          <>Please connect a wallet</>
+        ) : (
+          <>
+            <Card className="border-0 mb-8">
+              <Card.Text className="mb-3 fs-5 fw-semi-bold">
+                Select or create a project to apply to the pool
+              </Card.Text>
+              <Card.Text className="fs-lg fw-semi-bold">
+                {pool?.metadata?.name}
+              </Card.Text>
+              <Card.Text
+                className="overflow-hidden word-wrap"
+                style={{ maxHeight: "2lh" }}
+              >
+                {pool?.metadata?.description}
+              </Card.Text>
+            </Card>
+            <Dropdown>
+              <Dropdown.Toggle
+                variant="transparent"
+                className={`d-flex justify-content-between align-items-center border border-4 border-dark fw-semi-bold ${isMobile || isTablet ? "" : "w-20"}`}
+                disabled
+              >
+                {network.name}
+              </Dropdown.Toggle>
+            </Dropdown>
+            <Card className="border-0 mt-2 mb-8">
+              <Card.Text className="m-0">
+                - Donation Token:{" "}
+                {network.tokens.find(
+                  (token) =>
+                    token.address.toLowerCase() ===
+                    pool?.allocationToken?.toLowerCase(),
+                )?.symbol ?? "N/A"}
+              </Card.Text>
+              <Card.Text className="m-0">
+                - Matching Token:{" "}
+                {network.tokens.find(
+                  (token) =>
+                    token.address.toLowerCase() === pool?.matchingToken,
+                )?.symbol ?? "N/A"}
+              </Card.Text>
+              <Card.Text>
+                - Voter Eligibility NFT:{" "}
+                {(requiredNftAddress as Address) ?? "N/A"}
+              </Card.Text>
+            </Card>
+            {loading ? (
+              <Spinner className="m-auto" />
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  columnGap: "1.5rem",
+                  rowGap: "3rem",
+                  gridTemplateColumns: isTablet
+                    ? "repeat(1,minmax(0,1fr))"
+                    : isSmallScreen
+                      ? "repeat(2,minmax(0,1fr))"
+                      : isMediumScreen || isBigScreen
+                        ? "repeat(3,minmax(0,1fr))"
+                        : "",
+                }}
+              >
+                {projects?.map((project, i: number) => {
+                  if (!project || !project.metadata?.title) {
+                    return null;
+                  }
+
+                  return (
+                    <GranteeApplicationCard
+                      key={project.id}
+                      name={project.metadata.title}
+                      description={project.metadata.description}
+                      logoCid={project.metadata.logoImg}
+                      bannerCid={project.metadata.bannerImg}
+                      status={project.status}
+                      hasApplied={hasApplied}
+                      isSelected={selectedProjectIndex === i}
+                      selectProject={() =>
+                        project.status === "APPROVED"
+                          ? router.push(
+                              `/flow-qf/grantee/tools/?chainId=${chainId}&poolId=${poolId}&recipientId=${project.recipientId}`,
+                            )
+                          : setSelectedProjectIndex(i)
+                      }
+                      updateProject={setShowProjectUpdateModal}
+                      isTransactionConfirming={isTransactionConfirming}
+                    />
+                  );
+                })}
+                <Card
+                  className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-4 fs-lg fw-semi-bold cursor-pointer"
+                  style={{ height: 418 }}
+                  onClick={() => {
+                    setShowProjectCreationModal(true);
+                    setSelectedProjectIndex(null);
                   }}
                 >
-                  {projects?.map((project, i: number) => {
-                    if (!project || !project.metadata?.title) {
-                      return null;
-                    }
-
-                    return (
-                      <GranteeApplicationCard
-                        key={project.id}
-                        name={project.metadata.title}
-                        description={project.metadata.description}
-                        logoCid={project.metadata.logoImg}
-                        bannerCid={project.metadata.bannerImg}
-                        status={project.status}
-                        hasApplied={hasApplied}
-                        isSelected={selectedProjectIndex === i}
-                        selectProject={() =>
-                          project.status === "APPROVED"
-                            ? router.push(
-                                `/grantee/tools/?chainId=${chainId}&poolId=${poolId}&recipientId=${project.recipientId}`,
-                              )
-                            : setSelectedProjectIndex(i)
-                        }
-                        updateProject={setShowProjectUpdateModal}
-                        isTransactionConfirming={isTransactionConfirming}
-                      />
-                    );
-                  })}
-                  <Card
-                    className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
-                    style={{ height: 418 }}
-                    onClick={() => {
-                      setShowProjectCreationModal(true);
-                      setSelectedProjectIndex(null);
-                    }}
-                  >
-                    <Image src="/add.svg" alt="add" width={52} />
-                    <Card.Text className="d-inline-block m-0 overflow-hidden fs-3 text-center word-wrap">
-                      Create a new project
-                    </Card.Text>
-                  </Card>
-                </div>
-              )}
-              <Stack direction="vertical" gap={2} className="mt-5 text-light">
-                <Stack
-                  direction="horizontal"
-                  gap={2}
-                  className="align-items-start text-dark"
-                >
-                  <FormCheck
-                    onChange={() =>
-                      setHasAgreedToCodeOfConduct(!hasAgreedToCodeOfConduct)
-                    }
-                  />
-                  <Card.Text>
-                    I have read and agree to the{" "}
-                    <Link href="/conduct" target="_blank">
-                      Flow State Grantee Code of Conduct
-                    </Link>
-                    .
+                  <Image src="/add.svg" alt="add" width={52} />
+                  <Card.Text className="d-inline-block m-0 overflow-hidden fs-3 text-center word-wrap">
+                    Create a new project
                   </Card.Text>
-                </Stack>
-                <Button
-                  className={`${isMobile || isTablet ? "w-100" : "w-25"} py-2 text-light`}
-                  disabled={
-                    selectedProjectIndex === null || !hasAgreedToCodeOfConduct
+                </Card>
+              </div>
+            )}
+            <Stack
+              direction="vertical"
+              gap={4}
+              className="mt-8 mb-30 text-light"
+            >
+              <Stack
+                direction="horizontal"
+                gap={2}
+                className="align-items-start text-dark"
+              >
+                <FormCheck
+                  onChange={() =>
+                    setHasAgreedToCodeOfConduct(!hasAgreedToCodeOfConduct)
                   }
-                  onClick={registerRecipient}
-                >
-                  {isTransactionConfirming ? (
-                    <Spinner size="sm" className="m-auto" />
-                  ) : selectedProjectIndex !== null &&
-                    projects?.[selectedProjectIndex]?.status === "PENDING" ? (
-                    "Update Application"
-                  ) : (
-                    "Apply"
-                  )}
-                </Button>
-                {isError && (
-                  <Card.Text className="fs-6 text-danger">
-                    Transaction Failed - Reapply Above.
-                  </Card.Text>
-                )}
+                />
+                <Card.Text>
+                  I have read and agree to the{" "}
+                  <Link href="/conduct" target="_blank">
+                    Flow State Grantee Code of Conduct
+                  </Link>
+                  .
+                </Card.Text>
               </Stack>
-            </>
-          )}
-        </Stack>
+              <Button
+                className={`${isMobile || isTablet ? "w-100" : "w-25"} py-2 text-light rounded-4 py-4 fw-semi-bold`}
+                disabled={
+                  selectedProjectIndex === null || !hasAgreedToCodeOfConduct
+                }
+                onClick={registerRecipient}
+              >
+                {isTransactionConfirming ? (
+                  <Spinner size="sm" className="m-auto" />
+                ) : selectedProjectIndex !== null &&
+                  projects?.[selectedProjectIndex]?.status === "PENDING" ? (
+                  "Update Application"
+                ) : (
+                  "Apply"
+                )}
+              </Button>
+              {isError && (
+                <Card.Text className="text-danger fw-semi-bold">
+                  Transaction Failed - Reapply Above.
+                </Card.Text>
+              )}
+            </Stack>
+          </>
+        )}
         <ProjectCreationModal
           show={showProjectCreationModal}
           chainId={network.id}

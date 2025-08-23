@@ -64,7 +64,7 @@ export default function PoolInfo(props: PoolInfoProps) {
 
   return (
     <div
-      className="px-4 pt-5 pool-info-background"
+      className="px-4 pt-5 pool-info-background rounded-4"
       style={{ maxWidth: "100vw" }}
     >
       <Stack direction="vertical" className="pb-4">

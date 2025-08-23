@@ -75,11 +75,14 @@ export default function PoolInfo(props: PoolInfoProps) {
   const { isMobile } = useMediaQuery();
 
   return (
-    <div className="px-4 pt-5 pool-info-background">
+    <div className="px-4 pt-5 pool-info-background rounded-4">
       <Stack direction="vertical" className="pb-4">
-        <Stack direction="horizontal" className="justify-content-between">
+        <Stack
+          direction="horizontal"
+          className="justify-content between align-items-center mb-2"
+        >
           <Stack direction="horizontal" gap={1}>
-            <Card.Text className="m-0 fs-4 fw-bold">{name}</Card.Text>
+            <Card.Text className="m-0 fs-5 fw-bold">{name}</Card.Text>
             <InfoTooltip
               content={
                 <Markdown
@@ -116,7 +119,9 @@ export default function PoolInfo(props: PoolInfoProps) {
             </Button>
           )}
         </Stack>
-        <Card.Text className="mb-4 fs-6">Streaming Quadratic Funding</Card.Text>
+        <Card.Text className="mb-6 fs-lg">
+          Streaming Quadratic Funding
+        </Card.Text>
         {(!isMobile || showFullInfo) && (
           <>
             <Table borderless>
@@ -171,7 +176,7 @@ export default function PoolInfo(props: PoolInfoProps) {
               className="justify-content-end w-100 mt-4"
             >
               <Button
-                className="p-2 text-light fs-5"
+                className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
                 style={{ width: isMobile ? "100%" : 180 }}
                 onClick={showTransactionPanel}
               >
@@ -179,7 +184,7 @@ export default function PoolInfo(props: PoolInfoProps) {
               </Button>
               <Button
                 variant="secondary"
-                className="p-2 text-light fs-5"
+                className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
                 style={{ width: isMobile ? "100%" : 180 }}
                 onClick={() => setShowSankey(true)}
               >
@@ -204,7 +209,7 @@ export default function PoolInfo(props: PoolInfoProps) {
           scrollable
           size="xl"
           onHide={() => setShowSankey(false)}
-          contentClassName="pool-info-background"
+          contentClassName="p-4 pool-info-background"
         >
           <Modal.Header closeButton className="border-0" />
           <Modal.Body className="pt-0">

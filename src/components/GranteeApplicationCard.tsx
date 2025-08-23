@@ -136,7 +136,7 @@ export default function GranteeApplicationCard(
               <Stack
                 direction="horizontal"
                 gap={2}
-                className={`justify-content-center align-items-center fs-4
+                className={`justify-content-center align-items-center fs-6
                             ${
                               status === "PENDING"
                                 ? "text-warning"

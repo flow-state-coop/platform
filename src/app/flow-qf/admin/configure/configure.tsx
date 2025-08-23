@@ -428,7 +428,7 @@ export default function Configure(props: ConfigureProps) {
       setAreTransactionsLoading(false);
 
       router.push(
-        `/sqf/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${topics[0].args.poolId.toString()}&showNextButton=true`,
+        `/flow-qf/admin/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${topics[0].args.poolId.toString()}&showNextButton=true`,
       );
     } catch (err) {
       setTransactionsCompleted(0);
@@ -485,273 +485,286 @@ export default function Configure(props: ConfigureProps) {
   return (
     <>
       <Sidebar />
-      <Stack direction="vertical" className={!isMobile ? "w-75" : "w-100"}>
-        <Stack direction="vertical" gap={4} className="px-5 py-4 mb-5">
-          {loading || (poolId && !pool) ? (
-            <Spinner className="m-auto" />
-          ) : !profileId || !chainId ? (
-            <Card.Text>
-              Program not found, please select one from{" "}
-              <Link href="/sqf">Program Selection</Link>
-            </Card.Text>
-          ) : !connectedChain ? (
-            <>Please connect a wallet</>
-          ) : connectedChain?.id !== network?.id ? (
-            <Card.Text>
-              Wrong network, please connect to{" "}
-              <span
-                className="p-0 text-decoration-underline cursor-pointer"
-                onClick={() => switchChain({ chainId: network?.id ?? 10 })}
-              >
-                {network?.name}
-              </span>{" "}
-              or return to <Link href="/sqf">Program Selection</Link>
-            </Card.Text>
-          ) : (
-            <Form
-              className="d-flex flex-column gap-4"
-              onSubmit={(e) => e.preventDefault()}
+      <Stack
+        direction="vertical"
+        className={!isMobile ? "w-75 px-10" : "w-100 px-4"}
+      >
+        {loading || (poolId && !pool) ? (
+          <Spinner className="m-auto" />
+        ) : !profileId || !chainId ? (
+          <Card.Text>
+            Program not found, please select one from{" "}
+            <Link href="/flow-qf/admin">Program Selection</Link>
+          </Card.Text>
+        ) : !connectedChain ? (
+          <>Please connect a wallet</>
+        ) : connectedChain?.id !== network?.id ? (
+          <Card.Text>
+            Wrong network, please connect to{" "}
+            <span
+              className="p-0 text-decoration-underline cursor-pointer"
+              onClick={() => switchChain({ chainId: network?.id ?? 10 })}
             >
-              <Form.Group style={{ width: isMobile ? "100%" : "20%" }}>
-                <Form.Label>Pool Name</Form.Label>
-                <Form.Control
-                  type="text"
-                  placeholder="SQF"
-                  disabled={!!pool}
-                  onChange={(e) => {
-                    setPoolConfigParameters({
-                      ...poolConfigParameters,
-                      name: e.target.value,
-                    });
-                    setExistingStrategyAddress("");
-                  }}
-                  value={poolConfigParameters.name}
-                />
-              </Form.Group>
-              <Form.Group style={{ width: isMobile ? "100%" : "50%" }}>
-                <Form.Label>
-                  Description (
-                  <Link
-                    href="https://www.markdownguide.org/basic-syntax/"
-                    target="_blank"
-                  >
-                    supports basic Markdown syntax
-                  </Link>
-                  )
-                </Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={3}
-                  style={{ resize: "none" }}
-                  disabled={!!pool}
-                  onChange={(e) => {
-                    setPoolConfigParameters({
-                      ...poolConfigParameters,
-                      description: e.target.value,
-                    });
-                    setExistingStrategyAddress("");
-                  }}
-                  value={poolConfigParameters.description}
-                />
-              </Form.Group>
-              <Dropdown>
-                <Form.Label className="px-1">
-                  Donation Token (
-                  <Card.Link href="https://t.me/flowstatecoop/" target="_blank">
-                    Request to add a token
-                  </Card.Link>
-                  )
-                </Form.Label>
-                <Dropdown.Toggle
-                  variant="transparent"
-                  className="d-flex justify-content-between align-items-center border border-2"
-                  style={{ width: isMobile ? "50%" : "20%" }}
-                  disabled={!network || !!pool || !publicClient}
+              {network?.name}
+            </span>{" "}
+            or return to <Link href="/flow-qf/admin">Program Selection</Link>
+          </Card.Text>
+        ) : (
+          <Form
+            className="d-flex flex-column gap-4"
+            onSubmit={(e) => e.preventDefault()}
+          >
+            <Form.Group style={{ width: isMobile ? "100%" : "25%" }}>
+              <Form.Label>Pool Name</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="SQF"
+                disabled={!!pool}
+                className="border-4 border-dark fw-semi-bold"
+                onChange={(e) => {
+                  setPoolConfigParameters({
+                    ...poolConfigParameters,
+                    name: e.target.value,
+                  });
+                  setExistingStrategyAddress("");
+                }}
+                value={poolConfigParameters.name}
+              />
+            </Form.Group>
+            <Form.Group style={{ width: isMobile ? "100%" : "50%" }}>
+              <Form.Label>
+                Description (
+                <Link
+                  href="https://www.markdownguide.org/basic-syntax/"
+                  target="_blank"
                 >
-                  {poolConfigParameters.allocationToken}
-                </Dropdown.Toggle>
-                <Dropdown.Menu>
-                  {network &&
-                    network.tokens.map((token, i) => {
-                      return (
-                        <Dropdown.Item
-                          key={i}
-                          onClick={() => {
-                            setPoolConfigParameters({
-                              ...poolConfigParameters,
-                              allocationToken: token.symbol ?? "N/A",
-                            });
-                          }}
-                        >
-                          {token.symbol}
-                        </Dropdown.Item>
-                      );
-                    })}
-                </Dropdown.Menu>
-              </Dropdown>
-              <Dropdown>
-                <Form.Label className="px-1">
-                  Matching Token (
-                  <Card.Link href="https://t.me/flowstatecoop/" target="_blank">
-                    Request to add a token
-                  </Card.Link>
-                  )
-                </Form.Label>
-                <Dropdown.Toggle
-                  variant="transparent"
-                  className="d-flex justify-content-between align-items-center border border-2"
-                  style={{ width: isMobile ? "50%" : "20%" }}
-                  disabled={!network || !!pool || !publicClient}
-                >
-                  {poolConfigParameters.matchingToken}
-                </Dropdown.Toggle>
-                <Dropdown.Menu>
-                  {network
-                    ? network.tokens.map((token, i) => (
-                        <Dropdown.Item
-                          key={i}
-                          onClick={() => {
-                            setPoolConfigParameters({
-                              ...poolConfigParameters,
-                              matchingToken: token.symbol ?? "N/A",
-                            });
-                          }}
-                        >
-                          {token.symbol}
-                        </Dropdown.Item>
-                      ))
-                    : null}
-                </Dropdown.Menu>
-              </Dropdown>
-              <Dropdown>
-                <Form.Label className="px-1">Voter Eligibility</Form.Label>
-                <Dropdown.Toggle
-                  disabled={!network || !!pool || !publicClient}
-                  variant="transparent"
-                  className="d-flex justify-content-between align-items-center border border-2"
-                  style={{ width: isMobile ? "50%" : "20%" }}
-                >
-                  {eligibilityMethod}
-                </Dropdown.Toggle>
-                <Dropdown.Menu>
-                  {!!network.flowStateEligibilityNft && (
-                    <Dropdown.Item
-                      onClick={() => {
-                        setEligibilityMethod(EligibilityMethod.FLOW_STATE);
-                        setPoolConfigParameters({
-                          ...poolConfigParameters,
-                          nftAddress: network.flowStateEligibilityNft,
-                          nftMintUrl: "",
-                          flowStateEligibility: true,
-                        });
-                      }}
-                    >
-                      {EligibilityMethod.FLOW_STATE}
-                    </Dropdown.Item>
-                  )}
+                  supports basic Markdown syntax
+                </Link>
+                )
+              </Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                style={{ resize: "none" }}
+                disabled={!!pool}
+                className="border-4 border-dark fw-semi-bold"
+                onChange={(e) => {
+                  setPoolConfigParameters({
+                    ...poolConfigParameters,
+                    description: e.target.value,
+                  });
+                  setExistingStrategyAddress("");
+                }}
+                value={poolConfigParameters.description}
+              />
+            </Form.Group>
+            <Dropdown>
+              <Form.Label className="px-1">
+                Donation Token (
+                <Card.Link href="https://t.me/flowstatecoop/" target="_blank">
+                  Request to add a token
+                </Card.Link>
+                )
+              </Form.Label>
+              <Dropdown.Toggle
+                variant="transparent"
+                className="d-flex justify-content-between align-items-center border border-4 border-dark fw-semi-bold"
+                style={{ width: isMobile ? "50%" : "25%" }}
+                disabled={!network || !!pool || !publicClient}
+              >
+                {poolConfigParameters.allocationToken}
+              </Dropdown.Toggle>
+              <Dropdown.Menu className="border-4 border-dark lh-lg">
+                {network &&
+                  network.tokens.map((token, i) => {
+                    return (
+                      <Dropdown.Item
+                        key={i}
+                        className="fw-semi-bold"
+                        onClick={() => {
+                          setPoolConfigParameters({
+                            ...poolConfigParameters,
+                            allocationToken: token.symbol ?? "N/A",
+                          });
+                        }}
+                      >
+                        {token.symbol}
+                      </Dropdown.Item>
+                    );
+                  })}
+              </Dropdown.Menu>
+            </Dropdown>
+            <Dropdown>
+              <Form.Label className="px-1">
+                Matching Token (
+                <Card.Link href="https://t.me/flowstatecoop/" target="_blank">
+                  Request to add a token
+                </Card.Link>
+                )
+              </Form.Label>
+              <Dropdown.Toggle
+                variant="transparent"
+                className="d-flex justify-content-between align-items-center border border-4 border-dark fw-semi-bold"
+                style={{ width: isMobile ? "50%" : "25%" }}
+                disabled={!network || !!pool || !publicClient}
+              >
+                {poolConfigParameters.matchingToken}
+              </Dropdown.Toggle>
+              <Dropdown.Menu className="border-4 border-dark lh-lg">
+                {network
+                  ? network.tokens.map((token, i) => (
+                      <Dropdown.Item
+                        key={i}
+                        className="fw-semi-bold"
+                        onClick={() => {
+                          setPoolConfigParameters({
+                            ...poolConfigParameters,
+                            matchingToken: token.symbol ?? "N/A",
+                          });
+                        }}
+                      >
+                        {token.symbol}
+                      </Dropdown.Item>
+                    ))
+                  : null}
+              </Dropdown.Menu>
+            </Dropdown>
+            <Dropdown>
+              <Form.Label className="px-1">Voter Eligibility</Form.Label>
+              <Dropdown.Toggle
+                disabled={!network || !!pool || !publicClient}
+                variant="transparent"
+                className="d-flex justify-content-between align-items-center border border-4 border-dark fw-semi-bold"
+                style={{ width: isMobile ? "50%" : "25%" }}
+              >
+                {eligibilityMethod}
+              </Dropdown.Toggle>
+              <Dropdown.Menu className="border-4 border-dark lh-lg">
+                {!!network.flowStateEligibilityNft && (
                   <Dropdown.Item
+                    className="fw-semi-bold"
                     onClick={() => {
-                      setEligibilityMethod(EligibilityMethod.NFT_GATING);
+                      setEligibilityMethod(EligibilityMethod.FLOW_STATE);
                       setPoolConfigParameters({
                         ...poolConfigParameters,
-                        flowStateEligibility: false,
+                        nftAddress: network.flowStateEligibilityNft,
+                        nftMintUrl: "",
+                        flowStateEligibility: true,
                       });
                     }}
                   >
-                    {EligibilityMethod.NFT_GATING}
+                    {EligibilityMethod.FLOW_STATE}
                   </Dropdown.Item>
-                </Dropdown.Menu>
-              </Dropdown>
-              <>
-                <Stack
-                  direction={isMobile ? "vertical" : "horizontal"}
-                  gap={4}
-                  className="align-items-start"
+                )}
+                <Dropdown.Item
+                  className="fw-semi-bold"
+                  onClick={() => {
+                    setEligibilityMethod(EligibilityMethod.NFT_GATING);
+                    setPoolConfigParameters({
+                      ...poolConfigParameters,
+                      flowStateEligibility: false,
+                    });
+                  }}
                 >
-                  <Form.Group style={{ width: isMobile ? "auto" : 440 }}>
-                    <Form.Label>NFT Contract Address</Form.Label>
+                  {EligibilityMethod.NFT_GATING}
+                </Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown>
+            <>
+              <Stack
+                direction={isMobile ? "vertical" : "horizontal"}
+                gap={4}
+                className="align-items-start"
+              >
+                <Form.Group style={{ width: isMobile ? "auto" : 440 }}>
+                  <Form.Label>NFT Contract Address</Form.Label>
+                  <Form.Control
+                    type="text"
+                    disabled={
+                      !!pool ||
+                      eligibilityMethod === EligibilityMethod.FLOW_STATE
+                    }
+                    className="border-4 border-dark fw-semi-bold"
+                    onChange={(e) => {
+                      setPoolConfigParameters({
+                        ...poolConfigParameters,
+                        nftAddress: e.target.value,
+                      });
+                      setExistingStrategyAddress("");
+                      setExistingNftChecker("");
+                    }}
+                    value={poolConfigParameters.nftAddress}
+                  />
+                  {!!poolConfigParameters.nftAddress && !isErc721 && (
+                    <Card.Text className="m-0 mt-1 text-danger">
+                      This isn't an ERC721 NFT Contract
+                    </Card.Text>
+                  )}
+                </Form.Group>
+                <Form.Group className="w100 flexshrink-1">
+                  <Form.Label>NFT Name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    disabled
+                    className="border-4 border-dark fw-semi-bold"
+                    value={nftName ?? ""}
+                  />
+                </Form.Group>
+              </Stack>
+              {!poolConfigParameters.flowStateEligibility &&
+                (!pool || poolConfigParameters.nftMintUrl) && (
+                  <Form.Group style={{ width: isMobile ? "100%" : "50%" }}>
+                    <Form.Label>Mint URL or Contact (Optional)</Form.Label>
                     <Form.Control
                       type="text"
-                      disabled={
-                        !!pool ||
-                        eligibilityMethod === EligibilityMethod.FLOW_STATE
-                      }
+                      disabled={!!pool}
+                      className="border-4 border-dark fw-semi-bold"
                       onChange={(e) => {
                         setPoolConfigParameters({
                           ...poolConfigParameters,
-                          nftAddress: e.target.value,
+                          nftMintUrl: e.target.value,
                         });
                         setExistingStrategyAddress("");
-                        setExistingNftChecker("");
                       }}
-                      value={poolConfigParameters.nftAddress}
+                      value={poolConfigParameters.nftMintUrl}
                     />
-                    {!!poolConfigParameters.nftAddress && !isErc721 && (
-                      <Card.Text className="m-0 mt-1 text-danger">
-                        This isn't an ERC721 NFT Contract
-                      </Card.Text>
-                    )}
                   </Form.Group>
-                  <Form.Group className="w100 flexshrink-1">
-                    <Form.Label>NFT Name</Form.Label>
-                    <Form.Control type="text" disabled value={nftName ?? ""} />
-                  </Form.Group>
-                </Stack>
-                {!poolConfigParameters.flowStateEligibility &&
-                  (!pool || poolConfigParameters.nftMintUrl) && (
-                    <Form.Group style={{ width: isMobile ? "100%" : "50%" }}>
-                      <Form.Label>Mint URL or Contact (Optional)</Form.Label>
-                      <Form.Control
-                        type="text"
-                        disabled={!!pool}
-                        onChange={(e) => {
-                          setPoolConfigParameters({
-                            ...poolConfigParameters,
-                            nftMintUrl: e.target.value,
-                          });
-                          setExistingStrategyAddress("");
-                        }}
-                        value={poolConfigParameters.nftMintUrl}
-                      />
-                    </Form.Group>
-                  )}
-              </>
-              <Stack direction={isMobile ? "vertical" : "horizontal"} gap={3}>
-                <Button
-                  disabled={isNotAllowed}
-                  className="d-flex gap-2 justify-content-center align-items-center mt-4 text-light"
-                  style={{ width: isMobile ? "100%" : "25%" }}
-                  onClick={handleCreatePool}
+                )}
+            </>
+            <Stack direction={isMobile ? "vertical" : "horizontal"} gap={3}>
+              <Button
+                disabled={isNotAllowed}
+                className="d-flex gap-2 justify-content-center align-items-center mt-4 text-light py-4 rounded-4 fw-semi-bold"
+                style={{ width: isMobile ? "100%" : "25%" }}
+                onClick={handleCreatePool}
+              >
+                {areTransactionsLoading ? (
+                  <>
+                    <Spinner size="sm" />
+                    {transactionsCompleted + 1}/{totalTransactions}
+                  </>
+                ) : isNotAllowed ? (
+                  "Launch Pool"
+                ) : (
+                  `Launch Pool (${totalTransactions})`
+                )}
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={!showNextButton || !poolId}
+                className="d-flex gap-2 justify-content-center align-items-center mt-4 text-light py-4 rounded-4 fw-semi-bold"
+                style={{ width: isMobile ? "100%" : "25%" }}
+              >
+                <Link
+                  href={`/flow-qf/admin/review/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
+                  className="w-100 text-light text-decoration-none"
                 >
-                  {areTransactionsLoading ? (
-                    <>
-                      <Spinner size="sm" />
-                      {transactionsCompleted + 1}/{totalTransactions}
-                    </>
-                  ) : isNotAllowed ? (
-                    "Launch Pool"
-                  ) : (
-                    `Launch Pool (${totalTransactions})`
-                  )}
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={!showNextButton || !poolId}
-                  className="d-flex gap-2 justify-content-center align-items-center mt-4 p-0 border-0 text-light"
-                  style={{ width: isMobile ? "100%" : "25%" }}
-                >
-                  <Link
-                    href={`/sqf/review/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
-                    className="w-100 text-light text-decoration-none"
-                    style={{ paddingTop: 6, paddingBottom: 6 }}
-                  >
-                    Next
-                  </Link>
-                </Button>
-              </Stack>
-            </Form>
-          )}
-        </Stack>
+                  Next
+                </Link>
+              </Button>
+            </Stack>
+          </Form>
+        )}
       </Stack>
     </>
   );

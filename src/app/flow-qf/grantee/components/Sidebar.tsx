@@ -22,21 +22,33 @@ function Sidebar() {
     return (
       <>
         <Link
-          href={`/grantee/?chainId=${chainId}&poolId=${poolId}`}
-          className={`${pathname === "/grantee" ? "fw-bold" : ""} text-decoration-none`}
+          href={`/flow-qf/grantee/?chainId=${chainId}&poolId=${poolId}`}
+          className={`d-flex align-items-center text-decoration-none ${pathname === "/flow-qf/grantee" ? "fw-semi-bold" : ""}`}
           style={{
             pointerEvents: !chainId || !poolId ? "none" : "auto",
           }}
         >
+          <Image
+            src={`${pathname === "/flow-qf/grantee" ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+            alt=""
+            width={24}
+            height={24}
+          />
           Pool Application
         </Link>
         <Link
-          href={`/grantee/tools/?chainId=${chainId}&poolId=${poolId}`}
-          className={`${pathname === "/grantee/tools" ? "fw-bold" : ""} text-decoration-none`}
+          href={`/flow-qf/grantee/tools/?chainId=${chainId}&poolId=${poolId}`}
+          className={`d-flex align-items-center text-decoration-none ${pathname === "/flow-qf/grantee/tools" ? "fw-semi-bold" : ""}`}
           style={{
             pointerEvents: !chainId || !poolId ? "none" : "auto",
           }}
         >
+          <Image
+            src={`${pathname === "/flow-qf/grantee/tools" ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+            alt=""
+            width={24}
+            height={24}
+          />
           Grantee Tools
         </Link>
       </>
@@ -78,11 +90,11 @@ function Sidebar() {
         style={{ width: "100%" }}
       >
         <Offcanvas.Header closeButton>
-          <Offcanvas.Title className="fs-4 fw-bold">
+          <Offcanvas.Title className="fs-5 fw-semi-bold">
             SQF Grantee
           </Offcanvas.Title>
         </Offcanvas.Header>
-        <Offcanvas.Body className="d-flex flex-column gap-4 px-3 py-4 fs-5">
+        <Offcanvas.Body className="d-flex flex-column gap-4 px-3 py-4 fs-6">
           <SidebarLinks />
         </Offcanvas.Body>
       </Offcanvas>
@@ -93,8 +105,7 @@ function Sidebar() {
     <Stack
       direction="vertical"
       gap={4}
-      className="svh-100 py-4 px-3 fs-5"
-      style={{ boxShadow: "0.5rem 0 0.5rem -2px rgba(0,0,0,0.2)" }}
+      className="w-33 h-100 rounded-4 bg-lace-100 ms-12 ms-xxl-16 p-4 fs-5"
     >
       <SidebarLinks />
     </Stack>

@@ -69,23 +69,25 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
   );
 
   return (
-    <Stack direction="vertical" className="bg-light rounded-4 p-2 pt-0">
-      <Stack direction="horizontal" gap={2} className="align-items-start mt-3">
+    <Stack direction="vertical" className="bg-lace-100 rounded-4 mt-8 p-4">
+      <Stack direction="horizontal" gap={2} className="align-items-start">
         <Image
-          src="/logo.png"
+          src="/logo-blue.svg"
           alt="SQF"
           width={96}
           height={96}
           className="ms-2 rounded-4"
         />
         <Card className="bg-transparent border-0 ms-2">
-          <Card.Title className="fs-4 text-secondary">{poolName}</Card.Title>
+          <Card.Title className="fs-lg fw-semi-bold text-secondary">
+            {poolName}
+          </Card.Title>
         </Card>
       </Stack>
-      <Stack direction="horizontal" gap={1} className="fs-6 p-2 pb-0">
+      <Stack direction="horizontal" gap={1} className="p-2 pb-0 mt-4">
         <Stack direction="vertical" gap={1} className="w-25">
           <Card.Text className="m-0 pe-0">You</Card.Text>
-          <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-primary rounded-2 py-2 text-start fw-semi-bold">
             {formatNumber(
               Number(
                 formatEther(
@@ -98,7 +100,7 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
           <Card.Text className="m-0 pe-0">Others</Card.Text>
-          <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-info rounded-2 py-2 text-start fw-semi-bold">
             {formatNumber(
               Number(
                 formatEther(
@@ -112,7 +114,7 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
           <Card.Text className="m-0 pe-0">All</Card.Text>
-          <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-secondary rounded-2 py-2 text-start fw-semi-bold">
             {formatNumber(
               Number(
                 formatEther(
@@ -127,21 +129,21 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
           monthly
         </Card.Text>
       </Stack>
-      <Stack direction="horizontal" gap={1} className="fs-6 p-2">
+      <Stack direction="horizontal" gap={1} className="p-2 mb-2">
         <Stack direction="vertical" gap={1} className="w-25">
-          <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-primary rounded-2 py-2 text-start fw-semi-bold">
             {formatNumber(Number(formatEther(totalDistributedUser)))}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
-          <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-info rounded-2 py-2 text-start fw-semi-bold">
             {formatNumber(
               Number(formatEther(totalDistributedAll - totalDistributedUser)),
             )}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
-          <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-secondary rounded-2 py-2 text-start fw-semi-bold">
             {formatNumber(Number(formatEther(totalDistributedAll)))}
           </Badge>
         </Stack>
@@ -168,7 +170,7 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
       ) : (
         <Card.Text
           ref={descriptionRef as React.RefObject<HTMLParagraphElement>}
-          className="m-0 p-2 fs-6"
+          className="m-0 p-2"
           style={{ maxWidth: 500 }}
         >
           {clampedText}
@@ -177,7 +179,7 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
       {!noClamp && (
         <Button
           variant="transparent"
-          className="p-0 border-0 shadow-none"
+          className="mt-4 p-0 border-0 shadow-none"
           onClick={() => setReadMore(!readMore)}
         >
           <Image

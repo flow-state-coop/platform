@@ -1,7 +1,7 @@
 "use client";
 
-import SQF from "./sqf";
+import Admin from "./admin";
 
 export default function Page() {
-  return <SQF />;
+  return <Admin />;
 }

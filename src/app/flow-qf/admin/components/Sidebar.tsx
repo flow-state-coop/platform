@@ -97,7 +97,8 @@ function Sidebar() {
   const selectedPool = poolsQueryRes?.pools.find(
     (pool: { id: string }) => pool.id === poolId,
   );
-  const isCreatingNewPool = pathname === "/sqf/configure" && !selectedPool;
+  const isCreatingNewPool =
+    pathname === "/flow-qf/admin/configure" && !selectedPool;
 
   useEffect(() => {
     (async () => {
@@ -145,18 +146,11 @@ function Sidebar() {
         <Stack
           direction="vertical"
           gap={3}
-          className={`rounded-4 flex-grow-0 p-3 border ${selectedPool && !isWrongNetwork ? "border-black" : ""} shadow`}
-          style={{ color: !selectedPool || isWrongNetwork ? "#dee2e6" : "" }}
+          className="rounded-4 flex-grow-0 mt-3"
         >
           <Link
-            href={`/sqf/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
-            className={`d-flex align-items-center gap-1 text-decoration-none ${
-              pathname?.startsWith("/sqf/configure") &&
-              !!selectedPool &&
-              !isWrongNetwork
-                ? "fw-bold"
-                : ""
-            }`}
+            href={`/flow-qf/admin/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
+            className={`d-flex align-items-center text-decoration-none ${pathname === "/flow-qf/admin/configure" ? "fw-semi-bold" : ""}`}
             style={{
               color: "inherit",
               pointerEvents:
@@ -166,83 +160,71 @@ function Sidebar() {
             }}
           >
             <Image
-              src={`${pathname?.startsWith("/sqf/configure") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+              src={`${pathname?.startsWith("/flow-qf/admin/configure") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
               alt="Bullet Point"
               width={24}
               height={24}
               style={{
                 filter:
                   !selectedPool || isWrongNetwork
-                    ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
+                    ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
                     : "",
               }}
             />
             Configuration
           </Link>
           <Link
-            href={`/sqf/review/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
-            className={`d-flex align-items-center gap-1 text-decoration-none ${
-              pathname?.startsWith("/sqf/review") &&
-              !!selectedPool &&
-              !isWrongNetwork
-                ? "fw-bold"
-                : ""
-            }`}
+            href={`/flow-qf/admin/review/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
+            className={`d-flex align-items-center text-decoration-none ${pathname === "/flow-qf/admin/review" ? "fw-semi-bold" : ""}`}
             style={{
               color: "inherit",
               pointerEvents: selectedPool && !isWrongNetwork ? "auto" : "none",
             }}
           >
             <Image
-              src={`${pathname?.startsWith("/sqf/review") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+              src={`${pathname?.startsWith("/flow-qf/admin/review") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
               alt="Bullet Point"
               width={24}
               height={24}
               style={{
                 filter:
                   !selectedPool || isWrongNetwork
-                    ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
+                    ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
                     : "",
               }}
             />
             Grantee Review
           </Link>
           <Link
-            href={`/sqf/matching/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
-            className={`d-flex align-items-center gap-1 text-decoration-none ${
-              pathname?.startsWith("/sqf/matching") &&
-              !!selectedPool &&
-              !isWrongNetwork
-                ? "fw-bold"
-                : ""
-            }`}
+            href={`/flow-qf/admin/matching/?chainId=${chainId}&profileId=${profileId}&poolId=${poolId}`}
+            className={`d-flex align-items-center text-decoration-none ${pathname === "/flow-qf/admin/matching" ? "fw-semi-bold" : ""}`}
             style={{
               color: "inherit",
               pointerEvents: selectedPool ? "auto" : "none",
             }}
           >
             <Image
-              src={`${pathname?.startsWith("/sqf/matching") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+              src={`${pathname?.startsWith("/flow-qf/admin/matching") && !!selectedPool && !isWrongNetwork ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
               alt="Bullet Point"
               width={24}
               height={24}
               style={{
                 filter:
                   !selectedPool || isWrongNetwork
-                    ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
+                    ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
                     : "",
               }}
             />
             Matching Funds
           </Link>
           <Link
-            href={`/pool/?poolId=${poolId}&chainId=${chainId}`}
+            href={`/flow-qf/?poolId=${poolId}&chainId=${chainId}`}
             style={{
               color: "inherit",
               pointerEvents:
                 poolId && chainId && !isWrongNetwork ? "auto" : "none",
             }}
-            className="d-flex align-items-center gap-1 text-decoration-none"
+            className="d-flex align-items-center text-decoration-none"
           >
             <Image
               src="/dot-unfilled.svg"
@@ -252,7 +234,7 @@ function Sidebar() {
               style={{
                 filter:
                   !selectedPool || isWrongNetwork
-                    ? "invert(81%) sepia(66%) saturate(14%) hue-rotate(169deg) brightness(97%) contrast(97%)"
+                    ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
                     : "",
               }}
             />
@@ -263,7 +245,7 @@ function Sidebar() {
     );
   };
 
-  if (pathname === "/sqf") {
+  if (pathname === "/flow-qf/admin") {
     return null;
   }
 
@@ -299,52 +281,49 @@ function Sidebar() {
       <Offcanvas
         show={showMobileSidebar}
         onHide={() => setShowMobileSidebar(false)}
+        className="p-4"
         style={{ width: "100%" }}
       >
         <Offcanvas.Header closeButton>
-          <Offcanvas.Title className="fs-4 fw-bold">SQF Admin</Offcanvas.Title>
+          <Offcanvas.Title className="fs-5 fw-semi-bold">
+            SQF Admin
+          </Offcanvas.Title>
         </Offcanvas.Header>
-        <Offcanvas.Body className="d-flex flex-column gap-4 px-3 py-4 fs-5">
+        <Offcanvas.Body className="d-flex flex-column gap-4 px-3 py-4 fs-6">
           <Stack
             direction="horizontal"
             gap={2}
             className="justify-content-between w-100"
-            style={{ color: isWrongNetwork ? "#dee2e6" : "" }}
           >
-            Program
-            <Dropdown className="position-static w-75 overflow-hidden">
+            <span className="w-33">Program</span>
+            <Dropdown className="position-static w-66 overflow-hidden">
               <Dropdown.Toggle
                 disabled={isWrongNetwork}
                 variant="transparent"
-                className="d-flex justify-content-between align-items-center w-100 border border-2 overflow-hidden"
+                className="d-flex justify-content-between align-items-center w-100 border border-4 border-dark fw-semi-bold py-4 rounded-4 overflow-hidden"
               >
-                <span
-                  className="d-inline-block text-truncate"
-                  style={{
-                    color: !selectedProfile
-                      ? "#fff"
-                      : isWrongNetwork
-                        ? "#dee2e6"
-                        : "",
-                  }}
-                >
+                <span className="d-inline-block text-truncate">
                   {selectedProfile?.metadata?.name ?? "N/A"}
                 </span>
               </Dropdown.Toggle>
-              <Dropdown.Menu>
+              <Dropdown.Menu className="border border-4 border-dark fw-semi-bold lh-lg">
                 {programs?.map((profile: Program, i: number) => (
                   <Dropdown.Item
                     key={i}
+                    className="fw-semi-bold"
                     onClick={() => {
                       router.push(
-                        `/sqf/pools/?chainId=${chainId}&profileId=${profile.id}`,
+                        `/flow-qf/admin/pools/?chainId=${chainId}&profileId=${profile.id}`,
                       );
                     }}
                   >
                     {profile?.metadata?.name ?? "N/A"}
                   </Dropdown.Item>
                 ))}
-                <Dropdown.Item onClick={() => router.push("/sqf/?new=true")}>
+                <Dropdown.Item
+                  className="fw-semi-bold"
+                  onClick={() => router.push("/flow-qf/admin/?new=true")}
+                >
                   Create New
                 </Dropdown.Item>
               </Dropdown.Menu>
@@ -354,38 +333,22 @@ function Sidebar() {
             direction="horizontal"
             gap={2}
             className="justify-content-between w-100"
-            style={{
-              color:
-                (!address || !isCreatingNewPool) &&
-                (!selectedPool || isWrongNetwork)
-                  ? "#dee2e6"
-                  : "",
-            }}
           >
-            Pool
-            <Dropdown className="position-static w-75 overflow-hidden">
+            <span className="w-33">Pool</span>
+            <Dropdown className="position-static w-66 overflow-hidden">
               <Dropdown.Toggle
                 disabled={
                   (!address || !isCreatingNewPool) &&
                   (!selectedPool || isWrongNetwork)
                 }
                 variant="transparent"
-                className="d-flex justify-content-between align-items-center w-100 border border-2 overflow-hidden"
+                className="d-flex justify-content-between align-items-center w-100 border border-4 border-dark fw-semi-bold py-4 rounded-4 overflow-hidden"
               >
-                <span
-                  className="d-inline-block text-truncate hidden"
-                  style={{
-                    color:
-                      (!address || !isCreatingNewPool) &&
-                      (!selectedPool || isWrongNetwork)
-                        ? "#fff"
-                        : "",
-                  }}
-                >
+                <span className="d-inline-block text-truncate hidden">
                   {selectedPool?.metadata?.name ?? "Create New"}
                 </span>
               </Dropdown.Toggle>
-              <Dropdown.Menu>
+              <Dropdown.Menu className="border border-4 border-dark fw-semi-bold lh-lg">
                 {pools?.map(
                   (
                     pool: { id: string; metadata: { name: string } },
@@ -393,9 +356,10 @@ function Sidebar() {
                   ) => (
                     <Dropdown.Item
                       key={i}
+                      className="fw-semi-bold"
                       onClick={() =>
                         router.push(
-                          `/sqf/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${pool.id}`,
+                          `/flow-qf/admin/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${pool.id}`,
                         )
                       }
                     >
@@ -404,9 +368,10 @@ function Sidebar() {
                   ),
                 )}
                 <Dropdown.Item
+                  className="fw-semi-bold"
                   onClick={() => {
                     router.push(
-                      `/sqf/configure/?chainId=${chainId}&profileId=${profileId}`,
+                      `/flow-qf/admin/configure/?chainId=${chainId}&profileId=${profileId}`,
                     );
                   }}
                 >
@@ -425,56 +390,46 @@ function Sidebar() {
     <Stack
       direction="vertical"
       gap={4}
-      className="svh-100 py-4 px-3 fs-5"
-      style={{
-        width: "25%",
-        boxShadow: "0.5rem 0 0.5rem -2px rgba(0,0,0,0.2)",
-      }}
+      className="w-33 h-100 rounded-4 bg-lace-100 ms-12 ms-xxl-16 p-4 fs-5"
     >
       <Stack
         direction="horizontal"
         gap={2}
         className="justify-content-between w-100"
-        style={{ color: isWrongNetwork ? "#dee2e6" : "" }}
       >
-        Program
-        <Dropdown className="position-static w-75 overflow-hidden">
+        <span className="w-33">Program</span>
+        <Dropdown className="position-static w-66 overflow-hidden">
           <Dropdown.Toggle
             disabled={isWrongNetwork}
             variant="transparent"
-            className="d-flex justify-content-between align-items-center w-100 border border-2 overflow-hidden"
+            className="d-flex justify-content-between align-items-center w-100 border border-4 border-dark rounded-4 py-4 fw-semi-bold overflow-hidden"
           >
             {!programs ? (
               <Spinner size="sm" className="mx-auto p-2" />
             ) : (
-              <span
-                className="d-inline-block text-truncate"
-                style={{
-                  color: !selectedProfile
-                    ? "#fff"
-                    : isWrongNetwork
-                      ? "#dee2e6"
-                      : "",
-                }}
-              >
+              <span className="d-inline-block text-truncate">
                 {selectedProfile?.metadata?.name ?? "N/A"}
               </span>
             )}
           </Dropdown.Toggle>
-          <Dropdown.Menu>
+          <Dropdown.Menu className="border border-4 border-dark fw-semi-bold lh-lg">
             {programs?.map((profile: Program, i: number) => (
               <Dropdown.Item
                 key={i}
+                className="fw-semi-bold"
                 onClick={() => {
                   router.push(
-                    `/sqf/pools/?chainId=${chainId}&profileId=${profile.id}`,
+                    `/flow-qf/admin/pools/?chainId=${chainId}&profileId=${profile.id}`,
                   );
                 }}
               >
                 {profile?.metadata?.name ?? "N/A"}
               </Dropdown.Item>
             ))}
-            <Dropdown.Item onClick={() => router.push("/sqf/?new=true")}>
+            <Dropdown.Item
+              className="fw-semi-bold"
+              onClick={() => router.push("/flow-qf/admin/?new=true")}
+            >
               Create New
             </Dropdown.Item>
           </Dropdown.Menu>
@@ -484,44 +439,29 @@ function Sidebar() {
         direction="horizontal"
         gap={2}
         className="justify-content-between w-100"
-        style={{
-          color:
-            (!address || !isCreatingNewPool) &&
-            (!selectedPool || isWrongNetwork)
-              ? "#dee2e6"
-              : "",
-        }}
       >
-        Pool
-        <Dropdown className="position-static w-75 overflow-hidden">
+        <span className="w-33">Pool</span>
+        <Dropdown className="position-static w-66 overflow-hidden">
           <Dropdown.Toggle
             disabled={
               (!address || !isCreatingNewPool) &&
               (!selectedPool || isWrongNetwork)
             }
             variant="transparent"
-            className="d-flex justify-content-between align-items-center w-100 border border-2 overflow-hidden"
+            className="d-flex justify-content-between align-items-center w-100 border border-4 border-dark fw-semi-bold py-4 rounded-4 overflow-hidden"
           >
-            <span
-              className="d-inline-block text-truncate hidden"
-              style={{
-                color:
-                  (!address || !isCreatingNewPool) &&
-                  (!selectedPool || isWrongNetwork)
-                    ? "#fff"
-                    : "",
-              }}
-            >
+            <span className="d-inline-block text-truncate hidden">
               {selectedPool?.metadata?.name ?? "Create New"}
             </span>
           </Dropdown.Toggle>
-          <Dropdown.Menu>
+          <Dropdown.Menu className="border border-4 border-dark fw-semi-bold lh-lg">
             {pools?.map((pool: Pool, i: number) => (
               <Dropdown.Item
                 key={i}
+                className="fw-semi-bold"
                 onClick={() =>
                   router.push(
-                    `/sqf/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${pool.id}`,
+                    `/flow-qf/admin/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${pool.id}`,
                   )
                 }
               >
@@ -529,9 +469,10 @@ function Sidebar() {
               </Dropdown.Item>
             ))}
             <Dropdown.Item
+              className="fw-semi-bold"
               onClick={() => {
                 router.push(
-                  `/sqf/configure/?chainId=${chainId}&profileId=${profileId}`,
+                  `/flow-qf/admin/configure/?chainId=${chainId}&profileId=${profileId}`,
                 );
               }}
             >

@@ -67,7 +67,7 @@ export default function ConnectWallet() {
                       />
                     )}
                   </Button>
-                  {pathname?.startsWith("/pool") && <WalletDashboard />}
+                  {pathname === "/flow-qf" && <WalletDashboard />}
                   <Dropdown align={{ md: "start" }}>
                     <Dropdown.Toggle
                       bsPrefix="dropdown"

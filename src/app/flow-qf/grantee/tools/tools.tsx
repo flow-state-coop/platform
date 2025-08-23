@@ -145,7 +145,7 @@ export default function GranteeTools(props: ToolsProps) {
       : "";
   const poolUiLink = `${
     hostName
-  }/pool/?poolId=${poolId}&chainId=${chainId}&recipientId=${selectedProject?.recipientId}`;
+  }/flow-qf/?poolId=${poolId}&chainId=${chainId}&recipientId=${selectedProject?.recipientId}`;
   const framesLink = `https://frames.flowstate.network/frames/grantee/${selectedProject?.recipientId}/${poolId}/${chainId}`;
 
   useEffect(() => {
@@ -248,180 +248,182 @@ export default function GranteeTools(props: ToolsProps) {
   return (
     <>
       <Sidebar />
-      <Stack direction="vertical" className={!isMobile ? "w-75" : "w-100"}>
-        <Stack direction="vertical" className="px-5 py-4 mb-5">
-          {!loading && profiles !== null ? (
-            <>Pool not found</>
-          ) : loading || !chainId || !poolId ? (
-            <Spinner className="m-auto" />
-          ) : !network ? (
-            <>Network not supported</>
-          ) : !connectedChain ? (
-            <>Please connect a wallet</>
-          ) : (
-            <>
-              <Card className="border-0">
-                <Card.Text as="h1" className="mb-3">
-                  {pool?.metadata.name}
-                </Card.Text>
-                <Card.Text className="mb-0">Network: {network.name}</Card.Text>
-                <Card.Text className="m-0">
-                  Direct Donation Token:{" "}
-                  <Card.Link
-                    href={`${network.blockExplorer}/address/${queryRes?.pool.allocationToken}`}
-                    target="_blank"
-                  >
-                    {allocationToken?.symbol ?? "N/A"} (
-                    {truncateStr(queryRes?.pool.allocationToken ?? "", 12)})
-                  </Card.Link>
-                </Card.Text>
-                <Card.Text className="m-0 mb-5">
-                  Matching Pool Token:{" "}
-                  <Card.Link
-                    href={`${network.blockExplorer}/address/${queryRes?.pool.matchingToken}`}
-                    target="_blank"
-                  >
-                    {matchingToken?.symbol ?? "N/A"} (
-                    {truncateStr(queryRes?.pool.matchingToken ?? "", 12)})
-                  </Card.Link>
-                </Card.Text>
-              </Card>
-              {loading ? (
-                <Spinner className="m-auto" />
-              ) : selectedProject ? (
-                <>
-                  <Dropdown>
-                    <Dropdown.Toggle
-                      className="d-flex justify-content-between align-items-center bg-transparent border border-gray text-black"
-                      style={{ width: 256 }}
-                    >
-                      {selectedProject.metadata.title}
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu>
-                      {projects?.map(
-                        (
-                          project: Project & {
-                            recipientId: string;
-                            status: Status;
-                          },
-                          i: number,
-                        ) =>
-                          project.status === "APPROVED" ? (
-                            <Dropdown.Item
-                              key={i}
-                              onClick={() => setSelectedProject(project)}
-                            >
-                              {project.metadata.title}
-                            </Dropdown.Item>
-                          ) : null,
-                      )}
-                    </Dropdown.Menu>
-                  </Dropdown>
-                  <Description
-                    description={selectedProject.metadata.description}
-                  />
-                </>
-              ) : null}
-              <Stack direction={isMobile ? "vertical" : "horizontal"} gap={4}>
-                <Button
-                  variant="link"
-                  href={`${network.superfluidExplorer}/pools/${gdaPoolAddress}`}
-                  target="_blank"
-                  className="text-light bg-secondary"
-                  style={{ width: isMobile ? "100%" : 256 }}
-                >
-                  View Pool Stats
-                </Button>
-                <Button
-                  variant="secondary"
-                  href={network.superfluidDashboard}
-                  target="_blank"
-                  className="text-light"
-                  style={{ width: isMobile ? "100%" : 256 }}
-                >
-                  Superfluid Wallet Tools
-                </Button>
-              </Stack>
-              <Card.Text className="m-0 mt-4 fs-3">
-                SQF Pool Connection
+      <Stack
+        direction="vertical"
+        className={!isMobile ? "w-75 px-10" : "w-100 px-4"}
+      >
+        {!loading && profiles === null ? (
+          <>Pool not found</>
+        ) : loading || !chainId || !poolId ? (
+          <Spinner className="m-auto" />
+        ) : !network ? (
+          <>Network not supported</>
+        ) : !connectedChain ? (
+          <>Please connect a wallet</>
+        ) : (
+          <>
+            <Card className="border-0">
+              <Card.Text className="mb-3 fs-5 fw-semi-bold">
+                {pool?.metadata.name}
               </Card.Text>
-              <Card.Text className="m-0 mb-3">
-                Complete a one-time transaction to see matching funds live
-                update in your wallet.
+              <Card.Text className="mb-0">Network: {network.name}</Card.Text>
+              <Card.Text className="m-0">
+                Direct Donation Token:{" "}
+                <Card.Link
+                  href={`${network.blockExplorer}/address/${queryRes?.pool.allocationToken}`}
+                  target="_blank"
+                >
+                  {allocationToken?.symbol ?? "N/A"} (
+                  {truncateStr(queryRes?.pool.allocationToken ?? "", 12)})
+                </Card.Link>
               </Card.Text>
+              <Card.Text className="m-0 mb-5">
+                Matching Pool Token:{" "}
+                <Card.Link
+                  href={`${network.blockExplorer}/address/${queryRes?.pool.matchingToken}`}
+                  target="_blank"
+                >
+                  {matchingToken?.symbol ?? "N/A"} (
+                  {truncateStr(queryRes?.pool.matchingToken ?? "", 12)})
+                </Card.Link>
+              </Card.Text>
+            </Card>
+            {loading ? (
+              <Spinner className="m-auto" />
+            ) : selectedProject ? (
+              <>
+                <Dropdown>
+                  <Dropdown.Toggle
+                    className="d-flex justify-content-between align-items-center bg-transparent border-4 border-dark fw-semi-bold"
+                    style={{ width: 256 }}
+                  >
+                    {selectedProject.metadata.title}
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu className="border-4 border-dark lh-lg">
+                    {projects?.map(
+                      (
+                        project: Project & {
+                          recipientId: string;
+                          status: Status;
+                        },
+                        i: number,
+                      ) =>
+                        project.status === "APPROVED" ? (
+                          <Dropdown.Item
+                            key={i}
+                            className="fw-semi-bold"
+                            onClick={() => setSelectedProject(project)}
+                          >
+                            {project.metadata.title}
+                          </Dropdown.Item>
+                        ) : null,
+                    )}
+                  </Dropdown.Menu>
+                </Dropdown>
+                <Description
+                  description={selectedProject.metadata.description}
+                />
+              </>
+            ) : null}
+            <Stack direction={isMobile ? "vertical" : "horizontal"} gap={4}>
               <Button
-                disabled={!selectedProject || isConnectedToPool}
-                onClick={handlePoolConnection}
-                className="text-light"
+                variant="link"
+                href={`${network.superfluidExplorer}/pools/${gdaPoolAddress}`}
+                target="_blank"
+                className="text-light bg-primary text-decoration-none py-4 rounded-4 fw-semi-bold"
                 style={{ width: isMobile ? "100%" : 256 }}
               >
-                {isTransactionConfirming ? (
-                  <Spinner size="sm" className="m-auto" />
-                ) : isConnectedToPool ? (
-                  "Connected"
-                ) : (
-                  "Connect to Pool"
-                )}
+                View Pool Stats
               </Button>
-              {selectedProject && (
-                <>
-                  <Card.Text className="fs-3 mt-4 mb-0">
-                    Direct Donation
-                  </Card.Text>
-                  <Card.Text className="fs-6 mb-3">
-                    Share a direct link to checkout with your grant with your
-                    community on social, newsletters, etc.
-                  </Card.Text>
-                  <Stack
-                    direction={isMobile ? "vertical" : "horizontal"}
-                    gap={isMobile ? 2 : 4}
-                  >
-                    <Badge
-                      className="bg-transparent px-2 py-3 border border-gray text-black text-start text-truncate"
-                      style={{ width: isMobile ? "auto" : 400 }}
-                    >
-                      {poolUiLink}
-                    </Badge>
-                    <Button
-                      variant="info"
-                      className="text-light"
-                      style={{ width: isMobile ? "auto" : 128 }}
-                      onClick={() => navigator.clipboard.writeText(poolUiLink)}
-                    >
-                      Copy
-                    </Button>
-                  </Stack>
-                  <Card.Text className="fs-3 mt-4 mb-0">
-                    Farcaster Frame
-                  </Card.Text>
-                  <Card.Text className="fs-6 mb-3">
-                    Share your project-specific Frame on Farcaster for users to
-                    check your current matching multiplier & jump to checkout.
-                  </Card.Text>
-                  <Stack
-                    direction={isMobile ? "vertical" : "horizontal"}
-                    gap={isMobile ? 2 : 4}
-                  >
-                    <Badge
-                      className="bg-transparent px-2 py-3 border border-gray text-start text-black text-truncate"
-                      style={{ width: isMobile ? "auto" : 400 }}
-                    >
-                      {framesLink}
-                    </Badge>
-                    <Button
-                      variant="info"
-                      className="text-light"
-                      style={{ width: isMobile ? "auto" : 128 }}
-                      onClick={() => navigator.clipboard.writeText(framesLink)}
-                    >
-                      Copy
-                    </Button>
-                  </Stack>
-                </>
+              <Button
+                variant="secondary"
+                href={network.superfluidDashboard}
+                target="_blank"
+                className="text-light py-4 rounded-4 fw-semi-bold"
+                style={{ width: isMobile ? "100%" : 256 }}
+              >
+                Superfluid Wallet Tools
+              </Button>
+            </Stack>
+            <Card.Text className="m-0 mt-8 fs-6 fw-semi-bold">
+              SQF Pool Connection
+            </Card.Text>
+            <Card.Text className="m-0 mt-2 mb-3">
+              Complete a one-time transaction to see matching funds live update
+              in your wallet.
+            </Card.Text>
+            <Button
+              disabled={!selectedProject || isConnectedToPool}
+              onClick={handlePoolConnection}
+              className="text-light py-4 rounded-4 fw-semi-bold"
+              style={{ width: isMobile ? "100%" : 256 }}
+            >
+              {isTransactionConfirming ? (
+                <Spinner size="sm" className="m-auto" />
+              ) : isConnectedToPool ? (
+                "Connected"
+              ) : (
+                "Connect to Pool"
               )}
-            </>
-          )}
-        </Stack>
+            </Button>
+            {selectedProject && (
+              <>
+                <Card.Text className="fs-6 fw-semi-bold mt-4 mb-0">
+                  Direct Donation
+                </Card.Text>
+                <Card.Text className="mb-3">
+                  Share a direct link to checkout with your grant with your
+                  community on social, newsletters, etc.
+                </Card.Text>
+                <Stack
+                  direction={isMobile ? "vertical" : "horizontal"}
+                  gap={isMobile ? 2 : 4}
+                >
+                  <Badge
+                    className="bg-transparent px-2 py-3 border border-4 border-dark fw-semi-bold text-start text-truncate"
+                    style={{ width: isMobile ? "auto" : 400 }}
+                  >
+                    {poolUiLink}
+                  </Badge>
+                  <Button
+                    variant="info"
+                    className="text-light"
+                    style={{ width: isMobile ? "auto" : 128 }}
+                    onClick={() => navigator.clipboard.writeText(poolUiLink)}
+                  >
+                    Copy
+                  </Button>
+                </Stack>
+                <Card.Text className="fs-6 fw-semi-bold mt-4 mb-0">
+                  Farcaster Frame
+                </Card.Text>
+                <Card.Text className="mb-3">
+                  Share your project-specific Frame on Farcaster for users to
+                  check your current matching multiplier & jump to checkout.
+                </Card.Text>
+                <Stack
+                  direction={isMobile ? "vertical" : "horizontal"}
+                  gap={isMobile ? 2 : 4}
+                >
+                  <Badge
+                    className="bg-transparent px-2 py-3 border border-4 border-dark text-start fw-semi-bold text-truncate"
+                    style={{ width: isMobile ? "auto" : 400 }}
+                  >
+                    {framesLink}
+                  </Badge>
+                  <Button
+                    variant="info"
+                    className="text-light py-4 rounded-4 fw-semi-bold"
+                    style={{ width: isMobile ? "auto" : 128 }}
+                    onClick={() => navigator.clipboard.writeText(framesLink)}
+                  >
+                    Copy
+                  </Button>
+                </Stack>
+              </>
+            )}
+          </>
+        )}
       </Stack>
     </>
   );

@@ -102,11 +102,11 @@ export default function Pools(props: PoolsProps) {
 
     return (
       <Card
-        className="border-2 rounded-4 fs-4 cursor-pointer"
+        className="border-4 border-dark fw-semi-bold rounded-4 fs-lg cursor-pointer"
         style={{ width: 256, height: 256 }}
         onClick={() => {
           router.push(
-            `/sqf/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${pool.id}`,
+            `/flow-qf/admin/configure/?chainId=${chainId}&profileId=${profileId}&poolId=${pool.id}`,
           );
         }}
       >
@@ -119,7 +119,7 @@ export default function Pools(props: PoolsProps) {
           </Card.Text>
           <Card.Text
             ref={descriptionRef as React.RefObject<HTMLParagraphElement>}
-            className="w-100 m-0 text-center fs-5"
+            className="w-100 m-0 text-center fs-md fw-normal"
           >
             {clampedText}
           </Card.Text>
@@ -131,57 +131,60 @@ export default function Pools(props: PoolsProps) {
   return (
     <>
       <Sidebar />
-      <Stack direction="vertical" className={!isMobile ? "w-75" : "w-100"}>
-        <Stack direction="vertical" gap={4} className="px-5 py-4 mb-5">
-          {!loading && chainId && profileId && (
-            <Card.Text as="h1">Launch or Edit an SQF Pool</Card.Text>
-          )}
-          {!profileId || !chainId ? (
-            <Card.Text>
-              Program not found, please select one from{" "}
-              <Link href="/sqf">Program Selection</Link>
-            </Card.Text>
-          ) : loading || !chainId || !profileId || pools === null ? (
-            <Spinner className="m-auto" />
-          ) : !connectedChain ? (
-            <>Please connect a wallet</>
-          ) : connectedChain?.id !== chainId ? (
-            <Card.Text>
-              Wrong network, please connect to{" "}
-              <span
-                className="p-0 text-decoration-underline cursor-pointer"
-                onClick={() => switchChain({ chainId: network?.id ?? 10 })}
-              >
-                {network?.name}
-              </span>{" "}
-              or return to <Link href="/sqf">Program Selection</Link>
-            </Card.Text>
-          ) : (
-            <Stack
-              direction="horizontal"
-              gap={5}
-              className="flex-wrap justify-content-center justify-content-sm-start"
+      <Stack
+        direction="vertical"
+        className={!isMobile ? "w-75 px-10" : "w-100 px-4"}
+      >
+        {!loading && chainId && profileId && (
+          <Card.Text className="fs-5 fw-semi-bold">
+            Launch or Edit an SQF Pool
+          </Card.Text>
+        )}
+        {!profileId || !chainId ? (
+          <Card.Text>
+            Program not found, please select one from{" "}
+            <Link href="/flow-qf/admin">Program Selection</Link>
+          </Card.Text>
+        ) : loading || !chainId || !profileId || pools === null ? (
+          <Spinner className="m-auto" />
+        ) : !connectedChain ? (
+          <>Please connect a wallet</>
+        ) : connectedChain?.id !== chainId ? (
+          <Card.Text>
+            Wrong network, please connect to{" "}
+            <span
+              className="p-0 text-decoration-underline cursor-pointer"
+              onClick={() => switchChain({ chainId: network?.id ?? 10 })}
             >
-              {pools.map((pool: Pool, i: number) => (
-                <PoolCard pool={pool} key={i} />
-              ))}
-              <Card
-                className="d-flex flex-column justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
-                style={{ width: 256, height: 256 }}
-                onClick={() => {
-                  router.push(
-                    `/sqf/configure/?chainId=${chainId}&profileId=${profileId}`,
-                  );
-                }}
-              >
-                <Image src="/add.svg" alt="add" width={48} />
-                <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap">
-                  New Pool
-                </Card.Text>
-              </Card>
-            </Stack>
-          )}
-        </Stack>
+              {network?.name}
+            </span>{" "}
+            or return to <Link href="/flow-qf/admin">Program Selection</Link>
+          </Card.Text>
+        ) : (
+          <Stack
+            direction="horizontal"
+            gap={5}
+            className="flex-wrap justify-content-center justify-content-sm-start"
+          >
+            {pools.map((pool: Pool, i: number) => (
+              <PoolCard pool={pool} key={i} />
+            ))}
+            <Card
+              className="d-flex flex-column justify-content-center align-items-center border-4 border-dark rounded-4 fs-lg fw-semi-bold cursor-pointer"
+              style={{ width: 256, height: 256 }}
+              onClick={() => {
+                router.push(
+                  `/flow-qf/admin/configure/?chainId=${chainId}&profileId=${profileId}`,
+                );
+              }}
+            >
+              <Image src="/add.svg" alt="add" width={48} />
+              <Card.Text className="d-inline-block mw-100 m-0 overflow-hidden word-wrap">
+                New Pool
+              </Card.Text>
+            </Card>
+          </Stack>
+        )}
       </Stack>
     </>
   );

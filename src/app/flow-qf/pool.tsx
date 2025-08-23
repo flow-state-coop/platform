@@ -6,7 +6,6 @@ import { parseEther, Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import { usePostHog } from "posthog-js/react";
 import { useInView } from "react-intersection-observer";
-import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Dropdown from "react-bootstrap/Dropdown";
 import Spinner from "react-bootstrap/Spinner";
@@ -26,7 +25,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useDonorParams from "@/hooks/donorParams";
 import { erc721CheckerAbi } from "@/lib/abi/erc721Checker";
 import { erc721Abi } from "@/lib/abi/erc721";
-import { networks } from "@/app/sqf/lib/networks";
+import { networks } from "@/app/flow-qf/admin/lib/networks";
 import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
 import { getApolloClient } from "@/lib/apollo";
 import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
@@ -189,7 +188,7 @@ export default function Pool(props: PoolProps) {
 
   const [sentryRef, inView] = useInView();
 
-  const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
+  const { isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const { address } = useAccount();
   const { updateDonorParams } = useDonorParams();
@@ -586,18 +585,9 @@ export default function Pool(props: PoolProps) {
       matchingTokenInfo={matchingTokenInfo}
       allocationTokenInfo={allocationTokenInfo}
     >
-      <Container
-        className="mx-auto p-0 mb-5"
-        style={{
-          maxWidth:
-            isMobile || isTablet
-              ? "100%"
-              : isSmallScreen
-                ? 1000
-                : isMediumScreen
-                  ? 1300
-                  : 1600,
-        }}
+      <Stack
+        direction="vertical"
+        className="px-2 pt-17 pb-30 px-lg-30 px-xxl-52"
       >
         <PoolInfo
           name={pool?.metadata.name ?? "N/A"}
@@ -652,33 +642,32 @@ export default function Pool(props: PoolProps) {
             })
           }
         />
-        <Stack
-          direction="horizontal"
-          gap={4}
-          className="px-4 pt-5 pb-4 pt-4 fs-4"
-        >
+        <Stack direction="horizontal" gap={4} className="mt-8 fs-lg">
           Grantees
           <Dropdown>
             <Dropdown.Toggle
               variant="transparent"
-              className="d-flex justify-content-between align-items-center border border-2 border-gray"
+              className="d-flex justify-content-between align-items-center border border-4 border-dark fw-semi-bold"
               style={{ width: 156 }}
             >
               {sortingMethod}
             </Dropdown.Toggle>
 
-            <Dropdown.Menu>
+            <Dropdown.Menu className="border-4 border-dark lh-lg">
               <Dropdown.Item
+                className="fw-semi-bold"
                 onClick={() => setSortingMethod(SortingMethod.RANDOM)}
               >
                 {SortingMethod.RANDOM}
               </Dropdown.Item>
               <Dropdown.Item
+                className="fw-semi-bold"
                 onClick={() => setSortingMethod(SortingMethod.ALPHABETICAL)}
               >
                 {SortingMethod.ALPHABETICAL}
               </Dropdown.Item>
               <Dropdown.Item
+                className="fw-semi-bold"
                 onClick={() => setSortingMethod(SortingMethod.POPULAR)}
               >
                 {SortingMethod.POPULAR}
@@ -687,7 +676,7 @@ export default function Pool(props: PoolProps) {
           </Dropdown>
         </Stack>
         <div
-          className="px-4 pb-5"
+          className="my-5"
           style={{
             display: "grid",
             columnGap: "1.5rem",
@@ -749,7 +738,7 @@ export default function Pool(props: PoolProps) {
               })
             }
             poolName={pool?.metadata.name ?? ""}
-            poolUiLink={`${hostName}/pool/?poolId=${poolId}&chainId=${chainId}`}
+            poolUiLink={`${hostName}/flow-qf/?poolId=${poolId}&chainId=${chainId}`}
             description={pool?.metadata.description ?? ""}
             matchingPool={matchingPool}
             matchingTokenInfo={matchingTokenInfo}
@@ -774,7 +763,7 @@ export default function Pool(props: PoolProps) {
             receiver={
               grantees[transactionPanelState.selectedGrantee].superappAddress
             }
-            poolUiLink={`${hostName}/pool/?poolId=${poolId}&chainId=${chainId}&recipientId=${grantees[transactionPanelState.selectedGrantee].id}`}
+            poolUiLink={`${hostName}/flow-qf/?poolId=${poolId}&chainId=${chainId}&recipientId=${grantees[transactionPanelState.selectedGrantee].id}`}
             poolName={pool?.metadata.name ?? ""}
             metadata={grantees[transactionPanelState.selectedGrantee].metadata}
             placeholderLogo={
@@ -809,7 +798,7 @@ export default function Pool(props: PoolProps) {
             recipientId={grantees[transactionPanelState.selectedGrantee].id}
           />
         ) : null}
-      </Container>
+      </Stack>
     </SuperfluidContextProvider>
   );
 }

@@ -87,11 +87,10 @@ export default function Grantee(props: GranteeProps) {
 
   return (
     <Card
-      className="rounded-4 overflow-hidden cursor-pointer shadow"
+      className="rounded-4 overflow-hidden cursor-pointer shadow border-4 border-dark"
       style={{
         height: 438,
-        border: isSelected ? "1px solid #247789" : "",
-        boxShadow: isSelected ? "0px 0px 0px 2px #247789" : "",
+        border: isSelected ? "4px solid #056589" : "",
       }}
       onClick={selectGrantee}
     >
@@ -106,37 +105,37 @@ export default function Grantee(props: GranteeProps) {
         alt=""
         width={52}
         height={52}
-        className="rounded-3 position-absolute border border-2 border-light bg-white"
-        style={{ bottom: 308, left: 16 }}
+        className="rounded-3 position-absolute border border-4 border-light bg-white"
+        style={{ bottom: 303, left: 16 }}
       />
-      <Card.Body className="mt-3 pb-0">
+      <Card.Body className="mt-3 p-4">
         <Card.Text
-          className="d-inline-block m-0 fs-5 word-wrap text-truncate"
+          className="d-inline-block m-0 fs-lg fw-semi-bold word-wrap text-truncate"
           style={{ maxWidth: 256 }}
         >
           {name}
         </Card.Text>
         <Card.Text
           ref={descriptionRef as React.RefObject<HTMLParagraphElement>}
-          className="m-0 mb-3"
-          style={{ fontSize: "0.9rem", minHeight: noClamp ? "4lh" : "auto" }}
+          className="m-0 mt-3 mb-8"
+          style={{ minHeight: noClamp ? "4lh" : "auto" }}
         >
           {clampedText}
         </Card.Text>
-        <Stack direction="horizontal" className="me-3">
+        <Stack direction="horizontal" className="me-3 lh-sm">
           <Stack direction="vertical" className="align-items-center w-33">
-            <Card.Text as="small" className="m-0 fw-bold">
+            <Card.Text as="small" className="m-0">
               Donors
             </Card.Text>
-            <Card.Text as="small" className="m-0">
+            <Card.Text as="small" className="m-0 fw-semi-bold">
               {allocatorsCount}
             </Card.Text>
           </Stack>
           <Stack direction="vertical" className="align-items-center w-33">
-            <Card.Text as="small" className="m-0 fw-bold">
+            <Card.Text as="small" className="m-0">
               Direct
             </Card.Text>
-            <Card.Text as="small" className="m-0">
+            <Card.Text as="small" className="m-0 fw-semi-bold">
               {monthlyAllocation}
             </Card.Text>
             <Stack
@@ -144,19 +143,19 @@ export default function Grantee(props: GranteeProps) {
               gap={1}
               className="flex-wrap justify-content-center"
             >
-              <Card.Text as="small" className="m-0">
+              <Card.Text as="small" className="m-0 fw-semi-bold">
                 {allocationTokenInfo.symbol}
               </Card.Text>
-              <Card.Text as="small" className="m-0">
+              <Card.Text as="small" className="m-0 fw-semi-bold">
                 /mo
               </Card.Text>
             </Stack>
           </Stack>
           <Stack direction="vertical" className="align-items-center w-33">
-            <Card.Text as="small" className="m-0 fw-bold">
+            <Card.Text as="small" className="m-0">
               Matching
             </Card.Text>
-            <Card.Text as="small" className="m-0">
+            <Card.Text as="small" className="m-0 fw-semi-bold">
               {monthlyMatching}
             </Card.Text>
             <Stack
@@ -164,27 +163,24 @@ export default function Grantee(props: GranteeProps) {
               gap={1}
               className="flex-wrap justify-content-center"
             >
-              <Card.Text as="small" className="m-0">
+              <Card.Text as="small" className="m-0 fw-semi-bold">
                 {matchingTokenInfo.symbol}
               </Card.Text>
-              <Card.Text as="small" className="m-0">
+              <Card.Text as="small" className="m-0 fw-semi-bold">
                 /mo
               </Card.Text>
             </Stack>
           </Stack>
         </Stack>
       </Card.Body>
-      <Card.Footer
-        className="d-flex justify-content-between bg-light border-0 py-3"
-        style={{ fontSize: "15px" }}
-      >
+      <Card.Footer className="d-flex justify-content-between bg-lace-100 border-0 p-4 lh-sm">
         <Stack direction="vertical" className="flex-grow-0">
           {userFlowRate ? (
             <>
-              <Card.Text as="small" className="m-0 fw-bold">
+              <Card.Text as="small" className="m-0">
                 Your Stream
               </Card.Text>
-              <Card.Text as="small" className="m-0">
+              <Card.Text as="small" className="m-0 fw-semi-bold">
                 {roundWeiAmount(
                   userFlowRate * BigInt(SECONDS_IN_MONTH),
                   allocationTokenInfo.symbol.startsWith("ETH") ? 4 : 2,
@@ -195,12 +191,12 @@ export default function Grantee(props: GranteeProps) {
             </>
           ) : (
             <>
-              <Card.Text as="small" className="m-0 fw-bold">
+              <Card.Text as="small" className="m-0">
                 Matching Multiplier
               </Card.Text>
               {allocationTokenInfo.symbol === "ETHx" ||
               allocationTokenInfo.symbol === "CELOx" ? (
-                <Card.Text className="m-0 text-center">
+                <Card.Text className="m-0 text-center fw-semi-bold">
                   x
                   {parseFloat(
                     (
@@ -224,7 +220,9 @@ export default function Grantee(props: GranteeProps) {
             </>
           )}
         </Stack>
-        <Button className="w-33 p-0 text-light">Donate</Button>
+        <Button className="w-33 p-0 text-light py-4 rounded-4 fw-semi-bold">
+          Donate
+        </Button>
       </Card.Footer>
     </Card>
   );

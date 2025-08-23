@@ -98,24 +98,24 @@ export default function StreamDeletionModal(props: StreamDeletionModalProps) {
   return (
     <Modal
       show={show}
-      contentClassName="bg-light p-2 rounded-4"
+      contentClassName="bg-lace-100 p-4 rounded-4"
       centered
       scrollable
       onHide={hide}
     >
       <Modal.Header closeButton className="border-0 pb-0">
-        <Modal.Title className="fs-5">
+        <Modal.Title className="fs-5 fw-semi-bold">
           Are you sure you want to close your stream?
         </Modal.Title>
       </Modal.Header>
-      <Modal.Body className="bg-light mt-3">
+      <Modal.Body className="bg-lace-100 mt-8">
         <Stack direction="horizontal" gap={3} className="justify-content-end">
-          <Button className="w-25" onClick={hide}>
+          <Button className="w-25 py-4 rounded-4 fw-semi-bold" onClick={hide}>
             Nevermind
           </Button>
           <Button
             variant="danger"
-            className="w-25"
+            className="w-25 py-4 rounded-4 fw-semi-bold text-light"
             onClick={deleteStream}
             style={{ pointerEvents: isLoading ? "none" : "auto" }}
           >
@@ -123,7 +123,10 @@ export default function StreamDeletionModal(props: StreamDeletionModalProps) {
           </Button>
         </Stack>
         {error ? (
-          <Alert variant="danger" className="mt-3 mb-0">
+          <Alert
+            variant="danger"
+            className="mt-3 mb-0 text-danger p-4 fw-semi-bold"
+          >
             {error}
           </Alert>
         ) : null}

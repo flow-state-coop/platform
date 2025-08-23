@@ -119,8 +119,8 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
   }, [metadata.logoImg]);
 
   return (
-    <Stack direction="vertical" className="bg-light rounded-4 p-2 pt-0">
-      <Stack direction="horizontal" gap={2} className="align-items-start mt-3">
+    <Stack direction="vertical" className="bg-lace-100 rounded-4 p-4 mt-8">
+      <Stack direction="horizontal" gap={2} className="align-items-start">
         <Image
           src={imageUrl === "" ? placeholderLogo : imageUrl}
           alt="logo"
@@ -132,7 +132,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           <Card.Link
             href={`/projects/${profileId}/?chainId=${chainId}`}
             target="_blank"
-            className="fs-4 text-secondary mb-2 text-decoration-none"
+            className="fs-lg fw-semi-bold text-secondary mb-2 text-decoration-none"
           >
             {metadata.title}
           </Card.Link>
@@ -141,7 +141,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
       <Stack
         direction="horizontal"
         gap={1}
-        className="align-items-end text-info fs-6 p-2"
+        className="align-items-center text-info p-2"
       >
         {!!metadata.website && (
           <Button
@@ -248,12 +248,10 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           }
         />
       </Stack>
-      <Stack direction="horizontal" gap={1} className="fs-6 p-2 pb-0">
+      <Stack direction="horizontal" gap={1} className="p-2 pb-0">
         <Stack direction="vertical" gap={1} className="w-33">
-          <Card.Text className="m-0 pe-0" style={{ fontSize: "0.7rem" }}>
-            You
-          </Card.Text>
-          <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
+          <Card.Text className="m-0 pe-0">You</Card.Text>
+          <Badge className="bg-primary rounded-2 p-2 text-start fw-semi-bold">
             {formatNumber(
               Number(
                 formatEther(
@@ -265,13 +263,8 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-33">
-          <Card.Text
-            className="m-0 pe-0 text-nowrap"
-            style={{ fontSize: "0.7rem" }}
-          >
-            Others
-          </Card.Text>
-          <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
+          <Card.Text className="m-0 pe-0 text-nowrap">Others</Card.Text>
+          <Badge className="bg-secondary rounded-2 p-2 text-start fw-semi-bold">
             {formatNumber(
               Number(
                 formatEther(
@@ -284,13 +277,8 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-33">
-          <Card.Text
-            className="m-0 pe-0 text-nowrap"
-            style={{ fontSize: "0.7rem" }}
-          >
-            Match
-          </Card.Text>
-          <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
+          <Card.Text className="m-0 pe-0 text-nowrap">Match</Card.Text>
+          <Badge className="bg-info rounded-2 p-2 text-start fw-semi-bold">
             {formatNumber(
               Number(formatEther(matchingFlowRate * BigInt(SECONDS_IN_MONTH))),
             )}
@@ -300,19 +288,19 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           monthly
         </Card.Text>
       </Stack>
-      <Stack direction="horizontal" gap={1} className="fs-6 p-2">
+      <Stack direction="horizontal" gap={1} className="p-2">
         <Stack direction="vertical" gap={1} className="w-33">
-          <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-primary rounded-2 p-2 text-start fw-semi-bold">
             {formatNumber(Number(formatEther(totalAllocatedUser)))}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-33">
-          <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-secondary rounded-2 p-2 text-start fw-semi-bold">
             {formatNumber(Number(formatEther(totalAllocatedOthers)))}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-33">
-          <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-info rounded-2 p-2 text-start fw-semi-bold">
             {formatNumber(Number(formatEther(totalMatching)))}
           </Badge>
         </Stack>
@@ -341,7 +329,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             variant="link"
             href={`/projects/${profileId}/?chainId=${chainId}`}
             target="_blank"
-            className="d-flex justify-content-center align-items-center gap-2 bg-primary shadow-none text-light text-decoration-none"
+            className="d-flex justify-content-center align-items-center gap-2 bg-primary shadow-none text-light text-decoration-none py-4 rounded-4 fw-semi-bold"
           >
             Project Page
             <Image
@@ -359,7 +347,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
       ) : (
         <Card.Text
           ref={descriptionRef as React.RefObject<HTMLParagraphElement>}
-          className="m-0 p-2 fs-6"
+          className="m-0 p-2 fw-semi-bold"
           style={{ maxWidth: 500 }}
         >
           {clampedText}
@@ -368,7 +356,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
       {(!noClamp || readMore) && (
         <Button
           variant="transparent"
-          className="p-0 border-0 shadow-none"
+          className="mt-4 p-0 border-0 shadow-none"
           onClick={() => setReadMore(!readMore)}
         >
           <Image

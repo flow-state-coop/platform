@@ -95,18 +95,28 @@ export default function ProgramCreationModal(props: ProgramCreationModalProps) {
   };
 
   return (
-    <Modal show={show} size="lg" centered scrollable onHide={handleClose}>
+    <Modal
+      show={show}
+      size="lg"
+      centered
+      scrollable
+      onHide={handleClose}
+      contentClassName="bg-lace-100 p-4"
+    >
       <Modal.Header closeButton className="border-0">
-        <Modal.Title>Create a Program</Modal.Title>
+        <Modal.Title className="fs-5 fw-semi-bold">
+          Create a Program
+        </Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <Form>
-          <Form.Group className="mb-4">
+          <Form.Group className="my-4">
             <Form.Label>Program Name*</Form.Label>
             <Form.Control
               type="text"
               value={programForm.name}
               placeholder="Your program name"
+              className="border-0 bg-white py-3 fw-semi-bold"
               onChange={(e) =>
                 setProgramForm({ ...programForm, name: e.target.value })
               }
@@ -120,7 +130,7 @@ export default function ProgramCreationModal(props: ProgramCreationModalProps) {
                   type="text"
                   value={member.address}
                   placeholder="The operator address"
-                  className="rounded-2"
+                  className="border-0 rounded-2 bg-white py-3 fw-semi-bold"
                   onChange={(e) => {
                     const members = [...programForm.members];
 
@@ -157,7 +167,7 @@ export default function ProgramCreationModal(props: ProgramCreationModalProps) {
         </Form>
         <Button
           variant="secondary"
-          className="text-light"
+          className="text-light fw-semi-bold px-10 py-4 rounded-4"
           onClick={() =>
             setProgramForm({
               name: programForm.name,
@@ -171,7 +181,7 @@ export default function ProgramCreationModal(props: ProgramCreationModalProps) {
       <Modal.Footer className="border-0">
         <Button
           disabled={!address || !programForm.name}
-          className="w-25 text-light"
+          className="w-25 text-light py-4 rounded-4 fw-semi-bold"
           onClick={handleCreateProgram}
         >
           {isCreatingProgram ? <Spinner size="sm" /> : "Create"}
