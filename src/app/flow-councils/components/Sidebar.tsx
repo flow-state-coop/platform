@@ -302,7 +302,11 @@ function Sidebar() {
   }
 
   return (
-    <Stack direction="vertical" gap={4} className="w-25 svh-100 py-4 px-3 fs-5">
+    <Stack
+      direction="vertical"
+      gap={4}
+      className="w-33 h-100 rounded-4 bg-lace-100 ms-12 ms-xxl-16 p-4 fs-5 me-10"
+    >
       <h1 className="fs-5 fw-semi-bold">Flow Council Admin</h1>
       <CouncilsDropdown />
       <SidebarLinks />

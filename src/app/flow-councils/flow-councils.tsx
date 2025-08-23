@@ -7,7 +7,6 @@ import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { gql, useQuery } from "@apollo/client";
 import { useClampText } from "use-clamp-text";
-import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Dropdown from "react-bootstrap/Dropdown";
 import Card from "react-bootstrap/Card";
@@ -296,13 +295,13 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
 
     return (
       <Card
-        className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 shadow"
+        className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-4 p-4 shadow"
         style={{ height: 400 }}
       >
-        <Card.Header className="h-25 bg-white border-0 rounded-4 py-3">
+        <Card.Header className="h-25 bg-white border-0 rounded-4">
           <Card.Title
             ref={nameRef as React.RefObject<HTMLParagraphElement>}
-            className="fs-4 text-center"
+            className="fs-5 fw-semi-bold text-center"
           >
             {clampedText}
           </Card.Title>
@@ -311,12 +310,12 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
           <Stack
             direction="horizontal"
             gap={1}
-            className="justify-content-center mb-3"
+            className="justify-content-center mb-4"
           >
             <Card.Link
               href={selectedNetwork.superfluidDashboard}
               target="_blank"
-              className="d-flex gap-2 align-items-center text-decoration-none"
+              className="d-flex gap-2 align-items-center text-decoration-none fw-semi-bold"
             >
               {token && (
                 <Image src={token.icon} alt="" width={22} height={22} />
@@ -352,7 +351,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
                     alt="wallet"
                   />
                 }
-                content={<>Add to Wallet</>}
+                content={<p className="m-0 p-2">Add to Wallet</p>}
               />
             </Button>
           </Stack>
@@ -361,7 +360,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
           {council.isManager && (
             <Button
               variant="primary"
-              className="w-100"
+              className="w-100 py-4 rounded-4 fw-semi-bold"
               onClick={() =>
                 router.push(
                   `/flow-councils/permissions/?chainId=${selectedNetwork.id}&councilId=${council.id}`,
@@ -380,7 +379,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
           ) : (
             <Button
               variant="secondary"
-              className="w-100"
+              className="w-100 py-4 rounded-4 fw-semi-bold"
               onClick={() =>
                 router.push(
                   `/flow-councils/${selectedNetwork.id}/${council.id}`,
@@ -396,18 +395,10 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
   };
 
   return (
-    <Container
-      className="mx-auto p-0 mb-5"
-      style={{
-        maxWidth:
-          isMobile || isTablet
-            ? "100%"
-            : isSmallScreen
-              ? 1000
-              : isMediumScreen
-                ? 1300
-                : 1600,
-      }}
+    <Stack
+      direction="vertical"
+      gap={6}
+      className="px-2 pt-17 pb-30 px-lg-30 px-xxl-52"
     >
       {councilsManagerQueryLoading || superfluidQueryLoading ? (
         <span className="position-absolute top-50 start-50 translate-middle">
@@ -420,14 +411,14 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
             gap={1}
             className="align-items-start mt-3"
           >
-            <h1 className="m-0">Flow Councils</h1>
+            <h1 className="m-0 fs-5 fw-semi-bold">Flow Councils</h1>
             <InfoTooltip
               position={{ bottom: isMobile }}
               target={<Image src="/info.svg" alt="" width={18} height={18} />}
-              content={<>Flow Councils</>}
+              content={<p className="m-0 p-2">Flow Councils</p>}
             />
           </Stack>
-          <h2 className="fs-5">
+          <h2 className="fs-lg">
             Dynamically allocate token streams to unlimited recipients based on
             votes from a configurable membership.
             <br />
@@ -447,20 +438,21 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
               get help.
             </Card.Link>
           </h2>
-          <h3 className="mt-2 fs-5">
+          <h3 className="mt-2 fs-lg">
             {truncateStr(address ?? "", isMobile ? 20 : 42)}
           </h3>
-          <Dropdown>
+          <Dropdown className="mt-8">
             <Dropdown.Toggle
               variant="transparent"
-              className={`d-flex justify-content-between align-items-center border border-2 ${isMobile ? "" : "w-20"}`}
+              className={`d-flex justify-content-between align-items-center border border-4 border-dark fw-semi-bold ${isMobile ? "" : "w-20"}`}
             >
               {selectedNetwork.name}
             </Dropdown.Toggle>
-            <Dropdown.Menu>
+            <Dropdown.Menu className="border-4 border-dark lh-lg">
               {networks.map((network, i) => (
                 <Dropdown.Item
                   key={i}
+                  className="fw-semi-bold"
                   onClick={() => {
                     if (!connectedChain && openConnectModal) {
                       openConnectModal();
@@ -477,7 +469,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
             </Dropdown.Menu>
           </Dropdown>
           <div
-            className="pb-5"
+            className="pb-5 mt-2"
             style={{
               display: "grid",
               columnGap: "1.5rem",
@@ -492,7 +484,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
             }}
           >
             <Card
-              className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer shadow"
+              className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-4 fs-4 cursor-pointer shadow"
               style={{ height: 400 }}
               onClick={() => {
                 if (address) {
@@ -505,7 +497,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
               }}
             >
               <Image src="/add.svg" alt="add" width={64} />
-              <Card.Text className="d-inline-block m-0 overflow-hidden fs-2 text-center word-wrap">
+              <Card.Text className="d-inline-block m-0 overflow-hidden fs-6 fw-semi-bold text-center word-wrap">
                 Create <br />
                 Flow Council
               </Card.Text>
@@ -521,6 +513,6 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
           </div>
         </Stack>
       )}
-    </Container>
+    </Stack>
   );
 }
