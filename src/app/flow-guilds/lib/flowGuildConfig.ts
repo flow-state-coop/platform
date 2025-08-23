@@ -23,8 +23,8 @@ export const flowGuildConfigs: {
   ["core"]: {
     id: "core",
     name: "Flow State",
-    description: `Flow State builds programmable money streaming tools for public goods and their builders.\n\nOpen a stream or send a one-time donation, so we can stay focused on creating impact. All streaming donations are eligible for [Superfluid SUP token rewards](https://claim.superfluid.org/claim)!`,
-    logo: "/logo-blue.svg",
+    description: `Flow State builds programmable money streaming tools for public goods and their builders.\n\nOpen a stream or send a one-time donation, so we can stay focused on creating impact.`,
+    logo: "/logo-circle.svg",
     website: "https://flowstate.network/flow-guilds/core",
     github: "https://github.com/flow-state-coop",
     twitter: "https://x.com/flowstatecoop",
@@ -46,8 +46,7 @@ export const flowGuildConfigs: {
       \n- maintains mycelial communication and resource sharing\
       \n- cross pollinates information and ideas\
       \n- achieved with human to human care\
-      \n\n The Chones Guild is an experiment that aims to accelerate this activity across ecosystems.\
-      \n\n All streaming supporters earn [Superfluid SUP token rewards](https://claim.superfluid.org/claim)!`,
+      \n\n The Chones Guild is an experiment that aims to accelerate this activity across ecosystems.`,
     logo: "/chones-guild.svg",
     website: "https://chones.xyz/",
     github: "https://github.com/Chones-Weaving",
@@ -66,7 +65,7 @@ export const flowGuildConfigs: {
     id: "greenpilldevguild",
     name: "Greenpill Dev Guild",
     description:
-      "We unite builders dedicated to regenerative innovation, creating Ethereum-based tools and resources that empower regen communities.\n\nSupport our regenerative mission with a one-time donation or by opening a donation stream. All streaming supporters earn [Superfluid SUP token rewards](https://claim.superfluid.org/claim)!",
+      "We unite builders dedicated to regenerative innovation, creating Ethereum-based tools and resources that empower regen communities.\n\nSupport our regenerative mission with a one-time donation or by opening a donation stream.",
     logo: "/greenpill.png",
     website:
       "https://app.charmverse.io/greenpill-dev-guild/home-089855607278293",
@@ -86,7 +85,7 @@ export const flowGuildConfigs: {
     id: "guild-guild",
     name: "Guild Guild",
     description:
-      "A locus of coordination for gathering and distributing the means of Guilding on Ethereum.\n\n1. Organize knowledge commons and distribute best practices\n2. Support builders of tools and organizers of guilds\n3. Network Guilds for further coordination cost savings\n\nAll streaming supporters earn [Superfluid SUP token rewards](https://claim.superfluid.org/claim).",
+      "A locus of coordination for gathering and distributing the means of Guilding on Ethereum.\n\n1. Organize knowledge commons and distribute best practices\n2. Support builders of tools and organizers of guilds\n3. Network Guilds for further coordination cost savings",
     logo: "/guild-guild.png",
     website: "https://guildguild.xyz/",
     github: "https://github.com/oovg/guildguildxyz",
