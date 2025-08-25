@@ -56,7 +56,7 @@ export default function Footer() {
               href="/flow-splitters"
               className="text-decoration-none text-white fs-5 fw-bold"
             >
-              Flow Splitters
+              Flow Splitter
             </Link>
             <Link
               href="/flow-councils"
@@ -65,16 +65,17 @@ export default function Footer() {
               Flow Council
             </Link>
             <Link
-              href="/flow-qf"
+              href="/flow-qf/admin"
               className="text-decoration-none text-white fs-5 fw-bold"
             >
               Flow QF
             </Link>
             <Link
-              href="flow-guilds"
+              href="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
+              target="_blank"
               className="text-decoration-none text-white fs-5 fw-bold"
             >
-              Flow Guild
+              Flow Caster
             </Link>
           </Stack>
           <Stack direction="vertical" gap={8} className="mb-30 mb-lg-0 me-10">
@@ -123,7 +124,7 @@ export default function Footer() {
             >
               <Form.Group>
                 <Form.Label className="mb-4 text-white fs-6 fw-bold">
-                  Sign up for update
+                  Sign up for updates
                 </Form.Label>
                 <InputGroup>
                   <Form.Control

@@ -92,11 +92,12 @@ export default function Header() {
                     Flow Splitter
                   </Button>
                   <Button
-                    variant="transparent"
-                    className="px-10 py-4 fs-lg fw-bold border-0"
-                    onClick={() => router.push("/flow-guilds/core")}
+                    variant="link"
+                    href="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
+                    target="_blank"
+                    className="px-10 py-4 fs-lg fw-bold border-0 text-decoration-none"
                   >
-                    Guild
+                    Flow Caster
                   </Button>
                 </Stack>
               )}
@@ -237,11 +238,12 @@ export default function Header() {
                 Flow Splitter
               </Button>
               <Button
-                variant="transparent"
-                className="px-10 py-4 fs-lg fw-bold border-0"
-                onClick={() => router.push("/flow-guilds/core")}
+                variant="link"
+                href="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
+                target="_blank"
+                className="px-10 py-4 fs-lg fw-bold border-0 text-decoration-none"
               >
-                Guild
+                Flow Caster
               </Button>
             </>
           )}
