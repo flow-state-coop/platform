@@ -93,11 +93,18 @@ export default function Footer() {
               Github
             </Link>
             <Link
-              href="https://discord.gg/xFFDZVnu"
+              href="https://farcaster.xyz/flowstatecoop"
               target="_blank"
               className="text-decoration-none text-white fs-6 fw-bold"
             >
-              Discord
+              Farcaster
+            </Link>
+            <Link
+              href="https://x.com/flowstatecoop"
+              target="_blank"
+              className="text-decoration-none text-white fs-6 fw-bold"
+            >
+              X
             </Link>
             <Link
               href="https://t.me/flowstatecoop"

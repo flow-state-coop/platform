@@ -411,10 +411,10 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
             gap={1}
             className="align-items-start mt-3"
           >
-            <h1 className="m-0 fs-5 fw-semi-bold">Flow Councils</h1>
+            <h1 className="m-0 fs-3 fw-semi-bold">Flow Councils</h1>
             <InfoTooltip
               position={{ bottom: isMobile }}
-              target={<Image src="/info.svg" alt="" width={18} height={18} />}
+              target={<Image src="/info.svg" alt="" width={24} height={24} />}
               content={<p className="m-0 p-2">Flow Councils</p>}
             />
           </Stack>
@@ -444,7 +444,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
           <Dropdown className="mt-8">
             <Dropdown.Toggle
               variant="transparent"
-              className={`d-flex justify-content-between align-items-center border border-4 border-dark fw-semi-bold ${isMobile ? "" : "w-20"}`}
+              className={`d-flex justify-content-between align-items-center border border-4 border-dark py-4 rounded-4 fw-semi-bold ${isMobile ? "" : "w-20"}`}
             >
               {selectedNetwork.name}
             </Dropdown.Toggle>
