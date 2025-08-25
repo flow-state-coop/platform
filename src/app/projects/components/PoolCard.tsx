@@ -56,7 +56,7 @@ export default function PoolCard(props: PoolCardProps) {
   const poolFlowRateConfig = getPoolFlowRateConfig(
     allocationToken?.symbol ?? "",
   );
-  const poolUiLink = `https://flowstate.network/pool/?poolId=${pool.id}&chainId=${network.id}&recipientId=${recipientId}`;
+  const poolUiLink = `https://flowstate.network/flow-qf/?poolId=${pool.id}&chainId=${network.id}&recipientId=${recipientId}`;
   const framesLink = `https://frames.flowstate.network/frames/grantee/${recipientId}/${pool.id}/${network.id}`;
 
   const matchingImpactEstimate = useMemo(() => {
@@ -95,13 +95,13 @@ export default function PoolCard(props: PoolCardProps) {
 
   return (
     <Stack direction="vertical" className="flex-grow-0" style={{ width: 256 }}>
-      <Card className="border-black rounded-4">
+      <Card className="border-black rounded-4 border-4 border-dark p-4">
         <Card.Header
           className="bg-transparent text-info text-center border-0"
           style={{ height: 64 }}
         >
           <Card.Text
-            className="m-0"
+            className="m-0 fw-semi-bold"
             ref={poolNameRef as React.RefObject<HTMLParagraphElement>}
           >
             {clampedText}
@@ -111,7 +111,7 @@ export default function PoolCard(props: PoolCardProps) {
           <Card.Text className="mb-1 text-center">
             Matching Multiplier
           </Card.Text>
-          <Card.Text className="mb-3 text-center">
+          <Card.Text className="mb-3 text-center fw-semi-bold">
             {allocationToken?.symbol === matchingToken?.symbol ? (
               <>
                 x
@@ -140,10 +140,10 @@ export default function PoolCard(props: PoolCardProps) {
           </Card.Text>
         </Card.Body>
         <Card.Footer className="bg-transparent border-0">
-          <Button className="d-flex justify-content-center mt-auto mb-1 w-100 p-0">
+          <Button className="d-flex justify-content-center mt-auto mb-1 w-100 px-10 py-4 rounded-4 fw-semi-bold">
             <Link
               className="w-100 py-1 text-white text-decoration-none"
-              href={`/pool/?chainId=${network.id}&poolId=${pool.id}&recipientId=${
+              href={`/flow-qf/?chainId=${network.id}&poolId=${pool.id}&recipientId=${
                 recipientId
               }`}
             >
@@ -209,10 +209,10 @@ export default function PoolCard(props: PoolCardProps) {
             network={network}
           />
           <Button
-            className="w-100 mt-2 text-white"
+            className="w-100 mt-2 text-white py-4 rounded-4 fw-semi-bold"
             onClick={() =>
               router.push(
-                `/grantee/tools/?chainId=${network.id}&poolId=${pool.id}`,
+                `/flow-qf/grantee/tools/?chainId=${network.id}&poolId=${pool.id}`,
               )
             }
           >

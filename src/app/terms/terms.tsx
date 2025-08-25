@@ -1,31 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import Container from "react-bootstrap/Container";
-import { useMediaQuery } from "@/hooks/mediaQuery";
+import Stack from "react-bootstrap/Stack";
 
 export default function Terms() {
-  const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
-
   return (
-    <Container
-      className="mx-auto p-4 mt-5 fs-5"
-      style={{
-        maxWidth:
-          isMobile || isTablet
-            ? "100%"
-            : isSmallScreen
-              ? 800
-              : isMediumScreen
-                ? 1000
-                : 1300,
-      }}
+    <Stack
+      direction="vertical"
+      gap={6}
+      className="px-2 py-20 px-lg-30 px-xxl-52 fs-6 lh-sm"
     >
-      <h1>Terms of Use</h1>
-      <p className="text-info">Flow State</p>
-      <p className="fs-5">Last Updated: 18 October 2024</p>
+      <h1 className="fs-3 m-0">Terms of Use</h1>
+      <p className="text-info m-0">Flow State</p>
+      <p>Last Updated: 18 October 2024</p>
       <i>Acceptance of Terms</i>
-      <p className="fs-5 mt-1">
+      <p className="mt-1">
         Flow State LCA, a Colorado-based limited cooperative association
         (referred to herein as “Flow State”, “we”, “our”, or “us”), provides a
         blockchain-based toolkit enabling individuals and communities (“Users”)
@@ -34,7 +23,7 @@ export default function Terms() {
         allows Users to interact with Flow State and its technology components,
         community, and resources.
       </p>
-      <p className="fs-5">
+      <p>
         These Terms of Use (the "Agreement", or “Terms”) explain the terms and
         conditions by which you may access and use the products and protocols
         provided by Flow State. The products and protocols (the “Services”)
@@ -50,7 +39,7 @@ export default function Terms() {
         State from time to time.
       </p>
       <i>Modifications of Terms of Use</i>
-      <p className="fs-5 mt-1">
+      <p className="mt-1">
         Flow State reserves the right, at its sole discretion, to modify or
         replace the Terms of Use at any time. The most current version of these
         Terms will be posted on our Site. You shall be responsible for reviewing
@@ -59,7 +48,7 @@ export default function Terms() {
         of the Terms of Use as modified.
       </p>
       <i>Eligibility</i>
-      <p className="fs-5 mt-1">
+      <p className="mt-1">
         You represent and warrant that you: (a) are of legal age to form a
         binding contract; (e.g., 18 years old in the United States) (b) have not
         previously been suspended or removed from using our Services; and (c)
@@ -71,7 +60,7 @@ export default function Terms() {
         its organization, and you are duly authorized by such legal entity to
         act on its behalf.
       </p>
-      <p className="fs-5">
+      <p>
         You further represent that you are not (a) the subject of economic or
         trade sanctions administered or enforced by any governmental authority
         or otherwise designated on any list of prohibited or restricted parties
@@ -85,49 +74,49 @@ export default function Terms() {
         of our Services to conduct, promote, or otherwise facilitate any illegal
         activity.
       </p>
-      <p className="fs-5 mb-3">
+      <p className="mb-3">
         NOTICE: This Agreement contains important information, including a
         binding arbitration provision and a class action waiver, both of which
         impact your rights as to how disputes are resolved. Our Services are
         only available to you — and you should only access any of our Services —
         if you agree completely with these Terms.
       </p>
-      <p className="fs-4">Your Responsibilities</p>
+      <p className="fs-5">Your Responsibilities</p>
       <i>Prohibited Activity</i>
-      <p className="fs-5 mt-1">
+      <p className="mt-1">
         You agree not to engage in, or attempt to engage in, any of the
         following categories of prohibited activity in relation to your access
         and use of the Services:
       </p>
       <i>Intellectual Property Infringement</i>
-      <p className="fs-5 mt-1">
+      <p className="mt-1">
         Activity that infringes on or violates any copyright, trademark, service
         mark, patent, right of publicity, right of privacy, or other proprietary
         or intellectual property rights under the law.
       </p>
       <i>Cyberattack</i>
-      <p className="fs-5 mt-1">
+      <p className="mt-1">
         Activity that seeks to interfere with or compromise the integrity,
         security, or proper functioning of any computer, server, network,
         personal device, or other information technology system, including, but
         not limited to, the deployment of viruses and denial of service attacks.
       </p>
       <i>Fraud and Misrepresentation</i>
-      <p className="fs-5 mt-1">
+      <p className="mt-1">
         Activity that seeks to defraud us or any other person or entity,
         including, but not limited to, providing any false, inaccurate, or
         misleading information in order to unlawfully obtain the property of
         another.
       </p>
       <i>Market Manipulation</i>
-      <p className="fs-5 mt-1">
+      <p className="mt-1">
         Activity that violates any applicable law, rule, or regulation
         concerning the integrity of trading markets, including, but not limited
         to, the manipulative tactics commonly known as "rug pulls", pumping and
         dumping, and wash trading.
       </p>
       <i>Securities and Derivatives Violations</i>
-      <p className="fs-5 mt-1">
+      <p className="mt-1">
         Activity that violates any applicable law, rule, or regulation
         concerning the trading of securities or derivatives, including, but not
         limited to, the unregistered offering of securities and the offering of
@@ -135,19 +124,19 @@ export default function Terms() {
         United States.
       </p>
       <i>Sale of Stolen Property</i>
-      <p className="fs-5 mt-1">
+      <p className="mt-1">
         Buying, selling, or transferring of stolen items, fraudulently obtained
         items, items taken without authorization, and/or any other illegally
         obtained items.
       </p>
       <i>Data Mining or Scraping</i>
-      <p className="fs-5 mt-1">
+      <p className="mt-1">
         Activity that involves data mining, robots, scraping, or similar data
         gathering or extraction methods of content or information from any of
         our Products.
       </p>
       <i>Objectionable Content</i>
-      <p className="fs-5 mt-1">
+      <p className="mt-1">
         Activity that involves soliciting information from anyone under the age
         of 18 or that is otherwise harmful, threatening, abusive, harassing,
         tortious, excessively violent, defamatory, vulgar, obscene,
@@ -155,22 +144,22 @@ export default function Terms() {
         discriminatory, or otherwise objectionable.
       </p>
       <i>Any Other Unlawful Conduct</i>
-      <p className="fs-5 mt-1 mb-3">
+      <p className="mt-1 mb-3">
         Activity that violates any applicable law, rule, or regulation of the
         United States or another relevant jurisdiction, including, but not
         limited to, the restrictions and regulatory requirements imposed by U.S.
         law.
       </p>
-      <p className="fs-4">Transactions</p>
-      <p className="fs-5">
+      <p className="fs-5">Transactions</p>
+      <p>
         You agree and understand that: (a) all transactions you submit through
         any of our Services are considered unsolicited, which means that they
         are solely initiated by you; (b) you have not received any investment
         advice from us in connection with any transactions; and (c) we do not
         conduct a suitability review of any transactions you submit.
       </p>
-      <p className="fs-4">Non-Custodial and No Fiduciary Duties</p>
-      <p className="fs-5">
+      <p className="fs-5">Non-Custodial and No Fiduciary Duties</p>
+      <p>
         Each of the Services is a purely non-custodial application, meaning we
         do not ever have custody, possession, or control of your digital assets
         at any time. It further means you are solely responsible for the custody
@@ -183,7 +172,7 @@ export default function Terms() {
         wallet and we are not liable for any acts or omissions by you in
         connection with or as a result of your wallet being compromised.
       </p>
-      <p className="fs-5">
+      <p>
         This Agreement is not intended to, and does not, create or impose any
         fiduciary duties on us. To the fullest extent permitted by law, you
         acknowledge and agree that we owe no fiduciary duties or liabilities to
@@ -193,26 +182,26 @@ export default function Terms() {
         agree that the only duties and obligations that we owe you are those set
         out expressly in this Agreement.
       </p>
-      <p className="fs-4">Compliance and Tax Obligations</p>
-      <p className="fs-5">
+      <p className="fs-5">Compliance and Tax Obligations</p>
+      <p>
         One or more of our Products may not be available or appropriate for use
         in your jurisdiction. By accessing or using any of our Products, you
         agree that you are solely and entirely responsible for compliance with
         all laws and regulations that may apply to you.
       </p>
-      <p className="fs-5">
+      <p>
         Specifically, your use of our Products or the Protocol may result in
         various tax consequences, such as income or capital gains tax,
         value-added tax, goods and services tax, or sales tax in certain
         jurisdictions.
       </p>
-      <p className="fs-5">
+      <p>
         It is your responsibility to determine whether taxes apply to any
         transactions you initiate or receive and, if so, to report and/or remit
         the correct tax to the appropriate tax authority.
       </p>
-      <p className="fs-4">Role of Flow State</p>
-      <p className="fs-5">
+      <p className="fs-5">Role of Flow State</p>
+      <p>
         Flow State is not involved in the transactions between users, and has no
         control over the quality, safety, or legality of tasks or consideration
         for tasks, the ability of users to perform tasks to others'
@@ -225,8 +214,8 @@ export default function Terms() {
         legality of any services, and Flow State disclaims any and all liability
         relating thereto.
       </p>
-      <p className="fs-4">Flow State Streaming Grants</p>
-      <p className="fs-5">
+      <p className="fs-5">Flow State Streaming Grants</p>
+      <p>
         In addition to the above, but notwithstanding anything to the contrary
         therein, if you use the Services to start a streaming grant (a “Grant”)
         to a User, you agree that: (a) the User has broad discretion in
@@ -245,8 +234,8 @@ export default function Terms() {
         (h) you and User are responsible for any tax liabilities in connection
         with your transaction.
       </p>
-      <p className="fs-4">Restrictions on Use</p>
-      <p className="fs-5">
+      <p className="fs-5">Restrictions on Use</p>
+      <p>
         Unless otherwise expressly authorized in these Terms of Use or on the
         Services, you may not take any action to interfere with the Services or
         any other user’s use of the Services or decompile, reverse engineer, or
@@ -259,8 +248,8 @@ export default function Terms() {
         the Services is conditioned on your compliance with the rules of conduct
         set forth in this Section.
       </p>
-      <p className="fs-4">Warranty Disclaimer</p>
-      <p className="fs-5">
+      <p className="fs-5">Warranty Disclaimer</p>
+      <p>
         You expressly understand and agree that your use of the Services is at
         your sole risk. The Services are provided on an "AS IS" and "as
         available" basis, without warranties of any kind, either express or
@@ -269,8 +258,8 @@ export default function Terms() {
         You release Flow State from all liability for content you acquired or
         failed to acquire through the Services.
       </p>
-      <p className="fs-4">Indemnity</p>
-      <p className="fs-5">
+      <p className="fs-5">Indemnity</p>
+      <p>
         You agree, to the fullest extent permitted by applicable law, to release
         and to indemnify, defend, and hold harmless Flow State and its parents,
         subsidiaries, affiliates, and agencies, as well as the officers,
@@ -288,8 +277,8 @@ export default function Terms() {
         otherwise subject to indemnification by you and, in such case, you agree
         to cooperate with Flow State in the defense of such matter.
       </p>
-      <p className="fs-4">Limitation on Liability</p>
-      <p className="fs-5">
+      <p className="fs-5">Limitation on Liability</p>
+      <p>
         You acknowledge and agree that you assume full responsibility for your
         use of the Services. You acknowledge and agree that any information you
         send or receive during your use of the Services may not be secure and
@@ -325,9 +314,9 @@ export default function Terms() {
         incidental or consequential damages. Accordingly, some of the above
         limitations may not apply to you.
       </p>
-      <p className="fs-4">Intellectual Property Rights</p>
+      <p className="fs-5">Intellectual Property Rights</p>
       <i>IP Rights Generally</i>
-      <p className="mt-1 fs-5">
+      <p className="mt-1 ">
         The Services and their entire contents, features, and functionality
         (including but not limited to all information, software, text, displays,
         images, video, and audio, and the design, selection, and arrangement
@@ -336,7 +325,7 @@ export default function Terms() {
         international copyright, trademark, patent, trade secret, and other
         intellectual property or proprietary rights laws
       </p>
-      <p className="fs-5">
+      <p>
         The Services may contain or be provided with components subject to the
         terms and conditions of open source software licenses. To the extent
         applicable, the we will identify such open source software included on
@@ -346,7 +335,7 @@ export default function Terms() {
         source software, including, without limitation, any provisions governing
         access to source code, modifications or reverse engineering.
       </p>
-      <p className="fs-5">
+      <p>
         If you print, copy, modify, download, or otherwise use or provide any
         other person with access to any part of the Services in breach of the
         Terms of Service, your right to use the Services will stop immediately.
@@ -356,14 +345,14 @@ export default function Terms() {
         by these Terms of Service is a breach of these Terms of Service and may
         violate copyright, trademark, and other laws.
       </p>
-      <p className="fs-5">
+      <p>
         Certain of our services use licensed material, including but not limited
         to code base, logos and branding elements from third-parties. To the
         extent these Terms of Service conflict with the terms and conditions of
         any third party, the terms and conditions of the applicable third-party
         license shall control, but solely with respect to such content.
       </p>
-      <p className="fs-5">
+      <p>
         By using any of our Services, you grant us a worldwide, non-exclusive,
         sublicensable, royalty-free license to use, copy, modify, and display
         any content, including but not limited to text, materials, images,
@@ -378,7 +367,7 @@ export default function Terms() {
         own or control to use, copy, modify, create derivative works based upon
         any suggestions or feedback for any purpose.
       </p>
-      <p className="fs-5">
+      <p>
         You represent and warrant that you have, or have obtained, all rights,
         licenses, consents, permissions, power and/or authority necessary to
         grant the rights granted herein for any material that you list, post,
@@ -391,7 +380,7 @@ export default function Terms() {
         violate any laws.
       </p>
       <i>Third-Party Resources and Promotions</i>
-      <p className="fs-5 mt-1">
+      <p className="mt-1">
         Our Services may contain references or links to third-party resources,
         including, but not limited to, information, materials, products, or
         services, that we do not own or control. In addition, third parties may
@@ -405,16 +394,16 @@ export default function Terms() {
         participation in any such promotions.
       </p>
       <i>Additional Rights</i>
-      <p className="fs-5 mt-1">
+      <p className="mt-1">
         We reserve the right to cooperate with any law enforcement, court or
         government investigation or order or third party requesting or directing
         that we disclose information or content or information that you provide.
       </p>
-      <p className="fs-5 mb-5">
+      <p className="mb-5">
         Governing Law These Terms of Use shall be governed by and construed in
         accordance with the laws of the State of Colorado, without giving effect
         to any principles of conflicts of law.
       </p>
-    </Container>
+    </Stack>
   );
 }

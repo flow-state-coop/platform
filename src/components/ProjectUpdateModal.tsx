@@ -217,11 +217,18 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
   };
 
   return (
-    <Modal show={show} size="lg" centered scrollable onHide={handleClose}>
-      <Modal.Header closeButton className="border-0">
-        <Modal.Title>Edit Project</Modal.Title>
+    <Modal
+      show={show}
+      size="lg"
+      centered
+      scrollable
+      onHide={handleClose}
+      contentClassName="bg-lace-100"
+    >
+      <Modal.Header closeButton className="border-0 p-4">
+        <Modal.Title className="fs-5 fw-semi-bold">Edit Project</Modal.Title>
       </Modal.Header>
-      <Modal.Body>
+      <Modal.Body className="p-4">
         <Form>
           <Form.Group className="mb-4">
             <Form.Label>Project Name*</Form.Label>
@@ -230,6 +237,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
               value={metadataForm.title}
               isInvalid={validated && !metadataForm.title}
               placeholder="Your project name"
+              className="border-0 bg-white py-3"
               onChange={(e) =>
                 setMetadataForm({ ...metadataForm, title: e.target.value })
               }
@@ -253,6 +261,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
               value={metadataForm.description}
               isInvalid={validated && !metadataForm.description}
               placeholder="Your project description"
+              className="border-0 bg-white py-3"
               onChange={(e) =>
                 setMetadataForm({
                   ...metadataForm,
@@ -395,6 +404,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
                 value={metadataForm.website}
                 placeholder="example.com"
                 isInvalid={validated && !metadataForm.website}
+                className="border-0 bg-white py-3"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -413,6 +423,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
                 value={metadataForm.appLink}
                 isInvalid={validated && !metadataForm.appLink}
                 placeholder="app.example.com"
+                className="border-0 bg-white py-3"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -429,6 +440,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
               <Form.Control
                 type="text"
                 value={metadataForm.projectGithub}
+                className="border-0 bg-white py-3"
                 placeholder="your-github-org"
                 onChange={(e) =>
                   setMetadataForm({
@@ -465,6 +477,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
                 type="text"
                 value={metadataForm.karmaGap}
                 placeholder="your-project-page"
+                className="border-0 bg-white py-3"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -482,6 +495,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
                 type="text"
                 value={metadataForm.projectTwitter}
                 placeholder="Your project's Twitter handle"
+                className="border-0 bg-white py-3"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -516,6 +530,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
                 type="text"
                 value={metadataForm.projectLens}
                 placeholder="Your project's Lens handle"
+                className="border-0 bg-white py-3"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -533,6 +548,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
                 type="text"
                 value={metadataForm.projectGuild}
                 placeholder="Your project's Guild ID"
+                className="border-0 bg-white py-3"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -567,6 +583,7 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
                 type="text"
                 value={metadataForm.projectDiscord}
                 placeholder="Your project's Discord inviter"
+                className="border-0 bg-white py-3"
                 onChange={(e) =>
                   setMetadataForm({
                     ...metadataForm,
@@ -578,11 +595,11 @@ export default function ProjectUpdateModal(props: ProjectUpdateModalProps) {
           </Form.Group>
         </Form>
       </Modal.Body>
-      <Modal.Footer className="border-0">
+      <Modal.Footer className="border-0 p-4">
         <Stack direction="vertical" gap={2} className="align-items-end">
           <Button
             disabled={validated && !isValid}
-            className="w-25 text-light"
+            className="w-25 text-light py-4 rounded-4 fw-semi-bold"
             onClick={handleSubmit}
           >
             {isCreatingProject ? <Spinner size="sm" /> : "Update"}

@@ -155,12 +155,10 @@ export default function Grantee(props: GranteeProps) {
   return (
     <>
       <Card
-        className="rounded-4 overflow-hidden cursor-pointer"
+        className="rounded-5 border border-4 border-dark overflow-hidden cursor-pointer shadow"
         onClick={showGranteeDetails}
         style={{
           height: 420,
-          border: "1px solid #212529",
-          boxShadow: "0 0 12px rgba(36, 119, 137, 0.5)",
           transition: "all 0.2s ease-in-out",
         }}
       >
@@ -168,44 +166,44 @@ export default function Grantee(props: GranteeProps) {
           variant="top"
           src={bannerUrl === "" ? placeholderBanner : bannerUrl}
           height={102}
-          className="bg-light"
+          className="bg-lace-100"
         />
         <Image
           src={logoUrl === "" ? placeholderLogo : logoUrl}
           alt=""
           width={52}
           height={52}
-          className="rounded-3 position-absolute border border-2 border-light bg-white"
-          style={{ bottom: 300, left: 16 }}
+          className="rounded-4 position-absolute border border-4 border-white bg-white"
+          style={{ bottom: 285, left: 16 }}
         />
-        <Card.Body className="mt-3 pb-0">
+        <Card.Body className="mt-6 p-4 pb-0">
           <Card.Text
-            className="d-inline-block m-0 fs-5 word-wrap text-truncate"
+            className="d-inline-block mb-2 fs-lg fw-semi-bold word-wrap text-truncate"
             style={{ maxWidth: 256 }}
           >
             {name}
           </Card.Text>
           <Card.Text
             ref={descriptionRef as React.RefObject<HTMLParagraphElement>}
-            className="m-0 mb-3"
+            className="m-0 mb-5"
             style={{ fontSize: "0.9rem", minHeight: noClamp ? "4lh" : "auto" }}
           >
             {clampedText}
           </Card.Text>
           <Stack direction="horizontal" className="me-2">
             <Stack direction="vertical" className="align-items-center w-33">
-              <Card.Text as="small" className="m-0 fw-bold">
+              <Card.Text as="small" className="mb-1">
                 Total Votes
               </Card.Text>
-              <Card.Text as="small" className="m-0">
+              <Card.Text as="small" className="m-0 fw-bold">
                 {units}
               </Card.Text>
             </Stack>
             <Stack direction="vertical" className="align-items-center w-33">
-              <Card.Text as="small" className="m-0 fw-bold">
+              <Card.Text as="small" className="mb-1">
                 Current Stream
               </Card.Text>
-              <Card.Text as="small" className="m-0">
+              <Card.Text as="small" className="m-0 fw-bold">
                 {formatNumber(monthlyFlow)} {token.symbol} /mo
               </Card.Text>
             </Stack>
@@ -213,7 +211,7 @@ export default function Grantee(props: GranteeProps) {
           {!!votingPower && granteeAllocation && (
             <Stack
               direction="horizontal"
-              className="justify-content-center mt-4"
+              className="justify-content-center mt-12"
             >
               <Card.Text
                 className="fw-bold small m-0"
@@ -232,7 +230,7 @@ export default function Grantee(props: GranteeProps) {
             </Stack>
           )}
         </Card.Body>
-        <Card.Footer className="position-relative border-0 px-0 py-0 rounded-3">
+        <Card.Footer className="position-relative bg-lace-100 border-0 px-0 py-0 rounded-3">
           {votingPower && granteeAllocation ? (
             <>
               <Stack
@@ -248,7 +246,7 @@ export default function Grantee(props: GranteeProps) {
               >
                 <Stack
                   direction="horizontal"
-                  className="align-items-center rounded-start-3"
+                  className="align-items-center rounded-start-4"
                   style={{
                     width: `${percentage}%`,
                     height: 52,
@@ -268,7 +266,7 @@ export default function Grantee(props: GranteeProps) {
                   )}
                 </Stack>
                 <Button
-                  className={`p-0 h-100 border-0 rounded-end-3 ${percentage > 0 ? "rounded-start-0" : "rounded-start-3"}`}
+                  className={`p-0 h-100 border-0 rounded-end-4 ${percentage > 0 ? "rounded-start-0" : "rounded-start-4"}`}
                   style={{ background: granteeColor }}
                   draggable={false}
                   onDragStart={(e) => e.preventDefault()}
@@ -293,7 +291,7 @@ export default function Grantee(props: GranteeProps) {
           ) : votingPower ? (
             <Stack direction="horizontal" className="justify-content-center">
               <Button
-                className="d-flex gap-1 justify-content-center align-items-center w-100 px-4 rounded-3"
+                className="d-flex gap-1 justify-content-center align-items-center w-100 px-10 py-4 rounded-4 fw-semi-bold"
                 style={{ paddingTop: 14, paddingBottom: 14 }}
                 onClick={(e) => {
                   e.stopPropagation();

@@ -215,8 +215,8 @@ export default function Launch(props: LaunchProps) {
         direction="vertical"
         className={!isMobile ? "w-75 px-5" : "w-100 px-4"}
       >
-        <Card className="bg-light rounded-4 border-0 mt-4 p-4">
-          <Card.Header className="bg-transparent border-0 rounded-4 p-0 fs-4">
+        <Card className="bg-lace-100 rounded-4 border-0 mt-4 p-4">
+          <Card.Header className="bg-transparent border-0 rounded-4 p-0 fs-5 fw-semi-bold">
             Flow Council Metadata
           </Card.Header>
           <Card.Body className="p-0 mt-2">
@@ -225,6 +225,7 @@ export default function Launch(props: LaunchProps) {
               placeholder="Name"
               value={councilMetadata.name}
               disabled={!!councilId}
+              className="border-0 py-4 bg-white fs-lg fw-semi-bold"
               style={{
                 paddingTop: 12,
                 paddingBottom: 12,
@@ -239,7 +240,7 @@ export default function Launch(props: LaunchProps) {
               placeholder="Description (Supports Markdown)"
               value={councilMetadata.description}
               disabled={!!councilId}
-              className="mt-3"
+              className="border-0 py-4 bg-white mt-3 fs-lg fw-semi-bold"
               style={{
                 resize: "none",
                 paddingTop: 12,
@@ -254,8 +255,8 @@ export default function Launch(props: LaunchProps) {
             />
           </Card.Body>
         </Card>
-        <Card className="bg-light rounded-4 border-0 mt-4 p-4">
-          <Card.Header className="bg-transparent border-0 rounded-4 p-0 fs-4">
+        <Card className="bg-lace-100 rounded-4 border-0 mt-4 p-4">
+          <Card.Header className="bg-transparent border-0 rounded-4 p-0 fs-5 fw-semi-bold">
             Set Distribution
           </Card.Header>
           <Card.Body className="p-0">
@@ -265,7 +266,7 @@ export default function Launch(props: LaunchProps) {
             <Dropdown>
               <Dropdown.Toggle
                 disabled={!!councilId}
-                className="d-flex justify-content-between align-items-center bg-white text-dark border border-2"
+                className="d-flex justify-content-between align-items-center bg-white py-4 fw-semi-bold text-dark border-0"
                 style={{ width: 256, paddingTop: 12, paddingBottom: 12 }}
               >
                 <Stack
@@ -282,10 +283,11 @@ export default function Launch(props: LaunchProps) {
                   {selectedNetwork.name}
                 </Stack>
               </Dropdown.Toggle>
-              <Dropdown.Menu>
+              <Dropdown.Menu className="border-0 p-2 lh-lg">
                 {networks.map((network, i) => (
                   <Dropdown.Item
                     key={i}
+                    className="fw-semi-bold"
                     onClick={() => {
                       setSelectedNetwork(network);
                       setSelectedToken(network.tokens[0]);
@@ -315,7 +317,7 @@ export default function Launch(props: LaunchProps) {
               <Dropdown>
                 <Dropdown.Toggle
                   disabled={!!councilId}
-                  className="d-flex justify-content-between align-items-center bg-white text-dark border border-2"
+                  className="d-flex justify-content-between align-items-center bg-white py-4 fw-semi-bold text-dark border-0"
                   style={{ width: 256, paddingTop: 12, paddingBottom: 12 }}
                 >
                   <Stack
@@ -341,10 +343,11 @@ export default function Launch(props: LaunchProps) {
                           selectedNetwork.tokens[0].symbol)}
                   </Stack>
                 </Dropdown.Toggle>
-                <Dropdown.Menu>
+                <Dropdown.Menu className="border-0 lh-lg p-2">
                   {selectedNetwork.tokens.map((token, i) => (
                     <Dropdown.Item
                       key={i}
+                      className="fw-semi-bold"
                       onClick={() => {
                         setCustomTokenSelection(false);
                         setSelectedToken(token);
@@ -361,7 +364,10 @@ export default function Launch(props: LaunchProps) {
                       </Stack>
                     </Dropdown.Item>
                   ))}
-                  <Dropdown.Item onClick={() => setCustomTokenSelection(true)}>
+                  <Dropdown.Item
+                    className="fw-semi-bold"
+                    onClick={() => setCustomTokenSelection(true)}
+                  >
                     Custom
                   </Dropdown.Item>
                 </Dropdown.Menu>
@@ -375,6 +381,7 @@ export default function Launch(props: LaunchProps) {
                     type="text"
                     value={customTokenEntry.address}
                     disabled={!!councilId}
+                    className="border-0 bg-white fs-lg fw-semi-bold"
                     style={{
                       width: !isMobile ? "50%" : "",
                       paddingTop: 12,
@@ -427,6 +434,7 @@ export default function Launch(props: LaunchProps) {
                       selectedToken?.address ??
                       selectedNetwork.tokens[0].address
                     }
+                    className="border-0 fs-lg fw-semi-bold"
                     style={{
                       paddingTop: 12,
                       paddingBottom: 12,
@@ -445,7 +453,7 @@ export default function Launch(props: LaunchProps) {
               !councilMetadata.description ||
               (customTokenSelection && !!customTokenEntry.validationError)
             }
-            className="fs-5"
+            className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
             onClick={() =>
               !address && openConnectModal
                 ? openConnectModal()
@@ -463,7 +471,7 @@ export default function Launch(props: LaunchProps) {
           <Button
             variant="secondary"
             disabled={!councilId}
-            className="fs-5"
+            className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() =>
               router.push(
@@ -478,12 +486,15 @@ export default function Launch(props: LaunchProps) {
             delay={4000}
             autohide={true}
             onClose={() => setSuccess(false)}
-            className="w-100 bg-success p-3 fs-5 text-light"
+            className="w-100 bg-success p-4 fw-semi-bold text-light"
           >
             Success!
           </Toast>
           {transactionerror ? (
-            <Alert variant="danger" className="w-100">
+            <Alert
+              variant="danger"
+              className="w-100 p-4 fw-semi-bold text-danger"
+            >
               {transactionerror}
             </Alert>
           ) : null}

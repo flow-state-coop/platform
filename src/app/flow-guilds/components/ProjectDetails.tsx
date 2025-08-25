@@ -22,8 +22,8 @@ export default function ProjectDetails(props: ProjectDetailsProps) {
   const roundUiLink = `${hostName}/flow-guilds/${flowGuildConfig.id}`;
 
   return (
-    <Stack direction="vertical" className="bg-light rounded-4 p-2">
-      <Stack direction="vertical" className="bg-light rounded-4 p-2">
+    <Stack direction="vertical" className="bg-lace-100 rounded-4 p-2">
+      <Stack direction="vertical" className="rounded-4 p-2">
         <Stack direction="horizontal" gap={2} className="align-items-center">
           <Image
             src={flowGuildConfig.logo}
@@ -32,14 +32,14 @@ export default function ProjectDetails(props: ProjectDetailsProps) {
             height={96}
             className="ms-2 rounded-4"
           />
-          <Card.Text className="fs-4 bg-transparent border-0 ms-2">
+          <Card.Text className="fs-5 fw-semi-bold bg-transparent border-0 ms-2">
             {flowGuildConfig.name}
           </Card.Text>
         </Stack>
         <Stack
           direction="horizontal"
           gap={1}
-          className="align-items-end mt-1 text-info fs-6"
+          className="align-items-center my-2"
         >
           {!!flowGuildConfig.website && (
             <Button
@@ -120,20 +120,12 @@ export default function ProjectDetails(props: ProjectDetailsProps) {
             contentClick="Link copied"
             contentHover="Copy link"
             handleCopy={() => navigator.clipboard.writeText(roundUiLink)}
-            target={
-              <Image
-                src="/link.svg"
-                alt="link"
-                width={24}
-                height={24}
-                style={{ marginTop: 2 }}
-              />
-            }
+            target={<Image src="/link.svg" alt="link" width={24} height={24} />}
           />
         </Stack>
         {!!flowGuildConfig.description && (
           <Markdown
-            className="mt-3 mb-1 fs-6"
+            className="mt-3 mb-1 fs-lg"
             skipHtml={true}
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}

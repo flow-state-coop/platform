@@ -31,10 +31,10 @@ export default function NFTGating(props: NFTGatingProps) {
   } = props;
 
   return (
-    <Card className="bg-light rounded-0 border-0 border-bottom border-info">
+    <Card className="bg-lace-100 rounded-0 border-0 border-bottom border-white">
       <Button
         variant="transparent"
-        className="d-flex align-items-center gap-2 p-3 border-0 rounded-0 shadow-none"
+        className="d-flex gap-3 p-4 border-0 rounded-0 shadow-none text-secondary fs-lg fw-semi-bold"
         style={{
           pointerEvents:
             step !== Step.SUPPORT && step !== Step.REVIEW ? "none" : "auto",
@@ -83,9 +83,6 @@ export default function NFTGating(props: NFTGatingProps) {
       </Button>
       <Accordion.Collapse eventKey={Step.ELIGIBILITY} className="p-3 py-0">
         <Stack direction="vertical" gap={2}>
-          <Card.Text className="m-0 border-bottom border-gray">
-            Matching Eligibility
-          </Card.Text>
           <Stack
             direction="horizontal"
             gap={3}
@@ -135,7 +132,7 @@ export default function NFTGating(props: NFTGatingProps) {
               href={nftMintUrl}
               target="_blank"
               disabled={isEligible}
-              className="bg-secondary text-light text-decoration-none"
+              className="bg-secondary text-light text-decoration-none py-4 rounded-4 fw-semi-bold"
             >
               Claim NFT
             </Button>
@@ -147,7 +144,7 @@ export default function NFTGating(props: NFTGatingProps) {
           ) : null}
           <Button
             disabled={!isEligible}
-            className="w-100 m-0 ms-auto mt-1 mb-3 text-light fw-bold"
+            className="w-100 m-0 ms-auto mt-1 mb-3 text-light py-4 rounded-4 fw-semi-bold"
             onClick={() =>
               setStep(
                 !sessionStorage.getItem("skipSupportFlowState") &&

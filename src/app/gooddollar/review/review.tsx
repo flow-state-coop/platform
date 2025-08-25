@@ -394,8 +394,8 @@ export default function Review(props: ReviewProps) {
         direction="vertical"
         className={!isMobile ? "w-75 px-5" : "w-100 px-4"}
       >
-        <h1 className="mt-4">Manage Recipients</h1>
-        <h2 className="fs-5 text-info">
+        <h1 className="mt-4 fs-5 fw-semi-bold">Manage Recipients</h1>
+        <h2 className="fs-md text-info">
           Review and/or remove eligible funding recipients from your Flow
           Council.
         </h2>
@@ -408,7 +408,7 @@ export default function Review(props: ReviewProps) {
             className="align-items-center mt-5"
           >
             <Image src="/delete.svg" alt="" width={90} height={90} />
-            <span className="text-center fs-4 fw-bold">
+            <span className="text-center fs-5 fw-bold">
               You don't have access to this module. Check your connected
               wallet's permissions.
             </span>
@@ -416,7 +416,7 @@ export default function Review(props: ReviewProps) {
         ) : !session || session.address !== address ? (
           <Button
             variant="secondary"
-            className="d-flex justify-content-center align-items-center gap-2 mt-5 fs-5"
+            className="d-flex justify-content-center align-items-center gap-2 mt-5 fs-lg fw-semi-bold py-4 rounded-4"
             onClick={() => {
               !address && openConnectModal
                 ? openConnectModal()
@@ -435,7 +435,7 @@ export default function Review(props: ReviewProps) {
               gap={2}
               className="w-100 me-auto mb-5 overflow-hidden"
             >
-              <Badge className="d-flex align-items-center bg-transparent text-black border border-2 border-gray-500 p-2 fw-normal text-truncate text-start h-100">
+              <Badge className="d-flex align-items-center bg-white text-black fw-semi-bold border border-4 border-dark p-2 fw-normal text-truncate text-start h-100">
                 {granteeApplicationLink}
               </Badge>
               <CopyTooltip
@@ -448,6 +448,7 @@ export default function Review(props: ReviewProps) {
               />
             </Stack>
             <div
+              className="border border-4 border-dark"
               style={{
                 height: 280,
                 overflow: "auto",
@@ -466,8 +467,8 @@ export default function Review(props: ReviewProps) {
                 <tbody>
                   {applications?.map((application: Application, i: number) => (
                     <tr key={i}>
-                      <td className="w-25">{application.owner}</td>
-                      <td className="w-25">
+                      <td className="w-25 align-middle">{application.owner}</td>
+                      <td className="w-25 align-middle">
                         {profiles && profiles[i]
                           ? profiles.find(
                               (p: { id: string }) =>
@@ -475,7 +476,7 @@ export default function Review(props: ReviewProps) {
                             )?.metadata.title
                           : "N/A"}
                       </td>
-                      <td className="w-25 text-center ps-0">
+                      <td className="w-25 text-center ps-0 align-middle">
                         {reviewingApplications.find(
                           (reviewingApplication) =>
                             application.owner === reviewingApplication.owner,
@@ -513,10 +514,10 @@ export default function Review(props: ReviewProps) {
                           <Image src="/close.svg" alt="fail" width={24} />
                         ) : null}
                       </td>
-                      <td className="w-25">
+                      <td className="w-25 align-middle">
                         {application.status === "PENDING" ? (
                           <Button
-                            className="w-100 p-0 text-light"
+                            className="w-100 px-10 py-4 rounded-4 fw-semi-bold text-light"
                             onClick={() => {
                               setSelectedApplication(application);
                             }}
@@ -526,7 +527,7 @@ export default function Review(props: ReviewProps) {
                         ) : application.status === "APPROVED" ? (
                           <Button
                             variant="danger"
-                            className="w-100 p-0"
+                            className="w-100 px-10 py-4 rounded-4 fw-semi-bold text-light"
                             onClick={() => {
                               setSelectedApplication(application);
                             }}
@@ -535,7 +536,7 @@ export default function Review(props: ReviewProps) {
                           </Button>
                         ) : application.status === "REJECTED" ? (
                           <Button
-                            className="w-100 p-0"
+                            className="w-100 px-10 py-4 rounded-4 fw-semi-bold text-light"
                             onClick={() => {
                               setSelectedApplication(application);
                             }}
@@ -552,7 +553,7 @@ export default function Review(props: ReviewProps) {
             {selectedApplication !== null && selectedApplicationProfile && (
               <Stack
                 direction="vertical"
-                className="mt-4 border border-3 border-gray rounded-4 p-4"
+                className="mt-4 bg-lace-100 rounded-4 p-4"
               >
                 <Form className="d-flex flex-column gap-4">
                   <Row>
@@ -561,6 +562,7 @@ export default function Review(props: ReviewProps) {
                       <Form.Control
                         value={selectedApplication.owner}
                         disabled
+                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
                     </Col>
                     <Col>
@@ -568,6 +570,7 @@ export default function Review(props: ReviewProps) {
                       <Form.Control
                         value={selectedApplication.recipient}
                         disabled
+                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
                     </Col>
                   </Row>
@@ -577,6 +580,7 @@ export default function Review(props: ReviewProps) {
                       <Form.Control
                         value={selectedApplicationProfile.metadata.title}
                         disabled
+                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
                     </Col>
                     <Col>
@@ -584,6 +588,7 @@ export default function Review(props: ReviewProps) {
                       <Form.Control
                         value={selectedApplicationProfile.metadata.website}
                         disabled
+                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
                     </Col>
                   </Row>
@@ -593,6 +598,7 @@ export default function Review(props: ReviewProps) {
                       <Form.Control
                         value={`@${selectedApplicationProfile.metadata.projectTwitter ?? ""}`}
                         disabled
+                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
                     </Col>
                     <Col>
@@ -600,6 +606,7 @@ export default function Review(props: ReviewProps) {
                       <Form.Control
                         value={`@${selectedApplicationProfile.metadata.projectWarpcast ?? ""}`}
                         disabled
+                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
                     </Col>
                   </Row>
@@ -613,6 +620,7 @@ export default function Review(props: ReviewProps) {
                             : ""
                         }
                         disabled
+                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
                     </Col>
                     <Col>
@@ -624,6 +632,7 @@ export default function Review(props: ReviewProps) {
                             : ""
                         }
                         disabled
+                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
                     </Col>
                   </Row>
@@ -637,6 +646,7 @@ export default function Review(props: ReviewProps) {
                             : ""
                         }
                         disabled
+                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
                     </Col>
                     <Col>
@@ -644,6 +654,7 @@ export default function Review(props: ReviewProps) {
                       <Form.Control
                         value={selectedApplicationProfile.metadata.appLink}
                         disabled
+                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
                     </Col>
                   </Row>
@@ -657,6 +668,7 @@ export default function Review(props: ReviewProps) {
                             : ""
                         }
                         disabled
+                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
                     </Col>
                     <Col>
@@ -668,6 +680,7 @@ export default function Review(props: ReviewProps) {
                             : ""
                         }
                         disabled
+                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
                     </Col>
                   </Row>
@@ -680,6 +693,7 @@ export default function Review(props: ReviewProps) {
                         disabled
                         style={{ resize: "none" }}
                         value={selectedApplicationProfile.metadata.description}
+                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
                     </Col>
                   </Row>
@@ -688,7 +702,7 @@ export default function Review(props: ReviewProps) {
                   {selectedApplication.status === "APPROVED" ? (
                     <Button
                       variant="danger"
-                      className="w-50"
+                      className="w-50 py-4 rounded-4 fw-semi-bold text-light"
                       onClick={handleCancelSelection}
                     >
                       Kick from Pool
@@ -696,14 +710,14 @@ export default function Review(props: ReviewProps) {
                   ) : (
                     <>
                       <Button
-                        className="w-50 text-light"
+                        className="w-50 text-light py-4 rounded-4 fw-semi-bold"
                         onClick={() => handleReviewSelection("APPROVED")}
                       >
                         Accept
                       </Button>
                       <Button
                         variant="danger"
-                        className="w-50"
+                        className="w-50 py-4 rounded-4 fw-semi-bold text-light"
                         onClick={() => handleReviewSelection("REJECTED")}
                       >
                         Reject
@@ -715,7 +729,7 @@ export default function Review(props: ReviewProps) {
             )}
             <Stack direction="vertical" gap={3} className="my-4">
               <Button
-                className="fs-5"
+                className="py-4 rounded-4 fs-lg fw-semi-bold"
                 disabled={
                   !session ||
                   session.address !== address ||
@@ -738,7 +752,7 @@ export default function Review(props: ReviewProps) {
               </Button>
               <Button
                 variant="secondary"
-                className="fs-5"
+                className="py-4 rounded-4 fs-lg fw-semi-bold"
                 style={{ pointerEvents: isSubmitting ? "none" : "auto" }}
                 onClick={() => router.push(`/gooddollar/?chainId=${chainId}`)}
               >
@@ -749,12 +763,15 @@ export default function Review(props: ReviewProps) {
                 delay={4000}
                 autohide={true}
                 onClose={() => setSuccess(false)}
-                className="w-100 bg-success p-3 fs-5 text-light"
+                className="w-100 bg-success p-4 fw-semi-bold text-light"
               >
                 Success!
               </Toast>
               {error && (
-                <Alert variant="danger" className="fs-6 text-danger">
+                <Alert
+                  variant="danger"
+                  className="p-4 fw-semi-bold text-danger"
+                >
                   {error}
                 </Alert>
               )}

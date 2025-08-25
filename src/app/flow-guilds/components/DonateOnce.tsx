@@ -319,9 +319,9 @@ export default function DonateOnce(props: DonateOnceProps) {
   };
 
   return (
-    <Stack direction="vertical">
+    <Stack direction="vertical" className="bg-lace-100 rounded-4 p-4">
       <Stack direction="horizontal" className="justify-content-between">
-        <Card.Text className="fs-3 mb-0">Donate Once</Card.Text>
+        <Card.Text className="fs-5 fw-semi-bold mb-0">Donate Once</Card.Text>
         {!isMobile && !isTablet && (
           <Button
             variant="transparent"
@@ -333,7 +333,7 @@ export default function DonateOnce(props: DonateOnceProps) {
         )}
       </Stack>
       <Stack direction="vertical" gap={2} className="my-4">
-        <Card.Text className="m-0 fs-5">
+        <Card.Text className="mt-2 mb-0 fs6">
           {" "}
           Recipient (Multi-Chain Safe)
         </Card.Text>
@@ -341,7 +341,7 @@ export default function DonateOnce(props: DonateOnceProps) {
           <Form.Control
             disabled
             value={truncateStr(flowGuildConfig.safe, 20)}
-            className="w-50 rounded-2 overflow-hidden"
+            className="w-50 rounded-2 bg-white border-0 fw-semi-bold overflow-hidden"
           />
           <CopyTooltip
             contentClick="Address copied"
@@ -363,10 +363,7 @@ export default function DonateOnce(props: DonateOnceProps) {
           </Button>
         </InputGroup>
         <Dropdown className="my-2">
-          <Dropdown.Toggle
-            className="d-flex justify-content-between align-items-center w-100 bg-white text-dark"
-            style={{ border: "1px solid #dee2e6" }}
-          >
+          <Dropdown.Toggle className="d-flex justify-content-between align-items-center w-100 bg-white border-0 py-2 text-dark fw-semi-bold">
             {network.name}
           </Dropdown.Toggle>
           <Dropdown.Menu>
@@ -383,25 +380,18 @@ export default function DonateOnce(props: DonateOnceProps) {
           </Dropdown.Menu>
         </Dropdown>
       </Stack>
-      <Stack
-        direction="horizontal"
-        gap={2}
-        className="align-items-start bg-light p-3 rounded-4"
-      >
+      <Stack direction="horizontal" gap={2} className="align-items-start">
         <Stack direction="vertical" className="w-50">
           <InputGroup className="w-75">
             <Form.Control
               type="text"
               placeholder="0"
-              className="rounded-3 rounded-end-0"
+              className="border-0 fw-semi-bold"
               value={amount}
               onChange={handleAmountSelection}
             />
             <Dropdown>
-              <Dropdown.Toggle
-                className="d-flex justify-content-between align-items-center bg-white text-dark"
-                style={{ border: "1px solid #dee2e6" }}
-              >
+              <Dropdown.Toggle className="d-flex justify-content-between align-items-center border-0 bg-white fw-semi-bold text-dark">
                 {token.symbol}
               </Dropdown.Toggle>
               <Dropdown.Menu>
@@ -420,7 +410,7 @@ export default function DonateOnce(props: DonateOnceProps) {
           </InputGroup>
           {!isSuperTokenPure && (
             <Card.Text
-              className={`mt-1 mb-0 ms-2 ${!hasSufficientWrappingBalance ? "text-danger" : "text-info"}`}
+              className={`mt-2 mb-0 ms-2 ${!hasSufficientWrappingBalance ? "text-danger" : "text-info"}`}
               style={{
                 fontSize: "0.8rem",
               }}
@@ -461,7 +451,7 @@ export default function DonateOnce(props: DonateOnceProps) {
       </Stack>
       <Button
         disabled={!canSubmit}
-        className="w-100 mt-4"
+        className="w-100 mt-4 py-4 fs-lg fw-semi-bold rounded-4"
         onClick={handleSubmit}
       >
         {areTransactionsLoading ? (
@@ -483,7 +473,7 @@ export default function DonateOnce(props: DonateOnceProps) {
         <Stack
           direction="horizontal"
           gap={2}
-          className="justify-content-center mt-1 mb-2"
+          className="justify-content-center my-2"
         >
           <Card.Text className="m-0 small">
             1) Wrap {formatNumber(Number(wrapAmount))}{" "}

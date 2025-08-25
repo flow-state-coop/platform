@@ -16,7 +16,6 @@ import Papa from "papaparse";
 import { writeContract } from "@wagmi/core";
 import { useQuery, gql } from "@apollo/client";
 import { usePostHog } from "posthog-js/react";
-import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
@@ -103,7 +102,7 @@ export default function Admin(props: AdminProps) {
   const [transactionError, setTransactionError] = useState("");
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
 
-  const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
+  const { isMobile } = useMediaQuery();
   const { data: walletClient } = useWalletClient();
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -459,18 +458,9 @@ export default function Admin(props: AdminProps) {
 
   return (
     <>
-      <Container
-        className="mx-auto p-0 px-4 mb-5"
-        style={{
-          maxWidth:
-            isMobile || isTablet
-              ? "100%"
-              : isSmallScreen
-                ? 1000
-                : isMediumScreen
-                  ? 1300
-                  : 1600,
-        }}
+      <Stack
+        direction="vertical"
+        className="px-2 pt-17 pb-30 px-lg-30 px-xxl-52"
       >
         {flowSplitterPoolQueryLoading || superfluidQueryLoading ? (
           <span className="position-absolute top-50 start-50 translate-middle">
@@ -480,7 +470,7 @@ export default function Admin(props: AdminProps) {
           <p className="w-100 mt-5 fs-4 text-center">Network Not Found</p>
         ) : (
           <>
-            <h1 className="d-flex flex-column flex-sm-row align-items-sm-center overflow-hidden gap-sm-1 mt-5 mb-1">
+            <h1 className="d-flex flex-column flex-sm-row align-items-sm-center overflow-hidden gap-sm-1 fs-3">
               <span className="text-truncate">
                 {pool && pool.name !== "Superfluid Pool"
                   ? pool.name
@@ -508,13 +498,13 @@ export default function Admin(props: AdminProps) {
                 >
                   <InfoTooltip
                     position={{ top: true }}
-                    target={<Image width={32} src="/wallet.svg" alt="wallet" />}
-                    content={<>Add to Wallet</>}
+                    target={<Image width={48} src="/wallet.svg" alt="wallet" />}
+                    content={<p className="m-0 p-2">Add to Wallet</p>}
                   />
                 </Button>
               </Stack>
             </h1>
-            <Stack direction="horizontal" gap={1} className="fs-6">
+            <Stack direction="horizontal" gap={1} className="fs-lg">
               Distributing{" "}
               {poolToken && (
                 <Image src={poolToken.icon} alt="" width={18} height={18} />
@@ -523,7 +513,7 @@ export default function Admin(props: AdminProps) {
               <Image src={network.icon} alt="" width={18} height={18} />
               {network.name}
             </Stack>
-            <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
+            <Card className="bg-lace-100 rounded-4 border-0 mt-10 px-10 py-8">
               <Card.Body className="p-0">
                 <Card.Text className="text-info">
                   Configuration in this section cannot be edited after
@@ -531,7 +521,7 @@ export default function Admin(props: AdminProps) {
                 </Card.Text>
                 <Dropdown>
                   <Dropdown.Toggle
-                    className="d-flex justify-content-between align-items-center bg-white text-dark border border-2"
+                    className="d-flex justify-content-between align-items-center bg-white text-dark border-0 fw-semi-bold"
                     style={{ width: 156, paddingTop: 12, paddingBottom: 12 }}
                     disabled
                   >
@@ -557,7 +547,7 @@ export default function Admin(props: AdminProps) {
                 >
                   <Dropdown>
                     <Dropdown.Toggle
-                      className="d-flex justify-content-between align-items-center bg-white text-dark border border-2"
+                      className="d-flex justify-content-between align-items-center bg-white text-dark border-0 fw-semi-bold"
                       disabled
                       style={{
                         width: 156,
@@ -587,16 +577,17 @@ export default function Admin(props: AdminProps) {
                       type="text"
                       disabled
                       value={superfluidQueryRes?.token.id}
+                      className="bg-white border-0 fw-semi-bold"
                       style={{
                         width: !isMobile ? "50%" : "",
-                        paddingTop: 12,
-                        paddingBottom: 12,
+                        paddingTop: 10,
+                        paddingBottom: 10,
                       }}
                     />
                   </Stack>
                 </Stack>
-                <Stack direction="vertical" className="mt-4">
-                  <Form.Label className="d-flex gap-1 mb-2 fs-5">
+                <Stack direction="vertical" className="mt-6">
+                  <Form.Label className="d-flex gap-1 mb-3 fs-6 text-secondary fw-semi-bold">
                     Share Transferability
                     <InfoTooltip
                       position={{ top: true }}
@@ -610,7 +601,7 @@ export default function Admin(props: AdminProps) {
                         />
                       }
                       content={
-                        <>
+                        <p className="m-0 p-2">
                           Should recipients be able to transfer (or trade) their
                           shares?
                           <br />
@@ -619,7 +610,7 @@ export default function Admin(props: AdminProps) {
                           Admin selection below and your particular use case
                           before choosing to enable transferability. This is not
                           editable after launch.
-                        </>
+                        </p>
                       }
                     />
                   </Form.Label>
@@ -630,7 +621,7 @@ export default function Admin(props: AdminProps) {
                         disabled
                         checked={!unitsTrasnferability}
                       />
-                      <FormCheck.Label>
+                      <FormCheck.Label className="fw-semi-bold">
                         Non-Transferable (Admin Only)
                       </FormCheck.Label>
                     </FormCheck>
@@ -640,7 +631,7 @@ export default function Admin(props: AdminProps) {
                         disabled
                         checked={!!unitsTrasnferability}
                       />
-                      <FormCheck.Label>
+                      <FormCheck.Label className="fw-semi-bold">
                         Transferable by Recipients
                       </FormCheck.Label>
                     </FormCheck>
@@ -648,8 +639,8 @@ export default function Admin(props: AdminProps) {
                 </Stack>
               </Card.Body>
             </Card>
-            <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
-              <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-4">
+            <Card className="bg-lace-100 rounded-4 border-0 mt-8 px-10 py-8">
+              <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-6 text-secondary fw-semi-bold">
                 Contract Admin
                 <InfoTooltip
                   position={{ top: true }}
@@ -663,7 +654,7 @@ export default function Admin(props: AdminProps) {
                     />
                   }
                   content={
-                    <>
+                    <p className="m-0 p-2">
                       Set the address(es), including multisigs, that should be
                       able to update the shares of your Flow Splitter for your
                       use case.
@@ -672,7 +663,7 @@ export default function Admin(props: AdminProps) {
                       Admins can relinquish, transfer, or add others to the
                       admin role. If there are no admins, your Flow Splitter
                       contract is immutable.
-                    </>
+                    </p>
                   }
                 />
               </Card.Header>
@@ -691,7 +682,9 @@ export default function Admin(props: AdminProps) {
                           })
                         }
                       />
-                      <FormCheck.Label>Admin</FormCheck.Label>
+                      <FormCheck.Label className="fw-semi-bold">
+                        Admin
+                      </FormCheck.Label>
                     </FormCheck>
                     <FormCheck type="radio">
                       <FormCheck.Input
@@ -705,11 +698,13 @@ export default function Admin(props: AdminProps) {
                           })
                         }
                       />
-                      <FormCheck.Label>No Admin</FormCheck.Label>
+                      <FormCheck.Label className="fw-semi-bold">
+                        No Admin
+                      </FormCheck.Label>
                     </FormCheck>
                   </Stack>
                   {!poolConfig.immutable && (
-                    <div className="mt-2">
+                    <div className="mt-4">
                       {adminsEntry.map((adminEntry, i) => (
                         <Stack
                           direction="vertical"
@@ -726,6 +721,7 @@ export default function Admin(props: AdminProps) {
                               type="text"
                               value={adminEntry.address}
                               disabled={!isAdmin}
+                              className="border-0 fw-semi-bold"
                               style={{
                                 width: !isMobile ? "50%" : "",
                                 paddingTop: 12,
@@ -800,7 +796,7 @@ export default function Admin(props: AdminProps) {
                           )
                         }
                       >
-                        <Card.Text className="mb-0 ms-sm-2 ps-sm-1">
+                        <Card.Text className="mb-0 ms-sm-2 ps-sm-1 fw-semi-bold">
                           Add another admin
                         </Card.Text>
                       </Button>
@@ -809,8 +805,8 @@ export default function Admin(props: AdminProps) {
                 </Form.Group>
               </Card.Body>
             </Card>
-            <Card className="bg-light rounded-4 border-0 mt-4 px-3 px-sm-4 py-4">
-              <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-4">
+            <Card className="bg-lace-100 rounded-4 border-0 mt-8 px-10 py-8">
+              <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-6 text-secondary fw-semi-bold">
                 Share Register ({pool?.symbol ? pool.symbol : "POOL"})
                 <InfoTooltip
                   position={{ top: true }}
@@ -824,7 +820,7 @@ export default function Admin(props: AdminProps) {
                     />
                   }
                   content={
-                    <>
+                    <p className="m-0 p-2">
                       As tokens are streamed to the Flow Splitter, they're
                       proportionally distributed in real time to recipients
                       according to their percentage of the total outstanding
@@ -834,7 +830,7 @@ export default function Admin(props: AdminProps) {
                       Any changes to the total number of outstanding or a
                       recipient's shares will be reflected in the continuing
                       stream allocation.
-                    </>
+                    </p>
                   }
                 />
               </Card.Header>
@@ -863,6 +859,7 @@ export default function Admin(props: AdminProps) {
                             isMobile ? "Address" : "Recipient Address"
                           }
                           value={memberEntry.address}
+                          className="bg-white border-0 fw-semi-bold"
                           style={{ paddingTop: 12, paddingBottom: 12 }}
                           onChange={(e) => {
                             const prevMembersEntry = [...membersEntry];
@@ -906,6 +903,7 @@ export default function Admin(props: AdminProps) {
                         placeholder="Shares"
                         disabled={!isAdmin}
                         value={memberEntry.units}
+                        className="bg-white border-0 fw-semi-bold text-center"
                         style={{ paddingTop: 12, paddingBottom: 12 }}
                         onChange={(e) => {
                           const prevMembersEntry = [...membersEntry];
@@ -927,7 +925,6 @@ export default function Admin(props: AdminProps) {
 
                           setMembersEntry(prevMembersEntry);
                         }}
-                        className="text-center"
                       />
                     </Stack>
                     <Stack direction="vertical">
@@ -958,7 +955,7 @@ export default function Admin(props: AdminProps) {
                                   ).toFixed(isMobile ? 1 : 2),
                                 )}%`
                           }
-                          className="text-center"
+                          className="bg-white border-0 fw-semi-bold text-center"
                           style={{ paddingTop: 12, paddingBottom: 12 }}
                         />
                         <Button
@@ -991,6 +988,7 @@ export default function Admin(props: AdminProps) {
                           disabled
                           type="text"
                           value={memberEntry.address}
+                          className="bg-white border-0 fw-semi-bold"
                           style={{ paddingTop: 12, paddingBottom: 12 }}
                         />
                       </Stack>
@@ -1001,7 +999,7 @@ export default function Admin(props: AdminProps) {
                         disabled
                         inputMode="numeric"
                         value="0"
-                        className="text-center"
+                        className="bg-white border-0 fw-semi-bold text-center"
                         style={{ paddingTop: 12, paddingBottom: 12 }}
                       />
                     </Stack>
@@ -1015,7 +1013,7 @@ export default function Admin(props: AdminProps) {
                           type="text"
                           disabled
                           value="Removed"
-                          className="text-center"
+                          className="bg-white border-0 fw-semi-bold text-center"
                           style={{ paddingTop: 12, paddingBottom: 12 }}
                         />
                         <Button
@@ -1058,7 +1056,7 @@ export default function Admin(props: AdminProps) {
                       )
                     }
                   >
-                    <Card.Text className="mb-0 ms-2 ps-1">
+                    <Card.Text className="mb-0 ms-2 ps-1 fw-semi-bold">
                       {isMobile ? "Add recipient" : "Add another recipient"}
                     </Card.Text>
                   </Button>
@@ -1066,7 +1064,7 @@ export default function Admin(props: AdminProps) {
                     <Form.Control
                       type="text"
                       disabled
-                      className="bg-transparent text-info text-center border-0"
+                      className="bg-transparent text-info text-center border-0 fw-semi-bold"
                       value={totalUnits}
                     />
                   </Stack>
@@ -1079,7 +1077,7 @@ export default function Admin(props: AdminProps) {
                       type="text"
                       disabled
                       value="100%"
-                      className="bg-transparent border-0 text-center"
+                      className="bg-transparent border-0 text-center fw-semi-bold"
                     />
                     <span className="p-0 opacity-0">
                       <Image
@@ -1094,7 +1092,7 @@ export default function Admin(props: AdminProps) {
                 <Stack
                   direction={isMobile ? "vertical" : "horizontal"}
                   gap={2}
-                  className="justify-content-end mt-3"
+                  className="justify-content-end mt-6"
                 >
                   <Card.Link
                     href={URL.createObjectURL(
@@ -1108,14 +1106,14 @@ export default function Admin(props: AdminProps) {
                     )}
                     target="_blank"
                     download="Flow_Splitter.csv"
-                    className="m-0 bg-secondary px-5 py-2 rounded-3 text-light text-center text-decoration-none"
+                    className="m-0 bg-secondary px-10 py-4 rounded-4 text-light fw-semi-bold text-decoration-none"
                   >
                     Export Current
                   </Card.Link>
                   <>
                     <Form.Label
                       htmlFor="upload-csv"
-                      className={`text-white text-center m-0 px-5 py-2 rounded-3 ${isAdmin ? "bg-primary cursor-pointer" : "bg-info opacity-75"}`}
+                      className={`text-white fw-semi-bold text-center m-0 px-10 py-4 rounded-4 ${isAdmin ? "bg-primary cursor-pointer" : "bg-info opacity-75"}`}
                     >
                       Upload CSV
                     </Form.Label>
@@ -1132,15 +1130,15 @@ export default function Admin(props: AdminProps) {
                 <Card.Link
                   href="https://docs.google.com/spreadsheets/d/13oBKSJzKfW0yC8ghiZ_3EYWrjlZ9g8BU-mV91ezG_XU/edit?gid=0#gid=0"
                   target="_blank"
-                  className="float-end mt-2 pe-1 text-primary"
+                  className="float-end mt-2 pe-1 text-primary fw-semi-bold"
                 >
                   Template
                 </Card.Link>
               </Card.Body>
             </Card>
-            <Stack direction="vertical" className="mt-4">
+            <Stack direction="vertical" className="mt-8">
               {poolConfig.immutable && (
-                <Card.Text className="mb-1 text-danger">
+                <Card.Text className="mb-2 text-danger">
                   Warning: You are changing your contract to "No Admin." You
                   won't be able to make changes after this transaction.
                 </Card.Text>
@@ -1151,7 +1149,7 @@ export default function Admin(props: AdminProps) {
                   (!poolConfig.immutable && !isValidAdminsEntry) ||
                   !isValidMembersEntry
                 }
-                className="w-100 py-2 fs-5"
+                className="w-100 py-4 rounded-4 fs-6 fw-semi-bold"
                 onClick={() =>
                   !address && openConnectModal
                     ? openConnectModal()
@@ -1172,7 +1170,7 @@ export default function Admin(props: AdminProps) {
               autohide
               delay={5000}
               onClose={() => setTransactionSuccess("")}
-              className="w-100 p-3 mt-3 fs-5"
+              className="w-100 p-4 mt-4 fs-6 fw-semi-bold"
               style={{
                 background: "rgb(209, 231, 220.8)",
                 color: "rgb(10, 54, 33.6)",
@@ -1182,13 +1180,13 @@ export default function Admin(props: AdminProps) {
               Flow Splitter Updated Successfully!
             </Toast>
             {transactionError ? (
-              <Alert variant="danger" className="w-100 mt-3">
+              <Alert variant="danger" className="w-100 mt-4 p-4 fw-semi-bold">
                 {transactionError}
               </Alert>
             ) : null}
           </>
         )}
-      </Container>
+      </Stack>
     </>
   );
 }

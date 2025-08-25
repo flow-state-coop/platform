@@ -52,7 +52,7 @@ export default function FlowCouncilWallet() {
                     return (
                       <Button
                         onClick={openConnectModal}
-                        className="rounded-3 text-light shadow"
+                        className="px-10 py-4 rounded-4 fw-semi-bold text-light shadow"
                       >
                         Connect Wallet
                       </Button>
@@ -64,7 +64,7 @@ export default function FlowCouncilWallet() {
                       <Button
                         variant="danger"
                         onClick={openChainModal}
-                        className="text-light shadow"
+                        className="text-light shadow rounded-4 fw-semi-bold px-10 py-4"
                       >
                         Wrong network
                       </Button>
@@ -76,7 +76,7 @@ export default function FlowCouncilWallet() {
                       <Button
                         variant="transparent"
                         onClick={openChainModal}
-                        className="d-flex align-items-center gap-1 border rounded-3 shadow"
+                        className="d-flex align-items-center gap-1 border rounded-4 border border-4 border-dark p-4 shadow"
                       >
                         {chain.iconUrl && (
                           <Image
@@ -89,7 +89,7 @@ export default function FlowCouncilWallet() {
                       </Button>
                       <Button
                         variant="transparent"
-                        className="d-flex align-items-center gap-1 border rounded-3 shadow"
+                        className="d-flex align-items-center gap-1 py-4 border border-4 border-dark rounded-4 fw-semi-bold shadow"
                         onClick={() => dispatchShowBallot({ type: "show" })}
                       >
                         {newAllocation?.allocation &&
@@ -136,7 +136,7 @@ export default function FlowCouncilWallet() {
                       </Button>
                       <Button
                         variant="transparent"
-                        className="d-flex align-items-center gap-1 border rounded-3 shadow"
+                        className="d-flex align-items-center gap-1 py-4 border border-4 border-dark fw-semi-bold rounded-4 shadow"
                         onClick={openAccountModal}
                       >
                         <Image

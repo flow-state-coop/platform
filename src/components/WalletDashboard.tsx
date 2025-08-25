@@ -14,7 +14,7 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
 import Spinner from "react-bootstrap/Spinner";
-import StreamDeletionModal from "@/app/pool/components/StreamDeletionModal";
+import StreamDeletionModal from "@/app/flow-qf/components/StreamDeletionModal";
 import useDonorParams from "@/hooks/donorParams";
 import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useFlowingAmount from "@/hooks/flowingAmount";
@@ -327,17 +327,16 @@ export default function WalletBalance() {
   return (
     <>
       <Button
-        variant="transparent"
+        variant="outline-dark"
         disabled={showOffcanvas}
         onClick={handleShowOffcanvas}
-        className="d-none d-sm-block border rounded-start shadow"
+        className="d-none d-sm-block border-4 rounded-4 shadow"
       >
         {!superfluidQueryRes || recipients === null || pool === null ? (
           <Spinner size="sm" animation="border" role="status" />
         ) : (
           <Stack direction="horizontal" gap={2} className="align-items-center">
-            <Image src="/wallet.svg" alt="Wallet" width={22} height={22} />
-            <Card.Text className="m-0">
+            <Card.Text className="m-0 fw-semi-bold">
               {formatNumber(Number(formatEther(superTokenBalanceAllocation)))}{" "}
               {allocationTokenInfo?.symbol}
             </Card.Text>
@@ -345,10 +344,10 @@ export default function WalletBalance() {
         )}
       </Button>
       <Button
-        variant="transparent"
+        variant="outline-dark"
         disabled={showOffcanvas}
         onClick={handleShowOffcanvas}
-        className="d-sm-none border"
+        className="d-sm-none border-4 rounded-4"
       >
         <Image width={22} height={22} src="/wallet.svg" alt="Account" />
       </Button>
@@ -358,7 +357,7 @@ export default function WalletBalance() {
         onHide={handleCloseOffcanvas}
         placement="end"
         backdrop={true}
-        className="overflow-auto border-0"
+        className="overflow-auto border-0 p-4"
       >
         <Stack
           direction="horizontal"
@@ -374,7 +373,7 @@ export default function WalletBalance() {
         </Stack>
         <Stack
           direction="horizontal"
-          className="justify-content-between align-items-center px-3 py-2"
+          className="justify-content-between align-items-center"
         >
           <Stack direction="horizontal" className="align-items-center">
             <Card.Text className="m-0 sensitive">
@@ -385,20 +384,11 @@ export default function WalletBalance() {
               className="d-flex align-items-center px-1"
               onClick={() => navigator.clipboard.writeText(address ?? "0x")}
             >
-              <Image
-                src="/copy.svg"
-                alt="Copy"
-                width={18}
-                style={{
-                  filter:
-                    "brightness(0) saturate(100%) invert(0%) sepia(100%) saturate(7460%) hue-rotate(59deg) brightness(105%) contrast(111%)",
-                }}
-              />
+              <Image src="/copy-dark.svg" alt="Copy" width={18} height={18} />
             </Button>
           </Stack>
           <Button
-            variant="transparent"
-            className="d-flex gap-2 align-items-center bg-light rounded-3 px-3 py-2"
+            className="d-flex gap-2 align-items-center bg-lace-100 border-0 text-dark rounded-4 py-4 fs-sm fw-semi-bold"
             onClick={() => {
               disconnect();
               handleCloseOffcanvas();
@@ -408,8 +398,8 @@ export default function WalletBalance() {
             <Image src="/logout.svg" alt="Logout" width={18} />{" "}
           </Button>
         </Stack>
-        <Card className="bg-light mt-3 mx-3 p-2 rounded-4 border-0">
-          <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 fs-5">
+        <Card className="bg-lace-100 mt-3 p-4 rounded-4 border-0">
+          <Card.Header className="bg-lace-100 text-center border-0 p-0 fs-lg fw-semi-bold">
             Your Streams ({allocationTokenInfo?.symbol}/mo)
           </Card.Header>
           <Card.Body className="p-2">
@@ -453,7 +443,7 @@ export default function WalletBalance() {
                   onClick={() => {
                     setShowOffcanvas(false);
                     router.push(
-                      `/pool/?chainId=${chainId}&poolId=${poolId}&editPoolDistribution=true`,
+                      `/flow-qf/?chainId=${chainId}&poolId=${poolId}&editPoolDistribution=true`,
                     );
                   }}
                 >
@@ -537,7 +527,7 @@ export default function WalletBalance() {
                           onClick={() => {
                             setShowOffcanvas(false);
                             router.push(
-                              `/pool/?chainId=${chainId}&poolId=${poolId}&recipientId=${recipients?.find((recipient: { superappAddress: string }) => recipient.superappAddress === outflow.receiver.id)?.id}`,
+                              `/flow-qf/?chainId=${chainId}&poolId=${poolId}&recipientId=${recipients?.find((recipient: { superappAddress: string }) => recipient.superappAddress === outflow.receiver.id)?.id}`,
                             );
                           }}
                         >
@@ -566,13 +556,13 @@ export default function WalletBalance() {
         <Stack
           direction="horizontal"
           gap={1}
-          className="bg-light rounded-top-4 mt-3 mx-3 p-3 fs-4"
+          className="bg-lace-100 rounded-top-4 mt-4 p-4"
         >
           <Badge
-            className={`cursor-pointer rounded-3 ${
+            className={`cursor-pointer rounded-4 p-4 ${
               token === Token.ALLOCATION
                 ? "bg-success text-success"
-                : "bg-light text-info"
+                : "bg-lace-100 text-info"
             }`}
             style={{
               background:
@@ -589,7 +579,7 @@ export default function WalletBalance() {
               className={`cursor-pointer rounded-3 ${
                 token === Token.MATCHING
                   ? "bg-success text-success"
-                  : "bg-light text-info"
+                  : "bg-lace-100 text-info"
               }`}
               style={{
                 background:
@@ -605,7 +595,7 @@ export default function WalletBalance() {
         </Stack>
         <Stack
           direction="horizontal"
-          className="bg-light mx-3 p-2 pb-3 fs-4 border-bottom border-white"
+          className="bg-lace-100 p-4 border-bottom border-white"
         >
           <Card.Text className="m-0 text-info px-2 w-50">Token</Card.Text>
           <Stack direction="horizontal" gap={2} className="align-items-center">
@@ -652,7 +642,7 @@ export default function WalletBalance() {
         </Stack>
         <Stack
           direction="horizontal"
-          className="bg-light mx-3 p-2 pb-3 fs-4 border-bottom border-white"
+          className="bg-lace-100 p-4 border-bottom border-white"
         >
           <Card.Text className="m-0 text-info px-2 w-50">Balance</Card.Text>
           <Stack direction="horizontal" gap={2} className="align-items-center">
@@ -680,7 +670,7 @@ export default function WalletBalance() {
         </Stack>
         <Stack
           direction="horizontal"
-          className="bg-light mx-3 px-2 py-3 fs-4 border-bottom border-white"
+          className="bg-lace-100 p-4 border-bottom border-white"
         >
           <Card.Text className="m-0 text-info px-2 w-50">Net Stream</Card.Text>
           <Stack
@@ -719,10 +709,10 @@ export default function WalletBalance() {
         </Stack>
         <Stack
           direction="horizontal"
-          className="bg-light mx-3 rounded-bottom-4 px-2 py-3 fs-4 border-bottom border-white"
+          className="bg-lace-100 rounded-bottom-4 p-4 border-bottom border-white"
         >
           <Card.Text className="m-0 text-info px-2 w-50">Liquidation</Card.Text>
-          <Card.Text className="m-0 text-info overflow-hidden text-truncate fs-4">
+          <Card.Text className="m-0 text-info overflow-hidden text-truncate">
             {token === Token.MATCHING &&
             accountTokenSnapshotMatching?.maybeCriticalAtTimestamp
               ? dayjs
@@ -738,11 +728,11 @@ export default function WalletBalance() {
                 : "N/A"}
           </Card.Text>
         </Stack>
-        <Card className="bg-light mx-3 mt-3 ms-2 p-2 rounded-4 border-0">
-          <Card.Header className="bg-light border-bottom border-gray mx-2 p-0 py-1 fs-5">
+        <Card className="bg-lace-100 mt-4 p-4 rounded-4 border-0">
+          <Card.Header className="bg-lace-100 border-0 p-4 fs-lg fw-semi-bold text-center">
             Matching Eligibility
           </Card.Header>
-          <Card.Body className="p-2">
+          <Card.Body>
             <Stack
               direction="horizontal"
               gap={3}
@@ -804,7 +794,7 @@ export default function WalletBalance() {
               {nftMintUrl?.startsWith("https://guild.xyz/octant-sqf-voter") &&
               !nftBalance ? (
                 <Button
-                  className="d-flex justify-content-center align-items-center text-light gap-2 mt-4"
+                  className="d-flex justify-content-center align-items-center text-light gap-2 mt-6 py-4 rounded-4 fw-semi-bold"
                   onClick={!isLoadingNftMint ? handleNftMintRequest : void 0}
                 >
                   Claim NFT
@@ -816,13 +806,13 @@ export default function WalletBalance() {
                     variant="link"
                     href="https://app.passport.xyz"
                     target="_blank"
-                    className="mt-4 bg-secondary text-light text-decoration-none"
+                    className="mt-6 bg-secondary text-light text-decoration-none rounded-4 py-4 fw-semi-bold"
                   >
                     1. Earn Stamps (min ={" "}
                     {network?.flowStateEligibilityMinScore})
                   </Button>
                   <Button
-                    className="d-flex justify-content-center align-items-center gap-2 mt-2"
+                    className="d-flex justify-content-center align-items-center gap-2 mt-4 rounded-4 py-4 fw-semi-bold"
                     onClick={!isLoadingNftMint ? handleNftMintRequest : void 0}
                   >
                     2. Claim NFT
@@ -834,7 +824,7 @@ export default function WalletBalance() {
                   variant="link"
                   href={nftMintUrl}
                   target="_blank"
-                  className="mt-4 bg-primary text-light text-decoration-none"
+                  className="mt-4 bg-primary text-light text-decoration-none py-4 rounded-4 fw-semi-bold"
                 >
                   Claim NFT
                 </Button>
@@ -855,7 +845,7 @@ export default function WalletBalance() {
         <Card.Link
           href="https://app.superfluid.finance"
           target="_blank"
-          className="mx-3 my-2 px-3 text-primary text-center cursor-pointer"
+          className="p-4 text-primary fw-semi-bold text-center cursor-pointer"
         >
           Visit the Superfluid App for advanced management of your Super Token
           balances
