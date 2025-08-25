@@ -122,15 +122,28 @@ export default function Header() {
                     </Button>
                     <Button
                       variant="link"
-                      href="https://discord.gg/CF5cdk7z67"
+                      href="https://farcaster.xyz/flowstatecoop"
                       target="_blank"
                       className="p-0"
                     >
                       <Image
-                        src="/discord.svg"
-                        alt="Discord"
+                        src="/farcaster-dark.svg"
+                        alt="Farcaster"
                         width={40}
                         height={40}
+                      />
+                    </Button>
+                    <Button
+                      variant="link"
+                      href="https://x.com/flowstatecoop"
+                      target="_blank"
+                      className="p-0"
+                    >
+                      <Image
+                        width={28}
+                        height={28}
+                        src="/x-logo.svg"
+                        alt="Twitter"
                       />
                     </Button>
                   </Stack>
@@ -252,11 +265,24 @@ export default function Header() {
             </Button>
             <Button
               variant="link"
-              href="https://discord.gg/CF5cdk7z67"
+              href="https://farcaster.xyz/flowstatecoop"
               target="_blank"
               className="p-0"
             >
-              <Image src="/discord.svg" alt="Discord" width={40} height={40} />
+              <Image
+                width={40}
+                height={40}
+                src="/farcaster-dark.svg"
+                alt="Farcaster"
+              />
+            </Button>
+            <Button
+              variant="link"
+              href="https://x.com/flowstatecoop"
+              target="_blank"
+              className="p-0"
+            >
+              <Image width={28} height={28} src="/x-logo.svg" alt="Twitter" />
             </Button>
           </Stack>
           <Suspense>

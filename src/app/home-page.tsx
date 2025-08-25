@@ -275,7 +275,10 @@ export default function HomePage() {
               alt=""
               width={isMobile ? "100%" : isBigScreen ? 823 : 600}
               height={isMobile ? 280 : 680}
-              style={{ borderRadius: isMobile ? 0 : 66 }}
+              style={{
+                objectFit: "cover",
+                borderRadius: isMobile || isTablet ? 0 : 66,
+              }}
             />
             <Stack direction="vertical" className="flex-grow-0 px-8 px-lg-0">
               {showTargetAudience === TargetAudience.ORGS ? (
