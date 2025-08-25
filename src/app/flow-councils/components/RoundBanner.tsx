@@ -64,119 +64,117 @@ export default function PoolInfo(props: PoolInfoProps) {
 
   return (
     <div
-      className="px-4 pt-5 pool-info-background rounded-4"
+      className="px-8 py-6 pool-info-background rounded-5"
       style={{ maxWidth: "100vw" }}
     >
-      <Stack direction="vertical" className="pb-4">
-        <Stack
-          direction="horizontal"
-          className="justify-content-between align-items-center mb-2"
-        >
-          <Stack direction="horizontal" gap={1}>
-            <Card.Text className="m-0 fs-5 fw-bold">{name}</Card.Text>
-            <InfoTooltip
-              content=<p className="m-0 p-2">
-                {removeMarkdown(description).replace(/\r?\n|\r/g, " ")}
-              </p>
-              target={
-                <Image
-                  src="/info.svg"
-                  alt="description"
-                  width={20}
-                  className="mb-4"
-                />
-              }
-            />
-          </Stack>
-          {isMobile && !showFullInfo && (
-            <Button
-              variant="transparent"
-              className="p-0"
-              onClick={() => setShowFullInfo(true)}
-            >
-              <Image src="/expand-more.svg" alt="toggle" width={48} />
-            </Button>
-          )}
+      <Stack
+        direction="horizontal"
+        className="justify-content-between align-items-center mb-2"
+      >
+        <Stack direction="horizontal" gap={1}>
+          <Card.Text className="m-0 fs-3 fw-semi-bold">{name}</Card.Text>
+          <InfoTooltip
+            content=<p className="m-0 p-2">
+              {removeMarkdown(description).replace(/\r?\n|\r/g, " ")}
+            </p>
+            target={
+              <Image
+                src="/info.svg"
+                alt="description"
+                width={24}
+                className="mb-4"
+              />
+            }
+          />
         </Stack>
-        <Card.Text className="mb-6 fs-lg">Flow Council Allocation</Card.Text>
-        {(!isMobile || showFullInfo) && (
-          <>
-            <Table borderless>
-              <thead className="border-bottom border-dark">
-                <tr>
-                  <th className="w-25 ps-0 bg-transparent text-dark">
-                    {isMobile ? "Token" : "Funding Token"}
-                  </th>
-                  <th className="w-25 bg-transparent text-dark">
-                    {isMobile ? "Monthly" : "Monthly Flow"}
-                  </th>
-                  <th className="w-25 bg-transparent text-dark">
-                    {isMobile ? "Total" : "Total Flow"}
-                  </th>
-                  <th className="w-25 bg-transparent text-dark">Funders</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="w-25 ps-0 bg-transparent">
-                    {distributionTokenInfo.symbol}
-                  </td>
-                  <td className="w-25 bg-transparent">
-                    <Card.Link
-                      href={`${superfluidExplorer}/pools/${gdaPool?.id}`}
-                      target="_blank"
-                    >
-                      {formatNumber(Number(formatEther(distributionMonthly)))}
-                    </Card.Link>
-                  </td>
-                  <td className="w-25 bg-transparent">
-                    {formatNumber(Number(formatEther(distributionTotal)))}
-                  </td>
-                  <td className="w-25 bg-transparent">
-                    {formatNumber(gdaPool?.poolDistributors.length ?? 0)}
-                  </td>
-                </tr>
-              </tbody>
-            </Table>
-            <Stack
-              direction={isMobile ? "vertical" : "horizontal"}
-              gap={4}
-              className="justify-content-end w-100 mt-4"
-            >
-              {(!isMobile || showFullInfo) && (
-                <Button
-                  variant="secondary"
-                  className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
-                  style={{ width: isMobile ? "100%" : 240 }}
-                  onClick={showDistributionPoolFunding}
-                >
-                  Grow the Pie
-                </Button>
-              )}
-              {grantee && (
-                <Button
-                  variant="link"
-                  href={`https://flowstate.network/projects/${grantee.metadata}/?chainId=${chainId}&edit=true`}
-                  target="_blank"
-                  className="bg-primary py-4 text-light rounded-4 fs-lg fw-semi-bold text-decoration-none"
-                  style={{ width: isMobile ? "100%" : 240 }}
-                >
-                  Edit Builder Profile
-                </Button>
-              )}
-            </Stack>
-          </>
-        )}
-        {isMobile && showFullInfo && (
+        {isMobile && !showFullInfo && (
           <Button
             variant="transparent"
-            className="p-0 ms-auto mt-5"
-            onClick={() => setShowFullInfo(false)}
+            className="p-0"
+            onClick={() => setShowFullInfo(true)}
           >
-            <Image src="/expand-less.svg" alt="toggle" width={48} />
+            <Image src="/expand-more.svg" alt="toggle" width={48} />
           </Button>
         )}
       </Stack>
+      <Card.Text className="mb-8 fs-lg">Flow Council Allocation</Card.Text>
+      {(!isMobile || showFullInfo) && (
+        <>
+          <Table borderless className="fs-lg">
+            <thead className="border-bottom border-dark">
+              <tr>
+                <th className="w-25 ps-0 bg-transparent text-dark">
+                  {isMobile ? "Token" : "Funding Token"}
+                </th>
+                <th className="w-25 bg-transparent text-dark">
+                  {isMobile ? "Monthly" : "Monthly Flow"}
+                </th>
+                <th className="w-25 bg-transparent text-dark">
+                  {isMobile ? "Total" : "Total Flow"}
+                </th>
+                <th className="w-25 bg-transparent text-dark">Funders</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="w-25 ps-0 bg-transparent">
+                  {distributionTokenInfo.symbol}
+                </td>
+                <td className="w-25 bg-transparent">
+                  <Card.Link
+                    href={`${superfluidExplorer}/pools/${gdaPool?.id}`}
+                    target="_blank"
+                  >
+                    {formatNumber(Number(formatEther(distributionMonthly)))}
+                  </Card.Link>
+                </td>
+                <td className="w-25 bg-transparent">
+                  {formatNumber(Number(formatEther(distributionTotal)))}
+                </td>
+                <td className="w-25 bg-transparent">
+                  {formatNumber(gdaPool?.poolDistributors.length ?? 0)}
+                </td>
+              </tr>
+            </tbody>
+          </Table>
+          <Stack
+            direction={isMobile ? "vertical" : "horizontal"}
+            gap={4}
+            className="justify-content-end w-100 mt-8"
+          >
+            {(!isMobile || showFullInfo) && (
+              <Button
+                variant="secondary"
+                className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
+                style={{ width: isMobile ? "100%" : 240 }}
+                onClick={showDistributionPoolFunding}
+              >
+                Grow the Pie
+              </Button>
+            )}
+            {grantee && (
+              <Button
+                variant="link"
+                href={`https://flowstate.network/projects/${grantee.metadata}/?chainId=${chainId}&edit=true`}
+                target="_blank"
+                className="bg-primary py-4 text-light rounded-4 fs-lg fw-semi-bold text-decoration-none"
+                style={{ width: isMobile ? "100%" : 240 }}
+              >
+                Edit Builder Profile
+              </Button>
+            )}
+          </Stack>
+        </>
+      )}
+      {isMobile && showFullInfo && (
+        <Button
+          variant="transparent"
+          className="p-0 ms-auto mt-5"
+          onClick={() => setShowFullInfo(false)}
+        >
+          <Image src="/expand-less.svg" alt="toggle" width={48} />
+        </Button>
+      )}
     </div>
   );
 }
