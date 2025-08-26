@@ -68,7 +68,7 @@ export default function RoundCard(props: RoundCardProps) {
               <Card.Text className="fs-5 mb-1 fw-bold text-center">
                 {formatNumber(
                   Number(formatEther(totalAmountStreamed)),
-                  tokenSymbol === "ETHx" ? 6 : 4,
+                  tokenSymbol === "ETHx" ? 6 : 2,
                 )}{" "}
                 {tokenSymbol}
               </Card.Text>
