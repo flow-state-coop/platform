@@ -447,7 +447,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
             gap={1}
             className="align-items-start mt-3"
           >
-            <h1 className="fs-3 m-0">Flow Splitters</h1>
+            <h1 className="fs-3 fw-semi-bold m-0">Flow Splitters</h1>
             <InfoTooltip
               position={{ bottom: isMobile }}
               target={<Image src="/info.svg" alt="" width={24} height={24} />}

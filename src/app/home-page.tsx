@@ -23,7 +23,7 @@ export default function HomePage() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isMobile, isTablet, isBigScreen } = useMediaQuery();
+  const { isMobile, isTablet, isSmallScreen, isBigScreen } = useMediaQuery();
   const postHog = usePostHog();
 
   useEffect(() => {
@@ -186,7 +186,7 @@ export default function HomePage() {
           id="target-audience"
           style={{ borderRadius: isMobile || isTablet ? 0 : 56 }}
         >
-          {isMobile || isTablet ? (
+          {isMobile || isTablet || isSmallScreen ? (
             <Dropdown className="mb-8 w-100 px-3">
               <Dropdown.Toggle
                 variant="secondary"
@@ -262,7 +262,7 @@ export default function HomePage() {
           <Stack
             direction="horizontal"
             gap={8}
-            className="justify-content-center align-items-start flex-wrap flex-lg-nowrap mt-lg-24 mb-8"
+            className="justify-content-center align-items-start flex-wrap flex-xl-nowrap mt-xl-24 mb-8"
           >
             <Image
               src={
@@ -273,7 +273,7 @@ export default function HomePage() {
                     : "/audience-everyone.png"
               }
               alt=""
-              width={isMobile ? "100%" : isBigScreen ? 823 : 600}
+              width={isMobile || isTablet ? "100%" : isBigScreen ? 823 : 600}
               height={isMobile ? 280 : 680}
               style={{
                 objectFit: "cover",

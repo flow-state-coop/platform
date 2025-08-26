@@ -21,15 +21,15 @@ function useMediaQuery() {
 
       const mobileQuery = window.matchMedia("(max-width: 576px)");
       const tabletQuery = window.matchMedia(
-        "(min-width: 576px) and (max-width: 1000px)",
+        "(min-width: 576px) and (max-width: 992px)",
       );
       const smallScreenQuery = window.matchMedia(
-        "(min-width: 1000px) and (max-width: 1400px)",
+        "(min-width: 1000px) and (max-width: 1440px)",
       );
       const mediumScreenQuery = window.matchMedia(
-        "(min-width: 1400px) and (max-width: 1800px)",
+        "(min-width: 1400px) and (max-width: 1920px)",
       );
-      const bigScreenQuery = window.matchMedia("(min-width: 1800px)");
+      const bigScreenQuery = window.matchMedia("(min-width: 1920px)");
 
       setIsMobile(mobileQuery.matches);
       setIsTablet(tabletQuery.matches);
