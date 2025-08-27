@@ -364,3 +364,8 @@ blockquote {
   -ms-user-select: none;
   user-select: none;
 }
+
+input[type="email"].mailing-list-input::placeholder {
+  color: $light;
+  opacity: 0.65;
+}

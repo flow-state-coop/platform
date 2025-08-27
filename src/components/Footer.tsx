@@ -130,25 +130,21 @@ export default function Footer() {
                   <Form.Control
                     type="email"
                     required
+                    placeholder="Enter you email"
                     onChange={(e) => {
                       if (e.target.form?.checkValidity()) {
                         setIsEmailInvalid(false);
                       }
                     }}
-                    className="bg-como-500 rounded-start-3 text-white shadow-none outline-none"
+                    className="mailing-list-input bg-como-500 rounded-start-3 fs-lg text-light shadow-none outline-none"
                     style={{ height: 69 }}
                   />
                   <Button
                     type="submit"
                     variant="transparent"
-                    className="d-flex justify-content-center rounded-end-3 align-items-center bg-white px-4 py-2"
+                    className="rounded-end-3 bg-white px-10 py-4 text-como-500 fw-semi-bold fs-lg"
                   >
-                    <Image
-                      src="/paper-plane.svg"
-                      alt="Send"
-                      width={32}
-                      height={32}
-                    />
+                    Subscribe
                   </Button>
                 </InputGroup>
                 {isEmailInvalid && (
