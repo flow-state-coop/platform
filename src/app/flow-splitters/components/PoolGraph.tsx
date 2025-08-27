@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Address, formatEther } from "viem";
 import {
   ReactFlow,
@@ -24,6 +24,7 @@ import { GDAPool } from "@/types/gdaPool";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { truncateStr, formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
+import { useMediaQuery } from "@/hooks/mediaQuery";
 import "@xyflow/react/dist/style.css";
 
 type PoolGraphProps = {
@@ -81,6 +82,8 @@ const edgeTypes = { custom: CustomEdge };
 function CustomNode(props: NodeProps<Node>) {
   const { selected, data } = props;
 
+  const [showToolbar, setShowToolbar] = useState(false);
+
   const totalFlowed = useFlowingAmount(
     BigInt((data?.totalAmountFlowedDistributedUntilUpdatedAt as string) ?? 0) +
       BigInt(
@@ -97,6 +100,8 @@ function CustomNode(props: NodeProps<Node>) {
           direction="vertical"
           gap={1}
           className="align-items-center p-3 rounded-4 cursor-pointer bg-lace-100 shadow"
+          onMouseEnter={() => setShowToolbar(true)}
+          onMouseLeave={() => setShowToolbar(false)}
         >
           <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
             {data?.label?.toString() ?? ""}
@@ -114,7 +119,10 @@ function CustomNode(props: NodeProps<Node>) {
           type="source"
           position={Position.Bottom}
         />
-        <NodeToolbar isVisible={selected} position={Position.Right}>
+        <NodeToolbar
+          isVisible={showToolbar || (!!data.isMobile && selected)}
+          position={Position.Right}
+        >
           <Stack direction="vertical" gap={2}>
             <Button
               variant="light"
@@ -145,6 +153,8 @@ function CustomNode(props: NodeProps<Node>) {
         direction="vertical"
         gap={1}
         className="align-items-center cursor-pointer"
+        onMouseEnter={() => setShowToolbar(true)}
+        onMouseLeave={() => setShowToolbar(false)}
       >
         {data.avatar ? (
           <Image
@@ -173,7 +183,7 @@ function CustomNode(props: NodeProps<Node>) {
       <Handle className="invisible" type="target" position={Position.Top} />
       <Handle className="invisible" type="source" position={Position.Bottom} />
       <NodeToolbar
-        isVisible={selected}
+        isVisible={showToolbar || (!!data.isMobile && selected)}
         position={data.isDistributor ? Position.Bottom : Position.Top}
       >
         <Stack direction="vertical" gap={2}>
@@ -271,6 +281,8 @@ function CustomEdge(props: EdgeProps<Edge>) {
 export default function PoolGraph(props: PoolGraphProps) {
   const { pool, chainId, ensByAddress } = props;
 
+  const { isMobile, isTablet } = useMediaQuery();
+
   const graph = useMemo(() => {
     if (!pool) {
       return { nodes: [], edges: [] };
@@ -293,6 +305,7 @@ export default function PoolGraph(props: PoolGraphProps) {
               Number(formatEther(BigInt(x.flowRate))) /
               Number(formatEther(BigInt(pool.flowRate))),
             isDistributor: true,
+            isMobile: isMobile || isTablet,
             chainId,
           },
         },
@@ -320,6 +333,7 @@ export default function PoolGraph(props: PoolGraphProps) {
                 ? (BigInt(pool.flowRate) * BigInt(x.units)) /
                   BigInt(pool.totalUnits)
                 : BigInt(0),
+            isMobile: isMobile || isTablet,
             chainId,
           },
         },
@@ -380,6 +394,7 @@ export default function PoolGraph(props: PoolGraphProps) {
             totalAmountInstantlyDistributedUntilUpdatedAt:
               pool.totalAmountInstantlyDistributedUntilUpdatedAt,
             updatedAtTimestamp: pool.updatedAtTimestamp,
+            isMobile: isMobile || isTablet,
             chainId,
           },
         },
@@ -389,7 +404,7 @@ export default function PoolGraph(props: PoolGraphProps) {
     );
 
     return { nodes, edges };
-  }, [pool, chainId, ensByAddress]);
+  }, [pool, chainId, ensByAddress, isMobile, isTablet]);
 
   return (
     <div
