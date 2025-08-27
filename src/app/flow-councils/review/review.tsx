@@ -526,7 +526,7 @@ export default function Review(props: ReviewProps) {
                         ) : application.status === "APPROVED" ? (
                           <Button
                             variant="danger"
-                            className="w-100 px-10 py-4 rounded-4 fw-semi-bold text-light"
+                            className="w-100 py-4 rounded-4 fw-semi-bold text-light"
                             onClick={() => {
                               setSelectedApplication(application);
                             }}
@@ -726,7 +726,7 @@ export default function Review(props: ReviewProps) {
                 </Stack>
               </Stack>
             )}
-            <Stack direction="vertical" gap={3} className="my-4">
+            <Stack direction="vertical" gap={3} className="mt-4 mb-30">
               <Button
                 className="py-4 rounded-4 fs-lg fw-semi-bold"
                 disabled={

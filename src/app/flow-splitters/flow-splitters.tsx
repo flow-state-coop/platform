@@ -271,7 +271,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
     return (
       <Card
         className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-5 fs-6 shadow p-2"
-        style={{ height: 400 }}
+        style={{ height: 420 }}
       >
         <Card.Header className="h-25 bg-white border-0 rounded-4 py-4">
           <Card.Title
@@ -285,7 +285,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
           <Stack
             direction="horizontal"
             gap={1}
-            className="justify-content-center mb-4"
+            className="justify-content-center"
           >
             <Card.Link
               href={selectedNetwork.superfluidDashboard}
@@ -494,7 +494,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
             >
               {selectedNetwork.name}
             </Dropdown.Toggle>
-            <Dropdown.Menu className="border border-4 border-dark lh-sm">
+            <Dropdown.Menu className="border border-4 border-dark lh-lg">
               {networks.map((network, i) => (
                 <Dropdown.Item
                   key={i}
@@ -531,7 +531,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
           >
             <Card
               className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-4 cursor-pointer"
-              style={{ height: 400 }}
+              style={{ height: 420 }}
               onClick={() => {
                 if (address) {
                   router.push(

@@ -315,7 +315,7 @@ export default function Permissions(props: PermissionsProps) {
         direction="vertical"
         className={!isMobile ? "w-75 px-5" : "w-100 px-4"}
       >
-        <Card className="bg-lace-100 rounded-4 border-0 mt-4 p-4">
+        <Card className="bg-lace-100 rounded-4 border-0 p-4">
           <Card.Header className="bg-transparent border-0 rounded-4 p-0">
             <Card.Title className="fs-5 fw-semi-bold">
               Council Permissions
@@ -529,7 +529,7 @@ export default function Permissions(props: PermissionsProps) {
             won't be able to make any further changes to permissions
           </Card.Text>
         )}
-        <Stack direction="vertical" gap={3} className="my-4">
+        <Stack direction="vertical" gap={3} className="mt-4 mb-30">
           <Button
             disabled={!isAdmin || !hasChanges || !isValidManagersEntry}
             className="py-4 rounded-4 fs-lg fw-semi-bold"

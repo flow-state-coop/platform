@@ -71,22 +71,19 @@ export default function HomePage() {
           gap={6}
           className="justify-content-center align-items-center"
         >
-          <Link
-            href="/explore"
-            style={{ width: isMobile ? 280 : 210, height: 60 }}
-          >
-            <Button className="w-100 h-100 p-0 fs-lg fw-semi-bold rounded-4">
+          <Link href="/explore" style={{ width: isMobile ? 280 : 210 }}>
+            <Button className="w-100 h-100 p-0 fs-lg fw-semi-bold rounded-4 py-4 border-4">
               Explore flows
             </Button>
           </Link>
           <Link
             href="https://docs.flowstate.network"
             target="_blank"
-            style={{ width: isMobile ? 280 : 210, height: 60 }}
+            style={{ width: isMobile ? 280 : 210 }}
           >
             <Button
               variant="outline-dark"
-              className="w-100 h-100 p-0 fs-lg fw-semi-bold rounded-4 border-4"
+              className="w-100 h-100 p-0 fs-lg fw-semi-bold rounded-4 border-4 py-4"
             >
               Docs
             </Button>
@@ -182,7 +179,7 @@ export default function HomePage() {
       <div className="background-body px-lg-30 px-xxl-52 py-lg-20">
         <Stack
           direction="vertical"
-          className="align-items-center bg-lace-100 py-16 px-lg-30 py-lg-24"
+          className="align-items-center bg-lace-100 py-16 px-lg-17 px-xxl-30 py-lg-24"
           id="target-audience"
           style={{ borderRadius: isMobile || isTablet ? 0 : 56 }}
         >
@@ -196,19 +193,19 @@ export default function HomePage() {
               </Dropdown.Toggle>
               <Dropdown.Menu className="bg-secondary p-3">
                 <Dropdown.Item
-                  className="fs-lg text-white fw-semi-bold lh-sm"
+                  className="fs-lg text-white fw-semi-bold"
                   onClick={() => setShowTargetAudience(TargetAudience.ORGS)}
                 >
                   {TargetAudience.ORGS}
                 </Dropdown.Item>
                 <Dropdown.Item
-                  className="fs-lg text-white fw-semi-bold lh-sm"
+                  className="fs-lg text-white fw-semi-bold"
                   onClick={() => setShowTargetAudience(TargetAudience.BUILDERS)}
                 >
                   {TargetAudience.BUILDERS}
                 </Dropdown.Item>
                 <Dropdown.Item
-                  className="fs-lg text-white fw-semi-bold lh-sm"
+                  className="fs-lg text-white fw-semi-bold"
                   onClick={() => setShowTargetAudience(TargetAudience.EVERYONE)}
                 >
                   {TargetAudience.EVERYONE}
@@ -228,7 +225,7 @@ export default function HomePage() {
                     : "outline-dark"
                 }
                 className="px-10 py-4 fs-lg fw-semi-bold rounded-3 border-4"
-                style={{ width: isMobile ? 280 : 220, height: 60 }}
+                style={{ width: isMobile ? 280 : 220 }}
                 onClick={() => setShowTargetAudience(TargetAudience.ORGS)}
               >
                 For orgs
@@ -240,7 +237,7 @@ export default function HomePage() {
                     : "outline-dark"
                 }
                 className="px-10 py-4 fs-lg fw-semi-bold rounded-3 border-4"
-                style={{ width: isMobile ? 280 : 220, height: 60 }}
+                style={{ width: isMobile ? 280 : 220 }}
                 onClick={() => setShowTargetAudience(TargetAudience.BUILDERS)}
               >
                 For builders
@@ -252,7 +249,7 @@ export default function HomePage() {
                     : "outline-dark"
                 }
                 className="px-10 py-4 fs-lg fw-semi-bold rounded-3 border-4"
-                style={{ width: isMobile ? 280 : 220, height: 60 }}
+                style={{ width: isMobile ? 280 : 220 }}
                 onClick={() => setShowTargetAudience(TargetAudience.EVERYONE)}
               >
                 For everyone

@@ -130,7 +130,7 @@ export default function Footer() {
                   <Form.Control
                     type="email"
                     required
-                    placeholder="Enter you email"
+                    placeholder="Enter your email"
                     onChange={(e) => {
                       if (e.target.form?.checkValidity()) {
                         setIsEmailInvalid(false);

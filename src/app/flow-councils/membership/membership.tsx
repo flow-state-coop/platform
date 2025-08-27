@@ -300,7 +300,7 @@ export default function Membership(props: MembershipProps) {
         direction="vertical"
         className={!isMobile ? "w-75 px-5" : "w-100 px-4"}
       >
-        <Card className="bg-lace-100 rounded-4 border-0 mt-4 p-4">
+        <Card className="bg-lace-100 rounded-4 border-0 p-4">
           <Card.Header className="bg-transparent border-0 rounded-4 p-0">
             <Card.Title className="fs-5 fw-semi-bold">
               Council Membership
@@ -646,7 +646,7 @@ export default function Membership(props: MembershipProps) {
             </Stack>
           </Card.Body>
         </Card>
-        <Stack direction="vertical" gap={3} className="my-6">
+        <Stack direction="vertical" gap={3} className="mt-6 mb-30">
           <Button
             disabled={!isManager || !hasChanges || !isValidMembersEntry}
             className="fs-lg fw-semi-bold py-4 rounded-4"

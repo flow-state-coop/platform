@@ -158,7 +158,7 @@ export default function Grantee(props: GranteeProps) {
         className="rounded-5 border border-4 border-dark overflow-hidden cursor-pointer shadow"
         onClick={showGranteeDetails}
         style={{
-          height: 420,
+          height: 430,
           transition: "all 0.2s ease-in-out",
         }}
       >
@@ -174,18 +174,17 @@ export default function Grantee(props: GranteeProps) {
           width={52}
           height={52}
           className="rounded-4 position-absolute border border-4 border-white bg-white"
-          style={{ bottom: 285, left: 16 }}
+          style={{ bottom: 295, left: 16 }}
         />
-        <Card.Body className="mt-6 p-4 pb-0">
+        <Card.Body className="mt-5 p-4 pb-0">
           <Card.Text
-            className="d-inline-block mb-2 fs-lg fw-semi-bold word-wrap text-truncate"
+            className="d-inline-block m-0 fs-lg fw-semi-bold word-wrap text-truncate"
             style={{ maxWidth: 256 }}
           >
             {name}
           </Card.Text>
           <Card.Text
             ref={descriptionRef as React.RefObject<HTMLParagraphElement>}
-            className="m-0 mb-5"
             style={{ fontSize: "0.9rem", minHeight: noClamp ? "4lh" : "auto" }}
           >
             {clampedText}
@@ -211,7 +210,7 @@ export default function Grantee(props: GranteeProps) {
           {!!votingPower && granteeAllocation && (
             <Stack
               direction="horizontal"
-              className="justify-content-center mt-12"
+              className="justify-content-center mt-4"
             >
               <Card.Text
                 className="fw-bold small m-0"

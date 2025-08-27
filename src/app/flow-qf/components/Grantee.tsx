@@ -87,7 +87,7 @@ export default function Grantee(props: GranteeProps) {
 
   return (
     <Card
-      className="rounded-4 overflow-hidden cursor-pointer shadow border-4 border-dark"
+      className="rounded-5 overflow-hidden cursor-pointer shadow border-4 border-dark"
       style={{
         height: 438,
         border: isSelected ? "4px solid #056589" : "",
@@ -117,7 +117,7 @@ export default function Grantee(props: GranteeProps) {
         </Card.Text>
         <Card.Text
           ref={descriptionRef as React.RefObject<HTMLParagraphElement>}
-          className="m-0 mt-3 mb-8"
+          className="m-0 mt-3 mb-8 lh-1"
           style={{ minHeight: noClamp ? "4lh" : "auto" }}
         >
           {clampedText}
