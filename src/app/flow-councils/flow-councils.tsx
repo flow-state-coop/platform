@@ -405,18 +405,13 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
           <Spinner className="m-auto" />
         </span>
       ) : (
-        <Stack direction="vertical" gap={3} className="p-4">
+        <Stack direction="vertical" gap={3}>
           <Stack
             direction="horizontal"
             gap={1}
             className="align-items-start mt-3"
           >
             <h1 className="m-0 fs-3 fw-semi-bold">Flow Councils</h1>
-            <InfoTooltip
-              position={{ bottom: isMobile }}
-              target={<Image src="/info.svg" alt="" width={24} height={24} />}
-              content={<p className="m-0 p-2">Flow Councils</p>}
-            />
           </Stack>
           <h2 className="fs-lg">
             Dynamically allocate token streams to unlimited recipients based on
