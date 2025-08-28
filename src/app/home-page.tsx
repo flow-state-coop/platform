@@ -91,9 +91,7 @@ export default function HomePage() {
         </Stack>
       </Stack>
       <Stack direction="vertical" gap={10} className="pt-20 pb-16 pb-lg-20">
-        <p className="fs-6 fw-bold text-center text-black-600">
-          Organizations we work with
-        </p>
+        <p className="fs-6 fw-bold text-center text-black-600">Trusted by</p>
         <Stack
           direction="horizontal"
           gap={isMobile ? 5 : 20}
@@ -141,7 +139,7 @@ export default function HomePage() {
         >
           DYNAMIC
           <br />
-          <span className="text-primary">FUNDING</span>,
+          <span className="text-primary">CAPITAL</span>,
           <br />
           DYNAMIC
           <br />
@@ -470,14 +468,19 @@ export default function HomePage() {
             className="m-0 text-secondary text-center fw-bold"
             style={{ fontSize: 88, lineHeight: "95%" }}
           >
-            Ready to start your flow state?
+            Ready to find your flow state?
           </p>
           <p className="m-0 text-center fs-6" style={{ lineHeight: "140%" }}>
-            Design, build, and integrate a streaming funding program for your
-            unique ecosystem needs.
+            We can design, build, and integrate a streaming funding program for
+            your unique ecosystem needs.
           </p>
-          <Button variant="secondary" className="px-10 py-4 fs-lg fw-semi-bold">
-            Schedule a free call
+          <Button
+            variant="link"
+            href="https://calendar.app.google/VR16gZEyus6xqn2s8"
+            target="_blank"
+            className="bg-secondary text-white text-decoration-none px-10 py-4 fs-lg fw-semi-bold"
+          >
+            Schedule a consultation
           </Button>
         </Stack>
       </div>
