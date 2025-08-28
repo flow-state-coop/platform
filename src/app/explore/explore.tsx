@@ -26,6 +26,9 @@ const SQF_STREAM_QUERY = gql`
       flowRate
       totalAmountFlowedDistributedUntilUpdatedAt
       updatedAtTimestamp
+      poolDistributors(first: 1000, where: { flowRate_not: "0" }) {
+        id
+      }
     }
     accounts(where: { id_in: $superapps }) {
       id
@@ -33,6 +36,7 @@ const SQF_STREAM_QUERY = gql`
         totalAmountStreamedInUntilUpdatedAt
         updatedAtTimestamp
         totalInflowRate
+        activeIncomingStreamCount
       }
     }
   }
@@ -45,6 +49,9 @@ const GDA_POOL_QUERY = gql`
       flowRate
       totalAmountFlowedDistributedUntilUpdatedAt
       updatedAtTimestamp
+      poolDistributors(first: 1000, where: { flowRate_not: "0" }) {
+        id
+      }
     }
   }
 `;
@@ -116,7 +123,6 @@ export default function Explore(props: ExploreProps) {
       },
       pollInterval: 10000,
     });
-
   const flowCasterCrackedDevsPool = flowCasterCrackedDevsQueryRes?.pool;
   const flowCasterTeamPool = flowCasterTeamQueryRes?.pool;
 
@@ -143,6 +149,16 @@ export default function Explore(props: ExploreProps) {
       updatedAt: now,
     };
   }, [flowCasterCrackedDevsPool, flowCasterTeamPool]);
+
+  console.log(
+    coreInflow,
+    greenpillInflow,
+    guildGuildInflow,
+    goodDollarPool,
+    sqfStreamQueryRes,
+    flowCasterCrackedDevsQueryRes,
+    flowCasterTeamQueryRes,
+  );
 
   return (
     <Stack direction="vertical" className="explore-background pb-30">
@@ -196,6 +212,9 @@ export default function Explore(props: ExploreProps) {
               totalStreamedUntilUpdatedAt={flowCasterFlowInfo.totalDistributed.toString()}
               flowRate={flowCasterFlowInfo.flowRate.toString()}
               updatedAt={flowCasterFlowInfo.updatedAt}
+              activeStreamCount={
+                flowCasterCrackedDevsPool?.poolDistributors.length
+              }
               tokenSymbol="USDCx"
               link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
               showSupRewards={true}
@@ -209,6 +228,7 @@ export default function Explore(props: ExploreProps) {
               ).toString()}
               flowRate={BigInt(goodDollarPool?.flowRate ?? 0).toString()}
               updatedAt={goodDollarPool?.updatedAtTimestamp}
+              activeStreamCount={goodDollarPool?.poolDistributors.length}
               tokenSymbol="G$"
               link="/gooddollar"
               showSupRewards={true}
@@ -222,6 +242,7 @@ export default function Explore(props: ExploreProps) {
               ).toString()}
               flowRate={BigInt(coreInflow?.totalInflowRate ?? 0).toString()}
               updatedAt={coreInflow?.updatedAtTimestamp}
+              activeStreamCount={coreInflow?.activeIncomingStreamCount}
               tokenSymbol="ETHx"
               link="/flow-guilds/core"
             />
@@ -266,6 +287,22 @@ export default function Explore(props: ExploreProps) {
                 )
               ).toString()}
               updatedAt={sqfStreamQueryRes?.pool.updatedAtTimestamp}
+              activeStreamCount={
+                sqfStreamQueryRes
+                  ? sqfStreamQueryRes.pool.poolDistributors.length +
+                    sqfStreamQueryRes.accounts
+                      .map(
+                        (account: {
+                          accountTokenSnapshots: {
+                            activeIncomingStreamCount: number;
+                          }[];
+                        }) =>
+                          account.accountTokenSnapshots[0]
+                            .activeIncomingStreamCount,
+                      )
+                      .reduce((a: number, b: number) => a + b)
+                  : 0
+              }
               tokenSymbol="ETHx"
               link="/octant"
             />
@@ -280,6 +317,7 @@ export default function Explore(props: ExploreProps) {
                 greenpillInflow?.totalInflowRate ?? 0,
               ).toString()}
               updatedAt={greenpillInflow?.updatedAtTimestamp}
+              activeStreamCount={greenpillInflow?.activeIncomingStreamCount}
               tokenSymbol="ETHx"
               link="/flow-guilds/greenpilldevguild"
             />
@@ -294,6 +332,7 @@ export default function Explore(props: ExploreProps) {
                 guildGuildInflow?.totalInflowRate ?? 0,
               ).toString()}
               updatedAt={guildGuildInflow?.updatedAtTimestamp}
+              activeStreamCount={guildGuildInflow?.activeIncomingStreamCount}
               tokenSymbol="ETHx"
               link="/flow-guilds/guild-guild"
             />
@@ -308,6 +347,7 @@ export default function Explore(props: ExploreProps) {
                 chonesGuildInflow?.totalInflowRate ?? 0,
               ).toString()}
               updatedAt={chonesGuildInflow?.updatedAtTimestamp}
+              activeStreamCount={chonesGuildInflow?.activeIncomingStreamCount}
               tokenSymbol="ETHx"
               link="/flow-guilds/chonesguild"
             />
