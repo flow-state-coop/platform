@@ -105,22 +105,10 @@ export default function HomePage() {
             height={80}
           />
           <Image
-            src="/good-dollar.png"
+            src="/good-dollar-wordmark.png"
             alt="Good Dollar"
-            width={80}
-            height={80}
-          />
-          <Image
-            src="/guild-guild.png"
-            alt="Guild Guild"
-            width={58}
-            height={58}
-          />
-          <Image
-            src="/greenpill-wordmark.svg"
-            alt="Greenpill"
-            width={240}
-            height={80}
+            width={300}
+            height={42}
           />
         </Stack>
       </Stack>
