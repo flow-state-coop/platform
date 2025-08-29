@@ -92,13 +92,16 @@ export default function GranteeDetails(props: GranteeDetails) {
       show
       onHide={hide}
       placement={isMobile ? "bottom" : "end"}
+      className="p-4"
       style={{ height: "100%" }}
     >
       <Offcanvas.Header closeButton className="pb-0">
-        <Offcanvas.Title className="fs-3">Recipient Details</Offcanvas.Title>
+        <Offcanvas.Title className="fs-5 fw-semi-bold">
+          Recipient Details
+        </Offcanvas.Title>
       </Offcanvas.Header>
       <Offcanvas.Body>
-        <Stack direction="vertical" className="bg-light rounded-4 p-2 pt-0">
+        <Stack direction="vertical" className="bg-lace-100 rounded-4 p-4">
           <Stack
             direction="horizontal"
             gap={2}
@@ -112,7 +115,7 @@ export default function GranteeDetails(props: GranteeDetails) {
               className="ms-2 rounded-4"
             />
             <Card className="bg-transparent border-0 ms-3">
-              <Card.Title className="fs-5 text-secondary m-0">
+              <Card.Title className="fw-semi-bold text-secondary m-0">
                 {metadata.title}
               </Card.Title>
               <Card.Subtitle className="m-0">
@@ -129,7 +132,7 @@ export default function GranteeDetails(props: GranteeDetails) {
           <Stack
             direction="horizontal"
             gap={2}
-            className="align-items-end text-info fs-6 px-2 mb-2"
+            className="align-items-end text-info px-2 mb-2"
           >
             {!!metadata.website && (
               <Button
@@ -247,26 +250,20 @@ export default function GranteeDetails(props: GranteeDetails) {
               </Button>
             )}
           </Stack>
-          <Stack direction="horizontal" gap={1} className="fs-6 p-2 pb-0">
+          <Stack direction="horizontal" gap={1} className="p-2 pb-0">
             <Stack direction="vertical" gap={1} className="w-33">
-              <Card.Text
-                className="m-0 pe-0 text-nowrap text-center"
-                style={{ fontSize: "0.7rem" }}
-              >
+              <Card.Text className="m-0 pe-0 text-nowrap text-center">
                 Votes
               </Card.Text>
-              <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal text-center">
+              <Badge className="bg-secondary rounded-3 py-3 text-start fs-lg fw-semi-bold text-center">
                 {formatNumber(Number(poolMember?.units ?? 0))}
               </Badge>
             </Stack>
             <Stack direction="vertical" gap={1} className="w-33">
-              <Card.Text
-                className="m-0 pe-0 text-center"
-                style={{ fontSize: "0.7rem" }}
-              >
+              <Card.Text className="m-0 pe-0 text-center">
                 {token.symbol}/mo
               </Card.Text>
-              <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal text-center">
+              <Badge className="bg-primary rounded-3 py-3 text-start fs-lg fw-semi-bold text-center">
                 {formatNumber(
                   Number(
                     formatEther(memberFlowRate * BigInt(SECONDS_IN_MONTH)),
@@ -275,13 +272,10 @@ export default function GranteeDetails(props: GranteeDetails) {
               </Badge>
             </Stack>
             <Stack direction="vertical" gap={1} className="w-33">
-              <Card.Text
-                className="m-0 pe-0 text-nowrap text-center"
-                style={{ fontSize: "0.7rem" }}
-              >
+              <Card.Text className="m-0 pe-0 text-nowrap text-center">
                 Total
               </Card.Text>
-              <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal text-center">
+              <Badge className="bg-info rounded-3 py-3 text-start fs-lg fw-semi-bold text-center">
                 {formatNumber(Number(formatEther(totalFundingReceived)))}
               </Badge>
             </Stack>
@@ -303,7 +297,7 @@ export default function GranteeDetails(props: GranteeDetails) {
           </div>
           {canAddToBallot && (
             <Button
-              className="d-flex gap-1 justify-content-center align-items-center px-4"
+              className="d-flex gap-2 justify-content-center align-items-center px-10 py-4 rounded-4 fw-semi-bold"
               onClick={() =>
                 dispatchNewAllocation({
                   type: "add",
@@ -335,7 +329,7 @@ export default function GranteeDetails(props: GranteeDetails) {
                 : `/projects/${id}/?chainId=${chainId}`
             }
             target="_blank"
-            className="d-flex justify-content-center align-items-center gap-2 mt-2 bg-secondary text-light text-decoration-none"
+            className="d-flex justify-content-center align-items-center gap-2 mt-2 px-10 py-4 rounded-4 bg-secondary text-light text-decoration-none fw-semi-bold"
           >
             <Image
               src="/open-new.svg"

@@ -14,6 +14,7 @@ const FLOW_GUILD_QUERY = gql`
         totalAmountStreamedInUntilUpdatedAt
         totalInflowRate
         updatedAtTimestamp
+        activeIncomingStreamCount
       }
     }
   }
@@ -26,6 +27,9 @@ const GDA_POOL_QUERY = gql`
       flowRate
       totalAmountFlowedDistributedUntilUpdatedAt
       updatedAtTimestamp
+      poolDistributors(first: 1000, where: { flowRate_not: "0" }) {
+        id
+      }
     }
   }
 `;

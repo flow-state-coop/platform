@@ -5,17 +5,12 @@ const nextConfig = {
     return [
       {
         source: "/octant",
-        destination: "/pool/?chainId=8453&poolId=63",
+        destination: "/flow-qf/?chainId=8453&poolId=63",
         permanent: true,
       },
       {
         source: "/core",
         destination: "/flow-guilds/core",
-        permanent: true,
-      },
-      {
-        source: "/admin",
-        destination: "/sqf",
         permanent: true,
       },
     ];

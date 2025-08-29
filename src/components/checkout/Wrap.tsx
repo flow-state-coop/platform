@@ -81,10 +81,10 @@ export default function Wrap(props: WrapProps) {
   };
 
   return (
-    <Card className="bg-light rounded-0 border-0 border-bottom border-info">
+    <Card className="bg-lace-100 rounded-0 border-0 border-bottom border-white">
       <Button
         variant="transparent"
-        className="d-flex gap-2 p-3 border-0 rounded-0 shadow-none"
+        className="d-flex gap-3 p-4 border-0 rounded-0 shadow-none text-secondary fs-lg fw-semi-bold"
         onClick={() => setStep(Step.WRAP)}
         style={{
           pointerEvents:
@@ -133,7 +133,7 @@ export default function Wrap(props: WrapProps) {
         </Badge>
         {Step.WRAP}
       </Button>
-      <Accordion.Collapse eventKey={Step.WRAP} className="p-3 pt-0">
+      <Accordion.Collapse eventKey={Step.WRAP} className="p-4 pt-0">
         <Stack direction="vertical" gap={3}>
           <Card.Text className="small mb-1">
             {token.symbol} is a wrapped version of{" "}
@@ -147,14 +147,14 @@ export default function Wrap(props: WrapProps) {
             <Stack
               direction="horizontal"
               gap={2}
-              className="w-100 bg-white p-2 rounded-4 rounded-bottom-0"
+              className="w-100 bg-white p-4 rounded-4 rounded-bottom-0"
             >
               <Form.Control
                 type="text"
                 placeholder="0"
                 disabled={!address}
                 value={wrapAmount ?? ""}
-                className="bg-purple w-75 border-0 shadow-none"
+                className="w-75 border-0 fs-lg fw-semi-bold shadow-none"
                 onChange={handleAmountSelection}
               />
               {underlyingTokenBalance &&
@@ -168,7 +168,7 @@ export default function Wrap(props: WrapProps) {
                   className="ms-2 ps-1 text-danger"
                   style={{
                     position: "absolute",
-                    top: "38px",
+                    top: "58px",
                     fontSize: "0.7rem",
                   }}
                 >
@@ -195,7 +195,7 @@ export default function Wrap(props: WrapProps) {
                   className="ms-2 ps-1"
                   style={{
                     position: "absolute",
-                    top: "38px",
+                    top: "58px",
                     fontSize: "0.7rem",
                   }}
                 >
@@ -212,7 +212,7 @@ export default function Wrap(props: WrapProps) {
               ) : null}
               <Badge
                 as="div"
-                className="d-flex justify-content-center align-items-center w-25 gap-1 bg-light text-dark py-2 rounded-3"
+                className="d-flex justify-content-center align-items-center w-25 gap-2 bg-lace-100 text-dark py-4 rounded-4"
               >
                 <Image src={token.icon} alt="done" width={18} height={18} />
                 <Card.Text className="p-0">
@@ -220,7 +220,7 @@ export default function Wrap(props: WrapProps) {
                 </Card.Text>
               </Badge>
             </Stack>
-            <Card.Text className="w-100 bg-white m-0 mb-2 px-2 pb-2 pt-1 rounded-bottom-4 text-end fs-6">
+            <Card.Text className="w-100 bg-white m-0 mb-2 px-2 pb-2 pt-1 rounded-bottom-4 text-end">
               Balance:{" "}
               {underlyingTokenBalance
                 ? formatNumber(Number(underlyingTokenBalance.formatted))
@@ -228,7 +228,7 @@ export default function Wrap(props: WrapProps) {
             </Card.Text>
             <Badge
               pill
-              className="position-absolute top-50 start-50 translate-middle bg-light p-1"
+              className="position-absolute top-50 start-50 translate-middle bg-lace-100 p-1"
             >
               <Image
                 src="/expand-more.svg"
@@ -240,14 +240,14 @@ export default function Wrap(props: WrapProps) {
             <Stack
               direction="horizontal"
               gap={2}
-              className="w-100 bg-white p-2 rounded-4 rounded-bottom-0"
+              className="w-100 bg-white p-4 rounded-4 rounded-bottom-0"
             >
               <Form.Control
                 type="text"
                 placeholder="0"
                 disabled={!address}
                 value={wrapAmount ?? ""}
-                className="bg-white w-75 border-0 shadow-none"
+                className="bg-white w-75 border-0 fs-lg fw-semi-bold shadow-none"
                 onChange={handleAmountSelection}
               />
               {wrapDurationEstimate && wrapDurationEstimate < 0.01 ? (
@@ -279,13 +279,13 @@ export default function Wrap(props: WrapProps) {
               ) : null}
               <Badge
                 as="div"
-                className="d-flex justify-content-center align-items-center gap-1 w-25 bg-light text-dark py-2 rounded-3"
+                className="d-flex justify-content-center align-items-center gap-2 w-25 bg-lace-100 text-dark py-4 rounded-3"
               >
                 <Image src={token.icon} alt="done" width={18} height={18} />
                 <Card.Text className="p-0">{token.symbol}</Card.Text>
               </Badge>
             </Stack>
-            <Card.Text className="w-100 bg-white m-0 px-2 pb-2 pt-1 rounded-bottom-4 text-end fs-6">
+            <Card.Text className="w-100 bg-white m-0 px-2 pb-2 pt-1 rounded-bottom-4 text-end">
               Balance: {formatNumber(Number(formatEther(superTokenBalance)))}
             </Card.Text>
           </Stack>
@@ -299,7 +299,7 @@ export default function Wrap(props: WrapProps) {
             ) < Number(wrapAmount.replace(/,/g, "")) && (
               <Alert
                 variant="danger"
-                className="m-0"
+                className="m-0 text-light fw-semi-bold p-3"
                 style={{ pointerEvents: "none" }}
               >
                 Insufficient Balance
@@ -308,16 +308,15 @@ export default function Wrap(props: WrapProps) {
           <Stack direction="horizontal" gap={2}>
             <OverlayTrigger
               overlay={
-                <Tooltip id="t-skip-wrap" className="fs-6">
+                <Tooltip id="t-skip-wrap">
                   You can skip wrapping if you already have an {token.symbol}{" "}
                   balance.
                 </Tooltip>
               }
             >
               <Button
-                variant="primary"
                 disabled={superTokenBalance <= BigInt(0)}
-                className="w-50 py-1 rounded-3 text-light"
+                className="w-50 py-4 rounded-4 fw-semi-bold text-light"
                 onClick={() => {
                   setWrapAmount("");
                   setStep(
@@ -345,7 +344,7 @@ export default function Wrap(props: WrapProps) {
                   ),
                 ) < Number(wrapAmount.replace(/,/g, ""))
               }
-              className="w-50 py-1 rounded-3 text-light"
+              className="w-50 py-4 rounded-4 fw-semi-bold text-light"
               onClick={() =>
                 setStep(
                   !isFundingDistributionPool && !isEligible

@@ -82,10 +82,10 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
   }, [address, isEligible, isFirstCheck, handleNftMintRequest]);
 
   return (
-    <Card className="bg-light rounded-0 border-0 border-bottom border-info">
+    <Card className="bg-lace-100 rounded-0 border-0 border-bottom border-white">
       <Button
         variant="transparent"
-        className="d-flex align-items-center gap-2 p-3 border-0 rounded-0 shadow-none"
+        className="d-flex gap-3 p-4 border-0 rounded-0 shadow-none text-secondary fs-lg fw-semi-bold"
         style={{
           pointerEvents:
             step !== Step.SUPPORT && step !== Step.REVIEW ? "none" : "auto",
@@ -134,9 +134,6 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
       </Button>
       <Accordion.Collapse eventKey={Step.ELIGIBILITY} className="p-3 py-0">
         <Stack direction="vertical" gap={2}>
-          <Card.Text className="m-0 border-bottom border-gray">
-            Matching Eligibility
-          </Card.Text>
           <Stack
             direction="horizontal"
             gap={3}
@@ -194,7 +191,7 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
                 variant="link"
                 href="https://app.passport.xyz"
                 target="_blank"
-                className="bg-secondary text-light text-decoration-none"
+                className="bg-secondary text-light text-decoration-none px-10 py-4 rounded-4 fw-semi-bold"
               >
                 {isEligible
                   ? "Check Your Score"
@@ -202,14 +199,14 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
               </Button>
               <Button
                 disabled={isEligible}
-                className="d-flex justify-content-center align-items-center gap-2"
+                className="d-flex justify-content-center align-items-center gap-2 px-10 py-4 rounded-4 fw-semi-bold"
                 onClick={!isLoading ? handleNftMintRequest : void 0}
               >
                 {isEligible ? "Claim NFT" : "2. Claim NFT"}
                 {isLoading && <Spinner size="sm" />}
               </Button>
               {error && error === "Ineligible" ? (
-                <p className="mb-1 small text-center text-danger">
+                <p className="mb-1 small text-center text-danger fw-smei-bold">
                   Not yet eligible. Request manual verification in our{" "}
                   <Link
                     href="https://t.me/flowstatecoop"
@@ -221,11 +218,13 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
                   .
                 </p>
               ) : (
-                <p className="mb-1 small text-center text-danger">{error}</p>
+                <p className="mb-1 small text-center text-danger fw-smei-bold">
+                  {error}
+                </p>
               )}
               <Button
                 disabled={!isEligible}
-                className="w-100 m-0 ms-auto mt-1 mb-3 text-light fw-bold"
+                className="w-100 m-0 ms-auto mt-1 mb-3 text-light px-10py-10 rounded-4 fw-semi-bold"
                 onClick={() =>
                   setStep(
                     !sessionStorage.getItem("skipSupportFlowState") &&

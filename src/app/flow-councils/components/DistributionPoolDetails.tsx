@@ -65,24 +65,24 @@ export default function DistributionPoolDetails(
   );
 
   return (
-    <Stack direction="vertical" className="bg-light rounded-4 p-2 pt-0">
+    <Stack direction="vertical" className="bg-lace-100 rounded-4 p-4">
       <Stack direction="horizontal" gap={2} className="align-items-center mt-3">
         <Image
-          src="/logo.png"
+          src="/logo-blue.svg"
           alt="SQF"
           width={96}
           height={96}
           className="ms-2 rounded-4"
         />
         <Card className="bg-transparent border-0 ms-3">
-          <Card.Title className="fs-6 text-secondary">
+          <Card.Title className="fs-lg fw-semi-bold text-secondary">
             Distribution Pool
           </Card.Title>
-          <Card.Subtitle className="mb-0 fs-6">
+          <Card.Subtitle className="mb-0 fs-lg">
             Your Current Stream
           </Card.Subtitle>
           <Card.Body className="d-flex align-items-center gap-2 p-0">
-            <Card.Text as="span" className="fs-1">
+            <Card.Text as="span" className="fs-3 fw-bold">
               {formatNumber(monthlyStreamToReceiver)}
             </Card.Text>
             <Card.Text as="small" className="mt-1">
@@ -93,16 +93,16 @@ export default function DistributionPoolDetails(
           </Card.Body>
         </Card>
       </Stack>
-      <Stack direction="horizontal" gap={1} className="fs-6 p-2 pb-0">
+      <Stack direction="horizontal" gap={1} className="fs-lg p-4 pb-0">
         <Stack direction="vertical" gap={1} className="w-25">
           <Card.Text className="m-0 pe-0">You</Card.Text>
-          <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-primary rounded-2 p-2 text-start fw-bold">
             {formatNumber(monthlyStreamToReceiver)}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
           <Card.Text className="m-0 pe-0">Others</Card.Text>
-          <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-info rounded-2 p-2 text-start fw-bold">
             {formatNumber(
               totalMonthlyStream - monthlyStreamToReceiver > 0
                 ? totalMonthlyStream - monthlyStreamToReceiver
@@ -112,7 +112,7 @@ export default function DistributionPoolDetails(
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
           <Card.Text className="m-0 pe-0">All</Card.Text>
-          <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-secondary rounded-2 p-2 text-start fw-bold">
             {formatNumber(totalMonthlyStream)}
           </Badge>
         </Stack>
@@ -120,21 +120,21 @@ export default function DistributionPoolDetails(
           monthly
         </Card.Text>
       </Stack>
-      <Stack direction="horizontal" gap={1} className="fs-6 p-2">
+      <Stack direction="horizontal" gap={1} className="fs-lg px-4 py-2">
         <Stack direction="vertical" gap={1} className="w-25">
-          <Badge className="bg-primary rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-primary rounded-2 p-2 text-start fw-bold">
             {formatNumber(Number(formatEther(totalDistributedUser)))}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
-          <Badge className="bg-info rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-info rounded-2 p-2 text-start fw-bold">
             {formatNumber(
               Number(formatEther(totalDistributedAll - totalDistributedUser)),
             )}
           </Badge>
         </Stack>
         <Stack direction="vertical" gap={1} className="w-25">
-          <Badge className="bg-secondary rounded-1 p-1 text-start fs-6 fw-normal">
+          <Badge className="bg-secondary rounded-2 p-2 text-start fw-bold">
             {formatNumber(Number(formatEther(totalDistributedAll)))}
           </Badge>
         </Stack>
@@ -142,10 +142,8 @@ export default function DistributionPoolDetails(
           total
         </Card.Text>
       </Stack>
-      <Card.Text className="m-0 p-2 fs-6" style={{ maxWidth: 500 }}>
-        Lorem ipsum odor amet, consectetuer adipiscing elit. Tortor sem dictumst
-        suscipit ut, blandit fusce. Himenaeos rhoncus risus venenatis ad fames
-        viverra libero habitant fames.
+      <Card.Text className="m-0 p-4 fs-lg" style={{ maxWidth: 500 }}>
+        Fund the distribution pool by opening a stream to it.
       </Card.Text>
     </Stack>
   );

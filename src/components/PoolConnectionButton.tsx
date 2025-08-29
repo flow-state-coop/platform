@@ -52,7 +52,7 @@ export default function PoolConnectionButton(props: {
       variant="secondary"
       onClick={handlePoolConnection}
       disabled={isConnected}
-      className="w-100 text-white"
+      className="w-100 text-white rounded-4 py-4 fs-lg fw-semi-bold"
     >
       {isTransactionConfirming ? (
         <Spinner size="sm" />
