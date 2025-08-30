@@ -22,7 +22,7 @@ export const flowGuildConfigs: {
 } = {
   ["core"]: {
     id: "core",
-    name: "Core",
+    name: "Core Contributors",
     description: `Flow State builds programmable money streaming tools for public goods and their builders.\n\nOpen a stream or send a one-time donation, so we can stay focused on creating impact.`,
     logo: "/logo-blue.svg",
     website: "https://flowstate.network/flow-guilds/core",
