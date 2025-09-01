@@ -56,16 +56,16 @@ export default function HomePage() {
       >
         <p
           className="m-0 fw-bold text-black text-center"
-          style={{ lineHeight: "95%", fontSize: isMobile ? 76 : 120 }}
+          style={{
+            lineHeight: "95%",
+            fontSize: isMobile ? 70 : isBigScreen ? 100 : 90,
+          }}
         >
-          Make
-          <span className="text-flame-500"> impact</span>
-          <span className="text-primary"> flow</span>.
+          Streaming
+          <span className="text-flame-500"> money</span>
+          <span className="text-primary"> solutions</span>
         </p>
-        <p className="m-0 text-center fs-6">
-          Flow State helps communities, teams, & builders direct resources where
-          they're needed most with programmable money streams.
-        </p>
+        <p className="m-0 text-center fs-6">Where capital flows to results</p>
         <Stack
           direction={isMobile ? "vertical" : "horizontal"}
           gap={6}
@@ -131,34 +131,20 @@ export default function HomePage() {
           <br />
           DYNAMIC
           <br />
-          <span className="text-flame-500">IMPACT</span>
+          <span className="text-flame-500">RESULTS</span>
         </p>
         <Stack
           direction="vertical"
           className="flex-grow-0"
           style={{ width: isBigScreen ? 951 : isMobile ? "auto" : 651 }}
         >
-          <p className="m-0 text-primary fs-5 fw-semi-bold lh-sm">
-            Break the grants doom loop:
-          </p>
-          <p style={{ fontSize: 26 }} className="word-break lh-sm">
-            💸 Ambitious plans → {isMobile && <br />}👹 grant rotatoooors →
-            <br />
-            🐌 bureaucratic sprawl → {isMobile && <br />}☠️ no money, no impact
+          <p className="word-break fs-5 lh-sm">
+            In web3, money and information flow on the same rails. Every batch
+            payment is a missed chance to maintain that connection.
             <br />
             <br />
-            Use our programmable money streaming tools to{" "}
-            <span className="fw-semi-bold">
-              create high-bandwidth feedback loops
-            </span>{" "}
-            and{" "}
-            <span className="fw-semi-bold">
-              sustainably support open-source business models
-            </span>
-            .
-            <br />
-            <br />
-            Your builders, treasury, & community will thank you for it.
+            Streaming funding empowers you, your team, and your community to
+            keep capital and results in sync.
           </p>
         </Stack>
       </Stack>

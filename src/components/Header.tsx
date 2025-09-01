@@ -32,7 +32,7 @@ export default function Header() {
         >
           <Stack direction="horizontal" gap={4} className="cursor-pointer">
             <Image
-              src="/logo-dark.svg"
+              src="/logo-blue.svg"
               alt="logo"
               width={isMobile || isTablet ? 48 : 64}
               height={isMobile || isTablet ? 48 : 64}
@@ -180,7 +180,7 @@ export default function Header() {
         <Offcanvas.Header className="justify-content-between px-3 py- px-3 py-5">
           <Stack direction="horizontal" gap={4} className="cursor-pointer">
             <Image
-              src="/logo-dark.svg"
+              src="/logo-blue.svg"
               alt="logo"
               width={48}
               height={48}
