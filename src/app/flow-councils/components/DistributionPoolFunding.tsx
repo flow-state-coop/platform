@@ -33,7 +33,7 @@ import { Network } from "@/types/network";
 import DistributionPoolDetails from "./DistributionPoolDetails";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
-import useCouncil from "../hooks/council";
+import useFlowCouncil from "../hooks/flowCouncil";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
@@ -115,7 +115,8 @@ export default function DistributionPoolFunding(props: {
 
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
-  const { council, councilMetadata, token, gdaPool } = useCouncil();
+  const { flowCouncil, flowCouncilMetadata, token, distributionPool } =
+    useFlowCouncil();
   const {
     areTransactionsLoading,
     completedTransactions,
@@ -173,7 +174,7 @@ export default function DistributionPoolFunding(props: {
       userAddress: address?.toLowerCase() ?? "",
       token: token.address.toLowerCase(),
     },
-    skip: !council?.pool,
+    skip: !flowCouncil?.pool,
     pollInterval: 10000,
   });
   const ethersProvider = useEthersProvider({ chainId: network.id });
@@ -207,8 +208,8 @@ export default function DistributionPoolFunding(props: {
       ? true
       : false;
   const socialShare = getSocialShare({
-    councilName: councilMetadata.name,
-    councilUiLink: `https://flowstate.network/flow-councils/${network?.id}/${council?.id}`,
+    flowCouncilName: flowCouncilMetadata.name,
+    flowCouncilUiLink: `https://flowstate.network/flow-flowCouncils/${network?.id}/${flowCouncil?.id}`,
   });
 
   const supportFlowStateConfig = useMemo(
@@ -226,8 +227,8 @@ export default function DistributionPoolFunding(props: {
   );
 
   const flowRateToReceiver = useMemo(() => {
-    if (address && gdaPool) {
-      const distributor = gdaPool.poolDistributors.find(
+    if (address && distributionPool) {
+      const distributor = distributionPool.poolDistributors.find(
         (distributor: { account: { id: string }; flowRate: string }) =>
           distributor.account.id === address.toLowerCase(),
       );
@@ -238,7 +239,7 @@ export default function DistributionPoolFunding(props: {
     }
 
     return "0";
-  }, [address, gdaPool]);
+  }, [address, distributionPool]);
 
   const membershipsInflowRate = useMemo(() => {
     let membershipsInflowRate = BigInt(0);
@@ -419,7 +420,7 @@ export default function DistributionPoolFunding(props: {
     operations.push(
       superToken.distributeFlow({
         from: address,
-        pool: council?.pool ?? "",
+        pool: flowCouncil?.pool ?? "",
         requestedFlowRate: newFlowRate,
       }),
     );
@@ -462,7 +463,7 @@ export default function DistributionPoolFunding(props: {
     flowRateToFlowState,
     ethersProvider,
     ethersSigner,
-    council?.pool,
+    flowCouncil?.pool,
     distributionTokenAddress,
     underlyingTokenAllowance,
     editFlow,
@@ -626,9 +627,10 @@ export default function DistributionPoolFunding(props: {
       </Offcanvas.Header>
       <Offcanvas.Body>
         <Stack direction="vertical" className="flex-grow-0">
-          <DistributionPoolDetails gdaPool={gdaPool} token={token} />
-          {gdaPool &&
-          (Number(gdaPool.totalUnits) > 0 || BigInt(flowRateToReceiver) > 0) ? (
+          <DistributionPoolDetails gdaPool={distributionPool} token={token} />
+          {distributionPool &&
+          (Number(distributionPool.totalUnits) > 0 ||
+            BigInt(flowRateToReceiver) > 0) ? (
             <Accordion activeKey={step} className="mt-4">
               <EditStream
                 isFundingDistributionPool={true}
@@ -714,7 +716,7 @@ export default function DistributionPoolFunding(props: {
                 step={step}
                 setStep={(step) => setStep(step)}
                 network={network}
-                receiver={council?.pool ?? ""}
+                receiver={flowCouncil?.pool ?? ""}
                 transactions={transactions}
                 completedTransactions={completedTransactions}
                 areTransactionsLoading={areTransactionsLoading}

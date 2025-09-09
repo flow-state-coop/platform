@@ -61,7 +61,9 @@ export default function Header() {
         <Stack direction="horizontal" gap={3}>
           <Suspense>
             {pathname === "/gooddollar" ||
-            (params.chainId && params.councilId) ? (
+            (pathname.startsWith("/flow-councils") &&
+              params.chainId &&
+              params.id) ? (
               <FlowCouncilWallet />
             ) : (
               <ConnectWallet />

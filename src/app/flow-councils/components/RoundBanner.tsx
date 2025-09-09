@@ -11,46 +11,46 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { GDAPool } from "@/types/gdaPool";
 import { Token } from "@/types/token";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import useCouncil from "../hooks/council";
+import useFlowCouncil from "../hooks/flowCouncil";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { networks } from "@/lib/networks";
 import { formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
-type PoolInfoProps = {
+type RoundBannerProps = {
   name: string;
   description: string;
   chainId: number;
   distributionTokenInfo: Token;
-  gdaPool?: GDAPool;
+  distributionPool?: GDAPool;
   showDistributionPoolFunding: () => void;
 };
 
-export default function PoolInfo(props: PoolInfoProps) {
+export default function RoundBanner(props: RoundBannerProps) {
   const {
     name,
     description,
     chainId,
     distributionTokenInfo,
-    gdaPool,
+    distributionPool,
     showDistributionPoolFunding,
   } = props;
 
   const [showFullInfo, setShowFullInfo] = useState(true);
 
-  const { council } = useCouncil();
+  const { flowCouncil } = useFlowCouncil();
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
 
   const distributionMonthly =
-    BigInt(gdaPool?.flowRate ?? 0) * BigInt(SECONDS_IN_MONTH);
+    BigInt(distributionPool?.flowRate ?? 0) * BigInt(SECONDS_IN_MONTH);
   const distributionTotal = useFlowingAmount(
-    BigInt(gdaPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0),
-    gdaPool?.updatedAtTimestamp ?? 0,
-    BigInt(gdaPool?.flowRate ?? 0),
+    BigInt(distributionPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0),
+    distributionPool?.updatedAtTimestamp ?? 0,
+    BigInt(distributionPool?.flowRate ?? 0),
   );
-  const grantee = council?.grantees.find(
-    (grantee) => grantee.account === address?.toLowerCase(),
+  const recipient = flowCouncil?.recipients.find(
+    (recipientItem) => recipientItem.account === address?.toLowerCase(),
   );
   const superfluidExplorer = networks.find(
     (network) => network.id === chainId,
@@ -123,7 +123,7 @@ export default function PoolInfo(props: PoolInfoProps) {
                   </td>
                   <td className="w-25 bg-transparent">
                     <Card.Link
-                      href={`${superfluidExplorer}/pools/${gdaPool?.id}`}
+                      href={`${superfluidExplorer}/pools/${distributionPool?.id}`}
                       target="_blank"
                     >
                       {formatNumber(Number(formatEther(distributionMonthly)))}
@@ -133,7 +133,9 @@ export default function PoolInfo(props: PoolInfoProps) {
                     {formatNumber(Number(formatEther(distributionTotal)))}
                   </td>
                   <td className="w-25 bg-transparent">
-                    {formatNumber(gdaPool?.poolDistributors.length ?? 0)}
+                    {formatNumber(
+                      distributionPool?.poolDistributors.length ?? 0,
+                    )}
                   </td>
                 </tr>
               </tbody>
@@ -153,10 +155,10 @@ export default function PoolInfo(props: PoolInfoProps) {
                   Grow the Pie
                 </Button>
               )}
-              {grantee && (
+              {recipient && (
                 <Button
                   variant="link"
-                  href={`https://flowstate.network/projects/${grantee.metadata}/?chainId=${chainId}&edit=true`}
+                  href={`https://flowstate.network/projects/${recipient.metadata}/?chainId=${chainId}&edit=true`}
                   target="_blank"
                   className="bg-primary p-2 text-light fs-5 text-decoration-none"
                   style={{ width: isMobile ? "100%" : 180 }}

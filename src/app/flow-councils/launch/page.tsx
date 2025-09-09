@@ -7,10 +7,10 @@ export default async function Page({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const { chainId, councilId } = await searchParams;
+  const { chainId, id } = await searchParams;
 
   const network =
     networks.find((network) => network.id === Number(chainId)) ?? networks[0];
 
-  return <Launch defaultNetwork={network} councilId={councilId} />;
+  return <Launch defaultNetwork={network} flowCouncilId={id ?? ""} />;
 }

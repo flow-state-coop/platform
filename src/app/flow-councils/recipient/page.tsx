@@ -1,23 +1,20 @@
+import { cookies as nextCookies } from "next/headers";
 import type { SearchParams } from "@/types/searchParams";
-import Review from "./review";
-import { headers, cookies as nextCookies } from "next/headers";
+import Recipient from "./recipient";
 
 export default async function Page({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const headersList = await headers();
-  const hostname = headersList.get("host");
   const cookies = await nextCookies();
 
   const { chainId, id } = await searchParams;
 
   return (
-    <Review
+    <Recipient
       chainId={Number(chainId)}
       flowCouncilId={id}
-      hostname={hostname ?? ""}
       csfrToken={cookies.get("next-auth.csrf-token")?.value.split("|")[0] ?? ""}
     />
   );

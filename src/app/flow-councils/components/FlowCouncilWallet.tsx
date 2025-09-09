@@ -5,26 +5,21 @@ import Stack from "react-bootstrap/Stack";
 import Badge from "react-bootstrap/Badge";
 import Image from "next/image";
 import ConnectWallet from "@/components/ConnectWallet";
-import useCouncil from "../hooks/council";
+import useFlowCouncil from "../hooks/flowCouncil";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
 export default function FlowCouncilWallet() {
-  const {
-    councilMember,
-    currentAllocation,
-    newAllocation,
-    dispatchShowBallot,
-  } = useCouncil();
+  const { voter, currentBallot, newBallot, dispatchShowBallot } =
+    useFlowCouncil();
   const { isMobile } = useMediaQuery();
 
   const currentVotes =
-    newAllocation?.allocation
-      ?.map((a) => a.amount)
-      ?.reduce((a, b) => a + b, 0) ?? 0;
+    newBallot?.ballot?.map((vote) => vote.amount)?.reduce((a, b) => a + b, 0) ??
+    0;
 
   return (
     <>
-      {councilMember ? (
+      {voter ? (
         <ConnectButton.Custom>
           {({
             account,
@@ -92,10 +87,10 @@ export default function FlowCouncilWallet() {
                         className="d-flex align-items-center gap-1 border rounded-3 shadow"
                         onClick={() => dispatchShowBallot({ type: "show" })}
                       >
-                        {newAllocation?.allocation &&
-                        newAllocation.allocation.length > 0 &&
-                        JSON.stringify(currentAllocation?.allocation) !==
-                          JSON.stringify(newAllocation?.allocation) ? (
+                        {newBallot?.ballot &&
+                        newBallot.ballot.length > 0 &&
+                        JSON.stringify(currentBallot?.ballot) !==
+                          JSON.stringify(newBallot?.ballot) ? (
                           <Stack direction="horizontal" gap={2}>
                             <Badge className="p-1 bg-danger rounded-circle">
                               <Image
@@ -121,10 +116,10 @@ export default function FlowCouncilWallet() {
                             />
                             {isMobile ? (
                               ""
-                            ) : councilMember ? (
+                            ) : voter ? (
                               <>
-                                {councilMember.votingPower - currentVotes > 0
-                                  ? councilMember.votingPower - currentVotes
+                                {voter.votingPower - currentVotes > 0
+                                  ? voter.votingPower - currentVotes
                                   : 0}{" "}
                                 Votes
                               </>

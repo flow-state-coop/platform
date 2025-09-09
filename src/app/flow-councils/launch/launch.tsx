@@ -24,10 +24,10 @@ import { Token } from "@/types/token";
 import { getApolloClient } from "@/lib/apollo";
 import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { networks } from "@/lib/networks";
-import { councilFactoryAbi } from "@/lib/abi/councilFactory";
+import { flowCouncilFactoryAbi } from "@/lib/abi/flowCouncilFactory";
 import { pinJsonToIpfs } from "@/lib/ipfs";
 
-type LaunchProps = { defaultNetwork: Network; councilId?: string };
+type LaunchProps = { defaultNetwork: Network; flowCouncilId?: string };
 
 type CustomTokenEntry = {
   address: string;
@@ -45,20 +45,20 @@ const SUPERTOKEN_QUERY = gql`
   }
 `;
 
-const COUNCIL_QUERY = gql`
-  query CouncilQuery($councilId: String!) {
-    council(id: $councilId) {
+const FLOW_COUNCIL_QUERY = gql`
+  query FlowCouncilQuery($flowCouncilId: String!) {
+    flowCouncil(id: $flowCouncilId) {
       id
       metadata
-      distributionToken
+      superToken
     }
   }
 `;
 
 export default function Launch(props: LaunchProps) {
-  const { defaultNetwork, councilId } = props;
+  const { defaultNetwork, flowCouncilId } = props;
 
-  const [councilMetadata, setCouncilMetadata] = useState({
+  const [flowCouncilMetadata, setFlowCouncilMetadata] = useState({
     name: "",
     description: "",
   });
@@ -83,56 +83,56 @@ export default function Launch(props: LaunchProps) {
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
   const {
-    data: councilQueryRes,
-    loading: councilQueryResLoading,
-    refetch: refetchCouncilQuery,
-  } = useQuery(COUNCIL_QUERY, {
+    data: flowCouncilQueryRes,
+    loading: flowCouncilQueryResLoading,
+    refetch: refetchFlowCouncilQuery,
+  } = useQuery(FLOW_COUNCIL_QUERY, {
     client: getApolloClient("flowCouncil", selectedNetwork.id),
-    variables: { councilId: councilId?.toLowerCase() },
+    variables: { flowCouncilId: flowCouncilId?.toLowerCase() },
     pollInterval: 4000,
-    skip: !councilId,
+    skip: !flowCouncilId,
   });
   const [checkSuperToken] = useLazyQuery(SUPERTOKEN_QUERY, {
     client: getApolloClient("superfluid", selectedNetwork.id),
   });
 
-  const council = councilQueryRes?.council;
+  const flowCouncil = flowCouncilQueryRes?.flowCouncil;
 
   useEffect(() => {
     (async () => {
-      if (!council) {
+      if (!flowCouncil) {
         return;
       }
 
-      const metadata = await fetchIpfsJson(council.metadata);
+      const metadata = await fetchIpfsJson(flowCouncil.metadata);
 
       if (metadata) {
-        setCouncilMetadata({
+        setFlowCouncilMetadata({
           name: metadata.name,
           description: metadata.description,
         });
       }
 
       const supportedToken = selectedNetwork.tokens.find(
-        (token) => token.address.toLowerCase() === council.distributionToken,
+        (token) => token.address.toLowerCase() === flowCouncil.superToken,
       );
 
       if (supportedToken) {
         setSelectedToken(supportedToken);
       } else {
         const { data: superTokenQueryRes } = await checkSuperToken({
-          variables: { token: council.distributionToken },
+          variables: { token: flowCouncil.distributionToken },
         });
 
         setCustomTokenEntry({
-          address: council.distributionToken,
+          address: flowCouncil.distributionToken,
           symbol: superTokenQueryRes?.token.symbol ?? "N/A",
           validationError: "",
         });
         setCustomTokenSelection(true);
       }
     })();
-  }, [council, selectedNetwork, checkSuperToken]);
+  }, [flowCouncil, selectedNetwork, checkSuperToken]);
 
   const handleSubmit = async () => {
     if (!address || !publicClient) {
@@ -150,37 +150,30 @@ export default function Launch(props: LaunchProps) {
       setIsTransactionLoading(true);
 
       const { IpfsHash: metadataCid } = await pinJsonToIpfs({
-        name: councilMetadata.name,
-        description: councilMetadata.description,
+        name: flowCouncilMetadata.name,
+        description: flowCouncilMetadata.description,
       });
       const hash = await writeContract(wagmiConfig, {
         address: selectedNetwork.flowCouncilFactory as Address,
-        abi: councilFactoryAbi,
-        functionName: "createCouncil",
-        args: [
-          {
-            metadata: metadataCid,
-            councilMembers: [],
-            grantees: [],
-            distributionToken: token,
-          },
-        ],
+        abi: flowCouncilFactoryAbi,
+        functionName: "createFlowCouncil",
+        args: [metadataCid, token],
       });
 
       const receipt = await publicClient.waitForTransactionReceipt({
         hash,
         confirmations: 5,
       });
-      const councilId = parseEventLogs({
-        abi: councilFactoryAbi,
-        eventName: ["CouncilCreated"],
+      const flowCouncilId = parseEventLogs({
+        abi: flowCouncilFactoryAbi,
+        eventName: ["FlowCouncilCreated"],
         logs: receipt.logs,
-      })[0].args.council;
+      })[0].args.flowCouncil;
 
-      await refetchCouncilQuery({ variables: councilId });
+      await refetchFlowCouncilQuery({ variables: { flowCouncilId } });
 
       router.push(
-        `/flow-councils/launch/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
+        `/flow-councils/launch/?chainId=${selectedNetwork.id}&id=${flowCouncilId}`,
       );
       router.refresh();
 
@@ -194,10 +187,10 @@ export default function Launch(props: LaunchProps) {
     }
   };
 
-  if (councilId && !councilQueryResLoading && !council) {
+  if (flowCouncilId && !flowCouncilQueryResLoading && !flowCouncil) {
     return (
       <span className="m-auto fs-4 fw-bold">
-        Council not found.{" "}
+        Flow Council not found.{" "}
         <Link
           href="/flow-councils/launch"
           className="text-primary text-decoration-none"
@@ -223,22 +216,25 @@ export default function Launch(props: LaunchProps) {
             <Form.Control
               type="text"
               placeholder="Name"
-              value={councilMetadata.name}
-              disabled={!!councilId}
+              value={flowCouncilMetadata.name}
+              disabled={!!flowCouncilId}
               style={{
                 paddingTop: 12,
                 paddingBottom: 12,
               }}
               onChange={(e) =>
-                setCouncilMetadata({ ...councilMetadata, name: e.target.value })
+                setFlowCouncilMetadata({
+                  ...flowCouncilMetadata,
+                  name: e.target.value,
+                })
               }
             />
             <Form.Control
               as="textarea"
               rows={3}
               placeholder="Description (Supports Markdown)"
-              value={councilMetadata.description}
-              disabled={!!councilId}
+              value={flowCouncilMetadata.description}
+              disabled={!!flowCouncilId}
               className="mt-3"
               style={{
                 resize: "none",
@@ -246,8 +242,8 @@ export default function Launch(props: LaunchProps) {
                 paddingBottom: 12,
               }}
               onChange={(e) =>
-                setCouncilMetadata({
-                  ...councilMetadata,
+                setFlowCouncilMetadata({
+                  ...flowCouncilMetadata,
                   description: e.target.value,
                 })
               }
@@ -264,7 +260,7 @@ export default function Launch(props: LaunchProps) {
             </Card.Text>
             <Dropdown>
               <Dropdown.Toggle
-                disabled={!!councilId}
+                disabled={!!flowCouncilId}
                 className="d-flex justify-content-between align-items-center bg-white text-dark border border-2"
                 style={{ width: 256, paddingTop: 12, paddingBottom: 12 }}
               >
@@ -314,7 +310,7 @@ export default function Launch(props: LaunchProps) {
             >
               <Dropdown>
                 <Dropdown.Toggle
-                  disabled={!!councilId}
+                  disabled={!!flowCouncilId}
                   className="d-flex justify-content-between align-items-center bg-white text-dark border border-2"
                   style={{ width: 256, paddingTop: 12, paddingBottom: 12 }}
                 >
@@ -374,7 +370,7 @@ export default function Launch(props: LaunchProps) {
                   <Form.Control
                     type="text"
                     value={customTokenEntry.address}
-                    disabled={!!councilId}
+                    disabled={!!flowCouncilId}
                     style={{
                       width: !isMobile ? "50%" : "",
                       paddingTop: 12,
@@ -440,9 +436,9 @@ export default function Launch(props: LaunchProps) {
         <Stack direction="vertical" gap={3} className="my-4">
           <Button
             disabled={
-              !!councilId ||
-              !councilMetadata.name ||
-              !councilMetadata.description ||
+              !!flowCouncilId ||
+              !flowCouncilMetadata.name ||
+              !flowCouncilMetadata.description ||
               (customTokenSelection && !!customTokenEntry.validationError)
             }
             className="fs-5"
@@ -462,12 +458,12 @@ export default function Launch(props: LaunchProps) {
           </Button>
           <Button
             variant="secondary"
-            disabled={!councilId}
+            disabled={!flowCouncilId}
             className="fs-5"
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() =>
               router.push(
-                `/flow-councils/permissions/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
+                `/flow-councils/permissions/?chainId=${selectedNetwork.id}&id=${flowCouncilId}`,
               )
             }
           >

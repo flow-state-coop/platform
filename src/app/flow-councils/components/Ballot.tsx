@@ -7,8 +7,8 @@ import Card from "react-bootstrap/Card";
 import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
 import FormControl from "react-bootstrap/FormControl";
-import useCouncil from "../hooks/council";
-import useWriteAllocation from "../hooks/writeAllocation";
+import useFlowCouncil from "../hooks/flowCouncil";
+import useWriteBallot from "../hooks/writeBallot";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { isNumber } from "@/lib/utils";
 
@@ -22,25 +22,23 @@ export default function Ballot({
   const successCardRef = useRef<HTMLDivElement>(null);
 
   const {
-    council,
-    councilMember,
-    currentAllocation,
-    newAllocation,
+    flowCouncil,
+    voter,
+    currentBallot,
+    newBallot,
     flowStateProfiles,
     dispatchShowBallot,
-    dispatchNewAllocation,
-  } = useCouncil();
+    dispatchNewBallot,
+  } = useFlowCouncil();
   const { isMobile } = useMediaQuery();
-  const { vote, isVoting, transactionError } =
-    useWriteAllocation(councilAddress);
+  const { vote, isVoting, transactionError } = useWriteBallot(councilAddress);
 
-  const votingPower = councilMember?.votingPower ?? 0;
+  const votingPower = voter?.votingPower ?? 0;
   const totalVotes =
-    newAllocation?.allocation
-      ?.map((a) => a.amount)
-      ?.reduce((a, b) => a + b, 0) ?? 0;
-  const newAllocationsCount = newAllocation?.allocation?.length ?? 0;
-  const maxAllocationsPerMember = council?.maxAllocationsPerMember ?? 0;
+    newBallot?.ballot?.map((vote) => vote.amount)?.reduce((a, b) => a + b, 0) ??
+    0;
+  const newVotesCount = newBallot?.ballot?.length ?? 0;
+  const maxAllocationsPerMember = flowCouncil?.maxAllocationsPerMember ?? 0;
 
   useEffect(() => {
     if (success) {
@@ -52,14 +50,14 @@ export default function Ballot({
 
   const handleAmountStepping = (args: {
     increment: boolean;
-    granteeIndex: number;
+    recipientIndex: number;
   }) => {
-    const { increment, granteeIndex } = args;
+    const { increment, recipientIndex } = args;
 
-    const granteeAddress = newAllocation?.allocation[granteeIndex].grantee;
-    const currentAmount = newAllocation?.allocation[granteeIndex].amount ?? 0;
+    const recipientAddress = newBallot?.ballot[recipientIndex].recipient;
+    const currentAmount = newBallot?.ballot[recipientIndex].amount ?? 0;
 
-    if (granteeAddress) {
+    if (recipientAddress) {
       const newAmount = increment
         ? currentAmount + 1
         : currentAmount - 1 < 0
@@ -67,32 +65,32 @@ export default function Ballot({
           : currentAmount - 1;
 
       setSuccess(false);
-      dispatchNewAllocation({
+      dispatchNewBallot({
         type: "update",
-        allocation: { grantee: granteeAddress, amount: newAmount },
+        ballot: { recipient: recipientAddress, amount: newAmount },
       });
     }
   };
 
   const handleAmountSelection = (
     e: React.ChangeEvent<HTMLInputElement>,
-    granteeIndex: number,
+    recipientIndex: number,
   ) => {
     const { value } = e.target;
 
-    const granteeAddress = newAllocation?.allocation[granteeIndex].grantee;
+    const recipientAddress = newBallot?.ballot[recipientIndex].recipient;
 
-    if (isNumber(value) && granteeAddress) {
-      dispatchNewAllocation({
+    if (isNumber(value) && recipientAddress) {
+      dispatchNewBallot({
         type: "update",
-        allocation: { grantee: granteeAddress, amount: Number(value) },
+        ballot: { recipient: recipientAddress, amount: Number(value) },
       });
 
       setSuccess(false);
-    } else if (value === "" && granteeAddress) {
-      dispatchNewAllocation({
+    } else if (value === "" && recipientAddress) {
+      dispatchNewBallot({
         type: "update",
-        allocation: { grantee: granteeAddress, amount: 0 },
+        ballot: { recipient: recipientAddress, amount: 0 },
       });
 
       setSuccess(false);
@@ -100,14 +98,16 @@ export default function Ballot({
   };
 
   const handleVote = async () => {
-    if (newAllocation && newAllocation?.allocation.length > 0) {
-      const nonZeroAllocations = newAllocation.allocation.filter(
-        (a) => a.amount !== 0,
+    if (newBallot && newBallot?.ballot.length > 0) {
+      const currentVotes = currentBallot?.ballot ?? [];
+      const newVotes = newBallot?.ballot ?? [];
+      const votesToRemove = currentVotes.filter((currentVote) =>
+        newVotes
+          .map((newVote) => newVote.recipient)
+          .includes(currentVote.recipient),
       );
-      const accounts = nonZeroAllocations.map((a) => a.grantee);
-      const amounts = nonZeroAllocations.map((a) => BigInt(a.amount));
-
-      const receipt = await vote(accounts as `0x${string}`[], amounts);
+      console.log(votesToRemove);
+      const receipt = await vote(newBallot.ballot);
 
       if (receipt?.status === "success") {
         setSuccess(true);
@@ -119,15 +119,13 @@ export default function Ballot({
     <Offcanvas
       show
       onHide={() => {
-        const zeroAllocations = newAllocation?.allocation.filter(
-          (a) => a.amount === 0,
-        );
+        const zeroVotes = newBallot?.ballot.filter((vote) => vote.amount === 0);
 
-        if (zeroAllocations) {
-          for (const allocation of zeroAllocations) {
-            dispatchNewAllocation({
+        if (zeroVotes) {
+          for (const ballot of zeroVotes) {
+            dispatchNewBallot({
               type: "delete",
-              allocation,
+              ballot,
             });
           }
         }
@@ -152,12 +150,12 @@ export default function Ballot({
           className="justify-content-around flex-grow-0 mb-1"
         >
           <p
-            className={`m-0 fs-6 ${newAllocationsCount > maxAllocationsPerMember ? "text-danger" : "text-info"}`}
+            className={`m-0 fs-6 ${newVotesCount > maxAllocationsPerMember ? "text-danger" : "text-info"}`}
             style={{
               visibility: maxAllocationsPerMember === 0 ? "hidden" : "visible",
             }}
           >
-            ({newAllocation?.allocation?.length ?? 0}/{maxAllocationsPerMember}{" "}
+            ({newBallot?.ballot?.length ?? 0}/{maxAllocationsPerMember}{" "}
             Projects)
           </p>
           <p
@@ -171,13 +169,12 @@ export default function Ballot({
           gap={4}
           className="flex-grow-0 bg-light rounded-4 px-3 py-4"
         >
-          {newAllocation?.allocation?.map((allocation, i) => {
-            const councilGrantee = council?.grantees.find(
-              (grantee) => grantee.account === allocation.grantee,
+          {newBallot?.ballot?.map((ballot, i) => {
+            const councilRecipient = flowCouncil?.recipients.find(
+              (recipient) => recipient.account === ballot.recipient,
             );
             const profile = flowStateProfiles?.find(
-              (profile: { id: string }) =>
-                profile.id === councilGrantee?.metadata,
+              (profile) => profile.id === councilRecipient?.metadata,
             );
 
             return (
@@ -192,9 +189,9 @@ export default function Ballot({
                     className="p-1 ps-0"
                     onClick={() => {
                       setSuccess(false);
-                      dispatchNewAllocation({
+                      dispatchNewBallot({
                         type: "delete",
-                        allocation,
+                        ballot,
                       });
                     }}
                   >
@@ -225,7 +222,7 @@ export default function Ballot({
                     onClick={() =>
                       handleAmountStepping({
                         increment: false,
-                        granteeIndex: i,
+                        recipientIndex: i,
                       })
                     }
                   >
@@ -238,7 +235,7 @@ export default function Ballot({
                   </Button>
                   <FormControl
                     type="text"
-                    value={allocation.amount}
+                    value={ballot.amount}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       handleAmountSelection(e, i)
                     }
@@ -248,7 +245,10 @@ export default function Ballot({
                     variant="white"
                     className="d-flex justify-content-center align-items-center w-25 bg-info border-black border-start-0 rounded-0 rounded-end-3 fs-4 px-1 py-2"
                     onClick={() =>
-                      handleAmountStepping({ increment: true, granteeIndex: i })
+                      handleAmountStepping({
+                        increment: true,
+                        recipientIndex: i,
+                      })
                     }
                   >
                     <Image src="/add.svg" alt="add" width={18} height={18} />
@@ -265,11 +265,11 @@ export default function Ballot({
               !success &&
               (totalVotes > votingPower ||
                 (maxAllocationsPerMember &&
-                  newAllocationsCount > maxAllocationsPerMember) ||
-                !newAllocation?.allocation ||
-                newAllocation.allocation.length === 0 ||
-                JSON.stringify(currentAllocation?.allocation) ===
-                  JSON.stringify(newAllocation?.allocation))
+                  newVotesCount > maxAllocationsPerMember) ||
+                !newBallot?.ballot ||
+                newBallot.ballot.length === 0 ||
+                JSON.stringify(currentBallot?.ballot) ===
+                  JSON.stringify(newBallot?.ballot))
             }
             className={`align-self-end w-50 ${success ? "py-1" : ""}`}
             onClick={handleVote}

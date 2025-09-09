@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     });
 
     const granteeManagerRole = keccak256(
-      encodePacked(["string"], ["GRANTEE_MANAGER_ROLE"]),
+      encodePacked(["string"], ["RECIPIENT_MANAGER_ROLE"]),
     );
 
     const hasRole = await publicClient.readContract({

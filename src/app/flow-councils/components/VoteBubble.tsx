@@ -2,67 +2,66 @@ import { useMemo } from "react";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { Grantee } from "../types/grantee";
+import { Recipient } from "../types/recipient";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import useCouncil from "../hooks/council";
+import useFlowCouncil from "../hooks/flowCouncil";
 
 type VoteBubbleProps = {
-  grantees: Grantee[];
-  granteeColors: Record<string, string>;
+  recipients: Recipient[];
+  recipientColors: Record<string, string>;
   votingPower: number;
   voteBubbleRef: React.MutableRefObject<HTMLDivElement | null>;
 };
 
 export default function VoteBubble(props: VoteBubbleProps) {
-  const { grantees, granteeColors, votingPower, voteBubbleRef } = props;
+  const { recipients, recipientColors, votingPower, voteBubbleRef } = props;
 
   const { isMobile } = useMediaQuery();
-  const { newAllocation, council, dispatchShowBallot } = useCouncil();
+  const { newBallot, flowCouncil, dispatchShowBallot } = useFlowCouncil();
 
   const totalAllocatedProjects =
-    newAllocation?.allocation.filter((allocation) => allocation.amount !== 0)
-      .length ?? 0;
+    newBallot?.ballot.filter((ballot) => ballot.amount !== 0).length ?? 0;
   const totalAllocatedVotes =
-    newAllocation?.allocation
-      ?.map((allocation) => allocation.amount)
+    newBallot?.ballot
+      ?.map((ballot) => ballot.amount)
       .reduce((a, b) => a + b, 0) ?? 0;
 
   const pieData = useMemo(() => {
-    if (!grantees.length) {
+    if (!recipients.length) {
       return [];
     }
 
-    const allocatedVotes = newAllocation?.allocation
-      ? newAllocation.allocation.reduce((sum, a) => sum + a.amount, 0)
+    const allocatedVotes = newBallot?.ballot
+      ? newBallot.ballot.reduce((sum, a) => sum + a.amount, 0)
       : 0;
     const unallocatedVotes = votingPower - allocatedVotes;
-    const data = grantees.map((grantee) => {
-      const allocation = newAllocation?.allocation?.find(
-        (a) => a.grantee === grantee.address,
+    const data = recipients.map((recipient) => {
+      const ballot = newBallot?.ballot?.find(
+        (a) => a.recipient === recipient.address,
       );
 
       return {
-        id: grantee.address,
-        name: grantee.metadata.title,
-        value: allocation ? allocation.amount : 0,
+        id: recipient.address,
+        name: recipient.metadata.title,
+        value: ballot ? ballot.amount : 0,
         color:
-          allocation && allocation.amount > 0
-            ? granteeColors[grantee.address]
+          ballot && ballot.amount > 0
+            ? recipientColors[recipient.address]
             : "#e0e0e0",
       };
     });
 
-    if (newAllocation?.allocation) {
-      newAllocation.allocation.forEach((allocation) => {
-        if (data.some((item) => item.id === allocation.grantee)) {
+    if (newBallot?.ballot) {
+      newBallot.ballot.forEach((ballot) => {
+        if (data.some((item) => item.id === ballot.recipient)) {
           return;
         }
 
         data.push({
-          id: allocation.grantee,
-          name: allocation.grantee.substring(0, 6),
-          value: allocation.amount,
-          color: granteeColors[allocation.grantee] || "#1f77b4",
+          id: ballot.recipient,
+          name: ballot.recipient.substring(0, 6),
+          value: ballot.amount,
+          color: recipientColors[ballot.recipient] || "#1f77b4",
         });
       });
     }
@@ -77,7 +76,7 @@ export default function VoteBubble(props: VoteBubbleProps) {
     }
 
     return data.filter((entry) => entry.value > 0 || entry.id === "0xdead");
-  }, [grantees, newAllocation?.allocation, granteeColors, votingPower]);
+  }, [recipients, newBallot?.ballot, recipientColors, votingPower]);
 
   const VoteButton = () => {
     return (
@@ -122,8 +121,8 @@ export default function VoteBubble(props: VoteBubbleProps) {
             className={`fs-6 d-block ${totalAllocatedVotes > votingPower ? "text-warning" : "text-white-50"}`}
           >
             {totalAllocatedProjects}
-            {council?.maxAllocationsPerMember
-              ? `/${council.maxAllocationsPerMember}`
+            {flowCouncil?.maxAllocationsPerMember
+              ? `/${flowCouncil.maxAllocationsPerMember}`
               : ""}{" "}
             Project{totalAllocatedProjects > 1 ? "s" : ""},{" "}
             {totalAllocatedVotes}/{votingPower} Vote

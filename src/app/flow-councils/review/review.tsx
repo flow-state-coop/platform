@@ -25,14 +25,14 @@ import Sidebar from "../components/Sidebar";
 import CopyTooltip from "@/components/CopyTooltip";
 import useSiwe from "@/hooks/siwe";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import { councilAbi } from "@/lib/abi/council";
+import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { Project } from "@/types/project";
 import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { getApolloClient } from "@/lib/apollo";
 
 type ReviewProps = {
   chainId?: number;
-  councilId?: string;
+  flowCouncilId?: string;
   hostname: string;
   csfrToken: string;
 };
@@ -41,7 +41,7 @@ type Application = {
   owner: string;
   recipient: string;
   chainId: number;
-  councilId: string;
+  flowCouncilId: string;
   metadata: string;
   status: Status;
 };
@@ -60,14 +60,14 @@ type CancelingAppplication = {
 
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
 
-const COUNCIL_QUERY = gql`
-  query CouncilQuery($councilId: String!) {
-    council(id: $councilId) {
+const FLOW_COUNCIL_QUERY = gql`
+  query CouncilQuery($flowCouncilId: String!) {
+    flowCouncil(id: $flowCouncilId) {
       id
-      maxAllocationsPerMember
-      distributionToken
+      maxVotingSpread
+      superToken
       metadata
-      councilManagers {
+      flowCouncilManagers {
         account
         role
       }
@@ -88,7 +88,7 @@ const PROFILES_QUERY = gql`
 `;
 
 export default function Review(props: ReviewProps) {
-  const { chainId, councilId, hostname, csfrToken } = props;
+  const { chainId, flowCouncilId, hostname, csfrToken } = props;
 
   const [profiles, setProfiles] = useState<Project[] | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
@@ -113,18 +113,16 @@ export default function Review(props: ReviewProps) {
   const { isMobile } = useMediaQuery();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
-  const { data: councilQueryRes, loading: councilQueryResLoading } = useQuery(
-    COUNCIL_QUERY,
-    {
+  const { data: flowCouncilQueryRes, loading: flowCouncilQueryLoading } =
+    useQuery(FLOW_COUNCIL_QUERY, {
       client: getApolloClient("flowCouncil", chainId),
       variables: {
         chainId,
-        councilId: councilId?.toLowerCase(),
+        flowCouncilId: flowCouncilId?.toLowerCase(),
       },
-      skip: !chainId || !councilId,
+      skip: !chainId || !flowCouncilId,
       pollInterval: 10000,
-    },
-  );
+    });
   const { data: flowStateQueryRes } = useQuery(PROFILES_QUERY, {
     client: getApolloClient("flowState"),
     variables: {
@@ -134,8 +132,8 @@ export default function Review(props: ReviewProps) {
     pollInterval: 3000,
   });
 
-  const granteeApplicationLink = `${hostname}/flow-councils/grantee/?councilId=${councilId}&chainId=${chainId}`;
-  const council = councilQueryRes?.council;
+  const recipeintApplicationLink = `${hostname}/flow-councils/recipient/?id=${flowCouncilId}&chainId=${chainId}`;
+  const flowCouncil = flowCouncilQueryRes?.flowCouncil;
   const selectedApplicationProfile =
     profiles && selectedApplication
       ? profiles.find(
@@ -144,7 +142,7 @@ export default function Review(props: ReviewProps) {
       : null;
 
   const fetchApplications = useCallback(async () => {
-    if (!council || !address || !chainId) {
+    if (!flowCouncil || !address || !chainId) {
       return;
     }
 
@@ -153,7 +151,7 @@ export default function Review(props: ReviewProps) {
         method: "POST",
         body: JSON.stringify({
           chainId,
-          councilId: council.id,
+          councilId: flowCouncil.id,
         }),
       });
 
@@ -165,23 +163,23 @@ export default function Review(props: ReviewProps) {
     } catch (err) {
       console.error(err);
     }
-  }, [council, address, chainId]);
+  }, [flowCouncil, address, chainId]);
 
   const isManager = useMemo(() => {
-    const granteeManagerRole = keccak256(
-      encodePacked(["string"], ["GRANTEE_MANAGER_ROLE"]),
+    const recipientManagerRole = keccak256(
+      encodePacked(["string"], ["RECIPIENT_MANAGER_ROLE"]),
     );
-    const councilManager = council?.councilManagers.find(
+    const manager = flowCouncil?.flowCouncilManagers.find(
       (m: { account: string; role: string }) =>
-        m.account === address?.toLowerCase() && m.role === granteeManagerRole,
+        m.account === address?.toLowerCase() && m.role === recipientManagerRole,
     );
 
-    if (councilManager) {
+    if (manager) {
       return true;
     }
 
     return false;
-  }, [address, council]);
+  }, [address, flowCouncil]);
 
   useEffect(() => {
     (async () => {
@@ -255,7 +253,7 @@ export default function Review(props: ReviewProps) {
       throw Error("Account is not signed in");
     }
 
-    if (!council) {
+    if (!flowCouncil) {
       throw Error("Council not found");
     }
 
@@ -272,15 +270,14 @@ export default function Review(props: ReviewProps) {
 
       if (approvedApplications.length > 0 || cancelingApplications.length > 0) {
         const hash = await writeContract(wagmiConfig, {
-          address: council.id as Address,
-          abi: councilAbi,
-          functionName: "updateCouncilGrantees",
+          address: flowCouncil.id as Address,
+          abi: flowCouncilAbi,
+          functionName: "updateRecipients",
           args: [
             approvedApplications
               .map((application) => {
                 return {
                   account: application.recipient as Address,
-                  metadata: application.metadata,
                   status: 0,
                 };
               })
@@ -288,11 +285,13 @@ export default function Review(props: ReviewProps) {
                 cancelingApplications.map((cancelingApplication) => {
                   return {
                     account: cancelingApplication.recipient as Address,
-                    metadata: "",
                     status: 1,
                   };
                 }),
               ),
+            approvedApplications
+              .map((application) => application.metadata)
+              .concat(cancelingApplications.map(() => "")),
           ],
         });
 
@@ -307,7 +306,7 @@ export default function Review(props: ReviewProps) {
             method: "POST",
             body: JSON.stringify({
               chainId,
-              councilId: council.id,
+              councilId: flowCouncil.id,
               grantees: reviewingApplications
                 .map((reviewingApplication) => {
                   return {
@@ -341,7 +340,7 @@ export default function Review(props: ReviewProps) {
           method: "POST",
           body: JSON.stringify({
             chainId,
-            councilId: council.id,
+            councilId: flowCouncil.id,
             grantees: rejectedApplications.map((reviewingApplication) => {
               return {
                 owner: reviewingApplication.owner,
@@ -373,10 +372,14 @@ export default function Review(props: ReviewProps) {
     }
   };
 
-  if (!councilId || !chainId || (!councilQueryResLoading && !council)) {
+  if (
+    !flowCouncilId ||
+    !chainId ||
+    (!flowCouncilQueryLoading && !flowCouncil)
+  ) {
     return (
       <span className="m-auto fs-4 fw-bold">
-        Council not found.{" "}
+        Flow Council not found.{" "}
         <Link
           href="/flow-councils/launch"
           className="text-primary text-decoration-none"
@@ -399,7 +402,7 @@ export default function Review(props: ReviewProps) {
           Review and/or remove eligible funding recipients from your Flow
           Council.
         </h2>
-        {!council && !isManager ? (
+        {!flowCouncil && !isManager ? (
           <Spinner className="mt-5 mx-auto" />
         ) : !isManager ? (
           <Stack
@@ -436,14 +439,14 @@ export default function Review(props: ReviewProps) {
               className="w-100 me-auto mb-5 overflow-hidden"
             >
               <Badge className="d-flex align-items-center bg-transparent text-black border border-2 border-gray-500 p-2 fw-normal text-truncate text-start h-100">
-                {granteeApplicationLink}
+                {recipeintApplicationLink}
               </Badge>
               <CopyTooltip
                 contentClick="Link Copied"
                 contentHover="Copy Link"
                 target={<Image src="/copy.svg" alt="copy" width={28} />}
                 handleCopy={() =>
-                  navigator.clipboard.writeText(granteeApplicationLink)
+                  navigator.clipboard.writeText(recipeintApplicationLink)
                 }
               />
             </Stack>
@@ -741,7 +744,7 @@ export default function Review(props: ReviewProps) {
                 className="fs-5"
                 style={{ pointerEvents: isSubmitting ? "none" : "auto" }}
                 onClick={() =>
-                  router.push(`/flow-councils/${chainId}/${councilId}`)
+                  router.push(`/flow-councils/${chainId}/${flowCouncilId}`)
                 }
               >
                 Next

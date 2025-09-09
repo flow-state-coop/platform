@@ -18,9 +18,9 @@ import Alert from "react-bootstrap/Alert";
 import Sidebar from "../components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
-import { councilAbi } from "@/lib/abi/council";
+import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 
-type PermissionsProps = { chainId?: number; councilId?: string };
+type PermissionsProps = { chainId?: number; flowCouncilId?: string };
 type ManagerEntry = {
   address: string;
   defaultAdminRole: boolean;
@@ -34,11 +34,11 @@ enum StatusChange {
   REMOVED,
 }
 
-const COUNCIL_QUERY = gql`
-  query CouncilQuery($councilId: String!) {
-    council(id: $councilId) {
+const FLOW_COUNCIL_QUERY = gql`
+  query FlowCouncilQuery($flowCouncilId: String!) {
+    flowCouncil(id: $flowCouncilId) {
       id
-      councilManagers {
+      flowCouncilManagers {
         account
         role
       }
@@ -54,7 +54,7 @@ const GRANTEE_MANAGER_ROLE: `0x${string}` =
   "0x449c4ab7d231ca4b7e4b5e8022289a1d588fa1af9c09d2603681d5a375186c50";
 
 export default function Permissions(props: PermissionsProps) {
-  const { chainId, councilId } = props;
+  const { chainId, flowCouncilId } = props;
 
   const [transactionError, setTransactionError] = useState("");
   const [transactionSuccess, setTransactionSuccess] = useState(false);
@@ -68,35 +68,33 @@ export default function Permissions(props: PermissionsProps) {
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
-  const { data: councilQueryRes, loading: councilQueryResLoading } = useQuery(
-    COUNCIL_QUERY,
-    {
+  const { data: flowCouncilQueryRes, loading: flowCouncilQueryLoading } =
+    useQuery(FLOW_COUNCIL_QUERY, {
       client: getApolloClient("flowCouncil", chainId),
       variables: {
         chainId,
-        councilId: councilId?.toLowerCase(),
+        flowCouncilId: flowCouncilId?.toLowerCase(),
       },
-      skip: !councilId,
+      skip: !flowCouncilId,
       pollInterval: 4000,
-    },
-  );
+    });
 
-  const council = councilQueryRes?.council ?? null;
+  const flowCouncil = flowCouncilQueryRes?.flowCouncil ?? null;
   const isValidManagersEntry = managersEntry.every(
     (managerEntry) => managerEntry.addressValidationError === "",
   );
   const isAdmin = useMemo(() => {
-    const councilAdmin = council?.councilManagers.find(
+    const flowCouncilAdmin = flowCouncil?.flowCouncilManagers.find(
       (m: { account: string; role: string }) =>
         m.account === address?.toLowerCase() && m.role === DEFAULT_ADMIN_ROLE,
     );
 
-    if (councilAdmin) {
+    if (flowCouncilAdmin) {
       return true;
     }
 
     return false;
-  }, [address, council]);
+  }, [address, flowCouncil]);
 
   const findChangedEntry = useCallback(
     (managerEntry: ManagerEntry) => {
@@ -110,7 +108,7 @@ export default function Permissions(props: PermissionsProps) {
         return changedEntries;
       }
 
-      const existingDefaultAdmin = council?.councilManagers.find(
+      const existingDefaultAdmin = flowCouncil?.flowCouncilManagers.find(
         (m: { account: string; role: string }) =>
           m.account === managerEntry.address.toLowerCase() &&
           m.role === DEFAULT_ADMIN_ROLE,
@@ -132,7 +130,7 @@ export default function Permissions(props: PermissionsProps) {
         });
       }
 
-      const existingMemberManager = council?.councilManagers.find(
+      const existingMemberManager = flowCouncil?.flowCouncilManagers.find(
         (m: { account: string; role: string }) =>
           m.account === managerEntry.address.toLowerCase() &&
           m.role === MEMBER_MANAGER_ROLE,
@@ -154,7 +152,7 @@ export default function Permissions(props: PermissionsProps) {
         });
       }
 
-      const existingGranteeManager = council?.councilManagers.find(
+      const existingGranteeManager = flowCouncil?.flowCouncilManagers.find(
         (m: { account: string; role: string }) =>
           m.account === managerEntry.address.toLowerCase() &&
           m.role === GRANTEE_MANAGER_ROLE,
@@ -178,7 +176,7 @@ export default function Permissions(props: PermissionsProps) {
 
       return changedEntries;
     },
-    [council],
+    [flowCouncil],
   );
 
   const hasChanges = useMemo(() => {
@@ -194,7 +192,7 @@ export default function Permissions(props: PermissionsProps) {
   }, [managersEntry, findChangedEntry]);
 
   const isRemovingOnlySuperAdmin = useMemo(() => {
-    const defaultAdmins = council?.councilManagers.filter(
+    const defaultAdmins = flowCouncil?.flowCouncilManagers.filter(
       (m: { role: `0x${string}` }) => m.role === DEFAULT_ADMIN_ROLE,
     );
 
@@ -215,29 +213,29 @@ export default function Permissions(props: PermissionsProps) {
     }
 
     return false;
-  }, [council, managersEntry, findChangedEntry]);
+  }, [flowCouncil, managersEntry, findChangedEntry]);
 
   useEffect(() => {
     (async () => {
-      if (!council) {
+      if (!flowCouncil) {
         return;
       }
 
       const managersEntry = [];
 
-      for (const i in council.councilManagers) {
+      for (const i in flowCouncil.flowCouncilManagers) {
         if (
           managersEntry
             .map((managerEntry) => managerEntry.address)
-            .includes(council.councilManagers[i].account)
+            .includes(flowCouncil.flowCouncilManagers[i].account)
         ) {
           continue;
         }
 
-        const roles = council.councilManagers
+        const roles = flowCouncil.flowCouncilManagers
           .filter(
             (manager: { account: string }) =>
-              manager.account === council.councilManagers[i].account,
+              manager.account === flowCouncil.flowCouncilManagers[i].account,
           )
           .map((manager: { role: string }) => manager.role);
         const isDefaultAdmin = roles.includes(DEFAULT_ADMIN_ROLE);
@@ -245,7 +243,7 @@ export default function Permissions(props: PermissionsProps) {
         const isGranteeManager = roles.includes(GRANTEE_MANAGER_ROLE);
 
         managersEntry.push({
-          address: council.councilManagers[i].account,
+          address: flowCouncil.flowCouncilManagers[i].account,
           defaultAdminRole: isDefaultAdmin,
           memberManagerRole: isMemberManager,
           granteeManagerRole: isGranteeManager,
@@ -255,10 +253,10 @@ export default function Permissions(props: PermissionsProps) {
 
       setManagersEntry(managersEntry);
     })();
-  }, [council]);
+  }, [flowCouncil]);
 
   const handleSubmit = async () => {
-    if (!address || !publicClient || !councilId) {
+    if (!address || !publicClient || !flowCouncilId) {
       return;
     }
 
@@ -273,9 +271,9 @@ export default function Permissions(props: PermissionsProps) {
       }
 
       const hash = await writeContract(wagmiConfig, {
-        address: councilId as Address,
-        abi: councilAbi,
-        functionName: "updateCouncilManagers",
+        address: flowCouncilId as Address,
+        abi: flowCouncilAbi,
+        functionName: "updateManagers",
         args: [changedEntries],
       });
 
@@ -294,10 +292,14 @@ export default function Permissions(props: PermissionsProps) {
     }
   };
 
-  if (!councilId || !chainId || (!councilQueryResLoading && !council)) {
+  if (
+    !flowCouncilId ||
+    !chainId ||
+    (!flowCouncilQueryLoading && !flowCouncilId)
+  ) {
     return (
       <span className="m-auto fs-4 fw-bold">
-        Council not found.{" "}
+        Flow Council not found.{" "}
         <Link
           href="/flow-councils/launch"
           className="text-primary text-decoration-none"
@@ -317,7 +319,7 @@ export default function Permissions(props: PermissionsProps) {
       >
         <Card className="bg-light rounded-4 border-0 mt-4 p-4">
           <Card.Header className="bg-transparent border-0 rounded-4 p-0">
-            <Card.Title className="fs-4">Council Permissions</Card.Title>
+            <Card.Title className="fs-4">Flow Council Permissions</Card.Title>
             <Card.Text className="fs-6 text-info">
               {isAdmin
                 ? "Manage privileged roles on your Flow Council (optional)"
@@ -550,7 +552,7 @@ export default function Permissions(props: PermissionsProps) {
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() =>
               router.push(
-                `/flow-councils/membership/?chainId=${chainId}&councilId=${councilId}`,
+                `/flow-councils/membership/?chainId=${chainId}&id=${flowCouncilId}`,
               )
             }
           >

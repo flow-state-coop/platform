@@ -1,5 +1,5 @@
 import type { SearchParams } from "@/types/searchParams";
-import Permissions from "./permissions";
+import Voters from "./voters";
 
 export default async function Page({
   searchParams,
@@ -8,5 +8,5 @@ export default async function Page({
 }) {
   const { chainId, id } = await searchParams;
 
-  return <Permissions chainId={Number(chainId)} flowCouncilId={id} />;
+  return <Voters chainId={Number(chainId)} flowCouncilId={id} />;
 }

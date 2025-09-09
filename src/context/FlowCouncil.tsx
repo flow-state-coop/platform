@@ -1,26 +1,25 @@
 "use client";
 
 import { createContext, useContext, useReducer } from "react";
-import { usePathname, useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useAccount } from "wagmi";
 import { ProjectMetadata } from "@/types/project";
 import { GDAPool } from "@/types/gdaPool";
 import { networks } from "@/lib/networks";
-import useCouncilQuery from "@/app/flow-councils/hooks/councilQuery";
-import useAllocationQuery from "@/app/flow-councils/hooks/allocationQuery";
-import useCouncilMemberQuery from "@/app/flow-councils/hooks/councilMemberQuery";
+import useFlowCouncilQuery from "@/app/flow-councils/hooks/flowCouncilQuery";
+import useBallotQuery from "@/app/flow-councils/hooks/ballotQuery";
+import useVoterQuery from "@/app/flow-councils/hooks/voterQuery";
 import useFlowStateProfilesQuery from "@/app/flow-councils/hooks/flowStateProfilesQuery";
-import useFlowCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
-import useGdaPoolQuery from "@/app/flow-councils/hooks/gdaPoolQuery";
+import useFlowCouncilMetadata from "@/app/flow-councils/hooks/flowCouncilMetadata";
+import useDistributionPoolQuery from "@/app/flow-councils/hooks/distributionPoolQuery";
 import { Token } from "@/types/token";
-import { councilConfig as goodDollarCouncilConfig } from "@/app/gooddollar/lib/councilConfig";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
-type Council = {
+type FlowCouncil = {
   id: string;
   metadata: string;
   distributionToken: `0x${string}`;
-  grantees: {
+  recipients: {
     metadata: string;
     account: `0x${string}`;
     votes: { votedBy: string; amount: string; createdAtTimestamp: string };
@@ -29,40 +28,40 @@ type Council = {
   pool: string;
 };
 
-type CouncilMember = {
+type Voter = {
   account: `0x${string}`;
   votingPower: number;
 };
 
-type Allocation = { grantee: `0x${string}`; amount: number };
+type Ballot = { recipient: `0x${string}`; amount: number };
 
 type FlowStateProfile = { id: string; metadata: ProjectMetadata };
 
-type CurrentAllocation = {
-  allocation: Allocation[];
+type CurrentBallot = {
+  ballot: Ballot[];
   votingPower: number;
 };
 
-type NewAllocation = {
-  allocation: Allocation[];
+type NewBallot = {
+  ballot: Ballot[];
 };
 
 export const FlowCouncilContext = createContext<{
-  council?: Council;
-  councilMetadata: { name: string; description: string };
-  councilMember?: CouncilMember;
-  currentAllocation?: CurrentAllocation;
+  flowCouncil?: FlowCouncil;
+  flowCouncilMetadata: { name: string; description: string };
+  voter?: Voter;
+  currentBallot?: CurrentBallot;
   flowStateProfiles: FlowStateProfile[] | null;
-  gdaPool?: GDAPool;
+  distributionPool?: GDAPool;
   token: Token;
-  newAllocation?: NewAllocation;
+  newBallot?: NewBallot;
   showBallot: boolean;
 } | null>(null);
 
-export const AllocationDispatchContext = createContext<React.Dispatch<{
+export const BallotDispatchContext = createContext<React.Dispatch<{
   type: string;
-  allocation?: Allocation;
-  currentAllocation?: CurrentAllocation;
+  ballot?: Ballot;
+  currentBallot?: CurrentBallot;
 }> | null>(null);
 
 export const ShowBallotDispatchContext = createContext<React.Dispatch<{
@@ -79,11 +78,11 @@ export function useFlowCouncilContext() {
   return context;
 }
 
-export function useAllocationDispatchContext() {
-  const context = useContext(AllocationDispatchContext);
+export function useBallotDispatchContext() {
+  const context = useContext(BallotDispatchContext);
 
   if (!context) {
-    throw Error("AllocationDispatch context was not found");
+    throw Error("BallotDispatch context was not found");
   }
 
   return context;
@@ -120,60 +119,60 @@ function showBallotReducer(
   }
 }
 
-function newAllocationReducer(
-  newAllocation: NewAllocation,
+function newBallotReducer(
+  newBallot: NewBallot,
   action: {
     type: string;
-    currentAllocation?: CurrentAllocation;
-    allocation?: Allocation;
+    currentBallot?: CurrentBallot;
+    ballot?: Ballot;
   },
 ) {
   switch (action.type) {
     case "add": {
-      if (!action.allocation) {
-        if (!action.currentAllocation) {
-          return { ...newAllocation };
+      if (!action.ballot) {
+        if (!action.currentBallot) {
+          return { ...newBallot };
         }
 
         return {
-          ...newAllocation,
-          allocation: action.currentAllocation.allocation,
+          ...newBallot,
+          ballot: action.currentBallot.ballot,
         };
       }
 
-      const nextAllocation =
-        action.currentAllocation?.allocation &&
-        (!newAllocation?.allocation || newAllocation.allocation.length === 0)
-          ? [...action.currentAllocation.allocation, action.allocation]
-          : newAllocation?.allocation
-            ? [...newAllocation.allocation, action.allocation]
-            : [action.allocation];
+      const nextBallot =
+        action.currentBallot?.ballot &&
+        (!newBallot?.ballot || newBallot.ballot.length === 0)
+          ? [...action.currentBallot.ballot, action.ballot]
+          : newBallot?.ballot
+            ? [...newBallot.ballot, action.ballot]
+            : [action.ballot];
 
-      return { ...newAllocation, allocation: nextAllocation };
+      return { ...newBallot, ballot: nextBallot };
     }
     case "update": {
-      const updatedAllocation = [...newAllocation.allocation];
-      const index = newAllocation.allocation.findIndex(
-        (a) => a.grantee === action.allocation?.grantee,
+      const updatedBallot = [...newBallot.ballot];
+      const index = newBallot.ballot.findIndex(
+        (a) => a.recipient === action.ballot?.recipient,
       );
 
-      if (index >= 0 && action.allocation) {
-        updatedAllocation[index] = action.allocation;
+      if (index >= 0 && action.ballot) {
+        updatedBallot[index] = action.ballot;
       }
 
-      return { ...newAllocation, allocation: updatedAllocation };
+      return { ...newBallot, ballot: updatedBallot };
     }
     case "delete": {
       return {
-        ...newAllocation,
-        allocation: newAllocation.allocation.filter(
-          (a) => a.grantee !== action.allocation?.grantee,
+        ...newBallot,
+        ballot: newBallot.ballot.filter(
+          (a) => a.recipient !== action.ballot?.recipient,
         ),
       };
     }
     case "clear": {
       return {
-        allocation: [],
+        ballot: [],
       };
     }
     default: {
@@ -188,79 +187,57 @@ export function FlowCouncilContextProvider({
   children: React.ReactNode;
 }) {
   const { address } = useAccount();
-  const pathname = usePathname();
   const params = useParams();
-  const searchParams = useSearchParams();
-  const chainId =
-    pathname.startsWith("/gooddollar") && searchParams.get("chainId")
-      ? searchParams.get("chainId")
-      : pathname.startsWith("/gooddollar")
-        ? 42220
-        : params.chainId
-          ? params.chainId.toString()
-          : DEFAULT_CHAIN_ID;
-  const councilId =
-    pathname.startsWith("/gooddollar") &&
-    chainId &&
-    goodDollarCouncilConfig[chainId]?.councilAddress
-      ? goodDollarCouncilConfig[chainId].councilAddress
-      : (params.councilId as string);
+  const chainId = params.chainId ? params.chainId.toString() : DEFAULT_CHAIN_ID;
+  const flowCouncilId = params.id as string;
   const network =
     networks.find(
       (network) => network.id === Number(chainId ?? DEFAULT_CHAIN_ID),
     ) ?? networks[0];
-  const council = useCouncilQuery(network, councilId);
-  const councilMetadata = useFlowCouncilMetadata(council?.metadata);
+  const flowCouncil = useFlowCouncilQuery(network, flowCouncilId);
+  const flowCouncilMetadata = useFlowCouncilMetadata(flowCouncil?.metadata);
   const flowStateProfiles = useFlowStateProfilesQuery(
     network,
-    council?.grantees,
+    flowCouncil?.recipients,
   );
-  const gdaPool = useGdaPoolQuery(network, council?.pool);
-  const currentAllocation = useAllocationQuery(
+  const distributionPool = useDistributionPoolQuery(
     network,
-    councilId,
-    address ?? "",
+    flowCouncil?.distributionPool,
   );
-  const councilMember = useCouncilMemberQuery(
-    network,
-    councilId,
-    address ?? "",
-  );
+  const currentBallot = useBallotQuery(network, flowCouncilId, address ?? "");
+  const voter = useVoterQuery(network, flowCouncilId, address ?? "");
   const token = network.tokens.find(
-    (token) => token.address.toLowerCase() === council?.distributionToken,
+    (token) => token.address.toLowerCase() === flowCouncil?.distributionToken,
   ) ?? {
-    address: gdaPool?.token.id ?? "0x",
-    symbol: gdaPool?.token.symbol,
+    address: distributionPool?.token.id ?? "0x",
+    symbol: distributionPool?.token.symbol,
     icon: "",
   };
 
-  const [newAllocation, dispatchNewAllocation] = useReducer(
-    newAllocationReducer,
-    {
-      allocation: [],
-    },
-  );
+  const [newBallot, dispatchNewBallot] = useReducer(newBallotReducer, {
+    ballot: [],
+  });
   const [showBallot, dispatchShowBallot] = useReducer(showBallotReducer, false);
 
   return (
     <FlowCouncilContext.Provider
       value={{
-        council,
-        councilMetadata,
-        gdaPool,
+        flowCouncil,
+        flowCouncilMetadata,
+        distributionPool,
         token,
         flowStateProfiles,
-        councilMember,
-        currentAllocation,
-        newAllocation,
+        voter,
+        currentBallot,
+        newBallot,
         showBallot,
       }}
     >
-      <AllocationDispatchContext.Provider value={dispatchNewAllocation}>
+      <BallotDispatchContext.Provider value={dispatchNewBallot}>
         <ShowBallotDispatchContext.Provider value={dispatchShowBallot}>
           {children}
         </ShowBallotDispatchContext.Provider>
-      </AllocationDispatchContext.Provider>
+      </BallotDispatchContext.Provider>
     </FlowCouncilContext.Provider>
   );
 }
