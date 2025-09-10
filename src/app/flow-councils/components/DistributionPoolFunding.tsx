@@ -174,7 +174,7 @@ export default function DistributionPoolFunding(props: {
       userAddress: address?.toLowerCase() ?? "",
       token: token.address.toLowerCase(),
     },
-    skip: !flowCouncil?.pool,
+    skip: !distributionPool,
     pollInterval: 10000,
   });
   const ethersProvider = useEthersProvider({ chainId: network.id });
@@ -366,7 +366,8 @@ export default function DistributionPoolFunding(props: {
       !superToken ||
       !newFlowRate ||
       !ethersProvider ||
-      !ethersSigner
+      !ethersSigner ||
+      !distributionPool
     ) {
       return [];
     }
@@ -420,7 +421,7 @@ export default function DistributionPoolFunding(props: {
     operations.push(
       superToken.distributeFlow({
         from: address,
-        pool: flowCouncil?.pool ?? "",
+        pool: distributionPool.id,
         requestedFlowRate: newFlowRate,
       }),
     );
@@ -463,7 +464,7 @@ export default function DistributionPoolFunding(props: {
     flowRateToFlowState,
     ethersProvider,
     ethersSigner,
-    flowCouncil?.pool,
+    distributionPool,
     distributionTokenAddress,
     underlyingTokenAllowance,
     editFlow,
@@ -716,7 +717,7 @@ export default function DistributionPoolFunding(props: {
                 step={step}
                 setStep={(step) => setStep(step)}
                 network={network}
-                receiver={flowCouncil?.pool ?? ""}
+                receiver={distributionPool?.id ?? ""}
                 transactions={transactions}
                 completedTransactions={completedTransactions}
                 areTransactionsLoading={areTransactionsLoading}
