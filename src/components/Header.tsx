@@ -30,7 +30,7 @@ export default function Header() {
             pathname?.startsWith("/sqf") ||
             pathname?.startsWith("/flow-councils/launch") ||
             pathname?.startsWith("/flow-councils/permissions") ||
-            pathname?.startsWith("/flow-councils/membership") ||
+            pathname?.startsWith("/flow-councils/voters") ||
             pathname?.startsWith("/flow-councils/review") ||
             pathname?.startsWith("/gooddollar/admin") ||
             pathname?.startsWith("/gooddollar/permissions") ||

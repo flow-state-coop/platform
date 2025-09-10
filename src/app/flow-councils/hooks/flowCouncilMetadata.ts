@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { fetchIpfsJson } from "@/lib/fetchIpfs";
 
-export default function useCouncilMetadata(cid: string) {
+export default function useFlowCouncilMetadata(cid: string) {
   const [metadata, setMetadata] = useState({ name: "", description: "" });
 
   useEffect(() => {

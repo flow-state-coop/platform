@@ -388,7 +388,7 @@ export default function FlowCouncil({
           hide={() => setShowDistributionPoolFunding(false)}
         />
       ) : showBallot ? (
-        <Ballot councilAddress={flowCouncilId as Address} />
+        <Ballot flowCouncilAddress={flowCouncilId as Address} />
       ) : null}
       <Modal
         show={showConnectionModal}

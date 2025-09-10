@@ -121,8 +121,8 @@ export default function VoteBubble(props: VoteBubbleProps) {
             className={`fs-6 d-block ${totalAllocatedVotes > votingPower ? "text-warning" : "text-white-50"}`}
           >
             {totalAllocatedProjects}
-            {flowCouncil?.maxAllocationsPerMember
-              ? `/${flowCouncil.maxAllocationsPerMember}`
+            {flowCouncil?.maxVotingSpread
+              ? `/${flowCouncil.maxVotingSpread}`
               : ""}{" "}
             Project{totalAllocatedProjects > 1 ? "s" : ""},{" "}
             {totalAllocatedVotes}/{votingPower} Vote

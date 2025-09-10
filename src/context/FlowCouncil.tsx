@@ -18,13 +18,13 @@ import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 type FlowCouncil = {
   id: string;
   metadata: string;
-  distributionToken: `0x${string}`;
+  superToken: `0x${string}`;
   recipients: {
     metadata: string;
     account: `0x${string}`;
     votes: { votedBy: string; amount: string; createdAtTimestamp: string };
   }[];
-  maxAllocationsPerMember: number;
+  maxVotingSpread: number;
   pool: string;
 };
 
@@ -207,7 +207,7 @@ export function FlowCouncilContextProvider({
   const currentBallot = useBallotQuery(network, flowCouncilId, address ?? "");
   const voter = useVoterQuery(network, flowCouncilId, address ?? "");
   const token = network.tokens.find(
-    (token) => token.address.toLowerCase() === flowCouncil?.distributionToken,
+    (token) => token.address.toLowerCase() === flowCouncil?.superToken,
   ) ?? {
     address: distributionPool?.token.id ?? "0x",
     symbol: distributionPool?.token.symbol,

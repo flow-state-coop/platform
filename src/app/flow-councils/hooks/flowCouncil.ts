@@ -4,7 +4,7 @@ import {
   useShowBallotDispatchContext,
 } from "@/context/FlowCouncil";
 
-export default function useCouncil() {
+export default function useFlowCouncil() {
   const {
     flowCouncil,
     flowCouncilMetadata,

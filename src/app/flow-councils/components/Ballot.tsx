@@ -13,9 +13,9 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { isNumber } from "@/lib/utils";
 
 export default function Ballot({
-  councilAddress,
+  flowCouncilAddress,
 }: {
-  councilAddress: `0x${string}`;
+  flowCouncilAddress: `0x${string}`;
 }) {
   const [success, setSuccess] = useState(false);
 
@@ -31,14 +31,15 @@ export default function Ballot({
     dispatchNewBallot,
   } = useFlowCouncil();
   const { isMobile } = useMediaQuery();
-  const { vote, isVoting, transactionError } = useWriteBallot(councilAddress);
+  const { vote, isVoting, transactionError } =
+    useWriteBallot(flowCouncilAddress);
 
   const votingPower = voter?.votingPower ?? 0;
   const totalVotes =
     newBallot?.ballot?.map((vote) => vote.amount)?.reduce((a, b) => a + b, 0) ??
     0;
   const newVotesCount = newBallot?.ballot?.length ?? 0;
-  const maxAllocationsPerMember = flowCouncil?.maxAllocationsPerMember ?? 0;
+  const maxVotingSpread = flowCouncil?.maxVotingSpread ?? 0;
 
   useEffect(() => {
     if (success) {
@@ -150,13 +151,12 @@ export default function Ballot({
           className="justify-content-around flex-grow-0 mb-1"
         >
           <p
-            className={`m-0 fs-6 ${newVotesCount > maxAllocationsPerMember ? "text-danger" : "text-info"}`}
+            className={`m-0 fs-6 ${newVotesCount > maxVotingSpread ? "text-danger" : "text-info"}`}
             style={{
-              visibility: maxAllocationsPerMember === 0 ? "hidden" : "visible",
+              visibility: maxVotingSpread === 0 ? "hidden" : "visible",
             }}
           >
-            ({newBallot?.ballot?.length ?? 0}/{maxAllocationsPerMember}{" "}
-            Projects)
+            ({newBallot?.ballot?.length ?? 0}/{maxVotingSpread} Projects)
           </p>
           <p
             className={`m-0 fs-6 ${totalVotes > votingPower ? "text-danger" : "text-info"}`}
@@ -170,11 +170,11 @@ export default function Ballot({
           className="flex-grow-0 bg-light rounded-4 px-3 py-4"
         >
           {newBallot?.ballot?.map((ballot, i) => {
-            const councilRecipient = flowCouncil?.recipients.find(
+            const flowCouncilRecipient = flowCouncil?.recipients.find(
               (recipient) => recipient.account === ballot.recipient,
             );
             const profile = flowStateProfiles?.find(
-              (profile) => profile.id === councilRecipient?.metadata,
+              (profile) => profile.id === flowCouncilRecipient?.metadata,
             );
 
             return (
@@ -264,8 +264,7 @@ export default function Ballot({
             disabled={
               !success &&
               (totalVotes > votingPower ||
-                (maxAllocationsPerMember &&
-                  newVotesCount > maxAllocationsPerMember) ||
+                (maxVotingSpread && newVotesCount > maxVotingSpread) ||
                 !newBallot?.ballot ||
                 newBallot.ballot.length === 0 ||
                 JSON.stringify(currentBallot?.ballot) ===
