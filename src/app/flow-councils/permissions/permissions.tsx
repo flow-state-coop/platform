@@ -24,8 +24,8 @@ type PermissionsProps = { chainId?: number; flowCouncilId?: string };
 type ManagerEntry = {
   address: string;
   defaultAdminRole: boolean;
-  memberManagerRole: boolean;
-  granteeManagerRole: boolean;
+  voterManagerRole: boolean;
+  recipientManagerRole: boolean;
   addressValidationError: string;
 };
 
@@ -48,10 +48,10 @@ const FLOW_COUNCIL_QUERY = gql`
 
 const DEFAULT_ADMIN_ROLE: `0x${string}` =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
-const MEMBER_MANAGER_ROLE: `0x${string}` =
-  "0x39a11a76752780db927c2506d127ab4a6504bb58ada87ac478aec1ffe9c2521b";
-const GRANTEE_MANAGER_ROLE: `0x${string}` =
-  "0x449c4ab7d231ca4b7e4b5e8022289a1d588fa1af9c09d2603681d5a375186c50";
+const VOTER_MANAGER_ROLE: `0x${string}` =
+  "0xe39c6677cd981766e3fe0ee03f87c2d365e15083059ced8f43405b909c968248";
+const RECIPIENT_MANAGER_ROLE: `0x${string}` =
+  "0xe555445334ab5a223b26b938f3d289a9b846cb309abebf4aa790d6e1a6141c2e";
 
 export default function Permissions(props: PermissionsProps) {
   const { chainId, flowCouncilId } = props;
@@ -130,46 +130,46 @@ export default function Permissions(props: PermissionsProps) {
         });
       }
 
-      const existingMemberManager = flowCouncil?.flowCouncilManagers.find(
+      const existingVoterManager = flowCouncil?.flowCouncilManagers.find(
         (m: { account: string; role: string }) =>
           m.account === managerEntry.address.toLowerCase() &&
-          m.role === MEMBER_MANAGER_ROLE,
+          m.role === VOTER_MANAGER_ROLE,
       );
 
-      if (existingMemberManager) {
-        if (!managerEntry.memberManagerRole) {
+      if (existingVoterManager) {
+        if (!managerEntry.voterManagerRole) {
           changedEntries.push({
             account: managerEntry.address as Address,
-            role: MEMBER_MANAGER_ROLE,
+            role: VOTER_MANAGER_ROLE,
             status: StatusChange.REMOVED,
           });
         }
-      } else if (managerEntry.memberManagerRole) {
+      } else if (managerEntry.voterManagerRole) {
         changedEntries.push({
           account: managerEntry.address as Address,
-          role: MEMBER_MANAGER_ROLE,
+          role: VOTER_MANAGER_ROLE,
           status: StatusChange.ADDED,
         });
       }
 
-      const existingGranteeManager = flowCouncil?.flowCouncilManagers.find(
+      const existingRecipientManager = flowCouncil?.flowCouncilManagers.find(
         (m: { account: string; role: string }) =>
           m.account === managerEntry.address.toLowerCase() &&
-          m.role === GRANTEE_MANAGER_ROLE,
+          m.role === RECIPIENT_MANAGER_ROLE,
       );
 
-      if (existingGranteeManager) {
-        if (!managerEntry.granteeManagerRole) {
+      if (existingRecipientManager) {
+        if (!managerEntry.recipientManagerRole) {
           changedEntries.push({
             account: managerEntry.address as Address,
-            role: GRANTEE_MANAGER_ROLE,
+            role: RECIPIENT_MANAGER_ROLE,
             status: StatusChange.REMOVED,
           });
         }
-      } else if (managerEntry.granteeManagerRole) {
+      } else if (managerEntry.recipientManagerRole) {
         changedEntries.push({
           account: managerEntry.address as Address,
-          role: GRANTEE_MANAGER_ROLE,
+          role: RECIPIENT_MANAGER_ROLE,
           status: StatusChange.ADDED,
         });
       }
@@ -239,14 +239,14 @@ export default function Permissions(props: PermissionsProps) {
           )
           .map((manager: { role: string }) => manager.role);
         const isDefaultAdmin = roles.includes(DEFAULT_ADMIN_ROLE);
-        const isMemberManager = roles.includes(MEMBER_MANAGER_ROLE);
-        const isGranteeManager = roles.includes(GRANTEE_MANAGER_ROLE);
+        const isVoterManager = roles.includes(VOTER_MANAGER_ROLE);
+        const isRecipientManager = roles.includes(RECIPIENT_MANAGER_ROLE);
 
         managersEntry.push({
           address: flowCouncil.flowCouncilManagers[i].account,
           defaultAdminRole: isDefaultAdmin,
-          memberManagerRole: isMemberManager,
-          granteeManagerRole: isGranteeManager,
+          voterManagerRole: isVoterManager,
+          recipientManagerRole: isRecipientManager,
           addressValidationError: "",
         });
       }
@@ -350,7 +350,7 @@ export default function Permissions(props: PermissionsProps) {
                     fontSize: isMobile ? "0.7rem" : "inherit",
                   }}
                 >
-                  Member Review
+                  Voter Review
                 </Card.Text>
                 <Card.Text
                   className="m-0 text-center flex-shrink-0"
@@ -433,10 +433,10 @@ export default function Permissions(props: PermissionsProps) {
                         const prev = [...managersEntry];
 
                         prev[i].defaultAdminRole = checked;
-                        prev[i].memberManagerRole =
-                          checked ?? prev[i].memberManagerRole;
-                        prev[i].granteeManagerRole =
-                          checked ?? prev[i].granteeManagerRole;
+                        prev[i].voterManagerRole =
+                          checked ?? prev[i].voterManagerRole;
+                        prev[i].recipientManagerRole =
+                          checked ?? prev[i].recipientManagerRole;
 
                         setManagersEntry(prev);
                       }}
@@ -452,7 +452,7 @@ export default function Permissions(props: PermissionsProps) {
                       disabled={!isAdmin || !!managerEntry.defaultAdminRole}
                       checked={
                         !!managerEntry.defaultAdminRole ||
-                        !!managerEntry.memberManagerRole
+                        !!managerEntry.voterManagerRole
                       }
                       className="m-0"
                       style={{ padding: 12 }}
@@ -461,8 +461,8 @@ export default function Permissions(props: PermissionsProps) {
 
                         const prev = [...managersEntry];
 
-                        prev[i].memberManagerRole =
-                          checked ?? prev[i].memberManagerRole;
+                        prev[i].voterManagerRole =
+                          checked ?? prev[i].voterManagerRole;
 
                         setManagersEntry(prev);
                       }}
@@ -477,7 +477,7 @@ export default function Permissions(props: PermissionsProps) {
                     <Form.Check.Input
                       checked={
                         !!managerEntry.defaultAdminRole ||
-                        !!managerEntry.granteeManagerRole
+                        !!managerEntry.recipientManagerRole
                       }
                       disabled={!isAdmin || !!managerEntry.defaultAdminRole}
                       className="m-0"
@@ -487,8 +487,8 @@ export default function Permissions(props: PermissionsProps) {
 
                         const prev = [...managersEntry];
 
-                        prev[i].granteeManagerRole =
-                          checked ?? prev[i].granteeManagerRole;
+                        prev[i].recipientManagerRole =
+                          checked ?? prev[i].recipientManagerRole;
 
                         setManagersEntry(prev);
                       }}
@@ -507,15 +507,15 @@ export default function Permissions(props: PermissionsProps) {
                       prev.concat({
                         address: "",
                         defaultAdminRole: false,
-                        granteeManagerRole: false,
-                        memberManagerRole: false,
+                        recipientManagerRole: false,
+                        voterManagerRole: false,
                         addressValidationError: "",
                       }),
                     )
                   }
                 >
                   <Card.Text className="mb-0">
-                    {isMobile ? "Add member" : "Add another admin"}
+                    {isMobile ? "Add another" : "Add another admin"}
                   </Card.Text>
                 </Button>
               </Stack>
@@ -552,7 +552,7 @@ export default function Permissions(props: PermissionsProps) {
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() =>
               router.push(
-                `/flow-councils/membership/?chainId=${chainId}&id=${flowCouncilId}`,
+                `/flow-councils/voters/?chainId=${chainId}&id=${flowCouncilId}`,
               )
             }
           >
