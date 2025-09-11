@@ -44,6 +44,11 @@ type Application = {
   status: Status;
 };
 
+type CustomReceiverEntry = {
+  address: string;
+  validationError: string;
+};
+
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
 
 enum ErrorMessage {
@@ -110,8 +115,12 @@ export default function Recipient(props: RecipientProps) {
     name: "",
     description: "",
   });
+  const [customReceiverEntry, setCustomReceiverEntry] =
+    useState<CustomReceiverEntry>({
+      address: "",
+      validationError: "",
+    });
   const [applications, setApplications] = useState<Application[]>([]);
-  const [customReceiver, setCustomReceiver] = useState("");
   const [isCustomReceiver, setIsCustomReceiver] = useState(false);
   const [hasAgreedToCodeOfConduct, setHasAgreedToCodeOfConduct] =
     useState(false);
@@ -159,7 +168,7 @@ export default function Recipient(props: RecipientProps) {
     icon: "",
   };
   const isCustomReceiverInvalid =
-    isCustomReceiver && !isAddress(customReceiver);
+    isCustomReceiver && !isAddress(customReceiverEntry.address);
 
   const projects = useMemo(
     () =>
@@ -319,7 +328,7 @@ export default function Recipient(props: RecipientProps) {
           owner: session.address,
           recipient:
             isCustomReceiver && !isCustomReceiverInvalid
-              ? customReceiver
+              ? customReceiverEntry.address
               : session.address,
           chainId,
           councilId: flowCouncil.id,
@@ -495,7 +504,7 @@ export default function Recipient(props: RecipientProps) {
             onChange={() => setIsCustomReceiver(true)}
           />
         </Stack>
-        <Form.Group className="mt-2">
+        <Form.Group className="position-relative mt-2">
           <Form.Label className={`${!isCustomReceiver ? "text-info" : ""}`}>
             Funding Address* (Must be self-custody! e.g., Safe multisig, browser
             wallet EOA, etc.)
@@ -503,9 +512,38 @@ export default function Recipient(props: RecipientProps) {
           <Form.Control
             type="text"
             disabled={!isCustomReceiver}
-            value={isCustomReceiver ? customReceiver : address ? address : ""}
-            onChange={(e) => setCustomReceiver(e.target.value)}
+            value={
+              isCustomReceiver
+                ? customReceiverEntry.address
+                : address
+                  ? address
+                  : ""
+            }
+            className="py-2"
+            onChange={async (e) => {
+              const value = e.target.value;
+
+              let validationError = "";
+
+              if (!isAddress(value)) {
+                validationError = "Invalid Address";
+              }
+
+              setCustomReceiverEntry({
+                ...customReceiverEntry,
+                address: value,
+                validationError,
+              });
+            }}
           />
+          {customReceiverEntry.validationError && (
+            <Card.Text
+              className="position-absolute mb-0 ms-2 ps-1 text-danger"
+              style={{ bottom: 0, fontSize: "0.7rem" }}
+            >
+              {customReceiverEntry.validationError}
+            </Card.Text>
+          )}
         </Form.Group>
       </Stack>
       <Stack direction="vertical" gap={3} className="mt-5 text-light">
