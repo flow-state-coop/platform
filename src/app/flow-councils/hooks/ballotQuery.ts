@@ -3,8 +3,12 @@ import { Network } from "@/types/network";
 import { getApolloClient } from "@/lib/apollo";
 
 const BALLOT_QUERY = gql`
-  query BallotQuery($flowCouncilId: String, $voter: String) {
-    voter(id: $voter) {
+  query BallotQuery(
+    $flowCouncilId: String
+    $voterId: String
+    $voterAddress: String
+  ) {
+    voter(id: $voterId) {
       votingPower
       ballot {
         votes(where: { amount_gt: 0, recipient_: { id_not: null } }) {
@@ -13,6 +17,19 @@ const BALLOT_QUERY = gql`
           }
           amount
         }
+      }
+    }
+    recipients(
+      where: {
+        id_not: null
+        flowCouncil: $flowCouncilId
+        votes_: { votedBy: $voterAddress, amount_gt: 0 }
+      }
+    ) {
+      account
+      votes {
+        amount
+        votedBy
       }
     }
   }
@@ -27,23 +44,23 @@ export default function useBallotQuery(
     client: getApolloClient("flowCouncil", network.id),
     variables: {
       flowCouncilId: flowCouncilId?.toLowerCase(),
-      voter: `${flowCouncilId?.toLowerCase()}-${address?.toLowerCase()}`,
+      voterId: `${flowCouncilId?.toLowerCase()}-${address?.toLowerCase()}`,
+      voterAddress: `${address?.toLowerCase()}`,
     },
     skip: !address || !flowCouncilId,
     pollInterval: 10000,
   });
-  const currentBallot = ballotQueryRes?.voter?.ballot;
-  const ballot = currentBallot?.votes.map(
-    ({
-      recipient: { account },
-      amount,
-    }: {
-      recipient: { account: string };
-      amount: string;
+  const ballot = ballotQueryRes?.recipients?.map(
+    (recipient: {
+      account: string;
+      votes: { votedBy: string; amount: number }[];
     }) => {
       return {
-        recipient: account,
-        amount: Number(amount),
+        recipient: recipient.account,
+        amount: Number(
+          recipient.votes?.find((x) => x.votedBy === address?.toLowerCase())
+            ?.amount ?? 0,
+        ),
       };
     },
   );

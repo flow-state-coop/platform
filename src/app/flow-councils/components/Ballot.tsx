@@ -102,14 +102,24 @@ export default function Ballot({
     if (newBallot && newBallot?.ballot.length > 0) {
       const currentVotes = currentBallot?.ballot ?? [];
       const newVotes = newBallot?.ballot ?? [];
+
+      const uniqueNewVotes = newVotes.filter(
+        (newVote) =>
+          !currentVotes.some(
+            (currentVote) =>
+              currentVote.recipient === newVote.recipient &&
+              currentVote.amount === newVote.amount,
+          ),
+      );
       const votesToRemove = currentVotes.filter(
         (currentVote) =>
           !newVotes
             .map((newVote) => newVote.recipient)
             .includes(currentVote.recipient),
       );
+
       const receipt = await vote(
-        newBallot.ballot.concat(
+        uniqueNewVotes.concat(
           votesToRemove.map((vote) => {
             return { ...vote, amount: 0 };
           }),
