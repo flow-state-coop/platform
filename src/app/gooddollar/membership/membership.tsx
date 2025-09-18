@@ -33,7 +33,7 @@ type MemberEntry = {
 };
 
 const COUNCIL_QUERY = gql`
-  query CouncilQuery($councilId: String!) {
+  query CouncilMembersQuery($councilId: String!, $skip: Int = 0) {
     council(id: $councilId) {
       id
       maxAllocationsPerMember
@@ -41,7 +41,7 @@ const COUNCIL_QUERY = gql`
         account
         role
       }
-      councilMembers(first: 1000) {
+      councilMembers(first: 1000, skip: $skip) {
         id
         account
         votingPower
@@ -78,18 +78,19 @@ export default function Membership(props: MembershipProps) {
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
-  const { data: councilQueryRes, loading: councilQueryResLoading } = useQuery(
-    COUNCIL_QUERY,
-    {
-      client: getApolloClient("flowCouncil", chainId),
-      variables: {
-        chainId,
-        councilId: councilId?.toLowerCase(),
-      },
-      skip: !councilId,
-      pollInterval: 4000,
+  const {
+    data: councilQueryRes,
+    loading: councilQueryResLoading,
+    fetchMore,
+  } = useQuery(COUNCIL_QUERY, {
+    client: getApolloClient("flowCouncil", chainId),
+    variables: {
+      chainId,
+      councilId: councilId?.toLowerCase(),
     },
-  );
+    pollInterval: 4000,
+    skip: !councilId,
+  });
 
   const council = councilQueryRes?.council ?? null;
   const isValidMembersEntry = membersEntry.every(
@@ -154,6 +155,16 @@ export default function Membership(props: MembershipProps) {
       hasChangesMembers
     );
   }, [councilConfig, maxAllocation, council, membersEntry]);
+
+  useEffect(() => {
+    if (!councilQueryRes) {
+      return;
+    }
+
+    fetchMore({
+      variables: { skip: councilQueryRes.council.councilMembers.length },
+    });
+  }, [councilQueryRes, fetchMore]);
 
   useEffect(() => {
     (async () => {

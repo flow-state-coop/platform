@@ -218,7 +218,7 @@ const networks: Network[] = [
       "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-splitter-optimism-sepolia/v0.0.2/gn",
     flowCouncilFactory: "0x0037c884f51714fEA8194E3C0c547894736bF8F2",
     flowCouncilSubgraph:
-      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-council-optimism-sepolia/v0.2.4/gn",
+      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-council-optimism-sepolia/v0.2.5/gn",
     flowStateEligibilityNft: "0x1059A20C7aA0B4576B631d064730dB2E02940535",
     flowStateEligibilityMinScore: 0.5,
     superfluidHost: "0xd399e2Fb5f4cf3722a11F65b88FAB6B2B8621005",
