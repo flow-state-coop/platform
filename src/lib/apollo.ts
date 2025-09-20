@@ -10,7 +10,20 @@ import { networks } from "@/lib/networks";
 type ApiType = "flowState" | "flowSplitter" | "flowCouncil" | "superfluid";
 
 const apolloClient: ApolloClientOptions<NormalizedCacheObject> = {
-  cache: new InMemoryCache(),
+  cache: new InMemoryCache({
+    typePolicies: {
+      Council: {
+        fields: {
+          councilMembers: {
+            keyArgs: false,
+            merge(existing = [], incoming) {
+              return [...existing, ...incoming];
+            },
+          },
+        },
+      },
+    },
+  }),
   defaultOptions: {
     query: {
       errorPolicy: "all",

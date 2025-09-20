@@ -347,8 +347,8 @@ export default function Ballot({
               >
                 Claim your $SUP rewards
               </Card.Link>{" "}
-              for voting now (once per epoch). The next epoch starts on
-              September 3rd.
+              for voting now (once per epoch). This final epoch ends on
+              October 1st.
             </Card.Text>
             <Card.Text
               as="span"
