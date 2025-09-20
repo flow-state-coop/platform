@@ -65,7 +65,7 @@ export default function Footer() {
               Flow Council
             </Link>
             <Link
-              href="/flow-qf/admin"
+              href="https://docs.flowstate.network/platform/streaming-qf/"
               className="text-decoration-none text-white fs-5 fw-bold"
             >
               Flow QF

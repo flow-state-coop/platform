@@ -11,14 +11,14 @@ import Button from "react-bootstrap/Button";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
 enum TargetAudience {
-  ORGS = "For orgs",
+  FUNDERS = "For funders",
   BUILDERS = "For builders",
   EVERYONE = "For everyone",
 }
 
 export default function HomePage() {
   const [showTargetAudience, setShowTargetAudience] = useState<TargetAudience>(
-    TargetAudience.ORGS,
+    TargetAudience.FUNDERS,
   );
 
   const router = useRouter();
@@ -35,8 +35,8 @@ export default function HomePage() {
   useEffect(() => {
     const targetAudienceElem = document.getElementById("target-audience");
 
-    if (searchParams.get("for-orgs")) {
-      setShowTargetAudience(TargetAudience.ORGS);
+    if (searchParams.get("for-funders")) {
+      setShowTargetAudience(TargetAudience.FUNDERS);
       targetAudienceElem?.scrollIntoView();
     } else if (searchParams.get("for-builders")) {
       setShowTargetAudience(TargetAudience.BUILDERS);
@@ -65,7 +65,10 @@ export default function HomePage() {
           <span className="text-flame-500"> money</span>
           <span className="text-primary"> solutions</span>
         </p>
-        <p className="m-0 text-center fs-6">Where capital flows to results</p>
+        <p className="m-0 text-center fs-6">
+          We build continuous funding apps, incentive systems & governance
+          mechanisms so your capital flows to results.
+        </p>
         <Stack
           direction={isMobile ? "vertical" : "horizontal"}
           gap={6}
@@ -166,9 +169,9 @@ export default function HomePage() {
               <Dropdown.Menu className="bg-secondary p-3">
                 <Dropdown.Item
                   className="fs-lg text-white fw-semi-bold"
-                  onClick={() => setShowTargetAudience(TargetAudience.ORGS)}
+                  onClick={() => setShowTargetAudience(TargetAudience.FUNDERS)}
                 >
-                  {TargetAudience.ORGS}
+                  {TargetAudience.FUNDERS}
                 </Dropdown.Item>
                 <Dropdown.Item
                   className="fs-lg text-white fw-semi-bold"
@@ -192,15 +195,15 @@ export default function HomePage() {
             >
               <Button
                 variant={
-                  showTargetAudience === TargetAudience.ORGS
+                  showTargetAudience === TargetAudience.FUNDERS
                     ? "primary"
                     : "outline-dark"
                 }
                 className="px-10 py-4 fs-lg fw-semi-bold rounded-3 border-4"
                 style={{ width: isMobile ? 280 : 220 }}
-                onClick={() => setShowTargetAudience(TargetAudience.ORGS)}
+                onClick={() => setShowTargetAudience(TargetAudience.FUNDERS)}
               >
-                For orgs
+                For funders
               </Button>
               <Button
                 variant={
@@ -235,8 +238,8 @@ export default function HomePage() {
           >
             <Image
               src={
-                showTargetAudience === TargetAudience.ORGS
-                  ? "/audience-orgs.png"
+                showTargetAudience === TargetAudience.FUNDERS
+                  ? "/audience-funders.png"
                   : showTargetAudience === TargetAudience.BUILDERS
                     ? "/audience-builders.png"
                     : "/audience-everyone.png"
@@ -250,93 +253,141 @@ export default function HomePage() {
               }}
             />
             <Stack direction="vertical" className="flex-grow-0 px-8 px-lg-0">
-              {showTargetAudience === TargetAudience.ORGS ? (
+              {showTargetAudience === TargetAudience.FUNDERS ? (
                 <>
+                  <p className="fs-6" style={{ lineHeight: "140%" }}>
+                    Drive results with one of Flow State’s incentive systems or
+                    governance mechanisms:
+                  </p>
                   <p className="text-secondary fw-bold fs-5">
                     Return on Investment
                   </p>
                   <p className="fs-6" style={{ lineHeight: "140%" }}>
-                    Stop writing off grants as passive charity. Wield dynamic
-                    streams to create value-accruing feedback loops.
+                    Wield dynamic streams to create value-accruing feedback
+                    loops.
                   </p>
-                  <p className="text-secondary fw-bold fs-5">Talent</p>
+                  <p className="text-secondary fw-bold fs-5">Attract Talent</p>
                   <p className="fs-6" style={{ lineHeight: "140%" }}>
-                    Beat the competition for top talent by funding faster with
-                    more consistency & less BS.
+                    Beat the competition for top talent by funding faster and
+                    with more consistency.
                   </p>
-                  <p className="text-secondary fw-bold fs-5">Efficiency</p>
+                  <p className="text-secondary fw-bold fs-5">
+                    Capital Efficiency
+                  </p>
                   <p className="fs-6 mb-16" style={{ lineHeight: "140%" }}>
                     Get more out of your limited resources by reducing idle
                     capital & decision-making overhead.
                   </p>
-                  <p className="mb-4 text-secondary fw-semi-bold fs-lg">
+                  <p className="text-secondary fw-semi-bold fs-lg">
                     Learn more
                   </p>
-                  <Button
-                    variant="outline-secondary"
-                    className="px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
-                    style={{ width: isMobile ? "100%" : 262 }}
-                  >
-                    Custom programs
-                  </Button>
-                  <Stack direction="horizontal" gap={2} className="mt-4">
-                    <Link href="/flow-qf/admin">
-                      <Button
-                        variant="outline-secondary"
-                        className="px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
-                      >
-                        Flow QF
-                      </Button>
-                    </Link>
+                  <Stack direction="horizontal" gap={2}>
                     <Link href="/flow-councils">
                       <Button
                         variant="outline-secondary"
                         className="px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
                       >
-                        Flow Councils
+                        Flow Council
+                      </Button>
+                    </Link>
+                    <Link href="/flow-splitters">
+                      <Button
+                        variant="outline-secondary"
+                        className="px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Flow Splitter
+                      </Button>
+                    </Link>
+                  </Stack>
+                  <Stack direction="horizontal" gap={2}>
+                    <Link
+                      href="https://docs.flowstate.network/platform/streaming-qf"
+                      target="_blank"
+                    >
+                      <Button
+                        variant="outline-secondary"
+                        className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Flow QF
+                      </Button>
+                    </Link>
+                    <Link
+                      href="https://calendar.app.google/VR16gZEyus6xqn2s8"
+                      target="_blank"
+                    >
+                      <Button
+                        variant="outline-secondary"
+                        className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                        style={{ width: isMobile ? "100%" : 370 }}
+                      >
+                        Custom Implementation
                       </Button>
                     </Link>
                   </Stack>
                 </>
               ) : showTargetAudience === TargetAudience.BUILDERS ? (
                 <>
-                  <p className="text-secondary fw-bold fs-5">
-                    Continuous Funding
-                  </p>
                   <p className="fs-6" style={{ lineHeight: "140%" }}>
-                    Access real-time, streaming funds to support your projects
-                    without delays.
+                    Grow your app or token with Flow State money streaming:
                   </p>
-                  <p className="text-secondary fw-bold fs-5">Autonomy</p>
+                  <p className="text-secondary fw-bold fs-5">User Retention</p>
                   <p className="fs-6" style={{ lineHeight: "140%" }}>
-                    Maintain creative and operational control while receiving
-                    the support you need.
+                    Create instant and consistent token flows that keep users
+                    coming back.
                   </p>
-                  <p className="text-secondary fw-bold fs-5">Recognition</p>
+                  <p className="text-secondary fw-bold fs-5">Dynamic Rewards</p>
+                  <p className="fs-6" style={{ lineHeight: "140%" }}>
+                    Adjust streams at scale based on any signal so rewards match
+                    value.
+                  </p>
+                  <p className="text-secondary fw-bold fs-5">Differentiation</p>
                   <p className="fs-6 mb-16" style={{ lineHeight: "140%" }}>
-                    Be acknowledged and rewarded for your contributions to the
-                    public good.
+                    Stand out against Web 2.0 & web3 competition alike with the
+                    ultimate form of programmable money.
                   </p>
                   <p className="mb-4 text-secondary fw-semi-bold fs-lg">
                     Learn more
                   </p>
-                  <Button
-                    variant="outline-secondary"
-                    className="px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                  <Stack direction="horizontal" gap={2}>
+                    <Link href="/flow-splitters">
+                      <Button
+                        variant="outline-secondary"
+                        className="px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Flow Splitter
+                      </Button>
+                    </Link>
+                    <Link
+                      href="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
+                      target="_blank"
+                    >
+                      <Button
+                        variant="outline-secondary"
+                        className="px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Flow Caster
+                      </Button>
+                    </Link>
+                  </Stack>
+                  <Link
+                    href="https://calendar.app.google/VR16gZEyus6xqn2s8"
+                    target="_blank"
                   >
-                    Custom programs
-                  </Button>
-                  <Link href="/flow-qf/admin">
                     <Button
                       variant="outline-secondary"
                       className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      style={{ width: isMobile ? "100%" : 370 }}
                     >
-                      Flow QF
+                      Custom Implementation
                     </Button>
                   </Link>
                 </>
               ) : (
                 <>
+                  <p className="fs-6" style={{ lineHeight: "140%" }}>
+                    Drive results with one of Flow State’s incentive systems or
+                    governance mechanisms:
+                  </p>
                   <p className="text-secondary fw-bold fs-5">Direct Impact</p>
                   <p className="fs-6" style={{ lineHeight: "140%" }}>
                     See your contributions make a tangible difference in
@@ -347,27 +398,56 @@ export default function HomePage() {
                     Participate in governance and decision-making processes.
                   </p>
                   <p className="text-secondary fw-bold fs-5">Rewards</p>
-                  <p className="fs-6 mb-16" style={{ lineHeight: "140%" }}>
+                  <p className="fs-6" style={{ lineHeight: "140%" }}>
                     Earn patronage dividends and recognition for supporting
                     public goods.
+                  </p>
+                  <p className="text-secondary fw-bold fs-5">Onchain Magic</p>
+                  <p className="fs-6 mb-16" style={{ lineHeight: "140%" }}>
+                    Do things with programmable money unimaginable offchain.
                   </p>
                   <p className="mb-4 text-secondary fw-semi-bold fs-lg">
                     Learn more
                   </p>
-                  <Button
-                    variant="outline-secondary"
-                    className="px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
-                  >
-                    Custom programs
-                  </Button>
-                  <Link href="/flow-qf/admin">
-                    <Button
-                      variant="outline-secondary"
-                      className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                  <Stack direction="horizontal" gap={2}>
+                    <Link href="https://docs.flowstate.network" target="_blank">
+                      <Button
+                        variant="outline-secondary"
+                        className="px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Docs
+                      </Button>
+                    </Link>
+                    <Link href="/explore">
+                      <Button
+                        variant="outline-secondary"
+                        className="px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Explore
+                      </Button>
+                    </Link>
+                  </Stack>
+                  <Stack direction="horizontal" gap={2}>
+                    <Link
+                      href="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
+                      target="_blank"
                     >
-                      Flow QF
-                    </Button>
-                  </Link>
+                      <Button
+                        variant="outline-secondary"
+                        className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Flow Caster
+                      </Button>
+                    </Link>
+                    <Link href="https://farcaster.xyz/beamr" target="_blank">
+                      <Button
+                        variant="outline-secondary"
+                        className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Beamr
+                      </Button>
+                    </Link>
+                  </Stack>
                 </>
               )}
             </Stack>
@@ -380,7 +460,7 @@ export default function HomePage() {
             <Button
               variant="transparent"
               className="p-0 border-0"
-              onClick={() => setShowTargetAudience(TargetAudience.ORGS)}
+              onClick={() => setShowTargetAudience(TargetAudience.FUNDERS)}
             >
               <Image
                 src="/ellipse.svg"
@@ -389,7 +469,7 @@ export default function HomePage() {
                 height={12}
                 style={{
                   filter:
-                    showTargetAudience === TargetAudience.ORGS
+                    showTargetAudience === TargetAudience.FUNDERS
                       ? "brightness(0) saturate(100%) invert(35%) sepia(42%) saturate(362%) hue-rotate(115deg) brightness(88%) contrast(86%)"
                       : "brightness(0) saturate(100%) invert(93%) sepia(4%) saturate(2894%) hue-rotate(338deg) brightness(96%) contrast(88%)",
                 }}
@@ -444,15 +524,11 @@ export default function HomePage() {
           >
             Ready to find your flow state?
           </p>
-          <p className="m-0 text-center fs-6" style={{ lineHeight: "140%" }}>
-            We can design, build, and integrate a streaming funding program for
-            your unique ecosystem needs.
-          </p>
           <Button
             variant="link"
             href="https://calendar.app.google/VR16gZEyus6xqn2s8"
             target="_blank"
-            className="bg-secondary text-white text-decoration-none px-10 py-4 fs-lg fw-semi-bold"
+            className="mt-2 bg-secondary text-white text-decoration-none px-10 py-4 fs-lg fw-semi-bold"
           >
             Schedule a consultation
           </Button>

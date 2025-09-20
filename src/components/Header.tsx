@@ -56,9 +56,9 @@ export default function Header() {
                   <Button
                     variant="transparent"
                     className="px-10 py-4 fs-lg fw-bold"
-                    onClick={() => router.push("/?for-orgs=true")}
+                    onClick={() => router.push("/?for-funders=true")}
                   >
-                    For orgs
+                    For funders
                   </Button>
                   <Button
                     variant="transparent"
@@ -202,9 +202,9 @@ export default function Header() {
               <Button
                 variant="transparent"
                 className="px-10 py-4 fs-lg fw-bold border-0"
-                onClick={() => router.push("/?for-orgs=true")}
+                onClick={() => router.push("/?for-funders=true")}
               >
-                For orgs
+                For funders
               </Button>
               <Button
                 variant="transparent"
