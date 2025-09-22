@@ -308,13 +308,22 @@ export default function HomePage() {
                       <Button
                         variant="outline-secondary"
                         className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                        style={{ width: isMobile ? "100%" : 210 }}
                       >
                         Flow QF
                       </Button>
                     </Link>
                     <Link
-                      href="https://calendar.app.google/VR16gZEyus6xqn2s8"
-                      target="_blank"
+                      href="#schedule-consultation"
+                      onNavigate={(e) => {
+                        e.preventDefault();
+                        const elem = document.getElementById(
+                          "schedule-consultation",
+                        );
+                        elem?.scrollIntoView({
+                          behavior: "smooth",
+                        });
+                      }}
                     >
                       <Button
                         variant="outline-secondary"
@@ -368,8 +377,16 @@ export default function HomePage() {
                     </Link>
                   </Stack>
                   <Link
-                    href="https://calendar.app.google/VR16gZEyus6xqn2s8"
-                    target="_blank"
+                    href="#schedule-consultation"
+                    onNavigate={(e) => {
+                      e.preventDefault();
+                      const elem = document.getElementById(
+                        "schedule-consultation",
+                      );
+                      elem?.scrollIntoView({
+                        behavior: "smooth",
+                      });
+                    }}
                   >
                     <Button
                       variant="outline-secondary"
@@ -508,6 +525,7 @@ export default function HomePage() {
           </Stack>
         </Stack>
         <Stack
+          id="schedule-consultation"
           direction="vertical"
           gap={5}
           className="align-items-center px-3 pt-20 pb-30 px-lg-52"
