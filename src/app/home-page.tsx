@@ -231,10 +231,15 @@ export default function HomePage() {
               </Button>
             </Stack>
           )}
+          <p className="fs-5 fw-semi-bold text-primary px-2 mt-xl-8 mb-6 text-center">
+            {showTargetAudience === TargetAudience.BUILDERS
+              ? "Grow your app or token with Flow State money streaming"
+              : "Drive results with one of Flow State’s incentive or governance systems"}
+          </p>
           <Stack
             direction="horizontal"
             gap={8}
-            className="justify-content-center align-items-start flex-wrap flex-xl-nowrap mt-xl-24 mb-8"
+            className="justify-content-center align-items-start flex-wrap flex-xl-nowrap mb-8"
           >
             <Image
               src={
@@ -255,10 +260,6 @@ export default function HomePage() {
             <Stack direction="vertical" className="flex-grow-0 px-8 px-lg-0">
               {showTargetAudience === TargetAudience.FUNDERS ? (
                 <>
-                  <p className="fs-6" style={{ lineHeight: "140%" }}>
-                    Drive results with one of Flow State’s incentive systems or
-                    governance mechanisms:
-                  </p>
                   <p className="text-secondary fw-bold fs-5">
                     Return on Investment
                   </p>
@@ -327,9 +328,6 @@ export default function HomePage() {
                 </>
               ) : showTargetAudience === TargetAudience.BUILDERS ? (
                 <>
-                  <p className="fs-6" style={{ lineHeight: "140%" }}>
-                    Grow your app or token with Flow State money streaming:
-                  </p>
                   <p className="text-secondary fw-bold fs-5">User Retention</p>
                   <p className="fs-6" style={{ lineHeight: "140%" }}>
                     Create instant and consistent token flows that keep users
@@ -384,10 +382,6 @@ export default function HomePage() {
                 </>
               ) : (
                 <>
-                  <p className="fs-6" style={{ lineHeight: "140%" }}>
-                    Drive results with one of Flow State’s incentive systems or
-                    governance mechanisms:
-                  </p>
                   <p className="text-secondary fw-bold fs-5">Direct Impact</p>
                   <p className="fs-6" style={{ lineHeight: "140%" }}>
                     See your contributions make a tangible difference in
@@ -523,6 +517,10 @@ export default function HomePage() {
             style={{ fontSize: 88, lineHeight: "95%" }}
           >
             Ready to find your flow state?
+          </p>
+          <p className="m-0 text-center fs-6" style={{ lineHeight: "140%" }}>
+            We can design, build, and integrate a streaming funding solution for
+            your unique needs.
           </p>
           <Button
             variant="link"

@@ -12,7 +12,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useMailingList from "@/hooks/mailingList";
 
 export default function Footer() {
-  const { isMobile, isBigScreen } = useMediaQuery();
+  const { isMobile } = useMediaQuery();
   const {
     isEmailInvalid,
     setIsEmailInvalid,
@@ -28,10 +28,10 @@ export default function Footer() {
       <Stack
         direction="vertical"
         gap={isMobile ? 0 : 20}
-        className="px-2 py-16 px-lg-30 py-lg-30 px-xxl-52"
+        className="px-2 py-4 px-lg-30 px-xxl-52"
       >
         <Stack
-          direction="horizontal"
+          direction={isMobile ? "vertical" : "horizontal"}
           className="justify-content-between flex-wrap"
         >
           <Stack direction="vertical" gap={6} className="mb-20 mb-sm-0">
@@ -50,7 +50,7 @@ export default function Footer() {
           <Stack
             direction="vertical"
             gap={isMobile ? 10 : 8}
-            className="mb-10 mb-lg-0 me-lg-6"
+            className="mb-20 mb-lg-0 me-lg-6"
           >
             <Link
               href="/flow-splitters"
@@ -192,16 +192,6 @@ export default function Footer() {
           </Stack>
         </Stack>
       </Stack>
-      <span
-        className="text-lace-100 overflow-hidden fw-bold"
-        style={{
-          fontSize: isMobile ? "27vw" : isBigScreen ? "9.55vw" : "10.11vw",
-          lineHeight: 0.77,
-          marginLeft: isBigScreen ? -10 : -12,
-        }}
-      >
-        MAKE IMPACT FLOW
-      </span>
     </footer>
   );
 }
