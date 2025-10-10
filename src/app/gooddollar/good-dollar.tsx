@@ -314,8 +314,8 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
             setShowDistributionPoolFunding(true)
           }
         />
-        <p className="mt-4 mb-0 fs-2 fw-bold">
-          GoodBuilders Round 2 closed on October 9th. Thank you to all that made
+        <p className="mt-4 mb-0 fs-6 fw-bold">
+          GoodBuilders Round 2 concluded on October 9th. Thank you to all who made
           it a success!
           <br />
           <br />
