@@ -340,8 +340,8 @@ export default function Ballot({
               <Card.Link href="https://claim.superfluid.org/" target="_blank">
                 Claim your $SUP rewards
               </Card.Link>{" "}
-              for voting now (once per epoch). This final epoch ends on
-              October 1st.
+              for voting now (once per epoch). This final epoch ends on October
+              1st.
             </Card.Text>
             <Card.Text
               as="span"

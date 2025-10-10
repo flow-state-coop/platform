@@ -308,13 +308,21 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
           name={councilMetadata.name ?? "Flow Council"}
           description={councilMetadata.description ?? "N/A"}
           chainId={chainId}
-          councilAddress={councilAddress}
           distributionTokenInfo={token}
           gdaPool={gdaPool}
           showDistributionPoolFunding={() =>
             setShowDistributionPoolFunding(true)
           }
         />
+        <p className="mt-4 mb-0 fs-6 fw-bold">
+          GoodBuilders Round 2 concluded on October 9th. Thank you to all who made
+          it a success!
+          <br />
+          <br />
+          Donation streams left open are now being directed to a reserve that
+          will be applied to Round 3. Users can close their stream via the Grow
+          the Pie button above.{" "}
+        </p>
         <Stack
           direction="horizontal"
           gap={4}

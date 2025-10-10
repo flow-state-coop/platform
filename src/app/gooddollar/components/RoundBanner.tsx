@@ -1,10 +1,8 @@
 import { useState, useLayoutEffect } from "react";
-import { Address, formatEther } from "viem";
-import { useAccount, useReadContract, useSwitchChain } from "wagmi";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { formatEther } from "viem";
+import { useAccount } from "wagmi";
 import removeMarkdown from "remove-markdown";
 import Stack from "react-bootstrap/Stack";
-import Spinner from "react-bootstrap/Spinner";
 import Modal from "react-bootstrap/Modal";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
@@ -13,7 +11,6 @@ import Table from "react-bootstrap/Table";
 import InfoTooltip from "@/components/InfoTooltip";
 import { GDAPool } from "@/types/gdaPool";
 import { Token } from "@/types/token";
-import { councilAbi } from "@/lib/abi/council";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useCouncil from "@/app/flow-councils/hooks/council";
 import useFlowingAmount from "@/hooks/flowingAmount";
@@ -25,7 +22,6 @@ type RoundBannerProps = {
   name: string;
   description: string;
   chainId: number;
-  councilAddress: string;
   distributionTokenInfo: Token;
   gdaPool?: GDAPool;
   showDistributionPoolFunding: () => void;
@@ -36,7 +32,6 @@ export default function RoundBanner(props: RoundBannerProps) {
     name,
     description,
     chainId,
-    councilAddress,
     distributionTokenInfo,
     gdaPool,
     showDistributionPoolFunding,
@@ -44,25 +39,10 @@ export default function RoundBanner(props: RoundBannerProps) {
 
   const [showFullInfo, setShowFullInfo] = useState(true);
   const [showInstructions, setShowInstructions] = useState(false);
-  const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
-  const [hasCheckedEligibility, setHasCheckedEligibility] = useState(false);
 
-  const { council, dispatchShowBallot } = useCouncil();
+  const { council } = useCouncil();
   const { isMobile } = useMediaQuery();
-  const { switchChain } = useSwitchChain();
-  const { address, chain: connectedChain } = useAccount();
-  const { openConnectModal } = useConnectModal();
-  const {
-    data: votingPower,
-    refetch: refetchVotingPower,
-    isPending: isVotingPowerQueryPending,
-  } = useReadContract({
-    abi: councilAbi,
-    address: councilAddress as Address,
-    functionName: "balanceOf",
-    args: [address as Address],
-    query: { enabled: !!address },
-  });
+  const { address } = useAccount();
 
   const distributionMonthly =
     BigInt(gdaPool?.flowRate ?? 0) * BigInt(SECONDS_IN_MONTH);
@@ -83,41 +63,6 @@ export default function RoundBanner(props: RoundBannerProps) {
       window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
     }
   }, [showFullInfo]);
-
-  const checkEligibility = async () => {
-    if (!address && openConnectModal) {
-      openConnectModal();
-
-      return;
-    }
-
-    if (connectedChain?.id !== chainId) {
-      switchChain({ chainId });
-    }
-
-    setIsCheckingEligibility(true);
-
-    try {
-      const eligibilityRes = await fetch("/api/good-dollar/eligibility", {
-        method: "POST",
-        body: JSON.stringify({
-          chainId,
-          address,
-        }),
-      });
-
-      const { success } = await eligibilityRes.json();
-
-      if (success) {
-        await refetchVotingPower();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-
-    setIsCheckingEligibility(false);
-    setHasCheckedEligibility(true);
-  };
 
   return (
     <div
@@ -213,7 +158,7 @@ export default function RoundBanner(props: RoundBannerProps) {
               >
                 Grow the Pie
               </Button>
-              {grantee ? (
+              {grantee && (
                 <Button
                   variant="link"
                   href={`https://flowstate.network/projects/${grantee.metadata}/?chainId=${chainId}&edit=true`}
@@ -222,53 +167,6 @@ export default function RoundBanner(props: RoundBannerProps) {
                   style={{ width: isMobile ? "100%" : 256 }}
                 >
                   Edit Builder Profile
-                </Button>
-              ) : votingPower ? (
-                <Button
-                  variant={hasCheckedEligibility ? "success" : "primary"}
-                  className="d-flex gap-2 justify-content-center align-items-center p-2 text-light fs-5 text-decoration-none"
-                  style={{ width: isMobile ? "100%" : 256 }}
-                  onClick={() => dispatchShowBallot({ type: "show" })}
-                >
-                  {hasCheckedEligibility && (
-                    <Image
-                      src="check-circle.svg"
-                      alt=""
-                      width={24}
-                      height={24}
-                      style={{
-                        filter:
-                          "brightness(0) saturate(100%) invert(99%) sepia(10%) saturate(48%) hue-rotate(174deg) brightness(120%) contrast(100%)",
-                      }}
-                    />
-                  )}
-                  View Ballot
-                </Button>
-              ) : hasCheckedEligibility ? (
-                <Button
-                  variant="link"
-                  href="https://goodwallet.xyz"
-                  target="_blank"
-                  className="bg-primary p-2 text-light fs-5 text-decoration-none"
-                  style={{ width: isMobile ? "100%" : 256 }}
-                >
-                  Join to Vote
-                </Button>
-              ) : (
-                <Button
-                  className="bg-primary p-2 text-light fs-5 text-decoration-none"
-                  onClick={checkEligibility}
-                  style={{
-                    width: isMobile ? "100%" : 256,
-                    pointerEvents: isCheckingEligibility ? "none" : "auto",
-                  }}
-                >
-                  {address &&
-                  (isCheckingEligibility || isVotingPowerQueryPending) ? (
-                    <Spinner size="sm" />
-                  ) : (
-                    "Check Voter Eligibility"
-                  )}
                 </Button>
               )}
             </Stack>
