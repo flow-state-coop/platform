@@ -143,7 +143,7 @@ export default function HomePage() {
         >
           <p className="word-break fs-5 lh-sm">
             In web3, money and information flow on the same rails. Every batch
-            payment is a missed chance to maintain that connection.
+            payment is a missed chance to connect them.
             <br />
             <br />
             Streaming funding empowers you, your team, and your community to
@@ -330,7 +330,7 @@ export default function HomePage() {
                         className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
                         style={{ width: isMobile ? "100%" : 370 }}
                       >
-                        Custom Implementation
+                        Custom
                       </Button>
                     </Link>
                   </Stack>
@@ -393,7 +393,7 @@ export default function HomePage() {
                       className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
                       style={{ width: isMobile ? "100%" : 370 }}
                     >
-                      Custom Implementation
+                      Custom
                     </Button>
                   </Link>
                 </>
@@ -406,12 +406,8 @@ export default function HomePage() {
                   </p>
                   <p className="text-secondary fw-bold fs-5">Engagement</p>
                   <p className="fs-6" style={{ lineHeight: "140%" }}>
-                    Participate in governance and decision-making processes.
-                  </p>
-                  <p className="text-secondary fw-bold fs-5">Rewards</p>
-                  <p className="fs-6" style={{ lineHeight: "140%" }}>
-                    Earn patronage dividends and recognition for supporting
-                    public goods.
+                    Participate in governance and decision-making processes
+                    rather than bureaucracy.
                   </p>
                   <p className="text-secondary fw-bold fs-5">Onchain Magic</p>
                   <p className="fs-6 mb-16" style={{ lineHeight: "140%" }}>
