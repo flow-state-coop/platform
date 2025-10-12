@@ -308,7 +308,6 @@ export default function HomePage() {
                       <Button
                         variant="outline-secondary"
                         className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
-                        style={{ width: isMobile ? "100%" : 210 }}
                       >
                         Flow QF
                       </Button>
@@ -328,7 +327,6 @@ export default function HomePage() {
                       <Button
                         variant="outline-secondary"
                         className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
-                        style={{ width: isMobile ? "100%" : 370 }}
                       >
                         Custom
                       </Button>
@@ -391,7 +389,6 @@ export default function HomePage() {
                     <Button
                       variant="outline-secondary"
                       className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
-                      style={{ width: isMobile ? "100%" : 370 }}
                     >
                       Custom
                     </Button>
