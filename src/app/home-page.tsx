@@ -154,10 +154,13 @@ export default function HomePage() {
       <div className="background-body px-lg-30 px-xxl-52 py-lg-20">
         <Stack
           direction="vertical"
-          className="align-items-center bg-lace-100 py-16 px-lg-17 px-xxl-30 py-lg-24"
+          className="align-items-center bg-lace-100 py-16 px-lg-17 px-xxl-30 py-lg-20"
           id="target-audience"
           style={{ borderRadius: isMobile || isTablet ? 0 : 56 }}
         >
+          <p className="fs-4 fw-semi-bold text-primary px-2 text-center">
+            The 360° impact of streaming money:
+          </p>
           {isMobile || isTablet || isSmallScreen ? (
             <Dropdown className="mb-8 w-100 px-3">
               <Dropdown.Toggle
@@ -231,15 +234,10 @@ export default function HomePage() {
               </Button>
             </Stack>
           )}
-          <p className="fs-5 fw-semi-bold text-primary px-2 mt-xl-8 mb-6 text-center">
-            {showTargetAudience === TargetAudience.BUILDERS
-              ? "Grow your app or token with Flow State money streaming"
-              : "Drive results with one of Flow State’s incentive or governance systems"}
-          </p>
           <Stack
             direction="horizontal"
             gap={8}
-            className="justify-content-center align-items-start flex-wrap flex-xl-nowrap mb-8"
+            className="justify-content-center align-items-start flex-wrap flex-xl-nowrap my-8"
           >
             <Image
               src={
@@ -282,32 +280,47 @@ export default function HomePage() {
                   <p className="text-secondary fw-semi-bold fs-lg">
                     Learn more
                   </p>
-                  <Stack direction="horizontal" gap={2}>
-                    <Link href="/flow-councils">
+                  <Stack
+                    direction="horizontal"
+                    gap={2}
+                    className="flex-wrap flex-sm-nowrap"
+                  >
+                    <Link
+                      href="/flow-councils"
+                      className={isMobile ? "w-100" : "w-50"}
+                    >
                       <Button
                         variant="outline-secondary"
-                        className="px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                        className="w-100 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
                       >
                         Flow Council
                       </Button>
                     </Link>
-                    <Link href="/flow-splitters">
+                    <Link
+                      href="/flow-splitters"
+                      className={isMobile ? "w-100" : "w-50"}
+                    >
                       <Button
                         variant="outline-secondary"
-                        className="px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                        className="w-100 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
                       >
                         Flow Splitter
                       </Button>
                     </Link>
                   </Stack>
-                  <Stack direction="horizontal" gap={2}>
+                  <Stack
+                    direction="horizontal"
+                    gap={2}
+                    className="flex-wrap flex-sm-nowrap"
+                  >
                     <Link
                       href="https://docs.flowstate.network/platform/streaming-qf"
                       target="_blank"
+                      className={isMobile ? "w-100" : "w-50"}
                     >
                       <Button
                         variant="outline-secondary"
-                        className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                        className="w-100 mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
                       >
                         Flow QF
                       </Button>
@@ -323,10 +336,11 @@ export default function HomePage() {
                           behavior: "smooth",
                         });
                       }}
+                      className={isMobile ? "w-100" : "w-50"}
                     >
                       <Button
                         variant="outline-secondary"
-                        className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                        className="w-100 mt-sm-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
                       >
                         Custom
                       </Button>
@@ -353,11 +367,18 @@ export default function HomePage() {
                   <p className="mb-4 text-secondary fw-semi-bold fs-lg">
                     Learn more
                   </p>
-                  <Stack direction="horizontal" gap={2}>
-                    <Link href="/flow-splitters">
+                  <Stack
+                    direction="horizontal"
+                    gap={2}
+                    className="flex-wrap flex-sm-nowrap"
+                  >
+                    <Link
+                      href="/flow-splitters"
+                      className={isMobile ? "w-100" : "w-50"}
+                    >
                       <Button
                         variant="outline-secondary"
-                        className="px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                        className="w-100 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
                       >
                         Flow Splitter
                       </Button>
@@ -365,10 +386,11 @@ export default function HomePage() {
                     <Link
                       href="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
                       target="_blank"
+                      className={isMobile ? "w-100" : "w-50"}
                     >
                       <Button
                         variant="outline-secondary"
-                        className="px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                        className="w-100 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
                       >
                         Flow Caster
                       </Button>
@@ -385,10 +407,11 @@ export default function HomePage() {
                         behavior: "smooth",
                       });
                     }}
+                    className={isMobile ? "w-100" : "w-50"}
                   >
                     <Button
                       variant="outline-secondary"
-                      className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      className="w-100 mt-sm-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
                     >
                       Custom
                     </Button>
@@ -413,40 +436,57 @@ export default function HomePage() {
                   <p className="mb-4 text-secondary fw-semi-bold fs-lg">
                     Learn more
                   </p>
-                  <Stack direction="horizontal" gap={2}>
-                    <Link href="https://docs.flowstate.network" target="_blank">
+                  <Stack
+                    direction="horizontal"
+                    gap={2}
+                    className="flex-wrap flex-sm-nowrap"
+                  >
+                    <Link
+                      href="https://docs.flowstate.network"
+                      target="_blank"
+                      className={isMobile ? "w-100" : "w-50"}
+                    >
                       <Button
                         variant="outline-secondary"
-                        className="px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                        className="w-100 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
                       >
                         Docs
                       </Button>
                     </Link>
-                    <Link href="/explore">
+                    <Link href="/explore" className="w-50">
                       <Button
                         variant="outline-secondary"
-                        className="px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                        className="w-100 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
                       >
                         Explore
                       </Button>
                     </Link>
                   </Stack>
-                  <Stack direction="horizontal" gap={2}>
+                  <Stack
+                    direction="horizontal"
+                    gap={2}
+                    className="flex-wrap flex-sm-nowrap"
+                  >
                     <Link
                       href="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
                       target="_blank"
+                      className={isMobile ? "w-100" : "w-50"}
                     >
                       <Button
                         variant="outline-secondary"
-                        className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                        className="w-100 mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
                       >
                         Flow Caster
                       </Button>
                     </Link>
-                    <Link href="https://farcaster.xyz/beamr" target="_blank">
+                    <Link
+                      href="https://farcaster.xyz/beamr"
+                      target="_blank"
+                      className={isMobile ? "w-100" : "w-50"}
+                    >
                       <Button
                         variant="outline-secondary"
-                        className="mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                        className="w-100 mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
                       >
                         Beamr
                       </Button>
