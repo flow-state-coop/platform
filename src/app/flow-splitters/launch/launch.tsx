@@ -203,7 +203,7 @@ export default function Launch(props: LaunchProps) {
     <>
       <Stack
         direction="vertical"
-        className="px-2 pt-17 pb-30 px-lg-30 px-xxl-52"
+        className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
       >
         <Card className="bg-lace-100 rounded-4 border-0 p-4">
           <Card.Header className="mb-3 bg-transparent border-0 rounded-4 p-0">

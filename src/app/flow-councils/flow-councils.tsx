@@ -398,7 +398,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
     <Stack
       direction="vertical"
       gap={6}
-      className="px-2 pt-17 pb-30 px-lg-30 px-xxl-52"
+      className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
     >
       {councilsManagerQueryLoading || superfluidQueryLoading ? (
         <span className="position-absolute top-50 start-50 translate-middle">

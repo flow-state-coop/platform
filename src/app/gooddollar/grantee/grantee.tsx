@@ -349,7 +349,7 @@ export default function Grantee(props: GranteeProps) {
   }
 
   return (
-    <Stack direction="vertical" className="px-2 pt-17 pb-30 px-lg-30 px-xxl-52">
+    <Stack direction="vertical" className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52">
       <h1 className="mt-5 mb-0 fs-3">{councilMetadata.name}</h1>
       <Stack direction="horizontal" gap={1} className="align-items-center mb-4">
         Distributing Distributing{" "}

@@ -91,7 +91,7 @@ export default function Admin() {
     <>
       <Stack
         direction="vertical"
-        className="px-2 pt-17 pb-30 px-lg-30 px-xxl-52"
+        className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
       >
         <div className="mb-8">
           <h1 className="fs-5 fw-semi-bold">SQF Launchpad</h1>

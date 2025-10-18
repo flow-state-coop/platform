@@ -10,6 +10,7 @@ import Modal from "react-bootstrap/Modal";
 import Spinner from "react-bootstrap/Spinner";
 import Toast from "react-bootstrap/Toast";
 import Dropdown from "react-bootstrap/Dropdown";
+import Alert from "react-bootstrap/Alert";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
 import GranteeCard from "@/app/flow-councils/components/GranteeCard";
 import RoundBanner from "./components/RoundBanner";
@@ -289,7 +290,7 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
     <>
       <Stack
         direction="vertical"
-        className="px-2 pt-17 pb-30 px-lg-30 px-xxl-52"
+        className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
         onMouseUp={clearUnallocated}
         onTouchEnd={clearUnallocated}
       >
@@ -304,15 +305,18 @@ export default function GoodDollar({ chainId }: { chainId: number }) {
             setShowDistributionPoolFunding(true)
           }
         />
-        <p className="mt-4 mb-0 fs-6 fw-bold">
+        <Alert
+          variant="danger"
+          className="text-white bg-danger px-8 py-6 rounded-4 mt-6 fw-semi-bold"
+        >
           GoodBuilders Round 2 concluded on October 9th. Thank you to all who
           made it a success!
           <br />
           <br />
           Donation streams left open are now being directed to a reserve that
           will be applied to Round 3. Users can close their stream via the Grow
-          the Pie button above.{" "}
-        </p>
+          the Pie button above.
+        </Alert>
         <Stack
           direction="horizontal"
           gap={4}

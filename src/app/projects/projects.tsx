@@ -109,7 +109,7 @@ export default function Projects(props: ProjectsProps) {
   );
 
   return (
-    <Stack direction="vertical" className="px-2 pt-17 pb-30 px-lg-30 px-xxl-52">
+    <Stack direction="vertical" className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52">
       {loading || projects === null ? (
         <Spinner className="m-auto" />
       ) : (

@@ -171,7 +171,7 @@ export default function Explore(props: ExploreProps) {
           className="m-0 fw-bold"
           style={{ lineHeight: "95%", fontSize: isMobile ? 76 : 120 }}
         >
-          Explore flows.
+          Explore flows
         </h1>
         <h2 className="fs-6 mb-4">
           Participate in Flow State streaming funding campaigns or launch your
@@ -188,9 +188,10 @@ export default function Explore(props: ExploreProps) {
           <Spinner />
         </Stack>
       ) : (
-        <>
+        <div className="px-2 pb-20 px-lg-30 px-xxl-52">
+          <span className="fs-4 fw-semi-bold">Active</span>
           <div
-            className="px-2 pb-20 px-lg-30 px-xxl-52"
+            className="mt-2 mb-6"
             style={{
               display: "grid",
               columnGap: "1.5rem",
@@ -217,21 +218,6 @@ export default function Explore(props: ExploreProps) {
               }
               tokenSymbol="USDCx"
               link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
-              showSupRewards={true}
-            />
-            <RoundCard
-              name="GoodBuilders Program"
-              image="/good-dollar.png"
-              roundType="Flow Council"
-              totalStreamedUntilUpdatedAt={BigInt(
-                goodDollarPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
-              ).toString()}
-              flowRate={BigInt(goodDollarPool?.flowRate ?? 0).toString()}
-              updatedAt={goodDollarPool?.updatedAtTimestamp}
-              activeStreamCount={goodDollarPool?.poolDistributors.length}
-              tokenSymbol="G$"
-              link="/gooddollar"
-              showSupRewards={true}
             />
             <RoundCard
               name="Core Contributors"
@@ -246,6 +232,54 @@ export default function Explore(props: ExploreProps) {
               tokenSymbol="ETHx"
               link="/flow-guilds/core"
             />
+            <RoundCard
+              name="Guild Guild"
+              image="/guild-guild.png"
+              roundType="Flow Guild"
+              totalStreamedUntilUpdatedAt={BigInt(
+                guildGuildInflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,
+              ).toString()}
+              flowRate={BigInt(
+                guildGuildInflow?.totalInflowRate ?? 0,
+              ).toString()}
+              updatedAt={guildGuildInflow?.updatedAtTimestamp}
+              activeStreamCount={guildGuildInflow?.activeIncomingStreamCount}
+              tokenSymbol="ETHx"
+              link="/flow-guilds/guild-guild"
+            />
+            <RoundCard
+              name="Chones Guild"
+              image="/chones-guild.svg"
+              roundType="Flow Guild"
+              totalStreamedUntilUpdatedAt={BigInt(
+                guildGuildInflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,
+              ).toString()}
+              flowRate={BigInt(
+                chonesGuildInflow?.totalInflowRate ?? 0,
+              ).toString()}
+              updatedAt={chonesGuildInflow?.updatedAtTimestamp}
+              activeStreamCount={chonesGuildInflow?.activeIncomingStreamCount}
+              tokenSymbol="ETHx"
+              link="/flow-guilds/chonesguild"
+            />
+          </div>
+          <span className="fs-4 fw-semi-bold">Completed</span>
+          <div
+            className="mt-2"
+            style={{
+              display: "grid",
+              columnGap: "1.5rem",
+              rowGap: "3rem",
+              justifyItems: "center",
+              gridTemplateColumns: isTablet
+                ? "repeat(1,minmax(0,1fr))"
+                : isSmallScreen
+                  ? "repeat(2,minmax(0,1fr))"
+                  : isMediumScreen || isBigScreen
+                    ? "repeat(3,minmax(0,1fr))"
+                    : "",
+            }}
+          >
             <RoundCard
               name="Octant Builder Accelerator"
               image="/octant-circle.svg"
@@ -307,6 +341,19 @@ export default function Explore(props: ExploreProps) {
               link="/octant"
             />
             <RoundCard
+              name="GoodBuilders Program"
+              image="/good-dollar.png"
+              roundType="Flow Council"
+              totalStreamedUntilUpdatedAt={BigInt(
+                goodDollarPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
+              ).toString()}
+              flowRate={BigInt(goodDollarPool?.flowRate ?? 0).toString()}
+              updatedAt={goodDollarPool?.updatedAtTimestamp}
+              activeStreamCount={goodDollarPool?.poolDistributors.length}
+              tokenSymbol="G$"
+              link="/gooddollar"
+            />
+            <RoundCard
               name="Greenpill Dev Guild"
               image="/greenpill.png"
               roundType="Flow Guild"
@@ -321,38 +368,8 @@ export default function Explore(props: ExploreProps) {
               tokenSymbol="ETHx"
               link="/flow-guilds/greenpilldevguild"
             />
-            <RoundCard
-              name="Guild Guild"
-              image="/guild-guild.png"
-              roundType="Flow Guild"
-              totalStreamedUntilUpdatedAt={BigInt(
-                guildGuildInflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,
-              ).toString()}
-              flowRate={BigInt(
-                guildGuildInflow?.totalInflowRate ?? 0,
-              ).toString()}
-              updatedAt={guildGuildInflow?.updatedAtTimestamp}
-              activeStreamCount={guildGuildInflow?.activeIncomingStreamCount}
-              tokenSymbol="ETHx"
-              link="/flow-guilds/guild-guild"
-            />
-            <RoundCard
-              name="Chones Guild"
-              image="/chones-guild.svg"
-              roundType="Flow Guild"
-              totalStreamedUntilUpdatedAt={BigInt(
-                guildGuildInflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,
-              ).toString()}
-              flowRate={BigInt(
-                chonesGuildInflow?.totalInflowRate ?? 0,
-              ).toString()}
-              updatedAt={chonesGuildInflow?.updatedAtTimestamp}
-              activeStreamCount={chonesGuildInflow?.activeIncomingStreamCount}
-              tokenSymbol="ETHx"
-              link="/flow-guilds/chonesguild"
-            />
           </div>
-        </>
+        </div>
       )}
     </Stack>
   );

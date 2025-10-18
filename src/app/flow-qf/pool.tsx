@@ -9,6 +9,7 @@ import { useInView } from "react-intersection-observer";
 import Stack from "react-bootstrap/Stack";
 import Dropdown from "react-bootstrap/Dropdown";
 import Spinner from "react-bootstrap/Spinner";
+import Alert from "react-bootstrap/Alert";
 import SuperfluidContextProvider from "@/context/Superfluid";
 import PoolInfo from "./components/PoolInfo";
 import Grantee from "./components/Grantee";
@@ -587,7 +588,7 @@ export default function Pool(props: PoolProps) {
     >
       <Stack
         direction="vertical"
-        className="px-2 pt-17 pb-30 px-lg-30 px-xxl-52"
+        className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
       >
         <PoolInfo
           name={pool?.metadata.name ?? "N/A"}
@@ -642,6 +643,17 @@ export default function Pool(props: PoolProps) {
             })
           }
         />
+        <Alert
+          variant="danger"
+          className="text-white bg-danger px-8 py-6 rounded-4 mt-6 fw-semi-bold"
+        >
+          The Octant Builder Accelerator SQF round has concluded.
+          <br />
+          <br />
+          Any streams left open are still directed to the builders, but we
+          recommend that you close them. Connect your wallet in the header then
+          click on your ETHx balance to manage any open streams.
+        </Alert>
         <Stack direction="horizontal" gap={4} className="mt-8 fs-lg">
           Grantees
           <Dropdown>

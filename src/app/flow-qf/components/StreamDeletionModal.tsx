@@ -110,12 +110,12 @@ export default function StreamDeletionModal(props: StreamDeletionModalProps) {
       </Modal.Header>
       <Modal.Body className="bg-lace-100 mt-8">
         <Stack direction="horizontal" gap={3} className="justify-content-end">
-          <Button className="w-25 py-4 rounded-4 fw-semi-bold" onClick={hide}>
+          <Button className="w-33 py-4 rounded-4 fw-semi-bold" onClick={hide}>
             Nevermind
           </Button>
           <Button
             variant="danger"
-            className="w-25 py-4 rounded-4 fw-semi-bold text-light"
+            className="w-33 py-4 rounded-4 fw-semi-bold text-light"
             onClick={deleteStream}
             style={{ pointerEvents: isLoading ? "none" : "auto" }}
           >
