@@ -85,10 +85,10 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
   };
 
   return (
-    <Card className="bg-light rounded-0 border-0 border-bottom border-info">
+    <Card className="bg-lace-100 rounded-0 border-0 border-bottom border-white">
       <Button
         variant="transparent"
-        className="d-flex align-items-center gap-2 p-3 border-0 rounded-0 shadow-none"
+        className="d-flex gap-3 p-4 border-0 rounded-0 shadow-none text-secondary fs-lg fw-semi-bold"
         style={{
           pointerEvents: step === Step.REVIEW ? "auto" : "none",
         }}
@@ -152,7 +152,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
             )}
           </Card.Text>
           <Stack direction="horizontal" gap={2}>
-            <Badge className="d-flex align-items-center gap-1 bg-white text-dark w-50 rounded-3 px-3 py-2 fs-5 fw-normal">
+            <Badge className="d-flex align-items-center gap-2 bg-white text-dark w-50 rounded-4 px-3 py-4 fs-lg fw-semi-bold">
               <Image
                 src={network?.icon ?? "/eth.png"}
                 alt="token"
@@ -161,7 +161,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
               />
               {network?.name ?? "N/A"}
             </Badge>
-            <Badge className="d-flex align-items-center gap-1 bg-white text-dark w-50 rounded-3 px-3 py-2 fs-5 fw-normal">
+            <Badge className="d-flex align-items-center gap-2 bg-white text-dark w-50 rounded-4 px-3 py-4 fs-lg fw-semi-bold">
               <Image
                 src={token.icon ?? "/eth.png"}
                 alt="token"
@@ -187,11 +187,11 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                 disabled={!address}
                 value={supportFlowStateAmount}
                 onChange={handleAmountSelection}
-                className="bg-white border-0 rounded-3 shadow-none"
+                className="bg-white border-0 rounded-4 py-3 shadow-none fs-lg fw-semi-bold"
               />
               <Card.Text
                 className="position-absolute m-0 text-info"
-                style={{ right: 8, fontSize: "0.6rem" }}
+                style={{ top: 8, right: 12, fontSize: "0.6rem" }}
               >
                 Current:{" "}
                 {formatNumberWithCommas(
@@ -213,7 +213,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                 className="mt-2 align-items-stretch"
               >
                 <Button
-                  className="p-0"
+                  className="p-0 fw-semi-bold"
                   style={{
                     minWidth: "30%",
                     fontSize: isMobile ? "0.6rem" : "0.8rem",
@@ -229,7 +229,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                   {formatNumber(suggestedDonation * 2)}
                 </Button>
                 <Button
-                  className="px-0 py-1"
+                  className="px-0 py-1 fw-semi-bold"
                   style={{
                     minWidth: "30%",
                     fontSize: isMobile ? "0.6rem" : "0.8rem",
@@ -245,7 +245,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                   {formatNumber(suggestedDonation * 5)}
                 </Button>
                 <Button
-                  className="px-0 py-1"
+                  className="px-0 py-1 fw-semi-bold"
                   style={{
                     minWidth: "30%",
                     fontSize: isMobile ? "0.6rem" : "0.8rem",
@@ -266,24 +266,24 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
               type="text"
               disabled
               value="/month"
-              className="w-50 bg-white border-0 rounded-3 shadow-none"
+              className="w-50 bg-white border-0 rounded-4 py-3 fs-lg fw-semi-bold shadow-none"
             />
           </Stack>
           {Number(supportFlowStateAmount) > 0 &&
             minDonationPerMonth &&
             Number(supportFlowStateAmount) < minDonationPerMonth && (
-              <Alert variant="warning" className="mt-2 py-2">
+              <Alert variant="warning" className="mt-2 px-3 py-4 fw-semi-bold">
                 Minimum Donation = {minDonationPerMonth} {token.symbol}/mo
               </Alert>
             )}
           <Stack
             direction="horizontal"
             gap={2}
-            className="justify-content-between mt-3"
+            className="justify-content-between align-items-center mt-6"
           >
             <Button
               variant="transparent"
-              className="py-1 rounded-3 text-info"
+              className="text-info"
               onClick={() => {
                 setSupportFlowStateAmount("");
                 setStep(Step.REVIEW);
@@ -299,7 +299,7 @@ export default function SupportFlowState(props: SupportFlowStateProps) {
                   (Number(supportFlowStateAmount) === 0 ||
                     Number(supportFlowStateAmount) < minDonationPerMonth))
               }
-              className="w-50 py-1 rounded-3 text-light"
+              className="w-50 py-4 rounded-4 fw-semi-bold text-light"
               onClick={() => setStep(Step.REVIEW)}
             >
               {isDeletingStream ? "Cancel Stream" : "Continue"}

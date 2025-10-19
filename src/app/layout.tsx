@@ -1,3 +1,4 @@
+import { Archivo } from "next/font/google";
 import Stack from "react-bootstrap/Stack";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -40,19 +41,25 @@ export const metadata = {
   },
 };
 
+const archivo = Archivo({
+  subsets: ["latin"],
+});
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html>
+    <html className={archivo.className}>
       <body>
         <Providers>
           <Header />
-          <Stack
-            direction="horizontal"
-            className="flex-grow-1 align-items-start"
-            style={{ minHeight: "100svh" }}
-          >
-            {children}
-          </Stack>
+          <main>
+            <Stack
+              direction="horizontal"
+              className="flex-grow-1 align-items-start"
+              style={{ minHeight: "100svh" }}
+            >
+              {children}
+            </Stack>
+          </main>
           <Footer />
           <PostHog />
         </Providers>

@@ -136,15 +136,21 @@ export default function Ballot({
       }}
       placement={isMobile ? "bottom" : "end"}
       style={{ height: "100%" }}
+      className="p-4"
     >
-      <Offcanvas.Header closeButton className="pb-0 align-items-start">
+      <Offcanvas.Header className="pb-0 align-items-start">
         <Stack direction="vertical">
-          <Offcanvas.Title className="fs-4">Cast your votes</Offcanvas.Title>
-          <p className="text-info fs-6 mt-2 mb-3">
+          <Offcanvas.Title className="fs-5 fw-semi-bold">
+            Cast your votes
+          </Offcanvas.Title>
+          <p className="text-info fs-lg mt-2 mb-3">
             You will submit your ballot as a whole. You can reallocate your
             votes at any time.
           </p>
         </Stack>
+        <Button variant="transparent" className="p-0">
+          <Image src="/close.svg" alt="Close" width={24} height={24} />
+        </Button>
       </Offcanvas.Header>
       <Offcanvas.Body>
         <Stack
@@ -152,7 +158,7 @@ export default function Ballot({
           className="justify-content-around flex-grow-0 mb-1"
         >
           <p
-            className={`m-0 fs-6 ${newAllocationsCount > maxAllocationsPerMember ? "text-danger" : "text-info"}`}
+            className={`m-0 fs-lg fw-semi-bold ${newAllocationsCount > maxAllocationsPerMember ? "text-danger" : "text-info"}`}
             style={{
               visibility: maxAllocationsPerMember === 0 ? "hidden" : "visible",
             }}
@@ -161,7 +167,7 @@ export default function Ballot({
             Projects)
           </p>
           <p
-            className={`m-0 fs-6 ${totalVotes > votingPower ? "text-danger" : "text-info"}`}
+            className={`m-0 fs-lg fw-semi-bold ${totalVotes > votingPower ? "text-danger" : "text-info"}`}
           >
             ({totalVotes}/{votingPower} Votes)
           </p>
@@ -169,7 +175,7 @@ export default function Ballot({
         <Stack
           direction="vertical"
           gap={4}
-          className="flex-grow-0 bg-light rounded-4 px-3 py-4"
+          className="flex-grow-0 mt-2 bg-lace-100 rounded-4 p-4"
         >
           {newAllocation?.allocation?.map((allocation, i) => {
             const councilGrantee = council?.grantees.find(
@@ -183,13 +189,13 @@ export default function Ballot({
             return (
               <Stack
                 direction="horizontal"
-                className="justify-content-between overflow-hidden"
+                className="justify-content-between align-items-center overflow-hidden"
                 key={i}
               >
-                <Stack direction="horizontal" className="w-50">
+                <Stack direction="horizontal" gap={1} className="w-50">
                   <Button
                     variant="transparent"
-                    className="p-1 ps-0"
+                    className="p-0"
                     onClick={() => {
                       setSuccess(false);
                       dispatchNewAllocation({
@@ -201,18 +207,15 @@ export default function Ballot({
                     <Image
                       src="/close.svg"
                       alt="delete"
-                      width={20}
-                      height={20}
+                      width={22}
+                      height={22}
                       style={{
                         filter:
                           "invert(30%) sepia(64%) saturate(1597%) hue-rotate(324deg) brightness(93%) contrast(103%)",
                       }}
                     />
                   </Button>
-                  <p
-                    className="m-0 text-truncate"
-                    style={{ fontSize: "1.2rem" }}
-                  >
+                  <p className="m-0 text-truncate fs-lg fw-semi-bold">
                     {profile?.metadata.title}
                   </p>
                 </Stack>
@@ -221,7 +224,8 @@ export default function Ballot({
                   className="justify-content-end align-items-stretch w-50"
                 >
                   <Button
-                    className="d-flex justify-content-center align-items-center bg-info border-black border-end-0 w-25 rounded-0 rounded-start-2 fs-4 px-1 py-2"
+                    variant="white"
+                    className="d-flex justify-content-center align-items-center border-4 border-dark w-25 rounded-0 rounded-start-4 px-1 py-3"
                     onClick={() =>
                       handleAmountStepping({
                         increment: false,
@@ -242,11 +246,11 @@ export default function Ballot({
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       handleAmountSelection(e, i)
                     }
-                    className="text-center w-33 bg-white border-black border-start-0 border-end-0 rounded-0 shadow-none"
+                    className="fw-semi-bold text-center w-33 bg-white border-4 border-start-0 border-end-0 border-dark rounded-0 shadow-none"
                   />
                   <Button
                     variant="white"
-                    className="d-flex justify-content-center align-items-center w-25 bg-info border-black border-start-0 rounded-0 rounded-end-3 fs-4 px-1 py-2"
+                    className="d-flex justify-content-center align-items-center w-25 border-4 border-black rounded-0 rounded-end-3 fs-4 px-1 py-3"
                     onClick={() =>
                       handleAmountStepping({ increment: true, granteeIndex: i })
                     }
@@ -271,9 +275,9 @@ export default function Ballot({
                 JSON.stringify(currentAllocation?.allocation) ===
                   JSON.stringify(newAllocation?.allocation))
             }
-            className={`align-self-end w-50 ${success ? "py-1" : ""}`}
+            className="align-self-end w-50 px-10 py-4 rounded-4 fs-lg fw-semi-bold"
+            style={{ pointerEvents: success ? "none" : "auto", height: 56 }}
             onClick={handleVote}
-            style={{ pointerEvents: success ? "none" : "auto" }}
           >
             {isVoting ? (
               <Spinner size="sm" />
@@ -293,17 +297,19 @@ export default function Ballot({
             )}
           </Button>
           {transactionError && (
-            <Alert variant="danger" className="mt-3 p-2">
+            <Alert variant="danger" className="mt-3 p-2 fw-semi-bold">
               {transactionError}
             </Alert>
           )}
         </Stack>
         {success && (
           <Card
-            className="bg-light mt-5 p-4 rounded-4 border-0"
+            className="bg-lace-100 mt-8 p-4 rounded-4 border-0"
             ref={successCardRef}
           >
-            <Card.Text>Your ballot has been successfully submitted!</Card.Text>
+            <Card.Text className="text-secondary fw-semi-bold fs-md text-center">
+              Your ballot has been successfully submitted!
+            </Card.Text>
             <Card.Text
               as="span"
               className="text-center"
@@ -311,12 +317,12 @@ export default function Ballot({
             >
               &#x1F64F;
             </Card.Text>
-            <Card.Text>
+            <Card.Text className="text-center mt-5">
               Tell more builders and voters about the round.
             </Card.Text>
             <Stack direction="horizontal" className="justify-content-around">
               <Card.Link
-                className="d-flex flex-column align-items-center twitter-share-button text-decoration-none fs-6 m-0 w-50"
+                className="d-flex flex-column align-items-center twitter-share-button text-decoration-none fw-semi-bold m-0 w-50"
                 rel="noreferrer"
                 target="_blank"
                 data-size="large"
@@ -330,7 +336,7 @@ export default function Ballot({
                 <span style={{ fontSize: "10px" }}>Post to X</span>
               </Card.Link>
               <Card.Link
-                className="d-flex flex-column align-items-center text-decoration-none fs-6 m-0 w-50"
+                className="d-flex flex-column align-items-center text-decoration-none fw-semi-bold m-0 w-50"
                 rel="noreferrer"
                 target="_blank"
               >
@@ -343,7 +349,7 @@ export default function Ballot({
                 <span style={{ fontSize: "10px" }}>Cast to Farcaster</span>
               </Card.Link>
               <Card.Link
-                className="d-flex flex-column align-items-center text-decoration-none fs-6 m-0 w-50"
+                className="d-flex flex-column align-items-center text-decoration-none fw-semi-bold m-0 w-50"
                 rel="noreferrer"
                 target="_blank"
               >

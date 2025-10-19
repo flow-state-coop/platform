@@ -1,27 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import Container from "react-bootstrap/Container";
-import { useMediaQuery } from "@/hooks/mediaQuery";
+import Stack from "react-bootstrap/Stack";
 
 export default function Conduct() {
-  const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
-
   return (
-    <Container
-      className="mx-auto p-4 mt-5 fs-5"
-      style={{
-        maxWidth:
-          isMobile || isTablet
-            ? "100%"
-            : isSmallScreen
-              ? 800
-              : isMediumScreen
-                ? 1000
-                : 1300,
-      }}
+    <Stack
+      direction="vertical"
+      gap={6}
+      className="px-2 py-20 px-lg-30 px-xxl-52 fs-6 lh-sm"
     >
-      <h1>Code of Conduct</h1>
+      <h1 className="fs-3">Code of Conduct</h1>
       <p>
         Flow State’s mission is to grow the public goods economy. Public good
         success is synonymous with creating, promoting, and participating in a
@@ -42,7 +31,7 @@ export default function Conduct() {
         mindset), the following examples of unacceptable actions are provided
         for the elimination of doubt:
       </p>
-      <ol className="lh-base">
+      <ol className="lh-sm">
         <li>
           Recycled Funding: Only “first-touch” funding is eligible for matching
           in Streaming Quadratic Funding and other funding rounds. Using
@@ -72,6 +61,6 @@ export default function Conduct() {
         to enforce additional criteria and rules for grantee/voter participation
         in their rounds.
       </p>
-    </Container>
+    </Stack>
   );
 }

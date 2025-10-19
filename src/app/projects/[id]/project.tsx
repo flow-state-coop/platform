@@ -9,7 +9,6 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehyperExternalLinks from "rehype-external-links";
 import { usePostHog } from "posthog-js/react";
-import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
@@ -122,7 +121,7 @@ export default function Project(props: ProjectProps) {
   const searchParams = useSearchParams();
   const postHog = usePostHog();
   const { address } = useAccount();
-  const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
+  const { isMobile, isTablet } = useMediaQuery();
   const { data: projectQueryRes, loading } = useQuery(PROJECT_QUERY, {
     client: getApolloClient("flowState"),
     variables: {
@@ -299,18 +298,9 @@ export default function Project(props: ProjectProps) {
 
   return (
     <>
-      <Container
-        className="mx-auto p-0 mb-5"
-        style={{
-          maxWidth:
-            isMobile || isTablet
-              ? "100%"
-              : isSmallScreen
-                ? 1000
-                : isMediumScreen
-                  ? 1300
-                  : 1600,
-        }}
+      <Stack
+        direction="vertical"
+        className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
       >
         <Card
           className="position-relative border-0"
@@ -320,7 +310,7 @@ export default function Project(props: ProjectProps) {
             variant="top"
             src={bannerUrl === "" ? placeholderBanner : bannerUrl}
             height={isMobile ? 200 : isTablet ? 300 : 500}
-            className="bg-light rounded-0"
+            className="bg-light rounded-0 rounded-4"
           />
           <Image
             src={logoUrl === "" ? placeholderLogo : logoUrl}
@@ -336,9 +326,9 @@ export default function Project(props: ProjectProps) {
         </Card>
         <Stack
           direction="horizontal"
-          className="justify-content-between mt-5 px-3 sm:px-0"
+          className="justify-content-between mt-18 px-3 sm:px-0"
         >
-          <Card.Text className="bg-transparent border-0 m-0 p-0 fs-1">
+          <Card.Text className="bg-transparent border-0 m-0 p-0 fs-5 fw-semi-bold">
             {project?.metadata?.title ?? "N/A"}
           </Card.Text>
           {project?.profileRolesByChainIdAndProfileId.find(
@@ -347,14 +337,14 @@ export default function Project(props: ProjectProps) {
           )?.address === address?.toLowerCase() && (
             <Button
               variant="secondary"
-              className="w-20"
+              className="w-20 px-10 py-4 rounded-4 fw-semi-bold"
               onClick={() => setShowProjectUpdateModal(true)}
             >
               Edit
             </Button>
           )}
         </Stack>
-        <Card.Text className="bg-transparent border-0 m-0 px-3 sm:px-0 fs-5 text-info text-truncate">
+        <Card.Text className="bg-transparent border-0 m-0 px-3 sm:px-0 fs-lg text-info text-truncate">
           {project?.profileRolesByChainIdAndProfileId.filter(
             (profile: { role: "OWNER" | "MANAGER" | "MEMBER" }) =>
               profile.role === "OWNER",
@@ -537,7 +527,7 @@ export default function Project(props: ProjectProps) {
               ))
             : null}
         </Stack>
-      </Container>
+      </Stack>
       {network && project && (
         <ProjectUpdateModal
           show={showProjectUpdateModal}

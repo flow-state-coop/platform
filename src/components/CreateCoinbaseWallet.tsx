@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { useConnect } from "wagmi";
-import Image from "react-bootstrap/Image";
 import Button from "react-bootstrap/Button";
 
 export default function CreateCoinbaseWallet() {
@@ -18,12 +17,12 @@ export default function CreateCoinbaseWallet() {
 
   return (
     <Button
-      variant="secondary"
-      className="d-flex align-items-center gap-2 rounded-3 text-light shadow"
+      variant="outline-dark"
+      className="border-4 rounded-4 p-4 fs-lg fw-semi-bold"
+      style={{ boxSizing: "border-box" }}
       onClick={createWallet}
     >
-      <Image src="/coinbase.svg" alt="Coinbase" width={20} height={20} />
-      Create Wallet
+      Need a wallet?
     </Button>
   );
 }

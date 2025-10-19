@@ -197,10 +197,12 @@ export default function ActivityFeed(props: ActivityFeedProps) {
     <Stack
       direction="vertical"
       gap={4}
-      className="mt-5 bg-light p-4 rounded-5"
-      style={{ fontSize: isMobile || isTablet ? "1rem" : "1.25rem" }}
+      className="mt-6 mt-sm-10 lh-sm bg-lace-100 px-8 py-4 rounded-4 overflow-auto"
+      style={{
+        maxHeight: 600,
+      }}
     >
-      <p className="m-0 fs-3">Activity</p>
+      <p className="m-0 fs-4 fw-semi-bold">Recent Activity</p>
       {events.map((event, i) => {
         if (event.__typename === "PoolCreationMemberUnitsUpdates") {
           return (

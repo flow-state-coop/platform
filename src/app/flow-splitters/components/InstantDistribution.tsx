@@ -324,33 +324,36 @@ export default function InstantDistribution(props: InstantDistributionProps) {
       placement={isMobile ? "bottom" : "end"}
       className={`${isMobile ? "w-100 h-100" : ""}`}
     >
-      <Offcanvas.Header closeButton className="align-items-start">
-        <Stack direction="vertical">
-          <Offcanvas.Title className="fs-3 mb-0">
+      <Offcanvas.Header className="align-items-start">
+        <Stack direction="vertical" className="px-4 py-2">
+          <Offcanvas.Title className="fs-5 mb-0">
             Send Distribution
           </Offcanvas.Title>
-          <Card.Text className="m-0 fs-6">
+          <Card.Text className="m-0">
             Distribute funds to recipients on the Flow Splitter proportional to
             their current shares.
           </Card.Text>
         </Stack>
+        <Button variant="transparent" className="p-0" onClick={handleClose}>
+          <Image src="/close.svg" alt="" width={24} height={24} />
+        </Button>
       </Offcanvas.Header>
-      <Offcanvas.Body>
+      <Offcanvas.Body className="p-4">
         <Stack
           direction="horizontal"
           gap={2}
-          className="align-items-start bg-light p-3 rounded-4"
+          className="align-items-start bg-lace-100 p-4 rounded-4"
         >
           <Stack direction="vertical" className="w-50">
             <InputGroup className="w-75">
               <Form.Control
                 type="text"
                 placeholder="0"
-                className="rounded-3"
+                className="rounded-2 fw-semi-bold border-0"
                 value={amount}
                 onChange={handleAmountSelection}
               />
-              <InputGroup.Text className="bg-transparent border-0 fw-bold pe-1">
+              <InputGroup.Text className="bg-transparent border-0 fw-semi-bold pe-1">
                 {isSuperTokenPure
                   ? token.symbol
                   : isSuperTokenNative
@@ -361,7 +364,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
                 <InfoTooltip
                   position={{ bottom: true }}
                   content={
-                    <>
+                    <p className="m-0 p-2">
                       Like Flow Splitter streams, one-time distribtions are sent
                       with Super Tokens (often a wrapped version of an ERC20 or
                       native token).{" "}
@@ -378,7 +381,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
                       Just enter how much you want to send, and we'll use your
                       underlying & Super Token balances to queue a wrap
                       transaction as needed.
-                    </>
+                    </p>
                   }
                   target={
                     <Image src="/info.svg" alt="" width={14} height={14} />
@@ -388,7 +391,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
             </InputGroup>
             {!isSuperTokenPure && (
               <Card.Text
-                className={`mt-1 mb-0 ms-2 ${!hasSufficientWrappingBalance ? "text-danger" : "text-info"}`}
+                className={`mt-2 mb-0 ms-2 ${!hasSufficientWrappingBalance ? "text-danger" : "text-info"}`}
                 style={{
                   fontSize: "0.8rem",
                 }}
@@ -407,7 +410,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
               </Card.Text>
             )}
             <Card.Text
-              className={`mb-0 ms-2 ${!hasSufficientSuperTokenBalance ? "text-danger" : "text-info"}`}
+              className={`mt-1 mb-0 ms-2 ${!hasSufficientSuperTokenBalance ? "text-danger" : "text-info"}`}
               style={{
                 fontSize: "0.8rem",
               }}
@@ -429,7 +432,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
         </Stack>
         <Button
           disabled={!canSubmit}
-          className="w-100 mt-4"
+          className="w-100 mt-5 rounded-4 py-4 fw-semi-bold fs-lg"
           onClick={handleSubmit}
         >
           {areTransactionsLoading ? (
@@ -451,7 +454,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
           <Stack
             direction="horizontal"
             gap={2}
-            className="justify-content-center mt-1 mb-2"
+            className="justify-content-center mt-2 mb-3"
           >
             <Card.Text className="m-0 small">
               1) Wrap {formatNumber(Number(wrapAmount))}{" "}
@@ -470,12 +473,12 @@ export default function InstantDistribution(props: InstantDistributionProps) {
           delay={4000}
           autohide={true}
           onClose={() => setSuccess(false)}
-          className="w-100 bg-success mt-3 p-3 fs-5 text-light"
+          className="w-100 bg-success mt-3 p-3 fs-5 text-light fw-semi-bold"
         >
           Success!
         </Toast>
         {!!transactionError && (
-          <Alert variant="danger" className="w-100 mt-3 p-3 fs-5">
+          <Alert variant="danger" className="w-100 mt-3 p-3 fw-semi-bold">
             {transactionError}
           </Alert>
         )}

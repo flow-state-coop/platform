@@ -16,24 +16,28 @@ export default function Success(props: SuccessProps) {
 
   if (step === Step.SUCCESS && BigInt(newFlowRate) === BigInt(0)) {
     return (
-      <Card className="bg-light mt-4 p-4 rounded-4 border-0">
+      <Card className="bg-lace-100 text-secondary fw-semi-bold mt-4 p-4 rounded-4 border-0">
         <Card.Text>Your donation stream is closed.</Card.Text>
       </Card>
     );
   } else if (step === Step.SUCCESS) {
     return (
-      <Card className="bg-light mt-4 p-4 rounded-4 border-0">
-        <Card.Text>
+      <Card className="bg-lace-100 mt-4 p-4 rounded-4 border-0">
+        <Card.Text className="text-secondary fw-semi-bold text-center">
           Your donation stream is open. Thank you for supporting public goods!
         </Card.Text>
-        <Card.Text as="span" className="text-center" style={{ fontSize: 100 }}>
+        <Card.Text
+          as="span"
+          className="text-center mb-6"
+          style={{ fontSize: 100 }}
+        >
           &#x1F64F;
         </Card.Text>
-        <Card.Text>
+        <Card.Text className="text-center">
           Help spread the word about Streaming Quadratic Funding by sharing your
           contribution with your network:
         </Card.Text>
-        <Stack direction="horizontal" className="justify-content-around">
+        <Stack direction="horizontal" className="justify-content-around mt-2">
           <Button
             variant="link"
             href={socialShare.twitter}
@@ -42,7 +46,9 @@ export default function Success(props: SuccessProps) {
             onClick={onClick}
           >
             <Image src="/x-logo.svg" alt="x social" width={28} height={22} />
-            <span style={{ fontSize: "10px" }}>Post to X</span>
+            <span className="fw-semi-bold" style={{ fontSize: "10px" }}>
+              Post to X
+            </span>
           </Button>
           <Button
             variant="link"
@@ -57,7 +63,9 @@ export default function Success(props: SuccessProps) {
               width={28}
               height={22}
             />
-            <span style={{ fontSize: "10px" }}>Cast to Farcaster</span>
+            <span className="fw-semi-bold" style={{ fontSize: "10px" }}>
+              Cast to Farcaster
+            </span>
           </Button>
           <Button
             variant="link"
@@ -67,7 +75,9 @@ export default function Success(props: SuccessProps) {
             onClick={onClick}
           >
             <Image src="/lens.svg" alt="lens" width={28} height={22} />
-            <span style={{ fontSize: "10px" }}>Post on Lens</span>
+            <span className="fw-semi-bold" style={{ fontSize: "10px" }}>
+              Post on Lens
+            </span>
           </Button>
         </Stack>
       </Card>

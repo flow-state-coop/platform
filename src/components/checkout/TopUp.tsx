@@ -66,10 +66,10 @@ export default function TopUp(props: TopUpProps) {
   const isUnderlyingTokenNative = underlyingTokenBalance?.symbol === "ETH";
 
   return (
-    <Card className="bg-light rounded-0 border-0 border-bottom border-info">
+    <Card className="bg-lace-100 rounded-0 border-0 border-bottom border-white">
       <Button
         variant="transparent"
-        className="d-flex gap-2 p-3 border-0 rounded-0 shadow-none"
+        className="d-flex gap-3 p-4 border-0 rounded-0 shadow-none text-secondary fs-lg fw-semi-bold"
         onClick={() => setStep(Step.TOP_UP)}
         style={{
           pointerEvents:
@@ -113,9 +113,9 @@ export default function TopUp(props: TopUpProps) {
             </Card.Text>
           )}
         </Badge>
-        <Card.Text className="m-0">{Step.TOP_UP}</Card.Text>
+        <Card.Text className="m-0 fs-lg fw-semi-bold">{Step.TOP_UP}</Card.Text>
       </Button>
-      <Accordion.Collapse eventKey={Step.TOP_UP} className="p-3 pt-0">
+      <Accordion.Collapse eventKey={Step.TOP_UP} className="p-4 pt-0">
         <>
           <Card.Text className="small mb-4">
             Make sure you have enough {ethBalance?.symbol}{" "}
@@ -133,7 +133,7 @@ export default function TopUp(props: TopUpProps) {
             <Stack
               direction="vertical"
               gap={3}
-              className="align-items-center m-auto px-2 py-3 rounded-3 fs-6 border border-gray"
+              className="align-items-center m-auto px-3 py-4 rounded-4 fs-lg border border-gray"
               style={{ width: isMobile ? "100%" : "50%" }}
             >
               {!underlyingTokenBalance ? (
@@ -147,7 +147,7 @@ export default function TopUp(props: TopUpProps) {
                 </Card.Text>
               )}
               <Card.Text
-                className={`d-flex align-items-center gap-1 m-0 fs-4 text-truncate ${
+                className={`d-flex align-items-center gap-1 m-0 fw-semi-bold text-truncate ${
                   hasSuggestedTokenBalance
                     ? ""
                     : (underlyingTokenBalance &&
@@ -187,7 +187,7 @@ export default function TopUp(props: TopUpProps) {
                 variant="link"
                 href="https://app.across.to/bridge"
                 target="_blank"
-                className="w-100 bg-secondary text-decoration-none rounded-3 text-light fs-6 overflow-hidden"
+                className="w-100 bg-secondary text-decoration-none rounded-4 py-4 text-light fw-semi-bold overflow-hidden"
               >
                 <Card.Text className="m-0 text-truncate">
                   Bridge to {network?.name}
@@ -206,7 +206,7 @@ export default function TopUp(props: TopUpProps) {
                 }}
                 href={`https://pay.coinbase.com/buy/select-asset?appId=36e18bf4-7c5c-416f-a0a1-7eab5d8453e7&addresses={"${address}":["${network?.onRampLabel ?? "base"}"]}&assets=["ETH"]&presetFiatAmount=25`}
                 target="_blank"
-                className="w-100 bg-primary text-decoration-none rounded-3 text-light fs-6"
+                className="w-100 bg-primary text-decoration-none py-4 rounded-4 text-light fw-semi-bold"
               >
                 Buy {ethBalance?.symbol ?? "ETH"}
               </Button>
@@ -221,14 +221,14 @@ export default function TopUp(props: TopUpProps) {
                 <Stack
                   direction="vertical"
                   gap={3}
-                  className="align-items-center flex-grow-0 px-2 py-3 rounded-3 border border-gray"
+                  className="align-items-center flex-grow-0 px-3 py-4 rounded-4 bg-white"
                   style={{ width: isMobile ? "100%" : "50%" }}
                 >
                   <Card.Text className="m-0 small">
                     {ethBalance?.symbol ?? "ETH"}:
                   </Card.Text>
                   <Card.Text
-                    className={`d-flex align-items-center gap-1 m-0 fs-4 ${
+                    className={`d-flex align-items-center gap-2 m-0 fw-semi-bold ${
                       hasSufficientEthBalance ? "" : "text-danger"
                     }`}
                   >
@@ -253,7 +253,7 @@ export default function TopUp(props: TopUpProps) {
                     variant="link"
                     href="https://app.across.to/bridge"
                     target="_blank"
-                    className="w-100 bg-secondary text-decoration-none rounded-3 text-light fs-6 overflow-hidden"
+                    className="w-100 bg-secondary text-decoration-none rounded-4 py-4 text-light fw-semi-bold overflow-hidden"
                   >
                     <Card.Text className="m-0 text-truncate">
                       Bridge to {network?.name}
@@ -272,7 +272,7 @@ export default function TopUp(props: TopUpProps) {
                     }}
                     href={`https://pay.coinbase.com/buy/select-asset?appId=36e18bf4-7c5c-416f-a0a1-7eab5d8453e7&addresses={"${address}":["${network?.onRampLabel ?? "base"}"]}&assets=["ETH"]&presetFiatAmount=25`}
                     target="_blank"
-                    className="w-100 bg-primary text-decoration-none rounded-3 text-light fs-6"
+                    className="w-100 bg-primary text-decoration-none rounded-4 py-4 text-light fw-semi-bold"
                   >
                     Buy {ethBalance?.symbol ?? "ETH"}
                   </Button>
@@ -280,7 +280,7 @@ export default function TopUp(props: TopUpProps) {
                 <Stack
                   direction="vertical"
                   gap={3}
-                  className="align-items-center px-2 py-3 rounded-3 fs-6 border border-gray"
+                  className="align-items-center bg-white px-3 py-4 rounded-4"
                   style={{ width: isMobile ? "100%" : "50%" }}
                 >
                   {!underlyingTokenBalance ? (
@@ -294,7 +294,7 @@ export default function TopUp(props: TopUpProps) {
                     </Card.Text>
                   )}
                   <Card.Text
-                    className={`d-flex align-items-center gap-1 m-0 fs-4 text-truncate ${
+                    className={`d-flex align-items-center gap-2 m-0 fw-semi-bold text-truncate ${
                       hasSuggestedTokenBalance
                         ? ""
                         : (underlyingTokenBalance &&
@@ -324,7 +324,7 @@ export default function TopUp(props: TopUpProps) {
                       />
                     )}
                   </Card.Text>
-                  <Card.Text as="small" className="m-0 text-center">
+                  <Card.Text as="small" className="fs-sm m-0 text-center">
                     Suggested{" "}
                     {formatNumber(
                       Number(roundWeiAmount(suggestedTokenBalance, 6)),
@@ -339,7 +339,7 @@ export default function TopUp(props: TopUpProps) {
                     variant="link"
                     href={`https://jumper.exchange/?fromChain=${network?.id ?? ""}&fromToken=0x0000000000000000000000000000000000000000&toChain=${network?.id ?? ""}&toToken=${superTokenInfo.address}`}
                     target="_blank"
-                    className="w-100 bg-primary text-decoration-none rounded-3 text-light fs-6"
+                    className="w-100 bg-primary text-decoration-none py-4 rounded-4 text-light fw-semi-bold"
                   >
                     Get {superTokenInfo.symbol}
                   </Button>
@@ -347,50 +347,55 @@ export default function TopUp(props: TopUpProps) {
               </Stack>
             </>
           )}
-          <Button
-            variant="transparent"
-            className="mt-4 text-info"
-            onClick={() =>
-              setStep(
-                !isSuperTokenPure &&
-                  (wrapAmount ||
-                    superTokenBalance <
-                      BigInt(newFlowRate) *
-                        BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
-                  ? Step.WRAP
-                  : !isFundingDistributionPool && !isEligible
-                    ? Step.ELIGIBILITY
-                    : !sessionStorage.getItem("skipSupportFlowState") &&
-                        !localStorage.getItem("skipSupportFlowState")
-                      ? Step.SUPPORT
-                      : Step.REVIEW,
-              )
-            }
+          <Stack
+            direction="horizontal"
+            className="justify-content-between align-items-center mt-6"
           >
-            Skip
-          </Button>
-          <Button
-            className="w-50 mt-4 py-1 rounded-3 float-end text-light"
-            disabled={!hasSufficientEthBalance || !hasSufficientTokenBalance}
-            onClick={() =>
-              setStep(
-                !isSuperTokenPure &&
-                  (wrapAmount ||
-                    superTokenBalance <
-                      BigInt(newFlowRate) *
-                        BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
-                  ? Step.WRAP
-                  : !isFundingDistributionPool && !isEligible
-                    ? Step.ELIGIBILITY
-                    : !sessionStorage.getItem("skipSupportFlowState") &&
-                        !localStorage.getItem("skipSupportFlowState")
-                      ? Step.SUPPORT
-                      : Step.REVIEW,
-              )
-            }
-          >
-            Continue
-          </Button>
+            <Button
+              variant="transparent"
+              className="fw-semi-bold text-info"
+              onClick={() =>
+                setStep(
+                  !isSuperTokenPure &&
+                    (wrapAmount ||
+                      superTokenBalance <
+                        BigInt(newFlowRate) *
+                          BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
+                    ? Step.WRAP
+                    : !isFundingDistributionPool && !isEligible
+                      ? Step.ELIGIBILITY
+                      : !sessionStorage.getItem("skipSupportFlowState") &&
+                          !localStorage.getItem("skipSupportFlowState")
+                        ? Step.SUPPORT
+                        : Step.REVIEW,
+                )
+              }
+            >
+              Skip
+            </Button>
+            <Button
+              className="w-50 py-4 rounded-4 fw-semi-bold text-light"
+              disabled={!hasSufficientEthBalance || !hasSufficientTokenBalance}
+              onClick={() =>
+                setStep(
+                  !isSuperTokenPure &&
+                    (wrapAmount ||
+                      superTokenBalance <
+                        BigInt(newFlowRate) *
+                          BigInt(fromTimeUnitsToSeconds(1, TimeInterval.DAY)))
+                    ? Step.WRAP
+                    : !isFundingDistributionPool && !isEligible
+                      ? Step.ELIGIBILITY
+                      : !sessionStorage.getItem("skipSupportFlowState") &&
+                          !localStorage.getItem("skipSupportFlowState")
+                        ? Step.SUPPORT
+                        : Step.REVIEW,
+                )
+              }
+            >
+              Continue
+            </Button>
+          </Stack>
         </>
       </Accordion.Collapse>
     </Card>

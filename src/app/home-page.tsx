@@ -1,22 +1,29 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
+import { useRouter, useSearchParams } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
-import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Image from "react-bootstrap/Image";
+import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
-export default function HomePage() {
-  const router = useRouter();
-  const poolsRef = useRef<HTMLDivElement>(null);
+enum TargetAudience {
+  FUNDERS = "For funders",
+  BUILDERS = "For builders",
+  EVERYONE = "For everyone",
+}
 
-  const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
-  const { chain: connectedChain } = useAccount();
+export default function HomePage() {
+  const [showTargetAudience, setShowTargetAudience] = useState<TargetAudience>(
+    TargetAudience.FUNDERS,
+  );
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { isMobile, isTablet, isSmallScreen, isBigScreen } = useMediaQuery();
   const postHog = usePostHog();
 
   useEffect(() => {
@@ -25,254 +32,557 @@ export default function HomePage() {
     }
   }, [postHog, postHog.decideEndpointWasHit]);
 
+  useEffect(() => {
+    const targetAudienceElem = document.getElementById("target-audience");
+
+    if (searchParams.get("for-funders")) {
+      setShowTargetAudience(TargetAudience.FUNDERS);
+      targetAudienceElem?.scrollIntoView();
+    } else if (searchParams.get("for-builders")) {
+      setShowTargetAudience(TargetAudience.BUILDERS);
+      targetAudienceElem?.scrollIntoView();
+    } else if (searchParams.get("for-everyone")) {
+      setShowTargetAudience(TargetAudience.EVERYONE);
+      targetAudienceElem?.scrollIntoView();
+    }
+  }, [router, searchParams]);
+
   return (
-    <Container
-      className="mx-auto p-0 mb-5"
-      style={{
-        maxWidth:
-          isMobile || isTablet
-            ? "100%"
-            : isSmallScreen
-              ? 1000
-              : isMediumScreen
-                ? 1300
-                : 1600,
-      }}
-    >
+    <div className="hero-background w-100">
       <Stack
-        direction={isMobile || isTablet ? "vertical" : "horizontal"}
-        gap={isMobile || isTablet ? 5 : 0}
-        className="justify-content-center my-4 mt-sm-5 mb-sm-2 px-4"
+        direction="vertical"
+        gap={6}
+        className="align-items-center px-2 pt-40 pb-20 px-lg-30 pt-lg-52 pb-lg-46 px-xxl-52"
       >
-        <Stack direction="vertical" className="align-self-center">
-          {(isMobile || isTablet) && (
-            <Image
-              src="/flow-state-diagram.gif"
-              alt="Diagram"
-              width="100%"
-              height="auto"
-              className="my-4"
-            />
-          )}
-          <h1 style={{ fontSize: 42 }} className="fw-bold">
-            Find Your Flow State
-          </h1>
-          <p className="mb-4 fs-5">
-            Creating, sustaining, and rewarding impact.
-          </p>
-          <Stack
-            direction="horizontal"
-            gap={2}
-            className={`align-items-stretch
-              ${isMobile || isTablet ? "w-100" : "w-75"}`}
-          >
-            <Button
-              className="w-50 text-light fs-5 shadow"
-              onClick={() =>
-                router.push(
-                  connectedChain
-                    ? `/flow-splitters/?chainId=${connectedChain.id}`
-                    : "/flow-splitters",
-                )
-              }
-            >
-              Flow Splitters
-            </Button>
-            <Button
-              variant="link"
-              href="/sqf"
-              className="w-50 text-white fs-5 shadow text-decoration-none"
-              style={{ background: "#33a8c2" }}
-            >
-              Launch SQF Round
-            </Button>
-          </Stack>
-          <Button
-            className="bg-secondary mt-3 text-light fs-5 shadow"
-            style={{ width: isMobile || isTablet ? "100%" : "75%" }}
-            onClick={() => router.push("/explore")}
-          >
-            Explore Campaigns
-          </Button>
-        </Stack>
-        {!isMobile && !isTablet && (
-          <Image
-            src="/flow-state-diagram.gif"
-            alt="Diagram"
-            width={612}
-            height={406}
-          />
-        )}
-      </Stack>
-      <Stack
-        direction="horizontal"
-        className="position-relative justify-content-center m-auto mt-sm-5 mt-sm-2 px-3 px-sm-5"
-        style={{ height: 466 }}
-      >
-        <Image
-          src="/single-person.png"
-          alt="Single Person"
-          width={isMobile ? 300 : 493}
-          height={isMobile ? 294 : 466}
-          className="position-absolute z-0"
-        />
-        <span
-          className="d-none d-sm-block position-absolute z-1 w-50 border-top border-bottom border-black m-auto p-3 p-sm-5 p-lg-4"
-          style={{ left: "25%" }}
-        />
-        <p className="z-1 m-0 fs-5 text-center">
-          flow state - n. (1): a mental state where a person is fully immersed
-          in an activity, performing at their peak
-        </p>
-      </Stack>
-      <p className="mt-5 px-3 px-sm-5 pt-5 fs-2">Making Impact Common</p>
-      <p className="px-3 px-sm-5 pb-sm-5 fs-5">
-        Builder-first grants programs are good for impact. That means they're
-        good for the supporters & communities that back them.
-        <br />
-        <br />
-        Flow State's holistic impact approach helps attract the best talent. It
-        provides them the support, financial & not, to sustain their team, focus
-        deeply on their mission, & solve big hairy problems. It also recognizes
-        that altruism isn't enough. Rewarding funders that unlock impact creates
-        a virtuous cycle.
-        <br />
-        <br />
-        Audacious breakthroughs are uncommon: they're infrequent and too often
-        privatized. At Flow State, we believe we can make impact common.{" "}
-        <Link
-          href="https://forms.gle/VXfRSpAzynTmjvRY9"
-          target="_blank"
-          className="p-0"
+        <p
+          className="m-0 fw-bold text-black text-center"
+          style={{
+            lineHeight: "95%",
+            fontSize: isMobile ? 70 : isBigScreen ? 100 : 90,
+          }}
         >
-          Join us.
-        </Link>
-      </p>
-      <Stack
-        direction="horizontal"
-        className="position-relative justify-content-center m-auto my-sm-5 px-3 px-sm-5 py-3"
-        style={{ height: 415 }}
-      >
-        <Image
-          src="/small-group.png"
-          alt="Small Group"
-          width={isMobile ? 300 : 673}
-          height={isMobile ? 200 : 415}
-          className="position-absolute z-0"
-        />
-        <span
-          className="d-none d-sm-block position-absolute z-1 w-50 border-top border-bottom border-black m-auto p-3 p-sm-5 p-lg-4"
-          style={{ left: "25%" }}
-        />
-        <p className="z-1 m-0 fs-5 text-center">
-          flow state - n. (2): onchain collective intelligence that continuously
-          & dynamically allocates resources
+          Streaming
+          <span className="text-flame-500"> money</span>
+          <span className="text-primary"> solutions</span>
         </p>
-      </Stack>
-      <Stack ref={poolsRef} direction="vertical" className="p-3 p-sm-5 mt-5">
-        <p className="fs-2">Live & Upcoming Rounds</p>
+        <p className="m-0 text-center fs-6">
+          We build continuous funding apps, incentive systems & governance
+          mechanisms so your capital flows to results.
+        </p>
         <Stack
           direction={isMobile ? "vertical" : "horizontal"}
-          gap={isMobile ? 3 : 5}
+          gap={6}
+          className="justify-content-center align-items-center"
         >
-          <Button
-            variant="link"
-            href="/octant"
-            className="d-flex flex-column flex-center rounded-4 p-3 p-sm-4 shadow cursor-pointer text-decoration-none"
-            style={{
-              width: isMobile ? "100%" : "60%",
-              background: "#A0C7D4",
-              fontFamily: "Helvetica",
-            }}
+          <Link href="/explore" style={{ width: isMobile ? 280 : 210 }}>
+            <Button className="w-100 h-100 p-0 fs-lg fw-semi-bold rounded-4 py-4 border-4">
+              Explore flows
+            </Button>
+          </Link>
+          <Link
+            href="https://docs.flowstate.network"
+            target="_blank"
+            style={{ width: isMobile ? 280 : 210 }}
           >
-            <p className="m-0 fs-4 fw-bold">Octant Builder Accelerator SQF</p>
-            <p className="m-0 fs-5">16+ ETH Matching</p>
-            <Stack
-              direction="horizontal"
-              gap={isMobile ? 3 : isTablet ? 4 : 5}
-              className="justify-content-center mt-4"
+            <Button
+              variant="outline-dark"
+              className="w-100 h-100 p-0 fs-lg fw-semi-bold rounded-4 border-4 py-4"
             >
-              <Image
-                src="/octant.svg"
-                alt="Octant"
-                width={isMobile ? 135 : 180}
-                height={isMobile ? 37 : 50}
-              />
-              <Image
-                src="/superfluid.svg"
-                alt="Superfluid"
-                width={isMobile ? 135 : 180}
-                height={isMobile ? 37 : 50}
-              />
-            </Stack>
-          </Button>
-          <Button
-            variant="link"
-            href="/flow-guilds/core"
-            className="d-flex flex-column flex-center rounded-4 p-2 p-sm-4 shadow cursor-pointer text-decoration-none"
-            style={{
-              width: isMobile ? "100%" : "40%",
-              background: "#33A8C2",
-              fontFamily: "Helvetica",
-            }}
-          >
-            <p className="m-0 fs-4 fw-bold">Flow State Core</p>
-            <p className="m-0 fs-5">Direct Streaming Funding</p>
-            <Stack
-              direction="horizontal"
-              className="justify-content-center mt-1"
-            >
-              <Image src="/logo.png" alt="Flow State" width={87} height={84} />
-            </Stack>
-          </Button>
+              Docs
+            </Button>
+          </Link>
         </Stack>
       </Stack>
-      <div
-        className="px-0 px-sm-4"
-        style={{ margin: isMobile ? "128px 0 128px 0" : "" }}
-      >
+      <Stack direction="vertical" gap={10} className="pt-20 pb-16 pb-lg-20">
+        <p className="fs-6 fw-bold text-center text-black-600">Trusted by</p>
         <Stack
           direction="horizontal"
-          className="position-relative justify-content-center m-auto px-4 py-3 mt-5"
+          gap={isMobile ? 5 : 20}
+          className="justify-content-center align-items-center flex-wrap"
         >
+          <Image src="/octant.svg" alt="Octant" width={300} height={80} />
           <Image
-            src="/coop-group.png"
-            alt="Coop Group"
-            className="z-0"
-            width="100%"
-            height="auto"
+            src="/superfluid.svg"
+            alt="Superfluid"
+            width={334}
+            height={80}
           />
-          <span
-            className="d-none d-sm-block position-absolute z-1 w-50 border-top border-bottom border-black m-auto p-4 p-sm-5 p-lg-4"
-            style={{ left: "25%" }}
+          <Image
+            src="/good-dollar-wordmark.png"
+            alt="Good Dollar"
+            width={300}
+            height={42}
           />
-          <p
-            className="position-absolute top-50 start-50 translate-middle z-1 m-0 fs-5 text-center"
-            style={{
-              minWidth: "80%",
-            }}
-          >
-            Flow State - n. (3): digital coop that retroactively rewards
-            members' labor & capital contributions to the public good
+        </Stack>
+      </Stack>
+      <Stack
+        direction="horizontal"
+        gap={8}
+        className="justify-content-lg-center align-items-center flex-wrap flex-lg-nowrap px-3 py-20 px-lg-30 px-xxl-52"
+      >
+        <p
+          className="m-0 fw-bold text-black"
+          style={{
+            lineHeight: "95%",
+            fontSize: isMobile ? 62 : 88,
+            minWidth: isMobile ? "100%" : 517,
+          }}
+        >
+          DYNAMIC
+          <br />
+          <span className="text-primary">CAPITAL</span>,
+          <br />
+          DYNAMIC
+          <br />
+          <span className="text-flame-500">RESULTS</span>
+        </p>
+        <Stack
+          direction="vertical"
+          className="flex-grow-0"
+          style={{ width: isBigScreen ? 951 : isMobile ? "auto" : 651 }}
+        >
+          <p className="word-break fs-5 lh-sm">
+            In web3, money and information flow on the same rails. Every batch
+            payment is a missed chance to connect them.
+            <br />
+            <br />
+            Streaming funding empowers you, your team, and your community to
+            keep capital and results in sync.
           </p>
         </Stack>
-      </div>
-      <Stack direction="vertical" className="my-5 px-4">
-        <p className="fs-2 mb-0 px-sm-4">Join Flow State</p>
-        <p className="fs-5 mb-4 px-sm-4">
-          Govern the co-op. Earn profit distributions (patronage) for funding,
-          being funded, & contributing to public goods. Make impact common.
-        </p>
-        <Button
-          variant="link"
-          target="_blank"
-          href="https://forms.gle/VXfRSpAzynTmjvRY9"
-          className="bg-primary m-auto mb-5 fs-5 text-light text-decoration-none"
-          style={{ width: isMobile ? "100%" : isTablet ? "50%" : "25%" }}
-        >
-          Membership Interest Form
-        </Button>
       </Stack>
-    </Container>
+      <div className="background-body px-lg-30 px-xxl-52 py-lg-20">
+        <Stack
+          direction="vertical"
+          className="align-items-center bg-lace-100 py-16 px-lg-17 px-xxl-30 py-lg-20"
+          id="target-audience"
+          style={{ borderRadius: isMobile || isTablet ? 0 : 56 }}
+        >
+          <p className="fs-4 fw-semi-bold text-primary px-2 text-center">
+            The 360° impact of streaming money:
+          </p>
+          {isMobile || isTablet || isSmallScreen ? (
+            <Dropdown className="mb-8 w-100 px-3">
+              <Dropdown.Toggle
+                variant="secondary"
+                className="d-flex justify-content-between align-items-center w-100 px-10 py-4 rounded-4 fs-lg fw-semi-bold"
+              >
+                {showTargetAudience}
+              </Dropdown.Toggle>
+              <Dropdown.Menu className="bg-secondary p-3">
+                <Dropdown.Item
+                  className="fs-lg text-white fw-semi-bold"
+                  onClick={() => setShowTargetAudience(TargetAudience.FUNDERS)}
+                >
+                  {TargetAudience.FUNDERS}
+                </Dropdown.Item>
+                <Dropdown.Item
+                  className="fs-lg text-white fw-semi-bold"
+                  onClick={() => setShowTargetAudience(TargetAudience.BUILDERS)}
+                >
+                  {TargetAudience.BUILDERS}
+                </Dropdown.Item>
+                <Dropdown.Item
+                  className="fs-lg text-white fw-semi-bold"
+                  onClick={() => setShowTargetAudience(TargetAudience.EVERYONE)}
+                >
+                  {TargetAudience.EVERYONE}
+                </Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown>
+          ) : (
+            <Stack
+              direction="horizontal"
+              gap={8}
+              className="justify-content-center"
+            >
+              <Button
+                variant={
+                  showTargetAudience === TargetAudience.FUNDERS
+                    ? "primary"
+                    : "outline-dark"
+                }
+                className="px-10 py-4 fs-lg fw-semi-bold rounded-3 border-4"
+                style={{ width: isMobile ? 280 : 220 }}
+                onClick={() => setShowTargetAudience(TargetAudience.FUNDERS)}
+              >
+                For funders
+              </Button>
+              <Button
+                variant={
+                  showTargetAudience === TargetAudience.BUILDERS
+                    ? "primary"
+                    : "outline-dark"
+                }
+                className="px-10 py-4 fs-lg fw-semi-bold rounded-3 border-4"
+                style={{ width: isMobile ? 280 : 220 }}
+                onClick={() => setShowTargetAudience(TargetAudience.BUILDERS)}
+              >
+                For builders
+              </Button>
+              <Button
+                variant={
+                  showTargetAudience === TargetAudience.EVERYONE
+                    ? "primary"
+                    : "outline-dark"
+                }
+                className="px-10 py-4 fs-lg fw-semi-bold rounded-3 border-4"
+                style={{ width: isMobile ? 280 : 220 }}
+                onClick={() => setShowTargetAudience(TargetAudience.EVERYONE)}
+              >
+                For everyone
+              </Button>
+            </Stack>
+          )}
+          <Stack
+            direction="horizontal"
+            gap={8}
+            className="justify-content-center align-items-start flex-wrap flex-xl-nowrap my-8"
+          >
+            <Image
+              src={
+                showTargetAudience === TargetAudience.FUNDERS
+                  ? "/audience-funders.png"
+                  : showTargetAudience === TargetAudience.BUILDERS
+                    ? "/audience-builders.png"
+                    : "/audience-everyone.png"
+              }
+              alt=""
+              width={isMobile || isTablet ? "100%" : isBigScreen ? 823 : 600}
+              height={isMobile ? 280 : 680}
+              style={{
+                objectFit: "cover",
+                borderRadius: isMobile || isTablet ? 0 : 66,
+              }}
+            />
+            <Stack direction="vertical" className="flex-grow-0 px-8 px-lg-0">
+              {showTargetAudience === TargetAudience.FUNDERS ? (
+                <>
+                  <p className="text-secondary fw-bold fs-5">
+                    Return on Investment
+                  </p>
+                  <p className="fs-6" style={{ lineHeight: "140%" }}>
+                    Wield dynamic streams to create value-accruing feedback
+                    loops.
+                  </p>
+                  <p className="text-secondary fw-bold fs-5">Attract Talent</p>
+                  <p className="fs-6" style={{ lineHeight: "140%" }}>
+                    Beat the competition for top talent by funding faster and
+                    with more consistency.
+                  </p>
+                  <p className="text-secondary fw-bold fs-5">
+                    Capital Efficiency
+                  </p>
+                  <p className="fs-6 mb-16" style={{ lineHeight: "140%" }}>
+                    Get more out of your limited resources by reducing idle
+                    capital & decision-making overhead.
+                  </p>
+                  <p className="text-secondary fw-semi-bold fs-lg">
+                    Learn more
+                  </p>
+                  <Stack
+                    direction="horizontal"
+                    gap={2}
+                    className="flex-wrap flex-sm-nowrap"
+                  >
+                    <Link
+                      href="/flow-councils"
+                      className={isMobile ? "w-100" : "w-50"}
+                    >
+                      <Button
+                        variant="outline-secondary"
+                        className="w-100 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Flow Council
+                      </Button>
+                    </Link>
+                    <Link
+                      href="/flow-splitters"
+                      className={isMobile ? "w-100" : "w-50"}
+                    >
+                      <Button
+                        variant="outline-secondary"
+                        className="w-100 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Flow Splitter
+                      </Button>
+                    </Link>
+                  </Stack>
+                  <Stack
+                    direction="horizontal"
+                    gap={2}
+                    className="flex-wrap flex-sm-nowrap"
+                  >
+                    <Link
+                      href="https://docs.flowstate.network/platform/streaming-qf"
+                      target="_blank"
+                      className={isMobile ? "w-100" : "w-50"}
+                    >
+                      <Button
+                        variant="outline-secondary"
+                        className="w-100 mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Flow QF
+                      </Button>
+                    </Link>
+                    <Link
+                      href="#schedule-consultation"
+                      onNavigate={(e) => {
+                        e.preventDefault();
+                        const elem = document.getElementById(
+                          "schedule-consultation",
+                        );
+                        elem?.scrollIntoView({
+                          behavior: "smooth",
+                        });
+                      }}
+                      className={isMobile ? "w-100" : "w-50"}
+                    >
+                      <Button
+                        variant="outline-secondary"
+                        className="w-100 mt-sm-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Custom
+                      </Button>
+                    </Link>
+                  </Stack>
+                </>
+              ) : showTargetAudience === TargetAudience.BUILDERS ? (
+                <>
+                  <p className="text-secondary fw-bold fs-5">User Retention</p>
+                  <p className="fs-6" style={{ lineHeight: "140%" }}>
+                    Create instant and consistent token flows that keep users
+                    coming back.
+                  </p>
+                  <p className="text-secondary fw-bold fs-5">Dynamic Rewards</p>
+                  <p className="fs-6" style={{ lineHeight: "140%" }}>
+                    Adjust streams at scale based on any signal so rewards match
+                    value.
+                  </p>
+                  <p className="text-secondary fw-bold fs-5">Differentiation</p>
+                  <p className="fs-6 mb-16" style={{ lineHeight: "140%" }}>
+                    Stand out against Web 2.0 & web3 competition alike with the
+                    ultimate form of programmable money.
+                  </p>
+                  <p className="mb-4 text-secondary fw-semi-bold fs-lg">
+                    Learn more
+                  </p>
+                  <Stack
+                    direction="horizontal"
+                    gap={2}
+                    className="flex-wrap flex-sm-nowrap"
+                  >
+                    <Link
+                      href="/flow-splitters"
+                      className={isMobile ? "w-100" : "w-50"}
+                    >
+                      <Button
+                        variant="outline-secondary"
+                        className="w-100 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Flow Splitter
+                      </Button>
+                    </Link>
+                    <Link
+                      href="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
+                      target="_blank"
+                      className={isMobile ? "w-100" : "w-50"}
+                    >
+                      <Button
+                        variant="outline-secondary"
+                        className="w-100 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Flow Caster
+                      </Button>
+                    </Link>
+                  </Stack>
+                  <Link
+                    href="#schedule-consultation"
+                    onNavigate={(e) => {
+                      e.preventDefault();
+                      const elem = document.getElementById(
+                        "schedule-consultation",
+                      );
+                      elem?.scrollIntoView({
+                        behavior: "smooth",
+                      });
+                    }}
+                    className={isMobile ? "w-100" : "w-50"}
+                  >
+                    <Button
+                      variant="outline-secondary"
+                      className="w-100 mt-sm-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                    >
+                      Custom
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p className="text-secondary fw-bold fs-5">Direct Impact</p>
+                  <p className="fs-6" style={{ lineHeight: "140%" }}>
+                    See your contributions make a tangible difference in
+                    real-time.
+                  </p>
+                  <p className="text-secondary fw-bold fs-5">Engagement</p>
+                  <p className="fs-6" style={{ lineHeight: "140%" }}>
+                    Participate in governance and decision-making processes
+                    rather than bureaucracy.
+                  </p>
+                  <p className="text-secondary fw-bold fs-5">Onchain Magic</p>
+                  <p className="fs-6 mb-16" style={{ lineHeight: "140%" }}>
+                    Do things with programmable money unimaginable offchain.
+                  </p>
+                  <p className="mb-4 text-secondary fw-semi-bold fs-lg">
+                    Learn more
+                  </p>
+                  <Stack
+                    direction="horizontal"
+                    gap={2}
+                    className="flex-wrap flex-sm-nowrap"
+                  >
+                    <Link
+                      href="https://docs.flowstate.network"
+                      target="_blank"
+                      className={isMobile ? "w-100" : "w-50"}
+                    >
+                      <Button
+                        variant="outline-secondary"
+                        className="w-100 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Docs
+                      </Button>
+                    </Link>
+                    <Link href="/explore" className="w-50">
+                      <Button
+                        variant="outline-secondary"
+                        className="w-100 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Explore
+                      </Button>
+                    </Link>
+                  </Stack>
+                  <Stack
+                    direction="horizontal"
+                    gap={2}
+                    className="flex-wrap flex-sm-nowrap"
+                  >
+                    <Link
+                      href="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
+                      target="_blank"
+                      className={isMobile ? "w-100" : "w-50"}
+                    >
+                      <Button
+                        variant="outline-secondary"
+                        className="w-100 mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Flow Caster
+                      </Button>
+                    </Link>
+                    <Link
+                      href="https://farcaster.xyz/beamr"
+                      target="_blank"
+                      className={isMobile ? "w-100" : "w-50"}
+                    >
+                      <Button
+                        variant="outline-secondary"
+                        className="w-100 mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
+                      >
+                        Beamr
+                      </Button>
+                    </Link>
+                  </Stack>
+                </>
+              )}
+            </Stack>
+          </Stack>
+          <Stack
+            direction="horizontal"
+            className="justify-content-center"
+            gap={3}
+          >
+            <Button
+              variant="transparent"
+              className="p-0 border-0"
+              onClick={() => setShowTargetAudience(TargetAudience.FUNDERS)}
+            >
+              <Image
+                src="/ellipse.svg"
+                alt=""
+                width={12}
+                height={12}
+                style={{
+                  filter:
+                    showTargetAudience === TargetAudience.FUNDERS
+                      ? "brightness(0) saturate(100%) invert(35%) sepia(42%) saturate(362%) hue-rotate(115deg) brightness(88%) contrast(86%)"
+                      : "brightness(0) saturate(100%) invert(93%) sepia(4%) saturate(2894%) hue-rotate(338deg) brightness(96%) contrast(88%)",
+                }}
+              />
+            </Button>
+            <Button
+              variant="transparent"
+              className="p-0 border-0"
+              onClick={() => setShowTargetAudience(TargetAudience.BUILDERS)}
+            >
+              <Image
+                src="/ellipse.svg"
+                alt=""
+                width={12}
+                height={12}
+                style={{
+                  filter:
+                    showTargetAudience === TargetAudience.BUILDERS
+                      ? "brightness(0) saturate(100%) invert(35%) sepia(42%) saturate(362%) hue-rotate(115deg) brightness(88%) contrast(86%)"
+                      : "brightness(0) saturate(100%) invert(93%) sepia(4%) saturate(2894%) hue-rotate(338deg) brightness(96%) contrast(88%)",
+                }}
+              />
+            </Button>
+            <Button
+              variant="transparent"
+              className="p-0 border-0"
+              onClick={() => setShowTargetAudience(TargetAudience.EVERYONE)}
+            >
+              <Image
+                src="/ellipse.svg"
+                alt=""
+                width={12}
+                height={12}
+                style={{
+                  filter:
+                    showTargetAudience === TargetAudience.EVERYONE
+                      ? "brightness(0) saturate(100%) invert(35%) sepia(42%) saturate(362%) hue-rotate(115deg) brightness(88%) contrast(86%)"
+                      : "brightness(0) saturate(100%) invert(93%) sepia(4%) saturate(2894%) hue-rotate(338deg) brightness(96%) contrast(88%)",
+                }}
+              />
+            </Button>
+          </Stack>
+        </Stack>
+        <Stack
+          id="schedule-consultation"
+          direction="vertical"
+          gap={5}
+          className="align-items-center px-3 pt-20 pb-30 px-lg-52"
+        >
+          <p
+            className="m-0 text-secondary text-center fw-bold"
+            style={{ fontSize: 88, lineHeight: "95%" }}
+          >
+            Ready to find your flow state?
+          </p>
+          <p className="m-0 text-center fs-6" style={{ lineHeight: "140%" }}>
+            We can design, build, and integrate a streaming funding solution for
+            your unique needs.
+          </p>
+          <Button
+            variant="link"
+            href="https://calendar.app.google/VR16gZEyus6xqn2s8"
+            target="_blank"
+            className="mt-2 bg-secondary text-white text-decoration-none px-10 py-4 fs-lg fw-semi-bold"
+          >
+            Schedule a consultation
+          </Button>
+        </Stack>
+      </div>
+    </div>
   );
 }

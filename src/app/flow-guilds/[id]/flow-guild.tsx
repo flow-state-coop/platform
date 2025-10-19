@@ -376,7 +376,7 @@ export default function FlowGuild(props: FlowGuildProps) {
     <>
       <Stack
         direction={isMobile || isTablet ? "vertical" : "horizontal"}
-        className="align-items-start flex-grow-1"
+        className="align-items-start flex-grow-1 mb-30"
       >
         {(isMobile || isTablet) && showProjectDetails && (
           <Offcanvas
@@ -385,11 +385,11 @@ export default function FlowGuild(props: FlowGuildProps) {
             className="h-100"
             onHide={() => setShowProjectDetails(false)}
           >
-            <Offcanvas.Header closeButton className="pb-0" />
+            <Offcanvas.Header closeButton className="py-2" />
             <Offcanvas.Body>
               <ProjectDetails flowGuildConfig={flowGuildConfig} />
               <Button
-                className="w-100 mt-4 py-2 fs-5"
+                className="w-100 mt-4 py-4 fs-6 fw-semi-bold rounded-4"
                 onClick={() => {
                   !address && openConnectModal
                     ? openConnectModal()
@@ -402,7 +402,7 @@ export default function FlowGuild(props: FlowGuildProps) {
               </Button>
               <Button
                 variant="secondary"
-                className="w-100 mt-3 py-2 fs-5"
+                className="w-100 mt-4 py-4 fs-6 fw-semi-bold rounded-4"
                 onClick={() =>
                   !address && openConnectModal
                     ? openConnectModal()
@@ -425,7 +425,7 @@ export default function FlowGuild(props: FlowGuildProps) {
               showOpenFlow ? setShowOpenFlow(false) : setShowDonateOnce(false)
             }
           >
-            <Offcanvas.Header closeButton className="pb-0" />
+            <Offcanvas.Header closeButton className="py-2" />
             <Offcanvas.Body>
               {showOpenFlow ? (
                 <OpenFlow
@@ -447,12 +447,7 @@ export default function FlowGuild(props: FlowGuildProps) {
             </Offcanvas.Body>
           </Offcanvas>
         ) : (
-          <div
-            className="w-25 h-100 border-2"
-            style={{
-              boxShadow: "0.5rem 0 0.5rem -2px rgba(0,0,0,0.2)",
-            }}
-          >
+          <div className="w-25 h-100">
             <Stack direction="vertical" className="mt-2 p-3">
               {showOpenFlow ? (
                 <OpenFlow
@@ -475,7 +470,7 @@ export default function FlowGuild(props: FlowGuildProps) {
                 <>
                   <ProjectDetails flowGuildConfig={flowGuildConfig} />
                   <Button
-                    className="w-100 mt-4 py-2 fs-5"
+                    className="w-100 mt-4 py-4 fs-6 fw-semi-bold rounded-4"
                     onClick={() => {
                       !address && openConnectModal
                         ? openConnectModal()
@@ -488,7 +483,7 @@ export default function FlowGuild(props: FlowGuildProps) {
                   </Button>
                   <Button
                     variant="secondary"
-                    className="w-100 mt-3 py-2 fs-5"
+                    className="w-100 mt-3 py-4 fs-6 fw-semi-bold rounded-4"
                     onClick={() =>
                       !address && openConnectModal
                         ? openConnectModal()
@@ -536,7 +531,7 @@ export default function FlowGuild(props: FlowGuildProps) {
             <>
               <Button
                 variant="primary"
-                className="w-100 mt-3"
+                className="w-100 mt-3 py-4 rounded-4 fs-6 fw-semi-bold"
                 onClick={() =>
                   !address && openConnectModal
                     ? openConnectModal()
@@ -549,7 +544,7 @@ export default function FlowGuild(props: FlowGuildProps) {
               </Button>
               <Button
                 variant="secondary"
-                className="w-100 mt-3"
+                className="w-100 mt-3 py-4 rounded-4 fs-6 fw-semi-bold"
                 onClick={() =>
                   !address && openConnectModal
                     ? openConnectModal()
@@ -593,14 +588,15 @@ export default function FlowGuild(props: FlowGuildProps) {
         show={showConnectionModal}
         centered
         onHide={() => setShowConnectionModal(false)}
+        contentClassName="p-4"
       >
-        <Modal.Header closeButton className="align-items-start border-0 pt-3">
-          <Modal.Title className="fs-5 fw-bold">
+        <Modal.Header closeButton className="align-items-start border-0">
+          <Modal.Title className="fs-lg fw-semi-bold">
             You're a recipient in this Flow Splitter but haven't connected your
             shares.
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body className="fs-5">
+        <Modal.Body className="mt-4 mb-2">
           Do you want to do that now, so your{" "}
           <Link href="https://app.superfluid.finance/" target="_blank">
             Super Token balance

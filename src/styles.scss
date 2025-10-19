@@ -1,21 +1,211 @@
-@import url("https://fonts.googleapis.com/css2?family=Georgia:ital,wght@0,400;0,600;0,700;1,400&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Helvetica:ital,wght@0,400;0,600;0,700;1,400&display=swap");
-
-$box-shadow: 0 0.5rem 1rem rgba(#000, 0.2);
-$h5-font-size: 1rem * 1.125;
+$spacer: 4px;
+$font-size-base: 1rem;
+$font-size-xxs: 10px;
+$font-size-xs: $font-size-base * 0.75;
+$font-size-sm: $font-size-base * 0.875;
+$font-size-md: $font-size-base;
+$font-size-lg: $font-size-base * 1.25;
+$h1-font-size: $font-size-base * 7.5;
+$h2-font-size: $font-size-base * 5.5;
+$h3-font-size: $font-size-base * 3.5;
+$h4-font-size: $font-size-base * 3;
+$h5-font-size: $font-size-base * 2;
+$h6-font-size: $font-size-base * 1.5;
+$font-weight-light: 200;
+$font-weight-normal: 300;
+$font-weight-semi-bold: 700;
+$font-weight-bold: 900;
 $link-color: #000;
-$primary: #247789;
-$secondary: #13424d;
+$primary: #056589;
+$secondary: #3c655b;
 $success: #45ad57;
-$light: #f1f1f1;
-$info: #6c757d;
+$light: #f6f6f6;
+$dark: #030303;
+$info: #888888;
+$black: #030303;
+$white: #fbf7ef;
+$box-shadow: 0 0.5rem 1rem rgba(#000, 0.2);
+$border-radius: 0.5rem;
+$border-radius-sm: 0.25rem;
+$border-radius-lg: 1rem;
 
 @import "bootstrap/scss/bootstrap";
 @import "bootstrap/scss/utilities";
 
+$theme-colors: (
+  "black-600": #5d5d5d,
+  "como-400": #679a8b,
+  "como-500": #49796b,
+  "flame-500": #d95d39,
+  "lace-50": #fbf7ef,
+  "lace-100": #f6eede,
+);
+
+$spacers: (
+  0: 0,
+  1: $spacer,
+  2: $spacer * 2,
+  3: $spacer * 3,
+  4: $spacer * 4,
+  5: $spacer * 5,
+  6: $spacer * 6,
+  7: $spacer * 7,
+  8: $spacer * 8,
+  9: $spacer * 9,
+  10: $spacer * 10,
+  11: $spacer * 11,
+  12: $spacer * 12,
+  13: $spacer * 13,
+  14: $spacer * 14,
+  15: $spacer * 15,
+  16: $spacer * 16,
+  17: $spacer * 17,
+  18: $spacer * 18,
+  19: $spacer * 19,
+  20: $spacer * 20,
+  24: $spacer * 24,
+  30: $spacer * 30,
+  40: $spacer * 40,
+  46: $spacer * 46,
+  52: $spacer * 52,
+);
+
+$grid-breakpoints: (
+  xs: 0,
+  sm: 576px,
+  md: 768px,
+  lg: 992px,
+  xl: 1440px,
+  xxl: 1920px,
+);
+
 $utilities: map-merge(
   $utilities,
   (
+    "margin": (
+      responsive: true,
+      property: margin,
+      class: m,
+      values: map-merge(
+          $spacers,
+          (
+            auto: auto,
+          )
+        ),
+    ),
+    "margin-x": (
+      responsive: true,
+      property: margin-right margin-left,
+      class: mx,
+      values: map-merge(
+          $spacers,
+          (
+            auto: auto,
+          )
+        ),
+    ),
+    "margin-y": (
+      responsive: true,
+      property: margin-top margin-bottom,
+      class: my,
+      values: map-merge(
+          $spacers,
+          (
+            auto: auto,
+          )
+        ),
+    ),
+    "margin-top": (
+      responsive: true,
+      property: margin-top,
+      class: mt,
+      values: map-merge(
+          $spacers,
+          (
+            auto: auto,
+          )
+        ),
+    ),
+    "margin-end": (
+      responsive: true,
+      property: margin-right,
+      class: me,
+      values: map-merge(
+          $spacers,
+          (
+            auto: auto,
+          )
+        ),
+    ),
+    "margin-bottom": (
+      responsive: true,
+      property: margin-bottom,
+      class: mb,
+      values: map-merge(
+          $spacers,
+          (
+            auto: auto,
+          )
+        ),
+    ),
+    "margin-start": (
+      responsive: true,
+      property: margin-left,
+      class: ms,
+      values: map-merge(
+          $spacers,
+          (
+            auto: auto,
+          )
+        ),
+    ),
+    "gap": (
+      property: gap,
+      class: gap,
+      values: $spacers,
+    ),
+    "padding": (
+      responsive: true,
+      property: padding,
+      class: p,
+      values: $spacers,
+    ),
+    "padding-x": (
+      responsive: true,
+      property: padding-right padding-left,
+      class: px,
+      values: $spacers,
+    ),
+    "padding-y": (
+      responsive: true,
+      property: padding-top padding-bottom,
+      class: py,
+      values: $spacers,
+    ),
+    "padding-top": (
+      responsive: true,
+      property: padding-top,
+      class: pt,
+      values: $spacers,
+    ),
+    "padding-end": (
+      responsive: true,
+      property: padding-right,
+      class: pe,
+      values: $spacers,
+    ),
+    "padding-bottom": (
+      responsive: true,
+      property: padding-bottom,
+      class: pb,
+      values: $spacers,
+    ),
+    "padding-start": (
+      responsive: true,
+      property: padding-left,
+      class: ps,
+      values: $spacers,
+    ),
     "width": (
       property: width,
       class: w,
@@ -33,6 +223,51 @@ $utilities: map-merge(
         auto: auto,
       ),
     ),
+    "font-size": (
+      property: font-size,
+      class: fs,
+      values: (
+        xxs: $font-size-xxs,
+        xs: $font-size-xs,
+        sm: $font-size-sm,
+        md: $font-size-md,
+        lg: $font-size-lg,
+        1: $h1-font-size,
+        2: $h2-font-size,
+        3: $h3-font-size,
+        4: $h4-font-size,
+        5: $h5-font-size,
+        6: $h6-font-size,
+      ),
+    ),
+    "font-weight": (
+      property: font-weight,
+      class: fw,
+      values: (
+        light: $font-weight-light,
+        normal: $font-weight-normal,
+        semi-bold: $font-weight-semi-bold,
+        bold: $font-weight-bold,
+      ),
+    ),
+    "color": map-merge(
+        map-get($utilities, "color"),
+        (
+          values: map-merge(
+              map-get(map-get($utilities, "color"), "values"),
+              ($theme-colors)
+            ),
+        )
+      ),
+    "background-color": map-merge(
+        map-get($utilities, "background-color"),
+        (
+          values: map-merge(
+              map-get(map-get($utilities, "background-color"), "values"),
+              ($theme-colors)
+            ),
+        )
+      ),
   )
 );
 
@@ -43,7 +278,7 @@ body {
   height: 100%;
   padding: 0;
   margin: 0;
-  font-family: Georgia;
+  background-color: #fbf7ef;
 }
 
 /* Chrome, Safari, Edge, Opera */
@@ -92,6 +327,24 @@ blockquote {
   cursor: pointer;
 }
 
+.hero-background {
+  background-image: url("/hero-background.svg");
+  background-size: 100% auto;
+  background-repeat: no-repeat;
+}
+
+.background-body {
+  background-image: url("/background-body.svg");
+  background-size: 100% auto;
+  background-repeat: no-repeat;
+}
+
+.explore-background {
+  background-image: url("/explore-background.svg");
+  background-size: 100% auto;
+  background-repeat: no-repeat;
+}
+
 .pool-info-background {
   background-image: linear-gradient(
       rgba(255, 255, 255, 0.5),
@@ -109,4 +362,9 @@ blockquote {
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+}
+
+input[type="email"].mailing-list-input::placeholder {
+  color: $light;
+  opacity: 0.65;
 }

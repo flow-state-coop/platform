@@ -7,7 +7,6 @@ import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { gql, useQuery, useLazyQuery } from "@apollo/client";
 import { useClampText } from "use-clamp-text";
-import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Dropdown from "react-bootstrap/Dropdown";
 import Card from "react-bootstrap/Card";
@@ -271,13 +270,13 @@ export default function FlowSplitters(props: FlowSplittersProps) {
 
     return (
       <Card
-        className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4"
-        style={{ height: 400 }}
+        className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-5 fs-6 shadow p-2"
+        style={{ height: 420 }}
       >
-        <Card.Header className="h-25 bg-white border-0 rounded-4 py-3">
+        <Card.Header className="h-25 bg-white border-0 rounded-4 py-4">
           <Card.Title
             ref={nameRef as React.RefObject<HTMLParagraphElement>}
-            className="fs-4 text-center"
+            className="fs-6 text-center fw-semi-bold"
           >
             {clampedText}
           </Card.Title>
@@ -286,7 +285,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
           <Stack
             direction="horizontal"
             gap={1}
-            className="justify-content-center mb-3"
+            className="justify-content-center"
           >
             <Card.Link
               href={selectedNetwork.superfluidDashboard}
@@ -327,12 +326,12 @@ export default function FlowSplitters(props: FlowSplittersProps) {
                     alt="wallet"
                   />
                 }
-                content={<>Add to Wallet</>}
+                content={<p className="m-0 p-2">Add to Wallet</p>}
               />
             </Button>
           </Stack>
           {pool.isAdmin && pool.units === BigInt(0) ? (
-            <Card.Text className="mb-0 fs-2 fw-bold text-center">
+            <Card.Text className="mb-0 fs-4 fw-bold text-center">
               Admin
             </Card.Text>
           ) : (
@@ -343,7 +342,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
                   gap={1}
                   className="justify-content-center"
                 >
-                  <Card.Text className="m-0 fs-2 fw-bold">
+                  <Card.Text className="m-0 fs-4 fw-bold">
                     {formatNumber(
                       Number(
                         formatEther(pool.flowRate * BigInt(SECONDS_IN_MONTH)),
@@ -354,7 +353,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
                 </Stack>
               ) : (
                 <Stack direction="vertical">
-                  <Card.Text className="mb-0 fs-2 fw-bold text-center">
+                  <Card.Text className="mb-0 fs-4 fw-bold text-center">
                     {Number(pool.units)}
                   </Card.Text>
                   <Stack
@@ -377,18 +376,20 @@ export default function FlowSplitters(props: FlowSplittersProps) {
                         />
                       }
                       content={
-                        <>
+                        <p className="m-0 p-2">
                           Complete a one-time transaction to receive your Flow
                           Splitter stream in real-time. Your funds are safe, but
                           static until you connect your shares.
-                        </>
+                        </p>
                       }
                     />
                   </Stack>
                 </Stack>
               )}
               {pool.isAdmin && (
-                <Card.Text className="m-0 fs-6 text-center">Admin</Card.Text>
+                <Card.Text className="m-0 fw-semi-bold text-center">
+                  Admin
+                </Card.Text>
               )}
             </Stack>
           )}
@@ -397,7 +398,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
           {pool.isAdmin && (
             <Button
               variant="primary"
-              className="w-100"
+              className="w-100 rounded-4 py-4 fs-lg fw-semi-bold"
               onClick={() =>
                 router.push(
                   `/flow-splitters/${selectedNetwork.id}/${pool.id}/admin`,
@@ -410,7 +411,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
           {pool.isConnected ? (
             <Button
               variant="secondary"
-              className="w-100"
+              className="w-100 rounded-4 py-4 fs-lg fw-semi-bold"
               onClick={() =>
                 router.push(`/flow-splitters/${selectedNetwork.id}/${pool.id}`)
               }
@@ -430,36 +431,28 @@ export default function FlowSplitters(props: FlowSplittersProps) {
   };
 
   return (
-    <Container
-      className="mx-auto p-0 mb-5"
-      style={{
-        maxWidth:
-          isMobile || isTablet
-            ? "100%"
-            : isSmallScreen
-              ? 1000
-              : isMediumScreen
-                ? 1300
-                : 1600,
-      }}
+    <Stack
+      direction="vertical"
+      gap={6}
+      className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
     >
       {flowSplitterQueryLoading || superfluidQueryLoading ? (
         <span className="position-absolute top-50 start-50 translate-middle">
           <Spinner className="m-auto" />
         </span>
       ) : (
-        <Stack direction="vertical" gap={3} className="p-4">
+        <Stack direction="vertical" gap={3}>
           <Stack
             direction="horizontal"
             gap={1}
             className="align-items-start mt-3"
           >
-            <h1 className="m-0">Flow Splitters</h1>
+            <h1 className="fs-3 fw-semi-bold m-0">Flow Splitters</h1>
             <InfoTooltip
               position={{ bottom: isMobile }}
-              target={<Image src="/info.svg" alt="" width={18} height={18} />}
+              target={<Image src="/info.svg" alt="" width={24} height={24} />}
               content={
-                <>
+                <p className="m-0 p-2">
                   Flow Splitters allocate one or more incoming Superfluid token
                   streams proportional to recipients' shares of a pool in real
                   time.
@@ -467,11 +460,11 @@ export default function FlowSplitters(props: FlowSplittersProps) {
                   <br />
                   They're great for grant restreaming, team salaries, and large,
                   dynamic community stream allocations. More tooling on the way!
-                </>
+                </p>
               }
             />
           </Stack>
-          <h2 className="fs-5">
+          <h2 className="fs-lg">
             The easiest way to split streams to your team, guild, DAO, or
             community.
             <br />
@@ -491,20 +484,21 @@ export default function FlowSplitters(props: FlowSplittersProps) {
               get help.
             </Card.Link>
           </h2>
-          <h3 className="mt-2 fs-5">
+          <h3 className="mt-4 fs-5">
             {truncateStr(address ?? "", isMobile ? 20 : 42)}
           </h3>
           <Dropdown>
             <Dropdown.Toggle
               variant="transparent"
-              className={`d-flex justify-content-between align-items-center border border-2 ${isMobile ? "" : "w-20"}`}
+              className={`d-flex justify-content-between align-items-center border border-dark border-4 rounded-4 py-4 fs-lg fw-semi-bold ${isMobile ? "" : "w-20"}`}
             >
               {selectedNetwork.name}
             </Dropdown.Toggle>
-            <Dropdown.Menu>
+            <Dropdown.Menu className="border border-4 border-dark lh-lg">
               {networks.map((network, i) => (
                 <Dropdown.Item
                   key={i}
+                  className="fw-semi-bold"
                   onClick={() => {
                     if (!connectedChain && openConnectModal) {
                       openConnectModal();
@@ -536,8 +530,8 @@ export default function FlowSplitters(props: FlowSplittersProps) {
             }}
           >
             <Card
-              className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer"
-              style={{ height: 400 }}
+              className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-4 cursor-pointer"
+              style={{ height: 420 }}
               onClick={() => {
                 if (address) {
                   router.push(
@@ -549,7 +543,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
               }}
             >
               <Image src="/add.svg" alt="add" width={64} />
-              <Card.Text className="d-inline-block m-0 overflow-hidden fs-2 text-center word-wrap">
+              <Card.Text className="d-inline-block m-0 overflow-hidden fs-5 fw-semi-bold text-center word-wrap">
                 Create <br />
                 Flow Splitter
               </Card.Text>
@@ -564,6 +558,6 @@ export default function FlowSplitters(props: FlowSplittersProps) {
           </div>
         </Stack>
       )}
-    </Container>
+    </Stack>
   );
 }

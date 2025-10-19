@@ -73,18 +73,18 @@ export default function GranteeApplicationCard(
 
   return (
     <Card
-      className={`d-flex justify-content-center align-items-center border-2 fs-4 overflow-hidden cursor-pointer ${
+      className={`d-flex justify-content-center align-items-center border-4 rounded-5 fs-lg overflow-hidden cursor-pointer ${
         isSelected &&
         (!hasApplied ||
           (canReapply && (status === "REJECTED" || status === "CANCELED")))
-          ? "border-5 border-primary"
+          ? "border-primary"
           : status === "APPROVED"
-            ? "border-5 border-success"
+            ? "border-success"
             : status === "REJECTED"
-              ? "border-5 border-danger"
+              ? "border-danger"
               : status === "PENDING"
-                ? "border-5 border-warning"
-                : ""
+                ? "border-warning"
+                : "border-dark"
       } rounded-4 shadow`}
       style={{
         height: 418,
@@ -105,15 +105,15 @@ export default function GranteeApplicationCard(
         width={52}
         height={52}
         className="rounded-3 position-absolute border border-2 border-light bg-white"
-        style={{ bottom: 288, left: 16 }}
+        style={{ bottom: 282, left: 16 }}
       />
       {isTransactionConfirming && isSelected ? (
         <Spinner className="m-auto" />
       ) : (
         <>
-          <Card.Body className="mt-3 pb-0">
+          <Card.Body className="mt-6 pb-0">
             <Card.Text
-              className="d-inline-block m-0 fs-5 word-wrap text-truncate"
+              className="d-inline-block m-0 fs-6 fw-semi-bold word-wrap text-truncate"
               style={{ maxWidth: 256 }}
             >
               {name}
@@ -122,7 +122,6 @@ export default function GranteeApplicationCard(
               ref={descriptionRef as React.RefObject<HTMLParagraphElement>}
               className="m-0 mb-3"
               style={{
-                fontSize: "0.9rem",
                 minHeight: noClamp ? "4lh" : "auto",
               }}
             >
@@ -130,14 +129,14 @@ export default function GranteeApplicationCard(
             </Card.Text>
           </Card.Body>
           <Card.Footer
-            className="d-flex justify-content-center w-100 bg-light border-0 py-3"
+            className="d-flex justify-content-center w-100 bg-lace-100 border-0 px-3 py-4"
             style={{ fontSize: "15px" }}
           >
             {status !== null ? (
               <Stack
                 direction="horizontal"
                 gap={2}
-                className={`justify-content-center align-items-center fs-4
+                className={`justify-content-center align-items-center fs-6
                             ${
                               status === "PENDING"
                                 ? "text-warning"

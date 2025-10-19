@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { formatEther } from "viem";
 import {
@@ -91,6 +91,8 @@ const edgeTypes = { custom: CustomEdge };
 function CustomNode(props: NodeProps<Node>) {
   const { selected, data } = props;
 
+  const [showToolbar, setShowToolbar] = useState(false);
+
   const router = useRouter();
   const network = networks.find((network) => network.id === data.chainId);
   const totalFlowed = useFlowingAmount(
@@ -108,7 +110,7 @@ function CustomNode(props: NodeProps<Node>) {
         <Stack
           direction="vertical"
           gap={1}
-          className="align-items-center bg-white p-3 rounded-4 cursor-pointer shadow"
+          className="align-items-center bg-lace-100 p-3 rounded-4 cursor-pointer shadow"
           style={{ width: 230 }}
         >
           <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
@@ -139,11 +141,17 @@ function CustomNode(props: NodeProps<Node>) {
       <>
         <Stack
           direction="horizontal"
-          className="align-items-center bg-white p-3 rounded-4 cursor-pointer shadow"
+          className="align-items-center bg-lace-100 p-3 rounded-4 cursor-pointer shadow"
           style={{ width: 230 }}
+          onMouseEnter={() => setShowToolbar(true)}
+          onMouseLeave={() => setShowToolbar(false)}
         >
           <Image src={data.logo as string} alt="Logo" width={42} height={42} />
-          <Stack direction="vertical" gap={1} className="align-items-center">
+          <Stack
+            direction="vertical"
+            gap={1}
+            className="justify-content-center align-items-center"
+          >
             <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
               {data?.label?.toString() ?? ""}
             </span>
@@ -167,7 +175,7 @@ function CustomNode(props: NodeProps<Node>) {
           position={Position.Bottom}
         />
         <NodeToolbar
-          isVisible={selected}
+          isVisible={showToolbar || (!!data.isMobile && selected)}
           position={data.isMobile ? Position.Bottom : Position.Right}
         >
           <Stack direction="vertical" gap={2}>
@@ -175,7 +183,7 @@ function CustomNode(props: NodeProps<Node>) {
               <Button
                 variant="light"
                 onClick={data?.showProjectDetails as () => void}
-                className="border border-dark"
+                className="border border-4 border-dark"
               >
                 Project Details
               </Button>
@@ -185,7 +193,7 @@ function CustomNode(props: NodeProps<Node>) {
               onClick={() =>
                 navigator.clipboard.writeText(data?.address?.toString() ?? "0x")
               }
-              className="border border-dark"
+              className="border border-4 border-dark fw-semi-bold"
             >
               Copy address
             </Button>
@@ -193,7 +201,7 @@ function CustomNode(props: NodeProps<Node>) {
               variant="light"
               href={`https://explorer.superfluid.finance/${data.chainId}/accounts/${data.address}`}
               target="_blank"
-              className="border border-dark"
+              className="border border-4 border-dark fw-semi-bold"
             >
               View in Explorer
             </Button>
@@ -208,8 +216,10 @@ function CustomNode(props: NodeProps<Node>) {
       <>
         <Stack
           direction="horizontal"
-          className="align-items-center bg-white p-3 rounded-4 cursor-pointer shadow"
+          className="align-items-center bg-lace-100 p-3 rounded-4 cursor-pointer shadow"
           style={{ width: 230 }}
+          onMouseEnter={() => setShowToolbar(true)}
+          onMouseLeave={() => setShowToolbar(false)}
         >
           {network && (
             <Image
@@ -219,7 +229,11 @@ function CustomNode(props: NodeProps<Node>) {
               height={42}
             />
           )}
-          <Stack direction="vertical" gap={1} className="align-items-center">
+          <Stack
+            direction="vertical"
+            gap={1}
+            className="justify-content-center align-items-center"
+          >
             <span
               className="align-self-center"
               style={{ fontSize: "0.8rem", fontWeight: "bold" }}
@@ -241,7 +255,7 @@ function CustomNode(props: NodeProps<Node>) {
           position={Position.Bottom}
         />
         <NodeToolbar
-          isVisible={selected}
+          isVisible={showToolbar || (!!data.isMobile && selected)}
           position={data.isMobile ? Position.Bottom : Position.Right}
         >
           <Stack direction="vertical" gap={2}>
@@ -250,7 +264,7 @@ function CustomNode(props: NodeProps<Node>) {
               onClick={() =>
                 navigator.clipboard.writeText(data?.address?.toString() ?? "0x")
               }
-              className="border border-dark"
+              className="border border-4 border-dark fw-semi-bold"
             >
               Copy address
             </Button>
@@ -261,7 +275,7 @@ function CustomNode(props: NodeProps<Node>) {
                   `/flow-splitters/${data.chainId}/${data.flowSpitterId}/admin`,
                 )
               }
-              className="border border-dark"
+              className="border border-4 border-dark fw-semi-bold"
             >
               Configuration
             </Button>
@@ -269,7 +283,7 @@ function CustomNode(props: NodeProps<Node>) {
               variant="light"
               href={`https://explorer.superfluid.finance/${data.chainId}/pools/${data.address}`}
               target="_blank"
-              className="border border-dark"
+              className="border border-4 border-dark fw-semi-bold"
             >
               View in Explorer
             </Button>
@@ -286,6 +300,8 @@ function CustomNode(props: NodeProps<Node>) {
         gap={1}
         className="align-items-center cursor-pointer"
         style={{ width: 200 }}
+        onMouseEnter={() => setShowToolbar(true)}
+        onMouseLeave={() => setShowToolbar(false)}
       >
         {data.avatar ? (
           <Image
@@ -302,7 +318,7 @@ function CustomNode(props: NodeProps<Node>) {
             seed={jsNumberForAddress(data.address as `0x${string}`)}
           />
         )}
-        <span style={{ fontSize: "0.7rem" }}>
+        <span className="fw-semi-bold" style={{ fontSize: "0.7rem" }}>
           {data?.label?.toString() ?? ""}
         </span>
         {!data.isDistributor && (
@@ -312,7 +328,7 @@ function CustomNode(props: NodeProps<Node>) {
       <Handle className="invisible" type="target" position={Position.Top} />
       <Handle className="invisible" type="source" position={Position.Bottom} />
       <NodeToolbar
-        isVisible={selected}
+        isVisible={showToolbar || (!!data.isMobile && selected)}
         position={data.isDistributor ? Position.Bottom : Position.Top}
       >
         <Stack direction="vertical" gap={2}>
@@ -320,7 +336,7 @@ function CustomNode(props: NodeProps<Node>) {
             <Stack
               direction="vertical"
               gap={1}
-              className="bg-light border border-dark rounded-2 p-2 text-center"
+              className="bg-light border border-dark border-4 rounded-2 p-2 fw-semi-bold text-center"
             >
               {formatNumber(
                 Number(
@@ -336,7 +352,7 @@ function CustomNode(props: NodeProps<Node>) {
             <Stack
               direction="vertical"
               gap={1}
-              className="bg-light border border-dark rounded-2 p-2 text-center"
+              className="bg-light border border-4 border-dark rounded-2 p-2 fw-semi-bold text-center"
             >
               <span>
                 {data.units as string}{" "}
@@ -365,7 +381,7 @@ function CustomNode(props: NodeProps<Node>) {
           )}
           <Button
             variant="light"
-            className="border border-dark"
+            className="border border-4 border-dark fw-semi-bold"
             onClick={() =>
               navigator.clipboard.writeText(data?.address?.toString() ?? "0x")
             }
@@ -376,7 +392,7 @@ function CustomNode(props: NodeProps<Node>) {
             variant="light"
             href={`https://explorer.superfluid.finance/${data.chainId}/accounts/${data.address}`}
             target="_blank"
-            className="border border-dark"
+            className="border border-4 border-dark fw-semi-bold"
           >
             View in Explorer
           </Button>

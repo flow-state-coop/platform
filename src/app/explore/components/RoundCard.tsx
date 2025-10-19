@@ -15,7 +15,7 @@ type RoundCardProps = {
   totalStreamedUntilUpdatedAt?: string;
   flowRate?: string;
   updatedAt?: number;
-  showSupRewards?: boolean;
+  activeStreamCount?: number;
 };
 
 export default function RoundCard(props: RoundCardProps) {
@@ -28,7 +28,7 @@ export default function RoundCard(props: RoundCardProps) {
     totalStreamedUntilUpdatedAt,
     flowRate,
     updatedAt,
-    showSupRewards,
+    activeStreamCount,
   } = props;
 
   const totalAmountStreamed = useFlowingAmount(
@@ -44,8 +44,8 @@ export default function RoundCard(props: RoundCardProps) {
       className="text-decoration-none"
     >
       <Card
-        className="border-0 rounded-4 shadow cursor-pointer"
-        style={{ width: 360, height: 256 }}
+        className="border-4 border-dark shadow rounded-5 cursor-pointer px-4 py-2"
+        style={{ width: 390, height: 280 }}
       >
         <Card.Header className="position-relative bg-transparent border-0 p-3">
           <Stack direction="horizontal" className="align-items-center">
@@ -54,46 +54,37 @@ export default function RoundCard(props: RoundCardProps) {
               alt=""
               width={38}
               height={38}
-              className="position-absolute start-0 ms-2 rounded-3"
+              className="position-absolute start-0 rounded-3"
             />
-            <Card.Title className="w-100 mb-1 fs-5 fw-bold text-center">
+            <Card.Title className="w-100 fs-lg fw-bold text-center">
               {name}
             </Card.Title>
           </Stack>
-          <Card.Text className="text-center fs-6">{roundType}</Card.Text>
+          <Card.Text className="text-center fs-md m-0">{roundType}</Card.Text>
         </Card.Header>
-        <Card.Body>
+        <Card.Body className="d-flex flex-column h-50 p-3">
           {totalAmountStreamed ? (
             <>
-              <Card.Text className="fs-2 mb-1 fw-bold text-center">
+              <Card.Text className="fs-5 mb-1 fw-bold text-center">
                 {formatNumber(
                   Number(formatEther(totalAmountStreamed)),
-                  tokenSymbol === "ETHx" ? 6 : 4,
+                  tokenSymbol === "ETHx" ? 6 : 2,
                 )}{" "}
                 {tokenSymbol}
               </Card.Text>
-              <Card.Text className="fs-6 text-center">
+              <Card.Text className="fs-md text-center mb-2">
                 Total Funding Streamed
+              </Card.Text>
+              <Card.Text className="text-center fw-semi-bold m-0">
+                {!!activeStreamCount && `${activeStreamCount} active streams`}
               </Card.Text>
             </>
           ) : (
-            <Card.Text className="fs-2 fw-bold text-center">
+            <Card.Text className="fs-5 fw-bold text-center">
               Coming Soon
             </Card.Text>
           )}
         </Card.Body>
-        <Card.Footer className="bg-transparent border-0">
-          {showSupRewards && (
-            <Stack
-              direction="horizontal"
-              gap={2}
-              className="justify-content-end fw-bold"
-            >
-              <Image src="/sup.svg" alt="" width={32} height={32} />
-              Rewards
-            </Stack>
-          )}
-        </Card.Footer>
       </Card>
     </Link>
   );

@@ -617,36 +617,42 @@ export default function OpenFlow(props: OpenFlowProps) {
       placement={isMobile ? "bottom" : "end"}
       className={`${isMobile ? "w-100 h-100" : ""}`}
     >
-      <Offcanvas.Header closeButton className="align-items-start">
+      <Offcanvas.Header className="align-items-start">
         <Stack direction="vertical">
-          <Offcanvas.Title className="fs-3 mb-0">Open Flow</Offcanvas.Title>
-          <Card.Text className="m-0 fs-6">
+          <Offcanvas.Title className="fs-5 mb-0 px-4">
+            Open Flow
+          </Offcanvas.Title>
+          <Card.Text className="mt-2 mb-0 px-4">
             Set the rate at which you want to stream to the Flow Splitter. The
             Splitter will dynamically allocate all incoming streams to the
             recipients based on their shares.
           </Card.Text>
         </Stack>
+        <Button variant="transparent" className="p-0" onClick={handleClose}>
+          <Image src="/close.svg" alt="Close" width={24} height={24} />
+        </Button>
       </Offcanvas.Header>
-      <Offcanvas.Body>
+      <Offcanvas.Body className="p-4">
         <Card.Text className="m-0">
           Flow Rate ({token?.symbol ?? "N/A"})
         </Card.Text>
         <Stack
           direction="horizontal"
           gap={2}
-          className="align-items-start bg-light mt-2 p-3 rounded-4"
+          className="align-items-start bg-lace-100 mt-2 p-4 rounded-4"
         >
           <Stack direction="vertical" className="w-50">
             <Form.Control
               type="text"
               placeholder="0"
               value={amountPerTimeInterval}
+              className="border-0 fw-semi-bold"
               onChange={handleAmountSelection}
             />
             <Stack
               direction="horizontal"
               gap={1}
-              className="position-relative justify-content-center mt-1"
+              className="position-relative mt-2 ms-3"
             >
               <Card.Text
                 className={`m-0 ${!hasSufficientSuperTokenBalance && Number(amountPerTimeInterval) > 0 ? "text-danger" : "text-info"}`}
@@ -665,7 +671,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                 !showWrappingStep &&
                 hasSufficientSuperTokenBalance && (
                   <span
-                    className="position-absolute end-0 me-2 bg-primary px-1 rounded-1 text-white cursor-pointer"
+                    className="position-absolute end-0 me-2 bg-primary p-1 rounded-1 text-white cursor-pointer"
                     style={{
                       fontSize: "0.6rem",
                     }}
@@ -678,7 +684,7 @@ export default function OpenFlow(props: OpenFlowProps) {
           </Stack>
           <Dropdown className="w-50">
             <Dropdown.Toggle
-              className="d-flex justify-content-between align-items-center w-100 bg-white text-dark"
+              className="d-flex justify-content-between align-items-center w-100 border-0 bg-white fw-semi-bold py-2 text-dark"
               style={{ border: "1px solid #dee2e6" }}
             >
               {timeInterval}
@@ -687,6 +693,7 @@ export default function OpenFlow(props: OpenFlowProps) {
               {Object.values(TimeInterval).map((timeInterval, i) => (
                 <Dropdown.Item
                   key={i}
+                  className="fw-semi-bold"
                   onClick={() => {
                     const newFlowRate =
                       parseEther(amountPerTimeInterval) /
@@ -709,14 +716,14 @@ export default function OpenFlow(props: OpenFlowProps) {
         </Stack>
         {!isSuperTokenPure && showWrappingStep && (
           <>
-            <Card.Text className="mt-3 mb-2">
+            <Card.Text className="mt-5 mb-2">
               Wrap for Streaming (
               {isSuperTokenNative
                 ? ethBalance?.symbol
                 : underlyingTokenBalance?.symbol}{" "}
               to {token?.symbol ?? "N/A"})
             </Card.Text>
-            <Stack direction="vertical" className="bg-light p-3 rounded-4">
+            <Stack direction="vertical" className="bg-lace-100 p-4 rounded-4">
               <Stack
                 direction="horizontal"
                 gap={2}
@@ -728,10 +735,10 @@ export default function OpenFlow(props: OpenFlowProps) {
                       type="text"
                       placeholder="0"
                       value={wrapAmountPerTimeInterval}
-                      className="border-end-0"
+                      className="border-0 fw-semi-bold"
                       onChange={handleWrapAmountSelection}
                     />
-                    <InputGroup.Text className="bg-white small">
+                    <InputGroup.Text className="bg-white small border-0 fw-semi-bold">
                       {isSuperTokenNative
                         ? ethBalance?.symbol
                         : underlyingTokenBalance?.symbol}
@@ -745,10 +752,10 @@ export default function OpenFlow(props: OpenFlowProps) {
                       type="text"
                       placeholder="0"
                       value={wrapTimeInterval}
-                      className="border-end-0"
+                      className="border-0 fw-semi-bold"
                       onChange={handleWrapTimeIntervalSelection}
                     />
-                    <InputGroup.Text className="bg-white small">
+                    <InputGroup.Text className="bg-white small border-0 fw-semi-bold">
                       {`${unitOfTime[timeInterval].charAt(0).toUpperCase()}${unitOfTime[timeInterval].slice(1)}`}
                     </InputGroup.Text>
                   </InputGroup>
@@ -776,7 +783,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                 </Card.Text>
               ) : (
                 <Card.Text
-                  className="mt-1 mb-0 w-50 text-info text-center"
+                  className="ms-3 mt-1 mb-0 w-50 text-info"
                   style={{
                     fontSize: "0.8rem",
                   }}
@@ -804,24 +811,26 @@ export default function OpenFlow(props: OpenFlowProps) {
               <Stack direction="horizontal" gap={1} className="mb-2">
                 <OverlayTrigger
                   overlay={
-                    <Tooltip id="t-liquidation-info" className="fs-6">
-                      This is the current estimate for when your token balance
-                      will reach 0. Make sure to close your stream or{" "}
-                      {isSuperTokenPure ? "deposit" : "wrap"} more tokens before
-                      this date to avoid loss of your buffer deposit. See the
-                      graph below to vizualize how your proposed transaction(s)
-                      will impact your balance over time.
+                    <Tooltip id="t-liquidation-info">
+                      <p className="m-0 p-2">
+                        This is the current estimate for when your token balance
+                        will reach 0. Make sure to close your stream or{" "}
+                        {isSuperTokenPure ? "deposit" : "wrap"} more tokens
+                        before this date to avoid loss of your buffer deposit.
+                        See the graph below to vizualize how your proposed
+                        transaction(s) will impact your balance over time.
+                      </p>
                     </Tooltip>
                   }
                 >
                   <Image
                     src="/info.svg"
-                    alt="liquidation info"
+                    alt="Liquidation info"
                     width={16}
                     height={16}
                   />
                 </OverlayTrigger>
-                <Card.Text className="m-0 fs-6 fw-bold">
+                <Card.Text className="m-0 fs-lg fw-semi-bold">
                   {isSuperTokenPure ? "Deposit" : "Wrap"} more by{" "}
                   {dayjs.unix(liquidationEstimate).format("MMMM D, YYYY")}
                 </Card.Text>
@@ -866,7 +875,7 @@ export default function OpenFlow(props: OpenFlowProps) {
                 !canSubmit ||
                 (isLiquidationClose && !hasAcceptedCloseLiquidationWarning)
               }
-              className="w-100"
+              className="w-100 py-4 rounded-4 fs-lg fw-semi-bold"
               onClick={handleSubmit}
             >
               {areTransactionsLoading || isDeletingFlow ? (
@@ -889,7 +898,7 @@ export default function OpenFlow(props: OpenFlowProps) {
             {BigInt(flowRateToReceiver) > 0 && (
               <Button
                 variant="transparent"
-                className="w-100 text-primary text-decoration-underline border-0 pb-0"
+                className="w-100 text-primary text-decoration-underline border-0 pb-0 fw-semi-bold"
                 style={{ pointerEvents: isDeletingFlow ? "none" : "auto" }}
                 onClick={handleDeleteFlow}
               >
@@ -902,12 +911,12 @@ export default function OpenFlow(props: OpenFlowProps) {
             delay={4000}
             autohide={true}
             onClose={() => setSuccess(false)}
-            className="w-100 bg-success mt-3 p-3 fs-5 text-light"
+            className="w-100 bg-success mt-3 p-3 fs-5 text-ligh fw-semi-boldt"
           >
             Success!
           </Toast>
           {!!transactionError && (
-            <Alert variant="danger" className="w-100 mt-3 p-3 fs-5">
+            <Alert variant="danger" className="w-100 mt-3 p-3 fw-semi-bold">
               {transactionError}
             </Alert>
           )}
@@ -917,7 +926,7 @@ export default function OpenFlow(props: OpenFlowProps) {
         (newFlowRate !== BigInt(0) &&
           (superTokenBalance > 0 || wrapAmountPerTimeInterval > "0")) ? (
           <>
-            <Card.Text className="mt-4 mb-2">
+            <Card.Text className="mt-6 mb-2">
               Your {token.symbol} Balance Over Time
             </Card.Text>
             <BalancePlot

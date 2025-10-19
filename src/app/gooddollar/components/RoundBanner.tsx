@@ -66,43 +66,32 @@ export default function RoundBanner(props: RoundBannerProps) {
 
   return (
     <div
-      className="px-4 pt-5 pool-info-background"
+      className="px-8 py-6 pool-info-background rounded-5"
       style={{ maxWidth: "100vw" }}
     >
-      <Stack direction="vertical" className="pb-4">
-        <Stack direction="horizontal" className="justify-content-between">
-          <Stack direction="horizontal" gap={1}>
-            <Card.Text className="m-0 fs-4 fw-bold">{name}</Card.Text>
-            <InfoTooltip
-              content=<>
-                {removeMarkdown(description).replace(/\r?\n|\r/g, " ")}
-              </>
-              target={
-                <Image
-                  src="/info.svg"
-                  alt="description"
-                  width={20}
-                  className="mb-4"
-                />
-              }
-            />
-          </Stack>
-          {isMobile && !showFullInfo && (
-            <Button
-              variant="transparent"
-              className="p-0"
-              onClick={() => setShowFullInfo(true)}
-            >
-              <Image src="/expand-more.svg" alt="toggle" width={48} />
-            </Button>
-          )}
+      <Stack direction="vertical" className="mb-2">
+        <Stack direction="horizontal" gap={1}>
+          <Card.Text className="m-0 fs-5 fw-semi-bold">{name}</Card.Text>
+          <InfoTooltip
+            content=<p className="m-0 p-2">
+              {removeMarkdown(description).replace(/\r?\n|\r/g, " ")}
+            </p>
+            target={
+              <Image
+                src="/info.svg"
+                alt="description"
+                width={24}
+                className="mb-4"
+              />
+            }
+          />
         </Stack>
         <Button
           variant="transparent"
           className="p-0 shadow-none border-0"
           onClick={() => setShowInstructions(true)}
         >
-          <Card.Text className="mb-4 fs-6 text-primary text-start">
+          <Card.Text className="mb-8 fw-semi-bold text-primary text-start">
             How to participate (& earn $SUP)
           </Card.Text>
         </Button>
@@ -148,11 +137,11 @@ export default function RoundBanner(props: RoundBannerProps) {
             <Stack
               direction={isMobile ? "vertical" : "horizontal"}
               gap={4}
-              className="justify-content-end w-100 mt-3"
+              className="justify-content-end w-100 mt-5"
             >
               <Button
                 variant="secondary"
-                className="p-2 text-light fs-5"
+                className="px-10 py-4 text-light fw-semi-bold"
                 style={{ width: isMobile ? "100%" : 256 }}
                 onClick={showDistributionPoolFunding}
               >
@@ -163,7 +152,7 @@ export default function RoundBanner(props: RoundBannerProps) {
                   variant="link"
                   href={`https://flowstate.network/projects/${grantee.metadata}/?chainId=${chainId}&edit=true`}
                   target="_blank"
-                  className="bg-primary p-2 text-light fs-5 text-decoration-none"
+                  className="bg-primary px-10 py-4 text-light text-decoration-none"
                   style={{ width: isMobile ? "100%" : 256 }}
                 >
                   Edit Builder Profile
@@ -172,29 +161,39 @@ export default function RoundBanner(props: RoundBannerProps) {
             </Stack>
           </>
         )}
-        {isMobile && showFullInfo && (
-          <Button
-            variant="transparent"
-            className="p-0 ms-auto mt-5"
-            onClick={() => setShowFullInfo(false)}
-          >
-            <Image src="/expand-less.svg" alt="toggle" width={48} />
-          </Button>
-        )}
       </Stack>
+      {isMobile && !showFullInfo && (
+        <Button
+          variant="transparent"
+          className="p-0 float-end"
+          onClick={() => setShowFullInfo(true)}
+        >
+          <Image src="/expand-more.svg" alt="toggle" width={48} />
+        </Button>
+      )}
+      {isMobile && showFullInfo && (
+        <Button
+          variant="transparent"
+          className="p-0 mt-5 float-end"
+          onClick={() => setShowFullInfo(false)}
+        >
+          <Image src="/expand-less.svg" alt="toggle" width={48} />
+        </Button>
+      )}
       {showInstructions && (
         <Modal
           show={showInstructions}
           centered
           size="lg"
           onHide={() => setShowInstructions(false)}
+          contentClassName="p-4"
         >
-          <Modal.Header closeButton className="align-items-start border-0 pt-3">
-            <Modal.Title className="fs-5 fw-bold">
+          <Modal.Header closeButton className="align-items-start border-0">
+            <Modal.Title className="fs-5 fw-semi-bold">
               How to participate (and earn $SUP)
             </Modal.Title>
           </Modal.Header>
-          <Modal.Body className="fs-5">
+          <Modal.Body className="fs-lg">
             <ul>
               <li>
                 GoodBuilders Round 2 is a continuous funding round. $85k in G$
@@ -292,7 +291,10 @@ export default function RoundBanner(props: RoundBannerProps) {
             </ul>
           </Modal.Body>
           <Modal.Footer className="border-0">
-            <Button className="px-5" onClick={() => setShowInstructions(false)}>
+            <Button
+              className="px-10 py-4 rounded-4 fw-semi-bold"
+              onClick={() => setShowInstructions(false)}
+            >
               Let's Go
             </Button>
           </Modal.Footer>

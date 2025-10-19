@@ -10,7 +10,6 @@ import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import { usePostHog } from "posthog-js/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import Container from "react-bootstrap/Container";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
@@ -23,7 +22,6 @@ import PoolGraph from "../../components/PoolGraph";
 import OpenFlow from "@/app/flow-splitters/components/OpenFlow";
 import InstantDistribution from "@/app/flow-splitters/components/InstantDistribution";
 import { getApolloClient } from "@/lib/apollo";
-import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { truncateStr } from "@/lib/utils";
 import { IPFS_GATEWAYS } from "@/lib/constants";
@@ -148,7 +146,6 @@ export default function FlowSplitter(props: FlowSplitterProps) {
   } | null>(null);
 
   const router = useRouter();
-  const { isMobile, isTablet, isSmallScreen, isMediumScreen } = useMediaQuery();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
   const { data: walletClient } = useWalletClient();
@@ -301,28 +298,19 @@ export default function FlowSplitter(props: FlowSplitterProps) {
 
   return (
     <>
-      <Container
-        className="mx-auto p-0 px-4 mb-5"
-        style={{
-          maxWidth:
-            isMobile || isTablet
-              ? "100%"
-              : isSmallScreen
-                ? 1000
-                : isMediumScreen
-                  ? 1300
-                  : 1600,
-        }}
+      <Stack
+        direction="vertical"
+        className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
       >
         {flowSplitterPoolQueryLoading || superfluidQueryLoading ? (
           <span className="position-absolute top-50 start-50 translate-middle">
             <Spinner />
           </span>
         ) : !network || !pool ? (
-          <p className="w-100 mt-5 fs-4 text-center">Flow Splitter Not Found</p>
+          <p className="w-100 fs-4 text-center">Flow Splitter Not Found</p>
         ) : (
           <>
-            <h1 className="d-flex flex-column flex-sm-row align-items-sm-center overflow-hidden gap-sm-1 mt-5 mb-1">
+            <h1 className="d-flex flex-column flex-sm-row align-items-sm-center overflow-hidden gap-sm-1 fs-3">
               <span className="text-truncate">
                 {pool && pool.name !== "Superfluid Pool"
                   ? pool.name
@@ -355,8 +343,8 @@ export default function FlowSplitter(props: FlowSplitterProps) {
                 >
                   <InfoTooltip
                     position={{ top: true }}
-                    target={<Image width={32} src="/wallet.svg" alt="wallet" />}
-                    content={<>Add to Wallet</>}
+                    target={<Image width={48} src="/wallet.svg" alt="wallet" />}
+                    content={<p className="m-0 p-2">Add to Wallet</p>}
                   />
                 </Button>
                 <Button
@@ -369,14 +357,14 @@ export default function FlowSplitter(props: FlowSplitterProps) {
                   <InfoTooltip
                     position={{ top: true }}
                     target={
-                      <Image width={32} src="/tune.svg" alt="Configuration" />
+                      <Image width={48} src="/tune.svg" alt="Configuration" />
                     }
-                    content={<>Configuration</>}
+                    content={<p className="m-0 p-2">Configuration</p>}
                   />
                 </Button>
               </Stack>
             </h1>
-            <Stack direction="horizontal" gap={1} className="mb-5 fs-6">
+            <Stack direction="horizontal" gap={1} className="mb-10 fs-lg">
               Distributing{" "}
               {!!poolToken.icon && (
                 <Image src={poolToken.icon} alt="" width={18} height={18} />
@@ -403,7 +391,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
                 <InfoTooltip
                   position={{ top: true }}
                   target={<Image width={24} src="/wallet.svg" alt="wallet" />}
-                  content={<>Add to Wallet</>}
+                  content={<p className="m-0 p-2">Add to Wallet</p>}
                 />
               </Button>
             </Stack>
@@ -413,7 +401,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
               ensByAddress={ensByAddress}
             />
             <Button
-              className="w-100 mt-5 py-2 fs-4"
+              className="w-100 rounded-4 mt-5 py-4 fs-5 fw-semi-bold"
               onClick={() => {
                 !address && openConnectModal
                   ? openConnectModal()
@@ -426,7 +414,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
             </Button>
             <Button
               variant="secondary"
-              className="w-100 mt-3 py-2 fs-4"
+              className="w-100 rounded-4 mt-5 mb-8 py-4 fs-5 fw-semi-bold"
               onClick={() => {
                 !address && openConnectModal
                   ? openConnectModal()
@@ -460,7 +448,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
             )}
           </>
         )}
-      </Container>
+      </Stack>
       {showOpenFlow && (
         <OpenFlow
           show={showOpenFlow}

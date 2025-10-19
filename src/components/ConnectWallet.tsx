@@ -6,13 +6,11 @@ import { useDisconnect } from "wagmi";
 import Stack from "react-bootstrap/Stack";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
-import { useMediaQuery } from "@/hooks/mediaQuery";
 import WalletDashboard from "@/components/WalletDashboard";
 
 export default function ConnectWallet() {
   const pathname = usePathname();
   const { disconnect } = useDisconnect();
-  const { isMobile } = useMediaQuery();
 
   return (
     <ConnectButton.Custom>
@@ -35,7 +33,7 @@ export default function ConnectWallet() {
                 return (
                   <Button
                     onClick={openConnectModal}
-                    className="rounded-3 text-light shadow"
+                    className="border-4 rounded-4 px-10 py-4 fs-lg fw-semi-bold"
                   >
                     Connect Wallet
                   </Button>
@@ -46,7 +44,7 @@ export default function ConnectWallet() {
                   <Button
                     variant="danger"
                     onClick={openChainModal}
-                    className="text-light shadow"
+                    className="rounded-4 px-10 py-4 fs-lg fw-semi-bold"
                   >
                     Wrong network
                   </Button>
@@ -56,64 +54,52 @@ export default function ConnectWallet() {
               return (
                 <div style={{ display: "flex", gap: 12 }}>
                   <Button
-                    variant="transparent"
+                    variant="outline-dark"
                     onClick={openChainModal}
-                    className="d-flex align-items-center gap-1 border rounded-3 shadow"
+                    className="d-flex align-items-center gap-1 px-5 py-2 border-4 rounded-4"
                   >
                     {chain.iconUrl && (
                       <Image
                         alt={chain.name ?? "Chain icon"}
                         src={chain.iconUrl}
-                        width={20}
-                        height={20}
+                        width={24}
+                        height={24}
                       />
                     )}
                   </Button>
-                  {pathname?.startsWith("/pool") && <WalletDashboard />}
+                  {pathname === "/flow-qf" && <WalletDashboard />}
                   <Dropdown align={{ md: "start" }}>
                     <Dropdown.Toggle
                       bsPrefix="dropdown"
-                      variant="transparent"
-                      className="border rounded-3 shadow"
+                      variant="outline-dark"
+                      className="px-10 py-4 border-4 rounded-4"
                     >
-                      <Stack
-                        direction="horizontal"
-                        gap={isMobile ? 0 : 2}
-                        className="align-items-center"
-                      >
-                        <Image
-                          src="/account-circle.svg"
-                          alt="Wallet"
-                          width={isMobile ? 25 : 22}
-                          height={isMobile ? 25 : 22}
-                        />
-                        <span className="sensitive">
-                          {!isMobile && account.displayName}
-                        </span>
-                      </Stack>
+                      <span className="fw-semi-bold sensitive">
+                        {account.displayName}
+                      </span>
                     </Dropdown.Toggle>
-                    <Dropdown.Menu className="py-0">
-                      <Dropdown.Item
-                        as="div"
-                        className="py-3 rounded-top-1 text-dark"
-                      >
-                        <Link href="/projects" className="text-decoration-none">
+                    <Dropdown.Menu className="py-0 border-4 border-dark">
+                      <Link href="/projects" className="text-decoration-none">
+                        <Dropdown.Item
+                          as="span"
+                          className="p-3 rounded-top-2 fw-semi-bold text-dark"
+                        >
                           Projects
-                        </Link>
-                      </Dropdown.Item>
-                      <Dropdown.Item
-                        as="div"
-                        className="py-3 border-top rounded-bottom-1 text-dark"
+                        </Dropdown.Item>
+                      </Link>
+                      <Link
+                        href={`/flow-splitters/?chainId=${chain.id}`}
+                        className="text-decoration-none"
                       >
-                        <Link
-                          href={`/flow-splitters/?chainId=${chain.id}`}
-                          className="text-decoration-none"
+                        <Dropdown.Item
+                          as="span"
+                          className="p-3 rounded-bottom-2 fw-semi-bold text-dark"
                         >
                           Flow Splitters
-                        </Link>
-                      </Dropdown.Item>
+                        </Dropdown.Item>
+                      </Link>
                       <Dropdown.Item
-                        className="gap-2 py-3 border-top rounded-bottom-1 text-dark"
+                        className="gap-2 p-3 rounded-bottom-2 fw-semi-bold text-dark"
                         onClick={() => disconnect()}
                       >
                         <Stack
@@ -125,8 +111,8 @@ export default function ConnectWallet() {
                           <Image
                             src="/logout.svg"
                             alt="Disconnect"
-                            width={18}
-                            height={18}
+                            width={24}
+                            height={24}
                           />
                         </Stack>
                       </Dropdown.Item>

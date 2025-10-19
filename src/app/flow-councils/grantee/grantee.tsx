@@ -14,7 +14,6 @@ import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
-import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 import Toast from "react-bootstrap/Toast";
 import Spinner from "react-bootstrap/Spinner";
@@ -116,7 +115,7 @@ export default function Grantee(props: GranteeProps) {
   const [hasAgreedToCodeOfConduct, setHasAgreedToCodeOfConduct] =
     useState(false);
 
-  const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
+  const { isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
@@ -353,25 +352,9 @@ export default function Grantee(props: GranteeProps) {
   }
 
   return (
-    <Container
-      className="mx-auto p-0 px-4 mb-5"
-      style={{
-        maxWidth:
-          isMobile || isTablet
-            ? "100%"
-            : isSmallScreen
-              ? 1000
-              : isMediumScreen
-                ? 1300
-                : 1600,
-      }}
-    >
-      <h1 className="mt-5 mb-0">{councilMetadata.name}</h1>
-      <Stack
-        direction="horizontal"
-        gap={1}
-        className="align-items-center mb-2 fs-6"
-      >
+    <Stack direction="vertical" className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52">
+      <h1 className="mt-5 mb-0 fs-3">{councilMetadata.name}</h1>
+      <Stack direction="horizontal" gap={1} className="align-items-center mb-4">
         Distributing{" "}
         {!!councilToken.icon && (
           <Image src={councilToken.icon} alt="" width={18} height={18} />
@@ -398,12 +381,12 @@ export default function Grantee(props: GranteeProps) {
           <InfoTooltip
             position={{ top: true }}
             target={<Image width={24} src="/wallet.svg" alt="wallet" />}
-            content={<>Add to Wallet</>}
+            content={<p className="m-0 p-2">Add to Wallet</p>}
           />
         </Button>
       </Stack>
       <Markdown
-        className="fs-5 text-info"
+        className="fs-6 text-info"
         skipHtml={true}
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
@@ -415,7 +398,7 @@ export default function Grantee(props: GranteeProps) {
       >
         {councilMetadata.description}
       </Markdown>
-      <Card.Text className="mt-4 fs-4">
+      <Card.Text className="mt-4 fs-6">
         Select or create a project to apply.
       </Card.Text>
       <div
@@ -456,7 +439,7 @@ export default function Grantee(props: GranteeProps) {
           );
         })}
         <Card
-          className="d-flex flex-col justify-content-center align-items-center border-2 rounded-4 fs-4 cursor-pointer shadow"
+          className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-4 fs-6 cursor-pointer shadow"
           style={{ height: 418 }}
           onClick={() => {
             setShowProjectCreationModal(true);
@@ -464,20 +447,20 @@ export default function Grantee(props: GranteeProps) {
           }}
         >
           <Image src="/add.svg" alt="add" width={52} />
-          <Card.Text className="d-inline-block m-0 overflow-hidden fs-3 text-center word-wrap">
+          <Card.Text className="d-inline-block m-0 overflow-hidden text-center word-wrap">
             Create a new project
           </Card.Text>
         </Card>
       </div>
       <Stack direction="vertical">
-        <Card.Text className="mt-5 fs-3 fw-bold">
+        <Card.Text className="mt-8 fs-6 fw-semi-bold">
           Additional Application Information
         </Card.Text>
         <Card.Text className="mb-2">
           1) Do you want to receive funding for this round at the project owner
           address?* (This cannot be changed during the round.)
         </Card.Text>
-        <Stack direction="horizontal" gap={5} className="fs-5">
+        <Stack direction="horizontal" gap={5} className="fs-lg fw-semi-bold">
           <Form.Check
             type="radio"
             label="Yes"
@@ -500,11 +483,12 @@ export default function Grantee(props: GranteeProps) {
             type="text"
             disabled={!isCustomReceiver}
             value={isCustomReceiver ? customReceiver : address ? address : ""}
+            className="border-0 py-3 bg-light fs-lg fw-semi-bold"
             onChange={(e) => setCustomReceiver(e.target.value)}
           />
         </Form.Group>
       </Stack>
-      <Stack direction="vertical" gap={3} className="mt-5 text-light">
+      <Stack direction="vertical" gap={3} className="mt-8 text-light">
         <Stack
           direction="horizontal"
           gap={2}
@@ -525,7 +509,7 @@ export default function Grantee(props: GranteeProps) {
         </Stack>
         <Button
           variant="secondary"
-          className="d-flex justify-content-center align-items-center gap-2 py-2"
+          className="d-flex justify-content-center align-items-center gap-2 py-4 rounded-4 fs-lg fw-semi-bold"
           disabled={!!session && session.address === address}
           onClick={() => {
             !address && openConnectModal
@@ -550,7 +534,7 @@ export default function Grantee(props: GranteeProps) {
           Sign In With Ethereum
         </Button>
         <Button
-          className="py-2 text-light"
+          className="py-4 rounded-4 fs-lg fw-semi-bold text-light"
           disabled={
             !session ||
             session.address !== address ||
@@ -598,6 +582,6 @@ export default function Grantee(props: GranteeProps) {
             key={selectedProjectIndex}
           />
         )}
-    </Container>
+    </Stack>
   );
 }
