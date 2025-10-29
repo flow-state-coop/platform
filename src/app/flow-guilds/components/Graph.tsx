@@ -138,13 +138,14 @@ function CustomNode(props: NodeProps<Node>) {
 
   if (data.isSafe) {
     return (
-      <>
+      <div
+        onMouseEnter={() => setShowToolbar(true)}
+        onMouseLeave={() => setShowToolbar(false)}
+      >
         <Stack
           direction="horizontal"
           className="align-items-center bg-lace-100 p-3 rounded-4 cursor-pointer shadow"
           style={{ width: 230 }}
-          onMouseEnter={() => setShowToolbar(true)}
-          onMouseLeave={() => setShowToolbar(false)}
         >
           <Image src={data.logo as string} alt="Logo" width={42} height={42} />
           <Stack
@@ -177,6 +178,7 @@ function CustomNode(props: NodeProps<Node>) {
         <NodeToolbar
           isVisible={showToolbar || (!!data.isMobile && selected)}
           position={data.isMobile ? Position.Bottom : Position.Right}
+          offset={0}
         >
           <Stack direction="vertical" gap={2}>
             {!!data.isMobile && (
@@ -207,19 +209,20 @@ function CustomNode(props: NodeProps<Node>) {
             </Button>
           </Stack>
         </NodeToolbar>
-      </>
+      </div>
     );
   }
 
   if (data.isPool) {
     return (
-      <>
+      <div
+        onMouseEnter={() => setShowToolbar(true)}
+        onMouseLeave={() => setShowToolbar(false)}
+      >
         <Stack
           direction="horizontal"
           className="align-items-center bg-lace-100 p-3 rounded-4 cursor-pointer shadow"
           style={{ width: 230 }}
-          onMouseEnter={() => setShowToolbar(true)}
-          onMouseLeave={() => setShowToolbar(false)}
         >
           {network && (
             <Image
@@ -257,6 +260,7 @@ function CustomNode(props: NodeProps<Node>) {
         <NodeToolbar
           isVisible={showToolbar || (!!data.isMobile && selected)}
           position={data.isMobile ? Position.Bottom : Position.Right}
+          offset={0}
         >
           <Stack direction="vertical" gap={2}>
             <Button
@@ -289,19 +293,20 @@ function CustomNode(props: NodeProps<Node>) {
             </Button>
           </Stack>
         </NodeToolbar>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div
+      onMouseEnter={() => setShowToolbar(true)}
+      onMouseLeave={() => setShowToolbar(false)}
+    >
       <Stack
         direction="vertical"
         gap={1}
         className="align-items-center cursor-pointer"
         style={{ width: 200 }}
-        onMouseEnter={() => setShowToolbar(true)}
-        onMouseLeave={() => setShowToolbar(false)}
       >
         {data.avatar ? (
           <Image
@@ -330,6 +335,7 @@ function CustomNode(props: NodeProps<Node>) {
       <NodeToolbar
         isVisible={showToolbar || (!!data.isMobile && selected)}
         position={data.isDistributor ? Position.Bottom : Position.Top}
+        offset={0}
       >
         <Stack direction="vertical" gap={2}>
           {data.isDistributor ? (
@@ -398,7 +404,7 @@ function CustomNode(props: NodeProps<Node>) {
           </Button>
         </Stack>
       </NodeToolbar>
-    </>
+    </div>
   );
 }
 
