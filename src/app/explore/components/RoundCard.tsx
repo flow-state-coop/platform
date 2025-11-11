@@ -16,6 +16,7 @@ type RoundCardProps = {
   flowRate?: string;
   updatedAt?: number;
   activeStreamCount?: number;
+  showSupRewards?: boolean;
 };
 
 export default function RoundCard(props: RoundCardProps) {
@@ -29,6 +30,7 @@ export default function RoundCard(props: RoundCardProps) {
     flowRate,
     updatedAt,
     activeStreamCount,
+    showSupRewards = false,
   } = props;
 
   const totalAmountStreamed = useFlowingAmount(
@@ -83,6 +85,11 @@ export default function RoundCard(props: RoundCardProps) {
             <Card.Text className="fs-5 fw-bold text-center">
               Coming Soon
             </Card.Text>
+          )}
+          {showSupRewards && (
+            <Card.Footer className="d-flex justify-content-end bg-transparent border-0 mt-auto">
+              <Image src="/sup.svg" alt="SUP" width={42} height={42} />
+            </Card.Footer>
           )}
         </Card.Body>
       </Card>
