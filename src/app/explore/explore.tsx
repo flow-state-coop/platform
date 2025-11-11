@@ -213,6 +213,7 @@ export default function Explore(props: ExploreProps) {
               activeStreamCount={flowCasterArbFlowInfo.donors}
               tokenSymbol="USDN"
               link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
+              showSupRewards
             />
             <RoundCard
               name="Core Contributors"
