@@ -22,10 +22,10 @@ const GDA_POOL_QUERY = gql`
   }
 `;
 
-const PROGRAM_ID = 7743;
+const PROGRAM_ID = 7761;
 const POOLS = [
-  "0x9ef9fe8bf503b10698322e3a135c0fa6decc5b5b",
-  "0x6719cbb70d0faa041f1056542af66066e3cc7a24",
+  "0x1e7d8cd08844fc374f6e049146cae8f640971120",
+  "0xed480a635c5dffe1640a895bc39d8491a79c9aa9",
 ];
 
 const getDistributors = async (subgraphEndpoint: string, timestamp: number) => {
@@ -43,6 +43,10 @@ const getDistributors = async (subgraphEndpoint: string, timestamp: number) => {
         gdaPool: poolId,
       },
     );
+
+    if (!queryRes.pool?.poolDistributors) {
+      continue;
+    }
 
     for (const distributor of queryRes.pool.poolDistributors) {
       const existingDistributor = distributors.find(
@@ -74,7 +78,7 @@ const getDistributors = async (subgraphEndpoint: string, timestamp: number) => {
 
 export async function GET(req: NextRequest) {
   try {
-    const chainId = req.nextUrl.searchParams.get("chainId") ?? 8453;
+    const chainId = req.nextUrl.searchParams.get("chainId") ?? 42161;
     const network = networks.find((network) => network.id === Number(chainId));
 
     if (!network) {
@@ -87,7 +91,7 @@ export async function GET(req: NextRequest) {
     const now = (Date.now() / 1000) | 0;
     const stack = new StackClient({
       apiKey:
-        network.id === 8453
+        network.id === 42161
           ? process.env.STACK_API_KEY_FLOW_CASTER!
           : process.env.STACK_API_KEY_OP_SEPOLIA!,
       pointSystemId: PROGRAM_ID,
