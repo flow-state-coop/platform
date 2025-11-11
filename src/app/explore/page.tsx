@@ -58,6 +58,11 @@ const FLOW_GUILD_ADDRESSES = {
   },
 };
 
+const FLOW_CASTER_ARB_POOLS = [
+  "0x1e7d8cd08844fc374f6e049146cae8f640971120",
+  "0xed480a635c5dffe1640a895bc39d8491a79c9aa9",
+];
+
 export default async function Page() {
   const coreQueryRes = await request<{ account: Account }>(
     networks.find((network) => network.id === base.id)!.superfluidSubgraph,
@@ -98,6 +103,43 @@ export default async function Page() {
       gdaPool: "0xafcab1ab378354b8ce0dbd0ae2e2c0dea01dcf0b",
     },
   );
+  const flowCasterArbQueryRes = await request<{ pool: GDAPool }>(
+    networks.find((network) => network.id === arbitrum.id)!.superfluidSubgraph,
+    GDA_POOL_QUERY,
+    {
+      gdaPool: FLOW_CASTER_ARB_POOLS[0],
+    },
+  );
+  const flowCasterArbTeamQueryRes = await request<{ pool: GDAPool }>(
+    networks.find((network) => network.id === arbitrum.id)!.superfluidSubgraph,
+    GDA_POOL_QUERY,
+    {
+      gdaPool: FLOW_CASTER_ARB_POOLS[1],
+    },
+  );
+
+  const flowCasterArbMain: GDAPool = flowCasterArbQueryRes.pool;
+  const flowCasterArbTeam: GDAPool = flowCasterArbTeamQueryRes.pool;
+  const now = (Date.now() / 1000) | 0;
+  const totalMain = flowCasterArbMain
+    ? BigInt(flowCasterArbMain.totalAmountFlowedDistributedUntilUpdatedAt) +
+      BigInt(flowCasterArbMain.flowRate) *
+        BigInt(now - flowCasterArbMain.updatedAtTimestamp)
+    : BigInt(0);
+  const totalTeam = flowCasterArbTeam
+    ? BigInt(flowCasterArbTeam.totalAmountFlowedDistributedUntilUpdatedAt) +
+      BigInt(flowCasterArbTeam.flowRate) *
+        BigInt(now - flowCasterArbTeam.updatedAtTimestamp)
+    : BigInt(0);
+
+  const flowCasterArbFlowInfo = {
+    totalDistributed: totalMain + totalTeam,
+    flowRate:
+      BigInt(flowCasterArbTeam?.flowRate ?? 0) +
+      BigInt(flowCasterArbTeam?.flowRate ?? 0),
+    updatedAt: now,
+    donors: flowCasterArbMain?.poolDistributors?.length ?? 0,
+  };
 
   return (
     <Explore
@@ -106,6 +148,7 @@ export default async function Page() {
       guildGuildInflow={guildGuildQueryRes.account.accountTokenSnapshots[0]}
       chonesGuildInflow={chonesGuildQueryRes.account.accountTokenSnapshots[0]}
       goodDollarPool={goodDollarQueryRes.pool}
+      flowCasterArbFlowInfo={flowCasterArbFlowInfo}
     />
   );
 }

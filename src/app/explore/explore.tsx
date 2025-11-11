@@ -17,6 +17,12 @@ type ExploreProps = {
   guildGuildInflow: Inflow;
   chonesGuildInflow: Inflow;
   goodDollarPool: GDAPool;
+  flowCasterArbFlowInfo: {
+    totalDistributed: bigint;
+    flowRate: bigint;
+    updatedAt: number;
+    donors: number;
+  };
 };
 
 const SQF_STREAM_QUERY = gql`
@@ -89,6 +95,7 @@ export default function Explore(props: ExploreProps) {
     guildGuildInflow,
     chonesGuildInflow,
     goodDollarPool,
+    flowCasterArbFlowInfo,
   } = props;
 
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
@@ -150,16 +157,6 @@ export default function Explore(props: ExploreProps) {
     };
   }, [flowCasterCrackedDevsPool, flowCasterTeamPool]);
 
-  console.log(
-    coreInflow,
-    greenpillInflow,
-    guildGuildInflow,
-    goodDollarPool,
-    sqfStreamQueryRes,
-    flowCasterCrackedDevsQueryRes,
-    flowCasterTeamQueryRes,
-  );
-
   return (
     <Stack direction="vertical" className="explore-background pb-30">
       <Stack
@@ -207,16 +204,14 @@ export default function Explore(props: ExploreProps) {
             }}
           >
             <RoundCard
-              name="Flow Caster"
-              image="/logo-blue.svg"
-              roundType="Mini App"
-              totalStreamedUntilUpdatedAt={flowCasterFlowInfo.totalDistributed.toString()}
-              flowRate={flowCasterFlowInfo.flowRate.toString()}
-              updatedAt={flowCasterFlowInfo.updatedAt}
-              activeStreamCount={
-                flowCasterCrackedDevsPool?.poolDistributors.length
-              }
-              tokenSymbol="USDCx"
+              name="Arbitrum Mini Apps"
+              image="/arb.png"
+              roundType="Flow Caster"
+              totalStreamedUntilUpdatedAt={flowCasterArbFlowInfo.totalDistributed.toString()}
+              flowRate={flowCasterArbFlowInfo.flowRate.toString()}
+              updatedAt={flowCasterArbFlowInfo.updatedAt}
+              activeStreamCount={flowCasterArbFlowInfo.donors}
+              tokenSymbol="USDN"
               link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
             />
             <RoundCard
@@ -231,6 +226,19 @@ export default function Explore(props: ExploreProps) {
               activeStreamCount={coreInflow?.activeIncomingStreamCount}
               tokenSymbol="ETHx"
               link="/flow-guilds/core"
+            />
+            <RoundCard
+              name="Cracked Devs"
+              image="/logo-blue.svg"
+              roundType="Flow Caster"
+              totalStreamedUntilUpdatedAt={flowCasterFlowInfo.totalDistributed.toString()}
+              flowRate={flowCasterFlowInfo.flowRate.toString()}
+              updatedAt={flowCasterFlowInfo.updatedAt}
+              activeStreamCount={
+                flowCasterCrackedDevsPool?.poolDistributors.length
+              }
+              tokenSymbol="USDCx"
+              link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
             />
             <RoundCard
               name="Guild Guild"
