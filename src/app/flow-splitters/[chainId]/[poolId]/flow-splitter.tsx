@@ -472,20 +472,20 @@ export default function FlowSplitter(props: FlowSplitterProps) {
         centered
         onHide={() => setShowConnectionModal(false)}
       >
-        <Modal.Header closeButton className="align-items-start border-0 pt-3">
-          <Modal.Title className="fs-5 fw-bold">
+        <Modal.Header closeButton className="align-items-start border-0 p-4">
+          <Modal.Title className="fs-6 fw-bold">
             You're a recipient in this Flow Splitter but haven't connected your
             shares.
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body className="fs-5">
+        <Modal.Body className="fs-6 p-4">
           Do you want to do that now, so your{" "}
           <Link href="https://app.superfluid.finance/" target="_blank">
             Super Token balance
           </Link>{" "}
           is reflected in real time?
         </Modal.Body>
-        <Modal.Footer className="border-0">
+        <Modal.Footer className="border-0 p-4">
           <PoolConnectionButton
             network={network}
             poolAddress={pool?.poolAddress}
