@@ -557,7 +557,7 @@ export default function Grantee(props: GranteeProps) {
           delay={4000}
           autohide={true}
           onClose={() => setSuccess(false)}
-          className="w-100 bg-success mt-2 p-3 fs-5 text-light"
+          className="w-100 bg-success p-4 fw-semi-bold fs-6 text-white"
         >
           Success!
         </Toast>

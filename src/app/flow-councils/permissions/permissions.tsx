@@ -564,7 +564,7 @@ export default function Permissions(props: PermissionsProps) {
             delay={4000}
             autohide={true}
             onClose={() => setTransactionSuccess(false)}
-            className="w-100 bg-success p-4 fw-semi-bold text-light"
+            className="w-100 bg-success p-4 fw-semi-bold fs-6 text-white"
           >
             Success!
           </Toast>

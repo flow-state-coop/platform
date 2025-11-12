@@ -763,7 +763,7 @@ export default function Review(props: ReviewProps) {
                 delay={4000}
                 autohide={true}
                 onClose={() => setSuccess(false)}
-                className="w-100 bg-success p-4 fw-semi-bold text-light"
+                className="w-100 bg-success p-4 fw-semi-bold fs-6 text-white"
               >
                 Success!
               </Toast>

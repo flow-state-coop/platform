@@ -492,7 +492,7 @@ export default function DonateOnce(props: DonateOnceProps) {
         delay={4000}
         autohide={true}
         onClose={() => setSuccess(false)}
-        className="w-100 bg-success mt-3 p-3 fs-5 text-light"
+        className="w-100 bg-success mt-3 p-3 fs-6 text-white fw-semi-bold"
       >
         Success!
       </Toast>
