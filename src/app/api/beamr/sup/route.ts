@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
         const newPoints = userPointsTotal?.[0].total_points ?? 0;
         const diff = newPoints - currentPoints;
 
-        if (diff > 0) {
+        if (diff !== 0) {
           events.push({
             event: "interacted-prelaunch",
             payload: {
