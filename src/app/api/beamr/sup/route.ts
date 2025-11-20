@@ -3,10 +3,12 @@ import { getAddress } from "viem";
 import { StackClient } from "@stackso/js-core";
 import { networks } from "@/lib/networks";
 import { supabaseClient } from "../db";
+import { Tables } from "../types";
 
 export const dynamic = "force-dynamic";
 
 const PROGRAM_ID = 7762;
+const DB_PAGE_SIZE = 1000;
 
 export async function GET(req: NextRequest) {
   try {
@@ -28,48 +30,106 @@ export async function GET(req: NextRequest) {
       pointSystemId: PROGRAM_ID,
     });
     const supabase = supabaseClient();
-    const { data: users } = await supabase.from("users").select("*");
-    const events = [];
 
-    if (users) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const currentPointsAll: any = await stack.getPoints(
-        users.map((x) => getAddress(x.preferred_wallet ?? "0x")),
-        {
-          event: "interacted-prelaunch",
-        },
-      );
+    let totalEventsProcessed = 0;
+    let users: Tables<"users">[] = [];
+    let offset = 0;
 
-      for (const user of users) {
-        const preferredWallet = user.preferred_wallet ?? "0x";
-        const currentPoints =
-          currentPointsAll?.find(
-            (x: { address: string }) =>
-              x.address.toLowerCase() === preferredWallet,
-          )?.amount ?? 0;
-        const { data: userPointsTotal } = await supabase
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { data } = await supabase
+        .from("users")
+        .select("*")
+        .range(offset, offset + DB_PAGE_SIZE - 1);
+
+      if (!data || data.length === 0) {
+        break;
+      }
+
+      users = users.concat(data);
+
+      if (data.length < DB_PAGE_SIZE) {
+        break;
+      }
+
+      offset += DB_PAGE_SIZE;
+    }
+
+    if (users.length > 0) {
+      let allUserPoints: Tables<"user_points_total">[] = [];
+
+      offset = 0;
+
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data } = await supabase
           .from("user_points_total")
           .select("*")
-          .eq("fid", user.fid);
-        const newPoints = userPointsTotal?.[0].total_points ?? 0;
-        const diff = newPoints - currentPoints;
+          .range(offset, offset + DB_PAGE_SIZE - 1);
 
-        if (diff !== 0) {
-          events.push({
+        if (!data || data.length === 0) {
+          break;
+        }
+
+        allUserPoints = allUserPoints.concat(data);
+
+        if (data.length < DB_PAGE_SIZE) {
+          break;
+        }
+
+        offset += DB_PAGE_SIZE;
+      }
+
+      const pointsMap = new Map(
+        allUserPoints?.map((up) => [up.fid, up.total_points]) ?? [],
+      );
+
+      const BATCH_SIZE = 250;
+      const usersWithWallets = users.filter((x) => !!x.preferred_wallet);
+
+      for (let i = 0; i < usersWithWallets.length; i += BATCH_SIZE) {
+        const batch = usersWithWallets.slice(i, i + BATCH_SIZE);
+        const batchEvents = [];
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const currentPointsAll: any = await stack.getPoints(
+          batch.map((x) => getAddress(x.preferred_wallet ?? "0x")),
+          {
             event: "interacted-prelaunch",
-            payload: {
-              points: diff,
-              account: preferredWallet,
-              uniqueId: `${preferredWallet}-${now}`,
-            },
-          });
+          },
+        );
+
+        for (const user of batch) {
+          const preferredWallet = user.preferred_wallet ?? "0x";
+          const currentPoints =
+            currentPointsAll?.find(
+              (x: { address: string }) =>
+                x.address.toLowerCase() === preferredWallet.toLowerCase(),
+            )?.amount ?? 0;
+          const newPoints = pointsMap.get(user.fid) ?? 0;
+          const diff = newPoints - currentPoints;
+
+          if (diff !== 0) {
+            batchEvents.push({
+              event: "interacted-prelaunch",
+              payload: {
+                points: diff,
+                account: preferredWallet,
+                uniqueId: `${preferredWallet}-${now}`,
+              },
+            });
+          }
+        }
+
+        if (batchEvents.length > 0) {
+          await stack.trackMany(batchEvents);
+
+          totalEventsProcessed += batchEvents.length;
         }
       }
     }
 
-    if (events.length > 0) {
-      await stack.trackMany(events);
-
+    if (totalEventsProcessed > 0) {
       return new Response(
         JSON.stringify({
           success: true,

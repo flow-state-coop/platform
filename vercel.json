@@ -3,10 +3,6 @@
     {
       "path": "/api/flow-caster/sup/distribution",
       "schedule": "0 22 * * *"
-    },
-    {
-      "path": "/api/beamr/sup",
-      "schedule": "0 23 * * *"
     }
   ]
 }
