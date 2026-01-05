@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { parseAbi } from "viem";
 import { usePublicClient, useWalletClient } from "wagmi";
+import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 
 export default function useWriteAllocation(council: `0x${string}`) {
   const [transactionError, setTransactionError] = useState("");
@@ -18,19 +18,16 @@ export default function useWriteAllocation(council: `0x${string}`) {
     setTransactionError("");
 
     try {
+      const votes = accounts.map((recipient, i) => ({
+        recipient,
+        amount: amounts[i],
+      }));
+
       const hash = await walletClient.writeContract({
-        abi: parseAbi([
-          "struct Allocation { address[] accounts; uint128[] amounts; }",
-          "function allocateBudget(Allocation memory _allocation) public",
-        ]),
+        abi: flowCouncilAbi,
         address: council,
-        functionName: "allocateBudget",
-        args: [
-          {
-            accounts,
-            amounts,
-          },
-        ],
+        functionName: "vote",
+        args: [votes],
       });
 
       const receipt = await publicClient.waitForTransactionReceipt({

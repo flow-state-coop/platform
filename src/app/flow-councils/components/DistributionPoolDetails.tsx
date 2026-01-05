@@ -1,10 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import { formatEther } from "viem";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
+import Button from "react-bootstrap/Button";
+import Collapse from "react-bootstrap/Collapse";
 import { GDAPool } from "@/types/gdaPool";
 import { Token } from "@/types/token";
 import useFlowingAmount from "@/hooks/flowingAmount";
@@ -12,20 +16,23 @@ import { roundWeiAmount, formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 interface DistributionPoolDetailsProps {
-  gdaPool?: GDAPool;
+  distributionPool?: GDAPool;
   token: Token;
+  councilMetadata: { name: string; description: string; logoUrl: string };
 }
 
 export default function DistributionPoolDetails(
   props: DistributionPoolDetailsProps,
 ) {
-  const { gdaPool, token } = props;
+  const { distributionPool, token, councilMetadata } = props;
 
+  const [showFullDescription, setShowFullDescription] = useState(false);
   const { address } = useAccount();
+  const isLongDescription = councilMetadata.description.length > 200;
 
   const userDistributionInfo = useMemo(() => {
-    if (address && gdaPool) {
-      const distributor = gdaPool.poolDistributors.find(
+    if (address && distributionPool) {
+      const distributor = distributionPool.poolDistributors.find(
         (distributor: { account: { id: string } }) =>
           distributor.account.id === address.toLowerCase(),
       );
@@ -42,7 +49,7 @@ export default function DistributionPoolDetails(
     }
 
     return null;
-  }, [address, gdaPool]);
+  }, [address, distributionPool]);
 
   const totalDistributedUser = useFlowingAmount(
     userDistributionInfo?.totalDistributedUserUntilUpdatedAt ?? BigInt(0),
@@ -50,9 +57,11 @@ export default function DistributionPoolDetails(
     userDistributionInfo?.flowRate ?? BigInt(0),
   );
   const totalDistributedAll = useFlowingAmount(
-    BigInt(gdaPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? BigInt(0)),
-    gdaPool?.updatedAtTimestamp ?? 0,
-    BigInt(gdaPool?.flowRate ?? 0),
+    BigInt(
+      distributionPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? BigInt(0),
+    ),
+    distributionPool?.updatedAtTimestamp ?? 0,
+    BigInt(distributionPool?.flowRate ?? 0),
   );
   const monthlyStreamToReceiver = Number(
     roundWeiAmount(
@@ -61,22 +70,24 @@ export default function DistributionPoolDetails(
     ),
   );
   const totalMonthlyStream = Number(
-    formatEther(BigInt(gdaPool?.flowRate ?? 0) * BigInt(SECONDS_IN_MONTH)),
+    formatEther(
+      BigInt(distributionPool?.flowRate ?? 0) * BigInt(SECONDS_IN_MONTH),
+    ),
   );
 
   return (
     <Stack direction="vertical" className="bg-lace-100 rounded-4 p-4">
       <Stack direction="horizontal" gap={2} className="align-items-center mt-3">
         <Image
-          src="/logo-blue.svg"
-          alt="SQF"
+          src={councilMetadata.logoUrl || "/logo-blue.svg"}
+          alt={councilMetadata.name}
           width={96}
           height={96}
           className="ms-2 rounded-4"
         />
         <Card className="bg-transparent border-0 ms-3">
           <Card.Title className="fs-lg fw-semi-bold text-secondary">
-            Distribution Pool
+            {councilMetadata.name || "Distribution Pool"}
           </Card.Title>
           <Card.Subtitle className="mb-0 fs-lg">
             Your Current Stream
@@ -142,9 +153,41 @@ export default function DistributionPoolDetails(
           total
         </Card.Text>
       </Stack>
-      <Card.Text className="m-0 p-4 fs-lg" style={{ maxWidth: 500 }}>
-        Fund the distribution pool by opening a stream to it.
-      </Card.Text>
+      {councilMetadata.description ? (
+        <Stack direction="vertical" className="p-4" style={{ maxWidth: 500 }}>
+          {isLongDescription ? (
+            <>
+              <Collapse in={showFullDescription}>
+                <div>
+                  <Markdown className="fs-lg" remarkPlugins={[remarkGfm]}>
+                    {councilMetadata.description}
+                  </Markdown>
+                </div>
+              </Collapse>
+              {!showFullDescription && (
+                <Markdown className="fs-lg" remarkPlugins={[remarkGfm]}>
+                  {councilMetadata.description.substring(0, 200) + "..."}
+                </Markdown>
+              )}
+              <Button
+                variant="link"
+                className="p-0 text-start text-primary fw-semi-bold"
+                onClick={() => setShowFullDescription(!showFullDescription)}
+              >
+                {showFullDescription ? "Show less" : "Show more"}
+              </Button>
+            </>
+          ) : (
+            <Markdown className="fs-lg" remarkPlugins={[remarkGfm]}>
+              {councilMetadata.description}
+            </Markdown>
+          )}
+        </Stack>
+      ) : (
+        <Card.Text className="m-0 p-4 fs-lg" style={{ maxWidth: 500 }}>
+          Fund the distribution pool by opening a stream to it.
+        </Card.Text>
+      )}
     </Stack>
   );
 }

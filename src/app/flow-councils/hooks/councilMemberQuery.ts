@@ -2,10 +2,10 @@ import { useQuery, gql } from "@apollo/client";
 import { Network } from "@/types/network";
 import { getApolloClient } from "@/lib/apollo";
 
-const COUNCIL_MEMBER_QUERY = gql`
-  query CouncilMemberQuery($councilId: String, $address: String) {
-    council(id: $councilId) {
-      councilMembers(where: { account: $address }) {
+const VOTER_QUERY = gql`
+  query VoterQuery($councilId: String, $address: String) {
+    flowCouncil(id: $councilId) {
+      voters(where: { account: $address }) {
         account
         votingPower
       }
@@ -18,7 +18,7 @@ export default function useCouncilMemberQuery(
   councilId: string,
   address: string,
 ) {
-  const { data: councilQueryRes } = useQuery(COUNCIL_MEMBER_QUERY, {
+  const { data: councilQueryRes } = useQuery(VOTER_QUERY, {
     client: getApolloClient("flowCouncil", network.id),
     variables: {
       councilId: councilId?.toLowerCase(),
@@ -28,7 +28,7 @@ export default function useCouncilMemberQuery(
     skip: !councilId || !address,
   });
 
-  const councilMember = councilQueryRes?.council?.councilMembers?.[0];
+  const voter = councilQueryRes?.flowCouncil?.voters?.[0];
 
-  return councilMember;
+  return voter;
 }

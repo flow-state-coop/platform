@@ -15,7 +15,7 @@ import { Token } from "@/types/token";
 import { fetchIpfsImage } from "@/lib/fetchIpfs";
 import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
 import useFlowingAmount from "@/hooks/flowingAmount";
-import useCouncil from "../hooks/council";
+import useFlowCouncil from "../hooks/flowCouncil";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { truncateStr, formatNumber } from "@/lib/utils";
@@ -47,26 +47,27 @@ export default function GranteeDetails(props: GranteeDetails) {
   const [imageUrl, setImageUrl] = useState("");
 
   const { isMobile } = useMediaQuery();
-  const { dispatchNewAllocation, gdaPool } = useCouncil();
+  const { dispatchNewAllocation, distributionPool } = useFlowCouncil();
   const { data: totalAmountReceivedByMember, dataUpdatedAt } = useReadContract({
     chainId,
-    address: gdaPool?.id as Address,
+    address: distributionPool?.id as Address,
     abi: superfluidPoolAbi,
     functionName: "getTotalAmountReceivedByMember",
     args: [granteeAddress as Address],
-    query: { enabled: !!gdaPool && !!granteeAddress },
+    query: { enabled: !!distributionPool && !!granteeAddress },
   });
 
-  const poolMember = gdaPool?.poolMembers.find(
+  const poolMember = distributionPool?.poolMembers.find(
     (m) => m.account.id === granteeAddress.toLowerCase(),
   );
-  const adjustedPoolFlowRate = gdaPool
-    ? BigInt(gdaPool.flowRate) - BigInt(gdaPool.adjustmentFlowRate)
+  const adjustedPoolFlowRate = distributionPool
+    ? BigInt(distributionPool.flowRate) -
+      BigInt(distributionPool.adjustmentFlowRate)
     : BigInt(0);
   const memberFlowRate =
-    poolMember && gdaPool && BigInt(gdaPool.totalUnits) > 0
+    poolMember && distributionPool && BigInt(distributionPool.totalUnits) > 0
       ? (BigInt(poolMember.units) * adjustedPoolFlowRate) /
-        BigInt(gdaPool.totalUnits)
+        BigInt(distributionPool.totalUnits)
       : BigInt(0);
   const totalFundingReceived = useFlowingAmount(
     totalAmountReceivedByMember ?? BigInt(0),
@@ -302,7 +303,7 @@ export default function GranteeDetails(props: GranteeDetails) {
                 dispatchNewAllocation({
                   type: "add",
                   allocation: {
-                    grantee: granteeAddress,
+                    recipient: granteeAddress,
                     amount: 1,
                   },
                 })

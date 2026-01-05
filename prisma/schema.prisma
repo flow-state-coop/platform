@@ -1,0 +1,149 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator kysely {
+  provider     = "prisma-kysely"
+  output       = "../src/generated"
+  fileName     = "kysely.ts"
+  camelCase    = true
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  ACCEPTED
+  CHANGES_REQUESTED
+  REJECTED
+  REMOVED
+  GRADUATED
+}
+
+enum ChannelType {
+  INTERNAL_APPLICATION
+  GROUP_APPLICANTS
+  GROUP_GRANTEES
+  GROUP_ROUND_ADMINS
+  GROUP_PROJECT
+  PUBLIC_ROUND
+  PUBLIC_PROJECT
+}
+
+model Round {
+  id                 Int           @id @default(autoincrement())
+  chainId            Int           @map("chain_id")
+  flowCouncilAddress String        @map("flow_council_address") @db.VarChar(42)
+  details            Json?
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @default(now()) @updatedAt @map("updated_at")
+  admins             RoundAdmin[]
+  applications       Application[]
+  messages           Message[]
+
+  @@unique([chainId, flowCouncilAddress])
+  @@map("rounds")
+}
+
+model RoundAdmin {
+  id           Int               @id @default(autoincrement())
+  roundId      Int               @map("round_id")
+  adminAddress String            @map("admin_address") @db.VarChar(42)
+  createdAt    DateTime          @default(now()) @map("created_at")
+  round        Round             @relation(fields: [roundId], references: [id])
+  emails       RoundAdminEmail[]
+
+  @@unique([roundId, adminAddress])
+  @@map("round_admins")
+}
+
+model RoundAdminEmail {
+  id           Int        @id @default(autoincrement())
+  roundAdminId Int        @map("round_admin_id")
+  email        String     @db.VarChar(255)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  roundAdmin   RoundAdmin @relation(fields: [roundAdminId], references: [id])
+
+  @@unique([roundAdminId, email])
+  @@map("round_admin_emails")
+}
+
+model Project {
+  id           Int              @id @default(autoincrement())
+  details      Json?
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @default(now()) @updatedAt @map("updated_at")
+  applications Application[]
+  emails       ProjectEmail[]
+  managers     ProjectManager[]
+  messages     Message[]
+
+  @@map("projects")
+}
+
+model ProjectEmail {
+  id        Int      @id @default(autoincrement())
+  projectId Int      @map("project_id")
+  email     String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  project   Project  @relation(fields: [projectId], references: [id])
+
+  @@unique([projectId, email])
+  @@map("project_emails")
+}
+
+model Application {
+  id             Int               @id @default(autoincrement())
+  projectId      Int               @map("project_id")
+  roundId        Int               @map("round_id")
+  fundingAddress String            @map("funding_address") @db.VarChar(42)
+  status         ApplicationStatus @default(SUBMITTED)
+  project        Project           @relation(fields: [projectId], references: [id])
+  round          Round             @relation(fields: [roundId], references: [id])
+  recipient      Recipient?
+  messages       Message[]
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([projectId, roundId])
+  @@index([roundId], name: "idx_applications_round")
+  @@map("applications")
+}
+
+model Recipient {
+  id            Int         @id @default(autoincrement())
+  applicationId Int         @unique @map("application_id")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  application   Application @relation(fields: [applicationId], references: [id])
+
+  @@map("recipients")
+}
+
+model ProjectManager {
+  id             Int      @id @default(autoincrement())
+  projectId      Int      @map("project_id")
+  managerAddress String   @map("manager_address") @db.VarChar(42)
+  createdAt      DateTime @default(now()) @map("created_at")
+  project        Project  @relation(fields: [projectId], references: [id])
+
+  @@unique([projectId, managerAddress])
+  @@map("project_managers")
+}
+
+model Message {
+  id            Int          @id @default(autoincrement())
+  channelType   ChannelType  @map("channel_type")
+  roundId       Int?         @map("round_id")
+  projectId     Int?         @map("project_id")
+  applicationId Int?         @map("application_id")
+  authorAddress String       @map("author_address") @db.VarChar(42)
+  content       String
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @default(now()) @updatedAt @map("updated_at")
+  round         Round?       @relation(fields: [roundId], references: [id])
+  project       Project?     @relation(fields: [projectId], references: [id])
+  application   Application? @relation(fields: [applicationId], references: [id])
+
+  @@index([channelType, roundId, createdAt], name: "idx_messages_round_feed")
+  @@index([channelType, projectId, createdAt], name: "idx_messages_project_feed")
+  @@index([channelType, applicationId, createdAt], name: "idx_messages_application_feed")
+  @@map("messages")
+}

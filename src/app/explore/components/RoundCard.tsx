@@ -42,7 +42,7 @@ export default function RoundCard(props: RoundCardProps) {
   return (
     <Link
       href={link}
-      target={link.startsWith("https://farcaster") ? "_blank" : "_self"}
+      target={link.startsWith("https://") ? "_blank" : "_self"}
       className="text-decoration-none"
     >
       <Card

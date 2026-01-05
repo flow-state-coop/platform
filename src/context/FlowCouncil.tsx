@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useReducer } from "react";
-import { usePathname, useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useAccount } from "wagmi";
 import { ProjectMetadata } from "@/types/project";
 import { GDAPool } from "@/types/gdaPool";
@@ -9,24 +9,23 @@ import { networks } from "@/lib/networks";
 import useCouncilQuery from "@/app/flow-councils/hooks/councilQuery";
 import useAllocationQuery from "@/app/flow-councils/hooks/allocationQuery";
 import useCouncilMemberQuery from "@/app/flow-councils/hooks/councilMemberQuery";
-import useFlowStateProfilesQuery from "@/app/flow-councils/hooks/flowStateProfilesQuery";
+import useRecipientsQuery from "@/app/flow-councils/hooks/recipientsQuery";
 import useFlowCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
-import useGdaPoolQuery from "@/app/flow-councils/hooks/gdaPoolQuery";
+import useDistributionPoolQuery from "@/app/flow-councils/hooks/distributionPoolQuery";
 import { Token } from "@/types/token";
-import { councilConfig as goodDollarCouncilConfig } from "@/app/gooddollar/lib/councilConfig";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
-type Council = {
+type FlowCouncil = {
   id: string;
   metadata: string;
-  distributionToken: `0x${string}`;
-  grantees: {
+  superToken: `0x${string}`;
+  recipients: {
     metadata: string;
     account: `0x${string}`;
     votes: { votedBy: string; amount: string; createdAtTimestamp: string };
   }[];
-  maxAllocationsPerMember: number;
-  pool: string;
+  maxVotingSpread: number;
+  distributionPool: string;
 };
 
 type CouncilMember = {
@@ -34,9 +33,7 @@ type CouncilMember = {
   votingPower: number;
 };
 
-type Allocation = { grantee: `0x${string}`; amount: number };
-
-type FlowStateProfile = { id: string; metadata: ProjectMetadata };
+type Allocation = { recipient: `0x${string}`; amount: number };
 
 type CurrentAllocation = {
   allocation: Allocation[];
@@ -48,12 +45,12 @@ type NewAllocation = {
 };
 
 export const FlowCouncilContext = createContext<{
-  council?: Council;
-  councilMetadata: { name: string; description: string };
+  council?: FlowCouncil;
+  councilMetadata: { name: string; description: string; logoUrl: string };
   councilMember?: CouncilMember;
   currentAllocation?: CurrentAllocation;
-  flowStateProfiles: FlowStateProfile[] | null;
-  gdaPool?: GDAPool;
+  projects: { id: string; metadata: ProjectMetadata }[] | null;
+  distributionPool?: GDAPool;
   token: Token;
   newAllocation?: NewAllocation;
   showBallot: boolean;
@@ -154,7 +151,7 @@ function newAllocationReducer(
     case "update": {
       const updatedAllocation = [...newAllocation.allocation];
       const index = newAllocation.allocation.findIndex(
-        (a) => a.grantee === action.allocation?.grantee,
+        (a) => a.recipient === action.allocation?.recipient,
       );
 
       if (index >= 0 && action.allocation) {
@@ -167,7 +164,7 @@ function newAllocationReducer(
       return {
         ...newAllocation,
         allocation: newAllocation.allocation.filter(
-          (a) => a.grantee !== action.allocation?.grantee,
+          (a) => a.recipient !== action.allocation?.recipient,
         ),
       };
     }
@@ -188,34 +185,20 @@ export function FlowCouncilContextProvider({
   children: React.ReactNode;
 }) {
   const { address } = useAccount();
-  const pathname = usePathname();
   const params = useParams();
-  const searchParams = useSearchParams();
-  const chainId =
-    pathname.startsWith("/gooddollar") && searchParams.get("chainId")
-      ? searchParams.get("chainId")
-      : pathname.startsWith("/gooddollar")
-        ? 42220
-        : params.chainId
-          ? params.chainId.toString()
-          : DEFAULT_CHAIN_ID;
-  const councilId =
-    pathname.startsWith("/gooddollar") &&
-    chainId &&
-    goodDollarCouncilConfig[chainId]?.councilAddress
-      ? goodDollarCouncilConfig[chainId].councilAddress
-      : (params.councilId as string);
+  const chainId = params.chainId ? params.chainId.toString() : DEFAULT_CHAIN_ID;
+  const councilId = params.councilId as string;
   const network =
     networks.find(
       (network) => network.id === Number(chainId ?? DEFAULT_CHAIN_ID),
     ) ?? networks[0];
   const council = useCouncilQuery(network, councilId);
-  const councilMetadata = useFlowCouncilMetadata(council?.metadata);
-  const flowStateProfiles = useFlowStateProfilesQuery(
+  const councilMetadata = useFlowCouncilMetadata(Number(chainId), councilId);
+  const projects = useRecipientsQuery(network, council?.recipients, councilId);
+  const distributionPool = useDistributionPoolQuery(
     network,
-    council?.grantees,
+    council?.distributionPool,
   );
-  const gdaPool = useGdaPoolQuery(network, council?.pool);
   const currentAllocation = useAllocationQuery(
     network,
     councilId,
@@ -227,10 +210,10 @@ export function FlowCouncilContextProvider({
     address ?? "",
   );
   const token = network.tokens.find(
-    (token) => token.address.toLowerCase() === council?.distributionToken,
+    (token) => token.address.toLowerCase() === council?.superToken,
   ) ?? {
-    address: gdaPool?.token.id ?? "0x",
-    symbol: gdaPool?.token.symbol,
+    address: distributionPool?.token.id ?? "0x",
+    symbol: distributionPool?.token.symbol,
     icon: "",
   };
 
@@ -247,9 +230,9 @@ export function FlowCouncilContextProvider({
       value={{
         council,
         councilMetadata,
-        gdaPool,
+        distributionPool,
         token,
-        flowStateProfiles,
+        projects,
         councilMember,
         currentAllocation,
         newAllocation,

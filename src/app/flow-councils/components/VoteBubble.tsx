@@ -4,7 +4,7 @@ import Button from "react-bootstrap/Button";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { Grantee } from "../types/grantee";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import useCouncil from "../hooks/council";
+import useFlowCouncil from "../hooks/flowCouncil";
 
 type VoteBubbleProps = {
   grantees: Grantee[];
@@ -17,7 +17,7 @@ export default function VoteBubble(props: VoteBubbleProps) {
   const { grantees, granteeColors, votingPower, voteBubbleRef } = props;
 
   const { isMobile } = useMediaQuery();
-  const { newAllocation, council, dispatchShowBallot } = useCouncil();
+  const { newAllocation, council, dispatchShowBallot } = useFlowCouncil();
 
   const totalAllocatedProjects =
     newAllocation?.allocation.filter((allocation) => allocation.amount !== 0)
@@ -38,7 +38,7 @@ export default function VoteBubble(props: VoteBubbleProps) {
     const unallocatedVotes = votingPower - allocatedVotes;
     const data = grantees.map((grantee) => {
       const allocation = newAllocation?.allocation?.find(
-        (a) => a.grantee === grantee.address,
+        (a) => a.recipient === grantee.address,
       );
 
       return {
@@ -54,15 +54,15 @@ export default function VoteBubble(props: VoteBubbleProps) {
 
     if (newAllocation?.allocation) {
       newAllocation.allocation.forEach((allocation) => {
-        if (data.some((item) => item.id === allocation.grantee)) {
+        if (data.some((item) => item.id === allocation.recipient)) {
           return;
         }
 
         data.push({
-          id: allocation.grantee,
-          name: allocation.grantee.substring(0, 6),
+          id: allocation.recipient,
+          name: allocation.recipient.substring(0, 6),
           value: allocation.amount,
-          color: granteeColors[allocation.grantee] || "#1f77b4",
+          color: granteeColors[allocation.recipient] || "#1f77b4",
         });
       });
     }
@@ -122,9 +122,7 @@ export default function VoteBubble(props: VoteBubbleProps) {
             className={`fs-lg d-block ${totalAllocatedVotes > votingPower ? "text-warning" : "text-white-50"}`}
           >
             {totalAllocatedProjects}
-            {council?.maxAllocationsPerMember
-              ? `/${council.maxAllocationsPerMember}`
-              : ""}{" "}
+            {council?.maxVotingSpread ? `/${council.maxVotingSpread}` : ""}{" "}
             Project{totalAllocatedProjects > 1 ? "s" : ""},{" "}
             {totalAllocatedVotes}/{votingPower} Vote
             {totalAllocatedVotes > 1 ? "s" : ""}

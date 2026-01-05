@@ -22,10 +22,8 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
 import { getApolloClient } from "@/lib/apollo";
-import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { networks } from "@/lib/networks";
-import { councilFactoryAbi } from "@/lib/abi/councilFactory";
-import { pinJsonToIpfs } from "@/lib/ipfs";
+import { flowCouncilFactoryAbi } from "@/lib/abi/flowCouncilFactory";
 
 type LaunchProps = { defaultNetwork: Network; councilId?: string };
 
@@ -45,12 +43,11 @@ const SUPERTOKEN_QUERY = gql`
   }
 `;
 
-const COUNCIL_QUERY = gql`
-  query CouncilQuery($councilId: String!) {
-    council(id: $councilId) {
+const FLOW_COUNCIL_QUERY = gql`
+  query FlowCouncilQuery($councilId: String!) {
+    flowCouncil(id: $councilId) {
       id
-      metadata
-      distributionToken
+      superToken
     }
   }
 `;
@@ -58,10 +55,6 @@ const COUNCIL_QUERY = gql`
 export default function Launch(props: LaunchProps) {
   const { defaultNetwork, councilId } = props;
 
-  const [councilMetadata, setCouncilMetadata] = useState({
-    name: "",
-    description: "",
-  });
   const [selectedNetwork, setSelectedNetwork] =
     useState<Network>(defaultNetwork);
   const [selectedToken, setSelectedToken] = useState<Token>();
@@ -83,10 +76,10 @@ export default function Launch(props: LaunchProps) {
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
   const {
-    data: councilQueryRes,
-    loading: councilQueryResLoading,
-    refetch: refetchCouncilQuery,
-  } = useQuery(COUNCIL_QUERY, {
+    data: flowCouncilQueryRes,
+    loading: flowCouncilQueryLoading,
+    refetch: refetchFlowCouncilQuery,
+  } = useQuery(FLOW_COUNCIL_QUERY, {
     client: getApolloClient("flowCouncil", selectedNetwork.id),
     variables: { councilId: councilId?.toLowerCase() },
     pollInterval: 4000,
@@ -96,43 +89,34 @@ export default function Launch(props: LaunchProps) {
     client: getApolloClient("superfluid", selectedNetwork.id),
   });
 
-  const council = councilQueryRes?.council;
+  const flowCouncil = flowCouncilQueryRes?.flowCouncil;
 
   useEffect(() => {
     (async () => {
-      if (!council) {
+      if (!flowCouncil) {
         return;
       }
 
-      const metadata = await fetchIpfsJson(council.metadata);
-
-      if (metadata) {
-        setCouncilMetadata({
-          name: metadata.name,
-          description: metadata.description,
-        });
-      }
-
       const supportedToken = selectedNetwork.tokens.find(
-        (token) => token.address.toLowerCase() === council.distributionToken,
+        (token) => token.address.toLowerCase() === flowCouncil.superToken,
       );
 
       if (supportedToken) {
         setSelectedToken(supportedToken);
       } else {
         const { data: superTokenQueryRes } = await checkSuperToken({
-          variables: { token: council.distributionToken },
+          variables: { token: flowCouncil.superToken },
         });
 
         setCustomTokenEntry({
-          address: council.distributionToken,
+          address: flowCouncil.superToken,
           symbol: superTokenQueryRes?.token.symbol ?? "N/A",
           validationError: "",
         });
         setCustomTokenSelection(true);
       }
     })();
-  }, [council, selectedNetwork, checkSuperToken]);
+  }, [flowCouncil, selectedNetwork, checkSuperToken]);
 
   const handleSubmit = async () => {
     if (!address || !publicClient) {
@@ -149,38 +133,29 @@ export default function Launch(props: LaunchProps) {
       setTransactionError("");
       setIsTransactionLoading(true);
 
-      const { IpfsHash: metadataCid } = await pinJsonToIpfs({
-        name: councilMetadata.name,
-        description: councilMetadata.description,
-      });
       const hash = await writeContract(wagmiConfig, {
         address: selectedNetwork.flowCouncilFactory as Address,
-        abi: councilFactoryAbi,
-        functionName: "createCouncil",
-        args: [
-          {
-            metadata: metadataCid,
-            councilMembers: [],
-            grantees: [],
-            distributionToken: token,
-          },
-        ],
+        abi: flowCouncilFactoryAbi,
+        functionName: "createFlowCouncil",
+        args: ["", token],
       });
 
       const receipt = await publicClient.waitForTransactionReceipt({
         hash,
         confirmations: 5,
       });
-      const councilId = parseEventLogs({
-        abi: councilFactoryAbi,
-        eventName: ["CouncilCreated"],
+      const flowCouncilAddress = parseEventLogs({
+        abi: flowCouncilFactoryAbi,
+        eventName: ["FlowCouncilCreated"],
         logs: receipt.logs,
-      })[0].args.council;
+      })[0].args.flowCouncil;
 
-      await refetchCouncilQuery({ variables: councilId });
+      await refetchFlowCouncilQuery({
+        variables: { councilId: flowCouncilAddress },
+      });
 
       router.push(
-        `/flow-councils/launch/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
+        `/flow-councils/launch/?chainId=${selectedNetwork.id}&councilId=${flowCouncilAddress}`,
       );
       router.refresh();
 
@@ -194,10 +169,10 @@ export default function Launch(props: LaunchProps) {
     }
   };
 
-  if (councilId && !councilQueryResLoading && !council) {
+  if (councilId && !flowCouncilQueryLoading && !flowCouncil) {
     return (
       <span className="m-auto fs-4 fw-bold">
-        Council not found.{" "}
+        Flow Council not found.{" "}
         <Link
           href="/flow-councils/launch"
           className="text-primary text-decoration-none"
@@ -216,46 +191,6 @@ export default function Launch(props: LaunchProps) {
         className={!isMobile ? "w-75 px-5" : "w-100 px-4"}
       >
         <Card className="bg-lace-100 rounded-4 border-0 p-4">
-          <Card.Header className="bg-transparent border-0 rounded-4 p-0 fs-5 fw-semi-bold">
-            Flow Council Metadata
-          </Card.Header>
-          <Card.Body className="p-0 mt-2">
-            <Form.Control
-              type="text"
-              placeholder="Name"
-              value={councilMetadata.name}
-              disabled={!!councilId}
-              className="border-0 py-4 bg-white fs-lg fw-semi-bold"
-              style={{
-                paddingTop: 12,
-                paddingBottom: 12,
-              }}
-              onChange={(e) =>
-                setCouncilMetadata({ ...councilMetadata, name: e.target.value })
-              }
-            />
-            <Form.Control
-              as="textarea"
-              rows={3}
-              placeholder="Description (Supports Markdown)"
-              value={councilMetadata.description}
-              disabled={!!councilId}
-              className="border-0 py-4 bg-white mt-3 fs-lg fw-semi-bold"
-              style={{
-                resize: "none",
-                paddingTop: 12,
-                paddingBottom: 12,
-              }}
-              onChange={(e) =>
-                setCouncilMetadata({
-                  ...councilMetadata,
-                  description: e.target.value,
-                })
-              }
-            />
-          </Card.Body>
-        </Card>
-        <Card className="bg-lace-100 rounded-4 border-0 mt-4 p-4">
           <Card.Header className="bg-transparent border-0 rounded-4 p-0 fs-5 fw-semi-bold">
             Set Distribution
           </Card.Header>
@@ -449,8 +384,6 @@ export default function Launch(props: LaunchProps) {
           <Button
             disabled={
               !!councilId ||
-              !councilMetadata.name ||
-              !councilMetadata.description ||
               (customTokenSelection && !!customTokenEntry.validationError)
             }
             className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
@@ -475,7 +408,7 @@ export default function Launch(props: LaunchProps) {
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() =>
               router.push(
-                `/flow-councils/permissions/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
+                `/flow-councils/round-metadata/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
               )
             }
           >

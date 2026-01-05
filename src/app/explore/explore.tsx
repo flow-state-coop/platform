@@ -360,7 +360,7 @@ export default function Explore(props: ExploreProps) {
               updatedAt={goodDollarPool?.updatedAtTimestamp}
               activeStreamCount={goodDollarPool?.poolDistributors.length}
               tokenSymbol="G$"
-              link="/gooddollar"
+              link="https://gooddollar.org"
             />
             <RoundCard
               name="Greenpill Dev Guild"

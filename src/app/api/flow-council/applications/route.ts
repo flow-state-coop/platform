@@ -1,3 +1,4 @@
+import { isAddress } from "viem";
 import { db } from "../db";
 import { networks } from "@/lib/networks";
 
@@ -15,16 +16,35 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!councilId || !isAddress(councilId)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid council ID" }),
+      );
+    }
+
+    const round = await db
+      .selectFrom("rounds")
+      .select("id")
+      .where("chainId", "=", chainId)
+      .where("flowCouncilAddress", "=", councilId.toLowerCase())
+      .executeTakeFirst();
+
+    if (!round) {
+      return new Response(JSON.stringify({ success: true, applications: [] }));
+    }
+
     const applications = await db
       .selectFrom("applications")
-      .select("owner")
-      .select("recipient")
-      .select("chainId")
-      .select("councilId")
-      .select("metadata")
-      .select("status")
-      .where("chainId", "=", chainId)
-      .where("councilId", "=", councilId.toLowerCase())
+      .innerJoin("projects", "applications.projectId", "projects.id")
+      .select([
+        "applications.id",
+        "applications.projectId",
+        "applications.roundId",
+        "applications.fundingAddress",
+        "applications.status",
+        "projects.details as projectDetails",
+      ])
+      .where("applications.roundId", "=", round.id)
       .execute();
 
     return new Response(
@@ -34,6 +54,7 @@ export async function POST(request: Request) {
       }),
     );
   } catch (err) {
+    console.error(err);
     return new Response(JSON.stringify({ success: false, error: err }));
   }
 }

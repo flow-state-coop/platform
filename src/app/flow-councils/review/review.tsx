@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Address, keccak256, encodePacked } from "viem";
+import { Address } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "@wagmi/core";
 import { useSession } from "next-auth/react";
@@ -25,9 +25,8 @@ import Sidebar from "../components/Sidebar";
 import CopyTooltip from "@/components/CopyTooltip";
 import useSiwe from "@/hooks/siwe";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import { councilAbi } from "@/lib/abi/council";
-import { Project } from "@/types/project";
-import { fetchIpfsJson } from "@/lib/fetchIpfs";
+import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
+import { RECIPIENT_MANAGER_ROLE } from "../lib/constants";
 import { getApolloClient } from "@/lib/apollo";
 
 type ReviewProps = {
@@ -37,37 +36,52 @@ type ReviewProps = {
   csfrToken: string;
 };
 
+type ProjectDetails = {
+  name?: string;
+  description?: string;
+  logoUrl?: string;
+  bannerUrl?: string;
+  website?: string;
+  twitter?: string;
+  github?: string;
+};
+
 type Application = {
-  owner: string;
-  recipient: string;
-  chainId: number;
-  councilId: string;
-  metadata: string;
+  id: number;
+  projectId: number;
+  roundId: number;
+  fundingAddress: string;
   status: Status;
+  projectDetails: ProjectDetails | null;
 };
 
 type ReviewingApplication = {
-  owner: string;
-  recipient: string;
-  metadata: string;
+  id: number;
+  fundingAddress: string;
+  projectDetails: ProjectDetails | null;
   newStatus: Status;
 };
 
-type CancelingAppplication = {
-  owner: string;
-  recipient: string;
+type CancelingApplication = {
+  id: number;
+  fundingAddress: string;
 };
 
-type Status = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
+type Status =
+  | "SUBMITTED"
+  | "ACCEPTED"
+  | "CHANGES_REQUESTED"
+  | "REJECTED"
+  | "REMOVED"
+  | "GRADUATED";
 
-const COUNCIL_QUERY = gql`
-  query CouncilQuery($councilId: String!) {
-    council(id: $councilId) {
+const FLOW_COUNCIL_QUERY = gql`
+  query FlowCouncilQuery($councilId: String!) {
+    flowCouncil(id: $councilId) {
       id
-      maxAllocationsPerMember
-      distributionToken
-      metadata
-      councilManagers {
+      maxVotingSpread
+      superToken
+      flowCouncilManagers {
         account
         role
       }
@@ -75,28 +89,15 @@ const COUNCIL_QUERY = gql`
   }
 `;
 
-const PROFILES_QUERY = gql`
-  query ProfilesQuery($chainId: Int!, $profileIds: [String!]) {
-    profiles(
-      first: 1000
-      filter: { chainId: { equalTo: $chainId }, id: { in: $profileIds } }
-    ) {
-      id
-      metadataCid
-    }
-  }
-`;
-
 export default function Review(props: ReviewProps) {
   const { chainId, councilId, hostname, csfrToken } = props;
 
-  const [profiles, setProfiles] = useState<Project[] | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
   const [reviewingApplications, setReviewingApplications] = useState<
     ReviewingApplication[]
   >([]);
   const [cancelingApplications, setCancelingApplications] = useState<
-    CancelingAppplication[]
+    CancelingApplication[]
   >([]);
   const [selectedApplication, setSelectedApplication] =
     useState<Application | null>(null);
@@ -113,9 +114,8 @@ export default function Review(props: ReviewProps) {
   const { isMobile } = useMediaQuery();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
-  const { data: councilQueryRes, loading: councilQueryResLoading } = useQuery(
-    COUNCIL_QUERY,
-    {
+  const { data: flowCouncilQueryRes, loading: flowCouncilQueryResLoading } =
+    useQuery(FLOW_COUNCIL_QUERY, {
       client: getApolloClient("flowCouncil", chainId),
       variables: {
         chainId,
@@ -123,28 +123,13 @@ export default function Review(props: ReviewProps) {
       },
       skip: !chainId || !councilId,
       pollInterval: 10000,
-    },
-  );
-  const { data: flowStateQueryRes } = useQuery(PROFILES_QUERY, {
-    client: getApolloClient("flowState"),
-    variables: {
-      chainId,
-      profileIds: applications?.map((application) => application.metadata),
-    },
-    pollInterval: 3000,
-  });
+    });
 
   const granteeApplicationLink = `${hostname}/flow-councils/grantee/?councilId=${councilId}&chainId=${chainId}`;
-  const council = councilQueryRes?.council;
-  const selectedApplicationProfile =
-    profiles && selectedApplication
-      ? profiles.find(
-          (p: { id: string }) => p.id === selectedApplication.metadata,
-        )
-      : null;
+  const flowCouncil = flowCouncilQueryRes?.flowCouncil;
 
   const fetchApplications = useCallback(async () => {
-    if (!council || !address || !chainId) {
+    if (!flowCouncil || !address || !chainId) {
       return;
     }
 
@@ -153,7 +138,7 @@ export default function Review(props: ReviewProps) {
         method: "POST",
         body: JSON.stringify({
           chainId,
-          councilId: council.id,
+          councilId: flowCouncil.id,
         }),
       });
 
@@ -165,43 +150,21 @@ export default function Review(props: ReviewProps) {
     } catch (err) {
       console.error(err);
     }
-  }, [council, address, chainId]);
+  }, [flowCouncil, address, chainId]);
 
   const isManager = useMemo(() => {
-    const granteeManagerRole = keccak256(
-      encodePacked(["string"], ["GRANTEE_MANAGER_ROLE"]),
-    );
-    const councilManager = council?.councilManagers.find(
+    const flowCouncilManager = flowCouncil?.flowCouncilManagers.find(
       (m: { account: string; role: string }) =>
-        m.account === address?.toLowerCase() && m.role === granteeManagerRole,
+        m.account === address?.toLowerCase() &&
+        m.role === RECIPIENT_MANAGER_ROLE,
     );
 
-    if (councilManager) {
+    if (flowCouncilManager) {
       return true;
     }
 
     return false;
-  }, [address, council]);
-
-  useEffect(() => {
-    (async () => {
-      if (!flowStateQueryRes?.profiles) {
-        return;
-      }
-
-      const profiles = [];
-
-      for (const profile of flowStateQueryRes.profiles) {
-        const metadata = await fetchIpfsJson(profile.metadataCid);
-
-        if (metadata) {
-          profiles.push({ ...profile, metadata });
-        }
-      }
-
-      setProfiles(profiles);
-    })();
-  }, [flowStateQueryRes]);
+  }, [address, flowCouncil]);
 
   useEffect(() => {
     fetchApplications();
@@ -214,15 +177,15 @@ export default function Review(props: ReviewProps) {
 
     const _reviewingApplications = [...reviewingApplications];
     const index = _reviewingApplications.findIndex(
-      (application) => selectedApplication.owner === application.owner,
+      (application) => selectedApplication.id === application.id,
     );
 
     if (selectedApplication.status !== newStatus) {
       if (index === -1) {
         _reviewingApplications.push({
-          owner: selectedApplication.owner,
-          recipient: selectedApplication.recipient,
-          metadata: selectedApplication.metadata,
+          id: selectedApplication.id,
+          fundingAddress: selectedApplication.fundingAddress,
+          projectDetails: selectedApplication.projectDetails,
           newStatus,
         });
       } else {
@@ -242,8 +205,8 @@ export default function Review(props: ReviewProps) {
     const _cancelingApplications = [...cancelingApplications];
 
     _cancelingApplications.push({
-      owner: selectedApplication.owner,
-      recipient: selectedApplication.recipient,
+      id: selectedApplication.id,
+      fundingAddress: selectedApplication.fundingAddress,
     });
 
     setCancelingApplications(_cancelingApplications);
@@ -255,44 +218,46 @@ export default function Review(props: ReviewProps) {
       throw Error("Account is not signed in");
     }
 
-    if (!council) {
-      throw Error("Council not found");
+    if (!flowCouncil) {
+      throw Error("Flow Council not found");
     }
 
     try {
       setIsSubmitting(true);
       setError("");
 
-      const approvedApplications = reviewingApplications.filter(
-        (reviewingApplication) => reviewingApplication.newStatus === "APPROVED",
+      const acceptedApplications = reviewingApplications.filter(
+        (reviewingApplication) => reviewingApplication.newStatus === "ACCEPTED",
       );
       const rejectedApplications = reviewingApplications.filter(
         (reviewingApplication) => reviewingApplication.newStatus === "REJECTED",
       );
 
-      if (approvedApplications.length > 0 || cancelingApplications.length > 0) {
+      if (acceptedApplications.length > 0 || cancelingApplications.length > 0) {
+        // Build recipients array and metadata array for updateRecipients
+        const recipientsToAdd = acceptedApplications.map((application) => ({
+          account: application.fundingAddress as Address,
+          status: 0, // Status.ADDED
+        }));
+        const metadataToAdd = acceptedApplications.map(
+          (application) => application.projectDetails?.name ?? "",
+        );
+
+        const recipientsToRemove = cancelingApplications.map(
+          (cancelingApplication) => ({
+            account: cancelingApplication.fundingAddress as Address,
+            status: 1, // Status.REMOVED
+          }),
+        );
+        const metadataToRemove = cancelingApplications.map(() => "");
+
         const hash = await writeContract(wagmiConfig, {
-          address: council.id as Address,
-          abi: councilAbi,
-          functionName: "updateCouncilGrantees",
+          address: flowCouncil.id as Address,
+          abi: flowCouncilAbi,
+          functionName: "updateRecipients",
           args: [
-            approvedApplications
-              .map((application) => {
-                return {
-                  account: application.recipient as Address,
-                  metadata: application.metadata,
-                  status: 0,
-                };
-              })
-              .concat(
-                cancelingApplications.map((cancelingApplication) => {
-                  return {
-                    account: cancelingApplication.recipient as Address,
-                    metadata: "",
-                    status: 1,
-                  };
-                }),
-              ),
+            [...recipientsToAdd, ...recipientsToRemove],
+            [...metadataToAdd, ...metadataToRemove],
           ],
         });
 
@@ -307,19 +272,19 @@ export default function Review(props: ReviewProps) {
             method: "POST",
             body: JSON.stringify({
               chainId,
-              councilId: council.id,
-              grantees: reviewingApplications
+              councilId: flowCouncil.id,
+              applications: reviewingApplications
                 .map((reviewingApplication) => {
                   return {
-                    owner: reviewingApplication.owner,
+                    id: reviewingApplication.id,
                     status: reviewingApplication.newStatus,
                   };
                 })
                 .concat(
                   cancelingApplications.map((cancelingApplication) => {
                     return {
-                      owner: cancelingApplication.owner,
-                      status: "CANCELED",
+                      id: cancelingApplication.id,
+                      status: "REMOVED" as Status,
                     };
                   }),
                 ),
@@ -341,10 +306,10 @@ export default function Review(props: ReviewProps) {
           method: "POST",
           body: JSON.stringify({
             chainId,
-            councilId: council.id,
-            grantees: rejectedApplications.map((reviewingApplication) => {
+            councilId: flowCouncil.id,
+            applications: rejectedApplications.map((reviewingApplication) => {
               return {
-                owner: reviewingApplication.owner,
+                id: reviewingApplication.id,
                 status: reviewingApplication.newStatus,
               };
             }),
@@ -373,7 +338,7 @@ export default function Review(props: ReviewProps) {
     }
   };
 
-  if (!councilId || !chainId || (!councilQueryResLoading && !council)) {
+  if (!councilId || !chainId || (!flowCouncilQueryResLoading && !flowCouncil)) {
     return (
       <span className="m-auto fs-4 fw-bold">
         Council not found.{" "}
@@ -399,7 +364,7 @@ export default function Review(props: ReviewProps) {
           Review and/or remove eligible funding recipients from your Flow
           Council.
         </h2>
-        {!council && !isManager ? (
+        {!flowCouncil && !isManager ? (
           <Spinner className="mt-5 mx-auto" />
         ) : !isManager ? (
           <Stack
@@ -466,20 +431,17 @@ export default function Review(props: ReviewProps) {
                 <tbody>
                   {applications?.map((application: Application, i: number) => (
                     <tr key={i}>
-                      <td className="w-25 align-middle">{application.owner}</td>
                       <td className="w-25 align-middle">
-                        {profiles && profiles[i]
-                          ? profiles.find(
-                              (p: { id: string }) =>
-                                p.id === application.metadata,
-                            )?.metadata.title
-                          : "N/A"}
+                        {application.fundingAddress}
+                      </td>
+                      <td className="w-25 align-middle">
+                        {application.projectDetails?.name ?? "N/A"}
                       </td>
                       <td className="w-25 text-center ps-0 align-middle">
                         {reviewingApplications.find(
                           (reviewingApplication) =>
-                            application.owner === reviewingApplication.owner,
-                        )?.newStatus === "APPROVED" ? (
+                            application.id === reviewingApplication.id,
+                        )?.newStatus === "ACCEPTED" ? (
                           <Image
                             src="/success.svg"
                             alt="success"
@@ -491,11 +453,11 @@ export default function Review(props: ReviewProps) {
                           />
                         ) : reviewingApplications.find(
                             (reviewingApplication) =>
-                              application.owner === reviewingApplication.owner,
+                              application.id === reviewingApplication.id,
                           )?.newStatus === "REJECTED" ||
                           cancelingApplications.find(
                             (cancelingApplication) =>
-                              application.owner === cancelingApplication.owner,
+                              application.id === cancelingApplication.id,
                           ) ? (
                           <Image
                             src="/close.svg"
@@ -506,15 +468,15 @@ export default function Review(props: ReviewProps) {
                                 "invert(29%) sepia(96%) saturate(1955%) hue-rotate(334deg) brightness(88%) contrast(95%)",
                             }}
                           />
-                        ) : application.status === "APPROVED" ? (
+                        ) : application.status === "ACCEPTED" ? (
                           <Image src="/success.svg" alt="success" width={24} />
                         ) : application.status === "REJECTED" ||
-                          application.status === "CANCELED" ? (
+                          application.status === "REMOVED" ? (
                           <Image src="/close.svg" alt="fail" width={24} />
                         ) : null}
                       </td>
                       <td className="w-25 align-middle">
-                        {application.status === "PENDING" ? (
+                        {application.status === "SUBMITTED" ? (
                           <Button
                             className="w-100 px-10 py-4 rounded-4 fw-semi-bold text-light"
                             onClick={() => {
@@ -523,7 +485,7 @@ export default function Review(props: ReviewProps) {
                           >
                             Review
                           </Button>
-                        ) : application.status === "APPROVED" ? (
+                        ) : application.status === "ACCEPTED" ? (
                           <Button
                             variant="danger"
                             className="w-100 py-4 rounded-4 fw-semi-bold text-light"
@@ -549,7 +511,7 @@ export default function Review(props: ReviewProps) {
                 </tbody>
               </Table>
             </div>
-            {selectedApplication !== null && selectedApplicationProfile && (
+            {selectedApplication !== null && (
               <Stack
                 direction="vertical"
                 className="mt-4 bg-lace-100 rounded-4 p-4"
@@ -557,17 +519,9 @@ export default function Review(props: ReviewProps) {
                 <Form className="d-flex flex-column gap-4">
                   <Row>
                     <Col>
-                      <Form.Label>Applicant Address</Form.Label>
-                      <Form.Control
-                        value={selectedApplication.owner}
-                        disabled
-                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
-                      />
-                    </Col>
-                    <Col>
                       <Form.Label>Funding Address</Form.Label>
                       <Form.Control
-                        value={selectedApplication.recipient}
+                        value={selectedApplication.fundingAddress}
                         disabled
                         className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
@@ -577,7 +531,7 @@ export default function Review(props: ReviewProps) {
                     <Col>
                       <Form.Label>Name</Form.Label>
                       <Form.Control
-                        value={selectedApplicationProfile.metadata.title}
+                        value={selectedApplication.projectDetails?.name ?? ""}
                         disabled
                         className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
@@ -585,7 +539,9 @@ export default function Review(props: ReviewProps) {
                     <Col>
                       <Form.Label>Website URL</Form.Label>
                       <Form.Control
-                        value={selectedApplicationProfile.metadata.website}
+                        value={
+                          selectedApplication.projectDetails?.website ?? ""
+                        }
                         disabled
                         className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
@@ -595,27 +551,9 @@ export default function Review(props: ReviewProps) {
                     <Col>
                       <Form.Label>Twitter</Form.Label>
                       <Form.Control
-                        value={`@${selectedApplicationProfile.metadata.projectTwitter ?? ""}`}
-                        disabled
-                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
-                      />
-                    </Col>
-                    <Col>
-                      <Form.Label>Farcaster</Form.Label>
-                      <Form.Control
-                        value={`@${selectedApplicationProfile.metadata.projectWarpcast ?? ""}`}
-                        disabled
-                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
-                      />
-                    </Col>
-                  </Row>
-                  <Row>
-                    <Col>
-                      <Form.Label>Github User URL</Form.Label>
-                      <Form.Control
                         value={
-                          selectedApplicationProfile.metadata.userGithub
-                            ? `https://github.com/${selectedApplicationProfile.metadata.userGithub}`
+                          selectedApplication.projectDetails?.twitter
+                            ? `@${selectedApplication.projectDetails.twitter}`
                             : ""
                         }
                         disabled
@@ -623,35 +561,13 @@ export default function Review(props: ReviewProps) {
                       />
                     </Col>
                     <Col>
-                      <Form.Label>Github Org URL</Form.Label>
+                      <Form.Label>Github</Form.Label>
                       <Form.Control
                         value={
-                          selectedApplicationProfile.metadata.projectGithub
-                            ? `https://github.com/${selectedApplicationProfile.metadata.projectGithub}`
+                          selectedApplication.projectDetails?.github
+                            ? `https://github.com/${selectedApplication.projectDetails.github}`
                             : ""
                         }
-                        disabled
-                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
-                      />
-                    </Col>
-                  </Row>
-                  <Row>
-                    <Col>
-                      <Form.Label>Karma GAP</Form.Label>
-                      <Form.Control
-                        value={
-                          selectedApplicationProfile.metadata.karmaGap
-                            ? `gap.karmahq.xyz/project/${selectedApplicationProfile.metadata.karmaGap}`
-                            : ""
-                        }
-                        disabled
-                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
-                      />
-                    </Col>
-                    <Col>
-                      <Form.Label>Application Link</Form.Label>
-                      <Form.Control
-                        value={selectedApplicationProfile.metadata.appLink}
                         disabled
                         className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
@@ -662,9 +578,7 @@ export default function Review(props: ReviewProps) {
                       <Form.Label>Logo</Form.Label>
                       <Form.Control
                         value={
-                          selectedApplicationProfile.metadata.logoImg
-                            ? `https://gateway.pinata.cloud/ipfs/${selectedApplicationProfile.metadata.logoImg}`
-                            : ""
+                          selectedApplication.projectDetails?.logoUrl ?? ""
                         }
                         disabled
                         className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
@@ -674,9 +588,7 @@ export default function Review(props: ReviewProps) {
                       <Form.Label>Banner</Form.Label>
                       <Form.Control
                         value={
-                          selectedApplicationProfile.metadata.bannerImg
-                            ? `https://gateway.pinata.cloud/ipfs/${selectedApplicationProfile.metadata.bannerImg}`
-                            : ""
+                          selectedApplication.projectDetails?.bannerUrl ?? ""
                         }
                         disabled
                         className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
@@ -691,14 +603,16 @@ export default function Review(props: ReviewProps) {
                         rows={4}
                         disabled
                         style={{ resize: "none" }}
-                        value={selectedApplicationProfile.metadata.description}
+                        value={
+                          selectedApplication.projectDetails?.description ?? ""
+                        }
                         className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
                       />
                     </Col>
                   </Row>
                 </Form>
                 <Stack direction="horizontal" gap={2} className="w-50 mt-6">
-                  {selectedApplication.status === "APPROVED" ? (
+                  {selectedApplication.status === "ACCEPTED" ? (
                     <Button
                       variant="danger"
                       className="w-50 py-4 rounded-4 fw-semi-bold text-light"
@@ -710,7 +624,7 @@ export default function Review(props: ReviewProps) {
                     <>
                       <Button
                         className="w-50 text-light py-4 rounded-4 fw-semi-bold"
-                        onClick={() => handleReviewSelection("APPROVED")}
+                        onClick={() => handleReviewSelection("ACCEPTED")}
                       >
                         Accept
                       </Button>

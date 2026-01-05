@@ -12,12 +12,11 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
-import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
-const COUNCIL_MANAGER_QUERY = gql`
+const FLOW_COUNCIL_MANAGER_QUERY = gql`
   query FlowCouncilManagerQuery($address: String!) {
-    councils(where: { councilManagers_: { account: $address } }) {
+    flowCouncils(where: { flowCouncilManagers_: { account: $address } }) {
       id
       metadata
     }
@@ -37,7 +36,7 @@ function Sidebar() {
   const router = useRouter();
   const { address } = useAccount();
   const { isMobile, isTablet } = useMediaQuery();
-  const { data: councilsQueryRes } = useQuery(COUNCIL_MANAGER_QUERY, {
+  const { data: flowCouncilsQueryRes } = useQuery(FLOW_COUNCIL_MANAGER_QUERY, {
     client: getApolloClient("flowCouncil", chainId ?? DEFAULT_CHAIN_ID),
     variables: {
       address: address?.toLowerCase(),
@@ -51,33 +50,41 @@ function Sidebar() {
 
   useEffect(() => {
     (async () => {
-      if (!councilsQueryRes?.councils) {
+      if (!flowCouncilsQueryRes?.flowCouncils) {
         return;
       }
 
       const councils: Council[] = [];
       const promises = [];
 
-      for (const council of councilsQueryRes.councils) {
-        if (council.metadata) {
-          promises.push(
-            (async () => {
-              const metadata = await fetchIpfsJson(council.metadata);
+      for (const flowCouncil of flowCouncilsQueryRes.flowCouncils) {
+        promises.push(
+          (async () => {
+            // Fetch round name from database
+            let roundName = "Flow Council";
+            try {
+              const res = await fetch(
+                `/api/flow-council/rounds?chainId=${chainId}&flowCouncilAddress=${flowCouncil.id}`,
+              );
+              const data = await res.json();
+              if (data.success && data.round?.details) {
+                const details =
+                  typeof data.round.details === "string"
+                    ? JSON.parse(data.round.details)
+                    : data.round.details;
+                roundName = details?.name ?? "Flow Council";
+              }
+            } catch (err) {
+              console.error(err);
+            }
 
-              councils.push({
-                id: council.id,
-                name: metadata.name,
-                description: metadata.description,
-              });
-            })(),
-          );
-        } else {
-          councils.push({
-            id: council.id,
-            name: "Flow Council",
-            description: "N/A",
-          });
-        }
+            councils.push({
+              id: flowCouncil.id,
+              name: roundName || "Flow Council",
+              description: "N/A",
+            });
+          })(),
+        );
       }
 
       await Promise.all(promises);
@@ -96,7 +103,7 @@ function Sidebar() {
 
       setCouncils(councils);
     })();
-  }, [councilsQueryRes]);
+  }, [flowCouncilsQueryRes, chainId]);
 
   const SidebarLinks = () => {
     return (
@@ -127,6 +134,26 @@ function Sidebar() {
             }}
           />
           Launch Config
+        </Link>
+        <Link
+          href={`/flow-councils/round-metadata/?chainId=${chainId}&councilId=${selectedCouncil?.id}`}
+          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname === "/flow-councils/round-metadata" ? "fw-semi-bold" : ""}`}
+          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
+        >
+          <Image
+            src={`${pathname?.startsWith("/flow-councils/round-metadata") && !!selectedCouncil ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+            alt="Bullet Point"
+            width={24}
+            height={24}
+            style={{
+              filter:
+                !pathname?.startsWith("/flow-councils/round-metadata") &&
+                !selectedCouncil
+                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
+                  : "",
+            }}
+          />
+          Round Metadata
         </Link>
         <Link
           href={`/flow-councils/permissions/?chainId=${chainId}&councilId=${selectedCouncil?.id}`}

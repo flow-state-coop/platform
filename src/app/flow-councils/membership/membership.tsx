@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Address, isAddress, keccak256, encodePacked } from "viem";
+import { Address, isAddress } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "@wagmi/core";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -21,7 +21,8 @@ import InfoTooltip from "@/components/InfoTooltip";
 import Sidebar from "../components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
-import { councilAbi } from "@/lib/abi/council";
+import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
+import { VOTER_MANAGER_ROLE } from "../lib/constants";
 import { isNumber } from "@/lib/utils";
 
 type MembershipProps = { chainId?: number; councilId?: string };
@@ -32,16 +33,16 @@ type MemberEntry = {
   votesValidationError: string;
 };
 
-const COUNCIL_QUERY = gql`
-  query CouncilMembersQuery($councilId: String!, $skip: Int = 0) {
-    council(id: $councilId) {
+const FLOW_COUNCIL_QUERY = gql`
+  query FlowCouncilVotersQuery($councilId: String!, $skip: Int = 0) {
+    flowCouncil(id: $councilId) {
       id
-      maxAllocationsPerMember
-      councilManagers {
+      maxVotingSpread
+      flowCouncilManagers {
         account
         role
       }
-      councilMembers(first: 1000, skip: $skip) {
+      voters(first: 1000, skip: $skip) {
         id
         account
         votingPower
@@ -79,10 +80,10 @@ export default function Membership(props: MembershipProps) {
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
   const {
-    data: councilQueryRes,
-    loading: councilQueryResLoading,
+    data: flowCouncilQueryRes,
+    loading: flowCouncilQueryResLoading,
     fetchMore,
-  } = useQuery(COUNCIL_QUERY, {
+  } = useQuery(FLOW_COUNCIL_QUERY, {
     client: getApolloClient("flowCouncil", chainId),
     variables: {
       chainId,
@@ -92,7 +93,7 @@ export default function Membership(props: MembershipProps) {
     skip: !councilId,
   });
 
-  const council = councilQueryRes?.council ?? null;
+  const flowCouncil = flowCouncilQueryRes?.flowCouncil ?? null;
   const isValidMembersEntry = membersEntry.every(
     (memberEntry) =>
       memberEntry.addressValidationError === "" &&
@@ -102,26 +103,23 @@ export default function Membership(props: MembershipProps) {
       memberEntry.votingPower !== "0",
   );
   const isManager = useMemo(() => {
-    const memberManagerRole = keccak256(
-      encodePacked(["string"], ["MEMBER_MANAGER_ROLE"]),
-    );
-    const councilManager = council?.councilManagers.find(
+    const flowCouncilManager = flowCouncil?.flowCouncilManagers.find(
       (m: { account: string; role: string }) =>
-        m.account === address?.toLowerCase() && m.role === memberManagerRole,
+        m.account === address?.toLowerCase() && m.role === VOTER_MANAGER_ROLE,
     );
 
-    if (councilManager) {
+    if (flowCouncilManager) {
       return true;
     }
 
     return false;
-  }, [address, council]);
+  }, [address, flowCouncil]);
 
   const hasChanges = useMemo(() => {
     const compareArrays = (a: string[], b: string[]) =>
       a.length === b.length && a.every((elem, i) => elem === b[i]);
 
-    const sortedCouncilMembers = council?.councilMembers?.toSorted(
+    const sortedFlowCouncilVoters = flowCouncil?.voters?.toSorted(
       (a: { account: string }, b: { account: string }) =>
         a.account > b.account ? -1 : 1,
     );
@@ -129,9 +127,9 @@ export default function Membership(props: MembershipProps) {
       a.address.toLowerCase() > b.address.toLowerCase() ? -1 : 1,
     );
     const hasChangesMembers =
-      sortedCouncilMembers &&
+      sortedFlowCouncilVoters &&
       (!compareArrays(
-        sortedCouncilMembers
+        sortedFlowCouncilVoters
           .filter(
             (member: { votingPower: string }) => member.votingPower !== "0",
           )
@@ -139,7 +137,7 @@ export default function Membership(props: MembershipProps) {
         sortedMembersEntry.map((member) => member.address.toLowerCase()),
       ) ||
         !compareArrays(
-          sortedCouncilMembers
+          sortedFlowCouncilVoters
             .filter(
               (member: { votingPower: string }) => member.votingPower !== "0",
             )
@@ -149,30 +147,30 @@ export default function Membership(props: MembershipProps) {
 
     return (
       (!councilConfig.limitMaxAllocation &&
-        council?.maxAllocationsPerMember !== 0) ||
+        flowCouncil?.maxVotingSpread !== 0) ||
       (councilConfig.limitMaxAllocation &&
-        Number(maxAllocation) !== council?.maxAllocationsPerMember) ||
+        Number(maxAllocation) !== flowCouncil?.maxVotingSpread) ||
       hasChangesMembers
     );
-  }, [councilConfig, maxAllocation, council, membersEntry]);
+  }, [councilConfig, maxAllocation, flowCouncil, membersEntry]);
 
   useEffect(() => {
-    if (!councilQueryRes) {
+    if (!flowCouncilQueryRes) {
       return;
     }
 
     fetchMore({
-      variables: { skip: councilQueryRes.council.councilMembers.length },
+      variables: { skip: flowCouncilQueryRes.flowCouncil.voters.length },
     });
-  }, [councilQueryRes, fetchMore]);
+  }, [flowCouncilQueryRes, fetchMore]);
 
   useEffect(() => {
     (async () => {
-      if (!council) {
+      if (!flowCouncil) {
         return;
       }
 
-      const membersEntry = council.councilMembers
+      const membersEntry = flowCouncil.voters
         .filter((member: { votingPower: string }) => member.votingPower !== "0")
         .map((member: { account: string; votingPower: string }) => {
           return {
@@ -196,7 +194,7 @@ export default function Membership(props: MembershipProps) {
             ],
       );
 
-      if (council.maxAllocationsPerMember === 0) {
+      if (flowCouncil.maxVotingSpread === 0) {
         setCouncilConfig((prev) => {
           return { ...prev, limitMaxAllocation: false };
         });
@@ -204,10 +202,10 @@ export default function Membership(props: MembershipProps) {
         setCouncilConfig((prev) => {
           return { ...prev, limitMaxAllocation: true };
         });
-        setMaxAllocation(council.maxAllocationsPerMember);
+        setMaxAllocation(flowCouncil.maxVotingSpread);
       }
     })();
-  }, [council]);
+  }, [flowCouncil]);
 
   const removeMemberEntry = (memberEntry: MemberEntry, memberIndex: number) => {
     setMembersEntry((prev) =>
@@ -216,7 +214,7 @@ export default function Membership(props: MembershipProps) {
       ),
     );
 
-    const existingPoolMember = council?.councilMembers?.find(
+    const existingVoter = flowCouncil?.voters?.find(
       (member: { account: string }) =>
         member.account === memberEntry.address.toLowerCase(),
     );
@@ -224,8 +222,8 @@ export default function Membership(props: MembershipProps) {
     if (
       !memberEntry.addressValidationError &&
       !memberEntry.votesValidationError &&
-      existingPoolMember &&
-      existingPoolMember.units !== "0"
+      existingVoter &&
+      existingVoter.votingPower !== "0"
     ) {
       setMembersToRemove(membersToRemove.concat(memberEntry));
     }
@@ -245,29 +243,31 @@ export default function Membership(props: MembershipProps) {
           memberEntry.addressValidationError === "" &&
           memberEntry.votesValidationError === "" &&
           memberEntry.address !== "" &&
-          !council?.councilMembers.some(
+          !flowCouncil?.voters.some(
             (member: { account: string; votingPower: string }) =>
-              member.account === memberEntry.address &&
+              member.account === memberEntry.address.toLowerCase() &&
               member.votingPower === memberEntry.votingPower,
           ),
       );
       const hash = await writeContract(wagmiConfig, {
         address: councilId as Address,
-        abi: councilAbi,
-        functionName: "updateCouncilMembership",
+        abi: flowCouncilAbi,
+        functionName: "updateVoters",
         args: [
           validMembers
             .map((member) => {
               return {
-                member: member.address as Address,
+                account: member.address as Address,
                 votingPower: BigInt(member.votingPower),
+                votes: [],
               };
             })
             .concat(
               membersToRemove.map((member) => {
                 return {
-                  member: member.address as Address,
+                  account: member.address as Address,
                   votingPower: BigInt(0),
+                  votes: [],
                 };
               }),
             ),
@@ -290,7 +290,7 @@ export default function Membership(props: MembershipProps) {
     }
   };
 
-  if (!councilId || !chainId || (!councilQueryResLoading && !council)) {
+  if (!councilId || !chainId || (!flowCouncilQueryResLoading && !flowCouncil)) {
     return (
       <span className="m-auto fs-4 fw-bold">
         Council not found.{" "}

@@ -17,16 +17,13 @@ import Image from "react-bootstrap/Image";
 import Form from "react-bootstrap/Form";
 import Toast from "react-bootstrap/Toast";
 import Spinner from "react-bootstrap/Spinner";
-import ProjectCreationModal from "@/components/ProjectCreationModal";
-import ProjectUpdateModal from "@/components/ProjectUpdateModal";
-import GranteeApplicationCard from "@/components/GranteeApplicationCard";
+import ProjectCard from "../components/ProjectCard";
 import InfoTooltip from "@/components/InfoTooltip";
-import { Project } from "@/types/project";
+import ProjectModal from "../components/ProjectModal";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useSiwe from "@/hooks/siwe";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
-import { fetchIpfsJson } from "@/lib/fetchIpfs";
 
 type GranteeProps = {
   chainId?: number;
@@ -34,49 +31,50 @@ type GranteeProps = {
   csfrToken: string;
 };
 
-type Application = {
-  owner: string;
-  recipient: string;
-  chainId: number;
-  councilId: string;
-  metadata: string;
-  status: Status;
+type ProjectDetails = {
+  name: string;
+  description: string;
+  logoUrl?: string;
+  bannerUrl?: string;
+  website?: string;
+  twitter?: string;
+  github?: string;
 };
 
-type Status = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
+type Project = {
+  id: number;
+  details: ProjectDetails | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type Application = {
+  id: number;
+  projectId: number;
+  roundId: number;
+  fundingAddress: string;
+  status: ApplicationStatus;
+  projectDetails: ProjectDetails | null;
+};
+
+type ApplicationStatus =
+  | "SUBMITTED"
+  | "ACCEPTED"
+  | "CHANGES_REQUESTED"
+  | "REJECTED"
+  | "REMOVED"
+  | "GRADUATED";
 
 enum ErrorMessage {
   GENERIC = "Error: Please try again later",
 }
 
-const PROJECTS_QUERY = gql`
-  query ProjectsQuery($address: String!, $chainId: Int!) {
-    profiles(
-      first: 1000
-      filter: {
-        chainId: { equalTo: $chainId }
-        profileRolesByChainIdAndProfileId: {
-          some: { address: { equalTo: $address } }
-        }
-        tags: { contains: ["allo"] }
-      }
-    ) {
+const FLOW_COUNCIL_QUERY = gql`
+  query FlowCouncilQuery($councilId: String!) {
+    flowCouncil(id: $councilId) {
       id
-      anchorAddress
-      metadataCid
-      profileRolesByChainIdAndProfileId(first: 1000) {
-        address
-      }
-    }
-  }
-`;
-
-const COUNCIL_QUERY = gql`
-  query CouncilQuery($councilId: String!) {
-    council(id: $councilId) {
-      id
-      maxAllocationsPerMember
-      distributionToken
+      maxVotingSpread
+      superToken
       metadata
     }
   }
@@ -94,14 +92,11 @@ const SUPERFLUID_QUERY = gql`
 export default function Grantee(props: GranteeProps) {
   const { chainId, councilId, csfrToken } = props;
 
-  const [profiles, setProfiles] = useState<Project[] | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [selectedProjectIndex, setSelectedProjectIndex] = useState<
     number | null
   >(null);
-  const [showProjectCreationModal, setShowProjectCreationModal] =
-    useState(false);
-  const [showProjectUpdateModal, setShowProjectUpdateModal] = useState(false);
-  const [newProfileId, setNewProfileId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -109,11 +104,12 @@ export default function Grantee(props: GranteeProps) {
     name: "",
     description: "",
   });
-  const [applications, setApplications] = useState<Application[]>([]);
   const [customReceiver, setCustomReceiver] = useState("");
   const [isCustomReceiver, setIsCustomReceiver] = useState(false);
   const [hasAgreedToCodeOfConduct, setHasAgreedToCodeOfConduct] =
     useState(false);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   const { isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
@@ -123,16 +119,7 @@ export default function Grantee(props: GranteeProps) {
   const { switchChain } = useSwitchChain();
   const { data: session } = useSession();
   const { handleSignIn } = useSiwe();
-  const { data: flowStateQueryRes } = useQuery(PROJECTS_QUERY, {
-    client: getApolloClient("flowState"),
-    variables: {
-      chainId,
-      address: address?.toLowerCase() ?? "",
-    },
-    skip: !address,
-    pollInterval: 3000,
-  });
-  const { data: councilQueryRes } = useQuery(COUNCIL_QUERY, {
+  const { data: flowCouncilQueryRes } = useQuery(FLOW_COUNCIL_QUERY, {
     client: getApolloClient("flowCouncil", chainId),
     variables: {
       chainId,
@@ -141,131 +128,145 @@ export default function Grantee(props: GranteeProps) {
     skip: !chainId || !councilId,
     pollInterval: 10000,
   });
-  const council = councilQueryRes?.council;
+  const flowCouncil = flowCouncilQueryRes?.flowCouncil;
   const { data: superfluidQueryRes } = useQuery(SUPERFLUID_QUERY, {
     client: getApolloClient("superfluid", chainId),
-    variables: { token: council?.distributionToken },
+    variables: { token: flowCouncil?.superToken },
     pollInterval: 10000,
-    skip: !council,
+    skip: !flowCouncil,
   });
 
   const network = networks.find((network) => network.id === chainId);
   const councilToken = network?.tokens.find(
-    (token) => token.address.toLowerCase() === council?.distributionToken,
+    (token) => token.address.toLowerCase() === flowCouncil?.superToken,
   ) ?? {
-    address: council?.distributionToken ?? "",
+    address: flowCouncil?.superToken ?? "",
     name: superfluidQueryRes?.token?.symbol ?? "N/A",
     icon: "",
   };
   const isCustomReceiverInvalid =
     isCustomReceiver && !isAddress(customReceiver);
 
-  const projects = useMemo(
-    () =>
-      profiles?.map((profile: Project) => {
-        let granteeStatus = null;
+  const projectsWithStatus = useMemo(() => {
+    return projects.map((project) => {
+      const application = applications.find(
+        (app) => app.projectId === project.id,
+      );
+      return {
+        ...project,
+        status: application?.status ?? null,
+      };
+    });
+  }, [projects, applications]);
 
-        if (!applications) {
-          return null;
-        }
-
-        for (const application of applications) {
-          if (
-            application.owner === address?.toLowerCase() &&
-            application.metadata === profile.id
-          ) {
-            granteeStatus = application.status;
-          }
-        }
-
-        return { ...profile, status: granteeStatus };
-      }) ?? null,
-    [profiles, address, applications],
-  );
-
-  const statuses = projects?.map((project) => project?.status);
+  const statuses = projectsWithStatus.map((project) => project.status);
   const hasApplied =
-    !!statuses?.includes("APPROVED") || !!statuses?.includes("PENDING");
+    statuses.includes("ACCEPTED") || statuses.includes("SUBMITTED");
 
-  useEffect(() => {
-    (async () => {
-      if (!flowStateQueryRes?.profiles) {
-        return;
-      }
-
-      const profiles = [];
-
-      for (const profile of flowStateQueryRes.profiles) {
-        const metadata = await fetchIpfsJson(profile.metadataCid);
-
-        if (metadata) {
-          profiles.push({ ...profile, metadata });
-        }
-      }
-
-      setProfiles(profiles);
-    })();
-  }, [flowStateQueryRes]);
-
-  useEffect(() => {
-    (async () => {
-      if (!council) {
-        return;
-      }
-
-      const metadata = await fetchIpfsJson(council.metadata);
-
-      setCouncilMetadata({
-        name: metadata?.name ?? "Flow Council",
-        description: metadata?.description ?? "N/A",
-      });
-    })();
-  }, [council]);
-
-  const fetchApplications = useCallback(async () => {
-    if (!council || !address || !chainId) {
+  const fetchProjects = useCallback(async () => {
+    if (!address) {
       return;
     }
 
-    const applicationsRes = await fetch("/api/flow-council/applications", {
-      method: "POST",
-      body: JSON.stringify({
-        chainId,
-        councilId: council.id,
-      }),
-    });
-
-    const { success, applications } = await applicationsRes.json();
-
-    if (success) {
-      setApplications(
-        applications.filter(
-          (application: Application) =>
-            application.owner === address.toLowerCase(),
-        ),
+    try {
+      const res = await fetch(
+        `/api/flow-council/projects?managerAddress=${address}`,
       );
+      const { success, projects } = await res.json();
+
+      if (success) {
+        const parsedProjects = projects.map(
+          (project: {
+            id: number;
+            details: string | ProjectDetails | null;
+            createdAt: string;
+            updatedAt: string;
+          }) => ({
+            ...project,
+            details:
+              typeof project.details === "string"
+                ? JSON.parse(project.details)
+                : project.details,
+          }),
+        );
+        setProjects(parsedProjects);
+      }
+    } catch (err) {
+      console.error("Failed to fetch projects:", err);
     }
-  }, [council, address, chainId]);
+  }, [address]);
+
+  const fetchApplications = useCallback(async () => {
+    if (!flowCouncil || !chainId) {
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/flow-council/applications", {
+        method: "POST",
+        body: JSON.stringify({
+          chainId,
+          councilId: flowCouncil.id,
+        }),
+      });
+      const { success, applications } = await res.json();
+
+      if (success) {
+        const parsedApplications = applications.map(
+          (
+            app: Application & {
+              projectDetails: string | ProjectDetails | null;
+            },
+          ) => ({
+            ...app,
+            projectDetails:
+              typeof app.projectDetails === "string"
+                ? JSON.parse(app.projectDetails)
+                : app.projectDetails,
+          }),
+        );
+        setApplications(parsedApplications);
+      }
+    } catch (err) {
+      console.error("Failed to fetch applications:", err);
+    }
+  }, [flowCouncil, chainId]);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
 
   useEffect(() => {
     fetchApplications();
   }, [fetchApplications]);
 
   useEffect(() => {
-    if (!newProfileId || hasApplied) {
-      return;
-    }
+    (async () => {
+      if (!councilId || !chainId) {
+        return;
+      }
 
-    const projectIndex =
-      projects
-        ?.map((project) => project?.id)
-        .indexOf(newProfileId as `0x${string}`) ?? -1;
-
-    if (projectIndex > -1) {
-      setSelectedProjectIndex(projectIndex);
-      setNewProfileId("");
-    }
-  }, [newProfileId, projects, hasApplied]);
+      // Fetch round metadata from database
+      try {
+        const res = await fetch(
+          `/api/flow-council/rounds?chainId=${chainId}&flowCouncilAddress=${councilId}`,
+        );
+        const data = await res.json();
+        if (data.success && data.round?.details) {
+          const details =
+            typeof data.round.details === "string"
+              ? JSON.parse(data.round.details)
+              : data.round.details;
+          setCouncilMetadata({
+            name: details?.name ?? "Flow Council",
+            description: details?.description ?? "N/A",
+          });
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    })();
+  }, [councilId, chainId]);
 
   const addToWallet = (args: {
     address: string;
@@ -296,17 +297,16 @@ export default function Grantee(props: GranteeProps) {
 
     if (
       selectedProjectIndex === null ||
-      !projects ||
-      !projects[selectedProjectIndex]
+      !projectsWithStatus[selectedProjectIndex]
     ) {
-      throw Error("Invalid profile");
+      throw Error("Invalid project");
     }
 
-    if (!council) {
-      throw Error("Council not found");
+    if (!flowCouncil) {
+      throw Error("Flow Council not found");
     }
 
-    const project = projects[selectedProjectIndex];
+    const project = projectsWithStatus[selectedProjectIndex];
 
     try {
       setIsSubmitting(true);
@@ -315,22 +315,20 @@ export default function Grantee(props: GranteeProps) {
       const res = await fetch("/api/flow-council/apply", {
         method: "POST",
         body: JSON.stringify({
-          owner: session.address,
-          recipient:
+          projectId: project.id,
+          chainId,
+          councilId: flowCouncil.id,
+          fundingAddress:
             isCustomReceiver && !isCustomReceiverInvalid
               ? customReceiver
               : session.address,
-          chainId,
-          councilId: council.id,
-          metadata: project.id,
         }),
       });
       const json = await res.json();
 
       if (!json.success) {
         console.error(json.error);
-
-        setError(ErrorMessage.GENERIC);
+        setError(json.error || ErrorMessage.GENERIC);
       } else {
         setSuccess(true);
       }
@@ -347,7 +345,11 @@ export default function Grantee(props: GranteeProps) {
     }
   };
 
-  if (!chainId || !network || (councilQueryRes && !councilQueryRes.council)) {
+  if (
+    !chainId ||
+    !network ||
+    (flowCouncilQueryRes && !flowCouncilQueryRes.flowCouncil)
+  ) {
     return <span className="m-auto fs-4 fw-bold">No council found</span>;
   }
 
@@ -371,7 +373,7 @@ export default function Grantee(props: GranteeProps) {
               : connectedChain?.id !== chainId
                 ? switchChain({ chainId })
                 : addToWallet({
-                    address: council.distributionToken,
+                    address: flowCouncil.superToken,
                     symbol: superfluidQueryRes?.token?.symbol,
                     decimals: 18,
                     image: councilToken?.icon ?? "",
@@ -416,24 +418,43 @@ export default function Grantee(props: GranteeProps) {
           marginBottom: 8,
         }}
       >
-        {projects?.map((project, i: number) => {
-          if (!project || !project.metadata?.title) {
+        {projectsWithStatus.map((project, i: number) => {
+          if (!project.details?.name) {
             return null;
           }
 
+          const statusMap: Record<
+            ApplicationStatus,
+            "PENDING" | "APPROVED" | "REJECTED" | "CANCELED"
+          > = {
+            SUBMITTED: "PENDING",
+            ACCEPTED: "APPROVED",
+            CHANGES_REQUESTED: "PENDING",
+            REJECTED: "REJECTED",
+            REMOVED: "CANCELED",
+            GRADUATED: "APPROVED",
+          };
+
+          const mappedStatus = project.status
+            ? statusMap[project.status]
+            : null;
+
           return (
-            <GranteeApplicationCard
+            <ProjectCard
               key={project.id}
-              name={project.metadata.title}
-              description={project.metadata.description}
-              logoCid={project.metadata.logoImg}
-              bannerCid={project.metadata.bannerImg}
-              status={project.status}
+              name={project.details.name}
+              description={project.details.description ?? ""}
+              logoUrl={project.details.logoUrl ?? ""}
+              bannerUrl={project.details.bannerUrl ?? ""}
+              status={mappedStatus}
               hasApplied={hasApplied}
               canReapply={true}
               isSelected={selectedProjectIndex === i}
               selectProject={() => setSelectedProjectIndex(i)}
-              updateProject={setShowProjectUpdateModal}
+              updateProject={() => {
+                setEditingProject(project);
+                setShowProjectModal(true);
+              }}
               isTransactionConfirming={isSubmitting}
             />
           );
@@ -442,7 +463,8 @@ export default function Grantee(props: GranteeProps) {
           className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-4 fs-6 cursor-pointer shadow"
           style={{ height: 418 }}
           onClick={() => {
-            setShowProjectCreationModal(true);
+            setEditingProject(null);
+            setShowProjectModal(true);
             setSelectedProjectIndex(null);
           }}
         >
@@ -563,25 +585,20 @@ export default function Grantee(props: GranteeProps) {
         </Toast>
         {error && <Card.Text className="fs-6 text-danger">{error}</Card.Text>}
       </Stack>
-      <ProjectCreationModal
-        show={showProjectCreationModal}
-        chainId={chainId}
-        handleClose={() => setShowProjectCreationModal(false)}
-        registryAddress={network?.alloRegistry}
-        setNewProfileId={(newProfileId) => setNewProfileId(newProfileId)}
-      />
-      {projects &&
-        selectedProjectIndex !== null &&
-        projects[selectedProjectIndex] && (
-          <ProjectUpdateModal
-            show={showProjectUpdateModal}
-            chainId={chainId}
-            handleClose={() => setShowProjectUpdateModal(false)}
-            registryAddress={network?.alloRegistry}
-            project={projects[selectedProjectIndex]}
-            key={selectedProjectIndex}
-          />
-        )}
+      {chainId && (
+        <ProjectModal
+          show={showProjectModal}
+          chainId={chainId}
+          csrfToken={csfrToken}
+          handleClose={() => {
+            setShowProjectModal(false);
+            setEditingProject(null);
+          }}
+          onProjectCreated={fetchProjects}
+          mode={editingProject ? "edit" : "create"}
+          project={editingProject ?? undefined}
+        />
+      )}
     </Stack>
   );
 }

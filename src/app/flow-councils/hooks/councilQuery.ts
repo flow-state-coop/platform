@@ -2,13 +2,13 @@ import { useQuery, gql } from "@apollo/client";
 import { Network } from "@/types/network";
 import { getApolloClient } from "@/lib/apollo";
 
-const COUNCIL_QUERY = gql`
-  query CouncilQuery($councilId: String) {
-    council(id: $councilId) {
+const FLOW_COUNCIL_QUERY = gql`
+  query FlowCouncilQuery($councilId: String) {
+    flowCouncil(id: $councilId) {
       id
-      pool
+      distributionPool
       metadata
-      grantees {
+      recipients {
         metadata
         account
         votes(first: 1000, orderBy: createdAtTimestamp, orderDirection: desc) {
@@ -17,14 +17,14 @@ const COUNCIL_QUERY = gql`
           createdAtTimestamp
         }
       }
-      distributionToken
-      maxAllocationsPerMember
+      superToken
+      maxVotingSpread
     }
   }
 `;
 
 export default function useCouncilQuery(network: Network, councilId: string) {
-  const { data: councilQueryRes } = useQuery(COUNCIL_QUERY, {
+  const { data: councilQueryRes } = useQuery(FLOW_COUNCIL_QUERY, {
     client: getApolloClient("flowCouncil", network.id),
     variables: {
       councilId: councilId?.toLowerCase(),
@@ -33,5 +33,5 @@ export default function useCouncilQuery(network: Network, councilId: string) {
     skip: !councilId,
   });
 
-  return councilQueryRes?.council;
+  return councilQueryRes?.flowCouncil;
 }

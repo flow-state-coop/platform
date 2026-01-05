@@ -8,7 +8,7 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import { Token } from "@/types/token";
 import { fetchIpfsImage } from "@/lib/fetchIpfs";
-import useCouncil from "../hooks/council";
+import useFlowCouncil from "../hooks/flowCouncil";
 import { formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
@@ -50,7 +50,7 @@ export default function Grantee(props: GranteeProps) {
   const [logoUrl, setLogoUrl] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
 
-  const { newAllocation, dispatchNewAllocation } = useCouncil();
+  const { newAllocation, dispatchNewAllocation } = useFlowCouncil();
   const [percentage, setPercentage] = useState(0);
   const [descriptionRef, { noClamp, clampedText }] = useClampText({
     text: removeMarkdown(description).replace(/\r?\n|\r/g, " "),
@@ -63,7 +63,7 @@ export default function Grantee(props: GranteeProps) {
   const granteeAllocation = useMemo(
     () =>
       newAllocation?.allocation.find(
-        (allocation) => allocation.grantee === granteeAddress,
+        (allocation) => allocation.recipient === granteeAddress,
       ),
     [newAllocation, granteeAddress],
   );
@@ -75,7 +75,7 @@ export default function Grantee(props: GranteeProps) {
 
     const votes =
       newAllocation.allocation.find(
-        (allocation) => allocation.grantee === granteeAddress,
+        (allocation) => allocation.recipient === granteeAddress,
       )?.amount ?? 0;
 
     setPercentage((votes / votingPower) * 100);
@@ -124,7 +124,7 @@ export default function Grantee(props: GranteeProps) {
       dispatchNewAllocation({
         type: "update",
         allocation: {
-          grantee: granteeAddress,
+          recipient: granteeAddress,
           amount: votingAmount,
         },
       });
@@ -297,7 +297,7 @@ export default function Grantee(props: GranteeProps) {
                   dispatchNewAllocation({
                     type: "add",
                     allocation: {
-                      grantee: granteeAddress,
+                      recipient: granteeAddress,
                       amount: 1,
                     },
                   });

@@ -7,6 +7,7 @@ import {
   parseAbi,
   Address,
   Chain,
+  isAddress,
 } from "viem";
 import { optimism, arbitrum, base, optimismSepolia } from "wagmi/chains";
 import { db } from "../db";
@@ -24,14 +25,26 @@ const chains: { [id: number]: Chain } = {
 
 export async function POST(request: Request) {
   try {
-    const { grantees, chainId, councilId } = await request.json();
+    const { applications, chainId, councilId } = await request.json();
 
     const session = await getServerSession(authOptions);
     const network = networks.find((network) => network.id === chainId);
 
+    if (!session?.address) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthenticated" }),
+      );
+    }
+
     if (!network) {
       return new Response(
         JSON.stringify({ success: false, error: "Wrong network" }),
+      );
+    }
+
+    if (!councilId || !isAddress(councilId)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid council ID" }),
       );
     }
 
@@ -40,8 +53,8 @@ export async function POST(request: Request) {
       transport: http(network.rpcUrl),
     });
 
-    const granteeManagerRole = keccak256(
-      encodePacked(["string"], ["GRANTEE_MANAGER_ROLE"]),
+    const recipientManagerRole = keccak256(
+      encodePacked(["string"], ["RECIPIENT_MANAGER_ROLE"]),
     );
 
     const hasRole = await publicClient.readContract({
@@ -50,34 +63,52 @@ export async function POST(request: Request) {
         "function hasRole(bytes32 role, address account) view returns (bool)",
       ]),
       functionName: "hasRole",
-      args: [granteeManagerRole, session?.address as Address],
+      args: [recipientManagerRole, session.address as Address],
     });
 
     if (!hasRole) {
       return new Response(
-        JSON.stringify({ success: false, error: "Unauthenticated" }),
+        JSON.stringify({ success: false, error: "Not authorized" }),
       );
     }
 
-    for (const grantee of grantees) {
+    const round = await db
+      .selectFrom("rounds")
+      .select("id")
+      .where("chainId", "=", chainId)
+      .where("flowCouncilAddress", "=", councilId.toLowerCase())
+      .executeTakeFirst();
+
+    if (!round) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Round not found" }),
+      );
+    }
+
+    for (const application of applications) {
+      if (!application.id || typeof application.id !== "number") {
+        continue;
+      }
+
       await db
         .updateTable("applications")
         .set({
-          status: grantee.status,
+          status: application.status,
+          updatedAt: new Date(),
         })
-        .where("owner", "=", grantee.owner.toLowerCase())
-        .where("chainId", "=", chainId)
-        .where("councilId", "=", councilId.toLowerCase())
+        .where("id", "=", application.id)
+        .where("roundId", "=", round.id)
         .execute();
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Success! Application pending`,
+        message: "Applications updated successfully",
       }),
     );
   } catch (err) {
+    console.error(err);
     return new Response(JSON.stringify({ success: false, error: err }));
   }
 }
