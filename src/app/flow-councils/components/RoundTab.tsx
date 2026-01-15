@@ -586,7 +586,7 @@ export default function RoundTab(props: RoundTabProps) {
 
       <Form.Group className="mb-4">
         <Form.Label className="fs-lg fw-bold">
-          Lifetime Users (0 is a valid answer if you&apos;re early!)*
+          Lifetime Users (0 is a valid answer if you&apos;re early)*
         </Form.Label>
         <Form.Control
           type="number"
@@ -609,7 +609,7 @@ export default function RoundTab(props: RoundTabProps) {
 
       <Form.Group className="mb-4">
         <Form.Label className="fs-lg fw-bold">
-          Active Users (0 is a valid answer if you&apos;re early!)*
+          Active Users*
         </Form.Label>
         <Stack direction="horizontal" gap={3} className="align-items-start">
           <Form.Control
@@ -811,7 +811,7 @@ export default function RoundTab(props: RoundTabProps) {
         />
       </Form.Group>
 
-      <InfoBox title="**Season 3 Expectations**">
+      <InfoBox title="Season 3 Expectations">
         <p className="mb-2">
           Growth is an emphasis for this GoodBuilders round. Every project, even
           early-stage, should focus on how it&apos;ll attract new users,
@@ -957,7 +957,7 @@ export default function RoundTab(props: RoundTabProps) {
       </Form.Group>
 
       <Form.Label className="fs-lg fw-bold mb-1">
-        Growth Milestone 1*
+        Growth Milestones*
       </Form.Label>
       <p className="text-muted small mb-3">
         Growth isn&apos;t a dirty word. We want you to share your thinking at
