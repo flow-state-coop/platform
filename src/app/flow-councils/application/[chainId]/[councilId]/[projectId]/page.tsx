@@ -1,19 +1,19 @@
-import type { SearchParams } from "@/types/searchParams";
-import RoundMetadata from "./round-metadata";
 import { cookies as nextCookies } from "next/headers";
+import Application from "./application";
 
 export default async function Page({
-  searchParams,
+  params,
 }: {
-  searchParams: Promise<SearchParams>;
+  params: Promise<{ chainId: string; councilId: string; projectId: string }>;
 }) {
   const cookies = await nextCookies();
-  const { chainId, councilId } = await searchParams;
+  const { chainId, councilId, projectId } = await params;
 
   return (
-    <RoundMetadata
+    <Application
       chainId={Number(chainId)}
       councilId={councilId}
+      projectId={projectId === "new" ? undefined : projectId}
       csrfToken={cookies.get("next-auth.csrf-token")?.value.split("|")[0] ?? ""}
     />
   );

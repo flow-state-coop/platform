@@ -1,0 +1,491 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useAccount, useSwitchChain } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useSession } from "next-auth/react";
+import { isAddress } from "viem";
+import Form from "react-bootstrap/Form";
+import Stack from "react-bootstrap/Stack";
+import Button from "react-bootstrap/Button";
+import Spinner from "react-bootstrap/Spinner";
+import Toast from "react-bootstrap/Toast";
+import useSiwe from "@/hooks/siwe";
+import { type RoundForm } from "./RoundTab";
+
+export type RecipientType = "individual" | "organization";
+
+export type EligibilityForm = {
+  commitment: {
+    agreedToCommitments: boolean;
+  };
+  identity: {
+    recipientType: RecipientType | null;
+    legalName: string;
+    country: string;
+    address: string;
+    contactEmail: string;
+    fundingWallet: string;
+    walletConfirmed: boolean;
+  };
+  dataAcknowledgement: {
+    gdprConsent: boolean;
+  };
+};
+
+const initialForm: EligibilityForm = {
+  commitment: {
+    agreedToCommitments: false,
+  },
+  identity: {
+    recipientType: null,
+    legalName: "",
+    country: "",
+    address: "",
+    contactEmail: "",
+    fundingWallet: "",
+    walletConfirmed: false,
+  },
+  dataAcknowledgement: {
+    gdprConsent: false,
+  },
+};
+
+const isValidEmail = (email: string): boolean => {
+  if (!email) return false;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+type EligibilityTabProps = {
+  chainId: number;
+  councilId: string;
+  projectId: number;
+  applicationId: number | null;
+  csrfToken: string;
+  defaultFundingAddress: string;
+  existingEligibilityData: EligibilityForm | null;
+  existingRoundData: RoundForm | null;
+  isLoading: boolean;
+  onSubmit: () => void;
+  onBack: () => void;
+};
+
+export default function EligibilityTab(props: EligibilityTabProps) {
+  const {
+    chainId,
+    applicationId,
+    csrfToken,
+    defaultFundingAddress,
+    existingEligibilityData,
+    existingRoundData,
+    isLoading,
+    onSubmit,
+    onBack,
+  } = props;
+
+  const [form, setForm] = useState<EligibilityForm>(initialForm);
+  const [validated, setValidated] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const { openConnectModal } = useConnectModal();
+  const { address, chain: connectedChain } = useAccount();
+  const { switchChain } = useSwitchChain();
+  const { data: session } = useSession();
+  const { handleSignIn } = useSiwe();
+
+  useEffect(() => {
+    if (existingEligibilityData) {
+      setForm(existingEligibilityData);
+    }
+  }, [existingEligibilityData]);
+
+  // Validation
+  const isCommitmentValid = form.commitment.agreedToCommitments === true;
+
+  const isIdentityValid =
+    form.identity.recipientType !== null &&
+    form.identity.legalName.trim() !== "" &&
+    form.identity.country.trim() !== "" &&
+    form.identity.address.trim() !== "" &&
+    form.identity.contactEmail.trim() !== "" &&
+    isValidEmail(form.identity.contactEmail) &&
+    form.identity.fundingWallet.trim() !== "" &&
+    isAddress(form.identity.fundingWallet) &&
+    form.identity.walletConfirmed === true;
+
+  const isDataAcknowledgementValid =
+    form.dataAcknowledgement.gdprConsent === true;
+
+  const isValid =
+    isCommitmentValid && isIdentityValid && isDataAcknowledgementValid;
+
+  // Handle "Use your project default" link
+  const handleUseDefaultFunding = () => {
+    setForm({
+      ...form,
+      identity: {
+        ...form.identity,
+        fundingWallet: defaultFundingAddress,
+      },
+    });
+  };
+
+  const handleSubmitApplication = async () => {
+    if (!session?.address) throw Error("Account is not signed in");
+    if (!applicationId) throw Error("Application ID not found");
+
+    try {
+      setIsSubmitting(true);
+      setError("");
+
+      // Merge round data with eligibility data
+      const combinedDetails = {
+        ...existingRoundData,
+        eligibility: form,
+      };
+
+      const res = await fetch(
+        `/api/flow-council/applications/${applicationId}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            details: combinedDetails,
+            fundingAddress: form.identity.fundingWallet,
+            submit: true,
+          }),
+        },
+      );
+
+      const json = await res.json();
+
+      if (!json.success) {
+        setError(json.error || "Failed to submit application");
+        setIsSubmitting(false);
+        return;
+      }
+
+      setIsSubmitting(false);
+      setSuccess(true);
+      onSubmit();
+    } catch (err) {
+      console.error(err);
+      setError("Failed to submit application");
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = () => {
+    setValidated(true);
+    if (!address && openConnectModal) {
+      openConnectModal();
+    } else if (connectedChain?.id !== chainId) {
+      switchChain({ chainId });
+    } else if (!session || session.address !== address) {
+      handleSignIn(csrfToken);
+    } else if (isValid) {
+      handleSubmitApplication();
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="d-flex justify-content-center py-5">
+        <Spinner />
+      </div>
+    );
+  }
+
+  return (
+    <Form>
+      <p className="text-muted mb-4">* Required Fields</p>
+
+      {/* Section 1: Commitment */}
+      <h4 className="fw-bold mb-4">1. Commitment*</h4>
+      <div
+        className="rounded-4 p-4 mb-4"
+        style={{ backgroundColor: "#fff8e6", border: "2px solid #212529" }}
+      >
+        <p className="mb-2">
+          These commitments help us build and grow together as a community. They
+          create visibility around your progress, make collaboration easier, and
+          ensure we can support each team effectively throughout the round.
+        </p>
+        <Form.Check
+          type="checkbox"
+          id="commitment-agree"
+          className="mb-3"
+          checked={form.commitment.agreedToCommitments}
+          isInvalid={validated && !form.commitment.agreedToCommitments}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              commitment: { agreedToCommitments: e.target.checked },
+            })
+          }
+          label={
+            <span className="fw-bold">
+              If accepted into GoodBuilders, I agree to:
+            </span>
+          }
+        />
+        <ul className="mb-0 ps-4">
+          <li>
+            Post progress and milestones updates on FlowState at least every 2-3
+            weeks
+          </li>
+          <li>Join the Demo Days held throughout the round</li>
+          <li>Join office hours when needed</li>
+          <li>Share KPI data during and after the round</li>
+          <li>
+            Communicate promptly in the program&apos;s Telegram/FlowState
+            channels (questions, blockers, check-ins)
+          </li>
+          <li>Provide feedback to improve future rounds</li>
+        </ul>
+      </div>
+
+      {/* Section 2: Identity & KYC */}
+      <h4 className="fw-bold mb-4 mt-8">2. Identity & KYC*</h4>
+
+      <Form.Group className="mb-4">
+        <Form.Label className="fs-lg fw-bold">Recipient Type</Form.Label>
+        <Stack direction="horizontal" gap={4}>
+          <Form.Check
+            type="radio"
+            id="recipient-individual"
+            name="recipientType"
+            label="Individual"
+            checked={form.identity.recipientType === "individual"}
+            isInvalid={validated && form.identity.recipientType === null}
+            onChange={() =>
+              setForm({
+                ...form,
+                identity: { ...form.identity, recipientType: "individual" },
+              })
+            }
+          />
+          <Form.Check
+            type="radio"
+            id="recipient-organization"
+            name="recipientType"
+            label="Organization"
+            checked={form.identity.recipientType === "organization"}
+            isInvalid={validated && form.identity.recipientType === null}
+            onChange={() =>
+              setForm({
+                ...form,
+                identity: { ...form.identity, recipientType: "organization" },
+              })
+            }
+          />
+        </Stack>
+      </Form.Group>
+
+      <Form.Group className="mb-4">
+        <Form.Label className="fs-lg fw-bold">
+          {form.identity.recipientType === "organization"
+            ? "Company Name"
+            : "Legal/Company Name"}
+        </Form.Label>
+        <Form.Control
+          type="text"
+          value={form.identity.legalName}
+          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          isInvalid={validated && !form.identity.legalName.trim()}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              identity: { ...form.identity, legalName: e.target.value },
+            })
+          }
+        />
+      </Form.Group>
+
+      <Form.Group className="mb-4">
+        <Form.Label className="fs-lg fw-bold">
+          Country of{" "}
+          {form.identity.recipientType === "organization"
+            ? "registration"
+            : "residence/registration"}
+        </Form.Label>
+        <Form.Control
+          type="text"
+          value={form.identity.country}
+          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          isInvalid={validated && !form.identity.country.trim()}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              identity: { ...form.identity, country: e.target.value },
+            })
+          }
+        />
+      </Form.Group>
+
+      <Form.Group className="mb-4">
+        <Form.Label className="fs-lg fw-bold">Address</Form.Label>
+        <Form.Control
+          type="text"
+          value={form.identity.address}
+          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          isInvalid={validated && !form.identity.address.trim()}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              identity: { ...form.identity, address: e.target.value },
+            })
+          }
+        />
+      </Form.Group>
+
+      <Form.Group className="mb-4">
+        <Form.Label className="fs-lg fw-bold">Contact Email</Form.Label>
+        <Form.Control
+          type="email"
+          value={form.identity.contactEmail}
+          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          isInvalid={
+            validated &&
+            (!form.identity.contactEmail.trim() ||
+              !isValidEmail(form.identity.contactEmail))
+          }
+          onChange={(e) =>
+            setForm({
+              ...form,
+              identity: { ...form.identity, contactEmail: e.target.value },
+            })
+          }
+        />
+      </Form.Group>
+
+      <Form.Group className="mb-4">
+        <Stack direction="horizontal" gap={2} className="mb-1">
+          <Form.Label className="fs-lg fw-bold mb-0">
+            Wallet to receive funding
+          </Form.Label>
+          {defaultFundingAddress && (
+            <Button
+              variant="link"
+              className="p-0 text-decoration-underline fw-semi-bold text-primary"
+              onClick={handleUseDefaultFunding}
+            >
+              (Use your project default)
+            </Button>
+          )}
+        </Stack>
+        <Form.Control
+          type="text"
+          value={form.identity.fundingWallet}
+          placeholder="0x..."
+          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          isInvalid={
+            validated &&
+            (!form.identity.fundingWallet.trim() ||
+              !isAddress(form.identity.fundingWallet))
+          }
+          onChange={(e) =>
+            setForm({
+              ...form,
+              identity: { ...form.identity, fundingWallet: e.target.value },
+            })
+          }
+        />
+      </Form.Group>
+
+      <Form.Group className="mb-4">
+        <Form.Check
+          type="checkbox"
+          id="wallet-confirm"
+          label="I confirm the wallet belongs to the named individual or organization.*"
+          checked={form.identity.walletConfirmed}
+          isInvalid={validated && !form.identity.walletConfirmed}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              identity: { ...form.identity, walletConfirmed: e.target.checked },
+            })
+          }
+        />
+      </Form.Group>
+
+      {/* Section 3: Data Acknowledgement */}
+      <h4 className="fw-bold mb-4 mt-8">3. Data Acknowledgement*</h4>
+      <Form.Group className="mb-4">
+        <Form.Check
+          type="checkbox"
+          id="gdpr-consent"
+          checked={form.dataAcknowledgement.gdprConsent}
+          isInvalid={validated && !form.dataAcknowledgement.gdprConsent}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              dataAcknowledgement: { gdprConsent: e.target.checked },
+            })
+          }
+          label={
+            <>
+              I consent to the collection and use of my data for the purposes of
+              participating in the GoodBuilders Round 3 and receiving a grant
+              via the Flow State platform. I understand that my data will be
+              handled in accordance with GDPR and will not be shared outside of
+              GoodDollar and its grant management partners.
+              <br />
+              <br />I also agree to be contacted by the GoodDollar team with
+              relevant updates, including program communications and occasional
+              newsletters. I can unsubscribe at any time.
+            </>
+          }
+        />
+      </Form.Group>
+
+      {/* Navigation */}
+      <Stack direction="vertical" gap={3} className="mb-30">
+        <Stack direction="horizontal" gap={3}>
+          <Button
+            variant="secondary"
+            className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
+            style={{ backgroundColor: "#45ad57", borderColor: "#45ad57" }}
+            onClick={onBack}
+          >
+            Back
+          </Button>
+          {!session || session.address !== address ? (
+            <Button
+              className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
+              onClick={handleSubmit}
+            >
+              Sign In With Ethereum
+            </Button>
+          ) : (
+            <Button
+              disabled={validated && !isValid}
+              className="fs-lg fw-semi-bold rounded-4 py-4"
+              style={{ width: 140 }}
+              onClick={handleSubmit}
+            >
+              {isSubmitting ? <Spinner size="sm" /> : "Submit"}
+            </Button>
+          )}
+        </Stack>
+        <Toast
+          show={success}
+          delay={4000}
+          autohide={true}
+          onClose={() => setSuccess(false)}
+          className="bg-success py-2 px-3 fw-semi-bold fs-6 text-white m-0"
+        >
+          Application submitted successfully!
+        </Toast>
+        {error && <p className="text-danger fw-semi-bold m-0">{error}</p>}
+        {validated && !isValid && (
+          <p className="text-danger fw-semi-bold m-0">
+            *Please complete the required fields.
+          </p>
+        )}
+      </Stack>
+    </Form>
+  );
+}

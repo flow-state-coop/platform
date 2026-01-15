@@ -17,7 +17,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
 import Image from "react-bootstrap/Image";
-import Sidebar from "../components/Sidebar";
+import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
@@ -155,7 +155,7 @@ export default function Launch(props: LaunchProps) {
       });
 
       router.push(
-        `/flow-councils/launch/?chainId=${selectedNetwork.id}&councilId=${flowCouncilAddress}`,
+        `/flow-councils/launch/${selectedNetwork.id}/${flowCouncilAddress}`,
       );
       router.refresh();
 
@@ -226,9 +226,7 @@ export default function Launch(props: LaunchProps) {
                     onClick={() => {
                       setSelectedNetwork(network);
                       setSelectedToken(network.tokens[0]);
-                      router.push(
-                        `/flow-councils/launch/?chainId=${network.id}`,
-                      );
+                      router.push("/flow-councils/launch");
                     }}
                   >
                     <Stack direction="horizontal" gap={1}>
@@ -408,7 +406,7 @@ export default function Launch(props: LaunchProps) {
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() =>
               router.push(
-                `/flow-councils/round-metadata/?chainId=${selectedNetwork.id}&councilId=${councilId}`,
+                `/flow-councils/round-metadata/${selectedNetwork.id}/${councilId}`,
               )
             }
           >

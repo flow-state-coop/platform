@@ -1,17 +1,15 @@
-import type { SearchParams } from "@/types/searchParams";
-import Review from "./review";
 import { headers, cookies as nextCookies } from "next/headers";
+import Review from "../../review";
 
 export default async function Page({
-  searchParams,
+  params,
 }: {
-  searchParams: Promise<SearchParams>;
+  params: Promise<{ chainId: string; councilId: string }>;
 }) {
   const headersList = await headers();
   const hostname = headersList.get("host");
   const cookies = await nextCookies();
-
-  const { chainId, councilId } = await searchParams;
+  const { chainId, councilId } = await params;
 
   return (
     <Review

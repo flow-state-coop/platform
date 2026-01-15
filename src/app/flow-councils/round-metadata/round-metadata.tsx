@@ -13,7 +13,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
 import Image from "react-bootstrap/Image";
-import Sidebar from "../components/Sidebar";
+import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useSiwe from "@/hooks/siwe";
 
@@ -362,9 +362,7 @@ export default function RoundMetadata(props: RoundMetadataProps) {
             variant="secondary"
             className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
             onClick={() =>
-              router.push(
-                `/flow-councils/permissions/?chainId=${chainId}&councilId=${councilId}`,
-              )
+              router.push(`/flow-councils/permissions/${chainId}/${councilId}`)
             }
           >
             Next

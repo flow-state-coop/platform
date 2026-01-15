@@ -21,7 +21,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
 import Table from "react-bootstrap/Table";
 import Badge from "react-bootstrap/Badge";
-import Sidebar from "../components/Sidebar";
+import Sidebar from "@/app/flow-councils/components/Sidebar";
 import CopyTooltip from "@/components/CopyTooltip";
 import useSiwe from "@/hooks/siwe";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -125,7 +125,7 @@ export default function Review(props: ReviewProps) {
       pollInterval: 10000,
     });
 
-  const granteeApplicationLink = `${hostname}/flow-councils/grantee/?councilId=${councilId}&chainId=${chainId}`;
+  const granteeApplicationLink = `${hostname}/flow-councils/application/${chainId}/${councilId}`;
   const flowCouncil = flowCouncilQueryRes?.flowCouncil;
 
   const fetchApplications = useCallback(async () => {

@@ -18,7 +18,7 @@ import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
 import Image from "react-bootstrap/Image";
 import InfoTooltip from "@/components/InfoTooltip";
-import Sidebar from "../components/Sidebar";
+import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
@@ -680,9 +680,7 @@ export default function Membership(props: MembershipProps) {
             className="fs-lg fw-semi-bold py-4 rounded-4"
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() =>
-              router.push(
-                `/flow-councils/review/?chainId=${chainId}&councilId=${councilId}`,
-              )
+              router.push(`/flow-councils/review/${chainId}/${councilId}`)
             }
           >
             Next

@@ -15,7 +15,7 @@ import Toast from "react-bootstrap/Toast";
 import Spinner from "react-bootstrap/Spinner";
 import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
-import Sidebar from "../components/Sidebar";
+import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
@@ -563,9 +563,7 @@ export default function Permissions(props: PermissionsProps) {
             className="py-4 rounded-4 fs-lg fw-semi-bold"
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() =>
-              router.push(
-                `/flow-councils/membership/?chainId=${chainId}&councilId=${councilId}`,
-              )
+              router.push(`/flow-councils/membership/${chainId}/${councilId}`)
             }
           >
             Next

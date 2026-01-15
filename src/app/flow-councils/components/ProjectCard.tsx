@@ -24,7 +24,14 @@ type ProjectCardProps = {
   isTransactionConfirming: boolean;
 };
 
-type Status = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
+type Status =
+  | "SUBMITTED"
+  | "ACCEPTED"
+  | "CHANGES_REQUESTED"
+  | "REJECTED"
+  | "GRADUATED"
+  | "REMOVED"
+  | "INCOMPLETE";
 
 export default function ProjectCard(props: ProjectCardProps) {
   const {
@@ -52,23 +59,31 @@ export default function ProjectCard(props: ProjectCardProps) {
 
   return (
     <Card
-      className={`rounded-5 border-4 overflow-hidden cursor-pointer shadow ${
-        isSelected &&
-        (!hasApplied ||
-          (canReapply && (status === "REJECTED" || status === "CANCELED")))
-          ? "border-primary"
-          : status === "APPROVED"
-            ? "border-success"
-            : status === "REJECTED"
-              ? "border-danger"
-              : status === "PENDING"
-                ? "border-warning"
-                : "border-dark"
-      }`}
+      className="rounded-5 border-4 overflow-hidden cursor-pointer shadow"
       style={{
+        borderColor:
+          isSelected &&
+          (!hasApplied ||
+            (canReapply && (status === "REJECTED" || status === "REMOVED")))
+            ? "#056589" // $primary
+            : status === "SUBMITTED"
+              ? "#056589" // $primary
+              : status === "ACCEPTED"
+                ? "#45ad57" // $success
+                : status === "CHANGES_REQUESTED"
+                  ? "#ffc107" // yellow (warning)
+                  : status === "REJECTED"
+                    ? "#dc3545" // red (danger)
+                    : status === "GRADUATED"
+                      ? "#679a8b" // como-400
+                      : status === "REMOVED"
+                        ? "#888888" // $info
+                        : status === "INCOMPLETE"
+                          ? "#d95d39" // flame-500
+                          : "#030303", // $dark (default)
         height: 430,
         pointerEvents:
-          hasApplied && !canReapply && status !== "PENDING" ? "none" : "auto",
+          hasApplied && !canReapply && status !== "SUBMITTED" ? "none" : "auto",
         transition: "all 0.2s ease-in-out",
       }}
       onClick={selectProject}
@@ -118,42 +133,45 @@ export default function ProjectCard(props: ProjectCardProps) {
               <Stack
                 direction="horizontal"
                 gap={2}
-                className={`justify-content-center align-items-center w-100 fs-6
-                            ${
-                              status === "PENDING"
-                                ? "text-warning"
-                                : status === "APPROVED"
-                                  ? "text-success"
-                                  : "text-danger"
-                            }`}
+                className="justify-content-center align-items-center w-100 fs-6"
+                style={{
+                  color:
+                    status === "SUBMITTED"
+                      ? "#056589" // $primary
+                      : status === "ACCEPTED"
+                        ? "#45ad57" // $success
+                        : status === "CHANGES_REQUESTED"
+                          ? "#ffc107" // yellow (warning)
+                          : status === "REJECTED"
+                            ? "#dc3545" // red (danger)
+                            : status === "GRADUATED"
+                              ? "#679a8b" // como-400
+                              : status === "REMOVED"
+                                ? "#888888" // $info
+                                : status === "INCOMPLETE"
+                                  ? "#d95d39" // flame-500
+                                  : "#030303", // $dark
+                }}
               >
-                <Image
-                  src={
-                    status === "PENDING"
-                      ? "/pending.svg"
-                      : status === "REJECTED" || status === "CANCELED"
-                        ? "/cancel-circle.svg"
-                        : "/check-circle.svg"
-                  }
-                  alt="status"
-                  width={28}
-                  style={{
-                    filter:
-                      status === "PENDING"
-                        ? "invert(87%) sepia(40%) saturate(4124%) hue-rotate(348deg) brightness(103%) contrast(110%)"
-                        : status === "REJECTED" || status === "CANCELED"
-                          ? "invert(36%) sepia(58%) saturate(1043%) hue-rotate(313deg) brightness(89%) contrast(116%)"
-                          : "invert(40%) sepia(14%) saturate(2723%) hue-rotate(103deg) brightness(97%) contrast(80%)",
-                  }}
-                />
-                {status === "PENDING"
-                  ? "Pending"
-                  : status === "REJECTED"
-                    ? "Rejected"
-                    : status === "CANCELED"
-                      ? "Canceled"
-                      : "Accepted"}
-                {(status === "PENDING" || canReapply) && (
+                {status === "SUBMITTED"
+                  ? "Submitted"
+                  : status === "ACCEPTED"
+                    ? "Accepted"
+                    : status === "CHANGES_REQUESTED"
+                      ? "Changes Requested"
+                      : status === "REJECTED"
+                        ? "Rejected"
+                        : status === "GRADUATED"
+                          ? "Graduated"
+                          : status === "REMOVED"
+                            ? "Removed"
+                            : status === "INCOMPLETE"
+                              ? "Incomplete"
+                              : ""}
+                {(status === "SUBMITTED" ||
+                  status === "CHANGES_REQUESTED" ||
+                  status === "INCOMPLETE" ||
+                  canReapply) && (
                   <Button
                     variant="transparent"
                     className="position-absolute end-0 px-3 border-0"

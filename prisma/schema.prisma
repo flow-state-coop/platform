@@ -10,6 +10,7 @@ generator kysely {
 }
 
 enum ApplicationStatus {
+  INCOMPLETE
   SUBMITTED
   ACCEPTED
   CHANGES_REQUESTED
@@ -96,6 +97,7 @@ model Application {
   roundId        Int               @map("round_id")
   fundingAddress String            @map("funding_address") @db.VarChar(42)
   status         ApplicationStatus @default(SUBMITTED)
+  details        Json?
   project        Project           @relation(fields: [projectId], references: [id])
   round          Round             @relation(fields: [roundId], references: [id])
   recipient      Recipient?

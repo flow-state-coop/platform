@@ -28,7 +28,7 @@ export default function Footer() {
       <Stack
         direction="vertical"
         gap={isMobile ? 0 : 20}
-        className="px-2 py-4 px-lg-30 px-xxl-52"
+        className="px-2 pb-4 pt-8 px-lg-30 px-xxl-52"
       >
         <Stack
           direction={isMobile ? "vertical" : "horizontal"}

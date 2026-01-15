@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
-import Link from "next/link";
-import { isAddress } from "viem";
+import { useRouter } from "next/navigation";
 import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { useSession } from "next-auth/react";
 import { gql, useQuery } from "@apollo/client";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -14,21 +12,16 @@ import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
-import Form from "react-bootstrap/Form";
-import Toast from "react-bootstrap/Toast";
-import Spinner from "react-bootstrap/Spinner";
-import ProjectCard from "../components/ProjectCard";
+import ProjectCard from "@/app/flow-councils/components/ProjectCard";
 import InfoTooltip from "@/components/InfoTooltip";
-import ProjectModal from "../components/ProjectModal";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import useSiwe from "@/hooks/siwe";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 
-type GranteeProps = {
-  chainId?: number;
-  councilId?: string;
-  csfrToken: string;
+type ProjectSelectionProps = {
+  chainId: number;
+  councilId: string;
+  csrfToken: string;
 };
 
 type ProjectDetails = {
@@ -65,10 +58,6 @@ type ApplicationStatus =
   | "REMOVED"
   | "GRADUATED";
 
-enum ErrorMessage {
-  GENERIC = "Error: Please try again later",
-}
-
 const FLOW_COUNCIL_QUERY = gql`
   query FlowCouncilQuery($councilId: String!) {
     flowCouncil(id: $councilId) {
@@ -89,36 +78,25 @@ const SUPERFLUID_QUERY = gql`
   }
 `;
 
-export default function Grantee(props: GranteeProps) {
-  const { chainId, councilId, csfrToken } = props;
+export default function ProjectSelection(props: ProjectSelectionProps) {
+  const { chainId, councilId } = props;
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
-  const [selectedProjectIndex, setSelectedProjectIndex] = useState<
-    number | null
-  >(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
+  const selectedProjectIndex = null;
+  const isSubmitting = false;
   const [councilMetadata, setCouncilMetadata] = useState({
     name: "",
     description: "",
   });
-  const [customReceiver, setCustomReceiver] = useState("");
-  const [isCustomReceiver, setIsCustomReceiver] = useState(false);
-  const [hasAgreedToCodeOfConduct, setHasAgreedToCodeOfConduct] =
-    useState(false);
-  const [showProjectModal, setShowProjectModal] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
 
+  const router = useRouter();
   const { isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { data: walletClient } = useWalletClient();
   const { switchChain } = useSwitchChain();
-  const { data: session } = useSession();
-  const { handleSignIn } = useSiwe();
   const { data: flowCouncilQueryRes } = useQuery(FLOW_COUNCIL_QUERY, {
     client: getApolloClient("flowCouncil", chainId),
     variables: {
@@ -144,9 +122,6 @@ export default function Grantee(props: GranteeProps) {
     name: superfluidQueryRes?.token?.symbol ?? "N/A",
     icon: "",
   };
-  const isCustomReceiverInvalid =
-    isCustomReceiver && !isAddress(customReceiver);
-
   const projectsWithStatus = useMemo(() => {
     return projects.map((project) => {
       const application = applications.find(
@@ -290,61 +265,6 @@ export default function Grantee(props: GranteeProps) {
     });
   };
 
-  const handleSubmit = async () => {
-    if (!session) {
-      throw Error("Account is not signed in");
-    }
-
-    if (
-      selectedProjectIndex === null ||
-      !projectsWithStatus[selectedProjectIndex]
-    ) {
-      throw Error("Invalid project");
-    }
-
-    if (!flowCouncil) {
-      throw Error("Flow Council not found");
-    }
-
-    const project = projectsWithStatus[selectedProjectIndex];
-
-    try {
-      setIsSubmitting(true);
-      setError("");
-
-      const res = await fetch("/api/flow-council/apply", {
-        method: "POST",
-        body: JSON.stringify({
-          projectId: project.id,
-          chainId,
-          councilId: flowCouncil.id,
-          fundingAddress:
-            isCustomReceiver && !isCustomReceiverInvalid
-              ? customReceiver
-              : session.address,
-        }),
-      });
-      const json = await res.json();
-
-      if (!json.success) {
-        console.error(json.error);
-        setError(json.error || ErrorMessage.GENERIC);
-      } else {
-        setSuccess(true);
-      }
-
-      fetchApplications();
-
-      setSelectedProjectIndex(null);
-      setIsSubmitting(false);
-    } catch (err) {
-      console.error(err);
-
-      setIsSubmitting(false);
-      setError(ErrorMessage.GENERIC);
-    }
-  };
-
   if (
     !chainId ||
     !network ||
@@ -400,8 +320,9 @@ export default function Grantee(props: GranteeProps) {
       >
         {councilMetadata.description}
       </Markdown>
-      <Card.Text className="mt-4 fs-6">
-        Select or create a project to apply.
+      <h2 className="mt-5 mb-2 fw-bold">Apply now!</h2>
+      <Card.Text className="fs-6">
+        Select or create a project to begin your application.
       </Card.Text>
       <div
         style={{
@@ -423,21 +344,8 @@ export default function Grantee(props: GranteeProps) {
             return null;
           }
 
-          const statusMap: Record<
-            ApplicationStatus,
-            "PENDING" | "APPROVED" | "REJECTED" | "CANCELED"
-          > = {
-            SUBMITTED: "PENDING",
-            ACCEPTED: "APPROVED",
-            CHANGES_REQUESTED: "PENDING",
-            REJECTED: "REJECTED",
-            REMOVED: "CANCELED",
-            GRADUATED: "APPROVED",
-          };
-
-          const mappedStatus = project.status
-            ? statusMap[project.status]
-            : null;
+          // If no application status, show as INCOMPLETE
+          const displayStatus = project.status ?? "INCOMPLETE";
 
           return (
             <ProjectCard
@@ -446,159 +354,39 @@ export default function Grantee(props: GranteeProps) {
               description={project.details.description ?? ""}
               logoUrl={project.details.logoUrl ?? ""}
               bannerUrl={project.details.bannerUrl ?? ""}
-              status={mappedStatus}
+              status={displayStatus}
               hasApplied={hasApplied}
               canReapply={true}
               isSelected={selectedProjectIndex === i}
-              selectProject={() => setSelectedProjectIndex(i)}
+              selectProject={() => {
+                router.push(
+                  `/flow-councils/application/${chainId}/${councilId}/${project.id}`,
+                );
+              }}
               updateProject={() => {
-                setEditingProject(project);
-                setShowProjectModal(true);
+                router.push(
+                  `/flow-councils/application/${chainId}/${councilId}/${project.id}`,
+                );
               }}
               isTransactionConfirming={isSubmitting}
             />
           );
         })}
         <Card
-          className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-4 fs-6 cursor-pointer shadow"
-          style={{ height: 418 }}
+          className="d-flex flex-col justify-content-center align-items-center border-2 border-secondary rounded-4 fs-6 cursor-pointer"
+          style={{ height: 430 }}
           onClick={() => {
-            setEditingProject(null);
-            setShowProjectModal(true);
-            setSelectedProjectIndex(null);
+            router.push(
+              `/flow-councils/application/${chainId}/${councilId}/new`,
+            );
           }}
         >
-          <Image src="/add.svg" alt="add" width={52} />
-          <Card.Text className="d-inline-block m-0 overflow-hidden text-center word-wrap">
-            Create a new project
+          <span className="fs-1 text-secondary">+</span>
+          <Card.Text className="d-inline-block m-0 overflow-hidden text-center word-wrap text-secondary">
+            Create Project
           </Card.Text>
         </Card>
       </div>
-      <Stack direction="vertical">
-        <Card.Text className="mt-8 fs-6 fw-semi-bold">
-          Additional Application Information
-        </Card.Text>
-        <Card.Text className="mb-2">
-          1) Do you want to receive funding for this round at the project owner
-          address?* (This cannot be changed during the round.)
-        </Card.Text>
-        <Stack direction="horizontal" gap={5} className="fs-lg fw-semi-bold">
-          <Form.Check
-            type="radio"
-            label="Yes"
-            checked={!isCustomReceiver}
-            onChange={() => setIsCustomReceiver(false)}
-          />
-          <Form.Check
-            type="radio"
-            label="No"
-            checked={isCustomReceiver}
-            onChange={() => setIsCustomReceiver(true)}
-          />
-        </Stack>
-        <Form.Group className="mt-2">
-          <Form.Label className={`${!isCustomReceiver ? "text-info" : ""}`}>
-            Funding Address* (Must be self-custody! e.g., Safe multisig, browser
-            wallet EOA, etc.)
-          </Form.Label>
-          <Form.Control
-            type="text"
-            disabled={!isCustomReceiver}
-            value={isCustomReceiver ? customReceiver : address ? address : ""}
-            className="border-0 py-3 bg-light fs-lg fw-semi-bold"
-            onChange={(e) => setCustomReceiver(e.target.value)}
-          />
-        </Form.Group>
-      </Stack>
-      <Stack direction="vertical" gap={3} className="mt-8 text-light">
-        <Stack
-          direction="horizontal"
-          gap={2}
-          className="align-items-start text-dark"
-        >
-          <Form.Check
-            onChange={() =>
-              setHasAgreedToCodeOfConduct(!hasAgreedToCodeOfConduct)
-            }
-          />
-          <Card.Text>
-            I have read and agree to the{" "}
-            <Link href="/conduct" target="_blank">
-              Flow State Grantee Code of Conduct
-            </Link>
-            .
-          </Card.Text>
-        </Stack>
-        <Button
-          variant="secondary"
-          className="d-flex justify-content-center align-items-center gap-2 py-4 rounded-4 fs-lg fw-semi-bold"
-          disabled={!!session && session.address === address}
-          onClick={() => {
-            !address && openConnectModal
-              ? openConnectModal()
-              : connectedChain?.id !== chainId
-                ? switchChain({ chainId })
-                : handleSignIn(csfrToken);
-          }}
-        >
-          {!!session && session.address === address && (
-            <Image
-              src="/check-circle.svg"
-              alt=""
-              width={26}
-              height={26}
-              style={{
-                filter:
-                  "brightness(0) saturate(100%) invert(10%) sepia(48%) saturate(2881%) hue-rotate(119deg) brightness(100%) contrast(99%)",
-              }}
-            />
-          )}
-          Sign In With Ethereum
-        </Button>
-        <Button
-          className="py-4 rounded-4 fs-lg fw-semi-bold text-light"
-          disabled={
-            !session ||
-            session.address !== address ||
-            selectedProjectIndex === null ||
-            isCustomReceiverInvalid ||
-            !hasAgreedToCodeOfConduct
-          }
-          onClick={() => {
-            !address && openConnectModal
-              ? openConnectModal()
-              : connectedChain?.id !== chainId
-                ? switchChain({ chainId })
-                : handleSubmit();
-          }}
-        >
-          {isSubmitting ? <Spinner size="sm" className="m-auto" /> : "Apply"}
-        </Button>
-        <Toast
-          show={success}
-          delay={4000}
-          autohide={true}
-          onClose={() => setSuccess(false)}
-          className="w-100 bg-success p-4 fw-semi-bold fs-6 text-white"
-        >
-          Success!
-        </Toast>
-        {error && <Card.Text className="fs-6 text-danger">{error}</Card.Text>}
-      </Stack>
-      {chainId && (
-        <ProjectModal
-          show={showProjectModal}
-          chainId={chainId}
-          csrfToken={csfrToken}
-          handleClose={() => {
-            setShowProjectModal(false);
-            setEditingProject(null);
-          }}
-          onProjectCreated={fetchProjects}
-          mode={editingProject ? "edit" : "create"}
-          project={editingProject ?? undefined}
-        />
-      )}
     </Stack>
   );
 }

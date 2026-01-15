@@ -6,6 +6,7 @@ export type Generated<T> =
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export const ApplicationStatus = {
+  INCOMPLETE: "INCOMPLETE",
   SUBMITTED: "SUBMITTED",
   ACCEPTED: "ACCEPTED",
   CHANGES_REQUESTED: "CHANGES_REQUESTED",
@@ -31,6 +32,7 @@ export type Application = {
   roundId: number;
   fundingAddress: string;
   status: Generated<ApplicationStatus>;
+  details: unknown | null;
   createdAt: Generated<Timestamp>;
   updatedAt: Generated<Timestamp>;
 };

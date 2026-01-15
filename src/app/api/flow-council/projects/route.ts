@@ -52,12 +52,47 @@ export async function POST(request: Request) {
       );
     }
 
-    const { name, description, logoUrl, bannerUrl, website, twitter, github } =
-      await request.json();
+    const {
+      name,
+      description,
+      logoUrl,
+      bannerUrl,
+      website,
+      twitter,
+      github,
+      // New fields
+      managerAddresses,
+      managerEmails,
+      defaultFundingAddress,
+      demoUrl,
+      farcaster,
+      telegram,
+      discord,
+      karmaProfile,
+      githubRepos,
+      smartContracts,
+      otherLinks,
+    } = await request.json();
 
     if (!name) {
       return new Response(
         JSON.stringify({ success: false, error: "Project name is required" }),
+      );
+    }
+
+    // Validate manager addresses include the session address
+    const normalizedManagerAddresses = (
+      managerAddresses as string[] | undefined
+    )
+      ?.filter((a) => a && isAddress(a))
+      .map((a) => a.toLowerCase()) ?? [session.address.toLowerCase()];
+
+    if (!normalizedManagerAddresses.includes(session.address.toLowerCase())) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Your address must be included as a manager",
+        }),
       );
     }
 
@@ -73,18 +108,49 @@ export async function POST(request: Request) {
             website,
             twitter,
             github,
+            // New fields in details JSON
+            defaultFundingAddress,
+            demoUrl,
+            farcaster,
+            telegram,
+            discord,
+            karmaProfile,
+            githubRepos,
+            smartContracts,
+            otherLinks,
           }),
         })
         .returning(["id", "details", "createdAt", "updatedAt"])
         .executeTakeFirstOrThrow();
 
-      await trx
-        .insertInto("projectManagers")
-        .values({
-          projectId: newProject.id,
-          managerAddress: session.address.toLowerCase(),
-        })
-        .execute();
+      // Insert manager addresses
+      if (normalizedManagerAddresses.length > 0) {
+        await trx
+          .insertInto("projectManagers")
+          .values(
+            normalizedManagerAddresses.map((address) => ({
+              projectId: newProject.id,
+              managerAddress: address,
+            })),
+          )
+          .execute();
+      }
+
+      // Insert manager emails
+      const validEmails = (managerEmails as string[] | undefined)?.filter(
+        (e) => e && e.includes("@"),
+      );
+      if (validEmails && validEmails.length > 0) {
+        await trx
+          .insertInto("projectEmails")
+          .values(
+            validEmails.map((email) => ({
+              projectId: newProject.id,
+              email,
+            })),
+          )
+          .execute();
+      }
 
       return newProject;
     });
@@ -117,6 +183,18 @@ export async function PATCH(request: Request) {
       website,
       twitter,
       github,
+      // New fields
+      managerAddresses,
+      managerEmails,
+      defaultFundingAddress,
+      demoUrl,
+      farcaster,
+      telegram,
+      discord,
+      karmaProfile,
+      githubRepos,
+      smartContracts,
+      otherLinks,
     } = await request.json();
 
     if (!projectId) {
@@ -141,23 +219,103 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const updatedProject = await db
-      .updateTable("projects")
-      .set({
-        details: JSON.stringify({
-          name,
-          description,
-          logoUrl,
-          bannerUrl,
-          website,
-          twitter,
-          github,
+    // Validate manager addresses include the session address
+    const normalizedManagerAddresses = (
+      managerAddresses as string[] | undefined
+    )
+      ?.filter((a) => a && isAddress(a))
+      .map((a) => a.toLowerCase());
+
+    if (
+      normalizedManagerAddresses &&
+      !normalizedManagerAddresses.includes(session.address.toLowerCase())
+    ) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Your address must be included as a manager",
         }),
-        updatedAt: new Date(),
-      })
-      .where("id", "=", projectId)
-      .returning(["id", "details", "createdAt", "updatedAt"])
-      .executeTakeFirstOrThrow();
+      );
+    }
+
+    const updatedProject = await db.transaction().execute(async (trx) => {
+      const project = await trx
+        .updateTable("projects")
+        .set({
+          details: JSON.stringify({
+            name,
+            description,
+            logoUrl,
+            bannerUrl,
+            website,
+            twitter,
+            github,
+            // New fields in details JSON
+            defaultFundingAddress,
+            demoUrl,
+            farcaster,
+            telegram,
+            discord,
+            karmaProfile,
+            githubRepos,
+            smartContracts,
+            otherLinks,
+          }),
+          updatedAt: new Date(),
+        })
+        .where("id", "=", projectId)
+        .returning(["id", "details", "createdAt", "updatedAt"])
+        .executeTakeFirstOrThrow();
+
+      // Update manager addresses if provided
+      if (normalizedManagerAddresses) {
+        // Delete existing managers
+        await trx
+          .deleteFrom("projectManagers")
+          .where("projectId", "=", projectId)
+          .execute();
+
+        // Insert new managers
+        if (normalizedManagerAddresses.length > 0) {
+          await trx
+            .insertInto("projectManagers")
+            .values(
+              normalizedManagerAddresses.map((address) => ({
+                projectId,
+                managerAddress: address,
+              })),
+            )
+            .execute();
+        }
+      }
+
+      // Update manager emails if provided
+      const validEmails = (managerEmails as string[] | undefined)?.filter(
+        (e) => e && e.includes("@"),
+      );
+      if (validEmails !== undefined) {
+        // Delete existing emails
+        await trx
+          .deleteFrom("projectEmails")
+          .where("projectId", "=", projectId)
+          .execute();
+
+        // Insert new emails
+        if (validEmails.length > 0) {
+          await trx
+            .insertInto("projectEmails")
+            .values(
+              validEmails.map((email) => ({
+                projectId,
+                email,
+              })),
+            )
+            .execute();
+        }
+      }
+
+      return project;
+    });
 
     return new Response(
       JSON.stringify({ success: true, project: updatedProject }),

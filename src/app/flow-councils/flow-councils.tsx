@@ -393,7 +393,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
               className="w-100 py-4 rounded-4 fw-semi-bold"
               onClick={() =>
                 router.push(
-                  `/flow-councils/permissions/?chainId=${selectedNetwork.id}&councilId=${flowCouncil.id}`,
+                  `/flow-councils/permissions/${selectedNetwork.id}/${flowCouncil.id}`,
                 )
               }
             >
@@ -513,9 +513,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
               style={{ height: 400 }}
               onClick={() => {
                 if (address) {
-                  router.push(
-                    `/flow-councils/launch/?chainId=${selectedNetwork.id}`,
-                  );
+                  router.push("/flow-councils/launch");
                 } else if (openConnectModal) {
                   openConnectModal();
                 }
