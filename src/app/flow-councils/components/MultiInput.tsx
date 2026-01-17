@@ -15,6 +15,8 @@ type MultiInputProps = {
   prefix?: string;
   required?: boolean;
   validated?: boolean;
+  lockedIndices?: number[];
+  invalidFeedback?: string;
 };
 
 export default function MultiInput(props: MultiInputProps) {
@@ -29,7 +31,11 @@ export default function MultiInput(props: MultiInputProps) {
     prefix,
     required = false,
     validated = false,
+    lockedIndices = [],
+    invalidFeedback,
   } = props;
+
+  const isLocked = (index: number) => lockedIndices.includes(index);
 
   const handleChange = (index: number, value: string) => {
     const newValues = [...values];
@@ -62,29 +68,35 @@ export default function MultiInput(props: MultiInputProps) {
       {subtitle && <p className="text-muted small mb-2">{subtitle}</p>}
       <Stack direction="vertical" gap={2}>
         {values.map((value, index) => (
-          <Stack key={index} direction="horizontal" gap={2}>
-            {prefix && (
-              <span className="bg-white px-3 py-2 rounded fs-lg fw-semi-bold">
-                {prefix}
-              </span>
-            )}
-            <Form.Control
-              type="text"
-              value={value}
-              placeholder={placeholder}
-              className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
-              isInvalid={isInvalid(value, index)}
-              onChange={(e) => handleChange(index, e.target.value)}
-            />
-            {values.length > 1 && (
-              <Button
-                variant="danger"
-                className="d-flex align-items-center justify-content-center p-0 rounded-2"
-                style={{ width: 40, height: 40, minWidth: 40 }}
-                onClick={() => handleRemove(index)}
-              >
-                <span className="text-white fs-4 fw-bold">&times;</span>
-              </Button>
+          <Stack key={index} direction="vertical" gap={1}>
+            <Stack direction="horizontal" gap={2}>
+              {prefix && (
+                <span className="bg-white px-3 py-2 rounded fs-lg fw-semi-bold">
+                  {prefix}
+                </span>
+              )}
+              <Form.Control
+                type="text"
+                value={value}
+                placeholder={placeholder}
+                className={`border border-2 rounded-4 py-3 px-3 ${isLocked(index) ? "bg-secondary-subtle text-muted border-secondary" : `bg-white ${isInvalid(value, index) ? "border-danger" : "border-dark"}`}`}
+                isInvalid={isInvalid(value, index)}
+                disabled={isLocked(index)}
+                onChange={(e) => handleChange(index, e.target.value)}
+              />
+              {values.length > 1 && !isLocked(index) && (
+                <Button
+                  variant="danger"
+                  className="d-flex align-items-center justify-content-center p-0 rounded-2"
+                  style={{ width: 40, height: 40, minWidth: 40 }}
+                  onClick={() => handleRemove(index)}
+                >
+                  <span className="text-white fs-4 fw-bold">&times;</span>
+                </Button>
+              )}
+            </Stack>
+            {isInvalid(value, index) && invalidFeedback && (
+              <span className="text-danger small">{invalidFeedback}</span>
             )}
           </Stack>
         ))}

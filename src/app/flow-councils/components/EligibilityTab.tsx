@@ -204,48 +204,43 @@ export default function EligibilityTab(props: EligibilityTabProps) {
 
       {/* Section 1: Commitment */}
       <h4 className="fw-bold mb-4">1. Commitment*</h4>
-      <div
-        className="rounded-4 p-4 mb-4"
-        style={{ backgroundColor: "#fff8e6", border: "2px solid #212529" }}
-      >
-        <p className="mb-2">
-          These commitments help us build and grow together as a community. They
-          create visibility around your progress, make collaboration easier, and
-          ensure we can support each team effectively throughout the round.
-        </p>
-        <Form.Check
-          type="checkbox"
-          id="commitment-agree"
-          className="mb-3"
-          checked={form.commitment.agreedToCommitments}
-          isInvalid={validated && !form.commitment.agreedToCommitments}
-          onChange={(e) =>
-            setForm({
-              ...form,
-              commitment: { agreedToCommitments: e.target.checked },
-            })
-          }
-          label={
-            <span className="fw-bold">
-              If accepted into GoodBuilders, I agree to:
-            </span>
-          }
-        />
-        <ul className="mb-0 ps-4">
-          <li>
-            Post progress and milestones updates on FlowState at least every 2-3
-            weeks
-          </li>
-          <li>Join the Demo Days held throughout the round</li>
-          <li>Join office hours when needed</li>
-          <li>Share KPI data during and after the round</li>
-          <li>
-            Communicate promptly in the program&apos;s Telegram/FlowState
-            channels (questions, blockers, check-ins)
-          </li>
-          <li>Provide feedback to improve future rounds</li>
-        </ul>
-      </div>
+      <Form.Check
+        type="checkbox"
+        id="commitment-agree"
+        className="mb-3"
+        checked={form.commitment.agreedToCommitments}
+        isInvalid={validated && !form.commitment.agreedToCommitments}
+        onChange={(e) =>
+          setForm({
+            ...form,
+            commitment: { agreedToCommitments: e.target.checked },
+          })
+        }
+        label={
+          <span className="fw-bold">
+            If accepted into GoodBuilders, I agree to:
+          </span>
+        }
+      />
+      <ul className="mb-3 ps-4">
+        <li>
+          Post progress and milestones updates on Flow State at least every 2-3
+          weeks
+        </li>
+        <li>Join the Demo Days held throughout the round</li>
+        <li>Join office hours when needed</li>
+        <li>Share KPI data during and after the round</li>
+        <li>
+          Communicate promptly in the program&apos;s Telegram/Flow State
+          channels (questions, blockers, check-ins)
+        </li>
+        <li>Provide feedback to improve future rounds</li>
+      </ul>
+      <p className="text-muted small mb-4">
+        These commitments help us build and grow together as a community. They
+        create visibility around your progress, make collaboration easier, and
+        ensure we can support each team effectively throughout the round.
+      </p>
 
       {/* Section 2: Identity & KYC */}
       <h4 className="fw-bold mb-4 mt-8">2. Identity & KYC*</h4>
@@ -288,12 +283,12 @@ export default function EligibilityTab(props: EligibilityTabProps) {
         <Form.Label className="fs-lg fw-bold">
           {form.identity.recipientType === "organization"
             ? "Company Name"
-            : "Legal/Company Name"}
+            : "Legal Name"}
         </Form.Label>
         <Form.Control
           type="text"
           value={form.identity.legalName}
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.identity.legalName.trim() ? "border-danger" : "border-dark"}`}
           isInvalid={validated && !form.identity.legalName.trim()}
           onChange={(e) =>
             setForm({
@@ -306,15 +301,14 @@ export default function EligibilityTab(props: EligibilityTabProps) {
 
       <Form.Group className="mb-4">
         <Form.Label className="fs-lg fw-bold">
-          Country of{" "}
           {form.identity.recipientType === "organization"
-            ? "registration"
-            : "residence/registration"}
+            ? "Country of registration"
+            : "Country of residence"}
         </Form.Label>
         <Form.Control
           type="text"
           value={form.identity.country}
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.identity.country.trim() ? "border-danger" : "border-dark"}`}
           isInvalid={validated && !form.identity.country.trim()}
           onChange={(e) =>
             setForm({
@@ -330,7 +324,7 @@ export default function EligibilityTab(props: EligibilityTabProps) {
         <Form.Control
           type="text"
           value={form.identity.address}
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.identity.address.trim() ? "border-danger" : "border-dark"}`}
           isInvalid={validated && !form.identity.address.trim()}
           onChange={(e) =>
             setForm({
@@ -346,7 +340,7 @@ export default function EligibilityTab(props: EligibilityTabProps) {
         <Form.Control
           type="email"
           value={form.identity.contactEmail}
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && (!form.identity.contactEmail.trim() || !isValidEmail(form.identity.contactEmail)) ? "border-danger" : "border-dark"}`}
           isInvalid={
             validated &&
             (!form.identity.contactEmail.trim() ||
@@ -380,7 +374,7 @@ export default function EligibilityTab(props: EligibilityTabProps) {
           type="text"
           value={form.identity.fundingWallet}
           placeholder="0x..."
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && (!form.identity.fundingWallet.trim() || !isAddress(form.identity.fundingWallet)) ? "border-danger" : "border-dark"}`}
           isInvalid={
             validated &&
             (!form.identity.fundingWallet.trim() ||

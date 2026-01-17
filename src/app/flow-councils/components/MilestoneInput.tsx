@@ -85,6 +85,9 @@ export default function MilestoneInput(props: MilestoneInputProps) {
 
   const hasValidItem = items.some((item) => item.trim() !== "");
 
+  const milestoneLabel =
+    type === "growth" ? "Growth Milestone" : "Build Milestone";
+
   return (
     <div className="border border-2 border-dark rounded-4 p-4 mb-4">
       <Stack
@@ -92,7 +95,7 @@ export default function MilestoneInput(props: MilestoneInputProps) {
         className="justify-content-between align-items-start mb-3"
       >
         <span className="fs-lg fw-bold">
-          Milestone {index + 1}
+          {milestoneLabel} {index + 1}
           {required && "*"}
         </span>
         {onRemove && (
@@ -106,14 +109,28 @@ export default function MilestoneInput(props: MilestoneInputProps) {
           </Button>
         )}
       </Stack>
+      {type === "growth" && (
+        <p className="text-muted small mb-3">
+          Growth isn&apos;t a dirty word. We want you to share your thinking at
+          this stage, rather than shy away from commitments. GoodDollar has
+          incentives (cashbacks, engagement rewards) available to help you
+          experiment.
+        </p>
+      )}
 
       <Form.Group className="mb-3">
         <Form.Label className="fw-bold">Title{required && "*"}</Form.Label>
+        {type === "growth" && (
+          <p className="text-muted small mb-2">
+            eg First users onboarded, New community activated, Pilot launched,
+            etc
+          </p>
+        )}
         <Form.Control
           type="text"
           value={milestone.title}
           placeholder="Title"
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && required && !milestone.title.trim() ? "border-danger" : "border-dark"}`}
           isInvalid={validated && required && !milestone.title.trim()}
           onChange={(e) => onChange({ ...milestone, title: e.target.value })}
         />
@@ -123,12 +140,22 @@ export default function MilestoneInput(props: MilestoneInputProps) {
         <Form.Label className="fw-bold">
           Description{required && "*"}
         </Form.Label>
+        {type === "growth" && (
+          <p className="text-muted small mb-2">
+            Describe the outcomes you aim to achieve this round.
+            <br />
+            <br />
+            Include KPIs (numbers tied to your milestone) that will serve as
+            targets, not obligations. Examples include transaction #s, repeat
+            usage %, amount of liquidity added.
+          </p>
+        )}
         <Form.Control
           as="textarea"
           rows={3}
           value={milestone.description}
           placeholder="Description"
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && required && !milestone.description.trim() ? "border-danger" : "border-dark"}`}
           style={{ resize: "none" }}
           isInvalid={validated && required && !milestone.description.trim()}
           onChange={(e) =>
@@ -145,7 +172,7 @@ export default function MilestoneInput(props: MilestoneInputProps) {
                 type="text"
                 value={item}
                 placeholder={`${itemLabel} ${itemIndex + 1}: ${type === "build" ? "concrete output required to reach the milestone" : "Plan to reach your milestone (eg Partner with X)"}`}
-                className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+                className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && required && itemIndex === 0 && !hasValidItem ? "border-danger" : "border-dark"}`}
                 isInvalid={
                   validated && required && itemIndex === 0 && !hasValidItem
                 }

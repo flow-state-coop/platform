@@ -195,14 +195,30 @@ export default function ProjectTab(props: ProjectTabProps) {
   }, [project]);
 
   useEffect(() => {
-    if (!project && address && form.managerAddresses[0] === "") {
-      setForm((prev) => ({
-        ...prev,
-        managerAddresses: [address],
-        defaultFundingAddress: prev.defaultFundingAddress || address,
-      }));
+    if (session?.address) {
+      const sessionAddr = session.address.toLowerCase();
+      setForm((prev) => {
+        // Filter out any existing instance of session address (case-insensitive)
+        const otherAddresses = prev.managerAddresses.filter(
+          (a) => a && a.toLowerCase() !== sessionAddr,
+        );
+        // Always put session address first
+        const newAddresses = [
+          session.address,
+          ...otherAddresses.filter((a) => a), // remove empty strings
+        ];
+        // Ensure at least one slot for additional addresses if only session address exists
+        if (newAddresses.length === 1) {
+          newAddresses.push("");
+        }
+        return {
+          ...prev,
+          managerAddresses: newAddresses,
+          defaultFundingAddress: prev.defaultFundingAddress || session.address,
+        };
+      });
     }
-  }, [project, address, form.managerAddresses]);
+  }, [session?.address]);
 
   const hasLogo = !!logoBlob || !!existingLogoUrl;
   const hasBanner = !!bannerBlob || !!existingBannerUrl;
@@ -212,16 +228,10 @@ export default function ProjectTab(props: ProjectTabProps) {
     form.managerEmails.filter((e) => e && isValidEmail(e)).length > 0;
   const hasValidGithubRepo =
     form.githubRepos.filter((r) => r && isValidUrl(r)).length > 0;
-  const managerAddressesIncludeUser =
-    session?.address &&
-    form.managerAddresses.some(
-      (a) => a.toLowerCase() === session.address.toLowerCase(),
-    );
 
   const isValid =
     !!form.name &&
     hasValidManagerAddress &&
-    managerAddressesIncludeUser &&
     hasValidManagerEmail &&
     isAddress(form.defaultFundingAddress) &&
     !!form.description &&
@@ -353,7 +363,7 @@ export default function ProjectTab(props: ProjectTabProps) {
           type="text"
           value={form.name}
           placeholder=""
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.name ? "border-danger" : "border-dark"}`}
           isInvalid={validated && !form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
@@ -361,7 +371,7 @@ export default function ProjectTab(props: ProjectTabProps) {
 
       <MultiInput
         label="Manager Addresses"
-        subtitle="All managers can make changes to the project including changing the funding address"
+        subtitle="All managers can make changes to the project including changing the funding address. Your signed-in address is locked as the primary manager."
         values={form.managerAddresses}
         onChange={(values) => setForm({ ...form, managerAddresses: values })}
         placeholder=""
@@ -369,12 +379,9 @@ export default function ProjectTab(props: ProjectTabProps) {
         validate={(v) => isAddress(v)}
         required
         validated={validated}
+        lockedIndices={[0]}
+        invalidFeedback="Please enter a valid ETH address"
       />
-      {validated && !managerAddressesIncludeUser && (
-        <p className="text-danger small mt-n3 mb-3">
-          Your signed-in address must be included as a manager.
-        </p>
-      )}
 
       <MultiInput
         label="Manager Emails"
@@ -400,12 +407,15 @@ export default function ProjectTab(props: ProjectTabProps) {
           type="text"
           value={form.defaultFundingAddress}
           placeholder=""
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !isAddress(form.defaultFundingAddress) ? "border-danger" : "border-dark"}`}
           isInvalid={validated && !isAddress(form.defaultFundingAddress)}
           onChange={(e) =>
             setForm({ ...form, defaultFundingAddress: e.target.value })
           }
         />
+        <Form.Control.Feedback type="invalid">
+          Please enter a valid ETH address
+        </Form.Control.Feedback>
       </Form.Group>
 
       {/* Section 2: Basics */}
@@ -419,7 +429,7 @@ export default function ProjectTab(props: ProjectTabProps) {
           rows={6}
           value={form.description}
           placeholder=""
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.description ? "border-danger" : "border-dark"}`}
           style={{ resize: "none" }}
           isInvalid={validated && !form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -547,7 +557,7 @@ export default function ProjectTab(props: ProjectTabProps) {
           type="text"
           value={form.website}
           placeholder=""
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.website ? "border-danger" : "border-dark"}`}
           isInvalid={validated && !form.website}
           onChange={(e) => setForm({ ...form, website: e.target.value })}
         />
@@ -594,7 +604,7 @@ export default function ProjectTab(props: ProjectTabProps) {
           type="text"
           value={form.telegram}
           placeholder="https://t.me/..."
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !!form.telegram && !form.telegram.startsWith("https://t.me/") ? "border-danger" : "border-dark"}`}
           isInvalid={
             validated &&
             !!form.telegram &&
@@ -610,7 +620,7 @@ export default function ProjectTab(props: ProjectTabProps) {
           type="text"
           value={form.discord}
           placeholder="https://discord.gg/..."
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !!form.discord && !form.discord.startsWith("https://discord") ? "border-danger" : "border-dark"}`}
           isInvalid={
             validated &&
             !!form.discord &&
@@ -626,7 +636,7 @@ export default function ProjectTab(props: ProjectTabProps) {
           type="text"
           value={form.karmaProfile}
           placeholder="https://karmahq.xyz/project/..."
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !!form.karmaProfile && !form.karmaProfile.startsWith("https://") ? "border-danger" : "border-dark"}`}
           isInvalid={
             validated &&
             !!form.karmaProfile &&
@@ -667,22 +677,13 @@ export default function ProjectTab(props: ProjectTabProps) {
 
       {/* Submit */}
       <Stack direction="vertical" gap={3} className="mb-30">
-        {!session || session.address !== address ? (
-          <Button
-            className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
-            onClick={handleSubmit}
-          >
-            Sign In With Ethereum
-          </Button>
-        ) : (
-          <Button
-            disabled={validated && !isValid}
-            className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
-            onClick={handleSubmit}
-          >
-            {isSubmitting ? <Spinner size="sm" /> : "Save Project"}
-          </Button>
-        )}
+        <Button
+          disabled={validated && !isValid}
+          className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
+          onClick={handleSubmit}
+        >
+          {isSubmitting ? <Spinner size="sm" /> : "Save Project"}
+        </Button>
         <Button
           variant="secondary"
           className="fs-lg fw-semi-bold rounded-4 px-10 py-4"

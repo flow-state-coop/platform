@@ -75,16 +75,13 @@ export default function Launch(props: LaunchProps) {
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
-  const {
-    data: flowCouncilQueryRes,
-    loading: flowCouncilQueryLoading,
-    refetch: refetchFlowCouncilQuery,
-  } = useQuery(FLOW_COUNCIL_QUERY, {
-    client: getApolloClient("flowCouncil", selectedNetwork.id),
-    variables: { councilId: councilId?.toLowerCase() },
-    pollInterval: 4000,
-    skip: !councilId,
-  });
+  const { data: flowCouncilQueryRes, loading: flowCouncilQueryLoading } =
+    useQuery(FLOW_COUNCIL_QUERY, {
+      client: getApolloClient("flowCouncil", selectedNetwork.id),
+      variables: { councilId: councilId?.toLowerCase() },
+      pollInterval: 4000,
+      skip: !councilId,
+    });
   const [checkSuperToken] = useLazyQuery(SUPERTOKEN_QUERY, {
     client: getApolloClient("superfluid", selectedNetwork.id),
   });
@@ -144,15 +141,12 @@ export default function Launch(props: LaunchProps) {
         hash,
         confirmations: 5,
       });
+
       const flowCouncilAddress = parseEventLogs({
         abi: flowCouncilFactoryAbi,
         eventName: ["FlowCouncilCreated"],
         logs: receipt.logs,
       })[0].args.flowCouncil;
-
-      await refetchFlowCouncilQuery({
-        variables: { councilId: flowCouncilAddress },
-      });
 
       router.push(
         `/flow-councils/launch/${selectedNetwork.id}/${flowCouncilAddress}`,

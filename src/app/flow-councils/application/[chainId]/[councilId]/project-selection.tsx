@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useSession } from "next-auth/react";
 import { gql, useQuery } from "@apollo/client";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -17,6 +18,7 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
+import useSiwe from "@/hooks/siwe";
 
 type ProjectSelectionProps = {
   chainId: number;
@@ -79,7 +81,7 @@ const SUPERFLUID_QUERY = gql`
 `;
 
 export default function ProjectSelection(props: ProjectSelectionProps) {
-  const { chainId, councilId } = props;
+  const { chainId, councilId, csrfToken } = props;
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
@@ -97,6 +99,10 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
   const { openConnectModal } = useConnectModal();
   const { data: walletClient } = useWalletClient();
   const { switchChain } = useSwitchChain();
+  const { data: session } = useSession();
+  const { handleSignIn } = useSiwe();
+
+  const isAuthenticated = session && session.address === address;
   const { data: flowCouncilQueryRes } = useQuery(FLOW_COUNCIL_QUERY, {
     client: getApolloClient("flowCouncil", chainId),
     variables: {
@@ -321,72 +327,98 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
         {councilMetadata.description}
       </Markdown>
       <h2 className="mt-5 mb-2 fw-bold">Apply now!</h2>
-      <Card.Text className="fs-6">
-        Select or create a project to begin your application.
-      </Card.Text>
-      <div
-        style={{
-          display: "grid",
-          columnGap: "1.5rem",
-          rowGap: "3rem",
-          gridTemplateColumns: isTablet
-            ? "repeat(1,minmax(0,1fr))"
-            : isSmallScreen
-              ? "repeat(2,minmax(0,1fr))"
-              : isMediumScreen || isBigScreen
-                ? "repeat(3,minmax(0,1fr))"
-                : "",
-          marginBottom: 8,
-        }}
-      >
-        {projectsWithStatus.map((project, i: number) => {
-          if (!project.details?.name) {
-            return null;
-          }
-
-          // If no application status, show as INCOMPLETE
-          const displayStatus = project.status ?? "INCOMPLETE";
-
-          return (
-            <ProjectCard
-              key={project.id}
-              name={project.details.name}
-              description={project.details.description ?? ""}
-              logoUrl={project.details.logoUrl ?? ""}
-              bannerUrl={project.details.bannerUrl ?? ""}
-              status={displayStatus}
-              hasApplied={hasApplied}
-              canReapply={true}
-              isSelected={selectedProjectIndex === i}
-              selectProject={() => {
-                router.push(
-                  `/flow-councils/application/${chainId}/${councilId}/${project.id}`,
-                );
-              }}
-              updateProject={() => {
-                router.push(
-                  `/flow-councils/application/${chainId}/${councilId}/${project.id}`,
-                );
-              }}
-              isTransactionConfirming={isSubmitting}
-            />
-          );
-        })}
-        <Card
-          className="d-flex flex-col justify-content-center align-items-center border-2 border-secondary rounded-4 fs-6 cursor-pointer"
-          style={{ height: 430 }}
-          onClick={() => {
-            router.push(
-              `/flow-councils/application/${chainId}/${councilId}/new`,
-            );
-          }}
-        >
-          <span className="fs-1 text-secondary">+</span>
-          <Card.Text className="d-inline-block m-0 overflow-hidden text-center word-wrap text-secondary">
-            Create Project
+      {!isAuthenticated ? (
+        <Stack direction="vertical" gap={3} className="mt-4">
+          <Card.Text className="fs-6 mb-0">
+            Sign in with your wallet to view and manage your projects.
           </Card.Text>
-        </Card>
-      </div>
+          <Button
+            className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
+            style={{ width: "fit-content" }}
+            onClick={() => {
+              if (!address && openConnectModal) {
+                openConnectModal();
+              } else if (connectedChain?.id !== chainId) {
+                switchChain({ chainId });
+              } else {
+                handleSignIn(csrfToken);
+              }
+            }}
+          >
+            {!address
+              ? "Connect Wallet"
+              : connectedChain?.id !== chainId
+                ? "Switch Network"
+                : "Sign In With Ethereum"}
+          </Button>
+        </Stack>
+      ) : (
+        <>
+          <Card.Text className="fs-6">
+            Select or create a project to begin your application.
+          </Card.Text>
+          <div
+            style={{
+              display: "grid",
+              columnGap: "1.5rem",
+              rowGap: "3rem",
+              gridTemplateColumns: isTablet
+                ? "repeat(1,minmax(0,1fr))"
+                : isSmallScreen
+                  ? "repeat(2,minmax(0,1fr))"
+                  : isMediumScreen || isBigScreen
+                    ? "repeat(3,minmax(0,1fr))"
+                    : "",
+              marginBottom: 8,
+            }}
+          >
+            {projectsWithStatus.map((project, i: number) => {
+              if (!project.details?.name) {
+                return null;
+              }
+
+              return (
+                <ProjectCard
+                  key={project.id}
+                  name={project.details.name}
+                  description={project.details.description ?? ""}
+                  logoUrl={project.details.logoUrl ?? ""}
+                  bannerUrl={project.details.bannerUrl ?? ""}
+                  status={project.status}
+                  hasApplied={hasApplied}
+                  canReapply={true}
+                  isSelected={selectedProjectIndex === i}
+                  selectProject={() => {
+                    router.push(
+                      `/flow-councils/application/${chainId}/${councilId}/${project.id}`,
+                    );
+                  }}
+                  updateProject={() => {
+                    router.push(
+                      `/flow-councils/application/${chainId}/${councilId}/${project.id}`,
+                    );
+                  }}
+                  isTransactionConfirming={isSubmitting}
+                />
+              );
+            })}
+            <Card
+              className="d-flex flex-col justify-content-center align-items-center border-2 border-secondary rounded-4 fs-6 cursor-pointer"
+              style={{ height: 430 }}
+              onClick={() => {
+                router.push(
+                  `/flow-councils/application/${chainId}/${councilId}/new`,
+                );
+              }}
+            >
+              <span className="fs-1 text-secondary">+</span>
+              <Card.Text className="d-inline-block m-0 overflow-hidden text-center word-wrap text-secondary">
+                Create Project
+              </Card.Text>
+            </Card>
+          </div>
+        </>
+      )}
     </Stack>
   );
 }

@@ -592,7 +592,7 @@ export default function RoundTab(props: RoundTabProps) {
           type="number"
           value={form.maturityAndUsage.lifetimeUsers}
           placeholder=""
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && form.maturityAndUsage.lifetimeUsers === "" ? "border-danger" : "border-dark"}`}
           style={{ maxWidth: 200 }}
           isInvalid={validated && form.maturityAndUsage.lifetimeUsers === ""}
           onChange={(e) =>
@@ -608,15 +608,13 @@ export default function RoundTab(props: RoundTabProps) {
       </Form.Group>
 
       <Form.Group className="mb-4">
-        <Form.Label className="fs-lg fw-bold">
-          Active Users*
-        </Form.Label>
+        <Form.Label className="fs-lg fw-bold">Active Users*</Form.Label>
         <Stack direction="horizontal" gap={3} className="align-items-start">
           <Form.Control
             type="number"
             value={form.maturityAndUsage.activeUsers}
             placeholder=""
-            className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+            className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && form.maturityAndUsage.activeUsers === "" ? "border-danger" : "border-dark"}`}
             style={{ maxWidth: 200 }}
             isInvalid={validated && form.maturityAndUsage.activeUsers === ""}
             onChange={(e) =>
@@ -799,7 +797,7 @@ export default function RoundTab(props: RoundTabProps) {
           rows={4}
           value={form.integration.description}
           placeholder="Value for users + GoodDollar ecosystem"
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.integration.description.trim() ? "border-danger" : "border-dark"}`}
           style={{ resize: "none" }}
           isInvalid={validated && !form.integration.description.trim()}
           onChange={(e) =>
@@ -844,7 +842,7 @@ export default function RoundTab(props: RoundTabProps) {
           rows={2}
           value={form.buildGoals.primaryBuildGoal}
           placeholder="A clear statement of your team's main objective for building in this round."
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.buildGoals.primaryBuildGoal.trim() ? "border-danger" : "border-dark"}`}
           style={{ resize: "none" }}
           isInvalid={validated && !form.buildGoals.primaryBuildGoal.trim()}
           onChange={(e) =>
@@ -919,8 +917,8 @@ export default function RoundTab(props: RoundTabProps) {
           as="textarea"
           rows={2}
           value={form.growthGoals.primaryGrowthGoal}
-          placeholder="What you aim to grow or activate during this round (users, tx, TVL, pilots, partners, adoption)?"
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          placeholder="What you aim to grow or activate during this round (users, tx, TVL, pilots, partners, adoption)"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.growthGoals.primaryGrowthGoal.trim() ? "border-danger" : "border-dark"}`}
           style={{ resize: "none" }}
           isInvalid={validated && !form.growthGoals.primaryGrowthGoal.trim()}
           onChange={(e) =>
@@ -944,7 +942,7 @@ export default function RoundTab(props: RoundTabProps) {
           rows={3}
           value={form.growthGoals.targetUsers}
           placeholder="Who will drive this growth (segments, communities, regions, partners)?"
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.growthGoals.targetUsers.trim() ? "border-danger" : "border-dark"}`}
           style={{ resize: "none" }}
           isInvalid={validated && !form.growthGoals.targetUsers.trim()}
           onChange={(e) =>
@@ -956,9 +954,7 @@ export default function RoundTab(props: RoundTabProps) {
         />
       </Form.Group>
 
-      <Form.Label className="fs-lg fw-bold mb-1">
-        Growth Milestones*
-      </Form.Label>
+      <Form.Label className="fs-lg fw-bold mb-1">Growth Milestones*</Form.Label>
       <p className="text-muted small mb-3">
         Growth isn&apos;t a dirty word. We want you to share your thinking at
         this stage, rather than shy away from commitments. GoodDollar has
