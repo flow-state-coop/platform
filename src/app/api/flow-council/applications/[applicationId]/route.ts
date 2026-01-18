@@ -155,6 +155,35 @@ export async function PATCH(
       ])
       .executeTakeFirstOrThrow();
 
+    // Insert automated message when application is submitted
+    if (submit === true && existingApp.status === "INCOMPLETE") {
+      // Fetch project name
+      const project = await db
+        .selectFrom("projects")
+        .select(["details"])
+        .where("id", "=", updatedApplication.projectId)
+        .executeTakeFirst();
+
+      const projectDetails =
+        typeof project?.details === "string"
+          ? JSON.parse(project.details)
+          : project?.details;
+      const projectName = projectDetails?.name || "Project";
+
+      // Insert automated message (System sender: 0x0000...0000)
+      await db
+        .insertInto("messages")
+        .values({
+          channelType: "GROUP_PROJECT",
+          roundId: updatedApplication.roundId,
+          projectId: updatedApplication.projectId,
+          applicationId: appId,
+          authorAddress: "0x0000000000000000000000000000000000000000",
+          content: `${projectName} submitted their application for review`,
+        })
+        .execute();
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

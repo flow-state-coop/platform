@@ -22,6 +22,8 @@ type MessageItemProps = {
   onDelete: () => void;
 };
 
+const SYSTEM_ADDRESS = "0x0000000000000000000000000000000000000000";
+
 function shortenAddress(address: string): string {
   if (address.length <= 10) return address;
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -48,15 +50,20 @@ function isEdited(createdAt: string, updatedAt: string): boolean {
 export default function MessageItem(props: MessageItemProps) {
   const { message, ensData, canEdit, canDelete, onEdit, onDelete } = props;
 
-  const displayName = ensData?.name || shortenAddress(message.authorAddress);
+  const isSystemMessage = message.authorAddress === SYSTEM_ADDRESS;
+  const displayName = isSystemMessage
+    ? "Automated"
+    : ensData?.name || shortenAddress(message.authorAddress);
   const edited = isEdited(message.createdAt, message.updatedAt);
 
   return (
-    <div className="bg-light rounded-4 p-3">
+    <div
+      className={`rounded-4 p-3 ${isSystemMessage ? "bg-secondary bg-opacity-10" : "bg-lace-100"}`}
+    >
       <Stack direction="horizontal" gap={2} className="mb-2">
         <ProfilePic
           address={message.authorAddress}
-          ensAvatar={ensData?.avatar}
+          ensAvatar={isSystemMessage ? undefined : ensData?.avatar}
           size={32}
         />
         <Stack
@@ -69,7 +76,11 @@ export default function MessageItem(props: MessageItemProps) {
             gap={2}
             className="justify-content-between"
           >
-            <span className="fw-semi-bold text-truncate">{displayName}</span>
+            <span
+              className={`fw-semi-bold text-truncate ${isSystemMessage ? "fst-italic text-muted" : ""}`}
+            >
+              {displayName}
+            </span>
             <Stack
               direction="horizontal"
               gap={1}
@@ -79,17 +90,22 @@ export default function MessageItem(props: MessageItemProps) {
                 {formatTimestamp(message.createdAt)}
                 {edited && " (edited)"}
               </span>
-              <MessageActions
-                canEdit={canEdit}
-                canDelete={canDelete}
-                onEdit={onEdit}
-                onDelete={onDelete}
-              />
+              {!isSystemMessage && (
+                <MessageActions
+                  canEdit={canEdit}
+                  canDelete={canDelete}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
+              )}
             </Stack>
           </Stack>
         </Stack>
       </Stack>
-      <p className="mb-0 ms-5" style={{ whiteSpace: "pre-wrap" }}>
+      <p
+        className={`mb-0 ms-5 ${isSystemMessage ? "fst-italic" : ""}`}
+        style={{ whiteSpace: "pre-wrap" }}
+      >
         {message.content}
       </p>
     </div>

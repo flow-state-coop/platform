@@ -164,7 +164,7 @@ export default function Application(props: ApplicationProps) {
   }
 
   return (
-    <Stack direction="vertical" className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52">
+    <Stack direction="vertical">
       <Tab.Container
         activeKey={activeTab}
         onSelect={(k) => k && setActiveTab(k)}

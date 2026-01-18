@@ -227,6 +227,26 @@ function Sidebar() {
           Manage Recipients
         </Link>
         <Link
+          href={`/flow-councils/communications/${chainId}/${selectedCouncil?.id}`}
+          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname?.startsWith("/flow-councils/communications") ? "fw-semi-bold" : ""}`}
+          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
+        >
+          <Image
+            src={`${pathname?.startsWith("/flow-councils/communications") && !!selectedCouncil ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+            alt="Bullet Point"
+            width={24}
+            height={24}
+            style={{
+              filter:
+                !pathname?.startsWith("/flow-councils/communications") &&
+                !selectedCouncil
+                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
+                  : "",
+            }}
+          />
+          Round Communications
+        </Link>
+        <Link
           href={`/flow-councils/${chainId}/${selectedCouncil?.id}`}
           className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""}`}
           style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}

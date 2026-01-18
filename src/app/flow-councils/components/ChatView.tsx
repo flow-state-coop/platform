@@ -60,7 +60,7 @@ export default function ChatView(props: ChatViewProps) {
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
 
   const { data: session } = useSession();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // Get unique author addresses for ENS resolution
   const authorAddresses = useMemo(() => {
@@ -111,7 +111,10 @@ export default function ChatView(props: ChatViewProps) {
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
   }, [messages]);
 
   // Note: sendEmail is collected but not yet implemented (deferred functionality)
@@ -231,6 +234,7 @@ export default function ChatView(props: ChatViewProps) {
 
       {/* Messages List */}
       <div
+        ref={messagesContainerRef}
         className="rounded-4 p-3 mb-4"
         style={{ maxHeight: 400, overflowY: "auto" }}
       >
@@ -249,7 +253,6 @@ export default function ChatView(props: ChatViewProps) {
                 onDelete={() => handleDeleteMessage(message.id)}
               />
             ))}
-            <div ref={messagesEndRef} />
           </Stack>
         )}
       </div>
