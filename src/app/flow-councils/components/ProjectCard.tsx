@@ -82,8 +82,6 @@ export default function ProjectCard(props: ProjectCardProps) {
                           ? "#d95d39" // flame-500
                           : "#030303", // $dark (default)
         height: 430,
-        pointerEvents:
-          hasApplied && !canReapply && status !== "SUBMITTED" ? "none" : "auto",
         transition: "all 0.2s ease-in-out",
       }}
       onClick={selectProject}
@@ -168,21 +166,16 @@ export default function ProjectCard(props: ProjectCardProps) {
                             : status === "INCOMPLETE"
                               ? "Incomplete"
                               : ""}
-                {(status === "SUBMITTED" ||
-                  status === "CHANGES_REQUESTED" ||
-                  status === "INCOMPLETE" ||
-                  canReapply) && (
-                  <Button
-                    variant="transparent"
-                    className="position-absolute end-0 px-3 border-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      updateProject();
-                    }}
-                  >
-                    <Image src="/edit.svg" alt="edit" width={24} />
-                  </Button>
-                )}
+                <Button
+                  variant="transparent"
+                  className="position-absolute end-0 px-3 border-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateProject();
+                  }}
+                >
+                  <Image src="/edit.svg" alt="edit" width={24} />
+                </Button>
               </Stack>
             ) : (
               <Stack

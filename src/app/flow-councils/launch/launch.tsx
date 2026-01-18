@@ -88,6 +88,22 @@ export default function Launch(props: LaunchProps) {
 
   const flowCouncil = flowCouncilQueryRes?.flowCouncil;
 
+  // Default to user's connected network when creating a new council
+  useEffect(() => {
+    if (councilId || !connectedChain) {
+      return;
+    }
+
+    const userNetwork = networks.find(
+      (network) => network.id === connectedChain.id,
+    );
+
+    if (userNetwork) {
+      setSelectedNetwork(userNetwork);
+      setSelectedToken(userNetwork.tokens[0]);
+    }
+  }, [councilId, connectedChain]);
+
   useEffect(() => {
     (async () => {
       if (!flowCouncil) {

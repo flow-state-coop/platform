@@ -10,9 +10,11 @@ import ProjectTab from "@/app/flow-councils/components/ProjectTab";
 import RoundTab, {
   type RoundForm,
 } from "@/app/flow-councils/components/RoundTab";
+import ViewRoundTab from "@/app/flow-councils/components/ViewRoundTab";
 import EligibilityTab, {
   type EligibilityForm,
 } from "@/app/flow-councils/components/EligibilityTab";
+import ViewEligibilityTab from "@/app/flow-councils/components/ViewEligibilityTab";
 import { networks } from "@/lib/networks";
 
 type ApplicationProps = {
@@ -186,7 +188,6 @@ export default function Application(props: ApplicationProps) {
           <Nav.Item>
             <Nav.Link
               eventKey="round"
-              disabled={!savedProjectId && !project}
               className={`py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${
                 activeTab === "round"
                   ? "bg-primary text-white"
@@ -200,7 +201,6 @@ export default function Application(props: ApplicationProps) {
           <Nav.Item>
             <Nav.Link
               eventKey="eligibility"
-              disabled={!roundData && !applicationId}
               className={`py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${
                 activeTab === "eligibility"
                   ? "bg-primary text-white"
@@ -225,32 +225,40 @@ export default function Application(props: ApplicationProps) {
             />
           </Tab.Pane>
           <Tab.Pane eventKey="round">
-            <RoundTab
-              chainId={chainId}
-              councilId={councilId}
-              projectId={savedProjectId ?? project?.id ?? 0}
-              csrfToken={csrfToken}
-              existingRoundData={roundData}
-              isLoading={isLoading}
-              onSave={handleRoundSaved}
-              onBack={() => setActiveTab("project")}
-            />
+            {savedProjectId || project ? (
+              <RoundTab
+                chainId={chainId}
+                councilId={councilId}
+                projectId={savedProjectId ?? project?.id ?? 0}
+                csrfToken={csrfToken}
+                existingRoundData={roundData}
+                isLoading={isLoading}
+                onSave={handleRoundSaved}
+                onBack={() => setActiveTab("project")}
+              />
+            ) : (
+              <ViewRoundTab roundData={roundData} />
+            )}
           </Tab.Pane>
           <Tab.Pane eventKey="eligibility">
-            <EligibilityTab
-              chainId={chainId}
-              councilId={councilId}
-              projectId={savedProjectId ?? project?.id ?? 0}
-              applicationId={applicationId}
-              csrfToken={csrfToken}
-              defaultFundingAddress={
-                project?.details?.defaultFundingAddress || ""
-              }
-              existingEligibilityData={eligibilityData}
-              existingRoundData={roundData}
-              isLoading={isLoading}
-              onBack={() => setActiveTab("round")}
-            />
+            {roundData || applicationId ? (
+              <EligibilityTab
+                chainId={chainId}
+                councilId={councilId}
+                projectId={savedProjectId ?? project?.id ?? 0}
+                applicationId={applicationId}
+                csrfToken={csrfToken}
+                defaultFundingAddress={
+                  project?.details?.defaultFundingAddress || ""
+                }
+                existingEligibilityData={eligibilityData}
+                existingRoundData={roundData}
+                isLoading={isLoading}
+                onBack={() => setActiveTab("round")}
+              />
+            ) : (
+              <ViewEligibilityTab eligibilityData={eligibilityData} />
+            )}
           </Tab.Pane>
         </Tab.Content>
       </Tab.Container>

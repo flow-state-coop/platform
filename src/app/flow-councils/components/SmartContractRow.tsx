@@ -8,6 +8,12 @@ import Image from "react-bootstrap/Image";
 import { isAddress } from "viem";
 import { networks } from "@/lib/networks";
 
+// Custom network list for smart contracts dropdown
+const SMART_CONTRACT_NETWORKS = [
+  { id: 1, name: "Ethereum", icon: "/eth.png" },
+  ...networks.filter((n) => n.name !== "OP Sepolia"),
+];
+
 export type SmartContract = {
   type: "projectAddress" | "goodCollectivePool";
   network: string;
@@ -41,7 +47,11 @@ export default function SmartContractRow(props: SmartContractRowProps) {
   const handleAdd = () => {
     onChange([
       ...contracts,
-      { type: "projectAddress", network: networks[0]?.name ?? "", address: "" },
+      {
+        type: "projectAddress",
+        network: SMART_CONTRACT_NETWORKS[0]?.name ?? "",
+        address: "",
+      },
     ]);
   };
 
@@ -102,7 +112,7 @@ export default function SmartContractRow(props: SmartContractRowProps) {
                   {contract.network}
                 </Dropdown.Toggle>
                 <Dropdown.Menu className="border border-dark p-2 lh-lg">
-                  {networks.map((network) => (
+                  {SMART_CONTRACT_NETWORKS.map((network) => (
                     <Dropdown.Item
                       key={network.id}
                       className="fw-semi-bold"
@@ -134,17 +144,11 @@ export default function SmartContractRow(props: SmartContractRowProps) {
                 onChange={(e) => handleChange(index, "address", e.target.value)}
               />
               <Button
-                variant="danger"
-                className="d-flex align-items-center justify-content-center p-0 rounded-2"
-                style={{ width: 36, height: 36, minWidth: 36 }}
+                variant="link"
+                className="d-flex align-items-center justify-content-center p-0"
                 onClick={() => handleRemove(index)}
               >
-                <span
-                  className="text-white fw-bold"
-                  style={{ fontSize: 18, lineHeight: 1 }}
-                >
-                  &times;
-                </span>
+                <Image src="/close.svg" alt="Remove" width={28} height={28} />
               </Button>
             </Stack>
           </Stack>

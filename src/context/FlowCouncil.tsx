@@ -3,7 +3,6 @@
 import { createContext, useContext, useReducer } from "react";
 import { useParams } from "next/navigation";
 import { useAccount } from "wagmi";
-import { ProjectMetadata } from "@/types/project";
 import { GDAPool } from "@/types/gdaPool";
 import { networks } from "@/lib/networks";
 import useCouncilQuery from "@/app/flow-councils/hooks/councilQuery";
@@ -49,7 +48,21 @@ export const FlowCouncilContext = createContext<{
   councilMetadata: { name: string; description: string; logoUrl: string };
   councilMember?: CouncilMember;
   currentAllocation?: CurrentAllocation;
-  projects: { id: string; metadata: ProjectMetadata }[] | null;
+  projects:
+    | {
+        id: string;
+        details: {
+          name?: string;
+          description?: string;
+          logoUrl?: string;
+          bannerUrl?: string;
+          website?: string;
+          twitter?: string;
+          github?: string;
+          karmaGap?: string;
+        };
+      }[]
+    | null;
   distributionPool?: GDAPool;
   token: Token;
   newAllocation?: NewAllocation;

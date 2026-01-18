@@ -1,6 +1,16 @@
 import { useState, useEffect } from "react";
 import { Network } from "@/types/network";
-import { ProjectMetadata } from "@/types/project";
+
+type ProjectDetails = {
+  name?: string;
+  description?: string;
+  logoUrl?: string;
+  bannerUrl?: string;
+  website?: string;
+  twitter?: string;
+  github?: string;
+  karmaGap?: string;
+};
 
 export default function useRecipientsQuery(
   network: Network,
@@ -8,7 +18,7 @@ export default function useRecipientsQuery(
   councilId?: string,
 ) {
   const [projects, setProjects] = useState<
-    { id: string; metadata: ProjectMetadata }[] | null
+    { id: string; details: ProjectDetails }[] | null
   >(null);
 
   useEffect(() => {
@@ -32,7 +42,7 @@ export default function useRecipientsQuery(
           return;
         }
 
-        const result: { id: string; metadata: ProjectMetadata }[] = [];
+        const result: { id: string; details: ProjectDetails }[] = [];
 
         for (const recipient of recipients) {
           const application = applications.find(
@@ -44,23 +54,7 @@ export default function useRecipientsQuery(
           if (application?.projectDetails) {
             result.push({
               id: recipient.account,
-              metadata: {
-                title: application.projectDetails.name ?? "",
-                description: application.projectDetails.description ?? "",
-                logoImg: application.projectDetails.logoUrl ?? "",
-                bannerImg: application.projectDetails.bannerUrl ?? "",
-                projectTwitter: application.projectDetails.twitter ?? "",
-                website: application.projectDetails.website ?? "",
-                appLink: "",
-                userGithub: "",
-                projectGithub: application.projectDetails.github ?? "",
-                karmaGap: "",
-                projectTelegram: "",
-                projectWarpcast: "",
-                projectGuild: "",
-                projectDiscord: "",
-                projectLens: "",
-              },
+              details: application.projectDetails,
             });
           }
         }

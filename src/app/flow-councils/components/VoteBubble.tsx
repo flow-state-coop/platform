@@ -43,7 +43,7 @@ export default function VoteBubble(props: VoteBubbleProps) {
 
       return {
         id: grantee.address,
-        name: grantee.metadata.title,
+        name: grantee.details.name ?? "",
         value: allocation ? allocation.amount : 0,
         color:
           allocation && allocation.amount > 0

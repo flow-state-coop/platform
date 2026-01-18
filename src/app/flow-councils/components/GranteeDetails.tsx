@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { Address, formatEther } from "viem";
 import { useReadContract } from "wagmi";
 import Offcanvas from "react-bootstrap/Offcanvas";
@@ -10,9 +9,7 @@ import Badge from "react-bootstrap/Badge";
 import Markdown from "react-markdown";
 import rehyperExternalLinks from "rehype-external-links";
 import remarkGfm from "remark-gfm";
-import { ProjectMetadata } from "@/types/project";
 import { Token } from "@/types/token";
-import { fetchIpfsImage } from "@/lib/fetchIpfs";
 import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useFlowCouncil from "../hooks/flowCouncil";
@@ -20,10 +17,11 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { truncateStr, formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
+import { ProjectDetails } from "../types/grantee";
 
-type GranteeDetails = {
+type GranteeDetailsProps = {
   id: string;
-  metadata: ProjectMetadata;
+  details: ProjectDetails;
   placeholderLogo: string;
   granteeAddress: `0x${string}`;
   chainId: number;
@@ -32,10 +30,10 @@ type GranteeDetails = {
   hide: () => void;
 };
 
-export default function GranteeDetails(props: GranteeDetails) {
+export default function GranteeDetails(props: GranteeDetailsProps) {
   const {
     id,
-    metadata,
+    details,
     token,
     placeholderLogo,
     granteeAddress,
@@ -43,8 +41,6 @@ export default function GranteeDetails(props: GranteeDetails) {
     canAddToBallot,
     hide,
   } = props;
-
-  const [imageUrl, setImageUrl] = useState("");
 
   const { isMobile } = useMediaQuery();
   const { dispatchNewAllocation, distributionPool } = useFlowCouncil();
@@ -78,16 +74,6 @@ export default function GranteeDetails(props: GranteeDetails) {
     (network) => network.id === chainId,
   )?.superfluidExplorer;
 
-  useEffect(() => {
-    (async () => {
-      if (metadata.logoImg) {
-        const imageUrl = await fetchIpfsImage(metadata.logoImg);
-
-        setImageUrl(imageUrl);
-      }
-    })();
-  }, [metadata.logoImg]);
-
   return (
     <Offcanvas
       show
@@ -109,7 +95,7 @@ export default function GranteeDetails(props: GranteeDetails) {
             className="align-items-center my-3"
           >
             <Image
-              src={imageUrl !== "" ? imageUrl : placeholderLogo}
+              src={details.logoUrl || placeholderLogo}
               alt=""
               width={96}
               height={96}
@@ -117,7 +103,7 @@ export default function GranteeDetails(props: GranteeDetails) {
             />
             <Card className="bg-transparent border-0 ms-3">
               <Card.Title className="fw-semi-bold text-secondary m-0">
-                {metadata.title}
+                {details.name}
               </Card.Title>
               <Card.Subtitle className="m-0">
                 <Card.Link
@@ -135,30 +121,30 @@ export default function GranteeDetails(props: GranteeDetails) {
             gap={2}
             className="align-items-end text-info px-2 mb-2"
           >
-            {!!metadata.website && (
+            {!!details.website && (
               <Button
                 variant="link"
-                href={metadata.website}
+                href={details.website}
                 target="_blank"
                 className="p-0"
               >
                 <Image src="/web.svg" alt="Web" width={20} height={20} />
               </Button>
             )}
-            {!!metadata.projectGithub && (
+            {!!details.github && (
               <Button
                 variant="link"
-                href={`https://github.com/${metadata.projectGithub}`}
+                href={details.github}
                 target="_blank"
                 className="p-0"
               >
                 <Image src="/github.svg" alt="Github" width={18} height={18} />
               </Button>
             )}
-            {!!metadata.projectTwitter && (
+            {!!details.twitter && (
               <Button
                 variant="link"
-                href={`https://x.com/${metadata.projectTwitter}`}
+                href={details.twitter}
                 target="_blank"
                 className="p-0"
               >
@@ -167,86 +153,6 @@ export default function GranteeDetails(props: GranteeDetails) {
                   alt="X Social Network"
                   width={13}
                   height={13}
-                />
-              </Button>
-            )}
-            {!!metadata.projectWarpcast && (
-              <Button
-                variant="link"
-                href={`https://farcaster.xyz/${metadata.projectWarpcast}`}
-                target="_blank"
-                className="p-0"
-              >
-                <Image
-                  src="/farcaster.svg"
-                  alt="Farcaster"
-                  width={16}
-                  height={16}
-                />
-              </Button>
-            )}
-            {!!metadata.projectLens && (
-              <Button
-                variant="link"
-                href={`https://hey.xyz/u/${metadata.projectLens}`}
-                target="_blank"
-                className="p-0"
-              >
-                <Image src="/hey.png" alt="lens" width={16} height={16} />
-              </Button>
-            )}
-            {!!metadata.projectGuild && (
-              <Button
-                variant="link"
-                href={`https://guild.xyz/${metadata.projectGuild}`}
-                target="_blank"
-                className="p-0"
-              >
-                <Image src="/guild.svg" alt="guild" width={18} height={18} />
-              </Button>
-            )}
-            {!!metadata.projectTelegram && (
-              <Button
-                variant="link"
-                href={`https://t.me/${metadata.projectTelegram}`}
-                target="_blank"
-                className="p-0"
-              >
-                <Image
-                  src="/telegram.svg"
-                  alt="telegram"
-                  width={18}
-                  height={18}
-                />
-              </Button>
-            )}
-            {!!metadata.projectDiscord && (
-              <Button
-                variant="link"
-                href={`https://discord.com/invite/${metadata.projectDiscord}`}
-                target="_blank"
-                className="p-0"
-              >
-                <Image
-                  src="/discord.svg"
-                  alt="discord"
-                  width={20}
-                  height={20}
-                />
-              </Button>
-            )}
-            {!!metadata.karmaGap && (
-              <Button
-                variant="link"
-                href={`https://gap.karmahq.xyz/project/${metadata.karmaGap}`}
-                target="_blank"
-                className="p-0"
-              >
-                <Image
-                  src="/karma-gap.svg"
-                  alt="discord"
-                  width={20}
-                  height={20}
                 />
               </Button>
             )}
@@ -293,7 +199,7 @@ export default function GranteeDetails(props: GranteeDetails) {
                 ),
               }}
             >
-              {metadata.description.replaceAll("•", "-")}
+              {(details.description ?? "").replaceAll("•", "-")}
             </Markdown>
           </div>
           {canAddToBallot && (
@@ -325,8 +231,8 @@ export default function GranteeDetails(props: GranteeDetails) {
           <Button
             variant="link"
             href={
-              metadata?.karmaGap
-                ? `https://gap.karmahq.xyz/project/${metadata.karmaGap}`
+              details?.karmaGap
+                ? `https://gap.karmahq.xyz/project/${details.karmaGap}`
                 : `/projects/${id}/?chainId=${chainId}`
             }
             target="_blank"
@@ -342,7 +248,7 @@ export default function GranteeDetails(props: GranteeDetails) {
                   "invert(100%) sepia(0%) saturate(7497%) hue-rotate(175deg) brightness(103%) contrast(103%)",
               }}
             />
-            {metadata?.karmaGap ? "Karma GAP" : "Project Page"}
+            {details?.karmaGap ? "Karma GAP" : "Project Page"}
           </Button>
         </Stack>
       </Offcanvas.Body>

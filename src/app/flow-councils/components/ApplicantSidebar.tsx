@@ -167,8 +167,8 @@ export default function ApplicantSidebar(props: ApplicantSidebarProps) {
     <Stack
       direction="vertical"
       gap={3}
-      className="rounded-4 bg-lace-100 p-4 fs-6"
-      style={{ position: "sticky", top: "1rem", minWidth: 220, maxWidth: 280 }}
+      className="w-33 rounded-4 bg-lace-100 p-4 fs-6 me-5"
+      style={{ position: "sticky", top: "1rem" }}
     >
       <SidebarContent />
     </Stack>

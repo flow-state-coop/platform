@@ -3,6 +3,7 @@
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
+import Image from "react-bootstrap/Image";
 
 type MultiInputProps = {
   label: string;
@@ -86,12 +87,11 @@ export default function MultiInput(props: MultiInputProps) {
               />
               {values.length > 1 && !isLocked(index) && (
                 <Button
-                  variant="danger"
-                  className="d-flex align-items-center justify-content-center p-0 rounded-2"
-                  style={{ width: 40, height: 40, minWidth: 40 }}
+                  variant="link"
+                  className="d-flex align-items-center justify-content-center p-0"
                   onClick={() => handleRemove(index)}
                 >
-                  <span className="text-white fs-4 fw-bold">&times;</span>
+                  <Image src="/close.svg" alt="Remove" width={28} height={28} />
                 </Button>
               )}
             </Stack>

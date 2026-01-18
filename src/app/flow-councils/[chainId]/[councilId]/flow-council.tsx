@@ -15,8 +15,7 @@ import GranteeDetails from "@/app/flow-councils/components/GranteeDetails";
 import Ballot from "@/app/flow-councils/components/Ballot";
 import DistributionPoolFunding from "@/app/flow-councils/components/DistributionPoolFunding";
 import VoteBubble from "@/app/flow-councils/components/VoteBubble";
-import { ProjectMetadata } from "@/types/project";
-import { Grantee, SortingMethod } from "../../types/grantee";
+import { Grantee, ProjectDetails, SortingMethod } from "../../types/grantee";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowCouncil from "../../hooks/flowCouncil";
 import useAnimateVoteBubble from "../../hooks/animateVoteBubble";
@@ -73,7 +72,7 @@ export default function FlowCouncil({
   const currentAllocationStringified = JSON.stringify(currentAllocation);
 
   const getGrantee = useCallback(
-    (recipient: { id: string; address: string; metadata: ProjectMetadata }) => {
+    (recipient: { id: string; address: string; details: ProjectDetails }) => {
       const adjustedFlowRate =
         BigInt(distributionPool?.flowRate ?? 0) -
         BigInt(distributionPool?.adjustmentFlowRate ?? 0);
@@ -91,9 +90,8 @@ export default function FlowCouncil({
       return {
         id: recipient.id,
         address: recipient.address as `0x${string}`,
-        metadata: recipient.metadata,
-        bannerCid: recipient.metadata.bannerImg,
-        twitter: recipient.metadata.projectTwitter,
+        details: recipient.details,
+        twitter: recipient.details.twitter ?? "",
         flowRate: memberFlowRate ?? BigInt(0),
         units: memberUnits,
         placeholderLogo: getPlaceholderImageSrc(),
@@ -111,11 +109,11 @@ export default function FlowCouncil({
 
       if (sortingMethod === SortingMethod.ALPHABETICAL) {
         return grantees.sort((a, b) => {
-          if (a.metadata.title < b.metadata.title) {
+          if ((a.details.name ?? "") < (b.details.name ?? "")) {
             return -1;
           }
 
-          if (a.metadata.title > b.metadata.title) {
+          if ((a.details.name ?? "") > (b.details.name ?? "")) {
             return 1;
           }
 
@@ -195,7 +193,7 @@ export default function FlowCouncil({
             getGrantee({
               id: project.id,
               address: recipient.account as `0x${string}`,
-              metadata: project.metadata,
+              details: project.details,
             }),
           );
         } else {
@@ -212,7 +210,7 @@ export default function FlowCouncil({
           grantees[i] = getGrantee({
             id: prev[i].id,
             address: prev[i].address as `0x${string}`,
-            metadata: prev[i].metadata,
+            details: prev[i].details,
           });
         }
 
@@ -325,10 +323,10 @@ export default function FlowCouncil({
               <GranteeCard
                 key={`${grantee.address}-${grantee.id}`}
                 granteeAddress={grantee.address}
-                name={grantee.metadata.title}
-                description={grantee.metadata.description}
-                logoCid={grantee.metadata.logoImg}
-                bannerCid={grantee.bannerCid}
+                name={grantee.details.name ?? ""}
+                description={grantee.details.description ?? ""}
+                logoUrl={grantee.details.logoUrl ?? ""}
+                bannerUrl={grantee.details.bannerUrl ?? ""}
                 placeholderLogo={grantee.placeholderLogo}
                 placeholderBanner={grantee.placeholderBanner}
                 flowRate={grantee.flowRate}
@@ -357,7 +355,7 @@ export default function FlowCouncil({
           id={showGranteeDetails.id}
           chainId={chainId}
           token={token}
-          metadata={showGranteeDetails.metadata}
+          details={showGranteeDetails.details}
           placeholderLogo={showGranteeDetails.placeholderLogo}
           granteeAddress={showGranteeDetails.address}
           canAddToBallot={!!votingPower}

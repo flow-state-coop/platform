@@ -233,6 +233,7 @@ export default function RoundMetadata(props: RoundMetadataProps) {
               type="text"
               placeholder="Name"
               value={roundDetails.name}
+              disabled={!session || session.address !== address}
               className="border-0 py-4 bg-white fs-lg fw-semi-bold"
               style={{
                 paddingTop: 12,
@@ -247,6 +248,7 @@ export default function RoundMetadata(props: RoundMetadataProps) {
               rows={3}
               placeholder="Description (Supports Markdown)"
               value={roundDetails.description}
+              disabled={!session || session.address !== address}
               className="border-0 py-4 bg-white mt-3 fs-lg fw-semi-bold"
               style={{
                 resize: "none",
@@ -262,7 +264,7 @@ export default function RoundMetadata(props: RoundMetadataProps) {
             />
             <Form.Group className="d-flex flex-column mt-3">
               <Form.Label className="fs-lg fw-semi-bold">
-                Round Logo (1:1 Aspect Ratio, Max 1MB)
+                Logo (1:1 Aspect Ratio, Max 1MB)
               </Form.Label>
               <Form.Control
                 type="file"
@@ -277,6 +279,7 @@ export default function RoundMetadata(props: RoundMetadataProps) {
                 className="align-items-center"
               >
                 <Button
+                  disabled={!session || session.address !== address}
                   className="bg-white border-0"
                   style={{
                     width: 200,
@@ -310,6 +313,7 @@ export default function RoundMetadata(props: RoundMetadataProps) {
                       <Button
                         variant="transparent"
                         className="p-0"
+                        disabled={!session || session.address !== address}
                         onClick={() => {
                           setLogoBlob(null);
                           setRoundDetails({ ...roundDetails, logoUrl: "" });

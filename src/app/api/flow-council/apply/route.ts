@@ -81,6 +81,25 @@ export async function POST(request: Request) {
       .where("roundId", "=", round.id)
       .executeTakeFirst();
 
+    // Check if another application in the same round already uses this funding address
+    const duplicateFundingAddress = await db
+      .selectFrom("applications")
+      .select("id")
+      .where("roundId", "=", round.id)
+      .where("fundingAddress", "=", fundingAddress.toLowerCase())
+      .where("projectId", "!=", projectId)
+      .executeTakeFirst();
+
+    if (duplicateFundingAddress) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error:
+            "This funding address is already used by another application in this round",
+        }),
+      );
+    }
+
     if (!existingApplication) {
       await db
         .insertInto("applications")

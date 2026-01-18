@@ -3,6 +3,7 @@
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
+import Image from "react-bootstrap/Image";
 
 export type OtherLink = {
   description: string;
@@ -68,17 +69,11 @@ export default function OtherLinkRow(props: OtherLinkRowProps) {
                 onChange={(e) => handleChange(index, "url", e.target.value)}
               />
               <Button
-                variant="danger"
-                className="d-flex align-items-center justify-content-center p-0 rounded-2"
-                style={{ width: 36, height: 36, minWidth: 36 }}
+                variant="link"
+                className="d-flex align-items-center justify-content-center p-0"
                 onClick={() => handleRemove(index)}
               >
-                <span
-                  className="text-white fw-bold"
-                  style={{ fontSize: 18, lineHeight: 1 }}
-                >
-                  &times;
-                </span>
+                <Image src="/close.svg" alt="Remove" width={28} height={28} />
               </Button>
             </Stack>
           </Stack>

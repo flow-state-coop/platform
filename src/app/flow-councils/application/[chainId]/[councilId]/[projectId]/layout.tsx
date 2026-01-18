@@ -196,7 +196,7 @@ export default function ApplicationLayout({
     <Stack
       direction="horizontal"
       gap={4}
-      className="align-items-start position-relative px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
+      className="align-items-start position-relative px-2 pt-10 pb-30 px-lg-5 px-xxl-10"
     >
       <ApplicantSidebar
         chainId={chainId!}

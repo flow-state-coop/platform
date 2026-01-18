@@ -178,13 +178,8 @@ export default function Ballot({
           className="flex-grow-0 mt-2 bg-lace-100 rounded-4 p-4"
         >
           {newAllocation?.allocation?.map((allocation, i) => {
-            const councilRecipient = council?.recipients.find(
-              (recipient: { account: string }) =>
-                recipient.account === allocation.recipient,
-            );
-            const profile = projects?.find(
-              (profile: { id: string }) =>
-                profile.id === councilRecipient?.metadata,
+            const project = projects?.find(
+              (p) => p.id.toLowerCase() === allocation.recipient.toLowerCase(),
             );
 
             return (
@@ -217,7 +212,7 @@ export default function Ballot({
                     />
                   </Button>
                   <p className="m-0 text-truncate fs-lg fw-semi-bold">
-                    {profile?.metadata.title}
+                    {project?.details?.name}
                   </p>
                 </Stack>
                 <Stack
@@ -275,7 +270,7 @@ export default function Ballot({
                 JSON.stringify(currentAllocation?.allocation) ===
                   JSON.stringify(newAllocation?.allocation))
             }
-            className="align-self-end w-50 px-10 py-4 rounded-4 fs-lg fw-semi-bold"
+            className="d-flex justify-content-center align-items-center align-self-end w-50 px-10 py-4 rounded-4 fs-lg fw-semi-bold"
             style={{ pointerEvents: success ? "none" : "auto", height: 56 }}
             onClick={handleVote}
           >
