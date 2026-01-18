@@ -151,15 +151,12 @@ export default function Application(props: ApplicationProps) {
     setActiveTab("round");
   };
 
-  const handleRoundSaved = (appId?: number) => {
+  const handleRoundSaved = (savedRoundData: RoundForm, appId?: number) => {
+    setRoundData(savedRoundData);
     if (appId) {
       setApplicationId(appId);
     }
     setActiveTab("eligibility");
-  };
-
-  const handleEligibilitySubmit = () => {
-    router.push(`/flow-councils/application/${chainId}/${councilId}`);
   };
 
   if (!chainId || !network || !councilId) {
@@ -252,7 +249,6 @@ export default function Application(props: ApplicationProps) {
               existingEligibilityData={eligibilityData}
               existingRoundData={roundData}
               isLoading={isLoading}
-              onSubmit={handleEligibilitySubmit}
               onBack={() => setActiveTab("round")}
             />
           </Tab.Pane>

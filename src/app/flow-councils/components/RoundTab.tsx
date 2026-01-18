@@ -134,7 +134,7 @@ type RoundTabProps = {
   csrfToken: string;
   existingRoundData: RoundForm | null;
   isLoading: boolean;
-  onSave: (applicationId?: number) => void;
+  onSave: (roundData: RoundForm, applicationId?: number) => void;
   onBack: () => void;
 };
 
@@ -366,7 +366,7 @@ export default function RoundTab(props: RoundTabProps) {
       }
 
       setIsSubmitting(false);
-      onSave(json.application?.id);
+      onSave(form, json.application?.id);
     } catch (err) {
       console.error(err);
       setError("Failed to save round data");

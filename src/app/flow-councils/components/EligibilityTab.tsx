@@ -67,7 +67,6 @@ type EligibilityTabProps = {
   existingEligibilityData: EligibilityForm | null;
   existingRoundData: RoundForm | null;
   isLoading: boolean;
-  onSubmit: () => void;
   onBack: () => void;
 };
 
@@ -80,7 +79,6 @@ export default function EligibilityTab(props: EligibilityTabProps) {
     existingEligibilityData,
     existingRoundData,
     isLoading,
-    onSubmit,
     onBack,
   } = props;
 
@@ -169,7 +167,6 @@ export default function EligibilityTab(props: EligibilityTabProps) {
 
       setIsSubmitting(false);
       setSuccess(true);
-      onSubmit();
     } catch (err) {
       console.error(err);
       setError("Failed to submit application");

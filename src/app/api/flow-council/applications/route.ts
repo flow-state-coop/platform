@@ -50,10 +50,51 @@ export async function POST(request: Request) {
       .where("applications.roundId", "=", round.id)
       .execute();
 
+    // Fetch manager addresses and emails for each project
+    const projectIds = [...new Set(applications.map((a) => a.projectId))];
+
+    const [managerAddresses, managerEmails] = await Promise.all([
+      db
+        .selectFrom("projectManagers")
+        .select(["projectId", "managerAddress"])
+        .where("projectId", "in", projectIds.length > 0 ? projectIds : [0])
+        .execute(),
+      db
+        .selectFrom("projectEmails")
+        .select(["projectId", "email"])
+        .where("projectId", "in", projectIds.length > 0 ? projectIds : [0])
+        .execute(),
+    ]);
+
+    // Group by projectId
+    const managerAddressesByProject: Record<number, string[]> = {};
+    const managerEmailsByProject: Record<number, string[]> = {};
+
+    for (const m of managerAddresses) {
+      if (!managerAddressesByProject[m.projectId]) {
+        managerAddressesByProject[m.projectId] = [];
+      }
+      managerAddressesByProject[m.projectId].push(m.managerAddress);
+    }
+
+    for (const e of managerEmails) {
+      if (!managerEmailsByProject[e.projectId]) {
+        managerEmailsByProject[e.projectId] = [];
+      }
+      managerEmailsByProject[e.projectId].push(e.email);
+    }
+
+    // Enrich applications with manager data
+    const enrichedApplications = applications.map((app) => ({
+      ...app,
+      managerAddresses: managerAddressesByProject[app.projectId] || [],
+      managerEmails: managerEmailsByProject[app.projectId] || [],
+    }));
+
     return new Response(
       JSON.stringify({
         success: true,
-        applications,
+        applications: enrichedApplications,
       }),
     );
   } catch (err) {
@@ -140,7 +181,7 @@ export async function PUT(request: Request) {
       application = await db
         .updateTable("applications")
         .set({
-          details: JSON.stringify(details),
+          details: details,
           updatedAt: new Date(),
         })
         .where("id", "=", existingApplication.id)
@@ -177,7 +218,7 @@ export async function PUT(request: Request) {
           roundId: round.id,
           fundingAddress: fundingAddress.toLowerCase(),
           status: "INCOMPLETE",
-          details: JSON.stringify(details),
+          details: details,
         })
         .returning([
           "id",
@@ -193,14 +234,7 @@ export async function PUT(request: Request) {
     return new Response(
       JSON.stringify({
         success: true,
-        application: {
-          ...application,
-          details: application.details
-            ? typeof application.details === "string"
-              ? JSON.parse(application.details as string)
-              : application.details
-            : null,
-        },
+        application,
       }),
     );
   } catch (err) {

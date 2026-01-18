@@ -61,14 +61,7 @@ export async function GET(
     return new Response(
       JSON.stringify({
         success: true,
-        application: {
-          ...application,
-          details: application.details
-            ? typeof application.details === "string"
-              ? JSON.parse(application.details)
-              : application.details
-            : null,
-        },
+        application,
       }),
     );
   } catch (err) {
@@ -130,7 +123,7 @@ export async function PATCH(
 
     // Build the update object
     const updateData: Record<string, unknown> = {
-      details: JSON.stringify(details),
+      details: details,
       updatedAt: new Date(),
     };
 
@@ -165,14 +158,7 @@ export async function PATCH(
     return new Response(
       JSON.stringify({
         success: true,
-        application: {
-          ...updatedApplication,
-          details: updatedApplication.details
-            ? typeof updatedApplication.details === "string"
-              ? JSON.parse(updatedApplication.details as string)
-              : updatedApplication.details
-            : null,
-        },
+        application: updatedApplication,
       }),
     );
   } catch (err) {

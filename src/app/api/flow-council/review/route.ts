@@ -13,6 +13,7 @@ import { optimism, arbitrum, base, optimismSepolia } from "wagmi/chains";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { networks } from "@/lib/networks";
+import { ApplicationStatus } from "@/generated/kysely";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,8 @@ const chains: { [id: number]: Chain } = {
 
 export async function POST(request: Request) {
   try {
-    const { applications, chainId, councilId } = await request.json();
+    const body = await request.json();
+    const { chainId, councilId } = body;
 
     const session = await getServerSession(authOptions);
     const network = networks.find((network) => network.id === chainId);
@@ -85,26 +87,64 @@ export async function POST(request: Request) {
       );
     }
 
-    for (const application of applications) {
-      if (!application.id || typeof application.id !== "number") {
-        continue;
-      }
+    const { applicationId, newStatus, comment } = body;
 
-      await db
-        .updateTable("applications")
-        .set({
-          status: application.status,
-          updatedAt: new Date(),
-        })
-        .where("id", "=", application.id)
-        .where("roundId", "=", round.id)
-        .execute();
+    if (!applicationId || typeof applicationId !== "number") {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid application ID" }),
+      );
     }
+
+    if (!newStatus || typeof newStatus !== "string") {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid status" }),
+      );
+    }
+
+    // Get the application to get project ID
+    const application = await db
+      .selectFrom("applications")
+      .select(["id", "projectId"])
+      .where("id", "=", applicationId)
+      .where("roundId", "=", round.id)
+      .executeTakeFirst();
+
+    if (!application) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Application not found" }),
+      );
+    }
+
+    // Update application status
+    await db
+      .updateTable("applications")
+      .set({
+        status: newStatus as ApplicationStatus,
+        updatedAt: new Date(),
+      })
+      .where("id", "=", applicationId)
+      .where("roundId", "=", round.id)
+      .execute();
+
+    // Create automated message in project chat
+    const messageContent = `New Application Status: ${newStatus}${comment ? `. Comments: ${comment}` : ""}`;
+
+    await db
+      .insertInto("messages")
+      .values({
+        channelType: "GROUP_PROJECT",
+        roundId: round.id,
+        projectId: application.projectId,
+        applicationId: applicationId,
+        authorAddress: session.address.toLowerCase(),
+        content: messageContent,
+      })
+      .execute();
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Applications updated successfully",
+        message: "Application updated successfully",
       }),
     );
   } catch (err) {

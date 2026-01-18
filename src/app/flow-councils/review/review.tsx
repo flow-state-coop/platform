@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Address } from "viem";
@@ -10,8 +10,6 @@ import { useSession } from "next-auth/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { gql, useQuery } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
-import Col from "react-bootstrap/Col";
-import Row from "react-bootstrap/Row";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
@@ -21,13 +19,22 @@ import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
 import Table from "react-bootstrap/Table";
 import Badge from "react-bootstrap/Badge";
+import Nav from "react-bootstrap/Nav";
+import Tab from "react-bootstrap/Tab";
+import Dropdown from "react-bootstrap/Dropdown";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import CopyTooltip from "@/components/CopyTooltip";
+import ViewProjectTab from "@/app/flow-councils/components/ViewProjectTab";
+import ViewRoundTab from "@/app/flow-councils/components/ViewRoundTab";
+import ViewEligibilityTab from "@/app/flow-councils/components/ViewEligibilityTab";
+import InternalComments from "@/app/flow-councils/components/InternalComments";
 import useSiwe from "@/hooks/siwe";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { RECIPIENT_MANAGER_ROLE } from "../lib/constants";
 import { getApolloClient } from "@/lib/apollo";
+import type { RoundForm } from "@/app/flow-councils/components/ViewRoundTab";
+import type { EligibilityForm } from "@/app/flow-councils/components/ViewEligibilityTab";
 
 type ReviewProps = {
   chainId?: number;
@@ -44,6 +51,19 @@ type ProjectDetails = {
   website?: string;
   twitter?: string;
   github?: string;
+  defaultFundingAddress?: string;
+  demoUrl?: string;
+  farcaster?: string;
+  telegram?: string;
+  discord?: string;
+  karmaProfile?: string;
+  githubRepos?: string[];
+  smartContracts?: { type: string; network: string; address: string }[];
+  otherLinks?: { description: string; url: string }[];
+};
+
+type ApplicationDetails = RoundForm & {
+  eligibility?: EligibilityForm;
 };
 
 type Application = {
@@ -53,27 +73,29 @@ type Application = {
   fundingAddress: string;
   status: Status;
   projectDetails: ProjectDetails | null;
-};
-
-type ReviewingApplication = {
-  id: number;
-  fundingAddress: string;
-  projectDetails: ProjectDetails | null;
-  newStatus: Status;
-};
-
-type CancelingApplication = {
-  id: number;
-  fundingAddress: string;
+  details: ApplicationDetails | null;
+  managerAddresses?: string[];
+  managerEmails?: string[];
 };
 
 type Status =
+  | "INCOMPLETE"
   | "SUBMITTED"
   | "ACCEPTED"
   | "CHANGES_REQUESTED"
   | "REJECTED"
   | "REMOVED"
   | "GRADUATED";
+
+const STATUS_LABELS: Record<Status, string> = {
+  INCOMPLETE: "Incomplete",
+  SUBMITTED: "Submitted",
+  ACCEPTED: "Accepted",
+  CHANGES_REQUESTED: "Changes Requested",
+  REJECTED: "Rejected",
+  REMOVED: "Removed",
+  GRADUATED: "Graduated",
+};
 
 const FLOW_COUNCIL_QUERY = gql`
   query FlowCouncilQuery($councilId: String!) {
@@ -93,18 +115,16 @@ export default function Review(props: ReviewProps) {
   const { chainId, councilId, hostname, csfrToken } = props;
 
   const [applications, setApplications] = useState<Application[]>([]);
-  const [reviewingApplications, setReviewingApplications] = useState<
-    ReviewingApplication[]
-  >([]);
-  const [cancelingApplications, setCancelingApplications] = useState<
-    CancelingApplication[]
-  >([]);
   const [selectedApplication, setSelectedApplication] =
     useState<Application | null>(null);
+  const [selectedTab, setSelectedTab] = useState<string>("project");
+  const [newStatus, setNewStatus] = useState<Status | null>(null);
+  const [reviewComment, setReviewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
+  const topRef = useRef<HTMLDivElement>(null);
   const publicClient = usePublicClient();
   const wagmiConfig = useConfig();
   const router = useRouter();
@@ -170,169 +190,127 @@ export default function Review(props: ReviewProps) {
     fetchApplications();
   }, [fetchApplications]);
 
-  const handleReviewSelection = (newStatus: Status) => {
-    if (!selectedApplication) {
-      throw Error("No selected recipient");
+  // Get available statuses based on current status
+  const availableStatuses = useMemo(() => {
+    if (!selectedApplication) return [];
+    const currentStatus = selectedApplication.status;
+
+    // If accepted, can be removed or graduated
+    if (currentStatus === "ACCEPTED") {
+      return ["REMOVED", "GRADUATED"] as Status[];
     }
 
-    const _reviewingApplications = [...reviewingApplications];
-    const index = _reviewingApplications.findIndex(
-      (application) => selectedApplication.id === application.id,
+    // If removed, can only be re-accepted
+    if (currentStatus === "REMOVED") {
+      return ["ACCEPTED"] as Status[];
+    }
+
+    // If graduated, can only be removed
+    if (currentStatus === "GRADUATED") {
+      return ["REMOVED"] as Status[];
+    }
+
+    // If not yet accepted, can accept, request changes, or reject
+    return (["ACCEPTED", "CHANGES_REQUESTED", "REJECTED"] as Status[]).filter(
+      (s) => s !== currentStatus,
     );
+  }, [selectedApplication]);
 
-    if (selectedApplication.status !== newStatus) {
-      if (index === -1) {
-        _reviewingApplications.push({
-          id: selectedApplication.id,
-          fundingAddress: selectedApplication.fundingAddress,
-          projectDetails: selectedApplication.projectDetails,
-          newStatus,
-        });
-      } else {
-        _reviewingApplications[index].newStatus = newStatus;
-      }
-    }
-
-    setReviewingApplications(_reviewingApplications);
-    setSelectedApplication(null);
+  const handleSelectApplication = (application: Application) => {
+    setSelectedApplication(application);
+    setSelectedTab("project");
+    setNewStatus(null);
+    setReviewComment("");
+    setError("");
   };
 
-  const handleCancelSelection = () => {
-    if (!selectedApplication) {
-      throw Error("No selected application");
-    }
-
-    const _cancelingApplications = [...cancelingApplications];
-
-    _cancelingApplications.push({
-      id: selectedApplication.id,
-      fundingAddress: selectedApplication.fundingAddress,
-    });
-
-    setCancelingApplications(_cancelingApplications);
+  const handleCloseReview = () => {
     setSelectedApplication(null);
+    setNewStatus(null);
+    setReviewComment("");
+    setError("");
   };
 
-  const handleSubmit = async () => {
+  const handleSubmitReview = async () => {
     if (!session) {
       throw Error("Account is not signed in");
     }
 
-    if (!flowCouncil) {
-      throw Error("Flow Council not found");
+    if (!flowCouncil || !selectedApplication || !newStatus) {
+      throw Error("Missing required data");
     }
 
     try {
       setIsSubmitting(true);
       setError("");
 
-      const acceptedApplications = reviewingApplications.filter(
-        (reviewingApplication) => reviewingApplication.newStatus === "ACCEPTED",
-      );
-      const rejectedApplications = reviewingApplications.filter(
-        (reviewingApplication) => reviewingApplication.newStatus === "REJECTED",
-      );
+      // Check if on-chain transaction is needed
+      // Only need on-chain tx when actually changing on-chain state:
+      // - Adding: ACCEPTED (and not already on-chain)
+      // - Removing: REMOVED/GRADUATED from ACCEPTED state
+      const currentStatus = selectedApplication.status;
+      const isAddingOnChain =
+        newStatus === "ACCEPTED" && currentStatus !== "ACCEPTED";
+      const isRemovingOnChain =
+        (newStatus === "REMOVED" || newStatus === "GRADUATED") &&
+        currentStatus === "ACCEPTED";
 
-      if (acceptedApplications.length > 0 || cancelingApplications.length > 0) {
-        // Build recipients array and metadata array for updateRecipients
-        const recipientsToAdd = acceptedApplications.map((application) => ({
-          account: application.fundingAddress as Address,
-          status: 0, // Status.ADDED
-        }));
-        const metadataToAdd = acceptedApplications.map(
-          (application) => application.projectDetails?.name ?? "",
-        );
-
-        const recipientsToRemove = cancelingApplications.map(
-          (cancelingApplication) => ({
-            account: cancelingApplication.fundingAddress as Address,
-            status: 1, // Status.REMOVED
-          }),
-        );
-        const metadataToRemove = cancelingApplications.map(() => "");
+      if (isAddingOnChain || isRemovingOnChain) {
+        const recipientStatus = isAddingOnChain ? 0 : 1; // 0 = ADDED, 1 = REMOVED
 
         const hash = await writeContract(wagmiConfig, {
           address: flowCouncil.id as Address,
           abi: flowCouncilAbi,
           functionName: "updateRecipients",
           args: [
-            [...recipientsToAdd, ...recipientsToRemove],
-            [...metadataToAdd, ...metadataToRemove],
+            [
+              {
+                account: selectedApplication.fundingAddress as Address,
+                status: recipientStatus,
+              },
+            ],
+            [selectedApplication.projectDetails?.name ?? ""],
           ],
         });
 
-        const receipt = await publicClient?.waitForTransactionReceipt({
+        await publicClient?.waitForTransactionReceipt({
           hash,
           confirmations: 3,
           retryCount: 10,
         });
-
-        if (receipt?.status === "success") {
-          const res = await fetch("/api/flow-council/review", {
-            method: "POST",
-            body: JSON.stringify({
-              chainId,
-              councilId: flowCouncil.id,
-              applications: reviewingApplications
-                .map((reviewingApplication) => {
-                  return {
-                    id: reviewingApplication.id,
-                    status: reviewingApplication.newStatus,
-                  };
-                })
-                .concat(
-                  cancelingApplications.map((cancelingApplication) => {
-                    return {
-                      id: cancelingApplication.id,
-                      status: "REMOVED" as Status,
-                    };
-                  }),
-                ),
-            }),
-          });
-
-          const json = await res.json();
-
-          if (!json.success) {
-            setError(json.error);
-          } else {
-            setSuccess(true);
-          }
-        } else {
-          setError("Transaction Reverted");
-        }
-      } else if (rejectedApplications.length > 0) {
-        const res = await fetch("/api/flow-council/review", {
-          method: "POST",
-          body: JSON.stringify({
-            chainId,
-            councilId: flowCouncil.id,
-            applications: rejectedApplications.map((reviewingApplication) => {
-              return {
-                id: reviewingApplication.id,
-                status: reviewingApplication.newStatus,
-              };
-            }),
-          }),
-        });
-
-        const json = await res.json();
-
-        if (!json.success) {
-          setError(json.error);
-        } else {
-          setSuccess(true);
-        }
       }
 
-      fetchApplications();
+      // Update status in DB and create automated message
+      const res = await fetch("/api/flow-council/review", {
+        method: "POST",
+        body: JSON.stringify({
+          chainId,
+          councilId: flowCouncil.id,
+          applicationId: selectedApplication.id,
+          newStatus,
+          comment: reviewComment,
+        }),
+      });
 
-      setReviewingApplications([]);
-      setCancelingApplications([]);
+      const json = await res.json();
+
+      if (!json.success) {
+        setError(json.error);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Success - refresh applications and close panel
+      setSuccess(true);
+      fetchApplications();
+      handleCloseReview();
+
+      // Scroll to top
+      topRef.current?.scrollIntoView({ behavior: "smooth" });
+
       setIsSubmitting(false);
     } catch (err) {
       console.error(err);
-
       setIsSubmitting(false);
       setError("Error: Please retry later");
     }
@@ -359,6 +337,7 @@ export default function Review(props: ReviewProps) {
         direction="vertical"
         className={!isMobile ? "w-75 px-5" : "w-100 px-4"}
       >
+        <div ref={topRef} />
         <h1 className="mt-4 fs-5 fw-semi-bold">Manage Recipients</h1>
         <h2 className="fs-md text-info">
           Review and/or remove eligible funding recipients from your Flow
@@ -412,6 +391,8 @@ export default function Review(props: ReviewProps) {
                 }
               />
             </Stack>
+
+            {/* Applications Table */}
             <div
               className="border border-4 border-dark"
               style={{
@@ -422,9 +403,9 @@ export default function Review(props: ReviewProps) {
               <Table striped hover>
                 <thead>
                   <tr>
-                    <th>Applicant</th>
+                    <th>Address</th>
                     <th>Name</th>
-                    <th className="text-center">Review</th>
+                    <th className="text-center">Status</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -437,72 +418,25 @@ export default function Review(props: ReviewProps) {
                       <td className="w-25 align-middle">
                         {application.projectDetails?.name ?? "N/A"}
                       </td>
-                      <td className="w-25 text-center ps-0 align-middle">
-                        {reviewingApplications.find(
-                          (reviewingApplication) =>
-                            application.id === reviewingApplication.id,
-                        )?.newStatus === "ACCEPTED" ? (
-                          <Image
-                            src="/success.svg"
-                            alt="success"
-                            width={24}
-                            style={{
-                              filter:
-                                "invert(38%) sepia(93%) saturate(359%) hue-rotate(100deg) brightness(92%) contrast(94%)",
-                            }}
-                          />
-                        ) : reviewingApplications.find(
-                            (reviewingApplication) =>
-                              application.id === reviewingApplication.id,
-                          )?.newStatus === "REJECTED" ||
-                          cancelingApplications.find(
-                            (cancelingApplication) =>
-                              application.id === cancelingApplication.id,
-                          ) ? (
-                          <Image
-                            src="/close.svg"
-                            alt="fail"
-                            width={24}
-                            style={{
-                              filter:
-                                "invert(29%) sepia(96%) saturate(1955%) hue-rotate(334deg) brightness(88%) contrast(95%)",
-                            }}
-                          />
-                        ) : application.status === "ACCEPTED" ? (
-                          <Image src="/success.svg" alt="success" width={24} />
-                        ) : application.status === "REJECTED" ||
-                          application.status === "REMOVED" ? (
-                          <Image src="/close.svg" alt="fail" width={24} />
-                        ) : null}
+                      <td className="w-25 text-center align-middle">
+                        {STATUS_LABELS[application.status] ||
+                          application.status}
                       </td>
                       <td className="w-25 align-middle">
                         {application.status === "SUBMITTED" ? (
                           <Button
                             className="w-100 px-10 py-4 rounded-4 fw-semi-bold text-light"
-                            onClick={() => {
-                              setSelectedApplication(application);
-                            }}
+                            onClick={() => handleSelectApplication(application)}
                           >
                             Review
                           </Button>
-                        ) : application.status === "ACCEPTED" ? (
+                        ) : application.status !== "INCOMPLETE" ? (
                           <Button
-                            variant="danger"
-                            className="w-100 py-4 rounded-4 fw-semi-bold text-light"
-                            onClick={() => {
-                              setSelectedApplication(application);
-                            }}
+                            variant="secondary"
+                            className="w-100 py-4 rounded-4 fw-semi-bold"
+                            onClick={() => handleSelectApplication(application)}
                           >
-                            Kick from Pool
-                          </Button>
-                        ) : application.status === "REJECTED" ? (
-                          <Button
-                            className="w-100 px-10 py-4 rounded-4 fw-semi-bold text-light"
-                            onClick={() => {
-                              setSelectedApplication(application);
-                            }}
-                          >
-                            View
+                            Edit Status
                           </Button>
                         ) : null}
                       </td>
@@ -511,158 +445,195 @@ export default function Review(props: ReviewProps) {
                 </tbody>
               </Table>
             </div>
+
+            {/* Selected Application Review Panel */}
             {selectedApplication !== null && (
               <Stack
                 direction="vertical"
                 className="mt-4 bg-lace-100 rounded-4 p-4"
               >
-                <Form className="d-flex flex-column gap-4">
-                  <Row>
-                    <Col>
-                      <Form.Label>Funding Address</Form.Label>
-                      <Form.Control
-                        value={selectedApplication.fundingAddress}
-                        disabled
-                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
-                      />
-                    </Col>
-                  </Row>
-                  <Row>
-                    <Col>
-                      <Form.Label>Name</Form.Label>
-                      <Form.Control
-                        value={selectedApplication.projectDetails?.name ?? ""}
-                        disabled
-                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
-                      />
-                    </Col>
-                    <Col>
-                      <Form.Label>Website URL</Form.Label>
-                      <Form.Control
-                        value={
-                          selectedApplication.projectDetails?.website ?? ""
-                        }
-                        disabled
-                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
-                      />
-                    </Col>
-                  </Row>
-                  <Row>
-                    <Col>
-                      <Form.Label>Twitter</Form.Label>
-                      <Form.Control
-                        value={
-                          selectedApplication.projectDetails?.twitter
-                            ? `@${selectedApplication.projectDetails.twitter}`
-                            : ""
-                        }
-                        disabled
-                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
-                      />
-                    </Col>
-                    <Col>
-                      <Form.Label>Github</Form.Label>
-                      <Form.Control
-                        value={
-                          selectedApplication.projectDetails?.github
-                            ? `https://github.com/${selectedApplication.projectDetails.github}`
-                            : ""
-                        }
-                        disabled
-                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
-                      />
-                    </Col>
-                  </Row>
-                  <Row>
-                    <Col>
-                      <Form.Label>Logo</Form.Label>
-                      <Form.Control
-                        value={
-                          selectedApplication.projectDetails?.logoUrl ?? ""
-                        }
-                        disabled
-                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
-                      />
-                    </Col>
-                    <Col>
-                      <Form.Label>Banner</Form.Label>
-                      <Form.Control
-                        value={
-                          selectedApplication.projectDetails?.bannerUrl ?? ""
-                        }
-                        disabled
-                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
-                      />
-                    </Col>
-                  </Row>
-                  <Row>
-                    <Col>
-                      <Form.Label>Description</Form.Label>
-                      <Form.Control
-                        as="textarea"
-                        rows={4}
-                        disabled
-                        style={{ resize: "none" }}
-                        value={
-                          selectedApplication.projectDetails?.description ?? ""
-                        }
-                        className="border-0 bg-light rounded-4 p-4 fw-semi-bold"
-                      />
-                    </Col>
-                  </Row>
-                </Form>
-                <Stack direction="horizontal" gap={2} className="w-50 mt-6">
-                  {selectedApplication.status === "ACCEPTED" ? (
-                    <Button
-                      variant="danger"
-                      className="w-50 py-4 rounded-4 fw-semi-bold text-light"
-                      onClick={handleCancelSelection}
-                    >
-                      Kick from Pool
-                    </Button>
-                  ) : (
-                    <>
-                      <Button
-                        className="w-50 text-light py-4 rounded-4 fw-semi-bold"
-                        onClick={() => handleReviewSelection("ACCEPTED")}
-                      >
-                        Accept
-                      </Button>
-                      <Button
-                        variant="danger"
-                        className="w-50 py-4 rounded-4 fw-semi-bold text-light"
-                        onClick={() => handleReviewSelection("REJECTED")}
-                      >
-                        Reject
-                      </Button>{" "}
-                    </>
-                  )}
+                {/* Header with close button */}
+                <Stack
+                  direction="horizontal"
+                  className="justify-content-between mb-4"
+                >
+                  <h4 className="fw-bold mb-0">
+                    {selectedApplication.projectDetails?.name ??
+                      "Application Review"}
+                  </h4>
+                  <Button
+                    variant="link"
+                    className="p-0"
+                    onClick={handleCloseReview}
+                  >
+                    <Image src="/close.svg" alt="Close" width={24} />
+                  </Button>
                 </Stack>
+
+                {/* Tabbed Interface */}
+                <Tab.Container
+                  activeKey={selectedTab}
+                  onSelect={(k) => setSelectedTab(k || "project")}
+                >
+                  <Nav variant="tabs" className="mb-4">
+                    <Nav.Item>
+                      <Nav.Link eventKey="project">Project</Nav.Link>
+                    </Nav.Item>
+                    <Nav.Item>
+                      <Nav.Link eventKey="round">Round</Nav.Link>
+                    </Nav.Item>
+                    <Nav.Item>
+                      <Nav.Link eventKey="eligibility">Eligibility</Nav.Link>
+                    </Nav.Item>
+                    <Nav.Item>
+                      <Nav.Link eventKey="comments">Comments</Nav.Link>
+                    </Nav.Item>
+                  </Nav>
+
+                  <Tab.Content>
+                    <Tab.Pane eventKey="project">
+                      <ViewProjectTab
+                        projectDetails={selectedApplication.projectDetails}
+                        managerAddresses={selectedApplication.managerAddresses}
+                        managerEmails={selectedApplication.managerEmails}
+                      />
+                    </Tab.Pane>
+                    <Tab.Pane eventKey="round">
+                      <ViewRoundTab
+                        roundData={
+                          selectedApplication.details
+                            ? {
+                                previousParticipation:
+                                  selectedApplication.details
+                                    .previousParticipation,
+                                maturityAndUsage:
+                                  selectedApplication.details.maturityAndUsage,
+                                integration:
+                                  selectedApplication.details.integration,
+                                buildGoals:
+                                  selectedApplication.details.buildGoals,
+                                growthGoals:
+                                  selectedApplication.details.growthGoals,
+                                team: selectedApplication.details.team,
+                                additional:
+                                  selectedApplication.details.additional,
+                              }
+                            : null
+                        }
+                      />
+                    </Tab.Pane>
+                    <Tab.Pane eventKey="eligibility">
+                      <ViewEligibilityTab
+                        eligibilityData={
+                          selectedApplication.details?.eligibility ?? null
+                        }
+                      />
+                    </Tab.Pane>
+                    <Tab.Pane eventKey="comments">
+                      <InternalComments
+                        applicationId={selectedApplication.id}
+                        chainId={chainId}
+                        councilId={councilId}
+                      />
+                    </Tab.Pane>
+                  </Tab.Content>
+                </Tab.Container>
+
+                {/* Status Change Section */}
+                <div className="mt-6 pt-4 border-top">
+                  <h5 className="fw-bold mb-3">Update Status</h5>
+
+                  {/* Current Status */}
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-semi-bold">
+                      Current Status
+                    </Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={STATUS_LABELS[selectedApplication.status]}
+                      disabled
+                      className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
+                    />
+                  </Form.Group>
+
+                  {/* New Status Dropdown */}
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-semi-bold">New Status</Form.Label>
+                    <Dropdown>
+                      <Dropdown.Toggle
+                        variant="white"
+                        className="w-100 d-flex justify-content-between align-items-center bg-white border border-2 border-dark rounded-4 py-3 px-3"
+                      >
+                        {newStatus
+                          ? STATUS_LABELS[newStatus]
+                          : "Select new status..."}
+                      </Dropdown.Toggle>
+                      <Dropdown.Menu className="w-100 border border-dark p-2 lh-lg">
+                        {availableStatuses.map((status) => (
+                          <Dropdown.Item
+                            key={status}
+                            onClick={() => setNewStatus(status)}
+                          >
+                            {STATUS_LABELS[status]}
+                          </Dropdown.Item>
+                        ))}
+                      </Dropdown.Menu>
+                    </Dropdown>
+                  </Form.Group>
+
+                  {/* Review Comment */}
+                  <Form.Group className="mb-4">
+                    <Form.Label className="fw-semi-bold">
+                      Review Comment
+                    </Form.Label>
+                    <p className="text-muted small mb-2">
+                      This comment will be added as an automated message in the
+                      project chat. Use the Comments tab for private internal
+                      notes.
+                    </p>
+                    <Form.Control
+                      as="textarea"
+                      rows={3}
+                      value={reviewComment}
+                      placeholder="Add a comment about this status change..."
+                      className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+                      style={{ resize: "none" }}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                    />
+                  </Form.Group>
+
+                  {/* Submit Button */}
+                  <Button
+                    className="w-100 py-4 rounded-4 fw-semi-bold"
+                    disabled={!newStatus || isSubmitting}
+                    onClick={() => {
+                      !address && openConnectModal
+                        ? openConnectModal()
+                        : connectedChain?.id !== chainId
+                          ? switchChain({ chainId })
+                          : handleSubmitReview();
+                    }}
+                  >
+                    {isSubmitting ? (
+                      <Spinner size="sm" className="m-auto" />
+                    ) : (
+                      `Update to ${newStatus ? STATUS_LABELS[newStatus] : "..."}`
+                    )}
+                  </Button>
+
+                  {error && (
+                    <Alert
+                      variant="danger"
+                      className="mt-3 p-3 fw-semi-bold text-danger"
+                    >
+                      {error}
+                    </Alert>
+                  )}
+                </div>
               </Stack>
             )}
+
             <Stack direction="vertical" gap={3} className="mt-4 mb-30">
-              <Button
-                className="py-4 rounded-4 fs-lg fw-semi-bold"
-                disabled={
-                  !session ||
-                  session.address !== address ||
-                  (reviewingApplications.length === 0 &&
-                    cancelingApplications.length === 0)
-                }
-                onClick={() => {
-                  !address && openConnectModal
-                    ? openConnectModal()
-                    : connectedChain?.id !== chainId
-                      ? switchChain({ chainId })
-                      : handleSubmit();
-                }}
-              >
-                {isSubmitting ? (
-                  <Spinner size="sm" className="m-auto" />
-                ) : (
-                  "Submit"
-                )}
-              </Button>
               <Button
                 variant="secondary"
                 className="py-4 rounded-4 fs-lg fw-semi-bold"
@@ -682,14 +653,6 @@ export default function Review(props: ReviewProps) {
               >
                 Success!
               </Toast>
-              {error && (
-                <Alert
-                  variant="danger"
-                  className="p-4 fw-semi-bold text-danger"
-                >
-                  {error}
-                </Alert>
-              )}
             </Stack>
           </>
         )}

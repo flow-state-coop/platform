@@ -18,6 +18,7 @@ export type ApplicationStatus =
   (typeof ApplicationStatus)[keyof typeof ApplicationStatus];
 export const ChannelType = {
   INTERNAL_APPLICATION: "INTERNAL_APPLICATION",
+  GROUP_ANNOUNCEMENTS: "GROUP_ANNOUNCEMENTS",
   GROUP_APPLICANTS: "GROUP_APPLICANTS",
   GROUP_GRANTEES: "GROUP_GRANTEES",
   GROUP_ROUND_ADMINS: "GROUP_ROUND_ADMINS",
