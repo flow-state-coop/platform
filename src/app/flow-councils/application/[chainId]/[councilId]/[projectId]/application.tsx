@@ -72,6 +72,10 @@ export default function Application(props: ApplicationProps) {
   const [savedProjectId, setSavedProjectId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(!!projectId);
 
+  // Track sequential tab completion - tabs are unlocked when previous tabs are complete
+  const [projectComplete, setProjectComplete] = useState(false);
+  const [roundComplete, setRoundComplete] = useState(false);
+
   const network = networks.find((n) => n.id === chainId);
 
   const fetchProject = useCallback(async () => {
@@ -144,21 +148,40 @@ export default function Application(props: ApplicationProps) {
     }
   }, [fetchProject, fetchApplication, projectId, address]);
 
+  // Set completion status based on existing data
+  // If they have existing project data, project tab is complete
+  useEffect(() => {
+    if (project) {
+      setProjectComplete(true);
+    }
+  }, [project]);
+
+  // If they have existing round data, round tab is complete
+  useEffect(() => {
+    if (roundData) {
+      setRoundComplete(true);
+    }
+  }, [roundData]);
+
   const handleBack = () => {
     router.push(`/flow-councils/application/${chainId}/${councilId}`);
   };
 
   const handleProjectSaved = (projectId: number) => {
     setSavedProjectId(projectId);
+    setProjectComplete(true);
     setActiveTab("round");
+    window.scrollTo(0, 0);
   };
 
   const handleRoundSaved = (savedRoundData: RoundForm, appId?: number) => {
     setRoundData(savedRoundData);
+    setRoundComplete(true);
     if (appId) {
       setApplicationId(appId);
     }
     setActiveTab("eligibility");
+    window.scrollTo(0, 0);
   };
 
   if (!chainId || !network || !councilId) {
@@ -225,7 +248,7 @@ export default function Application(props: ApplicationProps) {
             />
           </Tab.Pane>
           <Tab.Pane eventKey="round">
-            {savedProjectId || project ? (
+            {projectComplete ? (
               <RoundTab
                 chainId={chainId}
                 councilId={councilId}
@@ -237,11 +260,14 @@ export default function Application(props: ApplicationProps) {
                 onBack={() => setActiveTab("project")}
               />
             ) : (
-              <ViewRoundTab roundData={roundData} />
+              <ViewRoundTab
+                roundData={roundData}
+                previousTabIncomplete={!projectComplete}
+              />
             )}
           </Tab.Pane>
           <Tab.Pane eventKey="eligibility">
-            {roundData || applicationId ? (
+            {roundComplete ? (
               <EligibilityTab
                 chainId={chainId}
                 councilId={councilId}
@@ -257,7 +283,10 @@ export default function Application(props: ApplicationProps) {
                 onBack={() => setActiveTab("round")}
               />
             ) : (
-              <ViewEligibilityTab eligibilityData={eligibilityData} />
+              <ViewEligibilityTab
+                eligibilityData={eligibilityData}
+                previousTabIncomplete={!roundComplete}
+              />
             )}
           </Tab.Pane>
         </Tab.Content>

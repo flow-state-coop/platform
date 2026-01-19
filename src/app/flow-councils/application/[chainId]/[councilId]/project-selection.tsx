@@ -6,9 +6,7 @@ import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useSession } from "next-auth/react";
 import { gql, useQuery } from "@apollo/client";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehyperExternalLinks from "rehype-external-links";
+import Markdown from "@/components/Markdown";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
@@ -313,20 +311,10 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
           />
         </Button>
       </Stack>
-      <Markdown
-        className="fs-6 text-info"
-        skipHtml={true}
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
-        components={{
-          table: (props) => (
-            <table className="table table-striped" {...props} />
-          ),
-        }}
-      >
+      <Markdown className="fs-6 text-info">
         {councilMetadata.description}
       </Markdown>
-      <h2 className="mt-5 mb-2 fw-bold">Apply now!</h2>
+      <h2 className="mt-5 mb-2 fw-bold fs-3">Apply now!</h2>
       {!isAuthenticated ? (
         <Stack direction="vertical" gap={3} className="mt-4">
           <Card.Text className="fs-6 mb-0">

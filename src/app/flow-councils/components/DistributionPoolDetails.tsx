@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import { formatEther } from "viem";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import Markdown from "@/components/Markdown";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Image from "react-bootstrap/Image";
@@ -159,13 +158,13 @@ export default function DistributionPoolDetails(
             <>
               <Collapse in={showFullDescription}>
                 <div>
-                  <Markdown className="fs-lg" remarkPlugins={[remarkGfm]}>
+                  <Markdown className="fs-lg">
                     {councilMetadata.description}
                   </Markdown>
                 </div>
               </Collapse>
               {!showFullDescription && (
-                <Markdown className="fs-lg" remarkPlugins={[remarkGfm]}>
+                <Markdown className="fs-lg">
                   {councilMetadata.description.substring(0, 200) + "..."}
                 </Markdown>
               )}
@@ -178,9 +177,7 @@ export default function DistributionPoolDetails(
               </Button>
             </>
           ) : (
-            <Markdown className="fs-lg" remarkPlugins={[remarkGfm]}>
-              {councilMetadata.description}
-            </Markdown>
+            <Markdown className="fs-lg">{councilMetadata.description}</Markdown>
           )}
         </Stack>
       ) : (

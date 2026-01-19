@@ -120,16 +120,10 @@ export default function MilestoneInput(props: MilestoneInputProps) {
 
       <Form.Group className="mb-3">
         <Form.Label className="fw-bold">Title{required && "*"}</Form.Label>
-        {type === "growth" && (
-          <p className="text-muted small mb-2">
-            eg First users onboarded, New community activated, Pilot launched,
-            etc
-          </p>
-        )}
         <Form.Control
           type="text"
           value={milestone.title}
-          placeholder="Title"
+          placeholder="eg First users onboarded, New community activated, Pilot launched, etc"
           className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && required && !milestone.title.trim() ? "border-danger" : "border-dark"}`}
           isInvalid={validated && required && !milestone.title.trim()}
           onChange={(e) => onChange({ ...milestone, title: e.target.value })}
@@ -140,21 +134,15 @@ export default function MilestoneInput(props: MilestoneInputProps) {
         <Form.Label className="fw-bold">
           Description{required && "*"}
         </Form.Label>
-        {type === "growth" && (
-          <p className="text-muted small mb-2">
-            Describe the outcomes you aim to achieve this round.
-            <br />
-            <br />
-            Include KPIs (numbers tied to your milestone) that will serve as
-            targets, not obligations. Examples include transaction #s, repeat
-            usage %, amount of liquidity added.
-          </p>
-        )}
+        {type === "growth" && <p className="text-muted small mb-2"></p>}
         <Form.Control
           as="textarea"
           rows={3}
           value={milestone.description}
-          placeholder="Description"
+          placeholder="Describe the outcomes you aim to achieve this round.
+                       Include KPIs (numbers tied to your milestone) that will
+                       serve as targets, not obligations. Examples include
+                       transaction #s, repeat usage %, amount of liquidity added."
           className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && required && !milestone.description.trim() ? "border-danger" : "border-dark"}`}
           style={{ resize: "none" }}
           isInvalid={validated && required && !milestone.description.trim()}

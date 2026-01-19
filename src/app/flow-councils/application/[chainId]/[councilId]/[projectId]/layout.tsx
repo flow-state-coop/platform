@@ -33,7 +33,7 @@ export default function ApplicationLayout({
     projectId: string;
   } | null>(null);
   const [roundName, setRoundName] = useState<string>("Round");
-  const [projectName, setProjectName] = useState<string>("Project");
+  const [projectName, setProjectName] = useState<string | null>(null);
   const [applicationStatus, setApplicationStatus] =
     useState<ApplicationStatus>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -149,11 +149,6 @@ export default function ApplicationLayout({
     resolvedParams,
   ]);
 
-  // Handle new project case - no sidebar
-  if (projectId === "new") {
-    return <>{children}</>;
-  }
-
   // Not authenticated
   if (!session || session.address !== address) {
     return (
@@ -196,13 +191,13 @@ export default function ApplicationLayout({
     <Stack
       direction="horizontal"
       gap={4}
-      className="align-items-start position-relative px-2 pt-10 pb-30 px-lg-5 px-xxl-10"
+      className="w-100 align-items-start px-2 pt-10 pb-30 px-lg-5 px-xxl-10"
     >
       <ApplicantSidebar
         chainId={chainId!}
         councilId={councilId!}
         projectId={projectId!}
-        projectName={projectName}
+        projectName={projectName ?? "New Project"}
         roundName={roundName}
         applicationStatus={applicationStatus}
       />

@@ -6,9 +6,7 @@ import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
-import Markdown from "react-markdown";
-import rehyperExternalLinks from "rehype-external-links";
-import remarkGfm from "remark-gfm";
+import Markdown from "@/components/Markdown";
 import { Token } from "@/types/token";
 import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
 import useFlowingAmount from "@/hooks/flowingAmount";
@@ -188,17 +186,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             </Stack>
           </Stack>
           <div style={{ maxWidth: 500 }} className="mt-2">
-            <Markdown
-              className="p-2"
-              skipHtml={true}
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
-              components={{
-                table: (props) => (
-                  <table className="table table-striped" {...props} />
-                ),
-              }}
-            >
+            <Markdown className="p-2">
               {(details.description ?? "").replaceAll("•", "-")}
             </Markdown>
           </div>

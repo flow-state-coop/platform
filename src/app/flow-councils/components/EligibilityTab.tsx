@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAccount, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useSession } from "next-auth/react";
@@ -73,6 +74,7 @@ type EligibilityTabProps = {
 export default function EligibilityTab(props: EligibilityTabProps) {
   const {
     chainId,
+    councilId,
     applicationId,
     csrfToken,
     defaultFundingAddress,
@@ -82,6 +84,7 @@ export default function EligibilityTab(props: EligibilityTabProps) {
     onBack,
   } = props;
 
+  const router = useRouter();
   const [form, setForm] = useState<EligibilityForm>(initialForm);
   const [validated, setValidated] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -167,6 +170,7 @@ export default function EligibilityTab(props: EligibilityTabProps) {
 
       setIsSubmitting(false);
       setSuccess(true);
+      router.push(`/flow-councils/application/${chainId}/${councilId}`);
     } catch (err) {
       console.error(err);
       setError("Failed to submit application");

@@ -24,6 +24,7 @@ export type EligibilityForm = {
 
 type ViewEligibilityTabProps = {
   eligibilityData: EligibilityForm | null;
+  previousTabIncomplete?: boolean;
 };
 
 const RECIPIENT_TYPE_LABELS: Record<RecipientType, string> = {
@@ -32,7 +33,15 @@ const RECIPIENT_TYPE_LABELS: Record<RecipientType, string> = {
 };
 
 export default function ViewEligibilityTab(props: ViewEligibilityTabProps) {
-  const { eligibilityData } = props;
+  const { eligibilityData, previousTabIncomplete } = props;
+
+  if (previousTabIncomplete) {
+    return (
+      <p className="text-muted">
+        Please complete the Round tab first to unlock this section.
+      </p>
+    );
+  }
 
   if (!eligibilityData) {
     return <p className="text-muted">No eligibility data available.</p>;

@@ -5,9 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { parseEther } from "viem";
 import { useAccount, useReadContracts } from "wagmi";
 import { gql, useQuery } from "@apollo/client";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehyperExternalLinks from "rehype-external-links";
+import Markdown from "@/components/Markdown";
 import { usePostHog } from "posthog-js/react";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
@@ -497,17 +495,7 @@ export default function Project(props: ProjectProps) {
             </Button>
           )}
         </Stack>
-        <Markdown
-          className="mt-2 px-3 sm:px-0"
-          skipHtml={true}
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
-          components={{
-            table: (props) => (
-              <table className="table table-striped" {...props} />
-            ),
-          }}
-        >
+        <Markdown className="mt-2 px-3 sm:px-0">
           {project?.metadata.description}
         </Markdown>
         <Stack

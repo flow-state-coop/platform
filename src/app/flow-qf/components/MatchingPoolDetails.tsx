@@ -3,9 +3,7 @@ import { useAccount } from "wagmi";
 import { formatEther } from "viem";
 import { useClampText } from "use-clamp-text";
 import removeMarkdown from "remove-markdown";
-import Markdown from "react-markdown";
-import rehyperExternalLinks from "rehype-external-links";
-import remarkGfm from "remark-gfm";
+import Markdown from "@/components/Markdown";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
@@ -153,19 +151,7 @@ export default function MatchingPoolDetails(props: MatchingPoolDetailsProps) {
       </Stack>
       {readMore || noClamp ? (
         <div style={{ maxWidth: 500 }}>
-          <Markdown
-            className="p-2"
-            skipHtml={true}
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
-            components={{
-              table: (props) => (
-                <table className="table table-striped" {...props} />
-              ),
-            }}
-          >
-            {description}
-          </Markdown>
+          <Markdown className="p-2">{description}</Markdown>
         </div>
       ) : (
         <Card.Text

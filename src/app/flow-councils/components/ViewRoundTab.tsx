@@ -73,6 +73,7 @@ export type RoundForm = {
 
 type ViewRoundTabProps = {
   roundData: RoundForm | null;
+  previousTabIncomplete?: boolean;
 };
 
 const INTEGRATION_TYPE_LABELS: Record<IntegrationType, string> = {
@@ -104,7 +105,15 @@ const FREQUENCY_LABELS: Record<string, string> = {
 };
 
 export default function ViewRoundTab(props: ViewRoundTabProps) {
-  const { roundData } = props;
+  const { roundData, previousTabIncomplete } = props;
+
+  if (previousTabIncomplete) {
+    return (
+      <p className="text-muted">
+        Please complete the Project tab first to unlock this section.
+      </p>
+    );
+  }
 
   if (!roundData) {
     return <p className="text-muted">No round data available.</p>;

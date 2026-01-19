@@ -954,14 +954,6 @@ export default function RoundTab(props: RoundTabProps) {
         />
       </Form.Group>
 
-      <Form.Label className="fs-lg fw-bold mb-1">Growth Milestones*</Form.Label>
-      <p className="text-muted small mb-3">
-        Growth isn&apos;t a dirty word. We want you to share your thinking at
-        this stage, rather than shy away from commitments. GoodDollar has
-        incentives (cashbacks, engagement rewards) available to help you
-        experiment.
-      </p>
-
       {form.growthGoals.milestones.map((milestone, index) => (
         <MilestoneInput
           key={index}
