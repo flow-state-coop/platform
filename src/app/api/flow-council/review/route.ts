@@ -14,6 +14,11 @@ import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { networks } from "@/lib/networks";
 import { ApplicationStatus } from "@/generated/kysely";
+import {
+  sendApplicationStatusChangedEmail,
+  getProjectEmails,
+  getProjectAndRoundDetails,
+} from "../email";
 
 export const dynamic = "force-dynamic";
 
@@ -140,6 +145,25 @@ export async function POST(request: Request) {
         content: messageContent,
       })
       .execute();
+
+    // Send email notification to project managers (non-blocking)
+    Promise.all([
+      getProjectEmails(application.projectId),
+      getProjectAndRoundDetails(application.projectId, round.id),
+    ])
+      .then(([projectEmails, details]) => {
+        if (projectEmails.length > 0 && details) {
+          return sendApplicationStatusChangedEmail(projectEmails, {
+            roundName: details.roundName,
+            chainId: details.chainId,
+            councilId: details.councilId,
+            projectId: application.projectId,
+          });
+        }
+      })
+      .catch((err) =>
+        console.error("Failed to send status change email:", err),
+      );
 
     return new Response(
       JSON.stringify({

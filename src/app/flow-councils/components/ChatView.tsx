@@ -117,9 +117,7 @@ export default function ChatView(props: ChatViewProps) {
     }
   }, [messages]);
 
-  // Note: sendEmail is collected but not yet implemented (deferred functionality)
   const handleSendMessage = async (content: string, sendEmail?: boolean) => {
-    void sendEmail; // Email notification functionality is deferred
     if (!session?.address) return;
 
     try {
@@ -136,6 +134,7 @@ export default function ChatView(props: ChatViewProps) {
           applicationId,
           projectId,
           content,
+          sendEmail,
         }),
       });
 

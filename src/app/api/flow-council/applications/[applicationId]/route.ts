@@ -1,6 +1,10 @@
 import { getServerSession } from "next-auth/next";
 import { db } from "../../db";
 import { authOptions } from "../../../auth/[...nextauth]/route";
+import {
+  sendApplicationSubmittedEmail,
+  getProjectAndRoundDetails,
+} from "../../email";
 
 export const dynamic = "force-dynamic";
 
@@ -136,8 +140,11 @@ export async function PATCH(
       updateData.fundingAddress = fundingAddress.toLowerCase();
     }
 
-    // Change status to SUBMITTED if submit flag is true and current status is INCOMPLETE
-    if (submit === true && existingApp.status === "INCOMPLETE") {
+    // Change status to SUBMITTED if submit flag is true and current status is INCOMPLETE or CHANGES_REQUESTED
+    const canSubmit =
+      existingApp.status === "INCOMPLETE" ||
+      existingApp.status === "CHANGES_REQUESTED";
+    if (submit === true && canSubmit) {
       updateData.status = "SUBMITTED";
     }
 
@@ -155,20 +162,15 @@ export async function PATCH(
       ])
       .executeTakeFirstOrThrow();
 
-    // Insert automated message when application is submitted
-    if (submit === true && existingApp.status === "INCOMPLETE") {
-      // Fetch project name
-      const project = await db
-        .selectFrom("projects")
-        .select(["details"])
-        .where("id", "=", updatedApplication.projectId)
-        .executeTakeFirst();
+    // Insert automated message and send email when application is submitted
+    if (submit === true && canSubmit) {
+      // Fetch project and round details
+      const details = await getProjectAndRoundDetails(
+        updatedApplication.projectId,
+        updatedApplication.roundId,
+      );
 
-      const projectDetails =
-        typeof project?.details === "string"
-          ? JSON.parse(project.details)
-          : project?.details;
-      const projectName = projectDetails?.name || "Project";
+      const projectName = details?.projectName || "Project";
 
       // Insert automated message (System sender: 0x0000...0000)
       await db
@@ -182,6 +184,18 @@ export async function PATCH(
           content: `${projectName} submitted their application for review`,
         })
         .execute();
+
+      // Send email notification to admins (non-blocking)
+      if (details) {
+        sendApplicationSubmittedEmail({
+          projectName: details.projectName,
+          roundName: details.roundName,
+          chainId: details.chainId,
+          councilId: details.councilId,
+        }).catch((err) =>
+          console.error("Failed to send submission email:", err),
+        );
+      }
     }
 
     return new Response(

@@ -3,6 +3,10 @@ import { isAddress } from "viem";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { networks } from "@/lib/networks";
+import {
+  sendApplicationSubmittedEmail,
+  getProjectAndRoundDetails,
+} from "../email";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +104,8 @@ export async function POST(request: Request) {
       );
     }
 
+    let applicationCreated = false;
+
     if (!existingApplication) {
       await db
         .insertInto("applications")
@@ -110,6 +116,7 @@ export async function POST(request: Request) {
           status: "SUBMITTED",
         })
         .execute();
+      applicationCreated = true;
     } else if (
       existingApplication.status === "REJECTED" ||
       existingApplication.status === "REMOVED"
@@ -123,6 +130,7 @@ export async function POST(request: Request) {
         })
         .where("id", "=", existingApplication.id)
         .execute();
+      applicationCreated = true;
     } else {
       return new Response(
         JSON.stringify({
@@ -130,6 +138,22 @@ export async function POST(request: Request) {
           error: "Application already exists for this project and round",
         }),
       );
+    }
+
+    // Send email notification to admins (non-blocking)
+    if (applicationCreated) {
+      getProjectAndRoundDetails(projectId, round.id)
+        .then((details) => {
+          if (details) {
+            return sendApplicationSubmittedEmail({
+              projectName: details.projectName,
+              roundName: details.roundName,
+              chainId: details.chainId,
+              councilId: details.councilId,
+            });
+          }
+        })
+        .catch((err) => console.error("Failed to send submission email:", err));
     }
 
     return new Response(

@@ -14,6 +14,13 @@ import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { networks } from "@/lib/networks";
 import { ChannelType } from "@/generated/kysely";
+import {
+  sendChatMessageEmail,
+  sendAnnouncementEmail,
+  getProjectAndRoundDetails,
+  getRoundDetails,
+  ADMIN_NOTIFICATION_EMAILS,
+} from "../email";
 
 export const dynamic = "force-dynamic";
 
@@ -347,6 +354,7 @@ export async function POST(request: Request) {
       roundId,
       projectId,
       content,
+      sendEmail,
     } = body;
 
     const session = await getServerSession(authOptions);
@@ -447,6 +455,41 @@ export async function POST(request: Request) {
       })
       .returning(["id", "authorAddress", "content", "createdAt", "updatedAt"])
       .executeTakeFirstOrThrow();
+
+    // Send email notification if requested (non-blocking)
+    if (sendEmail === true && effectiveRoundId) {
+      if (channelType === "GROUP_ANNOUNCEMENTS") {
+        getRoundDetails(effectiveRoundId)
+          .then((details) => {
+            if (details) {
+              return sendAnnouncementEmail(ADMIN_NOTIFICATION_EMAILS, {
+                roundName: details.roundName,
+                chainId: details.chainId,
+                councilId: details.councilId,
+              });
+            }
+          })
+          .catch((err) =>
+            console.error("Failed to send announcement email:", err),
+          );
+      } else if (messageProjectId) {
+        getProjectAndRoundDetails(messageProjectId, effectiveRoundId)
+          .then((details) => {
+            if (details) {
+              return sendChatMessageEmail(ADMIN_NOTIFICATION_EMAILS, {
+                projectName: details.projectName,
+                roundName: details.roundName,
+                chainId: details.chainId,
+                councilId: details.councilId,
+                projectId: messageProjectId,
+              });
+            }
+          })
+          .catch((err) =>
+            console.error("Failed to send chat message email:", err),
+          );
+      }
+    }
 
     return new Response(
       JSON.stringify({
