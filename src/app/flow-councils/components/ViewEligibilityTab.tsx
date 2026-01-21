@@ -24,7 +24,6 @@ export type EligibilityForm = {
 
 type ViewEligibilityTabProps = {
   eligibilityData: EligibilityForm | null;
-  previousTabIncomplete?: boolean;
 };
 
 const RECIPIENT_TYPE_LABELS: Record<RecipientType, string> = {
@@ -33,24 +32,12 @@ const RECIPIENT_TYPE_LABELS: Record<RecipientType, string> = {
 };
 
 export default function ViewEligibilityTab(props: ViewEligibilityTabProps) {
-  const { eligibilityData, previousTabIncomplete } = props;
+  const { eligibilityData } = props;
 
-  if (previousTabIncomplete) {
-    return (
-      <p className="text-muted">
-        Please complete the Round tab first to unlock this section.
-      </p>
-    );
-  }
-
-  if (!eligibilityData) {
-    return <p className="text-muted">No eligibility data available.</p>;
-  }
-
-  const commitment = eligibilityData.commitment || {
+  const commitment = eligibilityData?.commitment || {
     agreedToCommitments: false,
   };
-  const identity = eligibilityData.identity || {
+  const identity = eligibilityData?.identity || {
     recipientType: null as RecipientType | null,
     legalName: "",
     country: "",
@@ -59,7 +46,7 @@ export default function ViewEligibilityTab(props: ViewEligibilityTabProps) {
     fundingWallet: "",
     walletConfirmed: false,
   };
-  const dataAcknowledgement = eligibilityData.dataAcknowledgement || {
+  const dataAcknowledgement = eligibilityData?.dataAcknowledgement || {
     gdprConsent: false,
   };
 
@@ -109,8 +96,9 @@ export default function ViewEligibilityTab(props: ViewEligibilityTabProps) {
           value={
             identity.recipientType
               ? RECIPIENT_TYPE_LABELS[identity.recipientType]
-              : "N/A"
+              : ""
           }
+          placeholder="Select recipient type"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -124,7 +112,8 @@ export default function ViewEligibilityTab(props: ViewEligibilityTabProps) {
         </Form.Label>
         <Form.Control
           type="text"
-          value={identity.legalName || "N/A"}
+          value={identity.legalName}
+          placeholder="Enter legal name"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -138,7 +127,8 @@ export default function ViewEligibilityTab(props: ViewEligibilityTabProps) {
         </Form.Label>
         <Form.Control
           type="text"
-          value={identity.country || "N/A"}
+          value={identity.country}
+          placeholder="Select country"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -148,7 +138,8 @@ export default function ViewEligibilityTab(props: ViewEligibilityTabProps) {
         <Form.Label className="fs-lg fw-bold">Address</Form.Label>
         <Form.Control
           type="text"
-          value={identity.address || "N/A"}
+          value={identity.address}
+          placeholder="Enter address"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -158,7 +149,8 @@ export default function ViewEligibilityTab(props: ViewEligibilityTabProps) {
         <Form.Label className="fs-lg fw-bold">Contact Email</Form.Label>
         <Form.Control
           type="text"
-          value={identity.contactEmail || "N/A"}
+          value={identity.contactEmail}
+          placeholder="Enter contact email"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -170,7 +162,8 @@ export default function ViewEligibilityTab(props: ViewEligibilityTabProps) {
         </Form.Label>
         <Form.Control
           type="text"
-          value={identity.fundingWallet || "N/A"}
+          value={identity.fundingWallet}
+          placeholder="Enter wallet address"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />

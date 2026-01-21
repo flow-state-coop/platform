@@ -73,7 +73,6 @@ export type RoundForm = {
 
 type ViewRoundTabProps = {
   roundData: RoundForm | null;
-  previousTabIncomplete?: boolean;
 };
 
 const INTEGRATION_TYPE_LABELS: Record<IntegrationType, string> = {
@@ -105,28 +104,16 @@ const FREQUENCY_LABELS: Record<string, string> = {
 };
 
 export default function ViewRoundTab(props: ViewRoundTabProps) {
-  const { roundData, previousTabIncomplete } = props;
+  const { roundData } = props;
 
-  if (previousTabIncomplete) {
-    return (
-      <p className="text-muted">
-        Please complete the Project tab first to unlock this section.
-      </p>
-    );
-  }
-
-  if (!roundData) {
-    return <p className="text-muted">No round data available.</p>;
-  }
-
-  const previousParticipation = roundData.previousParticipation || {
+  const previousParticipation = roundData?.previousParticipation || {
     hasParticipatedBefore: null,
     numberOfRounds: "",
     previousKarmaUpdates: "",
     currentProjectState: "",
   };
 
-  const maturityAndUsage = roundData.maturityAndUsage || {
+  const maturityAndUsage = roundData?.maturityAndUsage || {
     projectStage: null,
     lifetimeUsers: "",
     activeUsers: "",
@@ -134,27 +121,27 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
     otherUsageData: "",
   };
 
-  const integration = roundData.integration || {
+  const integration = roundData?.integration || {
     status: null,
     types: [] as IntegrationType[],
     otherTypeExplanation: "",
     description: "",
   };
 
-  const buildGoals = roundData.buildGoals || {
+  const buildGoals = roundData?.buildGoals || {
     primaryBuildGoal: "",
     milestones: [] as BuildMilestone[],
     ecosystemImpact: "",
   };
 
-  const growthGoals = roundData.growthGoals || {
+  const growthGoals = roundData?.growthGoals || {
     primaryGrowthGoal: "",
     targetUsers: "",
     milestones: [] as GrowthMilestone[],
     ecosystemImpact: "",
   };
 
-  const team = roundData.team || {
+  const team = roundData?.team || {
     primaryContact: {
       name: "",
       roleDescription: "",
@@ -164,7 +151,7 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
     additionalTeammates: [] as TeamMember[],
   };
 
-  const additional = roundData.additional || { comments: "" };
+  const additional = roundData?.additional || { comments: "" };
 
   return (
     <div>
@@ -181,8 +168,9 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
               ? "Yes"
               : previousParticipation.hasParticipatedBefore === false
                 ? "No"
-                : "N/A"
+                : ""
           }
+          placeholder="Select Yes or No"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -194,7 +182,8 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
             <Form.Label className="fs-lg fw-bold">Number of Rounds</Form.Label>
             <Form.Control
               type="text"
-              value={previousParticipation.numberOfRounds || "N/A"}
+              value={previousParticipation.numberOfRounds}
+              placeholder="Enter number of rounds"
               disabled
               className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
             />
@@ -206,7 +195,8 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
             </Form.Label>
             <Form.Control
               type="text"
-              value={previousParticipation.previousKarmaUpdates || "N/A"}
+              value={previousParticipation.previousKarmaUpdates}
+              placeholder="https://karmahq.xyz/project/..."
               disabled
               className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
             />
@@ -219,7 +209,8 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
             <Form.Control
               as="textarea"
               rows={4}
-              value={previousParticipation.currentProjectState || "N/A"}
+              value={previousParticipation.currentProjectState}
+              placeholder="Describe progress made, blockers, and what you've been up to"
               disabled
               className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
               style={{ resize: "none" }}
@@ -237,8 +228,9 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
           value={
             maturityAndUsage.projectStage
               ? PROJECT_STAGE_LABELS[maturityAndUsage.projectStage]
-              : "N/A"
+              : ""
           }
+          placeholder="Select project stage"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -248,7 +240,8 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
         <Form.Label className="fs-lg fw-bold">Lifetime Users</Form.Label>
         <Form.Control
           type="text"
-          value={maturityAndUsage.lifetimeUsers || "N/A"}
+          value={maturityAndUsage.lifetimeUsers}
+          placeholder="Enter lifetime users count"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -259,7 +252,8 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
         <Stack direction="horizontal" gap={3}>
           <Form.Control
             type="text"
-            value={maturityAndUsage.activeUsers || "N/A"}
+            value={maturityAndUsage.activeUsers}
+            placeholder="Enter active users"
             disabled
             className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
             style={{ maxWidth: 200 }}
@@ -283,7 +277,8 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
         <Form.Control
           as="textarea"
           rows={4}
-          value={maturityAndUsage.otherUsageData || "N/A"}
+          value={maturityAndUsage.otherUsageData}
+          placeholder="Any other relevant usage data"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
           style={{ resize: "none" }}
@@ -299,8 +294,9 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
           value={
             integration.status
               ? INTEGRATION_STATUS_LABELS[integration.status]
-              : "N/A"
+              : ""
           }
+          placeholder="Select integration status"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -326,7 +322,8 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
           ) : (
             <Form.Control
               type="text"
-              value="N/A"
+              value=""
+              placeholder="Select integration types"
               disabled
               className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
             />
@@ -341,7 +338,8 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
         <Form.Control
           as="textarea"
           rows={4}
-          value={integration.description || "N/A"}
+          value={integration.description}
+          placeholder="Value for users + GoodDollar ecosystem"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
           style={{ resize: "none" }}
@@ -355,7 +353,8 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
         <Form.Control
           as="textarea"
           rows={2}
-          value={buildGoals.primaryBuildGoal || "N/A"}
+          value={buildGoals.primaryBuildGoal}
+          placeholder="A clear statement of your team's main objective for building in this round"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
           style={{ resize: "none" }}
@@ -369,9 +368,11 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
             buildGoals.milestones.map((milestone, index) => (
               <div key={index} className="bg-light rounded-4 p-3">
                 <h6 className="fw-bold mb-2">
-                  Milestone {index + 1}: {milestone.title || "N/A"}
+                  Milestone {index + 1}: {milestone.title || "(Title)"}
                 </h6>
-                <p className="mb-2">{milestone.description || "N/A"}</p>
+                <p className="mb-2 text-muted">
+                  {milestone.description || "(Description)"}
+                </p>
                 <span className="fw-semi-bold">Deliverables:</span>
                 <ul className="mb-0">
                   {milestone.deliverables.filter((d) => d.trim()).length > 0 ? (
@@ -379,18 +380,22 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
                       .filter((d) => d.trim())
                       .map((d, i) => <li key={i}>{d}</li>)
                   ) : (
-                    <li>N/A</li>
+                    <li className="text-muted">(Deliverable items)</li>
                   )}
                 </ul>
               </div>
             ))
           ) : (
-            <Form.Control
-              type="text"
-              value="N/A"
-              disabled
-              className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-            />
+            <div className="bg-light rounded-4 p-3">
+              <h6 className="fw-bold mb-2 text-muted">
+                Milestone 1: (Title)
+              </h6>
+              <p className="mb-2 text-muted">(Description)</p>
+              <span className="fw-semi-bold">Deliverables:</span>
+              <ul className="mb-0">
+                <li className="text-muted">(Deliverable items)</li>
+              </ul>
+            </div>
           )}
         </Stack>
       </Form.Group>
@@ -402,7 +407,8 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
         <Form.Control
           as="textarea"
           rows={3}
-          value={buildGoals.ecosystemImpact || "N/A"}
+          value={buildGoals.ecosystemImpact}
+          placeholder="Why your build matters for the GoodDollar ecosystem"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
           style={{ resize: "none" }}
@@ -416,7 +422,8 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
         <Form.Control
           as="textarea"
           rows={2}
-          value={growthGoals.primaryGrowthGoal || "N/A"}
+          value={growthGoals.primaryGrowthGoal}
+          placeholder="What you aim to grow or activate during this round"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
           style={{ resize: "none" }}
@@ -430,7 +437,8 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
         <Form.Control
           as="textarea"
           rows={3}
-          value={growthGoals.targetUsers || "N/A"}
+          value={growthGoals.targetUsers}
+          placeholder="Who will drive this growth (segments, communities, regions, partners)?"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
           style={{ resize: "none" }}
@@ -444,9 +452,11 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
             growthGoals.milestones.map((milestone, index) => (
               <div key={index} className="bg-light rounded-4 p-3">
                 <h6 className="fw-bold mb-2">
-                  Milestone {index + 1}: {milestone.title || "N/A"}
+                  Milestone {index + 1}: {milestone.title || "(Title)"}
                 </h6>
-                <p className="mb-2">{milestone.description || "N/A"}</p>
+                <p className="mb-2 text-muted">
+                  {milestone.description || "(Description)"}
+                </p>
                 <span className="fw-semi-bold">Activations:</span>
                 <ul className="mb-0">
                   {milestone.activations.filter((a) => a.trim()).length > 0 ? (
@@ -454,18 +464,22 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
                       .filter((a) => a.trim())
                       .map((a, i) => <li key={i}>{a}</li>)
                   ) : (
-                    <li>N/A</li>
+                    <li className="text-muted">(Activation items)</li>
                   )}
                 </ul>
               </div>
             ))
           ) : (
-            <Form.Control
-              type="text"
-              value="N/A"
-              disabled
-              className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-            />
+            <div className="bg-light rounded-4 p-3">
+              <h6 className="fw-bold mb-2 text-muted">
+                Milestone 1: (Title)
+              </h6>
+              <p className="mb-2 text-muted">(Description)</p>
+              <span className="fw-semi-bold">Activations:</span>
+              <ul className="mb-0">
+                <li className="text-muted">(Activation items)</li>
+              </ul>
+            </div>
           )}
         </Stack>
       </Form.Group>
@@ -477,7 +491,8 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
         <Form.Control
           as="textarea"
           rows={3}
-          value={growthGoals.ecosystemImpact || "N/A"}
+          value={growthGoals.ecosystemImpact}
+          placeholder="Why your growth matters for the GoodDollar ecosystem"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
           style={{ resize: "none" }}
@@ -492,19 +507,27 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
           <Stack direction="vertical" gap={2}>
             <div>
               <span className="fw-semi-bold">Name: </span>
-              {team.primaryContact.name || "N/A"}
+              <span className={team.primaryContact.name ? "" : "text-muted"}>
+                {team.primaryContact.name || "(Enter name)"}
+              </span>
             </div>
             <div>
               <span className="fw-semi-bold">Role: </span>
-              {team.primaryContact.roleDescription || "N/A"}
+              <span className={team.primaryContact.roleDescription ? "" : "text-muted"}>
+                {team.primaryContact.roleDescription || "(Enter role description)"}
+              </span>
             </div>
             <div>
               <span className="fw-semi-bold">Telegram: </span>
-              {team.primaryContact.telegram || "N/A"}
+              <span className={team.primaryContact.telegram ? "" : "text-muted"}>
+                {team.primaryContact.telegram || "(Optional)"}
+              </span>
             </div>
             <div>
               <span className="fw-semi-bold">GitHub/LinkedIn: </span>
-              {team.primaryContact.githubOrLinkedin || "N/A"}
+              <span className={team.primaryContact.githubOrLinkedin ? "" : "text-muted"}>
+                {team.primaryContact.githubOrLinkedin || "(Optional)"}
+              </span>
             </div>
           </Stack>
         </div>
@@ -522,19 +545,27 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
                 <Stack direction="vertical" gap={2}>
                   <div>
                     <span className="fw-semi-bold">Name: </span>
-                    {teammate.name || "N/A"}
+                    <span className={teammate.name ? "" : "text-muted"}>
+                      {teammate.name || "(Enter name)"}
+                    </span>
                   </div>
                   <div>
                     <span className="fw-semi-bold">Role: </span>
-                    {teammate.roleDescription || "N/A"}
+                    <span className={teammate.roleDescription ? "" : "text-muted"}>
+                      {teammate.roleDescription || "(Enter role description)"}
+                    </span>
                   </div>
                   <div>
                     <span className="fw-semi-bold">Telegram: </span>
-                    {teammate.telegram || "N/A"}
+                    <span className={teammate.telegram ? "" : "text-muted"}>
+                      {teammate.telegram || "(Optional)"}
+                    </span>
                   </div>
                   <div>
                     <span className="fw-semi-bold">GitHub/LinkedIn: </span>
-                    {teammate.githubOrLinkedin || "N/A"}
+                    <span className={teammate.githubOrLinkedin ? "" : "text-muted"}>
+                      {teammate.githubOrLinkedin || "(Optional)"}
+                    </span>
                   </div>
                 </Stack>
               </div>
@@ -550,7 +581,8 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
         <Form.Control
           as="textarea"
           rows={4}
-          value={additional.comments || "N/A"}
+          value={additional.comments}
+          placeholder="Provide any additional context or comments"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
           style={{ resize: "none" }}

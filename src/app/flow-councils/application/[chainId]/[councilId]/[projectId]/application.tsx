@@ -269,10 +269,7 @@ export default function Application(props: ApplicationProps) {
                 onBack={() => setActiveTab("project")}
               />
             ) : (
-              <ViewRoundTab
-                roundData={roundData}
-                previousTabIncomplete={!projectComplete}
-              />
+              <ViewRoundTab roundData={roundData} />
             )}
           </Tab.Pane>
           <Tab.Pane eventKey="eligibility">
@@ -292,10 +289,7 @@ export default function Application(props: ApplicationProps) {
                 onBack={() => setActiveTab("round")}
               />
             ) : (
-              <ViewEligibilityTab
-                eligibilityData={eligibilityData}
-                previousTabIncomplete={!roundComplete}
-              />
+              <ViewEligibilityTab eligibilityData={eligibilityData} />
             )}
           </Tab.Pane>
         </Tab.Content>
