@@ -118,10 +118,11 @@ export default function ApplicantSidebar(props: ApplicantSidebarProps) {
   if ((isMobile || isTablet) && !showMobileSidebar) {
     return (
       <Button
-        className="position-absolute rounded-circle p-0"
+        className="position-fixed rounded-circle p-0"
         style={{
           top: "50%",
           left: -24,
+          transform: "translateY(-50%)",
           width: 48,
           height: 48,
           zIndex: 10,

@@ -54,7 +54,7 @@ export default function Communications(props: CommunicationsProps) {
   const { address, chain: connectedChain } = useAccount();
   const { data: session } = useSession();
   const { handleSignIn } = useSiwe();
-  const { isMobile } = useMediaQuery();
+  const { isMobile, isTablet } = useMediaQuery();
   const { openConnectModal } = useConnectModal();
   const { data: flowCouncilQueryRes, loading: flowCouncilQueryResLoading } =
     useQuery(FLOW_COUNCIL_QUERY, {
@@ -205,63 +205,78 @@ export default function Communications(props: CommunicationsProps) {
           </span>
         </Stack>
       ) : (
-        <Stack direction="horizontal" gap={4} className="align-items-start">
-          {/* Project Channels Sidebar */}
-          <ProjectChannelsSidebar
-            channels={channels}
-            isLoading={isLoadingChannels}
-            selectedChannel={selectedChannel}
-            roundName={roundName}
-            onSelectChannel={handleSelectChannel}
-          />
+        <>
+          {/* Mobile/Tablet: Sidebar renders fixed button + drawer */}
+          {(isMobile || isTablet) && (
+            <ProjectChannelsSidebar
+              channels={channels}
+              isLoading={isLoadingChannels}
+              selectedChannel={selectedChannel}
+              roundName={roundName}
+              onSelectChannel={handleSelectChannel}
+            />
+          )}
 
-          {/* Chat Area */}
-          <div className="flex-grow-1">
-            {isAnnouncementsSelected ? (
-              <ChatView
-                channelType={ChannelType.GROUP_ANNOUNCEMENTS}
-                chainId={chainId}
-                councilId={councilId}
-                roundId={roundId ?? undefined}
-                canWrite={isAdmin}
-                canModerate={isAdmin}
-                currentUserAddress={session?.address}
-                showEmailCheckbox={isAdmin}
-                emptyMessage="No announcements yet."
+          {/* Desktop: Sidebar inline with chat */}
+          <Stack direction="horizontal" gap={4} className="align-items-start">
+            {!isMobile && !isTablet && (
+              <ProjectChannelsSidebar
+                channels={channels}
+                isLoading={isLoadingChannels}
+                selectedChannel={selectedChannel}
+                roundName={roundName}
+                onSelectChannel={handleSelectChannel}
               />
-            ) : selectedProjectChannel ? (
-              <ChatView
-                channelType={ChannelType.GROUP_PROJECT}
-                chainId={chainId}
-                councilId={councilId}
-                roundId={roundId ?? undefined}
-                projectId={selectedProjectChannel.projectId}
-                applicationId={selectedProjectChannel.applicationId}
-                canWrite={true}
-                canModerate={isAdmin}
-                currentUserAddress={session?.address}
-                showEmailCheckbox={true}
-                emptyMessage="No messages yet in this project chat."
-              />
-            ) : (
-              <div className="d-flex flex-column align-items-center justify-content-center p-5 bg-lace-100 rounded-4">
-                <Image
-                  src="/chat.svg"
-                  alt=""
-                  width={64}
-                  height={64}
-                  className="mb-3 opacity-50"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
-                <p className="text-muted text-center mb-0">
-                  Select a channel to view messages
-                </p>
-              </div>
             )}
-          </div>
-        </Stack>
+
+            {/* Chat Area */}
+            <div className="flex-grow-1">
+              {isAnnouncementsSelected ? (
+                <ChatView
+                  channelType={ChannelType.GROUP_ANNOUNCEMENTS}
+                  chainId={chainId}
+                  councilId={councilId}
+                  roundId={roundId ?? undefined}
+                  canWrite={isAdmin}
+                  canModerate={isAdmin}
+                  currentUserAddress={session?.address}
+                  showEmailCheckbox={isAdmin}
+                  emptyMessage="No announcements yet."
+                />
+              ) : selectedProjectChannel ? (
+                <ChatView
+                  channelType={ChannelType.GROUP_PROJECT}
+                  chainId={chainId}
+                  councilId={councilId}
+                  roundId={roundId ?? undefined}
+                  projectId={selectedProjectChannel.projectId}
+                  applicationId={selectedProjectChannel.applicationId}
+                  canWrite={true}
+                  canModerate={isAdmin}
+                  currentUserAddress={session?.address}
+                  showEmailCheckbox={true}
+                  emptyMessage="No messages yet in this project chat."
+                />
+              ) : (
+                <div className="d-flex flex-column align-items-center justify-content-center p-5 bg-lace-100 rounded-4">
+                  <Image
+                    src="/chat.svg"
+                    alt=""
+                    width={64}
+                    height={64}
+                    className="mb-3 opacity-50"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                  <p className="text-muted text-center mb-0">
+                    Select a channel to view messages
+                  </p>
+                </div>
+              )}
+            </div>
+          </Stack>
+        </>
       )}
     </Stack>
   );
