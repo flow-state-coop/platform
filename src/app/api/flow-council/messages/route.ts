@@ -458,11 +458,13 @@ export async function POST(request: Request) {
 
     // Send email notification if requested (non-blocking)
     if (sendEmail === true && effectiveRoundId) {
+      const baseUrl = new URL(request.url).origin;
       if (channelType === "GROUP_ANNOUNCEMENTS") {
         getRoundDetails(effectiveRoundId)
           .then((details) => {
             if (details) {
               return sendAnnouncementEmail(ADMIN_NOTIFICATION_EMAILS, {
+                baseUrl,
                 roundName: details.roundName,
                 chainId: details.chainId,
                 councilId: details.councilId,
@@ -477,6 +479,7 @@ export async function POST(request: Request) {
           .then((details) => {
             if (details) {
               return sendChatMessageEmail(ADMIN_NOTIFICATION_EMAILS, {
+                baseUrl,
                 projectName: details.projectName,
                 roundName: details.roundName,
                 chainId: details.chainId,

@@ -2,15 +2,13 @@ import { SendEmailCommand } from "@aws-sdk/client-ses";
 import { sesClient, SES_FROM_EMAIL } from "./ses";
 import { db } from "./db";
 
-// Hardcoded admin emails for notifications
 export const ADMIN_NOTIFICATION_EMAILS = [
   "rael@gooddollar.org",
   "graven@flowstate.network",
 ];
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://flowstate.network";
-
 type ApplicationSubmittedEmailData = {
+  baseUrl: string;
   projectName: string;
   roundName: string;
   chainId: number;
@@ -18,6 +16,7 @@ type ApplicationSubmittedEmailData = {
 };
 
 type ApplicationStatusChangedEmailData = {
+  baseUrl: string;
   roundName: string;
   chainId: number;
   councilId: string;
@@ -25,6 +24,7 @@ type ApplicationStatusChangedEmailData = {
 };
 
 type ChatMessageEmailData = {
+  baseUrl: string;
   projectName: string;
   roundName: string;
   chainId: number;
@@ -43,7 +43,8 @@ async function sendEmail(
     const command = new SendEmailCommand({
       Source: SES_FROM_EMAIL,
       Destination: {
-        ToAddresses: to,
+        ToAddresses: [SES_FROM_EMAIL],
+        BccAddresses: to,
       },
       Message: {
         Subject: {
@@ -162,9 +163,9 @@ export async function getAnnouncementRecipients(
 export async function sendApplicationSubmittedEmail(
   data: ApplicationSubmittedEmailData,
 ): Promise<void> {
-  const { projectName, roundName, chainId, councilId } = data;
+  const { baseUrl, projectName, roundName, chainId, councilId } = data;
 
-  const reviewLink = `${APP_URL}/flow-councils/review/${chainId}/${councilId}?tab=manage`;
+  const reviewLink = `${baseUrl}/flow-councils/review/${chainId}/${councilId}?tab=manage`;
 
   const subject = `Application Submitted - ${roundName}`;
   const body = `${projectName} submitted their application to ${roundName}. Start your review here: ${reviewLink}`;
@@ -176,9 +177,9 @@ export async function sendApplicationStatusChangedEmail(
   recipients: string[],
   data: ApplicationStatusChangedEmailData,
 ): Promise<void> {
-  const { roundName, chainId, councilId, projectId } = data;
+  const { baseUrl, roundName, chainId, councilId, projectId } = data;
 
-  const projectLink = `${APP_URL}/flow-councils/communications/${chainId}/${councilId}?projectId=${projectId}`;
+  const projectLink = `${baseUrl}/flow-councils/communications/${chainId}/${councilId}?channel=${projectId}`;
 
   const subject = `Application Status Change - ${roundName}`;
   const body = `The status of your application to ${roundName} has changed. Review your status and any comments here: ${projectLink}`;
@@ -190,9 +191,10 @@ export async function sendChatMessageEmail(
   recipients: string[],
   data: ChatMessageEmailData,
 ): Promise<void> {
-  const { projectName, roundName, chainId, councilId, projectId } = data;
+  const { baseUrl, projectName, roundName, chainId, councilId, projectId } =
+    data;
 
-  const chatLink = `${APP_URL}/flow-councils/communications/${chainId}/${councilId}?projectId=${projectId}`;
+  const chatLink = `${baseUrl}/flow-councils/communications/${chainId}/${councilId}?channel=${projectId}`;
 
   const subject = `New Message - #${projectName}`;
   const body = `There's a new message in the ${roundName} - ${projectName} chat: ${chatLink}`;
@@ -201,6 +203,7 @@ export async function sendChatMessageEmail(
 }
 
 type AnnouncementEmailData = {
+  baseUrl: string;
   roundName: string;
   chainId: number;
   councilId: string;
@@ -210,9 +213,9 @@ export async function sendAnnouncementEmail(
   recipients: string[],
   data: AnnouncementEmailData,
 ): Promise<void> {
-  const { roundName, chainId, councilId } = data;
+  const { baseUrl, roundName, chainId, councilId } = data;
 
-  const announcementLink = `${APP_URL}/flow-councils/communications/${chainId}/${councilId}?channel=announcements`;
+  const announcementLink = `${baseUrl}/flow-councils/communications/${chainId}/${councilId}?channel=announcements`;
 
   const subject = `New Announcement - ${roundName}`;
   const body = `There's a new announcement in ${roundName}. View it here: ${announcementLink}`;

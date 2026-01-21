@@ -147,6 +147,7 @@ export async function POST(request: Request) {
       .execute();
 
     // Send email notification to project managers (non-blocking)
+    const baseUrl = new URL(request.url).origin;
     Promise.all([
       getProjectEmails(application.projectId),
       getProjectAndRoundDetails(application.projectId, round.id),
@@ -154,6 +155,7 @@ export async function POST(request: Request) {
       .then(([projectEmails, details]) => {
         if (projectEmails.length > 0 && details) {
           return sendApplicationStatusChangedEmail(projectEmails, {
+            baseUrl,
             roundName: details.roundName,
             chainId: details.chainId,
             councilId: details.councilId,

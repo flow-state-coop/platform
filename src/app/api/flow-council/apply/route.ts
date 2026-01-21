@@ -142,10 +142,12 @@ export async function POST(request: Request) {
 
     // Send email notification to admins (non-blocking)
     if (applicationCreated) {
+      const baseUrl = new URL(request.url).origin;
       getProjectAndRoundDetails(projectId, round.id)
         .then((details) => {
           if (details) {
             return sendApplicationSubmittedEmail({
+              baseUrl,
               projectName: details.projectName,
               roundName: details.roundName,
               chainId: details.chainId,

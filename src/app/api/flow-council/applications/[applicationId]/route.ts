@@ -187,7 +187,9 @@ export async function PATCH(
 
       // Send email notification to admins (non-blocking)
       if (details) {
+        const baseUrl = new URL(request.url).origin;
         sendApplicationSubmittedEmail({
+          baseUrl,
           projectName: details.projectName,
           roundName: details.roundName,
           chainId: details.chainId,
