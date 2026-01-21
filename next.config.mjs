@@ -13,6 +13,21 @@ const nextConfig = {
         destination: "/flow-guilds/core",
         permanent: true,
       },
+      {
+        source: "/goodbuilders-3/app",
+        destination: "/flow-councils/application/42220/0xfabef1abae4998146e8a8422813eb787caa26ec2",
+        permanent: true,
+      },
+      {
+        source: "/goodbuilders-3/admin",
+        destination: "/flow-councils/review/42220/0xfabef1abae4998146e8a8422813eb787caa26ec2",
+        permanent: true,
+      },
+      {
+        source: "/goodbuilders-3",
+        destination: "/flow-councils/42220/0xfabef1abae4998146e8a8422813eb787caa26ec2",
+        permanent: true,
+      },
     ];
   },
   webpack: (config) => {
