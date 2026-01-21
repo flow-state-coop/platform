@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth/next";
+import { isAddress } from "viem";
 import { db } from "../../db";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import {
@@ -132,11 +133,15 @@ export async function PATCH(
     };
 
     // Update funding address if provided and valid
-    if (
-      fundingAddress &&
-      typeof fundingAddress === "string" &&
-      fundingAddress.startsWith("0x")
-    ) {
+    if (fundingAddress && typeof fundingAddress === "string") {
+      if (!isAddress(fundingAddress)) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Invalid funding address",
+          }),
+        );
+      }
       updateData.fundingAddress = fundingAddress.toLowerCase();
     }
 

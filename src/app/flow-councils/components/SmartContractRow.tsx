@@ -139,10 +139,13 @@ export default function SmartContractRow(props: SmartContractRowProps) {
                 type="text"
                 value={contract.address}
                 placeholder=""
-                className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+                className={`bg-white border border-2 rounded-4 py-3 px-3 ${isAddressInvalid(contract.address) ? "border-danger" : "border-dark"}`}
                 isInvalid={isAddressInvalid(contract.address)}
                 onChange={(e) => handleChange(index, "address", e.target.value)}
               />
+              <Form.Control.Feedback type="invalid">
+                Please enter a valid ETH address
+              </Form.Control.Feedback>
               <Button
                 variant="link"
                 className="d-flex align-items-center justify-content-center p-0"

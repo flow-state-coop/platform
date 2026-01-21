@@ -80,6 +80,21 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validate defaultFundingAddress if provided
+    if (defaultFundingAddress && !isAddress(defaultFundingAddress)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Invalid default funding address",
+        }),
+      );
+    }
+
+    // Filter smartContracts to only include valid addresses
+    const validSmartContracts = (
+      smartContracts as { type: string; network: string; address: string }[] | undefined
+    )?.filter((c) => !c.address || isAddress(c.address));
+
     // Validate manager addresses include the session address
     const normalizedManagerAddresses = (
       managerAddresses as string[] | undefined
@@ -116,7 +131,7 @@ export async function POST(request: Request) {
             discord,
             karmaProfile,
             githubRepos,
-            smartContracts,
+            smartContracts: validSmartContracts,
             otherLinks,
           }),
         })
@@ -219,6 +234,21 @@ export async function PATCH(request: Request) {
       );
     }
 
+    // Validate defaultFundingAddress if provided
+    if (defaultFundingAddress && !isAddress(defaultFundingAddress)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Invalid default funding address",
+        }),
+      );
+    }
+
+    // Filter smartContracts to only include valid addresses
+    const validSmartContracts = (
+      smartContracts as { type: string; network: string; address: string }[] | undefined
+    )?.filter((c) => !c.address || isAddress(c.address));
+
     // Validate manager addresses include the session address
     const normalizedManagerAddresses = (
       managerAddresses as string[] | undefined
@@ -258,7 +288,7 @@ export async function PATCH(request: Request) {
             discord,
             karmaProfile,
             githubRepos,
-            smartContracts,
+            smartContracts: validSmartContracts,
             otherLinks,
           }),
           updatedAt: new Date(),

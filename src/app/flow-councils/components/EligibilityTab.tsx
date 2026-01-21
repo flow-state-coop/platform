@@ -386,6 +386,9 @@ export default function EligibilityTab(props: EligibilityTabProps) {
             })
           }
         />
+        <Form.Control.Feedback type="invalid">
+          Please enter a valid ETH address
+        </Form.Control.Feedback>
       </Form.Group>
 
       <Form.Group className="mb-4">
