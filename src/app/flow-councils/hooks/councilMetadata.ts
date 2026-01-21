@@ -1,25 +1,41 @@
 import { useState, useEffect } from "react";
-import { fetchIpfsJson } from "@/lib/fetchIpfs";
 
-export default function useCouncilMetadata(cid: string) {
-  const [metadata, setMetadata] = useState({ name: "", description: "" });
+export default function useCouncilMetadata(chainId: number, councilId: string) {
+  const [metadata, setMetadata] = useState({
+    name: "",
+    description: "",
+    logoUrl: "",
+  });
 
   useEffect(() => {
     (async () => {
-      if (!cid) {
+      if (!chainId || !councilId) {
         return;
       }
 
-      const metadata = await fetchIpfsJson(cid);
+      try {
+        const res = await fetch(
+          `/api/flow-council/rounds?chainId=${chainId}&flowCouncilAddress=${councilId}`,
+        );
+        const data = await res.json();
 
-      if (metadata) {
-        setMetadata(metadata);
+        if (data.success && data.round?.details) {
+          const details =
+            typeof data.round.details === "string"
+              ? JSON.parse(data.round.details)
+              : data.round.details;
+
+          setMetadata({
+            name: details?.name ?? "Flow Council",
+            description: details?.description ?? "",
+            logoUrl: details?.logoUrl ?? "",
+          });
+        }
+      } catch (err) {
+        console.error(err);
       }
     })();
-  }, [cid]);
+  }, [chainId, councilId]);
 
-  return {
-    name: metadata.name,
-    description: metadata.description,
-  };
+  return metadata;
 }

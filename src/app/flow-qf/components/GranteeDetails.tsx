@@ -10,9 +10,7 @@ import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
 import CopyTooltip from "@/components/CopyTooltip";
 import removeMarkdown from "remove-markdown";
-import Markdown from "react-markdown";
-import rehyperExternalLinks from "rehype-external-links";
-import remarkGfm from "remark-gfm";
+import Markdown from "@/components/Markdown";
 import { GDAPool } from "@/types/gdaPool";
 import { getApolloClient } from "@/lib/apollo";
 import { fetchIpfsImage } from "@/lib/fetchIpfs";
@@ -311,17 +309,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
       {readMore || noClamp ? (
         <>
           <div style={{ maxWidth: 500 }}>
-            <Markdown
-              className="p-2"
-              skipHtml={true}
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
-              components={{
-                table: (props) => (
-                  <table className="table table-striped" {...props} />
-                ),
-              }}
-            >
+            <Markdown className="p-2">
               {metadata.description.replaceAll("•", "-")}
             </Markdown>
           </div>

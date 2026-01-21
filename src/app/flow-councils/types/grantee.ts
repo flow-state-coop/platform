@@ -1,10 +1,18 @@
-import { ProjectMetadata } from "@/types/project";
+export type ProjectDetails = {
+  name?: string;
+  description?: string;
+  logoUrl?: string;
+  bannerUrl?: string;
+  website?: string;
+  twitter?: string;
+  github?: string;
+  karmaGap?: string;
+};
 
 export type Grantee = {
   id: string;
   address: `0x${string}`;
-  metadata: ProjectMetadata;
-  bannerCid: string;
+  details: ProjectDetails;
   twitter: string;
   flowRate: bigint;
   units: number;

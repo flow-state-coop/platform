@@ -7,9 +7,7 @@ import Button from "react-bootstrap/Button";
 import Table from "react-bootstrap/Table";
 import Image from "react-bootstrap/Image";
 import InfoTooltip from "@/components/InfoTooltip";
-import Markdown from "react-markdown";
-import rehyperExternalLinks from "rehype-external-links";
-import remarkGfm from "remark-gfm";
+import Markdown from "@/components/Markdown";
 import Sankey from "./Sankey";
 import { Grantee } from "../pool";
 import useFlowingAmount from "@/hooks/flowingAmount";
@@ -83,21 +81,7 @@ export default function PoolInfo(props: PoolInfoProps) {
         <Stack direction="horizontal" gap={1}>
           <Card.Text className="m-0 fs-3 fw-semi-bold">{name}</Card.Text>
           <InfoTooltip
-            content={
-              <Markdown
-                className="p-2"
-                skipHtml={true}
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[
-                  [
-                    rehyperExternalLinks,
-                    { target: "_blank", properties: { class: "text-light" } },
-                  ],
-                ]}
-              >
-                {description}
-              </Markdown>
-            }
+            content={<Markdown className="p-2">{description}</Markdown>}
             target={
               <Image
                 src="/info.svg"

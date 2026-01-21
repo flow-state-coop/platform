@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { formatEther } from "viem";
 import removeMarkdown from "remove-markdown";
 import { useClampText } from "use-clamp-text";
@@ -7,8 +7,7 @@ import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import { Token } from "@/types/token";
-import { fetchIpfsImage } from "@/lib/fetchIpfs";
-import useCouncil from "../hooks/council";
+import useFlowCouncil from "../hooks/flowCouncil";
 import { formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
@@ -16,8 +15,8 @@ type GranteeProps = {
   name: string;
   granteeAddress: `0x${string}`;
   description: string;
-  logoCid: string;
-  bannerCid: string;
+  logoUrl: string;
+  bannerUrl: string;
   placeholderLogo: string;
   placeholderBanner: string;
   flowRate: bigint;
@@ -34,8 +33,8 @@ export default function Grantee(props: GranteeProps) {
     name,
     granteeAddress,
     description,
-    logoCid,
-    bannerCid,
+    logoUrl,
+    bannerUrl,
     placeholderLogo,
     placeholderBanner,
     flowRate,
@@ -47,10 +46,7 @@ export default function Grantee(props: GranteeProps) {
     onAddToBallot,
   } = props;
 
-  const [logoUrl, setLogoUrl] = useState("");
-  const [bannerUrl, setBannerUrl] = useState("");
-
-  const { newAllocation, dispatchNewAllocation } = useCouncil();
+  const { newAllocation, dispatchNewAllocation } = useFlowCouncil();
   const [percentage, setPercentage] = useState(0);
   const [descriptionRef, { noClamp, clampedText }] = useClampText({
     text: removeMarkdown(description).replace(/\r?\n|\r/g, " "),
@@ -63,7 +59,7 @@ export default function Grantee(props: GranteeProps) {
   const granteeAllocation = useMemo(
     () =>
       newAllocation?.allocation.find(
-        (allocation) => allocation.grantee === granteeAddress,
+        (allocation) => allocation.recipient === granteeAddress,
       ),
     [newAllocation, granteeAddress],
   );
@@ -75,27 +71,11 @@ export default function Grantee(props: GranteeProps) {
 
     const votes =
       newAllocation.allocation.find(
-        (allocation) => allocation.grantee === granteeAddress,
+        (allocation) => allocation.recipient === granteeAddress,
       )?.amount ?? 0;
 
     setPercentage((votes / votingPower) * 100);
   }, [newAllocation, granteeAddress, votingPower]);
-
-  useEffect(() => {
-    (async () => {
-      if (logoCid) {
-        const logoUrl = await fetchIpfsImage(logoCid);
-
-        setLogoUrl(logoUrl);
-      }
-
-      if (bannerCid) {
-        const bannerUrl = await fetchIpfsImage(bannerCid);
-
-        setBannerUrl(bannerUrl);
-      }
-    })();
-  }, [logoCid, bannerCid]);
 
   const handleSlide = (e: React.MouseEvent | React.TouchEvent) => {
     if (!granteeAllocation) {
@@ -124,7 +104,7 @@ export default function Grantee(props: GranteeProps) {
       dispatchNewAllocation({
         type: "update",
         allocation: {
-          grantee: granteeAddress,
+          recipient: granteeAddress,
           amount: votingAmount,
         },
       });
@@ -164,12 +144,12 @@ export default function Grantee(props: GranteeProps) {
       >
         <Card.Img
           variant="top"
-          src={bannerUrl === "" ? placeholderBanner : bannerUrl}
+          src={bannerUrl || placeholderBanner}
           height={102}
           className="bg-lace-100"
         />
         <Image
-          src={logoUrl === "" ? placeholderLogo : logoUrl}
+          src={logoUrl || placeholderLogo}
           alt=""
           width={52}
           height={52}
@@ -297,7 +277,7 @@ export default function Grantee(props: GranteeProps) {
                   dispatchNewAllocation({
                     type: "add",
                     allocation: {
-                      grantee: granteeAddress,
+                      recipient: granteeAddress,
                       amount: 1,
                     },
                   });

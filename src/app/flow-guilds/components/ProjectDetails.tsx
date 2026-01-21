@@ -1,6 +1,4 @@
-import Markdown from "react-markdown";
-import rehyperExternalLinks from "rehype-external-links";
-import remarkGfm from "remark-gfm";
+import Markdown from "@/components/Markdown";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
@@ -124,17 +122,7 @@ export default function ProjectDetails(props: ProjectDetailsProps) {
           />
         </Stack>
         {!!flowGuildConfig.description && (
-          <Markdown
-            className="mt-3 mb-1 fs-lg"
-            skipHtml={true}
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[[rehyperExternalLinks, { target: "_blank" }]]}
-            components={{
-              table: (props) => (
-                <table className="table table-striped" {...props} />
-              ),
-            }}
-          >
+          <Markdown className="mt-3 mb-1 fs-lg">
             {flowGuildConfig.description}
           </Markdown>
         )}

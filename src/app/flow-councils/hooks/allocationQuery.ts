@@ -3,18 +3,18 @@ import { Network } from "@/types/network";
 import { getApolloClient } from "@/lib/apollo";
 
 const ALLOCATION_QUERY = gql`
-  query AllocationQuery($councilId: String, $councilMember: String) {
-    councilMember(id: $councilMember) {
+  query AllocationQuery($councilId: String, $voter: String) {
+    voter(id: $voter) {
       votingPower
     }
     allocations(
       first: 1
-      where: { council: $councilId, councilMember: $councilMember }
+      where: { flowCouncil: $councilId, voter: $voter }
       orderBy: createdAtTimestamp
       orderDirection: desc
     ) {
       votes {
-        grantee {
+        recipient {
           account
         }
         amount
@@ -32,7 +32,7 @@ export default function useAllocationQuery(
     client: getApolloClient("flowCouncil", network.id),
     variables: {
       councilId: councilId?.toLowerCase(),
-      councilMember: `${councilId?.toLowerCase()}-${address?.toLowerCase()}`,
+      voter: `${councilId?.toLowerCase()}-${address?.toLowerCase()}`,
     },
     skip: !address || !councilId,
     pollInterval: 10000,
@@ -40,19 +40,19 @@ export default function useAllocationQuery(
   const currentAllocation = allocationQueryRes?.allocations[0];
   const allocation = currentAllocation?.votes.map(
     ({
-      grantee: { account },
+      recipient: { account },
       amount,
     }: {
-      grantee: { account: string };
+      recipient: { account: string };
       amount: string;
     }) => {
       return {
-        grantee: account,
+        recipient: account,
         amount: Number(amount),
       };
     },
   );
-  const votingPower = allocationQueryRes?.councilMember?.votingPower;
+  const votingPower = allocationQueryRes?.voter?.votingPower;
 
   return {
     allocation,

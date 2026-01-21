@@ -33,7 +33,7 @@ import { Network } from "@/types/network";
 import DistributionPoolDetails from "./DistributionPoolDetails";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
-import useCouncil from "../hooks/council";
+import useFlowCouncil from "../hooks/flowCouncil";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
@@ -115,7 +115,8 @@ export default function DistributionPoolFunding(props: {
 
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
-  const { council, councilMetadata, token, gdaPool } = useCouncil();
+  const { council, councilMetadata, token, distributionPool } =
+    useFlowCouncil();
   const {
     areTransactionsLoading,
     completedTransactions,
@@ -173,7 +174,7 @@ export default function DistributionPoolFunding(props: {
       userAddress: address?.toLowerCase() ?? "",
       token: token.address.toLowerCase(),
     },
-    skip: !council?.pool,
+    skip: !council?.distributionPool,
     pollInterval: 10000,
   });
   const ethersProvider = useEthersProvider({ chainId: network.id });
@@ -226,8 +227,8 @@ export default function DistributionPoolFunding(props: {
   );
 
   const flowRateToReceiver = useMemo(() => {
-    if (address && gdaPool) {
-      const distributor = gdaPool.poolDistributors.find(
+    if (address && distributionPool) {
+      const distributor = distributionPool.poolDistributors.find(
         (distributor: { account: { id: string }; flowRate: string }) =>
           distributor.account.id === address.toLowerCase(),
       );
@@ -238,7 +239,7 @@ export default function DistributionPoolFunding(props: {
     }
 
     return "0";
-  }, [address, gdaPool]);
+  }, [address, distributionPool]);
 
   const membershipsInflowRate = useMemo(() => {
     let membershipsInflowRate = BigInt(0);
@@ -419,7 +420,7 @@ export default function DistributionPoolFunding(props: {
     operations.push(
       superToken.distributeFlow({
         from: address,
-        pool: council?.pool ?? "",
+        pool: council?.distributionPool ?? "",
         requestedFlowRate: newFlowRate,
       }),
     );
@@ -462,7 +463,7 @@ export default function DistributionPoolFunding(props: {
     flowRateToFlowState,
     ethersProvider,
     ethersSigner,
-    council?.pool,
+    council?.distributionPool,
     distributionTokenAddress,
     underlyingTokenAllowance,
     editFlow,
@@ -627,9 +628,14 @@ export default function DistributionPoolFunding(props: {
       </Offcanvas.Header>
       <Offcanvas.Body>
         <Stack direction="vertical" className="flex-grow-0">
-          <DistributionPoolDetails gdaPool={gdaPool} token={token} />
-          {gdaPool &&
-          (Number(gdaPool.totalUnits) > 0 || BigInt(flowRateToReceiver) > 0) ? (
+          <DistributionPoolDetails
+            distributionPool={distributionPool}
+            token={token}
+            councilMetadata={councilMetadata}
+          />
+          {distributionPool &&
+          (Number(distributionPool.totalUnits) > 0 ||
+            BigInt(flowRateToReceiver) > 0) ? (
             <Accordion activeKey={step} className="mt-8">
               <EditStream
                 isFundingDistributionPool={true}
@@ -715,7 +721,7 @@ export default function DistributionPoolFunding(props: {
                 step={step}
                 setStep={(step) => setStep(step)}
                 network={network}
-                receiver={council?.pool ?? ""}
+                receiver={council?.distributionPool ?? ""}
                 transactions={transactions}
                 completedTransactions={completedTransactions}
                 areTransactionsLoading={areTransactionsLoading}

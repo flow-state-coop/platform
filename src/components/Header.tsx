@@ -159,8 +159,7 @@ export default function Header() {
                         Explore flows
                       </Button>
                     </Link>
-                  ) : pathname === "/gooddollar" ||
-                    (params.chainId && params.councilId) ? (
+                  ) : params.chainId && params.councilId ? (
                     <FlowCouncilWallet />
                   ) : (
                     <ConnectWallet />
@@ -294,8 +293,7 @@ export default function Header() {
                   Explore flows
                 </Button>
               </Link>
-            ) : pathname === "/gooddollar" ||
-              (params.chainId && params.councilId) ? (
+            ) : params.chainId && params.councilId ? (
               <FlowCouncilWallet />
             ) : (
               <ConnectWallet />

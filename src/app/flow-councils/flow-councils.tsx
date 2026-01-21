@@ -18,7 +18,6 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import { fetchIpfsJson } from "@/lib/fetchIpfs";
 import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";
 import { truncateStr } from "@/lib/utils";
@@ -27,12 +26,12 @@ type FlowCouncilsProps = {
   defaultNetwork: Network;
 };
 
-type Council = {
+type FlowCouncil = {
   id: string;
-  distributionToken: string;
+  superToken: string;
   isManager: boolean;
-  isGrantee: boolean;
-  pool: string;
+  isRecipient: boolean;
+  distributionPool: string;
   isConnected: boolean;
   units: bigint;
   metadata: { name: string; description: string };
@@ -40,47 +39,47 @@ type Council = {
 
 const FLOW_COUNCIL_MANAGER_QUERY = gql`
   query FlowCouncilManagerQuery($address: String!) {
-    councils(
+    flowCouncils(
       first: 1000
       orderBy: createdAtTimestamp
       orderDirection: desc
-      where: { councilManagers_: { account: $address } }
+      where: { flowCouncilManagers_: { account: $address } }
     ) {
       id
-      distributionToken
-      pool
+      superToken
+      distributionPool
       metadata
     }
   }
 `;
 
-const FLOW_COUNCIL_MEMBER_QUERY = gql`
-  query FlowCouncilMemberQuery($address: String!) {
-    councils(
+const FLOW_COUNCIL_VOTER_QUERY = gql`
+  query FlowCouncilVoterQuery($address: String!) {
+    flowCouncils(
       first: 1000
       orderBy: createdAtTimestamp
       orderDirection: desc
-      where: { councilMembers_: { account: $address } }
+      where: { voters_: { account: $address } }
     ) {
       id
-      distributionToken
-      pool
+      superToken
+      distributionPool
       metadata
     }
   }
 `;
 
-const FLOW_COUNCIL_GRANTEE_QUERY = gql`
-  query FlowCouncilGranteeQuery($address: String!) {
-    councils(
+const FLOW_COUNCIL_RECIPIENT_QUERY = gql`
+  query FlowCouncilRecipientQuery($address: String!) {
+    flowCouncils(
       first: 1000
       orderBy: createdAtTimestamp
       orderDirection: desc
-      where: { grantees_: { account: $address } }
+      where: { recipients_: { account: $address } }
     ) {
       id
-      distributionToken
-      pool
+      superToken
+      distributionPool
       metadata
     }
   }
@@ -114,7 +113,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
 
   const [selectedNetwork, setSelectedNetwork] =
     useState<Network>(defaultNetwork);
-  const [councils, setCouncils] = useState<Council[]>([]);
+  const [flowCouncils, setFlowCouncils] = useState<FlowCouncil[]>([]);
 
   const router = useRouter();
   const { data: walletClient } = useWalletClient();
@@ -127,8 +126,8 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
     (network) => network.id === connectedChain?.id,
   );
   const {
-    data: councilsManagerQueryRes,
-    loading: councilsManagerQueryLoading,
+    data: flowCouncilsManagerQueryRes,
+    loading: flowCouncilsManagerQueryLoading,
   } = useQuery(FLOW_COUNCIL_MANAGER_QUERY, {
     client: getApolloClient(
       "flowCouncil",
@@ -140,19 +139,22 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
     pollInterval: 10000,
     skip: !address,
   });
-  const { data: councilsMemberQueryRes } = useQuery(FLOW_COUNCIL_MEMBER_QUERY, {
-    client: getApolloClient(
-      "flowCouncil",
-      supportedNetworkConnection ? connectedChain?.id : selectedNetwork.id,
-    ),
-    variables: {
-      address: address?.toLowerCase(),
+  const { data: flowCouncilsVoterQueryRes } = useQuery(
+    FLOW_COUNCIL_VOTER_QUERY,
+    {
+      client: getApolloClient(
+        "flowCouncil",
+        supportedNetworkConnection ? connectedChain?.id : selectedNetwork.id,
+      ),
+      variables: {
+        address: address?.toLowerCase(),
+      },
+      pollInterval: 10000,
+      skip: !address,
     },
-    pollInterval: 10000,
-    skip: !address,
-  });
-  const { data: councilsGranteeQueryRes } = useQuery(
-    FLOW_COUNCIL_GRANTEE_QUERY,
+  );
+  const { data: flowCouncilsRecipientQueryRes } = useQuery(
+    FLOW_COUNCIL_RECIPIENT_QUERY,
     {
       client: getApolloClient(
         "flowCouncil",
@@ -186,82 +188,110 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
     (async () => {
       if (
         !address ||
-        !councilsManagerQueryRes ||
-        !councilsMemberQueryRes ||
-        !councilsGranteeQueryRes ||
+        !flowCouncilsManagerQueryRes ||
+        !flowCouncilsVoterQueryRes ||
+        !flowCouncilsRecipientQueryRes ||
         !superfluidQueryRes
       ) {
         return;
       }
 
-      const councils: Council[] = [];
+      const councils: FlowCouncil[] = [];
       const sfPoolMemberships = superfluidQueryRes?.account?.poolMemberships;
 
-      const buildCouncil = async (council: Council & { metadata: string }) => {
+      const buildFlowCouncil = async (
+        flowCouncil: FlowCouncil & { metadata: string },
+      ) => {
         const poolMembership = sfPoolMemberships?.find(
           (membership: { pool: { id: string } }) =>
-            membership.pool.id === council?.pool,
+            membership.pool.id === flowCouncil?.distributionPool,
         );
-        const metadata = await fetchIpfsJson(council.metadata);
+
+        // Fetch round name from database
+        let roundMetadata: { name: string; description: string } = {
+          name: "Flow Council",
+          description: "N/A",
+        };
+        try {
+          const res = await fetch(
+            `/api/flow-council/rounds?chainId=${selectedNetwork.id}&flowCouncilAddress=${flowCouncil.id}`,
+          );
+          const data = await res.json();
+          if (data.success && data.round?.details) {
+            const details =
+              typeof data.round.details === "string"
+                ? JSON.parse(data.round.details)
+                : data.round.details;
+            if (details?.name) {
+              roundMetadata = {
+                name: details.name,
+                description: details.description ?? "N/A",
+              };
+            }
+          }
+        } catch (err) {
+          console.error(err);
+        }
 
         councils.push({
-          id: council.id,
-          distributionToken: council.distributionToken,
-          isManager: !!councilsManagerQueryRes.councils.find(
-            (c: { id: string }) => c.id === council.id,
+          id: flowCouncil.id,
+          superToken: flowCouncil.superToken,
+          isManager: !!flowCouncilsManagerQueryRes.flowCouncils.find(
+            (c: { id: string }) => c.id === flowCouncil.id,
           ),
-          isGrantee: !!councilsGranteeQueryRes.councils.find(
-            (c: { id: string }) => c.id === council.id,
+          isRecipient: !!flowCouncilsRecipientQueryRes.flowCouncils.find(
+            (c: { id: string }) => c.id === flowCouncil.id,
           ),
-          pool: council.pool,
+          distributionPool: flowCouncil.distributionPool,
           isConnected: poolMembership?.isConnected ?? false,
           units: BigInt(poolMembership?.units ?? 0),
-          metadata: metadata ?? { name: "Flow Council", description: "N/A" },
+          metadata: roundMetadata,
         });
       };
 
       const promises = [];
 
-      for (const councilManger of councilsManagerQueryRes.councils) {
-        promises.push(buildCouncil(councilManger));
+      for (const flowCouncilManager of flowCouncilsManagerQueryRes.flowCouncils) {
+        promises.push(buildFlowCouncil(flowCouncilManager));
       }
 
-      for (const councilMember of councilsMemberQueryRes.councils) {
+      for (const flowCouncilVoter of flowCouncilsVoterQueryRes.flowCouncils) {
         if (
-          councilsManagerQueryRes?.councils
-            .map((council: { id: string }) => council.id)
-            .includes(councilMember.id)
+          flowCouncilsManagerQueryRes?.flowCouncils
+            .map((flowCouncil: { id: string }) => flowCouncil.id)
+            .includes(flowCouncilVoter.id)
         ) {
           continue;
         }
 
-        promises.push(buildCouncil(councilMember));
+        promises.push(buildFlowCouncil(flowCouncilVoter));
       }
 
-      for (const councilGrantee of councilsGranteeQueryRes.councils) {
+      for (const flowCouncilRecipient of flowCouncilsRecipientQueryRes.flowCouncils) {
         if (
-          councilsManagerQueryRes?.councils
-            .map((council: { id: string }) => council.id)
-            .includes(councilGrantee.id) ||
-          councilsMemberQueryRes?.councils
-            .map((council: { id: string }) => council.id)
-            .includes(councilGrantee.id)
+          flowCouncilsManagerQueryRes?.flowCouncils
+            .map((flowCouncil: { id: string }) => flowCouncil.id)
+            .includes(flowCouncilRecipient.id) ||
+          flowCouncilsVoterQueryRes?.flowCouncils
+            .map((flowCouncil: { id: string }) => flowCouncil.id)
+            .includes(flowCouncilRecipient.id)
         ) {
           continue;
         }
 
-        promises.push(buildCouncil(councilGrantee));
+        promises.push(buildFlowCouncil(flowCouncilRecipient));
       }
 
       await Promise.all(promises);
 
-      setCouncils(councils);
+      setFlowCouncils(councils);
     })();
   }, [
+    selectedNetwork,
     address,
-    councilsManagerQueryRes,
-    councilsMemberQueryRes,
-    councilsGranteeQueryRes,
+    flowCouncilsManagerQueryRes,
+    flowCouncilsVoterQueryRes,
+    flowCouncilsRecipientQueryRes,
     superfluidQueryRes,
   ]);
 
@@ -280,15 +310,15 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
     });
   };
 
-  const CouncilCard = ({
-    council,
+  const FlowCouncilCard = ({
+    flowCouncil,
     token,
   }: {
-    council: Council;
+    flowCouncil: FlowCouncil;
     token?: Token;
   }) => {
     const [nameRef, { clampedText }] = useClampText({
-      text: council.metadata?.name,
+      text: flowCouncil.metadata?.name,
       ellipsis: "...",
       lines: 3,
     });
@@ -321,7 +351,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
                 <Image src={token.icon} alt="" width={22} height={22} />
               )}
               <Card.Text className="text-decoration-underline">
-                {token?.symbol ?? truncateStr(council.distributionToken, 14)}
+                {token?.symbol ?? truncateStr(flowCouncil.superToken, 14)}
               </Card.Text>
             </Card.Link>
             <Button
@@ -334,7 +364,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
                     ? switchChain({ chainId: selectedNetwork.id })
                     : addToWallet(
                         token ?? {
-                          address: council.distributionToken as Address,
+                          address: flowCouncil.superToken as Address,
                           symbol: "",
                           icon: "",
                         },
@@ -357,24 +387,24 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
           </Stack>
         </Card.Body>
         <Card.Footer className="d-flex flex-column justify-content-end gap-1 w-100 h-25 bg-transparent border-0">
-          {council.isManager && (
+          {flowCouncil.isManager && (
             <Button
               variant="primary"
               className="w-100 py-4 rounded-4 fw-semi-bold"
               onClick={() =>
                 router.push(
-                  `/flow-councils/permissions/?chainId=${selectedNetwork.id}&councilId=${council.id}`,
+                  `/flow-councils/permissions/${selectedNetwork.id}/${flowCouncil.id}`,
                 )
               }
             >
               Edit
             </Button>
           )}
-          {council.isGrantee && !council.isConnected ? (
+          {flowCouncil.isRecipient && !flowCouncil.isConnected ? (
             <PoolConnectionButton
               network={selectedNetwork}
-              poolAddress={council.pool}
-              isConnected={council.isConnected}
+              poolAddress={flowCouncil.distributionPool}
+              isConnected={flowCouncil.isConnected}
             />
           ) : (
             <Button
@@ -382,7 +412,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
               className="w-100 py-4 rounded-4 fw-semi-bold"
               onClick={() =>
                 router.push(
-                  `/flow-councils/${selectedNetwork.id}/${council.id}`,
+                  `/flow-councils/${selectedNetwork.id}/${flowCouncil.id}`,
                 )
               }
             >
@@ -400,7 +430,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
       gap={6}
       className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
     >
-      {councilsManagerQueryLoading || superfluidQueryLoading ? (
+      {flowCouncilsManagerQueryLoading || superfluidQueryLoading ? (
         <span className="position-absolute top-50 start-50 translate-middle">
           <Spinner className="m-auto" />
         </span>
@@ -483,9 +513,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
               style={{ height: 400 }}
               onClick={() => {
                 if (address) {
-                  router.push(
-                    `/flow-councils/launch/?chainId=${selectedNetwork.id}`,
-                  );
+                  router.push("/flow-councils/launch");
                 } else if (openConnectModal) {
                   openConnectModal();
                 }
@@ -497,13 +525,19 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
                 Flow Council
               </Card.Text>
             </Card>
-            {councils.map((council, i) => {
+            {flowCouncils.map((flowCouncil, i) => {
               const token = selectedNetwork.tokens.find(
                 (token) =>
-                  token.address.toLowerCase() === council.distributionToken,
+                  token.address.toLowerCase() === flowCouncil.superToken,
               );
 
-              return <CouncilCard key={i} council={council} token={token} />;
+              return (
+                <FlowCouncilCard
+                  key={i}
+                  flowCouncil={flowCouncil}
+                  token={token}
+                />
+              );
             })}
           </div>
         </Stack>

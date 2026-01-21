@@ -5,7 +5,7 @@ import Stack from "react-bootstrap/Stack";
 import Badge from "react-bootstrap/Badge";
 import Image from "next/image";
 import ConnectWallet from "@/components/ConnectWallet";
-import useCouncil from "../hooks/council";
+import useFlowCouncil from "../hooks/flowCouncil";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
 export default function FlowCouncilWallet() {
@@ -14,7 +14,7 @@ export default function FlowCouncilWallet() {
     currentAllocation,
     newAllocation,
     dispatchShowBallot,
-  } = useCouncil();
+  } = useFlowCouncil();
   const { isMobile } = useMediaQuery();
 
   const currentVotes =

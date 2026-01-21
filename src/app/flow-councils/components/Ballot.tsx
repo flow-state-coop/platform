@@ -7,7 +7,7 @@ import Card from "react-bootstrap/Card";
 import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
 import FormControl from "react-bootstrap/FormControl";
-import useCouncil from "../hooks/council";
+import useFlowCouncil from "../hooks/flowCouncil";
 import useWriteAllocation from "../hooks/writeAllocation";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { isNumber } from "@/lib/utils";
@@ -26,10 +26,10 @@ export default function Ballot({
     councilMember,
     currentAllocation,
     newAllocation,
-    flowStateProfiles,
+    projects,
     dispatchShowBallot,
     dispatchNewAllocation,
-  } = useCouncil();
+  } = useFlowCouncil();
   const { isMobile } = useMediaQuery();
   const { vote, isVoting, transactionError } =
     useWriteAllocation(councilAddress);
@@ -40,7 +40,7 @@ export default function Ballot({
       ?.map((a) => a.amount)
       ?.reduce((a, b) => a + b, 0) ?? 0;
   const newAllocationsCount = newAllocation?.allocation?.length ?? 0;
-  const maxAllocationsPerMember = council?.maxAllocationsPerMember ?? 0;
+  const maxVotingSpread = council?.maxVotingSpread ?? 0;
 
   useEffect(() => {
     if (success) {
@@ -56,7 +56,7 @@ export default function Ballot({
   }) => {
     const { increment, granteeIndex } = args;
 
-    const granteeAddress = newAllocation?.allocation[granteeIndex].grantee;
+    const granteeAddress = newAllocation?.allocation[granteeIndex].recipient;
     const currentAmount = newAllocation?.allocation[granteeIndex].amount ?? 0;
 
     if (granteeAddress) {
@@ -69,7 +69,7 @@ export default function Ballot({
       setSuccess(false);
       dispatchNewAllocation({
         type: "update",
-        allocation: { grantee: granteeAddress, amount: newAmount },
+        allocation: { recipient: granteeAddress, amount: newAmount },
       });
     }
   };
@@ -80,19 +80,19 @@ export default function Ballot({
   ) => {
     const { value } = e.target;
 
-    const granteeAddress = newAllocation?.allocation[granteeIndex].grantee;
+    const granteeAddress = newAllocation?.allocation[granteeIndex].recipient;
 
     if (isNumber(value) && granteeAddress) {
       dispatchNewAllocation({
         type: "update",
-        allocation: { grantee: granteeAddress, amount: Number(value) },
+        allocation: { recipient: granteeAddress, amount: Number(value) },
       });
 
       setSuccess(false);
     } else if (value === "" && granteeAddress) {
       dispatchNewAllocation({
         type: "update",
-        allocation: { grantee: granteeAddress, amount: 0 },
+        allocation: { recipient: granteeAddress, amount: 0 },
       });
 
       setSuccess(false);
@@ -104,7 +104,7 @@ export default function Ballot({
       const nonZeroAllocations = newAllocation.allocation.filter(
         (a) => a.amount !== 0,
       );
-      const accounts = nonZeroAllocations.map((a) => a.grantee);
+      const accounts = nonZeroAllocations.map((a) => a.recipient);
       const amounts = nonZeroAllocations.map((a) => BigInt(a.amount));
 
       const receipt = await vote(accounts as `0x${string}`[], amounts);
@@ -158,12 +158,12 @@ export default function Ballot({
           className="justify-content-around flex-grow-0 mb-1"
         >
           <p
-            className={`m-0 fs-lg fw-semi-bold ${newAllocationsCount > maxAllocationsPerMember ? "text-danger" : "text-info"}`}
+            className={`m-0 fs-lg fw-semi-bold ${newAllocationsCount > maxVotingSpread ? "text-danger" : "text-info"}`}
             style={{
-              visibility: maxAllocationsPerMember === 0 ? "hidden" : "visible",
+              visibility: maxVotingSpread === 0 ? "hidden" : "visible",
             }}
           >
-            ({newAllocation?.allocation?.length ?? 0}/{maxAllocationsPerMember}{" "}
+            ({newAllocation?.allocation?.length ?? 0}/{maxVotingSpread}{" "}
             Projects)
           </p>
           <p
@@ -178,12 +178,8 @@ export default function Ballot({
           className="flex-grow-0 mt-2 bg-lace-100 rounded-4 p-4"
         >
           {newAllocation?.allocation?.map((allocation, i) => {
-            const councilGrantee = council?.grantees.find(
-              (grantee) => grantee.account === allocation.grantee,
-            );
-            const profile = flowStateProfiles?.find(
-              (profile: { id: string }) =>
-                profile.id === councilGrantee?.metadata,
+            const project = projects?.find(
+              (p) => p.id.toLowerCase() === allocation.recipient.toLowerCase(),
             );
 
             return (
@@ -216,7 +212,7 @@ export default function Ballot({
                     />
                   </Button>
                   <p className="m-0 text-truncate fs-lg fw-semi-bold">
-                    {profile?.metadata.title}
+                    {project?.details?.name}
                   </p>
                 </Stack>
                 <Stack
@@ -268,14 +264,13 @@ export default function Ballot({
             disabled={
               !success &&
               (totalVotes > votingPower ||
-                (maxAllocationsPerMember &&
-                  newAllocationsCount > maxAllocationsPerMember) ||
+                (maxVotingSpread && newAllocationsCount > maxVotingSpread) ||
                 !newAllocation?.allocation ||
                 newAllocation.allocation.length === 0 ||
                 JSON.stringify(currentAllocation?.allocation) ===
                   JSON.stringify(newAllocation?.allocation))
             }
-            className="align-self-end w-50 px-10 py-4 rounded-4 fs-lg fw-semi-bold"
+            className="d-flex justify-content-center align-items-center align-self-end w-50 px-10 py-4 rounded-4 fs-lg fw-semi-bold"
             style={{ pointerEvents: success ? "none" : "auto", height: 56 }}
             onClick={handleVote}
           >

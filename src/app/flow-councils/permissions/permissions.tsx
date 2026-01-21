@@ -15,17 +15,22 @@ import Toast from "react-bootstrap/Toast";
 import Spinner from "react-bootstrap/Spinner";
 import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
-import Sidebar from "../components/Sidebar";
+import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
-import { councilAbi } from "@/lib/abi/council";
+import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
+import {
+  DEFAULT_ADMIN_ROLE,
+  VOTER_MANAGER_ROLE,
+  RECIPIENT_MANAGER_ROLE,
+} from "../lib/constants";
 
 type PermissionsProps = { chainId?: number; councilId?: string };
 type ManagerEntry = {
   address: string;
   defaultAdminRole: boolean;
-  memberManagerRole: boolean;
-  granteeManagerRole: boolean;
+  voterManagerRole: boolean;
+  recipientManagerRole: boolean;
   addressValidationError: string;
 };
 
@@ -34,24 +39,17 @@ enum StatusChange {
   REMOVED,
 }
 
-const COUNCIL_QUERY = gql`
-  query CouncilQuery($councilId: String!) {
-    council(id: $councilId) {
+const FLOW_COUNCIL_QUERY = gql`
+  query FlowCouncilQuery($councilId: String!) {
+    flowCouncil(id: $councilId) {
       id
-      councilManagers {
+      flowCouncilManagers {
         account
         role
       }
     }
   }
 `;
-
-const DEFAULT_ADMIN_ROLE: `0x${string}` =
-  "0x0000000000000000000000000000000000000000000000000000000000000000";
-const MEMBER_MANAGER_ROLE: `0x${string}` =
-  "0x39a11a76752780db927c2506d127ab4a6504bb58ada87ac478aec1ffe9c2521b";
-const GRANTEE_MANAGER_ROLE: `0x${string}` =
-  "0x449c4ab7d231ca4b7e4b5e8022289a1d588fa1af9c09d2603681d5a375186c50";
 
 export default function Permissions(props: PermissionsProps) {
   const { chainId, councilId } = props;
@@ -68,9 +66,8 @@ export default function Permissions(props: PermissionsProps) {
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
-  const { data: councilQueryRes, loading: councilQueryResLoading } = useQuery(
-    COUNCIL_QUERY,
-    {
+  const { data: flowCouncilQueryRes, loading: flowCouncilQueryResLoading } =
+    useQuery(FLOW_COUNCIL_QUERY, {
       client: getApolloClient("flowCouncil", chainId),
       variables: {
         chainId,
@@ -78,25 +75,24 @@ export default function Permissions(props: PermissionsProps) {
       },
       skip: !councilId,
       pollInterval: 4000,
-    },
-  );
+    });
 
-  const council = councilQueryRes?.council ?? null;
+  const flowCouncil = flowCouncilQueryRes?.flowCouncil ?? null;
   const isValidManagersEntry = managersEntry.every(
     (managerEntry) => managerEntry.addressValidationError === "",
   );
   const isAdmin = useMemo(() => {
-    const councilAdmin = council?.councilManagers.find(
+    const flowCouncilAdmin = flowCouncil?.flowCouncilManagers.find(
       (m: { account: string; role: string }) =>
         m.account === address?.toLowerCase() && m.role === DEFAULT_ADMIN_ROLE,
     );
 
-    if (councilAdmin) {
+    if (flowCouncilAdmin) {
       return true;
     }
 
     return false;
-  }, [address, council]);
+  }, [address, flowCouncil]);
 
   const findChangedEntry = useCallback(
     (managerEntry: ManagerEntry) => {
@@ -110,7 +106,7 @@ export default function Permissions(props: PermissionsProps) {
         return changedEntries;
       }
 
-      const existingDefaultAdmin = council?.councilManagers.find(
+      const existingDefaultAdmin = flowCouncil?.flowCouncilManagers.find(
         (m: { account: string; role: string }) =>
           m.account === managerEntry.address.toLowerCase() &&
           m.role === DEFAULT_ADMIN_ROLE,
@@ -132,53 +128,53 @@ export default function Permissions(props: PermissionsProps) {
         });
       }
 
-      const existingMemberManager = council?.councilManagers.find(
+      const existingVoterManager = flowCouncil?.flowCouncilManagers.find(
         (m: { account: string; role: string }) =>
           m.account === managerEntry.address.toLowerCase() &&
-          m.role === MEMBER_MANAGER_ROLE,
+          m.role === VOTER_MANAGER_ROLE,
       );
 
-      if (existingMemberManager) {
-        if (!managerEntry.memberManagerRole) {
+      if (existingVoterManager) {
+        if (!managerEntry.voterManagerRole) {
           changedEntries.push({
             account: managerEntry.address as Address,
-            role: MEMBER_MANAGER_ROLE,
+            role: VOTER_MANAGER_ROLE,
             status: StatusChange.REMOVED,
           });
         }
-      } else if (managerEntry.memberManagerRole) {
+      } else if (managerEntry.voterManagerRole) {
         changedEntries.push({
           account: managerEntry.address as Address,
-          role: MEMBER_MANAGER_ROLE,
+          role: VOTER_MANAGER_ROLE,
           status: StatusChange.ADDED,
         });
       }
 
-      const existingGranteeManager = council?.councilManagers.find(
+      const existingRecipientManager = flowCouncil?.flowCouncilManagers.find(
         (m: { account: string; role: string }) =>
           m.account === managerEntry.address.toLowerCase() &&
-          m.role === GRANTEE_MANAGER_ROLE,
+          m.role === RECIPIENT_MANAGER_ROLE,
       );
 
-      if (existingGranteeManager) {
-        if (!managerEntry.granteeManagerRole) {
+      if (existingRecipientManager) {
+        if (!managerEntry.recipientManagerRole) {
           changedEntries.push({
             account: managerEntry.address as Address,
-            role: GRANTEE_MANAGER_ROLE,
+            role: RECIPIENT_MANAGER_ROLE,
             status: StatusChange.REMOVED,
           });
         }
-      } else if (managerEntry.granteeManagerRole) {
+      } else if (managerEntry.recipientManagerRole) {
         changedEntries.push({
           account: managerEntry.address as Address,
-          role: GRANTEE_MANAGER_ROLE,
+          role: RECIPIENT_MANAGER_ROLE,
           status: StatusChange.ADDED,
         });
       }
 
       return changedEntries;
     },
-    [council],
+    [flowCouncil],
   );
 
   const hasChanges = useMemo(() => {
@@ -194,7 +190,7 @@ export default function Permissions(props: PermissionsProps) {
   }, [managersEntry, findChangedEntry]);
 
   const isRemovingOnlySuperAdmin = useMemo(() => {
-    const defaultAdmins = council?.councilManagers.filter(
+    const defaultAdmins = flowCouncil?.flowCouncilManagers.filter(
       (m: { role: `0x${string}` }) => m.role === DEFAULT_ADMIN_ROLE,
     );
 
@@ -215,50 +211,50 @@ export default function Permissions(props: PermissionsProps) {
     }
 
     return false;
-  }, [council, managersEntry, findChangedEntry]);
+  }, [flowCouncil, managersEntry, findChangedEntry]);
 
   useEffect(() => {
     (async () => {
-      if (!council) {
+      if (!flowCouncil) {
         return;
       }
 
       const managersEntry = [];
 
-      for (const i in council.councilManagers) {
+      for (const i in flowCouncil.flowCouncilManagers) {
         if (
           managersEntry
             .map((managerEntry) => managerEntry.address)
-            .includes(council.councilManagers[i].account)
+            .includes(flowCouncil.flowCouncilManagers[i].account)
         ) {
           continue;
         }
 
-        const roles = council.councilManagers
+        const roles = flowCouncil.flowCouncilManagers
           .filter(
             (manager: { account: string }) =>
-              manager.account === council.councilManagers[i].account,
+              manager.account === flowCouncil.flowCouncilManagers[i].account,
           )
           .map((manager: { role: string }) => manager.role);
         const isDefaultAdmin = roles.includes(DEFAULT_ADMIN_ROLE);
-        const isMemberManager = roles.includes(MEMBER_MANAGER_ROLE);
-        const isGranteeManager = roles.includes(GRANTEE_MANAGER_ROLE);
+        const isVoterManager = roles.includes(VOTER_MANAGER_ROLE);
+        const isRecipientManager = roles.includes(RECIPIENT_MANAGER_ROLE);
 
         managersEntry.push({
-          address: council.councilManagers[i].account,
+          address: flowCouncil.flowCouncilManagers[i].account,
           defaultAdminRole: isDefaultAdmin,
-          memberManagerRole: isMemberManager,
-          granteeManagerRole: isGranteeManager,
+          voterManagerRole: isVoterManager,
+          recipientManagerRole: isRecipientManager,
           addressValidationError: "",
         });
       }
 
       setManagersEntry(managersEntry);
     })();
-  }, [council]);
+  }, [flowCouncil]);
 
   const handleSubmit = async () => {
-    if (!address || !publicClient || !councilId) {
+    if (!address || !publicClient || !councilId || !chainId) {
       return;
     }
 
@@ -274,14 +270,29 @@ export default function Permissions(props: PermissionsProps) {
 
       const hash = await writeContract(wagmiConfig, {
         address: councilId as Address,
-        abi: councilAbi,
-        functionName: "updateCouncilManagers",
+        abi: flowCouncilAbi,
+        functionName: "updateManagers",
         args: [changedEntries],
       });
 
       await publicClient.waitForTransactionReceipt({
         hash,
         confirmations: 3,
+      });
+
+      // Sync super admins to database as round admins
+      const superAdmins = managersEntry
+        .filter((m) => m.defaultAdminRole && m.address)
+        .map((m) => m.address.toLowerCase());
+
+      await fetch("/api/flow-council/admins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chainId,
+          flowCouncilAddress: councilId,
+          admins: superAdmins,
+        }),
       });
 
       setTransactionSuccess(true);
@@ -294,7 +305,7 @@ export default function Permissions(props: PermissionsProps) {
     }
   };
 
-  if (!councilId || !chainId || (!councilQueryResLoading && !council)) {
+  if (!councilId || !chainId || (!flowCouncilQueryResLoading && !flowCouncil)) {
     return (
       <span className="m-auto fs-5 fw-bold">
         Council not found.{" "}
@@ -350,7 +361,7 @@ export default function Permissions(props: PermissionsProps) {
                     fontSize: isMobile ? "0.7rem" : "inherit",
                   }}
                 >
-                  Member Review
+                  Voter Review
                 </Card.Text>
                 <Card.Text
                   className="m-0 text-center flex-shrink-0"
@@ -434,10 +445,10 @@ export default function Permissions(props: PermissionsProps) {
                         const prev = [...managersEntry];
 
                         prev[i].defaultAdminRole = checked;
-                        prev[i].memberManagerRole =
-                          checked ?? prev[i].memberManagerRole;
-                        prev[i].granteeManagerRole =
-                          checked ?? prev[i].granteeManagerRole;
+                        prev[i].voterManagerRole =
+                          checked ?? prev[i].voterManagerRole;
+                        prev[i].recipientManagerRole =
+                          checked ?? prev[i].recipientManagerRole;
 
                         setManagersEntry(prev);
                       }}
@@ -453,7 +464,7 @@ export default function Permissions(props: PermissionsProps) {
                       disabled={!isAdmin || !!managerEntry.defaultAdminRole}
                       checked={
                         !!managerEntry.defaultAdminRole ||
-                        !!managerEntry.memberManagerRole
+                        !!managerEntry.voterManagerRole
                       }
                       className="m-0"
                       style={{ padding: 12 }}
@@ -462,8 +473,8 @@ export default function Permissions(props: PermissionsProps) {
 
                         const prev = [...managersEntry];
 
-                        prev[i].memberManagerRole =
-                          checked ?? prev[i].memberManagerRole;
+                        prev[i].voterManagerRole =
+                          checked ?? prev[i].voterManagerRole;
 
                         setManagersEntry(prev);
                       }}
@@ -478,7 +489,7 @@ export default function Permissions(props: PermissionsProps) {
                     <Form.Check.Input
                       checked={
                         !!managerEntry.defaultAdminRole ||
-                        !!managerEntry.granteeManagerRole
+                        !!managerEntry.recipientManagerRole
                       }
                       disabled={!isAdmin || !!managerEntry.defaultAdminRole}
                       className="m-0"
@@ -488,8 +499,8 @@ export default function Permissions(props: PermissionsProps) {
 
                         const prev = [...managersEntry];
 
-                        prev[i].granteeManagerRole =
-                          checked ?? prev[i].granteeManagerRole;
+                        prev[i].recipientManagerRole =
+                          checked ?? prev[i].recipientManagerRole;
 
                         setManagersEntry(prev);
                       }}
@@ -508,8 +519,8 @@ export default function Permissions(props: PermissionsProps) {
                       prev.concat({
                         address: "",
                         defaultAdminRole: false,
-                        granteeManagerRole: false,
-                        memberManagerRole: false,
+                        voterManagerRole: false,
+                        recipientManagerRole: false,
                         addressValidationError: "",
                       }),
                     )
@@ -552,9 +563,7 @@ export default function Permissions(props: PermissionsProps) {
             className="py-4 rounded-4 fs-lg fw-semi-bold"
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() =>
-              router.push(
-                `/flow-councils/membership/?chainId=${chainId}&councilId=${councilId}`,
-              )
+              router.push(`/flow-councils/membership/${chainId}/${councilId}`)
             }
           >
             Next

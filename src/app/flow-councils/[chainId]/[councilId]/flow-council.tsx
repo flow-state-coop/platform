@@ -9,16 +9,15 @@ import Modal from "react-bootstrap/Modal";
 import Spinner from "react-bootstrap/Spinner";
 import Dropdown from "react-bootstrap/Dropdown";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
-import GranteeCard from "../../components/GranteeCard";
-import RoundBanner from "../../components/RoundBanner";
-import GranteeDetails from "../../components/GranteeDetails";
-import Ballot from "../../components/Ballot";
-import DistributionPoolFunding from "../../components/DistributionPoolFunding";
-import VoteBubble from "../../components/VoteBubble";
-import { ProjectMetadata } from "@/types/project";
-import { Grantee, SortingMethod } from "../../types/grantee";
+import GranteeCard from "@/app/flow-councils/components/GranteeCard";
+import RoundBanner from "@/app/flow-councils/components/RoundBanner";
+import GranteeDetails from "@/app/flow-councils/components/GranteeDetails";
+import Ballot from "@/app/flow-councils/components/Ballot";
+import DistributionPoolFunding from "@/app/flow-councils/components/DistributionPoolFunding";
+import VoteBubble from "@/app/flow-councils/components/VoteBubble";
+import { Grantee, ProjectDetails, SortingMethod } from "../../types/grantee";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import useCouncil from "../../hooks/council";
+import useFlowCouncil from "../../hooks/flowCouncil";
 import useAnimateVoteBubble from "../../hooks/animateVoteBubble";
 import { networks } from "@/lib/networks";
 import { shuffle, getPlaceholderImageSrc, generateColor } from "@/lib/utils";
@@ -54,54 +53,52 @@ export default function FlowCouncil({
     newAllocation,
     council,
     councilMetadata,
-    flowStateProfiles,
-    gdaPool,
+    councilMember,
+    projects,
+    distributionPool,
     token,
     showBallot,
     dispatchNewAllocation,
-  } = useCouncil();
+  } = useFlowCouncil();
   const { voteBubbleRef, animateVoteBubble } = useAnimateVoteBubble();
 
-  const poolMember = gdaPool?.poolMembers.find(
+  const poolMember = distributionPool?.poolMembers.find(
     (member: { account: { id: string } }) =>
       member.account.id === address?.toLowerCase(),
   );
   const shouldConnect = !!poolMember && !poolMember.isConnected;
   const votingPower =
-    !!address && currentAllocation?.votingPower
-      ? currentAllocation.votingPower
-      : 0;
+    !!address && councilMember?.votingPower ? councilMember.votingPower : 0;
   const currentAllocationStringified = JSON.stringify(currentAllocation);
 
   const getGrantee = useCallback(
-    (recipient: { id: string; address: string; metadata: ProjectMetadata }) => {
+    (recipient: { id: string; address: string; details: ProjectDetails }) => {
       const adjustedFlowRate =
-        BigInt(gdaPool?.flowRate ?? 0) -
-        BigInt(gdaPool?.adjustmentFlowRate ?? 0);
-      const member = gdaPool?.poolMembers.find(
+        BigInt(distributionPool?.flowRate ?? 0) -
+        BigInt(distributionPool?.adjustmentFlowRate ?? 0);
+      const member = distributionPool?.poolMembers.find(
         (member: { account: { id: string } }) =>
           member.account.id === recipient.address,
       );
       const memberUnits = member?.units ? Number(member.units) : 0;
       const memberFlowRate =
-        BigInt(gdaPool?.totalUnits ?? 0) > 0
+        BigInt(distributionPool?.totalUnits ?? 0) > 0
           ? (BigInt(memberUnits) * adjustedFlowRate) /
-            BigInt(gdaPool?.totalUnits ?? 0)
+            BigInt(distributionPool?.totalUnits ?? 0)
           : BigInt(0);
 
       return {
         id: recipient.id,
         address: recipient.address as `0x${string}`,
-        metadata: recipient.metadata,
-        bannerCid: recipient.metadata.bannerImg,
-        twitter: recipient.metadata.projectTwitter,
+        details: recipient.details,
+        twitter: recipient.details.twitter ?? "",
         flowRate: memberFlowRate ?? BigInt(0),
         units: memberUnits,
         placeholderLogo: getPlaceholderImageSrc(),
         placeholderBanner: getPlaceholderImageSrc(),
       };
     },
-    [gdaPool],
+    [distributionPool],
   );
 
   const sortGrantees = useCallback(
@@ -112,11 +109,11 @@ export default function FlowCouncil({
 
       if (sortingMethod === SortingMethod.ALPHABETICAL) {
         return grantees.sort((a, b) => {
-          if (a.metadata.title < b.metadata.title) {
+          if ((a.details.name ?? "") < (b.details.name ?? "")) {
             return -1;
           }
 
-          if (a.metadata.title > b.metadata.title) {
+          if ((a.details.name ?? "") > (b.details.name ?? "")) {
             return 1;
           }
 
@@ -163,13 +160,13 @@ export default function FlowCouncil({
   }, [currentAllocationStringified, dispatchNewAllocation]);
 
   useEffect(() => {
-    if (!council || !flowStateProfiles || !gdaPool) {
+    if (!council || !projects) {
       return;
     }
 
     const hasGranteeBeenAddedOrRemoved =
       !hasNextGrantee.current &&
-      skipGrantees.current !== council.grantees.length;
+      skipGrantees.current !== council.recipients.length;
 
     if (hasGranteeBeenAddedOrRemoved) {
       hasNextGrantee.current = true;
@@ -179,24 +176,24 @@ export default function FlowCouncil({
     if (hasNextGrantee.current) {
       const grantees: Grantee[] = [];
 
-      for (let i = skipGrantees.current; i < council.grantees.length; i++) {
+      for (let i = skipGrantees.current; i < council.recipients.length; i++) {
         skipGrantees.current = i + 1;
 
-        if (skipGrantees.current === council.grantees.length) {
+        if (skipGrantees.current === council.recipients.length) {
           hasNextGrantee.current = false;
         }
 
-        const councilGrantee = council.grantees[i];
-        const profile = flowStateProfiles.find(
-          (profile: { id: string }) => profile.id === councilGrantee?.metadata,
+        const recipient = council.recipients[i];
+        const project = projects.find(
+          (p) => p.id.toLowerCase() === recipient?.account.toLowerCase(),
         );
 
-        if (profile && councilGrantee) {
+        if (project && recipient) {
           grantees.push(
             getGrantee({
-              id: profile.id,
-              address: councilGrantee.account as `0x${string}`,
-              metadata: profile.metadata,
+              id: project.id,
+              address: recipient.account as `0x${string}`,
+              details: project.details,
             }),
           );
         } else {
@@ -213,7 +210,7 @@ export default function FlowCouncil({
           grantees[i] = getGrantee({
             id: prev[i].id,
             address: prev[i].address as `0x${string}`,
-            metadata: prev[i].metadata,
+            details: prev[i].details,
           });
         }
 
@@ -222,8 +219,8 @@ export default function FlowCouncil({
     }
   }, [
     council,
-    flowStateProfiles,
-    gdaPool,
+    projects,
+    distributionPool,
     getGrantee,
     sortingMethod,
     sortGrantees,
@@ -269,7 +266,7 @@ export default function FlowCouncil({
           description={councilMetadata.description ?? "N/A"}
           chainId={chainId}
           distributionTokenInfo={token}
-          gdaPool={gdaPool}
+          distributionPool={distributionPool}
           showDistributionPoolFunding={() =>
             setShowDistributionPoolFunding(true)
           }
@@ -326,10 +323,10 @@ export default function FlowCouncil({
               <GranteeCard
                 key={`${grantee.address}-${grantee.id}`}
                 granteeAddress={grantee.address}
-                name={grantee.metadata.title}
-                description={grantee.metadata.description}
-                logoCid={grantee.metadata.logoImg}
-                bannerCid={grantee.bannerCid}
+                name={grantee.details.name ?? ""}
+                description={grantee.details.description ?? ""}
+                logoUrl={grantee.details.logoUrl ?? ""}
+                bannerUrl={grantee.details.bannerUrl ?? ""}
                 placeholderLogo={grantee.placeholderLogo}
                 placeholderBanner={grantee.placeholderBanner}
                 flowRate={grantee.flowRate}
@@ -358,7 +355,7 @@ export default function FlowCouncil({
           id={showGranteeDetails.id}
           chainId={chainId}
           token={token}
-          metadata={showGranteeDetails.metadata}
+          details={showGranteeDetails.details}
           placeholderLogo={showGranteeDetails.placeholderLogo}
           granteeAddress={showGranteeDetails.address}
           canAddToBallot={!!votingPower}
@@ -377,22 +374,25 @@ export default function FlowCouncil({
         centered
         onHide={() => setShowConnectionModal(false)}
       >
-        <Modal.Header closeButton className="align-items-start border-0 pt-3">
+        <Modal.Header
+          closeButton
+          className="align-items-start border-0 p-4 pb-0"
+        >
           <Modal.Title className="fs-5 fw-bold">
             You're a recipient in this Flow Council but haven't connected.
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body className="fs-5">
+        <Modal.Body className="fs-5 p-4">
           Do you want to do that now, so your{" "}
           <Link href="https://app.superfluid.finance/" target="_blank">
             Super Token balance
           </Link>{" "}
           is reflected in real time?
         </Modal.Body>
-        <Modal.Footer className="border-0">
+        <Modal.Footer className="border-0 p-4 pt-0">
           <PoolConnectionButton
             network={network}
-            poolAddress={gdaPool?.id ?? "0x"}
+            poolAddress={distributionPool?.id ?? "0x"}
             isConnected={!shouldConnect}
           />
         </Modal.Footer>
