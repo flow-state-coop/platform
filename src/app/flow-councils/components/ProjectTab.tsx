@@ -554,7 +554,7 @@ export default function ProjectTab(props: ProjectTabProps) {
         <Form.Control
           type="text"
           value={form.website}
-          placeholder=""
+          placeholder="https://..."
           className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.website ? "border-danger" : "border-dark"}`}
           isInvalid={validated && !form.website}
           onChange={(e) => setForm({ ...form, website: e.target.value })}
@@ -566,7 +566,7 @@ export default function ProjectTab(props: ProjectTabProps) {
         <Form.Control
           type="text"
           value={form.demoUrl}
-          placeholder=""
+          placeholder="https://..."
           className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
           onChange={(e) => setForm({ ...form, demoUrl: e.target.value })}
         />
@@ -650,7 +650,7 @@ export default function ProjectTab(props: ProjectTabProps) {
         label="Github Repositories"
         values={form.githubRepos}
         onChange={(values) => setForm({ ...form, githubRepos: values })}
-        placeholder=""
+        placeholder="https://github.com/org-name/repo-name"
         addLabel="Add Another"
         validate={isValidUrl}
         required

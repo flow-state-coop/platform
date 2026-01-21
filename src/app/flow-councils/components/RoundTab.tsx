@@ -763,7 +763,7 @@ export default function RoundTab(props: RoundTabProps) {
                     type="text"
                     value={form.integration.otherTypeExplanation}
                     placeholder="Explain"
-                    className="bg-white border border-2 border-dark rounded-4 py-2 px-3"
+                    className={`bg-white border border-2 rounded-4 py-2 px-3 ${validated && form.integration.types.includes("other") && !form.integration.otherTypeExplanation.trim() ? "border-danger" : "border-dark"}`}
                     style={{ maxWidth: 200 }}
                     isInvalid={
                       validated &&

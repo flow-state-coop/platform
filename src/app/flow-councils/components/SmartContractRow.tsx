@@ -138,7 +138,7 @@ export default function SmartContractRow(props: SmartContractRowProps) {
               <Form.Control
                 type="text"
                 value={contract.address}
-                placeholder=""
+                placeholder="0x123..."
                 className={`bg-white border border-2 rounded-4 py-3 px-3 ${isAddressInvalid(contract.address) ? "border-danger" : "border-dark"}`}
                 isInvalid={isAddressInvalid(contract.address)}
                 onChange={(e) => handleChange(index, "address", e.target.value)}

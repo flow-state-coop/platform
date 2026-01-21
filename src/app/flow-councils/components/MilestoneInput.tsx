@@ -117,6 +117,12 @@ export default function MilestoneInput(props: MilestoneInputProps) {
           experiment.
         </p>
       )}
+      {type === "build" && (
+        <p className="text-muted small mb-3">
+          We value clarity. Smaller, well-defined milestones & deliverables are
+          better than broad promises that are hard to verify.
+        </p>
+      )}
 
       <Form.Group className="mb-3">
         <Form.Label className="fw-bold">Title{required && "*"}</Form.Label>
