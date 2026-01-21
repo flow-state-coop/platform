@@ -92,7 +92,9 @@ export async function POST(request: Request) {
 
     // Filter smartContracts to only include valid addresses
     const validSmartContracts = (
-      smartContracts as { type: string; network: string; address: string }[] | undefined
+      smartContracts as
+        | { type: string; network: string; address: string }[]
+        | undefined
     )?.filter((c) => !c.address || isAddress(c.address));
 
     // Validate manager addresses include the session address
@@ -246,7 +248,9 @@ export async function PATCH(request: Request) {
 
     // Filter smartContracts to only include valid addresses
     const validSmartContracts = (
-      smartContracts as { type: string; network: string; address: string }[] | undefined
+      smartContracts as
+        | { type: string; network: string; address: string }[]
+        | undefined
     )?.filter((c) => !c.address || isAddress(c.address));
 
     // Validate manager addresses include the session address

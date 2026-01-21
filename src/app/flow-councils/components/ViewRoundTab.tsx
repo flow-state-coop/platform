@@ -387,9 +387,7 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
             ))
           ) : (
             <div className="bg-light rounded-4 p-3">
-              <h6 className="fw-bold mb-2 text-muted">
-                Milestone 1: (Title)
-              </h6>
+              <h6 className="fw-bold mb-2 text-muted">Milestone 1: (Title)</h6>
               <p className="mb-2 text-muted">(Description)</p>
               <span className="fw-semi-bold">Deliverables:</span>
               <ul className="mb-0">
@@ -471,9 +469,7 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
             ))
           ) : (
             <div className="bg-light rounded-4 p-3">
-              <h6 className="fw-bold mb-2 text-muted">
-                Milestone 1: (Title)
-              </h6>
+              <h6 className="fw-bold mb-2 text-muted">Milestone 1: (Title)</h6>
               <p className="mb-2 text-muted">(Description)</p>
               <span className="fw-semi-bold">Activations:</span>
               <ul className="mb-0">
@@ -513,19 +509,30 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
             </div>
             <div>
               <span className="fw-semi-bold">Role: </span>
-              <span className={team.primaryContact.roleDescription ? "" : "text-muted"}>
-                {team.primaryContact.roleDescription || "(Enter role description)"}
+              <span
+                className={
+                  team.primaryContact.roleDescription ? "" : "text-muted"
+                }
+              >
+                {team.primaryContact.roleDescription ||
+                  "(Enter role description)"}
               </span>
             </div>
             <div>
               <span className="fw-semi-bold">Telegram: </span>
-              <span className={team.primaryContact.telegram ? "" : "text-muted"}>
+              <span
+                className={team.primaryContact.telegram ? "" : "text-muted"}
+              >
                 {team.primaryContact.telegram || "(Optional)"}
               </span>
             </div>
             <div>
               <span className="fw-semi-bold">GitHub/LinkedIn: </span>
-              <span className={team.primaryContact.githubOrLinkedin ? "" : "text-muted"}>
+              <span
+                className={
+                  team.primaryContact.githubOrLinkedin ? "" : "text-muted"
+                }
+              >
                 {team.primaryContact.githubOrLinkedin || "(Optional)"}
               </span>
             </div>
@@ -551,7 +558,9 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
                   </div>
                   <div>
                     <span className="fw-semi-bold">Role: </span>
-                    <span className={teammate.roleDescription ? "" : "text-muted"}>
+                    <span
+                      className={teammate.roleDescription ? "" : "text-muted"}
+                    >
                       {teammate.roleDescription || "(Enter role description)"}
                     </span>
                   </div>
@@ -563,7 +572,9 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
                   </div>
                   <div>
                     <span className="fw-semi-bold">GitHub/LinkedIn: </span>
-                    <span className={teammate.githubOrLinkedin ? "" : "text-muted"}>
+                    <span
+                      className={teammate.githubOrLinkedin ? "" : "text-muted"}
+                    >
                       {teammate.githubOrLinkedin || "(Optional)"}
                     </span>
                   </div>

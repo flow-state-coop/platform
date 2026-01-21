@@ -95,10 +95,12 @@ export default function ChatView(props: ChatViewProps) {
         setMessages(data.messages || []);
         setError("");
       } else {
+        setMessages([]);
         setError(data.error || "Failed to load messages");
       }
     } catch (err) {
       console.error(err);
+      setMessages([]);
       setError("Failed to load messages");
     } finally {
       setIsLoading(false);

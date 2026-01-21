@@ -46,6 +46,7 @@ export default function Communications(props: CommunicationsProps) {
   const [channels, setChannels] = useState<ProjectChannel[]>([]);
   const [isLoadingChannels, setIsLoadingChannels] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [canAccessAnnouncements, setCanAccessAnnouncements] = useState(false);
   const [roundId, setRoundId] = useState<number | null>(null);
   const [roundName, setRoundName] = useState<string>("Round");
 
@@ -116,6 +117,7 @@ export default function Communications(props: CommunicationsProps) {
       if (data.success) {
         setChannels(data.channels || []);
         setIsAdmin(data.isAdmin || false);
+        setCanAccessAnnouncements(data.canAccessAnnouncements || false);
       }
     } catch (err) {
       console.error(err);
@@ -134,7 +136,8 @@ export default function Communications(props: CommunicationsProps) {
     }
   }, [fetchChannels, session?.address]);
 
-  // Default to announcements channel if no channel selected
+  // Default to announcements channel if no channel selected (and user has access)
+  // Otherwise default to first project channel
   useEffect(() => {
     if (
       !selectedChannel &&
@@ -142,15 +145,23 @@ export default function Communications(props: CommunicationsProps) {
       !isLoadingChannels &&
       hasAccess
     ) {
-      router.replace(
-        `/flow-councils/communications/${chainId}/${councilId}?channel=announcements`,
-      );
+      if (canAccessAnnouncements) {
+        router.replace(
+          `/flow-councils/communications/${chainId}/${councilId}?channel=announcements`,
+        );
+      } else if (channels.length > 0) {
+        router.replace(
+          `/flow-councils/communications/${chainId}/${councilId}?channel=${channels[0].projectId}`,
+        );
+      }
     }
   }, [
     selectedChannel,
     session?.address,
     isLoadingChannels,
     hasAccess,
+    canAccessAnnouncements,
+    channels,
     chainId,
     councilId,
     router,
@@ -214,6 +225,7 @@ export default function Communications(props: CommunicationsProps) {
               selectedChannel={selectedChannel}
               roundName={roundName}
               onSelectChannel={handleSelectChannel}
+              showAnnouncements={canAccessAnnouncements}
             />
           )}
 
@@ -226,6 +238,7 @@ export default function Communications(props: CommunicationsProps) {
                 selectedChannel={selectedChannel}
                 roundName={roundName}
                 onSelectChannel={handleSelectChannel}
+                showAnnouncements={canAccessAnnouncements}
               />
             )}
 

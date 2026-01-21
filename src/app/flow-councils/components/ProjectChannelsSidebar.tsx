@@ -21,13 +21,20 @@ type ProjectChannelsSidebarProps = {
   selectedChannel: string | null;
   roundName: string;
   onSelectChannel: (channel: string) => void;
+  showAnnouncements: boolean;
 };
 
 export default function ProjectChannelsSidebar(
   props: ProjectChannelsSidebarProps,
 ) {
-  const { channels, isLoading, selectedChannel, roundName, onSelectChannel } =
-    props;
+  const {
+    channels,
+    isLoading,
+    selectedChannel,
+    roundName,
+    onSelectChannel,
+    showAnnouncements,
+  } = props;
 
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const { isMobile, isTablet } = useMediaQuery();
@@ -48,15 +55,17 @@ export default function ProjectChannelsSidebar(
         </div>
       ) : (
         <Stack direction="vertical" gap={1}>
-          {/* Announcements channel - always shown first */}
-          <button
-            className={`btn btn-sm text-start border-0 rounded-3 px-2 py-1 bg-transparent text-dark ${
-              selectedChannel === "announcements" ? "fw-bold" : ""
-            }`}
-            onClick={() => handleSelectChannel("announcements")}
-          >
-            #Announcements
-          </button>
+          {/* Announcements channel - shown only to admins and grantees */}
+          {showAnnouncements && (
+            <button
+              className={`btn btn-sm text-start border-0 rounded-3 px-2 py-1 bg-transparent text-dark ${
+                selectedChannel === "announcements" ? "fw-bold" : ""
+              }`}
+              onClick={() => handleSelectChannel("announcements")}
+            >
+              #Announcements
+            </button>
+          )}
 
           {/* Project channels */}
           {channels.map((channel) => (

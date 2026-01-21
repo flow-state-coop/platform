@@ -2,56 +2,81 @@ import { getServerSession } from "next-auth/next";
 import {
   createPublicClient,
   http,
+  encodePacked,
+  keccak256,
   parseAbi,
   Address,
-  Chain,
   isAddress,
 } from "viem";
-import { optimism, arbitrum, base, optimismSepolia } from "wagmi/chains";
 import { db } from "../../db";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { networks } from "@/lib/networks";
 import { ChannelType } from "@/generated/kysely";
+import { chains } from "@/app/flow-councils/lib/constants";
 
 export const dynamic = "force-dynamic";
 
-const chains: { [id: number]: Chain } = {
-  10: optimism,
-  42161: arbitrum,
-  8453: base,
-  11155420: optimismSepolia,
-};
+const RECIPIENT_MANAGER_ROLE = keccak256(
+  encodePacked(["string"], ["RECIPIENT_MANAGER_ROLE"]),
+);
+
+const VOTER_MANAGER_ROLE = keccak256(
+  encodePacked(["string"], ["VOTER_MANAGER_ROLE"]),
+);
 
 const DEFAULT_ADMIN_ROLE =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
 
-async function checkOnChainRole(
+async function hasOnChainRole(
   chainId: number,
   councilId: string,
   address: string,
-  role: string,
 ): Promise<boolean> {
   const network = networks.find((n) => n.id === chainId);
   if (!network) return false;
 
+  const chain = chains[chainId];
+  if (!chain) return false;
+
   const publicClient = createPublicClient({
-    chain: chains[chainId],
+    chain,
     transport: http(network.rpcUrl),
   });
 
   try {
-    const hasRole = await publicClient.readContract({
-      address: councilId as Address,
-      abi: parseAbi([
-        "function hasRole(bytes32 role, address account) view returns (bool)",
-      ]),
-      functionName: "hasRole",
-      args: [role as `0x${string}`, address as Address],
-    });
+    const [hasRecipientManagerRole, hasVoterManagerRole, hasDefaultAdminRole] =
+      await Promise.all([
+        publicClient.readContract({
+          address: councilId as Address,
+          abi: parseAbi([
+            "function hasRole(bytes32 role, address account) view returns (bool)",
+          ]),
+          functionName: "hasRole",
+          args: [RECIPIENT_MANAGER_ROLE, address as Address],
+        }),
+        publicClient.readContract({
+          address: councilId as Address,
+          abi: parseAbi([
+            "function hasRole(bytes32 role, address account) view returns (bool)",
+          ]),
+          functionName: "hasRole",
+          args: [VOTER_MANAGER_ROLE, address as Address],
+        }),
+        publicClient.readContract({
+          address: councilId as Address,
+          abi: parseAbi([
+            "function hasRole(bytes32 role, address account) view returns (bool)",
+          ]),
+          functionName: "hasRole",
+          args: [DEFAULT_ADMIN_ROLE as `0x${string}`, address as Address],
+        }),
+      ]);
 
-    return hasRole;
+    return (
+      hasRecipientManagerRole || hasVoterManagerRole || hasDefaultAdminRole
+    );
   } catch (err) {
-    console.error("Error checking role:", err);
+    console.error("Error checking roles:", err);
     return false;
   }
 }
@@ -98,18 +123,23 @@ async function canModerateChannel(
 
   switch (channelType) {
     case "INTERNAL_APPLICATION":
-      // Moderator = DEFAULT_ADMIN_ROLE (Super Admin)
-      return checkOnChainRole(chainId, councilId, address, DEFAULT_ADMIN_ROLE);
+      // Moderator = any on-chain admin role
+      return hasOnChainRole(chainId, councilId, address);
 
     case "GROUP_ANNOUNCEMENTS":
     case "GROUP_PROJECT":
     case "GROUP_APPLICANTS":
     case "GROUP_GRANTEES":
     case "GROUP_ROUND_ADMINS":
-    case "PUBLIC_ROUND":
-      // Moderator = Round admins
+    case "PUBLIC_ROUND": {
+      // Moderator = Round admins (db or on-chain)
       if (!roundId) return false;
-      return isRoundAdmin(roundId, address);
+      const [isDbAdmin, isOnChainAdmin] = await Promise.all([
+        isRoundAdmin(roundId, address),
+        hasOnChainRole(chainId, councilId, address),
+      ]);
+      return isDbAdmin || isOnChainAdmin;
+    }
 
     case "PUBLIC_PROJECT":
       // Moderator = Project managers

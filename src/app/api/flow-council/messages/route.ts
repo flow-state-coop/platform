@@ -38,7 +38,11 @@ const RECIPIENT_MANAGER_ROLE = keccak256(
 const DEFAULT_ADMIN_ROLE =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
 
-async function checkManagerOrAdminRole(
+const VOTER_MANAGER_ROLE = keccak256(
+  encodePacked(["string"], ["VOTER_MANAGER_ROLE"]),
+);
+
+async function hasOnChainRole(
   chainId: number,
   councilId: string,
   address: string,
@@ -52,26 +56,37 @@ async function checkManagerOrAdminRole(
   });
 
   try {
-    const [hasRecipientManagerRole, hasDefaultAdminRole] = await Promise.all([
-      publicClient.readContract({
-        address: councilId as Address,
-        abi: parseAbi([
-          "function hasRole(bytes32 role, address account) view returns (bool)",
-        ]),
-        functionName: "hasRole",
-        args: [RECIPIENT_MANAGER_ROLE, address as Address],
-      }),
-      publicClient.readContract({
-        address: councilId as Address,
-        abi: parseAbi([
-          "function hasRole(bytes32 role, address account) view returns (bool)",
-        ]),
-        functionName: "hasRole",
-        args: [DEFAULT_ADMIN_ROLE as `0x${string}`, address as Address],
-      }),
-    ]);
+    const [hasRecipientManagerRole, hasVoterManagerRole, hasDefaultAdminRole] =
+      await Promise.all([
+        publicClient.readContract({
+          address: councilId as Address,
+          abi: parseAbi([
+            "function hasRole(bytes32 role, address account) view returns (bool)",
+          ]),
+          functionName: "hasRole",
+          args: [RECIPIENT_MANAGER_ROLE, address as Address],
+        }),
+        publicClient.readContract({
+          address: councilId as Address,
+          abi: parseAbi([
+            "function hasRole(bytes32 role, address account) view returns (bool)",
+          ]),
+          functionName: "hasRole",
+          args: [VOTER_MANAGER_ROLE, address as Address],
+        }),
+        publicClient.readContract({
+          address: councilId as Address,
+          abi: parseAbi([
+            "function hasRole(bytes32 role, address account) view returns (bool)",
+          ]),
+          functionName: "hasRole",
+          args: [DEFAULT_ADMIN_ROLE as `0x${string}`, address as Address],
+        }),
+      ]);
 
-    return hasRecipientManagerRole || hasDefaultAdminRole;
+    return (
+      hasRecipientManagerRole || hasVoterManagerRole || hasDefaultAdminRole
+    );
   } catch (err) {
     console.error("Error checking roles:", err);
     return false;
@@ -152,33 +167,40 @@ async function canReadChannel(
 
   switch (channelType) {
     case "INTERNAL_APPLICATION":
-      return checkManagerOrAdminRole(chainId, councilId, address);
+      return hasOnChainRole(chainId, councilId, address);
 
     case "GROUP_ANNOUNCEMENTS": {
       if (!roundId) return false;
-      // Read: Accepted grantee manager addresses OR Round admins
-      const [isGrantee, isAdmin] = await Promise.all([
+      // Read: Accepted grantee manager addresses OR Round admins (db or on-chain)
+      const [isGrantee, isDbAdmin, isOnChainAdmin] = await Promise.all([
         isAcceptedGrantee(roundId, address),
         isRoundAdmin(roundId, address),
+        hasOnChainRole(chainId, councilId, address),
       ]);
-      return isGrantee || isAdmin;
+      return isGrantee || isDbAdmin || isOnChainAdmin;
     }
 
     case "GROUP_PROJECT": {
       if (!projectId || !roundId) return false;
-      // Read: Project managers OR Round admins
-      const [isProjManager, isRndAdmin] = await Promise.all([
+      // Read: Project managers OR Round admins (db or on-chain)
+      const [isProjManager, isDbAdmin, isOnChainAdmin] = await Promise.all([
         isProjectManager(projectId, address),
         isRoundAdmin(roundId, address),
+        hasOnChainRole(chainId, councilId, address),
       ]);
-      return isProjManager || isRndAdmin;
+      return isProjManager || isDbAdmin || isOnChainAdmin;
     }
 
     case "GROUP_APPLICANTS":
     case "GROUP_GRANTEES":
-    case "GROUP_ROUND_ADMINS":
+    case "GROUP_ROUND_ADMINS": {
       if (!roundId) return false;
-      return isRoundAdmin(roundId, address);
+      const [isDbAdmin, isOnChainAdmin] = await Promise.all([
+        isRoundAdmin(roundId, address),
+        hasOnChainRole(chainId, councilId, address),
+      ]);
+      return isDbAdmin || isOnChainAdmin;
+    }
 
     default:
       return false;
@@ -193,27 +215,38 @@ async function canWriteChannel(
 
   switch (channelType) {
     case "INTERNAL_APPLICATION":
-      return checkManagerOrAdminRole(chainId, councilId, address);
+      return hasOnChainRole(chainId, councilId, address);
 
-    case "GROUP_ANNOUNCEMENTS":
-      // Write: Round admins only
+    case "GROUP_ANNOUNCEMENTS": {
+      // Write: Round admins only (db or on-chain)
       if (!roundId) return false;
-      return isRoundAdmin(roundId, address);
+      const [isDbAdmin, isOnChainAdmin] = await Promise.all([
+        isRoundAdmin(roundId, address),
+        hasOnChainRole(chainId, councilId, address),
+      ]);
+      return isDbAdmin || isOnChainAdmin;
+    }
 
     case "GROUP_PROJECT": {
       if (!projectId || !roundId) return false;
-      // Write: Project managers OR Round admins
-      const [isProjManager, isRndAdmin] = await Promise.all([
+      // Write: Project managers OR Round admins (db or on-chain)
+      const [isProjManager, isDbAdmin, isOnChainAdmin] = await Promise.all([
         isProjectManager(projectId, address),
         isRoundAdmin(roundId, address),
+        hasOnChainRole(chainId, councilId, address),
       ]);
-      return isProjManager || isRndAdmin;
+      return isProjManager || isDbAdmin || isOnChainAdmin;
     }
 
-    case "PUBLIC_ROUND":
-      // Write: Round admins only
+    case "PUBLIC_ROUND": {
+      // Write: Round admins only (db or on-chain)
       if (!roundId) return false;
-      return isRoundAdmin(roundId, address);
+      const [isDbAdmin, isOnChainAdmin] = await Promise.all([
+        isRoundAdmin(roundId, address),
+        hasOnChainRole(chainId, councilId, address),
+      ]);
+      return isDbAdmin || isOnChainAdmin;
+    }
 
     case "PUBLIC_PROJECT":
       // Write: Project managers
@@ -222,9 +255,14 @@ async function canWriteChannel(
 
     case "GROUP_APPLICANTS":
     case "GROUP_GRANTEES":
-    case "GROUP_ROUND_ADMINS":
+    case "GROUP_ROUND_ADMINS": {
       if (!roundId) return false;
-      return isRoundAdmin(roundId, address);
+      const [isDbAdmin, isOnChainAdmin] = await Promise.all([
+        isRoundAdmin(roundId, address),
+        hasOnChainRole(chainId, councilId, address),
+      ]);
+      return isDbAdmin || isOnChainAdmin;
+    }
 
     default:
       return false;
