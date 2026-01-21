@@ -343,7 +343,15 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
       ) : (
         <>
           <Card.Text className="fs-6">
-            Select or create a project to begin your application.
+            Select or create a project to begin your application.{" "}
+            <a
+              href="https://docs.google.com/document/d/1AnyrCNnXMJ9LYC_wXTK_Xu6il2duswp_QiM8oeU9iFA/edit?tab=t.0"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary"
+            >
+              Preview the full application here.
+            </a>
           </Card.Text>
           <div
             style={{

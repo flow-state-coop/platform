@@ -397,8 +397,6 @@ export default function RoundTab(props: RoundTabProps) {
 
   return (
     <Form>
-      <p className="text-muted mb-4">* Required Fields</p>
-
       {/* Section 1: Previous Participation */}
       <h4 className="fw-bold mb-4">1. Previous Participation</h4>
       <Form.Group className="mb-4">

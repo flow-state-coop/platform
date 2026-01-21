@@ -353,8 +353,6 @@ export default function ProjectTab(props: ProjectTabProps) {
 
   return (
     <Form>
-      <p className="text-muted mb-4">* Required Fields</p>
-
       {/* Section 1: Admin */}
       <h4 className="fw-bold mb-4">1. Admin</h4>
       <Form.Group className="mb-4">

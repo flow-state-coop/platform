@@ -236,6 +236,15 @@ export default function Application(props: ApplicationProps) {
           </Nav.Item>
         </Nav>
 
+        <a
+          href="https://docs.google.com/document/d/1AnyrCNnXMJ9LYC_wXTK_Xu6il2duswp_QiM8oeU9iFA/edit?tab=t.0"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary mb-4"
+        >
+          Application Template
+        </a>
+
         <Tab.Content>
           <Tab.Pane eventKey="project">
             <ProjectTab
