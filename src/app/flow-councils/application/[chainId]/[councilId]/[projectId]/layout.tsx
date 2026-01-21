@@ -201,7 +201,7 @@ export default function ApplicationLayout({
         roundName={roundName}
         applicationStatus={applicationStatus}
       />
-      <div className="flex-grow-1">{children}</div>
+      <div className="flex-grow-1 w-75">{children}</div>
     </Stack>
   );
 }
