@@ -318,7 +318,15 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
       {!isAuthenticated ? (
         <Stack direction="vertical" gap={3} className="mt-4">
           <Card.Text className="fs-6 mb-0">
-            Sign in with your wallet to view and manage your projects.
+            Sign in with your wallet to view and manage your projects.{" "}
+            <a
+              href="https://docs.google.com/document/d/1AnyrCNnXMJ9LYC_wXTK_Xu6il2duswp_QiM8oeU9iFA/edit?tab=t.0"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary"
+            >
+              Preview the full application here.
+            </a>
           </Card.Text>
           <Button
             className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
