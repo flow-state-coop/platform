@@ -26,7 +26,7 @@ import Sidebar from "@/app/flow-councils/components/Sidebar";
 import CopyTooltip from "@/components/CopyTooltip";
 import ViewProjectTab from "@/app/flow-councils/components/ViewProjectTab";
 import ViewRoundTab from "@/app/flow-councils/components/ViewRoundTab";
-import ViewEligibilityTab from "@/app/flow-councils/components/ViewEligibilityTab";
+import ViewAttestationTab from "@/app/flow-councils/components/ViewAttestationTab";
 import InternalComments from "@/app/flow-councils/components/InternalComments";
 import useSiwe from "@/hooks/siwe";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -34,7 +34,7 @@ import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { RECIPIENT_MANAGER_ROLE } from "../lib/constants";
 import { getApolloClient } from "@/lib/apollo";
 import type { RoundForm } from "@/app/flow-councils/components/ViewRoundTab";
-import type { EligibilityForm } from "@/app/flow-councils/components/ViewEligibilityTab";
+import type { AttestationForm } from "@/app/flow-councils/components/ViewAttestationTab";
 
 type ReviewProps = {
   chainId?: number;
@@ -63,7 +63,7 @@ type ProjectDetails = {
 };
 
 type ApplicationDetails = RoundForm & {
-  eligibility?: EligibilityForm;
+  attestation?: AttestationForm;
 };
 
 type Application = {
@@ -483,7 +483,7 @@ export default function Review(props: ReviewProps) {
                       <Nav.Link eventKey="round">Round</Nav.Link>
                     </Nav.Item>
                     <Nav.Item>
-                      <Nav.Link eventKey="eligibility">Eligibility</Nav.Link>
+                      <Nav.Link eventKey="eligibility">Attestation</Nav.Link>
                     </Nav.Item>
                     <Nav.Item>
                       <Nav.Link eventKey="comments">Comments</Nav.Link>
@@ -523,9 +523,15 @@ export default function Review(props: ReviewProps) {
                       />
                     </Tab.Pane>
                     <Tab.Pane eventKey="eligibility">
-                      <ViewEligibilityTab
-                        eligibilityData={
-                          selectedApplication.details?.eligibility ?? null
+                      <ViewAttestationTab
+                        attestationData={
+                          selectedApplication.details?.attestation ??
+                          (
+                            selectedApplication.details as ApplicationDetails & {
+                              eligibility?: AttestationForm;
+                            }
+                          )?.eligibility ??
+                          null
                         }
                       />
                     </Tab.Pane>
