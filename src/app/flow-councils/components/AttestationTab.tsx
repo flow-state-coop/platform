@@ -16,7 +16,7 @@ import { type RoundForm } from "./RoundTab";
 
 export type RecipientType = "individual" | "organization";
 
-export type EligibilityForm = {
+export type AttestationForm = {
   commitment: {
     agreedToCommitments: boolean;
   };
@@ -34,7 +34,7 @@ export type EligibilityForm = {
   };
 };
 
-const initialForm: EligibilityForm = {
+const initialForm: AttestationForm = {
   commitment: {
     agreedToCommitments: false,
   },
@@ -58,34 +58,34 @@ const isValidEmail = (email: string): boolean => {
   return emailRegex.test(email);
 };
 
-type EligibilityTabProps = {
+type AttestationTabProps = {
   chainId: number;
   councilId: string;
   projectId: number;
   applicationId: number | null;
   csrfToken: string;
   defaultFundingAddress: string;
-  existingEligibilityData: EligibilityForm | null;
+  existingAttestationData: AttestationForm | null;
   existingRoundData: RoundForm | null;
   isLoading: boolean;
   onBack: () => void;
 };
 
-export default function EligibilityTab(props: EligibilityTabProps) {
+export default function AttestationTab(props: AttestationTabProps) {
   const {
     chainId,
     councilId,
     applicationId,
     csrfToken,
     defaultFundingAddress,
-    existingEligibilityData,
+    existingAttestationData,
     existingRoundData,
     isLoading,
     onBack,
   } = props;
 
   const router = useRouter();
-  const [form, setForm] = useState<EligibilityForm>(initialForm);
+  const [form, setForm] = useState<AttestationForm>(initialForm);
   const [validated, setValidated] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -98,10 +98,10 @@ export default function EligibilityTab(props: EligibilityTabProps) {
   const { handleSignIn } = useSiwe();
 
   useEffect(() => {
-    if (existingEligibilityData) {
-      setForm(existingEligibilityData);
+    if (existingAttestationData) {
+      setForm(existingAttestationData);
     }
-  }, [existingEligibilityData]);
+  }, [existingAttestationData]);
 
   // Validation
   const isCommitmentValid = form.commitment.agreedToCommitments === true;
@@ -142,10 +142,10 @@ export default function EligibilityTab(props: EligibilityTabProps) {
       setIsSubmitting(true);
       setError("");
 
-      // Merge round data with eligibility data
+      // Merge round data with attestation data
       const combinedDetails = {
         ...existingRoundData,
-        eligibility: form,
+        attestation: form,
       };
 
       const res = await fetch(

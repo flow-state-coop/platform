@@ -4,7 +4,7 @@ import Form from "react-bootstrap/Form";
 
 export type RecipientType = "individual" | "organization";
 
-export type EligibilityForm = {
+export type AttestationForm = {
   commitment: {
     agreedToCommitments: boolean;
   };
@@ -22,8 +22,8 @@ export type EligibilityForm = {
   };
 };
 
-type ViewEligibilityTabProps = {
-  eligibilityData: EligibilityForm | null;
+type ViewAttestationTabProps = {
+  attestationData: AttestationForm | null;
 };
 
 const RECIPIENT_TYPE_LABELS: Record<RecipientType, string> = {
@@ -31,13 +31,13 @@ const RECIPIENT_TYPE_LABELS: Record<RecipientType, string> = {
   organization: "Organization",
 };
 
-export default function ViewEligibilityTab(props: ViewEligibilityTabProps) {
-  const { eligibilityData } = props;
+export default function ViewAttestationTab(props: ViewAttestationTabProps) {
+  const { attestationData } = props;
 
-  const commitment = eligibilityData?.commitment || {
+  const commitment = attestationData?.commitment || {
     agreedToCommitments: false,
   };
-  const identity = eligibilityData?.identity || {
+  const identity = attestationData?.identity || {
     recipientType: null as RecipientType | null,
     legalName: "",
     country: "",
@@ -46,7 +46,7 @@ export default function ViewEligibilityTab(props: ViewEligibilityTabProps) {
     fundingWallet: "",
     walletConfirmed: false,
   };
-  const dataAcknowledgement = eligibilityData?.dataAcknowledgement || {
+  const dataAcknowledgement = attestationData?.dataAcknowledgement || {
     gdprConsent: false,
   };
 

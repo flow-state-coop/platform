@@ -11,10 +11,10 @@ import RoundTab, {
   type RoundForm,
 } from "@/app/flow-councils/components/RoundTab";
 import ViewRoundTab from "@/app/flow-councils/components/ViewRoundTab";
-import EligibilityTab, {
-  type EligibilityForm,
-} from "@/app/flow-councils/components/EligibilityTab";
-import ViewEligibilityTab from "@/app/flow-councils/components/ViewEligibilityTab";
+import AttestationTab, {
+  type AttestationForm,
+} from "@/app/flow-councils/components/AttestationTab";
+import ViewAttestationTab from "@/app/flow-councils/components/ViewAttestationTab";
 import { networks } from "@/lib/networks";
 
 type ApplicationProps = {
@@ -66,8 +66,8 @@ export default function Application(props: ApplicationProps) {
   const [activeTab, setActiveTab] = useState("project");
   const [project, setProject] = useState<Project | null>(null);
   const [roundData, setRoundData] = useState<RoundForm | null>(null);
-  const [eligibilityData, setEligibilityData] =
-    useState<EligibilityForm | null>(null);
+  const [attestationData, setAttestationData] =
+    useState<AttestationForm | null>(null);
   const [applicationId, setApplicationId] = useState<number | null>(null);
   const [savedProjectId, setSavedProjectId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(!!projectId);
@@ -130,8 +130,8 @@ export default function Application(props: ApplicationProps) {
                 ? JSON.parse(app.details)
                 : app.details;
             setRoundData(details);
-            if (details.eligibility) {
-              setEligibilityData(details.eligibility);
+            if (details.attestation || details.eligibility) {
+              setAttestationData(details.attestation || details.eligibility);
             }
           }
         }
@@ -231,7 +231,7 @@ export default function Application(props: ApplicationProps) {
               }`}
               style={{ width: 140 }}
             >
-              Eligibility
+              Attestation
             </Nav.Link>
           </Nav.Item>
         </Nav>
@@ -274,7 +274,7 @@ export default function Application(props: ApplicationProps) {
           </Tab.Pane>
           <Tab.Pane eventKey="eligibility">
             {roundComplete ? (
-              <EligibilityTab
+              <AttestationTab
                 chainId={chainId}
                 councilId={councilId}
                 projectId={savedProjectId ?? project?.id ?? 0}
@@ -283,13 +283,13 @@ export default function Application(props: ApplicationProps) {
                 defaultFundingAddress={
                   project?.details?.defaultFundingAddress || ""
                 }
-                existingEligibilityData={eligibilityData}
+                existingAttestationData={attestationData}
                 existingRoundData={roundData}
                 isLoading={isLoading}
                 onBack={() => setActiveTab("round")}
               />
             ) : (
-              <ViewEligibilityTab eligibilityData={eligibilityData} />
+              <ViewAttestationTab attestationData={attestationData} />
             )}
           </Tab.Pane>
         </Tab.Content>
