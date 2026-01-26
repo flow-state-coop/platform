@@ -1,4 +1,4 @@
-import { z } from "zod/v4";
+import { z } from "zod";
 import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
 
 const smartContractSchema = z.object({
@@ -82,8 +82,8 @@ export const roundDetailsSchema = z.object({
         "other",
       ]),
     ),
-    otherTypeExplanation: z.string(),
-    description: z.string(),
+    otherTypeExplanation: z.string().min(1),
+    description: z.string().min(1),
   }),
   buildGoals: z.object({
     primaryBuildGoal: z.string(),
@@ -138,7 +138,7 @@ export function validateRoundDetails(
 
   if (details.previousParticipation.hasParticipatedBefore === true) {
     const len = details.previousParticipation.currentProjectState.length;
-    if (len > 0 && len < CHARACTER_LIMITS.currentProjectState.min) {
+    if (len < CHARACTER_LIMITS.currentProjectState.min) {
       return {
         success: false,
         error: `Current project state must be at least ${CHARACTER_LIMITS.currentProjectState.min} characters`,
@@ -148,10 +148,7 @@ export function validateRoundDetails(
 
   for (let i = 0; i < details.buildGoals.milestones.length; i++) {
     const desc = details.buildGoals.milestones[i].description;
-    if (
-      desc.length > 0 &&
-      desc.length < CHARACTER_LIMITS.milestoneDescription.min
-    ) {
+    if (desc.length < CHARACTER_LIMITS.milestoneDescription.min) {
       return {
         success: false,
         error: `Build milestone ${i + 1} description must be at least ${CHARACTER_LIMITS.milestoneDescription.min} characters`,
@@ -161,10 +158,7 @@ export function validateRoundDetails(
 
   for (let i = 0; i < details.growthGoals.milestones.length; i++) {
     const desc = details.growthGoals.milestones[i].description;
-    if (
-      desc.length > 0 &&
-      desc.length < CHARACTER_LIMITS.milestoneDescription.min
-    ) {
+    if (desc.length < CHARACTER_LIMITS.milestoneDescription.min) {
       return {
         success: false,
         error: `Growth milestone ${i + 1} description must be at least ${CHARACTER_LIMITS.milestoneDescription.min} characters`,
