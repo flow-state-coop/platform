@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
@@ -36,6 +37,8 @@ export default function MultiInput(props: MultiInputProps) {
     invalidFeedback,
   } = props;
 
+  const [touchedIndices, setTouchedIndices] = useState<Set<number>>(new Set());
+
   const isLocked = (index: number) => lockedIndices.includes(index);
 
   const handleChange = (index: number, value: string) => {
@@ -51,10 +54,18 @@ export default function MultiInput(props: MultiInputProps) {
   const handleRemove = (index: number) => {
     const newValues = values.filter((_, i) => i !== index);
     onChange(newValues.length > 0 ? newValues : [""]);
+    setTouchedIndices((prev) => {
+      const newSet = new Set<number>();
+      prev.forEach((i) => {
+        if (i < index) newSet.add(i);
+        else if (i > index) newSet.add(i - 1);
+      });
+      return newSet;
+    });
   };
 
   const isInvalid = (value: string, index: number) => {
-    if (!validated) return false;
+    if (!validated && !touchedIndices.has(index)) return false;
     if (required && index === 0 && !value) return true;
     if (value && validate && !validate(value)) return true;
     return false;
@@ -84,6 +95,9 @@ export default function MultiInput(props: MultiInputProps) {
                 isInvalid={isInvalid(value, index)}
                 disabled={isLocked(index)}
                 onChange={(e) => handleChange(index, e.target.value)}
+                onBlur={() =>
+                  setTouchedIndices((prev) => new Set(prev).add(index))
+                }
               />
               {values.length > 1 && !isLocked(index) && (
                 <Button

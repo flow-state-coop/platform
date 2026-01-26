@@ -87,6 +87,13 @@ export default function AttestationTab(props: AttestationTabProps) {
   const router = useRouter();
   const [form, setForm] = useState<AttestationForm>(initialForm);
   const [validated, setValidated] = useState(false);
+  const [touched, setTouched] = useState({
+    legalName: false,
+    country: false,
+    address: false,
+    contactEmail: false,
+    fundingWallet: false,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -287,14 +294,17 @@ export default function AttestationTab(props: AttestationTabProps) {
         <Form.Control
           type="text"
           value={form.identity.legalName}
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.identity.legalName.trim() ? "border-danger" : "border-dark"}`}
-          isInvalid={validated && !form.identity.legalName.trim()}
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.legalName) && !form.identity.legalName.trim() ? "border-danger" : "border-dark"}`}
+          isInvalid={
+            (validated || touched.legalName) && !form.identity.legalName.trim()
+          }
           onChange={(e) =>
             setForm({
               ...form,
               identity: { ...form.identity, legalName: e.target.value },
             })
           }
+          onBlur={() => setTouched((prev) => ({ ...prev, legalName: true }))}
         />
       </Form.Group>
 
@@ -307,14 +317,17 @@ export default function AttestationTab(props: AttestationTabProps) {
         <Form.Control
           type="text"
           value={form.identity.country}
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.identity.country.trim() ? "border-danger" : "border-dark"}`}
-          isInvalid={validated && !form.identity.country.trim()}
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.country) && !form.identity.country.trim() ? "border-danger" : "border-dark"}`}
+          isInvalid={
+            (validated || touched.country) && !form.identity.country.trim()
+          }
           onChange={(e) =>
             setForm({
               ...form,
               identity: { ...form.identity, country: e.target.value },
             })
           }
+          onBlur={() => setTouched((prev) => ({ ...prev, country: true }))}
         />
       </Form.Group>
 
@@ -323,14 +336,17 @@ export default function AttestationTab(props: AttestationTabProps) {
         <Form.Control
           type="text"
           value={form.identity.address}
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.identity.address.trim() ? "border-danger" : "border-dark"}`}
-          isInvalid={validated && !form.identity.address.trim()}
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.address) && !form.identity.address.trim() ? "border-danger" : "border-dark"}`}
+          isInvalid={
+            (validated || touched.address) && !form.identity.address.trim()
+          }
           onChange={(e) =>
             setForm({
               ...form,
               identity: { ...form.identity, address: e.target.value },
             })
           }
+          onBlur={() => setTouched((prev) => ({ ...prev, address: true }))}
         />
       </Form.Group>
 
@@ -339,9 +355,9 @@ export default function AttestationTab(props: AttestationTabProps) {
         <Form.Control
           type="email"
           value={form.identity.contactEmail}
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && (!form.identity.contactEmail.trim() || !isValidEmail(form.identity.contactEmail)) ? "border-danger" : "border-dark"}`}
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.contactEmail) && (!form.identity.contactEmail.trim() || !isValidEmail(form.identity.contactEmail)) ? "border-danger" : "border-dark"}`}
           isInvalid={
-            validated &&
+            (validated || touched.contactEmail) &&
             (!form.identity.contactEmail.trim() ||
               !isValidEmail(form.identity.contactEmail))
           }
@@ -351,6 +367,7 @@ export default function AttestationTab(props: AttestationTabProps) {
               identity: { ...form.identity, contactEmail: e.target.value },
             })
           }
+          onBlur={() => setTouched((prev) => ({ ...prev, contactEmail: true }))}
         />
       </Form.Group>
 
@@ -373,9 +390,9 @@ export default function AttestationTab(props: AttestationTabProps) {
           type="text"
           value={form.identity.fundingWallet}
           placeholder="0x..."
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && (!form.identity.fundingWallet.trim() || !isAddress(form.identity.fundingWallet)) ? "border-danger" : "border-dark"}`}
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.fundingWallet) && (!form.identity.fundingWallet.trim() || !isAddress(form.identity.fundingWallet)) ? "border-danger" : "border-dark"}`}
           isInvalid={
-            validated &&
+            (validated || touched.fundingWallet) &&
             (!form.identity.fundingWallet.trim() ||
               !isAddress(form.identity.fundingWallet))
           }
@@ -384,6 +401,9 @@ export default function AttestationTab(props: AttestationTabProps) {
               ...form,
               identity: { ...form.identity, fundingWallet: e.target.value },
             })
+          }
+          onBlur={() =>
+            setTouched((prev) => ({ ...prev, fundingWallet: true }))
           }
         />
         <Form.Control.Feedback type="invalid">
