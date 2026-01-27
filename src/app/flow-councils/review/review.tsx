@@ -15,6 +15,8 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Card from "react-bootstrap/Card";
 import Toast from "react-bootstrap/Toast";
+import Row from "react-bootstrap/Row";
+import Col from "react-bootstrap/Col";
 import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
 import Table from "react-bootstrap/Table";
@@ -205,9 +207,9 @@ export default function Review(props: ReviewProps) {
       return ["ACCEPTED"] as Status[];
     }
 
-    // If graduated, can only be removed
+    // If graduated, can be re-accepted or removed
     if (currentStatus === "GRADUATED") {
-      return ["REMOVED"] as Status[];
+      return ["ACCEPTED", "REMOVED"] as Status[];
     }
 
     // If not yet accepted, can accept, request changes, or reject
@@ -446,157 +448,73 @@ export default function Review(props: ReviewProps) {
               </Table>
             </div>
 
-            {/* Selected Application Review Panel */}
             {selectedApplication !== null && (
-              <Stack
-                direction="vertical"
-                className="mt-4 bg-lace-100 rounded-4 p-4"
-              >
-                {/* Header with close button */}
-                <Stack
-                  direction="horizontal"
-                  className="justify-content-between mb-4"
-                >
-                  <h4 className="fw-bold mb-0">
-                    {selectedApplication.projectDetails?.name ??
-                      "Application Review"}
-                  </h4>
-                  <Button
-                    variant="link"
-                    className="p-0"
-                    onClick={handleCloseReview}
+              <Stack direction="vertical" gap={4} className="mt-4">
+                <div className="bg-lace-100 rounded-4 p-4">
+                  <Stack
+                    direction="horizontal"
+                    className="justify-content-between mb-4"
                   >
-                    <Image src="/close.svg" alt="Close" width={24} />
-                  </Button>
-                </Stack>
+                    <h4 className="fw-bold mb-0">
+                      {selectedApplication.projectDetails?.name ??
+                        "Application Review"}
+                    </h4>
+                    <Button
+                      variant="link"
+                      className="p-0"
+                      onClick={handleCloseReview}
+                    >
+                      <Image src="/close.svg" alt="Close" width={24} />
+                    </Button>
+                  </Stack>
 
-                {/* Tabbed Interface */}
-                <Tab.Container
-                  activeKey={selectedTab}
-                  onSelect={(k) => setSelectedTab(k || "project")}
-                >
-                  <Nav variant="tabs" className="mb-4">
-                    <Nav.Item>
-                      <Nav.Link eventKey="project">Project</Nav.Link>
-                    </Nav.Item>
-                    <Nav.Item>
-                      <Nav.Link eventKey="round">Round</Nav.Link>
-                    </Nav.Item>
-                    <Nav.Item>
-                      <Nav.Link eventKey="eligibility">Attestation</Nav.Link>
-                    </Nav.Item>
-                    <Nav.Item>
-                      <Nav.Link eventKey="comments">Comments</Nav.Link>
-                    </Nav.Item>
-                  </Nav>
-
-                  <Tab.Content>
-                    <Tab.Pane eventKey="project">
-                      <ViewProjectTab
-                        projectDetails={selectedApplication.projectDetails}
-                        managerAddresses={selectedApplication.managerAddresses}
-                        managerEmails={selectedApplication.managerEmails}
-                      />
-                    </Tab.Pane>
-                    <Tab.Pane eventKey="round">
-                      <ViewRoundTab
-                        roundData={
-                          selectedApplication.details
-                            ? {
-                                previousParticipation:
-                                  selectedApplication.details
-                                    .previousParticipation,
-                                maturityAndUsage:
-                                  selectedApplication.details.maturityAndUsage,
-                                integration:
-                                  selectedApplication.details.integration,
-                                buildGoals:
-                                  selectedApplication.details.buildGoals,
-                                growthGoals:
-                                  selectedApplication.details.growthGoals,
-                                team: selectedApplication.details.team,
-                                additional:
-                                  selectedApplication.details.additional,
-                              }
-                            : null
-                        }
-                      />
-                    </Tab.Pane>
-                    <Tab.Pane eventKey="eligibility">
-                      <ViewAttestationTab
-                        attestationData={
-                          selectedApplication.details?.attestation ??
-                          (
-                            selectedApplication.details as ApplicationDetails & {
-                              eligibility?: AttestationForm;
-                            }
-                          )?.eligibility ??
-                          null
-                        }
-                      />
-                    </Tab.Pane>
-                    <Tab.Pane eventKey="comments">
-                      <InternalComments
-                        applicationId={selectedApplication.id}
-                        chainId={chainId}
-                        councilId={councilId}
-                      />
-                    </Tab.Pane>
-                  </Tab.Content>
-                </Tab.Container>
-
-                {/* Status Change Section */}
-                <div className="mt-6 pt-4 border-top">
-                  <h5 className="fw-bold mb-3">Update Status</h5>
-
-                  {/* Current Status */}
-                  <Form.Group className="mb-3">
-                    <Form.Label className="fw-semi-bold">
-                      Current Status
-                    </Form.Label>
-                    <Form.Control
-                      type="text"
-                      value={STATUS_LABELS[selectedApplication.status]}
-                      disabled
-                      className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-                    />
-                  </Form.Group>
-
-                  {/* New Status Dropdown */}
-                  <Form.Group className="mb-3">
-                    <Form.Label className="fw-semi-bold">New Status</Form.Label>
-                    <Dropdown>
-                      <Dropdown.Toggle
-                        variant="white"
-                        className="w-100 d-flex justify-content-between align-items-center bg-white border border-2 border-dark rounded-4 py-3 px-3"
-                      >
-                        {newStatus
-                          ? STATUS_LABELS[newStatus]
-                          : "Select new status..."}
-                      </Dropdown.Toggle>
-                      <Dropdown.Menu className="w-100 border border-dark p-2 lh-lg">
-                        {availableStatuses.map((status) => (
-                          <Dropdown.Item
-                            key={status}
-                            onClick={() => setNewStatus(status)}
+                  <Row className="mb-3">
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-semi-bold">
+                          Current Status
+                        </Form.Label>
+                        <Form.Control
+                          type="text"
+                          value={STATUS_LABELS[selectedApplication.status]}
+                          disabled
+                          className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label className="fw-semi-bold">
+                          New Status
+                        </Form.Label>
+                        <Dropdown>
+                          <Dropdown.Toggle
+                            variant="white"
+                            className="w-100 d-flex justify-content-between align-items-center bg-white border border-2 border-dark rounded-4 py-3 px-3"
                           >
-                            {STATUS_LABELS[status]}
-                          </Dropdown.Item>
-                        ))}
-                      </Dropdown.Menu>
-                    </Dropdown>
-                  </Form.Group>
+                            {newStatus
+                              ? STATUS_LABELS[newStatus]
+                              : "Select new status..."}
+                          </Dropdown.Toggle>
+                          <Dropdown.Menu className="w-100 border border-dark p-2 lh-lg">
+                            {availableStatuses.map((status) => (
+                              <Dropdown.Item
+                                key={status}
+                                onClick={() => setNewStatus(status)}
+                              >
+                                {STATUS_LABELS[status]}
+                              </Dropdown.Item>
+                            ))}
+                          </Dropdown.Menu>
+                        </Dropdown>
+                      </Form.Group>
+                    </Col>
+                  </Row>
 
-                  {/* Review Comment */}
                   <Form.Group className="mb-4">
                     <Form.Label className="fw-semi-bold">
-                      Review Comment
+                      Review Comment (Shared with the project)
                     </Form.Label>
-                    <p className="text-muted small mb-2">
-                      This comment will be added as an automated message in the
-                      project chat. Use the Comments tab for private internal
-                      notes.
-                    </p>
                     <Form.Control
                       as="textarea"
                       rows={3}
@@ -608,7 +526,6 @@ export default function Review(props: ReviewProps) {
                     />
                   </Form.Group>
 
-                  {/* Submit Button */}
                   <Button
                     className="w-100 py-4 rounded-4 fw-semi-bold"
                     disabled={!newStatus || isSubmitting}
@@ -635,6 +552,125 @@ export default function Review(props: ReviewProps) {
                       {error}
                     </Alert>
                   )}
+                </div>
+
+                <div className="bg-lace-100 rounded-4 p-4">
+                  <Tab.Container
+                    activeKey={selectedTab}
+                    onSelect={(k) => setSelectedTab(k || "project")}
+                  >
+                    <Nav className="gap-2 mb-4 border-0">
+                      <Nav.Item>
+                        <Nav.Link
+                          eventKey="project"
+                          className={`py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${
+                            selectedTab === "project"
+                              ? "bg-primary text-white"
+                              : "bg-white text-primary"
+                          }`}
+                          style={{ width: 140 }}
+                        >
+                          Project
+                        </Nav.Link>
+                      </Nav.Item>
+                      <Nav.Item>
+                        <Nav.Link
+                          eventKey="round"
+                          className={`py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${
+                            selectedTab === "round"
+                              ? "bg-primary text-white"
+                              : "bg-white text-primary"
+                          }`}
+                          style={{ width: 140 }}
+                        >
+                          Round
+                        </Nav.Link>
+                      </Nav.Item>
+                      <Nav.Item>
+                        <Nav.Link
+                          eventKey="eligibility"
+                          className={`py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${
+                            selectedTab === "eligibility"
+                              ? "bg-primary text-white"
+                              : "bg-white text-primary"
+                          }`}
+                          style={{ width: 140 }}
+                        >
+                          Attestation
+                        </Nav.Link>
+                      </Nav.Item>
+                      <Nav.Item>
+                        <Nav.Link
+                          eventKey="comments"
+                          className={`py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${
+                            selectedTab === "comments"
+                              ? "bg-primary text-white"
+                              : "bg-white text-primary"
+                          }`}
+                          style={{ width: 140 }}
+                        >
+                          Comments
+                        </Nav.Link>
+                      </Nav.Item>
+                    </Nav>
+
+                    <Tab.Content>
+                      <Tab.Pane eventKey="project">
+                        <ViewProjectTab
+                          projectDetails={selectedApplication.projectDetails}
+                          managerAddresses={
+                            selectedApplication.managerAddresses
+                          }
+                          managerEmails={selectedApplication.managerEmails}
+                        />
+                      </Tab.Pane>
+                      <Tab.Pane eventKey="round">
+                        <ViewRoundTab
+                          roundData={
+                            selectedApplication.details
+                              ? {
+                                  previousParticipation:
+                                    selectedApplication.details
+                                      .previousParticipation,
+                                  maturityAndUsage:
+                                    selectedApplication.details
+                                      .maturityAndUsage,
+                                  integration:
+                                    selectedApplication.details.integration,
+                                  buildGoals:
+                                    selectedApplication.details.buildGoals,
+                                  growthGoals:
+                                    selectedApplication.details.growthGoals,
+                                  team: selectedApplication.details.team,
+                                  additional:
+                                    selectedApplication.details.additional,
+                                }
+                              : null
+                          }
+                        />
+                      </Tab.Pane>
+                      <Tab.Pane eventKey="eligibility">
+                        <ViewAttestationTab
+                          attestationData={
+                            selectedApplication.details?.attestation ??
+                            (
+                              selectedApplication.details as ApplicationDetails & {
+                                eligibility?: AttestationForm;
+                              }
+                            )?.eligibility ??
+                            null
+                          }
+                        />
+                      </Tab.Pane>
+                      <Tab.Pane eventKey="comments">
+                        <InternalComments
+                          applicationId={selectedApplication.id}
+                          chainId={chainId}
+                          councilId={councilId}
+                        />
+                      </Tab.Pane>
+                    </Tab.Content>
+                  </Tab.Container>
                 </div>
               </Stack>
             )}
