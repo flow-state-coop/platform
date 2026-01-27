@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { isAddress } from "viem";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
+import { validateProjectDetails } from "../validation";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,16 @@ export async function POST(request: Request) {
       );
     }
 
+    const body = await request.json();
+    const { managerAddresses, managerEmails, ...projectDetails } = body;
+
+    const validation = validateProjectDetails(projectDetails);
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({ success: false, error: validation.error }),
+      );
+    }
+
     const {
       name,
       description,
@@ -60,9 +71,6 @@ export async function POST(request: Request) {
       website,
       twitter,
       github,
-      // New fields
-      managerAddresses,
-      managerEmails,
       defaultFundingAddress,
       demoUrl,
       farcaster,
@@ -72,15 +80,8 @@ export async function POST(request: Request) {
       githubRepos,
       smartContracts,
       otherLinks,
-    } = await request.json();
+    } = validation.data;
 
-    if (!name) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Project name is required" }),
-      );
-    }
-
-    // Validate defaultFundingAddress if provided
     if (defaultFundingAddress && !isAddress(defaultFundingAddress)) {
       return new Response(
         JSON.stringify({
@@ -191,28 +192,9 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const {
-      projectId,
-      name,
-      description,
-      logoUrl,
-      bannerUrl,
-      website,
-      twitter,
-      github,
-      // New fields
-      managerAddresses,
-      managerEmails,
-      defaultFundingAddress,
-      demoUrl,
-      farcaster,
-      telegram,
-      discord,
-      karmaProfile,
-      githubRepos,
-      smartContracts,
-      otherLinks,
-    } = await request.json();
+    const body = await request.json();
+    const { projectId, managerAddresses, managerEmails, ...projectDetails } =
+      body;
 
     if (!projectId) {
       return new Response(
@@ -236,7 +218,32 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // Validate defaultFundingAddress if provided
+    const validation = validateProjectDetails(projectDetails);
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({ success: false, error: validation.error }),
+      );
+    }
+
+    const {
+      name,
+      description,
+      logoUrl,
+      bannerUrl,
+      website,
+      twitter,
+      github,
+      defaultFundingAddress,
+      demoUrl,
+      farcaster,
+      telegram,
+      discord,
+      karmaProfile,
+      githubRepos,
+      smartContracts,
+      otherLinks,
+    } = validation.data;
+
     if (defaultFundingAddress && !isAddress(defaultFundingAddress)) {
       return new Response(
         JSON.stringify({

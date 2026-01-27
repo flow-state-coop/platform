@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
@@ -34,6 +35,10 @@ const CONTRACT_TYPES = [
 export default function SmartContractRow(props: SmartContractRowProps) {
   const { contracts, onChange, validated = false } = props;
 
+  const [touchedAddresses, setTouchedAddresses] = useState<Set<number>>(
+    new Set(),
+  );
+
   const handleChange = (
     index: number,
     field: keyof SmartContract,
@@ -58,10 +63,18 @@ export default function SmartContractRow(props: SmartContractRowProps) {
   const handleRemove = (index: number) => {
     const newContracts = contracts.filter((_, i) => i !== index);
     onChange(newContracts);
+    setTouchedAddresses((prev) => {
+      const newSet = new Set<number>();
+      prev.forEach((i) => {
+        if (i < index) newSet.add(i);
+        else if (i > index) newSet.add(i - 1);
+      });
+      return newSet;
+    });
   };
 
-  const isAddressInvalid = (address: string) => {
-    if (!validated) return false;
+  const isAddressInvalid = (address: string, index: number) => {
+    if (!validated && !touchedAddresses.has(index)) return false;
     return address !== "" && !isAddress(address);
   };
 
@@ -139,9 +152,12 @@ export default function SmartContractRow(props: SmartContractRowProps) {
                 type="text"
                 value={contract.address}
                 placeholder="0x123..."
-                className={`bg-white border border-2 rounded-4 py-3 px-3 ${isAddressInvalid(contract.address) ? "border-danger" : "border-dark"}`}
-                isInvalid={isAddressInvalid(contract.address)}
+                className={`bg-white border border-2 rounded-4 py-3 px-3 ${isAddressInvalid(contract.address, index) ? "border-danger" : "border-dark"}`}
+                isInvalid={isAddressInvalid(contract.address, index)}
                 onChange={(e) => handleChange(index, "address", e.target.value)}
+                onBlur={() =>
+                  setTouchedAddresses((prev) => new Set(prev).add(index))
+                }
               />
               <Form.Control.Feedback type="invalid">
                 Please enter a valid ETH address

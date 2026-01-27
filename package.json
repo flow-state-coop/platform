@@ -58,7 +58,8 @@
     "siwe": "^3.0.0",
     "use-clamp-text": "^1.1.1",
     "viem": "2.33.3",
-    "wagmi": "2.16.3"
+    "wagmi": "2.16.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/d3": "^7.4.3",
