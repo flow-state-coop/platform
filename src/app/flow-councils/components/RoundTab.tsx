@@ -201,13 +201,14 @@ export default function RoundTab(props: RoundTabProps) {
   const isBuildValid =
     form.buildGoals.primaryBuildGoal.trim() !== "" &&
     form.buildGoals.milestones.length >= 1 &&
-    form.buildGoals.milestones[0].title.trim() !== "" &&
-    form.buildGoals.milestones[0].description.trim() !== "" &&
-    form.buildGoals.milestones[0].description.length >=
-      CHARACTER_LIMITS.milestoneDescription.min &&
-    form.buildGoals.milestones[0].description.length <=
-      CHARACTER_LIMITS.milestoneDescription.max &&
-    form.buildGoals.milestones[0].deliverables.some((d) => d.trim() !== "") &&
+    form.buildGoals.milestones.every(
+      (m) =>
+        m.title.trim() !== "" &&
+        m.description.trim() !== "" &&
+        m.description.length >= CHARACTER_LIMITS.milestoneDescription.min &&
+        m.description.length <= CHARACTER_LIMITS.milestoneDescription.max &&
+        m.deliverables.some((d) => d.trim() !== ""),
+    ) &&
     form.buildGoals.ecosystemImpact.length <=
       CHARACTER_LIMITS.ecosystemImpact.max;
 
@@ -215,13 +216,14 @@ export default function RoundTab(props: RoundTabProps) {
     form.growthGoals.primaryGrowthGoal.trim() !== "" &&
     form.growthGoals.targetUsers.trim() !== "" &&
     form.growthGoals.milestones.length >= 1 &&
-    form.growthGoals.milestones[0].title.trim() !== "" &&
-    form.growthGoals.milestones[0].description.trim() !== "" &&
-    form.growthGoals.milestones[0].description.length >=
-      CHARACTER_LIMITS.milestoneDescription.min &&
-    form.growthGoals.milestones[0].description.length <=
-      CHARACTER_LIMITS.milestoneDescription.max &&
-    form.growthGoals.milestones[0].activations.some((a) => a.trim() !== "") &&
+    form.growthGoals.milestones.every(
+      (m) =>
+        m.title.trim() !== "" &&
+        m.description.trim() !== "" &&
+        m.description.length >= CHARACTER_LIMITS.milestoneDescription.min &&
+        m.description.length <= CHARACTER_LIMITS.milestoneDescription.max &&
+        m.activations.some((a) => a.trim() !== ""),
+    ) &&
     form.growthGoals.ecosystemImpact.length <=
       CHARACTER_LIMITS.ecosystemImpact.max;
 

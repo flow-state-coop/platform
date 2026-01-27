@@ -82,7 +82,7 @@ export const roundDetailsSchema = z.object({
         "other",
       ]),
     ),
-    otherTypeExplanation: z.string().min(1),
+    otherTypeExplanation: z.string(),
     description: z.string().min(1),
   }),
   buildGoals: z.object({
@@ -144,6 +144,16 @@ export function validateRoundDetails(
         error: `Current project state must be at least ${CHARACTER_LIMITS.currentProjectState.min} characters`,
       };
     }
+  }
+
+  if (
+    details.integration.types.includes("other") &&
+    details.integration.otherTypeExplanation.trim() === ""
+  ) {
+    return {
+      success: false,
+      error: "Please explain the 'other' integration type",
+    };
   }
 
   for (let i = 0; i < details.buildGoals.milestones.length; i++) {
