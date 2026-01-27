@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
+import CharacterCounter from "./CharacterCounter";
+import { CHARACTER_LIMITS } from "../constants";
 
 export type BuildMilestone = {
   title: string;
@@ -37,6 +40,8 @@ export default function MilestoneInput(props: MilestoneInputProps) {
     type,
     index,
   } = props;
+
+  const [touched, setTouched] = useState({ description: false });
 
   const items =
     type === "build"
@@ -149,12 +154,26 @@ export default function MilestoneInput(props: MilestoneInputProps) {
                        Include KPIs (numbers tied to your milestone) that will
                        serve as targets, not obligations. Examples include
                        transaction #s, repeat usage %, amount of liquidity added."
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && required && !milestone.description.trim() ? "border-danger" : "border-dark"}`}
-          style={{ resize: "none" }}
-          isInvalid={validated && required && !milestone.description.trim()}
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.description) && required && (!milestone.description.trim() || milestone.description.length < CHARACTER_LIMITS.milestoneDescription.min || milestone.description.length > CHARACTER_LIMITS.milestoneDescription.max) ? "border-danger" : "border-dark"}`}
+          style={{ resize: "none", backgroundImage: "none" }}
+          isInvalid={
+            (validated || touched.description) &&
+            required &&
+            (!milestone.description.trim() ||
+              milestone.description.length <
+                CHARACTER_LIMITS.milestoneDescription.min ||
+              milestone.description.length >
+                CHARACTER_LIMITS.milestoneDescription.max)
+          }
           onChange={(e) =>
             onChange({ ...milestone, description: e.target.value })
           }
+          onBlur={() => setTouched((prev) => ({ ...prev, description: true }))}
+        />
+        <CharacterCounter
+          value={milestone.description}
+          min={CHARACTER_LIMITS.milestoneDescription.min}
+          max={CHARACTER_LIMITS.milestoneDescription.max}
         />
       </Form.Group>
 

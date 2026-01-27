@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
@@ -19,6 +20,8 @@ type OtherLinkRowProps = {
 export default function OtherLinkRow(props: OtherLinkRowProps) {
   const { links, onChange, validated = false } = props;
 
+  const [touchedUrls, setTouchedUrls] = useState<Set<number>>(new Set());
+
   const handleChange = (
     index: number,
     field: keyof OtherLink,
@@ -36,10 +39,18 @@ export default function OtherLinkRow(props: OtherLinkRowProps) {
   const handleRemove = (index: number) => {
     const newLinks = links.filter((_, i) => i !== index);
     onChange(newLinks);
+    setTouchedUrls((prev) => {
+      const newSet = new Set<number>();
+      prev.forEach((i) => {
+        if (i < index) newSet.add(i);
+        else if (i > index) newSet.add(i - 1);
+      });
+      return newSet;
+    });
   };
 
-  const isUrlInvalid = (url: string) => {
-    if (!validated) return false;
+  const isUrlInvalid = (url: string, index: number) => {
+    if (!validated && !touchedUrls.has(index)) return false;
     return url !== "" && !url.startsWith("https://");
   };
 
@@ -64,9 +75,12 @@ export default function OtherLinkRow(props: OtherLinkRowProps) {
                 type="text"
                 value={link.url}
                 placeholder="https://..."
-                className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
-                isInvalid={isUrlInvalid(link.url)}
+                className={`bg-white border border-2 rounded-4 py-3 px-3 ${isUrlInvalid(link.url, index) ? "border-danger" : "border-dark"}`}
+                isInvalid={isUrlInvalid(link.url, index)}
                 onChange={(e) => handleChange(index, "url", e.target.value)}
+                onBlur={() =>
+                  setTouchedUrls((prev) => new Set(prev).add(index))
+                }
               />
               <Button
                 variant="link"

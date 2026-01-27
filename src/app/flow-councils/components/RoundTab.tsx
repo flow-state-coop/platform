@@ -15,6 +15,8 @@ import MilestoneInput, {
 } from "./MilestoneInput";
 import TeamMemberInput, { type TeamMember } from "./TeamMemberInput";
 import InfoBox from "./InfoBox";
+import CharacterCounter from "./CharacterCounter";
+import { CHARACTER_LIMITS } from "../constants";
 import useSiwe from "@/hooks/siwe";
 
 export type IntegrationType =
@@ -152,6 +154,11 @@ export default function RoundTab(props: RoundTabProps) {
 
   const [form, setForm] = useState<RoundForm>(initialForm);
   const [validated, setValidated] = useState(false);
+  const [touched, setTouched] = useState({
+    currentProjectState: false,
+    buildEcosystemImpact: false,
+    growthEcosystemImpact: false,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -168,8 +175,16 @@ export default function RoundTab(props: RoundTabProps) {
   }, [existingRoundData]);
 
   // Validation
+  const isCurrentProjectStateValid =
+    !form.previousParticipation.hasParticipatedBefore ||
+    (form.previousParticipation.currentProjectState.length >=
+      CHARACTER_LIMITS.currentProjectState.min &&
+      form.previousParticipation.currentProjectState.length <=
+        CHARACTER_LIMITS.currentProjectState.max);
+
   const isPreviousParticipationValid =
-    form.previousParticipation.hasParticipatedBefore !== null;
+    form.previousParticipation.hasParticipatedBefore !== null &&
+    isCurrentProjectStateValid;
 
   const isMaturityValid =
     form.maturityAndUsage.projectStage !== null &&
@@ -186,17 +201,31 @@ export default function RoundTab(props: RoundTabProps) {
   const isBuildValid =
     form.buildGoals.primaryBuildGoal.trim() !== "" &&
     form.buildGoals.milestones.length >= 1 &&
-    form.buildGoals.milestones[0].title.trim() !== "" &&
-    form.buildGoals.milestones[0].description.trim() !== "" &&
-    form.buildGoals.milestones[0].deliverables.some((d) => d.trim() !== "");
+    form.buildGoals.milestones.every(
+      (m) =>
+        m.title.trim() !== "" &&
+        m.description.trim() !== "" &&
+        m.description.length >= CHARACTER_LIMITS.milestoneDescription.min &&
+        m.description.length <= CHARACTER_LIMITS.milestoneDescription.max &&
+        m.deliverables.some((d) => d.trim() !== ""),
+    ) &&
+    form.buildGoals.ecosystemImpact.length <=
+      CHARACTER_LIMITS.ecosystemImpact.max;
 
   const isGrowthValid =
     form.growthGoals.primaryGrowthGoal.trim() !== "" &&
     form.growthGoals.targetUsers.trim() !== "" &&
     form.growthGoals.milestones.length >= 1 &&
-    form.growthGoals.milestones[0].title.trim() !== "" &&
-    form.growthGoals.milestones[0].description.trim() !== "" &&
-    form.growthGoals.milestones[0].activations.some((a) => a.trim() !== "");
+    form.growthGoals.milestones.every(
+      (m) =>
+        m.title.trim() !== "" &&
+        m.description.trim() !== "" &&
+        m.description.length >= CHARACTER_LIMITS.milestoneDescription.min &&
+        m.description.length <= CHARACTER_LIMITS.milestoneDescription.max &&
+        m.activations.some((a) => a.trim() !== ""),
+    ) &&
+    form.growthGoals.ecosystemImpact.length <=
+      CHARACTER_LIMITS.ecosystemImpact.max;
 
   const isTeamValid =
     form.team.primaryContact.name.trim() !== "" &&
@@ -495,7 +524,7 @@ export default function RoundTab(props: RoundTabProps) {
 
           <Form.Group className="mb-4">
             <Form.Label className="fs-lg fw-bold mb-1">
-              What&apos;s the current state of your project today?
+              What&apos;s the current state of your project today?*
             </Form.Label>
             <ul className="text-muted small mb-2 ps-3">
               <li>Progress made & milestones completed since last round</li>
@@ -507,8 +536,13 @@ export default function RoundTab(props: RoundTabProps) {
               rows={6}
               value={form.previousParticipation.currentProjectState}
               placeholder=""
-              className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
-              style={{ resize: "none" }}
+              className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.currentProjectState) && form.previousParticipation.hasParticipatedBefore && !isCurrentProjectStateValid ? "border-danger" : "border-dark"}`}
+              style={{ resize: "none", backgroundImage: "none" }}
+              isInvalid={
+                (validated || touched.currentProjectState) &&
+                form.previousParticipation.hasParticipatedBefore === true &&
+                !isCurrentProjectStateValid
+              }
               onChange={(e) =>
                 setForm({
                   ...form,
@@ -518,6 +552,14 @@ export default function RoundTab(props: RoundTabProps) {
                   },
                 })
               }
+              onBlur={() =>
+                setTouched((prev) => ({ ...prev, currentProjectState: true }))
+              }
+            />
+            <CharacterCounter
+              value={form.previousParticipation.currentProjectState}
+              min={CHARACTER_LIMITS.currentProjectState.min}
+              max={CHARACTER_LIMITS.currentProjectState.max}
             />
           </Form.Group>
         </>
@@ -891,8 +933,13 @@ export default function RoundTab(props: RoundTabProps) {
           rows={3}
           value={form.buildGoals.ecosystemImpact}
           placeholder="Why your build matters for the GoodDollar ecosystem (utility, integrations, community value)."
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
-          style={{ resize: "none" }}
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.buildEcosystemImpact) && form.buildGoals.ecosystemImpact.length > CHARACTER_LIMITS.ecosystemImpact.max ? "border-danger" : "border-dark"}`}
+          style={{ resize: "none", backgroundImage: "none" }}
+          isInvalid={
+            (validated || touched.buildEcosystemImpact) &&
+            form.buildGoals.ecosystemImpact.length >
+              CHARACTER_LIMITS.ecosystemImpact.max
+          }
           onChange={(e) =>
             setForm({
               ...form,
@@ -902,6 +949,13 @@ export default function RoundTab(props: RoundTabProps) {
               },
             })
           }
+          onBlur={() =>
+            setTouched((prev) => ({ ...prev, buildEcosystemImpact: true }))
+          }
+        />
+        <CharacterCounter
+          value={form.buildGoals.ecosystemImpact}
+          max={CHARACTER_LIMITS.ecosystemImpact.max}
         />
       </Form.Group>
 
@@ -988,8 +1042,13 @@ export default function RoundTab(props: RoundTabProps) {
           rows={3}
           value={form.growthGoals.ecosystemImpact}
           placeholder="Why your growth matters for the GoodDollar ecosystem (network effects, G$ adoption, etc)"
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
-          style={{ resize: "none" }}
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.growthEcosystemImpact) && form.growthGoals.ecosystemImpact.length > CHARACTER_LIMITS.ecosystemImpact.max ? "border-danger" : "border-dark"}`}
+          style={{ resize: "none", backgroundImage: "none" }}
+          isInvalid={
+            (validated || touched.growthEcosystemImpact) &&
+            form.growthGoals.ecosystemImpact.length >
+              CHARACTER_LIMITS.ecosystemImpact.max
+          }
           onChange={(e) =>
             setForm({
               ...form,
@@ -999,6 +1058,13 @@ export default function RoundTab(props: RoundTabProps) {
               },
             })
           }
+          onBlur={() =>
+            setTouched((prev) => ({ ...prev, growthEcosystemImpact: true }))
+          }
+        />
+        <CharacterCounter
+          value={form.growthGoals.ecosystemImpact}
+          max={CHARACTER_LIMITS.ecosystemImpact.max}
         />
       </Form.Group>
 

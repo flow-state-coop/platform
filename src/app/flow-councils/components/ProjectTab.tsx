@@ -13,6 +13,8 @@ import Spinner from "react-bootstrap/Spinner";
 import MultiInput from "./MultiInput";
 import SmartContractRow, { type SmartContract } from "./SmartContractRow";
 import OtherLinkRow, { type OtherLink } from "./OtherLinkRow";
+import CharacterCounter from "./CharacterCounter";
+import { CHARACTER_LIMITS } from "../constants";
 import useSiwe from "@/hooks/siwe";
 
 async function uploadToS3(file: Blob, fileName: string): Promise<string> {
@@ -138,6 +140,15 @@ export default function ProjectTab(props: ProjectTabProps) {
   const [existingLogoUrl, setExistingLogoUrl] = useState("");
   const [existingBannerUrl, setExistingBannerUrl] = useState("");
   const [validated, setValidated] = useState(false);
+  const [touched, setTouched] = useState({
+    name: false,
+    defaultFundingAddress: false,
+    description: false,
+    website: false,
+    telegram: false,
+    discord: false,
+    karmaProfile: false,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [logoError, setLogoError] = useState("");
   const [bannerError, setBannerError] = useState("");
@@ -229,12 +240,17 @@ export default function ProjectTab(props: ProjectTabProps) {
   const hasValidGithubRepo =
     form.githubRepos.filter((r) => r && isValidUrl(r)).length > 0;
 
+  const isDescriptionValid =
+    !!form.description &&
+    form.description.length >= CHARACTER_LIMITS.projectDescription.min &&
+    form.description.length <= CHARACTER_LIMITS.projectDescription.max;
+
   const isValid =
     !!form.name &&
     hasValidManagerAddress &&
     hasValidManagerEmail &&
     isAddress(form.defaultFundingAddress) &&
-    !!form.description &&
+    isDescriptionValid &&
     hasLogo &&
     hasBanner &&
     !!form.website &&
@@ -361,9 +377,10 @@ export default function ProjectTab(props: ProjectTabProps) {
           type="text"
           value={form.name}
           placeholder=""
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.name ? "border-danger" : "border-dark"}`}
-          isInvalid={validated && !form.name}
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.name) && !form.name ? "border-danger" : "border-dark"}`}
+          isInvalid={(validated || touched.name) && !form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
+          onBlur={() => setTouched((prev) => ({ ...prev, name: true }))}
         />
       </Form.Group>
 
@@ -405,10 +422,16 @@ export default function ProjectTab(props: ProjectTabProps) {
           type="text"
           value={form.defaultFundingAddress}
           placeholder=""
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !isAddress(form.defaultFundingAddress) ? "border-danger" : "border-dark"}`}
-          isInvalid={validated && !isAddress(form.defaultFundingAddress)}
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.defaultFundingAddress) && !isAddress(form.defaultFundingAddress) ? "border-danger" : "border-dark"}`}
+          isInvalid={
+            (validated || touched.defaultFundingAddress) &&
+            !isAddress(form.defaultFundingAddress)
+          }
           onChange={(e) =>
             setForm({ ...form, defaultFundingAddress: e.target.value })
+          }
+          onBlur={() =>
+            setTouched((prev) => ({ ...prev, defaultFundingAddress: true }))
           }
         />
         <Form.Control.Feedback type="invalid">
@@ -427,10 +450,16 @@ export default function ProjectTab(props: ProjectTabProps) {
           rows={6}
           value={form.description}
           placeholder=""
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.description ? "border-danger" : "border-dark"}`}
-          style={{ resize: "none" }}
-          isInvalid={validated && !form.description}
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.description) && !isDescriptionValid ? "border-danger" : "border-dark"}`}
+          style={{ resize: "none", backgroundImage: "none" }}
+          isInvalid={(validated || touched.description) && !isDescriptionValid}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
+          onBlur={() => setTouched((prev) => ({ ...prev, description: true }))}
+        />
+        <CharacterCounter
+          value={form.description}
+          min={CHARACTER_LIMITS.projectDescription.min}
+          max={CHARACTER_LIMITS.projectDescription.max}
         />
       </Form.Group>
 
@@ -555,9 +584,10 @@ export default function ProjectTab(props: ProjectTabProps) {
           type="text"
           value={form.website}
           placeholder="https://..."
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.website ? "border-danger" : "border-dark"}`}
-          isInvalid={validated && !form.website}
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.website) && !form.website ? "border-danger" : "border-dark"}`}
+          isInvalid={(validated || touched.website) && !form.website}
           onChange={(e) => setForm({ ...form, website: e.target.value })}
+          onBlur={() => setTouched((prev) => ({ ...prev, website: true }))}
         />
       </Form.Group>
 
@@ -602,13 +632,14 @@ export default function ProjectTab(props: ProjectTabProps) {
           type="text"
           value={form.telegram}
           placeholder="https://t.me/..."
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !!form.telegram && !form.telegram.startsWith("https://t.me/") ? "border-danger" : "border-dark"}`}
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.telegram) && !!form.telegram && !form.telegram.startsWith("https://t.me/") ? "border-danger" : "border-dark"}`}
           isInvalid={
-            validated &&
+            (validated || touched.telegram) &&
             !!form.telegram &&
             !form.telegram.startsWith("https://t.me/")
           }
           onChange={(e) => setForm({ ...form, telegram: e.target.value })}
+          onBlur={() => setTouched((prev) => ({ ...prev, telegram: true }))}
         />
       </Form.Group>
 
@@ -618,13 +649,14 @@ export default function ProjectTab(props: ProjectTabProps) {
           type="text"
           value={form.discord}
           placeholder="https://discord.gg/..."
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !!form.discord && !form.discord.startsWith("https://discord") ? "border-danger" : "border-dark"}`}
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.discord) && !!form.discord && !form.discord.startsWith("https://discord") ? "border-danger" : "border-dark"}`}
           isInvalid={
-            validated &&
+            (validated || touched.discord) &&
             !!form.discord &&
             !form.discord.startsWith("https://discord")
           }
           onChange={(e) => setForm({ ...form, discord: e.target.value })}
+          onBlur={() => setTouched((prev) => ({ ...prev, discord: true }))}
         />
       </Form.Group>
 
@@ -634,13 +666,14 @@ export default function ProjectTab(props: ProjectTabProps) {
           type="text"
           value={form.karmaProfile}
           placeholder="https://karmahq.xyz/project/..."
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !!form.karmaProfile && !form.karmaProfile.startsWith("https://") ? "border-danger" : "border-dark"}`}
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.karmaProfile) && !!form.karmaProfile && !form.karmaProfile.startsWith("https://") ? "border-danger" : "border-dark"}`}
           isInvalid={
-            validated &&
+            (validated || touched.karmaProfile) &&
             !!form.karmaProfile &&
             !form.karmaProfile.startsWith("https://")
           }
           onChange={(e) => setForm({ ...form, karmaProfile: e.target.value })}
+          onBlur={() => setTouched((prev) => ({ ...prev, karmaProfile: true }))}
         />
       </Form.Group>
 

@@ -314,7 +314,9 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
       <Markdown className="fs-6 text-info">
         {councilMetadata.description}
       </Markdown>
-      <h2 className="mt-5 mb-2 fw-bold fs-3">My Projects</h2>
+      <h2 className="mt-5 mb-2 fw-bold fs-3">
+        {isAuthenticated ? "My Projects" : "Apply Now"}
+      </h2>
       {!isAuthenticated ? (
         <Stack direction="vertical" gap={3} className="mt-4">
           <Card.Text className="fs-6 mb-0">

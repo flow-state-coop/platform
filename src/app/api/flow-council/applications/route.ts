@@ -4,6 +4,7 @@ import { db } from "../db";
 import { networks } from "@/lib/networks";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { errorResponse } from "../../utils";
+import { validateRoundDetails } from "../validation";
 
 export const dynamic = "force-dynamic";
 
@@ -167,7 +168,15 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Check for existing application
+    if (details) {
+      const validation = validateRoundDetails(details);
+      if (!validation.success) {
+        return new Response(
+          JSON.stringify({ success: false, error: validation.error }),
+        );
+      }
+    }
+
     const existingApplication = await db
       .selectFrom("applications")
       .select(["id", "status"])
