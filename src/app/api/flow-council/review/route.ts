@@ -157,7 +157,9 @@ export async function POST(request: Request) {
         if (projectEmails.length > 0 && details) {
           return sendApplicationStatusChangedEmail(projectEmails, {
             baseUrl,
+            projectName: details.projectName,
             roundName: details.roundName,
+            status: newStatus,
             chainId: details.chainId,
             councilId: details.councilId,
             projectId: application.projectId,
