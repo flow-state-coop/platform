@@ -19,6 +19,7 @@ import {
   getProjectEmails,
   getProjectAndRoundDetails,
 } from "../email";
+import { errorResponse } from "../../utils";
 
 export const dynamic = "force-dynamic";
 
@@ -175,6 +176,7 @@ export async function POST(request: Request) {
     );
   } catch (err) {
     console.error(err);
-    return new Response(JSON.stringify({ success: false, error: err }));
+
+    return errorResponse(err);
   }
 }

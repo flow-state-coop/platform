@@ -1,3 +1,5 @@
+import { errorResponse } from "../utils";
+
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
@@ -42,6 +44,6 @@ export async function POST(request: Request) {
       }),
     );
   } catch (err) {
-    return new Response(JSON.stringify({ success: false, error: err }));
+    return errorResponse(err);
   }
 }

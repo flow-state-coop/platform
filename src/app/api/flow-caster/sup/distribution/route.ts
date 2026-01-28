@@ -4,6 +4,7 @@ import { gql, request } from "graphql-request";
 import { StackClient } from "@stackso/js-core";
 import { networks } from "@/lib/networks";
 import { GDAPool } from "@/types/gdaPool";
+import { errorResponse } from "../../../utils";
 
 export const dynamic = "force-dynamic";
 
@@ -151,7 +152,6 @@ export async function GET(req: NextRequest) {
     );
   } catch (err) {
     console.error(err);
-
-    return new Response(JSON.stringify({ success: false, error: err }));
+    return errorResponse(err);
   }
 }
