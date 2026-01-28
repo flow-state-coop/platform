@@ -198,7 +198,7 @@ export default function Application(props: ApplicationProps) {
           <Nav.Item>
             <Nav.Link
               eventKey="project"
-              className={`py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${
+              className={`py-3 rounded-4 fs-lg fw-bold d-flex justify-content-center align-items-center text-center border border-2 border-primary ${
                 activeTab === "project"
                   ? "bg-primary text-white"
                   : "bg-white text-primary"
@@ -211,7 +211,7 @@ export default function Application(props: ApplicationProps) {
           <Nav.Item>
             <Nav.Link
               eventKey="round"
-              className={`py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${
+              className={`py-3 rounded-4 fs-lg fw-bold d-flex justify-content-center align-items-center text-center border border-2 border-primary ${
                 activeTab === "round"
                   ? "bg-primary text-white"
                   : "bg-white text-primary"
@@ -224,7 +224,7 @@ export default function Application(props: ApplicationProps) {
           <Nav.Item>
             <Nav.Link
               eventKey="eligibility"
-              className={`py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${
+              className={`py-3 rounded-4 fs-lg fw-bold d-flex justify-content-center align-items-center text-center border border-2 border-primary ${
                 activeTab === "eligibility"
                   ? "bg-primary text-white"
                   : "bg-white text-primary"

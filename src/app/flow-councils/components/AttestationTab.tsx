@@ -32,6 +32,9 @@ export type AttestationForm = {
   dataAcknowledgement: {
     gdprConsent: boolean;
   };
+  privacyTransparency: {
+    agreedToPrivacy: boolean;
+  };
 };
 
 const initialForm: AttestationForm = {
@@ -49,6 +52,9 @@ const initialForm: AttestationForm = {
   },
   dataAcknowledgement: {
     gdprConsent: false,
+  },
+  privacyTransparency: {
+    agreedToPrivacy: false,
   },
 };
 
@@ -106,7 +112,10 @@ export default function AttestationTab(props: AttestationTabProps) {
 
   useEffect(() => {
     if (existingAttestationData) {
-      setForm(existingAttestationData);
+      setForm({
+        ...initialForm,
+        ...existingAttestationData,
+      });
     }
   }, [existingAttestationData]);
 
@@ -127,8 +136,14 @@ export default function AttestationTab(props: AttestationTabProps) {
   const isDataAcknowledgementValid =
     form.dataAcknowledgement.gdprConsent === true;
 
+  const isPrivacyTransparencyValid =
+    form.privacyTransparency.agreedToPrivacy === true;
+
   const isValid =
-    isCommitmentValid && isIdentityValid && isDataAcknowledgementValid;
+    isCommitmentValid &&
+    isIdentityValid &&
+    isDataAcknowledgementValid &&
+    isPrivacyTransparencyValid;
 
   // Handle "Use your project default" link
   const handleUseDefaultFunding = () => {
@@ -456,6 +471,64 @@ export default function AttestationTab(props: AttestationTabProps) {
           }
         />
       </Form.Group>
+
+      {/* Section 4: Privacy & Transparency */}
+      <h4 className="fw-bold mb-4 mt-8">4. Privacy & Transparency*</h4>
+      <Form.Check
+        type="checkbox"
+        id="privacy-agree"
+        className="mb-3"
+        checked={form.privacyTransparency.agreedToPrivacy}
+        isInvalid={validated && !form.privacyTransparency.agreedToPrivacy}
+        onChange={(e) =>
+          setForm({
+            ...form,
+            privacyTransparency: { agreedToPrivacy: e.target.checked },
+          })
+        }
+        label={
+          <span className="fw-bold">
+            By submitting this application, I acknowledge and agree to the
+            following:
+          </span>
+        }
+      />
+      <ul className="mb-6 ps-4">
+        <li>
+          <span className="fw-semi-bold">Public Accountability:</span> My
+          project name, description, funding received, and key milestones may be
+          made publicly visible to promote transparency and community trust.
+        </li>
+        <li>
+          <span className="fw-semi-bold">On-Chain Records:</span> Certain
+          grant-related data (including wallet addresses and funding
+          transactions) may be recorded on-chain and are inherently public and
+          immutable.
+        </li>
+        <li>
+          <span className="fw-semi-bold">Strategic Use of Data:</span>{" "}
+          Aggregated, anonymized data from applications and project performance
+          may be used in reports, research, or communications to demonstrate the
+          impact of GoodBuilders and guide future program design.
+        </li>
+        <li>
+          <span className="fw-semi-bold">Confidentiality:</span> Sensitive
+          personal data (such as legal name, address, and email) will remain
+          confidential and will only be used for KYC and internal program
+          management purposes, unless required by law.
+        </li>
+        <li>
+          <span className="fw-semi-bold">Analytics & Communication:</span> I
+          agree to receive program updates and occasional communications related
+          to GoodBuilders or GoodDollar initiatives. I can opt out at any time.
+        </li>
+        <li>
+          <span className="fw-semi-bold">Marketing and Communications:</span> I
+          acknowledge that my project may be featured in public communications,
+          marketing materials, or case studies by GoodDollar and its partners to
+          highlight progress and success stories.
+        </li>
+      </ul>
 
       {/* Navigation */}
       <Stack direction="vertical" gap={3} className="mb-30">

@@ -20,6 +20,9 @@ export type AttestationForm = {
   dataAcknowledgement: {
     gdprConsent: boolean;
   };
+  privacyTransparency: {
+    agreedToPrivacy: boolean;
+  };
 };
 
 type ViewAttestationTabProps = {
@@ -48,6 +51,9 @@ export default function ViewAttestationTab(props: ViewAttestationTabProps) {
   };
   const dataAcknowledgement = attestationData?.dataAcknowledgement || {
     gdprConsent: false,
+  };
+  const privacyTransparency = attestationData?.privacyTransparency || {
+    agreedToPrivacy: false,
   };
 
   return (
@@ -202,6 +208,62 @@ export default function ViewAttestationTab(props: ViewAttestationTabProps) {
             in accordance with GDPR and will not be shared outside of GoodDollar
             and its grant management partners.
           </p>
+        </div>
+      )}
+
+      {/* Section 4: Privacy & Transparency */}
+      <h4 className="fw-bold mb-4 mt-8">4. Privacy & Transparency</h4>
+      <Form.Group className="mb-4">
+        <Form.Label className="fs-lg fw-bold">
+          Agreed to Privacy & Transparency
+        </Form.Label>
+        <Form.Control
+          type="text"
+          value={privacyTransparency.agreedToPrivacy ? "Yes" : "No"}
+          disabled
+          className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
+        />
+      </Form.Group>
+
+      {privacyTransparency.agreedToPrivacy && (
+        <div className="bg-light rounded-4 p-3 mb-4">
+          <p className="fw-semi-bold mb-2">
+            By submitting this application, applicant acknowledges and agrees
+            to:
+          </p>
+          <ul className="mb-0 ps-3">
+            <li>
+              <span className="fw-semi-bold">Public Accountability:</span>{" "}
+              Project name, description, funding received, and key milestones
+              may be made publicly visible
+            </li>
+            <li>
+              <span className="fw-semi-bold">On-Chain Records:</span> Certain
+              grant-related data may be recorded on-chain and are inherently
+              public and immutable
+            </li>
+            <li>
+              <span className="fw-semi-bold">Strategic Use of Data:</span>{" "}
+              Aggregated, anonymized data may be used in reports, research, or
+              communications
+            </li>
+            <li>
+              <span className="fw-semi-bold">Confidentiality:</span> Sensitive
+              personal data will remain confidential and used only for KYC and
+              internal program management
+            </li>
+            <li>
+              <span className="fw-semi-bold">Analytics & Communication:</span>{" "}
+              Agrees to receive program updates and occasional communications
+            </li>
+            <li>
+              <span className="fw-semi-bold">
+                Marketing and Communications:
+              </span>{" "}
+              Project may be featured in public communications and marketing
+              materials
+            </li>
+          </ul>
         </div>
       )}
     </div>
