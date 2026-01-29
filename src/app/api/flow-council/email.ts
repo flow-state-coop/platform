@@ -1,11 +1,6 @@
-import { SendEmailCommand } from "@aws-sdk/client-ses";
+import { SendTemplatedEmailCommand } from "@aws-sdk/client-ses";
 import { sesClient, SES_FROM_EMAIL } from "./ses";
 import { db } from "./db";
-
-export const ADMIN_NOTIFICATION_EMAILS = [
-  "rael@gooddollar.org",
-  "graven@flowstate.network",
-];
 
 type ApplicationSubmittedEmailData = {
   baseUrl: string;
@@ -17,7 +12,9 @@ type ApplicationSubmittedEmailData = {
 
 type ApplicationStatusChangedEmailData = {
   baseUrl: string;
+  projectName: string;
   roundName: string;
+  status: string;
   chainId: number;
   councilId: string;
   projectId: number;
@@ -27,37 +24,38 @@ type ChatMessageEmailData = {
   baseUrl: string;
   projectName: string;
   roundName: string;
+  sender: string;
+  messageContent: string;
   chainId: number;
   councilId: string;
   projectId: number;
 };
 
-async function sendEmail(
+type AnnouncementEmailData = {
+  baseUrl: string;
+  roundName: string;
+  sender: string;
+  messageContent: string;
+  chainId: number;
+  councilId: string;
+};
+
+async function sendTemplatedEmail(
   to: string[],
-  subject: string,
-  body: string,
+  templateName: string,
+  templateData: Record<string, string>,
 ): Promise<void> {
   if (to.length === 0) return;
 
   try {
-    const command = new SendEmailCommand({
+    const command = new SendTemplatedEmailCommand({
       Source: SES_FROM_EMAIL,
       Destination: {
         ToAddresses: [SES_FROM_EMAIL],
         BccAddresses: to,
       },
-      Message: {
-        Subject: {
-          Data: subject,
-          Charset: "UTF-8",
-        },
-        Body: {
-          Text: {
-            Data: body,
-            Charset: "UTF-8",
-          },
-        },
-      },
+      Template: templateName,
+      TemplateData: JSON.stringify(templateData),
     });
 
     await sesClient.send(command);
@@ -112,12 +110,8 @@ export async function getChatMessageRecipients(
     getRoundAdminEmailsExcludingAddress(roundId, senderAddress),
   ]);
 
-  // Combine all emails and add hardcoded admin emails
-  const allEmails = new Set([
-    ...projectEmails,
-    ...roundAdminEmails,
-    ...ADMIN_NOTIFICATION_EMAILS,
-  ]);
+  // Combine all emails
+  const allEmails = new Set([...projectEmails, ...roundAdminEmails]);
 
   return Array.from(allEmails);
 }
@@ -150,77 +144,100 @@ export async function getAnnouncementRecipients(
     getRoundAdminEmailsExcludingAddress(roundId, senderAddress),
   ]);
 
-  // Combine all emails and add hardcoded admin emails
-  const allEmails = new Set([
-    ...granteeEmails,
-    ...roundAdminEmails,
-    ...ADMIN_NOTIFICATION_EMAILS,
-  ]);
+  // Combine all emails
+  const allEmails = new Set([...granteeEmails, ...roundAdminEmails]);
 
   return Array.from(allEmails);
 }
 
 export async function sendApplicationSubmittedEmail(
+  recipients: string[],
   data: ApplicationSubmittedEmailData,
 ): Promise<void> {
   const { baseUrl, projectName, roundName, chainId, councilId } = data;
 
-  const reviewLink = `${baseUrl}/flow-councils/review/${chainId}/${councilId}?tab=manage`;
+  const ctaLink = `${baseUrl}/flow-councils/review/${chainId}/${councilId}?tab=manage`;
+  const unsubLink = `${baseUrl}/flow-councils/application/${chainId}/${councilId}`;
 
-  const subject = `Application Submitted - ${roundName}`;
-  const body = `${projectName} submitted their application to ${roundName}. Start your review here: ${reviewLink}`;
-
-  await sendEmail(ADMIN_NOTIFICATION_EMAILS, subject, body);
+  await sendTemplatedEmail(recipients, "flow-council-application-submitted", {
+    projectName,
+    roundName,
+    ctaLink,
+    unsubLink,
+  });
 }
 
 export async function sendApplicationStatusChangedEmail(
   recipients: string[],
   data: ApplicationStatusChangedEmailData,
 ): Promise<void> {
-  const { baseUrl, roundName, chainId, councilId, projectId } = data;
+  const {
+    baseUrl,
+    projectName,
+    roundName,
+    status,
+    chainId,
+    councilId,
+    projectId,
+  } = data;
 
-  const projectLink = `${baseUrl}/flow-councils/communications/${chainId}/${councilId}?channel=${projectId}`;
+  const ctaLink = `${baseUrl}/flow-councils/communications/${chainId}/${councilId}?channel=${projectId}`;
+  const unsubLink = `${baseUrl}/flow-councils/application/${chainId}/${councilId}`;
 
-  const subject = `Application Status Change - ${roundName}`;
-  const body = `The status of your application to ${roundName} has changed. Review your status and any comments here: ${projectLink}`;
-
-  await sendEmail(recipients, subject, body);
+  await sendTemplatedEmail(recipients, "flow-council-application-status", {
+    projectName,
+    roundName,
+    status,
+    ctaLink,
+    unsubLink,
+  });
 }
 
 export async function sendChatMessageEmail(
   recipients: string[],
   data: ChatMessageEmailData,
 ): Promise<void> {
-  const { baseUrl, projectName, roundName, chainId, councilId, projectId } =
-    data;
+  const {
+    baseUrl,
+    projectName,
+    roundName,
+    sender,
+    messageContent,
+    chainId,
+    councilId,
+    projectId,
+  } = data;
 
-  const chatLink = `${baseUrl}/flow-councils/communications/${chainId}/${councilId}?channel=${projectId}`;
+  const ctaLink = `${baseUrl}/flow-councils/communications/${chainId}/${councilId}?channel=${projectId}`;
+  const unsubLink = `${baseUrl}/flow-councils/application/${chainId}/${councilId}`;
 
-  const subject = `New Message - #${projectName}`;
-  const body = `There's a new message in the ${roundName} - ${projectName} chat: ${chatLink}`;
-
-  await sendEmail(recipients, subject, body);
+  await sendTemplatedEmail(recipients, "flow-council-message", {
+    projectName,
+    roundName,
+    sender,
+    messageContent,
+    ctaLink,
+    unsubLink,
+  });
 }
-
-type AnnouncementEmailData = {
-  baseUrl: string;
-  roundName: string;
-  chainId: number;
-  councilId: string;
-};
 
 export async function sendAnnouncementEmail(
   recipients: string[],
   data: AnnouncementEmailData,
 ): Promise<void> {
-  const { baseUrl, roundName, chainId, councilId } = data;
+  const { baseUrl, roundName, sender, messageContent, chainId, councilId } =
+    data;
 
-  const announcementLink = `${baseUrl}/flow-councils/communications/${chainId}/${councilId}?channel=announcements`;
+  const ctaLink = `${baseUrl}/flow-councils/communications/${chainId}/${councilId}?channel=announcements`;
+  const unsubLink = `${baseUrl}/flow-councils/application/${chainId}/${councilId}`;
 
-  const subject = `New Announcement - ${roundName}`;
-  const body = `There's a new announcement in ${roundName}. View it here: ${announcementLink}`;
-
-  await sendEmail(recipients, subject, body);
+  await sendTemplatedEmail(recipients, "flow-council-announcement", {
+    roundName,
+    sender,
+    messageContent,
+    ctaLink,
+    unsubLink,
+  });
 }
 
 // Helper to get project and round details for email

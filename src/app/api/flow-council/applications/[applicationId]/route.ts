@@ -5,6 +5,7 @@ import { authOptions } from "../../../auth/[...nextauth]/route";
 import {
   sendApplicationSubmittedEmail,
   getProjectAndRoundDetails,
+  getRoundAdminEmailsExcludingAddress,
 } from "../../email";
 
 export const dynamic = "force-dynamic";
@@ -190,18 +191,22 @@ export async function PATCH(
         })
         .execute();
 
-      // Send email notification to admins (non-blocking)
+      // Send email notification to round admins (non-blocking)
       if (details) {
         const baseUrl = new URL(request.url).origin;
-        sendApplicationSubmittedEmail({
-          baseUrl,
-          projectName: details.projectName,
-          roundName: details.roundName,
-          chainId: details.chainId,
-          councilId: details.councilId,
-        }).catch((err) =>
-          console.error("Failed to send submission email:", err),
-        );
+        getRoundAdminEmailsExcludingAddress(updatedApplication.roundId)
+          .then((recipients) =>
+            sendApplicationSubmittedEmail(recipients, {
+              baseUrl,
+              projectName: details.projectName,
+              roundName: details.roundName,
+              chainId: details.chainId,
+              councilId: details.councilId,
+            }),
+          )
+          .catch((err) =>
+            console.error("Failed to send submission email:", err),
+          );
       }
     }
 

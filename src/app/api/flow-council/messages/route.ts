@@ -19,7 +19,8 @@ import {
   sendAnnouncementEmail,
   getProjectAndRoundDetails,
   getRoundDetails,
-  ADMIN_NOTIFICATION_EMAILS,
+  getChatMessageRecipients,
+  getAnnouncementRecipients,
 } from "../email";
 
 export const dynamic = "force-dynamic";
@@ -497,13 +498,19 @@ export async function POST(request: Request) {
     // Send email notification if requested (non-blocking)
     if (sendEmail === true && effectiveRoundId) {
       const baseUrl = new URL(request.url).origin;
+      const messageContent = content.trim();
       if (channelType === "GROUP_ANNOUNCEMENTS") {
-        getRoundDetails(effectiveRoundId)
-          .then((details) => {
+        Promise.all([
+          getRoundDetails(effectiveRoundId),
+          getAnnouncementRecipients(effectiveRoundId, session.address),
+        ])
+          .then(([details, recipients]) => {
             if (details) {
-              return sendAnnouncementEmail(ADMIN_NOTIFICATION_EMAILS, {
+              return sendAnnouncementEmail(recipients, {
                 baseUrl,
                 roundName: details.roundName,
+                sender: session.address,
+                messageContent,
                 chainId: details.chainId,
                 councilId: details.councilId,
               });
@@ -513,13 +520,22 @@ export async function POST(request: Request) {
             console.error("Failed to send announcement email:", err),
           );
       } else if (messageProjectId) {
-        getProjectAndRoundDetails(messageProjectId, effectiveRoundId)
-          .then((details) => {
+        Promise.all([
+          getProjectAndRoundDetails(messageProjectId, effectiveRoundId),
+          getChatMessageRecipients(
+            messageProjectId,
+            effectiveRoundId,
+            session.address,
+          ),
+        ])
+          .then(([details, recipients]) => {
             if (details) {
-              return sendChatMessageEmail(ADMIN_NOTIFICATION_EMAILS, {
+              return sendChatMessageEmail(recipients, {
                 baseUrl,
                 projectName: details.projectName,
                 roundName: details.roundName,
+                sender: session.address,
+                messageContent,
                 chainId: details.chainId,
                 councilId: details.councilId,
                 projectId: messageProjectId,

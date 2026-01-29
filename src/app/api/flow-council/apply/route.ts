@@ -6,6 +6,7 @@ import { networks } from "@/lib/networks";
 import {
   sendApplicationSubmittedEmail,
   getProjectAndRoundDetails,
+  getRoundAdminEmailsExcludingAddress,
 } from "../email";
 import { errorResponse } from "../../utils";
 
@@ -141,13 +142,16 @@ export async function POST(request: Request) {
       );
     }
 
-    // Send email notification to admins (non-blocking)
+    // Send email notification to round admins (non-blocking)
     if (applicationCreated) {
       const baseUrl = new URL(request.url).origin;
-      getProjectAndRoundDetails(projectId, round.id)
-        .then((details) => {
+      Promise.all([
+        getProjectAndRoundDetails(projectId, round.id),
+        getRoundAdminEmailsExcludingAddress(round.id),
+      ])
+        .then(([details, recipients]) => {
           if (details) {
-            return sendApplicationSubmittedEmail({
+            return sendApplicationSubmittedEmail(recipients, {
               baseUrl,
               projectName: details.projectName,
               roundName: details.roundName,
