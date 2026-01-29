@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const tokensPerDollar = 0.1;
+    const pointsPerDollar = 10;
     const now = (Date.now() / 1000) | 0;
     const stack = new StackClient({
       apiKey:
@@ -116,9 +116,12 @@ export async function GET(req: NextRequest) {
               x.address.toLowerCase() === distributor.address,
           )?.amount ?? 0;
         const totalDistributed = distributor.totalDistributed;
-        const newPoints =
-          (Number(formatEther(totalDistributed)) / tokensPerDollar) | 0;
-        const diff = newPoints - currentPoints;
+        const totalDistributedDollars = Number(formatEther(totalDistributed));
+        const incrementalDistribution = totalDistributedDollars - currentPoints;
+        const diff =
+          incrementalDistribution > 0
+            ? (incrementalDistribution * pointsPerDollar) | 0
+            : 0;
 
         if (diff > 0) {
           events.push({
