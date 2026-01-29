@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const tokensPerDollar = 1;
+    const tokensPerDollar = 0.1;
     const now = (Date.now() / 1000) | 0;
     const stack = new StackClient({
       apiKey:
