@@ -16,7 +16,7 @@ import AttestationTab, {
 } from "@/app/flow-councils/components/AttestationTab";
 import ViewAttestationTab from "@/app/flow-councils/components/ViewAttestationTab";
 import { networks } from "@/lib/networks";
-import { FlowCouncilProject } from "@/app/flow-councils/types/grantee";
+import { Project } from "@/types/project";
 
 type ApplicationProps = {
   chainId: number;
@@ -32,7 +32,7 @@ export default function Application(props: ApplicationProps) {
   const { address } = useAccount();
 
   const [activeTab, setActiveTab] = useState("project");
-  const [project, setProject] = useState<FlowCouncilProject | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [roundData, setRoundData] = useState<RoundForm | null>(null);
   const [attestationData, setAttestationData] =
     useState<AttestationForm | null>(null);

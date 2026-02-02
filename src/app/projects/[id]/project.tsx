@@ -192,10 +192,10 @@ export default function Project(props: ProjectProps) {
               </Card.Text>
             </Button>
           )}
-          {!!details?.karmaGap && (
+          {!!details?.karmaProfile && (
             <Button
               variant="link"
-              href={`https://gap.karmahq.xyz/project/${details.karmaGap}`}
+              href={`https://gap.karmahq.xyz/project/${details.karmaProfile}`}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
               style={{ width: !isMobile ? "33%" : "" }}
@@ -207,7 +207,7 @@ export default function Project(props: ProjectProps) {
                 height={18}
               />
               <Card.Text className="text-truncate">
-                {`gap.karmahq.xyz/project/${details.karmaGap}`}
+                {`gap.karmahq.xyz/project/${details.karmaProfile}`}
               </Card.Text>
             </Button>
           )}

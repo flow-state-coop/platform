@@ -2,13 +2,6 @@ import { ProjectDetails } from "@/types/project";
 
 export type { ProjectDetails };
 
-export type FlowCouncilProject = {
-  id: number;
-  details: ProjectDetails | null;
-  managerAddresses: string[];
-  managerEmails: string[];
-};
-
 export type Grantee = {
   id: string;
   address: `0x${string}`;

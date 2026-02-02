@@ -59,7 +59,7 @@ export const FlowCouncilContext = createContext<{
           website?: string;
           twitter?: string;
           github?: string;
-          karmaGap?: string;
+          karmaProfile?: string;
         };
       }[]
     | null;

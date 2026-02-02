@@ -225,7 +225,7 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
         <Form.Label className="fs-lg fw-bold">Karma Profile</Form.Label>
         <Form.Control
           type="text"
-          value={projectDetails.karmaGap ?? "N/A"}
+          value={projectDetails.karmaProfile ?? "N/A"}
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />

@@ -22,7 +22,7 @@ export type ProjectDetails = {
   farcaster?: string;
   telegram?: string;
   discord?: string;
-  karmaGap?: string;
+  karmaProfile?: string;
   githubRepos?: string[];
   smartContracts?: SmartContract[];
   otherLinks?: OtherLink[];
@@ -31,6 +31,8 @@ export type ProjectDetails = {
 export type Project = {
   id: number;
   details: ProjectDetails | null;
-  createdAt: string;
-  updatedAt: string;
+  managerAddresses?: string[];
+  managerEmails?: string[];
+  createdAt?: string;
+  updatedAt?: string;
 };

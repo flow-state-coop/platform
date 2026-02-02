@@ -219,8 +219,8 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
           <Button
             variant="link"
             href={
-              details?.karmaGap
-                ? `https://gap.karmahq.xyz/project/${details.karmaGap}`
+              details?.karmaProfile
+                ? `https://gap.karmahq.xyz/project/${details.karmaProfile}`
                 : `/projects/${id}/?chainId=${chainId}`
             }
             target="_blank"
@@ -236,7 +236,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
                   "invert(100%) sepia(0%) saturate(7497%) hue-rotate(175deg) brightness(103%) contrast(103%)",
               }}
             />
-            {details?.karmaGap ? "Karma GAP" : "Project Page"}
+            {details?.karmaProfile ? "Karma GAP" : "Project Page"}
           </Button>
         </Stack>
       </Offcanvas.Body>
