@@ -495,51 +495,56 @@ export default function AttestationTab(props: AttestationTabProps) {
       />
       <ul className="mb-6 ps-4">
         <li>
-          <span className="fw-semi-bold">Public Accountability:</span> GoodDollar 
-          is a decentralized protocol; as such, project names, mission statements, 
-          and high-level milestones will be shared publicly on the GoodDAO Governance 
-          Forum and the GoodDollar website to facilitate community transparency.
+          <span className="fw-semi-bold">Public Accountability:</span>{" "}
+          GoodDollar is a decentralized protocol; as such, project names,
+          mission statements, and high-level milestones will be shared publicly
+          on the GoodDAO Governance Forum and the GoodDollar website to
+          facilitate community transparency.
         </li>
         <li>
-          <span className="fw-semi-bold">On-Chain Records:</span> All fund transfers 
-          associated with this grant are executed on-chain. You acknowledge that 
-          public wallet addresses and transaction hashes (TxIDs) are permanent, 
-          public records that cannot be deleted or altered.
+          <span className="fw-semi-bold">On-Chain Records:</span> All fund
+          transfers associated with this grant are executed on-chain. You
+          acknowledge that public wallet addresses and transaction hashes
+          (TxIDs) are permanent, public records that cannot be deleted or
+          altered.
         </li>
         <li>
           <span className="fw-semi-bold">Strategic Use of Data:</span>{" "}
-          Non-sensitive data provided may be used in user research sessions and 
-          narrative testing to refine the protocol’s economic framework and external
-          positioning.
+          Non-sensitive data provided may be used in user research sessions and
+          narrative testing to refine the protocol’s economic framework and
+          external positioning.
         </li>
         <li>
-          <span className="fw-semi-bold">Confidentiality:</span> Personal contact 
-          information, detailed internal budgets, and proprietary technical 
-          information will be kept confidential and accessible only to the GoodLabs
-          operational team for due diligence purposes.
+          <span className="fw-semi-bold">Confidentiality:</span> Personal
+          contact information, detailed internal budgets, and proprietary
+          technical information will be kept confidential and accessible only to
+          the GoodLabs operational team for due diligence purposes.
         </li>
         <li>
-          <span className="fw-semi-bold">Analytics:</span> We use industry-standard 
-          tools for SEO and analytics to monitor the impact of our builder ecosystem; 
-          your public-facing project data may be processed through these platforms.
+          <span className="fw-semi-bold">Analytics:</span> We use
+          industry-standard tools for SEO and analytics to monitor the impact of
+          our builder ecosystem; your public-facing project data may be
+          processed through these platforms.
         </li>
         <li>
-          <span className="fw-semi-bold">Marketing and Communications:</span> By 
-          submitting this form, you agree and consent that we may use your provided 
-          project’s name and description, specifically relating to your submission and 
-          grant, in GoodDollar’s public communications, media, advertisements, and other 
-          materials.
+          <span className="fw-semi-bold">Marketing and Communications:</span> By
+          submitting this form, you agree and consent that we may use your
+          provided project’s name and description, specifically relating to your
+          submission and grant, in GoodDollar’s public communications, media,
+          advertisements, and other materials.
         </li>
         <li>
-          Please note that any information you share with us regarding your Good Builders 
-          Grant application will be collected, retained, and used in accordance with 
-          applicable laws and regulations. Such information will be used primarily to assess 
-          applications, manage the Good Builders Grant program, and comply with applicable 
-          financial reporting requirements; therefore, it shall be retained for the periods 
-          required to meet these obligations. As a general rule, we will not store or use 
-          information for longer than required by applicable regulations, and will not 
-          commercially share such information with third parties (other than with affiliates, 
-          consultants, and advisors for the purposes mentioned above).
+          Please note that any information you share with us regarding your Good
+          Builders Grant application will be collected, retained, and used in
+          accordance with applicable laws and regulations. Such information will
+          be used primarily to assess applications, manage the Good Builders
+          Grant program, and comply with applicable financial reporting
+          requirements; therefore, it shall be retained for the periods required
+          to meet these obligations. As a general rule, we will not store or use
+          information for longer than required by applicable regulations, and
+          will not commercially share such information with third parties (other
+          than with affiliates, consultants, and advisors for the purposes
+          mentioned above).
         </li>
       </ul>
 

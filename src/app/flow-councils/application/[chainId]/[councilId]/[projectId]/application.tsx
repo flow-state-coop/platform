@@ -69,12 +69,20 @@ export default function Application(props: ApplicationProps) {
   const [attestationData, setAttestationData] =
     useState<AttestationForm | null>(null);
   const [applicationId, setApplicationId] = useState<number | null>(null);
+  const [applicationStatus, setApplicationStatus] = useState<string | null>(
+    null,
+  );
   const [savedProjectId, setSavedProjectId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(!!projectId);
 
   // Track sequential tab completion - tabs are unlocked when previous tabs are complete
   const [projectComplete, setProjectComplete] = useState(false);
   const [roundComplete, setRoundComplete] = useState(false);
+
+  // Application is locked when in certain final states
+  const LOCKED_STATUSES = ["ACCEPTED", "REJECTED", "GRADUATED", "REMOVED"];
+  const isApplicationLocked =
+    applicationStatus !== null && LOCKED_STATUSES.includes(applicationStatus);
 
   const network = networks.find((n) => n.id === chainId);
 
@@ -124,6 +132,7 @@ export default function Application(props: ApplicationProps) {
         );
         if (app) {
           setApplicationId(app.id);
+          setApplicationStatus(app.status);
           if (app.details) {
             const details =
               typeof app.details === "string"
@@ -257,7 +266,7 @@ export default function Application(props: ApplicationProps) {
             />
           </Tab.Pane>
           <Tab.Pane eventKey="round">
-            {projectComplete ? (
+            {projectComplete && !isApplicationLocked ? (
               <RoundTab
                 chainId={chainId}
                 councilId={councilId}
@@ -273,7 +282,7 @@ export default function Application(props: ApplicationProps) {
             )}
           </Tab.Pane>
           <Tab.Pane eventKey="eligibility">
-            {roundComplete ? (
+            {roundComplete && !isApplicationLocked ? (
               <AttestationTab
                 chainId={chainId}
                 councilId={councilId}
