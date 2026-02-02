@@ -1,19 +1,23 @@
 import { cookies as nextCookies } from "next/headers";
 import type { SearchParams } from "@/types/searchParams";
-import Projects from "./projects";
+import Project from "./project";
 
 export default async function Page({
+  params,
   searchParams,
 }: {
+  params: Promise<{ id: string }>;
   searchParams: Promise<SearchParams>;
 }) {
+  const { id } = await params;
   const cookies = await nextCookies();
-  const { owner } = await searchParams;
+  const { edit } = await searchParams;
 
   return (
-    <Projects
+    <Project
+      projectId={id}
       csrfToken={cookies.get("next-auth.csrf-token")?.value.split("|")[0] ?? ""}
-      owner={owner ?? null}
+      editMode={edit === "true"}
     />
   );
 }
