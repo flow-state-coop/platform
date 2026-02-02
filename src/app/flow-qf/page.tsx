@@ -1,111 +1,48 @@
-import type { Metadata, ResolvingMetadata } from "next";
-import type { SearchParams } from "@/types/searchParams";
-import { gql, request } from "graphql-request";
-import { fetchIpfsJson } from "@/lib/fetchIpfs";
-import removeMarkdown from "remove-markdown";
-import Pool from "./pool";
-import { DEFAULT_CHAIN_ID, DEFAULT_POOL_ID } from "@/lib/constants";
+"use client";
 
-type Recipient = {
-  id: string;
-  metadataCid: string;
-};
+import Image from "next/image";
+import Stack from "react-bootstrap/Stack";
+import Card from "react-bootstrap/Card";
 
-type Pool = {
-  pool: {
-    metadataCid: string;
-    recipientsByPoolIdAndChainId: Recipient[];
-  };
-};
-
-export async function generateMetadata(
-  { searchParams }: { searchParams: Promise<SearchParams> },
-  parent: ResolvingMetadata,
-): Promise<Metadata> {
-  try {
-    const poolId = (await searchParams).poolId;
-    const chainId = (await searchParams).chainId;
-    const recipientId = (await searchParams).recipientId;
-
-    const endpoint = "https://api.flowstate.network/graphql";
-    const query = gql`
-      query Pool($poolId: String!, $chainId: Int!) {
-        pool(id: $poolId, chainId: $chainId) {
-          metadataCid
-          recipientsByPoolIdAndChainId {
-            id
-            metadataCid
-          }
-        }
-      }
-    `;
-    const variables = {
-      poolId: poolId ?? DEFAULT_POOL_ID,
-      chainId: Number(chainId ?? DEFAULT_CHAIN_ID),
-    };
-    const res = await request<Pool>(endpoint, query, variables);
-    const previousImages = (await parent).openGraph?.images || [];
-    const recipient = res.pool.recipientsByPoolIdAndChainId.find(
-      (recipient) => recipient.id === recipientId,
-    );
-    const recipientMetadata = await fetchIpfsJson(recipient?.metadataCid ?? "");
-    const poolMetadata = await fetchIpfsJson(res.pool.metadataCid);
-    const images =
-      recipientMetadata && recipientMetadata.bannerImg
-        ? [
-            {
-              url: `/api/og-image/?cid=${recipientMetadata.bannerImg}`,
-              width: 1200,
-              height: 630,
-            },
-          ]
-        : [...previousImages];
-    const description = removeMarkdown(
-      recipient ? recipientMetadata.description : poolMetadata.description,
-    ).replace(/\r?\n|\r/g, " ");
-
-    return {
-      openGraph: {
-        title: recipient
-          ? `Support ${recipientMetadata.title} in the ${poolMetadata.name} streaming funding round`
-          : `${poolMetadata.name} on Flow State`,
-        description:
-          description.length > 160
-            ? `${description.slice(0, 160)}...`
-            : description,
-        images,
-      },
-      twitter: {
-        card: "summary_large_image",
-        title: recipient
-          ? `Support ${recipientMetadata.title} in the ${poolMetadata.name} streaming funding round`
-          : `${poolMetadata.name} on Flow State`,
-        description:
-          description.length > 160
-            ? `${description.slice(0, 160)}...`
-            : description,
-        images,
-      },
-    };
-  } catch {
-    return {};
-  }
-}
-
-export default async function Page({
-  searchParams,
-}: {
-  searchParams: Promise<SearchParams>;
-}) {
-  const { chainId, poolId, recipientId, editPoolDistribution } =
-    await searchParams;
-
+export default function FlowQF() {
   return (
-    <Pool
-      chainId={chainId ? Number(chainId) : DEFAULT_CHAIN_ID}
-      poolId={poolId ?? DEFAULT_POOL_ID}
-      recipientId={recipientId ?? ""}
-      editPoolDistribution={editPoolDistribution ? true : false}
-    />
+    <Stack
+      direction="vertical"
+      gap={4}
+      className="align-items-center justify-content-center min-vh-100 px-4 py-10"
+    >
+      <Image
+        src="/octant-circle.svg"
+        alt="Octant"
+        width={120}
+        height={120}
+        className="mb-4"
+      />
+      <Card
+        className="border-4 border-dark rounded-4 p-4"
+        style={{ maxWidth: 600 }}
+      >
+        <Card.Body className="text-center">
+          <Card.Title className="fs-4 fw-bold mb-4">Round Concluded</Card.Title>
+          <Card.Text className="fs-6 mb-4">
+            The Octant Builder Accelerator SQF round has concluded.
+          </Card.Text>
+          <Card.Text className="fs-6">
+            Any streams left open are still directed to the builders, but we
+            recommend that you close them. Close them in the Base - ETHx section
+            on the{" "}
+            <a
+              href="https://app.superfluid.finance"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary"
+            >
+              Superfluid App
+            </a>
+            .
+          </Card.Text>
+        </Card.Body>
+      </Card>
+    </Stack>
   );
 }

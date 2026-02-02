@@ -1,101 +1,80 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAccount, useSwitchChain } from "wagmi";
-import { gql, useQuery } from "@apollo/client";
+import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { usePostHog } from "posthog-js/react";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
-import Dropdown from "react-bootstrap/Dropdown";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
-import ProjectCreationModal from "@/components/ProjectCreationModal";
+import ProjectModal from "@/app/flow-councils/components/ProjectModal";
 import ProjectCard from "@/components/ProjectCard";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import { Project } from "@/types/project";
-import { fetchIpfsJson } from "@/lib/fetchIpfs";
-import { networks } from "@/lib/networks";
-import { getApolloClient } from "@/lib/apollo";
+import { Project, ProjectDetails } from "@/types/project";
 
 type ProjectsProps = {
-  chainId: number | null;
+  csrfToken: string;
   owner: string | null;
 };
 
-const PROJECTS_QUERY = gql`
-  query ProjectsQuery($address: String!, $chainId: Int!) {
-    profiles(
-      filter: {
-        chainId: { equalTo: $chainId }
-        profileRolesByChainIdAndProfileId: {
-          some: { address: { equalTo: $address } }
-        }
-        tags: { contains: ["allo"] }
-      }
-    ) {
-      id
-      anchorAddress
-      metadataCid
-      profileRolesByChainIdAndProfileId {
-        address
-      }
-    }
-  }
-`;
-
 export default function Projects(props: ProjectsProps) {
-  const { chainId, owner } = props;
+  const { csrfToken, owner } = props;
 
   const [showProjectCreationModal, setShowProjectCreationModal] =
     useState(false);
   const [projects, setProjects] = useState<Project[] | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { address, chain: connectedChain } = useAccount();
+  const { address } = useAccount();
   const { openConnectModal } = useConnectModal();
-  const { switchChain } = useSwitchChain();
-  const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
+  const { isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const postHog = usePostHog();
-  const { data: queryRes, loading } = useQuery(PROJECTS_QUERY, {
-    client: getApolloClient("flowState"),
-    variables: {
-      chainId,
-      address:
-        !!owner && typeof owner === "string"
-          ? owner.toLowerCase()
-          : !!address && typeof address === "string"
-            ? address.toLowerCase()
-            : "",
-    },
-    skip: (!address && !owner) || !chainId,
-    pollInterval: 3000,
-  });
 
-  const network = networks.find((network) => network.id === chainId);
+  const fetchProjects = useCallback(async () => {
+    const managerAddress = owner ?? address;
+    if (!managerAddress) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `/api/flow-council/projects?managerAddress=${managerAddress}`,
+      );
+      const { success, projects } = await res.json();
+
+      if (success) {
+        const parsedProjects = projects.map(
+          (project: {
+            id: number;
+            details: string | ProjectDetails | null;
+            createdAt: string;
+            updatedAt: string;
+          }) => ({
+            ...project,
+            details:
+              typeof project.details === "string"
+                ? JSON.parse(project.details)
+                : project.details,
+          }),
+        );
+        setProjects(parsedProjects);
+      }
+    } catch (err) {
+      console.error("Failed to fetch projects:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [address, owner]);
 
   useEffect(() => {
-    (async () => {
-      if (!queryRes?.profiles) {
-        return;
-      }
-
-      const projects = [];
-
-      for (const profile of queryRes.profiles) {
-        const metadata = await fetchIpfsJson(profile.metadataCid);
-
-        if (metadata) {
-          projects.push({ ...profile, metadata });
-        }
-      }
-
-      setProjects(projects);
-    })();
-  }, [queryRes]);
+    fetchProjects();
+  }, [fetchProjects]);
 
   useEffect(() => {
     if (searchParams?.get("new")) {
@@ -116,34 +95,6 @@ export default function Projects(props: ProjectsProps) {
         <>
           <Card.Text className="m-0 fs-5 fw-semi-bold">Projects</Card.Text>
           <Card.Text className="fs-lg">{owner ?? address}</Card.Text>
-          <Dropdown>
-            <Dropdown.Toggle
-              variant="transparent"
-              className={`d-flex justify-content-between align-items-center border border-4 border-dark fw-semi-bold ${isMobile ? "" : "w-20"}`}
-            >
-              {network?.name ?? networks[0].name}
-            </Dropdown.Toggle>
-            <Dropdown.Menu className="border-4 border-dark lh-lg">
-              {networks.map((network, i) => (
-                <Dropdown.Item
-                  key={i}
-                  className="fw-semi-bold"
-                  onClick={() => {
-                    if (!connectedChain && openConnectModal) {
-                      openConnectModal();
-                    } else {
-                      switchChain({ chainId: network.id });
-                      router.replace(
-                        `/projects/?chainId=${network.id}&owner=${owner ?? address}`,
-                      );
-                    }
-                  }}
-                >
-                  {network.name}
-                </Dropdown.Item>
-              ))}
-            </Dropdown.Menu>
-          </Dropdown>
           <div
             className="pb-5 mt-4"
             style={{
@@ -185,24 +136,22 @@ export default function Projects(props: ProjectsProps) {
               </Card>
             ) : null}
             {projects?.map((project: Project) => {
-              if (!project.metadata?.title) {
+              if (!project.details?.name) {
                 return null;
               }
 
               return (
                 <ProjectCard
                   key={project.id}
-                  name={project.metadata.title}
-                  description={project.metadata.description}
-                  logoCid={project.metadata.logoImg}
-                  bannerCid={project.metadata.bannerImg}
+                  name={project.details.name}
+                  description={project.details.description ?? ""}
+                  logoUrl={project.details.logoUrl ?? ""}
+                  bannerUrl={project.details.bannerUrl ?? ""}
                   selectProject={() => {
-                    router.push(`/projects/${project.id}/?chainId=${chainId}`);
+                    router.push(`/projects/${project.id}`);
                   }}
                   editProject={() =>
-                    router.push(
-                      `/projects/${project.id}/?chainId=${chainId}&edit=true`,
-                    )
+                    router.push(`/projects/${project.id}?edit=true`)
                   }
                   canEdit={
                     (!!owner &&
@@ -217,15 +166,14 @@ export default function Projects(props: ProjectsProps) {
           </div>
         </>
       )}
-      {network && (
-        <ProjectCreationModal
-          show={showProjectCreationModal}
-          chainId={network.id}
-          handleClose={() => setShowProjectCreationModal(false)}
-          registryAddress={network.alloRegistry}
-          setNewProfileId={() => null}
-        />
-      )}
+      <ProjectModal
+        show={showProjectCreationModal}
+        chainId={42220}
+        csrfToken={csrfToken}
+        handleClose={() => setShowProjectCreationModal(false)}
+        onProjectCreated={fetchProjects}
+        mode="create"
+      />
     </Stack>
   );
 }

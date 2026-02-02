@@ -18,30 +18,7 @@ export async function GET(
       );
     }
 
-    if (!managerAddress || !isAddress(managerAddress)) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid manager address" }),
-      );
-    }
-
-    // Check if the user is a manager of this project
-    const isManager = await db
-      .selectFrom("projectManagers")
-      .select("id")
-      .where("projectId", "=", Number(projectId))
-      .where("managerAddress", "=", managerAddress.toLowerCase())
-      .executeTakeFirst();
-
-    if (!isManager) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Not authorized to view this project",
-        }),
-      );
-    }
-
-    // Fetch project with managers and emails
+    // Fetch project with managers
     const project = await db
       .selectFrom("projects")
       .select(["id", "details", "createdAt", "updatedAt"])
@@ -60,20 +37,34 @@ export async function GET(
       .where("projectId", "=", Number(projectId))
       .execute();
 
-    const emails = await db
-      .selectFrom("projectEmails")
-      .select("email")
-      .where("projectId", "=", Number(projectId))
-      .execute();
+    const managerAddresses = managers.map((m) => m.managerAddress);
+    const isManager =
+      managerAddress &&
+      isAddress(managerAddress) &&
+      managerAddresses.some(
+        (m) => m.toLowerCase() === managerAddress.toLowerCase(),
+      );
+
+    // Only include emails for managers
+    let managerEmails: string[] = [];
+    if (isManager) {
+      const emails = await db
+        .selectFrom("projectEmails")
+        .select("email")
+        .where("projectId", "=", Number(projectId))
+        .execute();
+      managerEmails = emails.map((e) => e.email);
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
         project: {
           ...project,
-          managerAddresses: managers.map((m) => m.managerAddress),
-          managerEmails: emails.map((e) => e.email),
+          managerAddresses,
+          managerEmails,
         },
+        isManager,
       }),
     );
   } catch (err) {

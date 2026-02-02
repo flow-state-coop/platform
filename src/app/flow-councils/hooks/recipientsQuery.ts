@@ -1,16 +1,6 @@
 import { useState, useEffect } from "react";
 import { Network } from "@/types/network";
-
-type ProjectDetails = {
-  name?: string;
-  description?: string;
-  logoUrl?: string;
-  bannerUrl?: string;
-  website?: string;
-  twitter?: string;
-  github?: string;
-  karmaGap?: string;
-};
+import { ProjectDetails } from "@/types/project";
 
 export default function useRecipientsQuery(
   network: Network,

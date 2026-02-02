@@ -1,9 +1,18 @@
 import { Address } from "viem";
-import { ProjectMetadata } from "./project";
+
+export type RecipientMetadata = {
+  title: string;
+  description: string;
+  website: string;
+  logoImg: string;
+  bannerImg: string;
+  projectTwitter: string;
+  projectWarpcast: string;
+};
 
 export type Recipient = {
   id: Address;
   recipientAddress: Address;
   superappAddress: Address;
-  metadata: ProjectMetadata;
+  metadata: RecipientMetadata;
 };

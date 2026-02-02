@@ -5,11 +5,9 @@ import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
+import { OtherLink } from "@/types/project";
 
-export type OtherLink = {
-  description: string;
-  url: string;
-};
+export type { OtherLink };
 
 type OtherLinkRowProps = {
   links: OtherLink[];

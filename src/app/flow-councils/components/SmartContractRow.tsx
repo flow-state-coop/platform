@@ -8,18 +8,15 @@ import Dropdown from "react-bootstrap/Dropdown";
 import Image from "react-bootstrap/Image";
 import { isAddress } from "viem";
 import { networks } from "@/lib/networks";
+import { SmartContract } from "@/types/project";
+
+export type { SmartContract };
 
 // Custom network list for smart contracts dropdown
 const SMART_CONTRACT_NETWORKS = [
   { id: 1, name: "Ethereum", icon: "/eth.png" },
   ...networks.filter((n) => n.name !== "OP Sepolia"),
 ];
-
-export type SmartContract = {
-  type: "projectAddress" | "goodCollectivePool";
-  network: string;
-  address: string;
-};
 
 type SmartContractRowProps = {
   contracts: SmartContract[];

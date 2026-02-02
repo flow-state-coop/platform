@@ -28,7 +28,7 @@ export const projectDetailsSchema = z.object({
   farcaster: z.string().optional(),
   telegram: z.string().optional(),
   discord: z.string().optional(),
-  karmaProfile: z.string().optional(),
+  karmaGap: z.string().optional(),
   githubRepos: z.array(z.string()).optional(),
   smartContracts: z.array(smartContractSchema).optional(),
   otherLinks: z.array(otherLinkSchema).optional(),

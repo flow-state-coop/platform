@@ -1,298 +1,117 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
-import { parseEther } from "viem";
-import { useAccount, useReadContracts } from "wagmi";
-import { gql, useQuery } from "@apollo/client";
-import Markdown from "@/components/Markdown";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useAccount } from "wagmi";
 import { usePostHog } from "posthog-js/react";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
-import ProjectUpdateModal from "@/components/ProjectUpdateModal";
-import PoolCard from "../components/PoolCard";
-import { GDAPool } from "@/types/gdaPool";
-import { Project as ProjectType } from "@/types/project";
-import { strategyAbi } from "@/lib/abi/strategy";
+import Markdown from "@/components/Markdown";
+import ProjectModal from "@/app/flow-councils/components/ProjectModal";
+import { ProjectDetails } from "@/types/project";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import { networks } from "@/lib/networks";
-import { getApolloClient } from "@/lib/apollo";
-import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
-import { fetchIpfsJson, fetchIpfsImage } from "@/lib/fetchIpfs";
-import { calcMatchingImpactEstimate } from "@/lib/matchingImpactEstimate";
 import { getPlaceholderImageSrc } from "@/lib/utils";
-import { SECONDS_IN_MONTH } from "@/lib/constants";
 
-type ProjectProps = { chainId: number | null; id: string | null };
-type Pool = {
-  id: string;
-  allocationToken: string;
-  matchingToken: string;
-  metadata: { name: string };
-  recipientsByPoolIdAndChainId: {
-    id: string;
-    recipientAddress: string;
-  }[];
+type ProjectProps = {
+  projectId: string;
+  csrfToken: string;
+  editMode: boolean;
 };
 
-const PROJECT_QUERY = gql`
-  query ProjectQuery($id: String!, $chainId: Int!) {
-    profile(id: $id, chainId: $chainId) {
-      id
-      anchorAddress
-      metadataCid
-      profileRolesByChainIdAndProfileId {
-        address
-        role
-      }
-    }
-  }
-`;
-
-const POOLS_BY_ANCHOR_ADDRESS = gql`
-  query PoolsByAnchorAddress($chainId: Int!, $anchorAddress: String!) {
-    pools(
-      filter: {
-        chainId: { equalTo: $chainId }
-        recipientsByPoolIdAndChainId: {
-          some: { anchorAddress: { equalTo: $anchorAddress } }
-        }
-      }
-    ) {
-      id
-      allocationToken
-      matchingToken
-      strategyAddress
-      metadataCid
-      recipientsByPoolIdAndChainId(first: 1000) {
-        id
-        status
-        recipientAddress
-        anchorAddress
-      }
-    }
-  }
-`;
-
-const GDA_POOLS = gql`
-  query GdaPools($gdaPools: [String]) {
-    pools(where: { id_in: $gdaPools }) {
-      id
-      flowRate
-      adjustmentFlowRate
-      totalAmountFlowedDistributedUntilUpdatedAt
-      updatedAtTimestamp
-      totalUnits
-      poolMembers(first: 1000, where: { units_not: "0" }) {
-        account {
-          id
-        }
-        units
-        updatedAtTimestamp
-        totalAmountReceivedUntilUpdatedAt
-        isConnected
-      }
-      poolDistributors(first: 1000, where: { flowRate_not: "0" }) {
-        account {
-          id
-        }
-        flowRate
-        totalAmountFlowedDistributedUntilUpdatedAt
-        updatedAtTimestamp
-      }
-    }
-  }
-`;
+type ProjectData = {
+  id: number;
+  details: ProjectDetails | null;
+  managerAddresses: string[];
+  managerEmails: string[];
+  createdAt: string;
+  updatedAt: string;
+};
 
 export default function Project(props: ProjectProps) {
-  const { chainId, id } = props;
+  const { projectId, csrfToken, editMode } = props;
 
-  const [showProjectUpdateModal, setShowProjectUpdateModal] = useState(false);
-  const [logoUrl, setLogoUrl] = useState("");
-  const [bannerUrl, setBannerUrl] = useState("");
-  const [project, setProject] = useState<ProjectType>();
-  const [pools, setPools] = useState<Pool[]>([]);
+  const [project, setProject] = useState<ProjectData | null>(null);
+  const [isManager, setIsManager] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(editMode);
 
-  const searchParams = useSearchParams();
+  const router = useRouter();
   const postHog = usePostHog();
   const { address } = useAccount();
   const { isMobile, isTablet } = useMediaQuery();
-  const { data: projectQueryRes, loading } = useQuery(PROJECT_QUERY, {
-    client: getApolloClient("flowState"),
-    variables: {
-      chainId: chainId,
-      id,
-    },
-    skip: !chainId,
-    pollInterval: 5000,
-  });
-  const { data: poolsQueryRes } = useQuery(POOLS_BY_ANCHOR_ADDRESS, {
-    client: getApolloClient("flowState"),
-    variables: {
-      chainId: chainId,
-      anchorAddress: projectQueryRes?.profile?.anchorAddress,
-    },
-    skip: !projectQueryRes?.profile?.anchorAddress,
-  });
-  const strategyAddresses = poolsQueryRes?.pools?.map(
-    (pool: { strategyAddress: string }) => pool.strategyAddress,
-  );
-  const { data: gdaPoolAddresses } = useReadContracts({
-    contracts: strategyAddresses?.map((address: string) => {
-      return {
-        address,
-        abi: strategyAbi,
-        functionName: "gdaPool",
-        chainId,
-      };
-    }),
-    query: { enabled: strategyAddresses?.length > 0 },
-  });
-  const { data: superfluidQueryRes } = useQuery(GDA_POOLS, {
-    client: getApolloClient("superfluid", chainId ?? void 0),
-    variables: {
-      gdaPools:
-        gdaPoolAddresses?.map((gdaPoolAddress) =>
-          (gdaPoolAddress as { result: string }).result.toLowerCase(),
-        ) ?? [],
-    },
-    skip: !gdaPoolAddresses || gdaPoolAddresses.length === 0,
-    pollInterval: 10000,
-  });
 
-  const network = networks.filter((network) => network.id === chainId)[0];
   const placeholderLogo = getPlaceholderImageSrc();
   const placeholderBanner = getPlaceholderImageSrc();
 
-  const matchingImpactEstimates = useMemo(() => {
-    if (
-      !superfluidQueryRes?.pools ||
-      pools.length === 0 ||
-      !network ||
-      !project
-    ) {
-      return [];
+  const fetchProject = useCallback(async () => {
+    try {
+      const url = address
+        ? `/api/flow-council/projects/${projectId}?managerAddress=${address}`
+        : `/api/flow-council/projects/${projectId}`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data.success) {
+        const parsedProject = {
+          ...data.project,
+          details:
+            typeof data.project.details === "string"
+              ? JSON.parse(data.project.details)
+              : data.project.details,
+        };
+        setProject(parsedProject);
+        setIsManager(data.isManager ?? false);
+        setError(null);
+      } else {
+        setError(data.error || "Failed to load project");
+      }
+    } catch (err) {
+      console.error("Failed to fetch project:", err);
+      setError("Failed to load project");
+    } finally {
+      setLoading(false);
     }
-
-    const matchingImpactEstimates: bigint[] = [];
-    const matchingPools: GDAPool[] = superfluidQueryRes?.pools;
-
-    for (const i in matchingPools) {
-      const matchingPool = matchingPools[i];
-      const pool = pools[i];
-      const recipientAddress = pool.recipientsByPoolIdAndChainId.find(
-        (recipient) => recipient.id === project.anchorAddress,
-      )?.recipientAddress;
-      const adjustedFlowRate =
-        BigInt(matchingPool.flowRate) - BigInt(matchingPool.adjustmentFlowRate);
-      const member = matchingPool.poolMembers.find(
-        (member: { account: { id: string } }) =>
-          member.account.id === recipientAddress,
-      );
-      const memberFlowRate =
-        BigInt(matchingPool.totalUnits) > 0
-          ? (BigInt(member?.units ?? 0) * adjustedFlowRate) /
-            BigInt(matchingPool.totalUnits)
-          : BigInt(0);
-      const allocationToken = network?.tokens.find(
-        (token) => token.address.toLowerCase() === pool.allocationToken,
-      );
-      const poolFlowRateConfig = getPoolFlowRateConfig(
-        allocationToken?.symbol ?? "",
-      );
-      const matchingImpactEstimate = calcMatchingImpactEstimate({
-        totalFlowRate: BigInt(matchingPool.flowRate ?? 0),
-        totalUnits: BigInt(matchingPool.totalUnits ?? 0),
-        granteeUnits: BigInt(member?.units ?? 0),
-        granteeFlowRate: memberFlowRate,
-        previousFlowRate: BigInt(0),
-        newFlowRate:
-          parseEther(poolFlowRateConfig.minAllocationPerMonth.toString()) /
-          BigInt(SECONDS_IN_MONTH),
-        flowRateScaling: poolFlowRateConfig.flowRateScaling,
-      });
-
-      matchingImpactEstimates.push(matchingImpactEstimate);
-    }
-
-    return matchingImpactEstimates;
-  }, [superfluidQueryRes, pools, project, network]);
+  }, [projectId, address]);
 
   useEffect(() => {
-    if (searchParams?.get("edit")) {
-      setShowProjectUpdateModal(true);
-    }
-  }, [searchParams]);
+    fetchProject();
+  }, [fetchProject]);
 
   useEffect(
     () => postHog.stopSessionRecording(),
     [postHog, postHog.decideEndpointWasHit],
   );
 
-  useEffect(() => {
-    (async () => {
-      if (!projectQueryRes?.profile) {
-        return;
-      }
+  if (loading) {
+    return <Spinner className="m-auto" />;
+  }
 
-      const metadata = await fetchIpfsJson(projectQueryRes.profile.metadataCid);
-
-      if (!metadata) {
-        return;
-      }
-
-      setProject({ ...projectQueryRes.profile, metadata });
-
-      const { logoImg, bannerImg } = metadata;
-
-      if (logoImg) {
-        const logoUrl = await fetchIpfsImage(logoImg);
-
-        setLogoUrl(logoUrl);
-      }
-
-      if (bannerImg) {
-        const bannerUrl = await fetchIpfsImage(bannerImg);
-
-        setBannerUrl(bannerUrl);
-      }
-    })();
-  }, [projectQueryRes?.profile]);
-
-  useEffect(() => {
-    (async () => {
-      if (!poolsQueryRes?.pools) {
-        return;
-      }
-
-      const pools = [];
-
-      for (const pool of poolsQueryRes.pools) {
-        const metadata = await fetchIpfsJson(pool.metadataCid);
-
-        if (metadata) {
-          pools.push({ ...pool, metadata });
-        }
-      }
-
-      setPools(pools);
-    })();
-  }, [poolsQueryRes?.pools]);
-
-  if (!network) {
+  if (error || !project) {
     return (
-      <span className="mx-auto align-self-start mt-5 fs-3">
-        Network not supported
-      </span>
+      <Stack
+        direction="vertical"
+        className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52 align-items-center justify-content-center"
+        style={{ minHeight: "50vh" }}
+      >
+        <Card.Text className="fs-5 text-muted">
+          {error || "Project not found"}
+        </Card.Text>
+        <Button
+          variant="link"
+          className="mt-3"
+          onClick={() => router.push("/projects")}
+        >
+          Back to Projects
+        </Button>
+      </Stack>
     );
   }
 
-  if (loading || !project) {
-    return <Spinner className="m-auto" />;
-  }
+  const details = project.details;
 
   return (
     <>
@@ -306,12 +125,12 @@ export default function Project(props: ProjectProps) {
         >
           <Card.Img
             variant="top"
-            src={bannerUrl === "" ? placeholderBanner : bannerUrl}
+            src={details?.bannerUrl || placeholderBanner}
             height={isMobile ? 200 : isTablet ? 300 : 500}
             className="bg-light rounded-0 rounded-4"
           />
           <Image
-            src={logoUrl === "" ? placeholderLogo : logoUrl}
+            src={details?.logoUrl || placeholderLogo}
             alt=""
             width={isMobile || isTablet ? 100 : 200}
             height={isMobile || isTablet ? 100 : 200}
@@ -327,64 +146,56 @@ export default function Project(props: ProjectProps) {
           className="justify-content-between mt-18 px-3 sm:px-0"
         >
           <Card.Text className="bg-transparent border-0 m-0 p-0 fs-5 fw-semi-bold">
-            {project?.metadata?.title ?? "N/A"}
+            {details?.name ?? "N/A"}
           </Card.Text>
-          {project?.profileRolesByChainIdAndProfileId.find(
-            (profile: { role: "OWNER" | "MANAGER" | "MEMBER" }) =>
-              profile.role === "OWNER",
-          )?.address === address?.toLowerCase() && (
+          {isManager && (
             <Button
               variant="secondary"
               className="w-20 px-10 py-4 rounded-4 fw-semi-bold"
-              onClick={() => setShowProjectUpdateModal(true)}
+              onClick={() => setShowEditModal(true)}
             >
               Edit
             </Button>
           )}
         </Stack>
         <Card.Text className="bg-transparent border-0 m-0 px-3 sm:px-0 fs-lg text-info text-truncate">
-          {project?.profileRolesByChainIdAndProfileId.filter(
-            (profile: { role: "OWNER" | "MANAGER" | "MEMBER" }) =>
-              profile.role === "OWNER",
-          )[0]?.address ?? "N/A"}
+          {project.managerAddresses?.[0] ?? "N/A"}
         </Card.Text>
         <Stack
           direction="horizontal"
           className="flex-wrap my-2 px-3 sm:px-0"
           style={{ rowGap: 8 }}
         >
-          {!!project?.metadata.website && (
+          {!!details?.website && (
             <Button
               variant="link"
-              href={project.metadata.website}
+              href={`https://${details.website}`}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
               style={{ width: !isMobile ? "33%" : "" }}
             >
               <Image src="/link.svg" alt="link" width={18} height={18} />
-              <Card.Text className="text-truncate">
-                {project.metadata.website}
-              </Card.Text>
+              <Card.Text className="text-truncate">{details.website}</Card.Text>
             </Button>
           )}
-          {!!project?.metadata.projectGithub && (
+          {!!details?.github && (
             <Button
               variant="link"
-              href={`https://github.com/${project.metadata.projectGithub}`}
+              href={`https://github.com/${details.github}`}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
               style={{ width: !isMobile ? "33%" : "" }}
             >
               <Image src="/github.svg" alt="github" width={18} height={18} />
               <Card.Text className="text-truncate">
-                {`github.com/${project.metadata.projectGithub}`}
+                {`github.com/${details.github}`}
               </Card.Text>
             </Button>
           )}
-          {!!project?.metadata.karmaGap && (
+          {!!details?.karmaGap && (
             <Button
               variant="link"
-              href={`https://gap.karmahq.xyz/project/${project.metadata.karmaGap}`}
+              href={`https://gap.karmahq.xyz/project/${details.karmaGap}`}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
               style={{ width: !isMobile ? "33%" : "" }}
@@ -396,28 +207,28 @@ export default function Project(props: ProjectProps) {
                 height={18}
               />
               <Card.Text className="text-truncate">
-                {`gap.karmahq.xyz/project/${project.metadata.karmaGap}`}
+                {`gap.karmahq.xyz/project/${details.karmaGap}`}
               </Card.Text>
             </Button>
           )}
-          {!!project?.metadata.projectTwitter && (
+          {!!details?.twitter && (
             <Button
               variant="link"
-              href={`https://x.com/${project.metadata.projectTwitter}`}
+              href={`https://x.com/${details.twitter}`}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
               style={{ width: !isMobile ? "33%" : "" }}
             >
               <Image src="/x-logo.svg" alt="x" width={14} height={14} />
               <Card.Text className="text-truncate">
-                {`x.com/${project.metadata.projectTwitter}`}
+                {`x.com/${details.twitter}`}
               </Card.Text>
             </Button>
           )}
-          {!!project?.metadata.projectWarpcast && (
+          {!!details?.farcaster && (
             <Button
               variant="link"
-              href={`https://farcaster.xyz/${project.metadata.projectWarpcast}`}
+              href={`https://warpcast.com/${details.farcaster}`}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
               style={{ width: !isMobile ? "33%" : "" }}
@@ -429,42 +240,14 @@ export default function Project(props: ProjectProps) {
                 height={16}
               />
               <Card.Text className="text-truncate">
-                {`farcaster.xyz/${project.metadata.projectWarpcast}`}
+                {`warpcast.com/${details.farcaster}`}
               </Card.Text>
             </Button>
           )}
-          {!!project?.metadata.projectLens && (
+          {!!details?.telegram && (
             <Button
               variant="link"
-              href={`https://hey.xyz/u/${project.metadata.projectLens}`}
-              target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
-            >
-              <Image src="/hey.png" alt="lens" width={16} height={16} />
-              <Card.Text className="text-truncate">
-                {`hey.xyz/u/${project.metadata.projectLens}`}
-              </Card.Text>
-            </Button>
-          )}
-          {!!project?.metadata.projectGuild && (
-            <Button
-              variant="link"
-              href={`https://guild.xyz/${project.metadata.projectGuild}`}
-              target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
-            >
-              <Image src="/guild.svg" alt="guild" width={16} height={16} />
-              <Card.Text className="text-truncate">
-                {`guild.xyz/${project.metadata.projectGuild}`}
-              </Card.Text>
-            </Button>
-          )}
-          {!!project?.metadata.projectTelegram && (
-            <Button
-              variant="link"
-              href={`https://t.me/${project.metadata.projectTelegram}`}
+              href={`https://t.me/${details.telegram}`}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
               style={{ width: !isMobile ? "33%" : "" }}
@@ -476,53 +259,54 @@ export default function Project(props: ProjectProps) {
                 height={16}
               />
               <Card.Text className="text-truncate">
-                {`t.me/${project.metadata.projectTelegram}`}
+                {`t.me/${details.telegram}`}
               </Card.Text>
             </Button>
           )}
-          {!!project?.metadata.projectDiscord && (
+          {!!details?.discord && (
             <Button
               variant="link"
-              href={`https://discord.com/invite/${project.metadata.projectDiscord}`}
+              href={`https://discord.com/invite/${details.discord}`}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
               style={{ width: !isMobile ? "33%" : "" }}
             >
               <Image src="/discord.svg" alt="discord" width={16} height={16} />
               <Card.Text className="text-truncate">
-                {`discord.com/invite/${project.metadata.projectDiscord}`}
+                {`discord.com/invite/${details.discord}`}
               </Card.Text>
             </Button>
           )}
         </Stack>
         <Markdown className="mt-2 px-3 sm:px-0">
-          {project?.metadata.description}
+          {details?.description}
         </Markdown>
-        <Stack
-          direction="horizontal"
-          gap={5}
-          className="justify-content-center flex-wrap my-5"
-        >
-          {matchingImpactEstimates.length > 0
-            ? pools?.map((pool: Pool, i: number) => (
-                <PoolCard
-                  pool={pool}
-                  matchingPool={superfluidQueryRes?.pools[i]}
-                  project={project}
-                  network={network}
-                  key={i}
-                />
-              ))
-            : null}
-        </Stack>
       </Stack>
-      {network && project && (
-        <ProjectUpdateModal
-          show={showProjectUpdateModal}
-          chainId={network.id}
-          handleClose={() => setShowProjectUpdateModal(false)}
-          registryAddress={network.alloRegistry}
-          project={project}
+      {project && isManager && (
+        <ProjectModal
+          show={showEditModal}
+          chainId={42220}
+          csrfToken={csrfToken}
+          handleClose={() => {
+            setShowEditModal(false);
+            router.replace(`/projects/${projectId}`);
+          }}
+          onProjectCreated={fetchProject}
+          mode="edit"
+          project={{
+            id: project.id,
+            details: details
+              ? {
+                  name: details.name || "",
+                  description: details.description || "",
+                  logoUrl: details.logoUrl,
+                  bannerUrl: details.bannerUrl,
+                  website: details.website,
+                  twitter: details.twitter,
+                  github: details.github,
+                }
+              : null,
+          }}
         />
       )}
     </>

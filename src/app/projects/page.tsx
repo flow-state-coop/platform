@@ -1,18 +1,19 @@
+import { cookies as nextCookies } from "next/headers";
 import type { SearchParams } from "@/types/searchParams";
 import Projects from "./projects";
-import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
 export default async function Page({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
+  const cookies = await nextCookies();
+  const { owner } = await searchParams;
+
   return (
     <Projects
-      chainId={
-        searchParams.chainId ? Number(searchParams.chainId) : DEFAULT_CHAIN_ID
-      }
-      owner={searchParams.owner ?? null}
+      csrfToken={cookies.get("next-auth.csrf-token")?.value.split("|")[0] ?? ""}
+      owner={owner ?? null}
     />
   );
 }

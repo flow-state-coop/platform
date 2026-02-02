@@ -16,45 +16,13 @@ import AttestationTab, {
 } from "@/app/flow-councils/components/AttestationTab";
 import ViewAttestationTab from "@/app/flow-councils/components/ViewAttestationTab";
 import { networks } from "@/lib/networks";
+import { FlowCouncilProject } from "@/app/flow-councils/types/grantee";
 
 type ApplicationProps = {
   chainId: number;
   councilId: string;
   projectId?: string;
   csrfToken: string;
-};
-
-type ProjectDetails = {
-  name: string;
-  description: string;
-  logoUrl?: string;
-  bannerUrl?: string;
-  website?: string;
-  twitter?: string;
-  github?: string;
-  defaultFundingAddress?: string;
-  demoUrl?: string;
-  farcaster?: string;
-  telegram?: string;
-  discord?: string;
-  karmaProfile?: string;
-  githubRepos?: string[];
-  smartContracts?: Array<{
-    type: "projectAddress" | "goodCollectivePool";
-    network: string;
-    address: string;
-  }>;
-  otherLinks?: Array<{
-    description: string;
-    url: string;
-  }>;
-};
-
-type Project = {
-  id: number;
-  details: ProjectDetails | null;
-  managerAddresses: string[];
-  managerEmails: string[];
 };
 
 export default function Application(props: ApplicationProps) {
@@ -64,7 +32,7 @@ export default function Application(props: ApplicationProps) {
   const { address } = useAccount();
 
   const [activeTab, setActiveTab] = useState("project");
-  const [project, setProject] = useState<Project | null>(null);
+  const [project, setProject] = useState<FlowCouncilProject | null>(null);
   const [roundData, setRoundData] = useState<RoundForm | null>(null);
   const [attestationData, setAttestationData] =
     useState<AttestationForm | null>(null);

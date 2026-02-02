@@ -25,29 +25,6 @@ type ExploreProps = {
   };
 };
 
-const SQF_STREAM_QUERY = gql`
-  query SQFQuery($gdaPool: String, $superapps: [String]) {
-    pool(id: $gdaPool) {
-      id
-      flowRate
-      totalAmountFlowedDistributedUntilUpdatedAt
-      updatedAtTimestamp
-      poolDistributors(first: 1000, where: { flowRate_not: "0" }) {
-        id
-      }
-    }
-    accounts(where: { id_in: $superapps }) {
-      id
-      accountTokenSnapshots {
-        totalAmountStreamedInUntilUpdatedAt
-        updatedAtTimestamp
-        totalInflowRate
-        activeIncomingStreamCount
-      }
-    }
-  }
-`;
-
 const GDA_POOL_QUERY = gql`
   query GDAPoolQuery($gdaPool: String) {
     pool(id: $gdaPool) {
@@ -62,25 +39,11 @@ const GDA_POOL_QUERY = gql`
   }
 `;
 
-const SQF_ADDRESSES = {
-  ["octant"]: {
-    gdaPool: "0x8398c030be586c86759c4f1fc9f63df83c99813a",
-    superApps: [
-      "0x6e0c09d565debc9105efe51d892bda13967c32a6",
-      "0x97491ffeaf4733f8cc8fd57d20c457ac3257d8aa",
-      "0x6f5d20c798db69b5f0fac5a40998dd9c13be0a77",
-      "0x312f110ca0077de3e51fccde0261fb59b9c8d942",
-      "0x0f0b224b07655afa9239d76928399830e1fea8cf",
-      "0xad69430421e41f570fe8a42a089a90b679ba4140",
-      "0x297f7199c83fbb671b13d88d0cbf52b000d13de2",
-      "0x81548f8eb73dcb288cc9d4de98db5cd6c5cfd61c",
-      "0x1b50cea385649438c045642fab49e7f81abd7654",
-      "0x9135a74b3d3cfde581379f686b7a9ee0464ac594",
-      "0x8ad8b54f6a80c07afb6bf25596c59cdb9231ae5f",
-      "0x04a229a85b29b25ef8c2c87e56d16a6c1fdf5f15",
-      "0xb643e26381e75f1b3749ab9af01f9137bfb935be",
-    ],
-  },
+// Octant round snapshot (round concluded)
+const OCTANT_SNAPSHOT = {
+  totalStreamed: "31567573000000000000", // 31.567573 ETH
+  flowRate: "0",
+  activeStreams: 266,
 };
 
 const FLOW_CASTER_POOLS = [
@@ -101,17 +64,6 @@ export default function Explore(props: ExploreProps) {
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
 
-  const { data: sqfStreamQueryRes, loading: sqfStreamQueryLoading } = useQuery(
-    SQF_STREAM_QUERY,
-    {
-      client: getApolloClient("superfluid", base.id),
-      variables: {
-        gdaPool: SQF_ADDRESSES["octant"].gdaPool,
-        superapps: SQF_ADDRESSES["octant"].superApps,
-      },
-      pollInterval: 10000,
-    },
-  );
   const {
     data: flowCasterCrackedDevsQueryRes,
     loading: flowCasterCrackedDevsQueryLoading,
@@ -175,9 +127,7 @@ export default function Explore(props: ExploreProps) {
           own.
         </h2>
       </Stack>
-      {sqfStreamQueryLoading ||
-      flowCasterCrackedDevsQueryLoading ||
-      flowCasterTeamQueryLoading ? (
+      {flowCasterCrackedDevsQueryLoading || flowCasterTeamQueryLoading ? (
         <Stack
           direction="horizontal"
           className="justify-content-center my-5 py-5"
@@ -293,59 +243,10 @@ export default function Explore(props: ExploreProps) {
               name="Octant Builder Accelerator"
               image="/octant-circle.svg"
               roundType="Streaming Quadratic Funding"
-              totalStreamedUntilUpdatedAt={(
-                BigInt(
-                  sqfStreamQueryRes?.pool
-                    .totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
-                ) +
-                BigInt(
-                  sqfStreamQueryRes?.accounts
-                    .map(
-                      (account: {
-                        accountTokenSnapshots: {
-                          totalAmountStreamedInUntilUpdatedAt: string;
-                        }[];
-                      }) =>
-                        BigInt(
-                          account.accountTokenSnapshots[0]
-                            .totalAmountStreamedInUntilUpdatedAt,
-                        ),
-                    )
-                    .reduce((a: bigint, b: bigint) => a + b) ?? 0,
-                )
-              ).toString()}
-              flowRate={(
-                BigInt(sqfStreamQueryRes?.pool.flowRate ?? 0) +
-                BigInt(
-                  sqfStreamQueryRes?.accounts
-                    .map(
-                      (account: {
-                        accountTokenSnapshots: { totalInflowRate: string }[];
-                      }) =>
-                        BigInt(
-                          account.accountTokenSnapshots[0].totalInflowRate ?? 0,
-                        ),
-                    )
-                    .reduce((a: bigint, b: bigint) => a + b) ?? 0,
-                )
-              ).toString()}
-              updatedAt={sqfStreamQueryRes?.pool.updatedAtTimestamp}
-              activeStreamCount={
-                sqfStreamQueryRes
-                  ? sqfStreamQueryRes.pool.poolDistributors.length +
-                    sqfStreamQueryRes.accounts
-                      .map(
-                        (account: {
-                          accountTokenSnapshots: {
-                            activeIncomingStreamCount: number;
-                          }[];
-                        }) =>
-                          account.accountTokenSnapshots[0]
-                            .activeIncomingStreamCount,
-                      )
-                      .reduce((a: number, b: number) => a + b)
-                  : 0
-              }
+              totalStreamedUntilUpdatedAt={OCTANT_SNAPSHOT.totalStreamed}
+              flowRate={OCTANT_SNAPSHOT.flowRate}
+              updatedAt={0}
+              activeStreamCount={OCTANT_SNAPSHOT.activeStreams}
               tokenSymbol="ETHx"
               link="/octant"
             />

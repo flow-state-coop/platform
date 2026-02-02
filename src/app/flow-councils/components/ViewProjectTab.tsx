@@ -3,35 +3,9 @@
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Image from "react-bootstrap/Image";
+import { ProjectDetails, SmartContract, OtherLink } from "@/types/project";
 
-export type SmartContract = {
-  type: string;
-  network: string;
-  address: string;
-};
-
-export type OtherLink = {
-  description: string;
-  url: string;
-};
-
-type ProjectDetails = {
-  name?: string;
-  description?: string;
-  logoUrl?: string;
-  bannerUrl?: string;
-  website?: string;
-  twitter?: string;
-  defaultFundingAddress?: string;
-  demoUrl?: string;
-  farcaster?: string;
-  telegram?: string;
-  discord?: string;
-  karmaProfile?: string;
-  githubRepos?: string[];
-  smartContracts?: SmartContract[];
-  otherLinks?: OtherLink[];
-};
+export type { SmartContract, OtherLink };
 
 type ViewProjectTabProps = {
   projectDetails: ProjectDetails | null;
@@ -251,7 +225,7 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
         <Form.Label className="fs-lg fw-bold">Karma Profile</Form.Label>
         <Form.Control
           type="text"
-          value={projectDetails.karmaProfile ?? "N/A"}
+          value={projectDetails.karmaGap ?? "N/A"}
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
