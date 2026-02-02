@@ -1,12 +1,12 @@
-export type ProjectDetails = {
-  name?: string;
-  description?: string;
-  logoUrl?: string;
-  bannerUrl?: string;
-  website?: string;
-  twitter?: string;
-  github?: string;
-  karmaGap?: string;
+import { ProjectDetails } from "@/types/project";
+
+export type { ProjectDetails };
+
+export type FlowCouncilProject = {
+  id: number;
+  details: ProjectDetails | null;
+  managerAddresses: string[];
+  managerEmails: string[];
 };
 
 export type Grantee = {

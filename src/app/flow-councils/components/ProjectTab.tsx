@@ -16,6 +16,7 @@ import OtherLinkRow, { type OtherLink } from "./OtherLinkRow";
 import CharacterCounter from "./CharacterCounter";
 import { CHARACTER_LIMITS } from "../constants";
 import useSiwe from "@/hooks/siwe";
+import { FlowCouncilProject } from "@/app/flow-councils/types/grantee";
 
 async function uploadToS3(file: Blob, fileName: string): Promise<string> {
   const presignRes = await fetch("/api/flow-council/images", {
@@ -48,36 +49,10 @@ async function uploadToS3(file: Blob, fileName: string): Promise<string> {
   return publicUrl;
 }
 
-type ProjectDetails = {
-  name: string;
-  description: string;
-  logoUrl?: string;
-  bannerUrl?: string;
-  website?: string;
-  twitter?: string;
-  github?: string;
-  defaultFundingAddress?: string;
-  demoUrl?: string;
-  farcaster?: string;
-  telegram?: string;
-  discord?: string;
-  karmaProfile?: string;
-  githubRepos?: string[];
-  smartContracts?: SmartContract[];
-  otherLinks?: OtherLink[];
-};
-
-type Project = {
-  id: number;
-  details: ProjectDetails | null;
-  managerAddresses: string[];
-  managerEmails: string[];
-};
-
 type ProjectTabProps = {
   chainId: number;
   csrfToken: string;
-  project: Project | null;
+  project: FlowCouncilProject | null;
   isLoading: boolean;
   onSave: (projectId: number) => void;
   onCancel: () => void;
@@ -95,7 +70,7 @@ type ProjectForm = {
   farcaster: string;
   telegram: string;
   discord: string;
-  karmaProfile: string;
+  karmaGap: string;
   githubRepos: string[];
   smartContracts: SmartContract[];
   otherLinks: OtherLink[];
@@ -127,7 +102,7 @@ export default function ProjectTab(props: ProjectTabProps) {
     farcaster: "",
     telegram: "",
     discord: "",
-    karmaProfile: "",
+    karmaGap: "",
     githubRepos: [""],
     smartContracts: [
       { type: "projectAddress", network: "Arbitrum One", address: "" },
@@ -147,7 +122,7 @@ export default function ProjectTab(props: ProjectTabProps) {
     website: false,
     telegram: false,
     discord: false,
-    karmaProfile: false,
+    karmaGap: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [logoError, setLogoError] = useState("");
@@ -179,7 +154,7 @@ export default function ProjectTab(props: ProjectTabProps) {
         farcaster: project.details.farcaster ?? "",
         telegram: project.details.telegram ?? "",
         discord: project.details.discord ?? "",
-        karmaProfile: project.details.karmaProfile ?? "",
+        karmaGap: project.details.karmaGap ?? "",
         githubRepos:
           project.details.githubRepos && project.details.githubRepos.length > 0
             ? project.details.githubRepos
@@ -322,7 +297,7 @@ export default function ProjectTab(props: ProjectTabProps) {
         farcaster: form.farcaster,
         telegram: form.telegram,
         discord: form.discord,
-        karmaProfile: form.karmaProfile,
+        karmaGap: form.karmaGap,
         githubRepos: form.githubRepos.filter((r) => r && isValidUrl(r)),
         smartContracts: form.smartContracts.filter((c) => c.address),
         otherLinks: form.otherLinks.filter((l) => l.url && l.description),
@@ -664,16 +639,16 @@ export default function ProjectTab(props: ProjectTabProps) {
         <Form.Label className="fs-lg fw-bold">Karma Profile</Form.Label>
         <Form.Control
           type="text"
-          value={form.karmaProfile}
+          value={form.karmaGap}
           placeholder="https://karmahq.xyz/project/..."
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.karmaProfile) && !!form.karmaProfile && !form.karmaProfile.startsWith("https://") ? "border-danger" : "border-dark"}`}
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.karmaGap) && !!form.karmaGap && !form.karmaGap.startsWith("https://") ? "border-danger" : "border-dark"}`}
           isInvalid={
-            (validated || touched.karmaProfile) &&
-            !!form.karmaProfile &&
-            !form.karmaProfile.startsWith("https://")
+            (validated || touched.karmaGap) &&
+            !!form.karmaGap &&
+            !form.karmaGap.startsWith("https://")
           }
-          onChange={(e) => setForm({ ...form, karmaProfile: e.target.value })}
-          onBlur={() => setTouched((prev) => ({ ...prev, karmaProfile: true }))}
+          onChange={(e) => setForm({ ...form, karmaGap: e.target.value })}
+          onBlur={() => setTouched((prev) => ({ ...prev, karmaGap: true }))}
         />
       </Form.Group>
 

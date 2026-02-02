@@ -1,15 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useDisconnect } from "wagmi";
 import Stack from "react-bootstrap/Stack";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
-import WalletDashboard from "@/components/WalletDashboard";
 
 export default function ConnectWallet() {
-  const pathname = usePathname();
   const { disconnect } = useDisconnect();
 
   return (
@@ -67,7 +64,6 @@ export default function ConnectWallet() {
                       />
                     )}
                   </Button>
-                  {pathname === "/flow-qf" && <WalletDashboard />}
                   <Dropdown align={{ md: "start" }}>
                     <Dropdown.Toggle
                       bsPrefix="dropdown"

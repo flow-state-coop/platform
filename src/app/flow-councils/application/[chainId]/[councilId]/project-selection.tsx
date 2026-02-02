@@ -17,28 +17,12 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import useSiwe from "@/hooks/siwe";
+import { Project, ProjectDetails } from "@/types/project";
 
 type ProjectSelectionProps = {
   chainId: number;
   councilId: string;
   csrfToken: string;
-};
-
-type ProjectDetails = {
-  name: string;
-  description: string;
-  logoUrl?: string;
-  bannerUrl?: string;
-  website?: string;
-  twitter?: string;
-  github?: string;
-};
-
-type Project = {
-  id: number;
-  details: ProjectDetails | null;
-  createdAt: string;
-  updatedAt: string;
 };
 
 type Application = {

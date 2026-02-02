@@ -37,31 +37,13 @@ import { RECIPIENT_MANAGER_ROLE } from "../lib/constants";
 import { getApolloClient } from "@/lib/apollo";
 import type { RoundForm } from "@/app/flow-councils/components/ViewRoundTab";
 import type { AttestationForm } from "@/app/flow-councils/components/ViewAttestationTab";
+import { ProjectDetails } from "@/types/project";
 
 type ReviewProps = {
   chainId?: number;
   councilId?: string;
   hostname: string;
   csfrToken: string;
-};
-
-type ProjectDetails = {
-  name?: string;
-  description?: string;
-  logoUrl?: string;
-  bannerUrl?: string;
-  website?: string;
-  twitter?: string;
-  github?: string;
-  defaultFundingAddress?: string;
-  demoUrl?: string;
-  farcaster?: string;
-  telegram?: string;
-  discord?: string;
-  karmaProfile?: string;
-  githubRepos?: string[];
-  smartContracts?: { type: string; network: string; address: string }[];
-  otherLinks?: { description: string; url: string }[];
 };
 
 type ApplicationDetails = RoundForm & {
