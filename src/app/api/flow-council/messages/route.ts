@@ -136,7 +136,7 @@ async function getAuthorAffiliations(
 
   const dbAdminSet = new Set(dbAdmins.map((a) => a.adminAddress.toLowerCase()));
 
-  // Batch query project managers with accepted applications and project details
+  // Batch query project managers with applications in this round and project details
   const projectManagersData = await db
     .selectFrom("projectManagers")
     .innerJoin(
@@ -147,7 +147,6 @@ async function getAuthorAffiliations(
     .innerJoin("projects", "projectManagers.projectId", "projects.id")
     .select(["projectManagers.managerAddress", "projects.details"])
     .where("applications.roundId", "=", roundId)
-    .where("applications.status", "=", "ACCEPTED")
     .where("projectManagers.managerAddress", "in", uniqueAddresses)
     .execute();
 

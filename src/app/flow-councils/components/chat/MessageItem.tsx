@@ -70,13 +70,13 @@ export default function MessageItem(props: MessageItemProps) {
     : ensData?.name || shortenAddress(message.authorAddress);
   const edited = isEdited(message.createdAt, message.updatedAt);
 
-  // Get affiliation tag - admin takes precedence over project
+  // Get affiliation tag - project takes precedence over admin
   const affiliationTag =
     !isSystemMessage && affiliation
-      ? affiliation.isAdmin
-        ? "(Admin)"
-        : affiliation.projectName
-          ? `(${affiliation.projectName})`
+      ? affiliation.projectName
+        ? `(${affiliation.projectName})`
+        : affiliation.isAdmin
+          ? "(Admin)"
           : null
       : null;
 
