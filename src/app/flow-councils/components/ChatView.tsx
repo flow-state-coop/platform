@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import Stack from "react-bootstrap/Stack";
 import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
-import MessageItem, { Message } from "./chat/MessageItem";
+import MessageItem, { Message, AuthorAffiliation } from "./chat/MessageItem";
 import MessageInput from "./chat/MessageInput";
 import EditMessageModal from "./chat/EditMessageModal";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
@@ -52,6 +52,9 @@ export default function ChatView(props: ChatViewProps) {
   } = props;
 
   const [messages, setMessages] = useState<Message[]>([]);
+  const [affiliations, setAffiliations] = useState<
+    Record<string, AuthorAffiliation>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
@@ -93,9 +96,11 @@ export default function ChatView(props: ChatViewProps) {
 
       if (data.success) {
         setMessages(data.messages || []);
+        setAffiliations(data.affiliations || {});
         setError("");
       } else {
         setMessages([]);
+        setAffiliations({});
         setError(data.error || "Failed to load messages");
       }
     } catch (err) {
@@ -248,6 +253,7 @@ export default function ChatView(props: ChatViewProps) {
                 key={message.id}
                 message={message}
                 ensData={ensByAddress?.[message.authorAddress.toLowerCase()]}
+                affiliation={affiliations[message.authorAddress.toLowerCase()]}
                 canEdit={canEditMessage(message)}
                 canDelete={canDeleteMessage(message)}
                 onEdit={() => setEditingMessage(message)}

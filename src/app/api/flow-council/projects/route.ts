@@ -165,6 +165,7 @@ export async function POST(request: Request) {
             validEmails.map((email) => ({
               projectId: newProject.id,
               email,
+              managerAddress: session.address.toLowerCase(),
             })),
           )
           .execute();
@@ -335,10 +336,11 @@ export async function PATCH(request: Request) {
         (e) => e && e.includes("@"),
       );
       if (validEmails !== undefined) {
-        // Delete existing emails
+        // Delete existing emails added by this manager
         await trx
           .deleteFrom("projectEmails")
           .where("projectId", "=", projectId)
+          .where("managerAddress", "=", session.address.toLowerCase())
           .execute();
 
         // Insert new emails
@@ -349,6 +351,7 @@ export async function PATCH(request: Request) {
               validEmails.map((email) => ({
                 projectId,
                 email,
+                managerAddress: session.address.toLowerCase(),
               })),
             )
             .execute();

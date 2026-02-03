@@ -108,6 +108,99 @@ async function isRoundAdmin(
   return !!admin;
 }
 
+export type AuthorAffiliation = {
+  isAdmin: boolean;
+  projectName: string | null;
+};
+
+async function getAuthorAffiliations(
+  addresses: string[],
+  roundId: number,
+  chainId: number,
+  councilId: string,
+): Promise<Record<string, AuthorAffiliation>> {
+  if (addresses.length === 0) {
+    return {};
+  }
+
+  const normalizedAddresses = addresses.map((a) => a.toLowerCase());
+  const uniqueAddresses = [...new Set(normalizedAddresses)];
+
+  // Batch query round admins
+  const dbAdmins = await db
+    .selectFrom("roundAdmins")
+    .select("adminAddress")
+    .where("roundId", "=", roundId)
+    .where("adminAddress", "in", uniqueAddresses)
+    .execute();
+
+  const dbAdminSet = new Set(dbAdmins.map((a) => a.adminAddress.toLowerCase()));
+
+  // Batch query project managers with applications in this round and project details
+  const projectManagersData = await db
+    .selectFrom("projectManagers")
+    .innerJoin(
+      "applications",
+      "projectManagers.projectId",
+      "applications.projectId",
+    )
+    .innerJoin("projects", "projectManagers.projectId", "projects.id")
+    .select(["projectManagers.managerAddress", "projects.details"])
+    .where("applications.roundId", "=", roundId)
+    .where("projectManagers.managerAddress", "in", uniqueAddresses)
+    .execute();
+
+  // Map manager addresses to their project names (parsed from JSON details)
+  const projectManagerMap = new Map<string, string>();
+  for (const pm of projectManagersData) {
+    const addr = pm.managerAddress.toLowerCase();
+    // First project found wins (in case manager has multiple projects)
+    if (!projectManagerMap.has(addr)) {
+      const projectDetails =
+        typeof pm.details === "string" ? JSON.parse(pm.details) : pm.details;
+      const projectName = projectDetails?.name;
+      if (projectName) {
+        projectManagerMap.set(addr, projectName);
+      }
+    }
+  }
+
+  // Check on-chain roles for addresses that are not DB admins
+  const addressesNeedingOnChainCheck = uniqueAddresses.filter(
+    (addr) => !dbAdminSet.has(addr),
+  );
+
+  const onChainAdminSet = new Set<string>();
+  if (addressesNeedingOnChainCheck.length > 0) {
+    const onChainResults = await Promise.all(
+      addressesNeedingOnChainCheck.map(async (addr) => {
+        const hasRole = await hasOnChainRole(chainId, councilId, addr);
+        return { addr, hasRole };
+      }),
+    );
+
+    for (const { addr, hasRole } of onChainResults) {
+      if (hasRole) {
+        onChainAdminSet.add(addr);
+      }
+    }
+  }
+
+  // Build the result map
+  const result: Record<string, AuthorAffiliation> = {};
+  for (const addr of uniqueAddresses) {
+    const isAdmin = dbAdminSet.has(addr) || onChainAdminSet.has(addr);
+    const projectName = projectManagerMap.get(addr) || null;
+
+    // Only include if there's something to show
+    if (isAdmin || projectName) {
+      result[addr] = { isAdmin, projectName };
+    }
+  }
+
+  return result;
+}
+
 async function isProjectManager(
   projectId: number,
   address: string,
@@ -367,10 +460,23 @@ export async function GET(request: Request) {
 
     const messages = await query.execute();
 
+    // Fetch affiliations for all message authors
+    let affiliations: Record<string, AuthorAffiliation> = {};
+    if (roundIdNum && messages.length > 0) {
+      const authorAddresses = messages.map((m) => m.authorAddress);
+      affiliations = await getAuthorAffiliations(
+        authorAddresses,
+        roundIdNum,
+        chainIdNum,
+        councilId,
+      );
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         messages,
+        affiliations,
       }),
     );
   } catch (err) {

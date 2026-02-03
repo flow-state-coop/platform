@@ -58,6 +58,7 @@ export type ProjectEmail = {
   id: Generated<number>;
   projectId: number;
   email: string;
+  managerAddress: string | null;
   createdAt: Generated<Timestamp>;
 };
 export type ProjectManager = {

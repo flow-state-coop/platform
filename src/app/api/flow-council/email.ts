@@ -64,13 +64,25 @@ async function sendTemplatedEmail(
   }
 }
 
-export async function getProjectEmails(projectId: number): Promise<string[]> {
-  const emails = await db
+export async function getProjectEmails(
+  projectId: number,
+  excludeAddress?: string,
+): Promise<string[]> {
+  let query = db
     .selectFrom("projectEmails")
     .select("email")
-    .where("projectId", "=", projectId)
-    .execute();
+    .where("projectId", "=", projectId);
 
+  if (excludeAddress) {
+    query = query.where((eb) =>
+      eb.or([
+        eb("managerAddress", "is", null),
+        eb("managerAddress", "!=", excludeAddress.toLowerCase()),
+      ]),
+    );
+  }
+
+  const emails = await query.execute();
   return emails.map((e) => e.email);
 }
 
@@ -106,7 +118,7 @@ export async function getChatMessageRecipients(
   senderAddress?: string,
 ): Promise<string[]> {
   const [projectEmails, roundAdminEmails] = await Promise.all([
-    getProjectEmails(projectId),
+    getProjectEmails(projectId, senderAddress),
     getRoundAdminEmailsExcludingAddress(roundId, senderAddress),
   ]);
 
@@ -118,9 +130,10 @@ export async function getChatMessageRecipients(
 
 export async function getAcceptedGranteeEmails(
   roundId: number,
+  excludeAddress?: string,
 ): Promise<string[]> {
   // Get all project emails for projects with accepted applications in this round
-  const emails = await db
+  let query = db
     .selectFrom("applications")
     .innerJoin(
       "projectEmails",
@@ -129,9 +142,18 @@ export async function getAcceptedGranteeEmails(
     )
     .select("projectEmails.email")
     .where("applications.roundId", "=", roundId)
-    .where("applications.status", "=", "ACCEPTED")
-    .execute();
+    .where("applications.status", "=", "ACCEPTED");
 
+  if (excludeAddress) {
+    query = query.where((eb) =>
+      eb.or([
+        eb("projectEmails.managerAddress", "is", null),
+        eb("projectEmails.managerAddress", "!=", excludeAddress.toLowerCase()),
+      ]),
+    );
+  }
+
+  const emails = await query.execute();
   return [...new Set(emails.map((e) => e.email))];
 }
 
@@ -140,7 +162,7 @@ export async function getAnnouncementRecipients(
   senderAddress?: string,
 ): Promise<string[]> {
   const [granteeEmails, roundAdminEmails] = await Promise.all([
-    getAcceptedGranteeEmails(roundId),
+    getAcceptedGranteeEmails(roundId, senderAddress),
     getRoundAdminEmailsExcludingAddress(roundId, senderAddress),
   ]);
 

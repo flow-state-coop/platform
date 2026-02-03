@@ -148,9 +148,10 @@ export async function POST(request: Request) {
       .execute();
 
     // Send email notification to project managers (non-blocking)
+    // Exclude the admin who made the status change
     const baseUrl = new URL(request.url).origin;
     Promise.all([
-      getProjectEmails(application.projectId),
+      getProjectEmails(application.projectId, session.address),
       getProjectAndRoundDetails(application.projectId, round.id),
     ])
       .then(([projectEmails, details]) => {

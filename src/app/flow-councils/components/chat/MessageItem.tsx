@@ -13,9 +13,15 @@ export type Message = {
   updatedAt: string;
 };
 
+export type AuthorAffiliation = {
+  isAdmin: boolean;
+  projectName: string | null;
+};
+
 type MessageItemProps = {
   message: Message;
   ensData?: EnsData | null;
+  affiliation?: AuthorAffiliation | null;
   canEdit: boolean;
   canDelete: boolean;
   onEdit: () => void;
@@ -48,13 +54,31 @@ function isEdited(createdAt: string, updatedAt: string): boolean {
 }
 
 export default function MessageItem(props: MessageItemProps) {
-  const { message, ensData, canEdit, canDelete, onEdit, onDelete } = props;
+  const {
+    message,
+    ensData,
+    affiliation,
+    canEdit,
+    canDelete,
+    onEdit,
+    onDelete,
+  } = props;
 
   const isSystemMessage = message.authorAddress === SYSTEM_ADDRESS;
   const displayName = isSystemMessage
-    ? "Automated"
+    ? "System"
     : ensData?.name || shortenAddress(message.authorAddress);
   const edited = isEdited(message.createdAt, message.updatedAt);
+
+  // Get affiliation tag - project takes precedence over admin
+  const affiliationTag =
+    !isSystemMessage && affiliation
+      ? affiliation.projectName
+        ? `(${affiliation.projectName})`
+        : affiliation.isAdmin
+          ? "(Admin)"
+          : null
+      : null;
 
   return (
     <div
@@ -76,10 +100,15 @@ export default function MessageItem(props: MessageItemProps) {
             gap={2}
             className="justify-content-between"
           >
-            <span
-              className={`fw-semi-bold text-truncate ${isSystemMessage ? "fst-italic text-muted" : ""}`}
-            >
-              {displayName}
+            <span className="d-flex gap-1 text-truncate">
+              <span
+                className={`fw-semi-bold text-truncate ${isSystemMessage ? "fst-italic text-muted" : ""}`}
+              >
+                {displayName}
+              </span>
+              {affiliationTag && (
+                <span className="text-muted text-nowrap">{affiliationTag}</span>
+              )}
             </span>
             <Stack
               direction="horizontal"

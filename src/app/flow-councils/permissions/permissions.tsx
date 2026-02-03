@@ -285,6 +285,23 @@ export default function Permissions(props: PermissionsProps) {
         .filter((m) => m.defaultAdminRole && m.address)
         .map((m) => m.address.toLowerCase());
 
+      // Find admins who lost all roles (no longer have any admin role)
+      const removedAdmins = changedEntries
+        .filter((e) => e.status === StatusChange.REMOVED)
+        .map((e) => e.account.toLowerCase())
+        .filter((addr) => {
+          const entry = managersEntry.find(
+            (m) => m.address.toLowerCase() === addr,
+          );
+          // Remove from DB only if they have no roles left
+          return (
+            entry &&
+            !entry.defaultAdminRole &&
+            !entry.voterManagerRole &&
+            !entry.recipientManagerRole
+          );
+        });
+
       await fetch("/api/flow-council/admins", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -294,6 +311,19 @@ export default function Permissions(props: PermissionsProps) {
           admins: superAdmins,
         }),
       });
+
+      // Remove former admins from database
+      if (removedAdmins.length > 0) {
+        await fetch("/api/flow-council/admins", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chainId,
+            flowCouncilAddress: councilId,
+            admins: removedAdmins,
+          }),
+        });
+      }
 
       setTransactionSuccess(true);
       setIsTransactionLoading(false);
