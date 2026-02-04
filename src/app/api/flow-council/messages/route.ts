@@ -17,10 +17,12 @@ import { ChannelType } from "@/generated/kysely";
 import {
   sendChatMessageEmail,
   sendAnnouncementEmail,
+  sendInternalCommentEmail,
   getProjectAndRoundDetails,
   getRoundDetails,
   getChatMessageRecipients,
   getAnnouncementRecipients,
+  getRoundAdminEmailsExcludingAddress,
 } from "../email";
 
 export const dynamic = "force-dynamic";
@@ -624,6 +626,28 @@ export async function POST(request: Request) {
           })
           .catch((err) =>
             console.error("Failed to send announcement email:", err),
+          );
+      } else if (channelType === "INTERNAL_APPLICATION" && applicationId) {
+        Promise.all([
+          getProjectAndRoundDetails(messageProjectId!, effectiveRoundId),
+          getRoundAdminEmailsExcludingAddress(effectiveRoundId, session.address),
+        ])
+          .then(([details, recipients]) => {
+            if (details) {
+              return sendInternalCommentEmail(recipients, {
+                baseUrl,
+                projectName: details.projectName,
+                roundName: details.roundName,
+                sender: session.address,
+                messageContent,
+                chainId: details.chainId,
+                councilId: details.councilId,
+                applicationId,
+              });
+            }
+          })
+          .catch((err) =>
+            console.error("Failed to send internal comment email:", err),
           );
       } else if (messageProjectId) {
         Promise.all([
