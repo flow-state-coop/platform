@@ -109,7 +109,7 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
           value={projectDetails.description ?? ""}
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "none" }}
+          style={{ resize: "vertical" }}
         />
       </Form.Group>
 

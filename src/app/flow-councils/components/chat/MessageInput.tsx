@@ -50,7 +50,7 @@ export default function MessageInput(props: MessageInputProps) {
           value={content}
           placeholder={placeholder}
           className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
-          style={{ resize: "none" }}
+          style={{ resize: "vertical" }}
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={isSending || disabled}

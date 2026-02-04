@@ -503,7 +503,7 @@ export default function Review(props: ReviewProps) {
                       value={reviewComment}
                       placeholder="Add a comment about this status change..."
                       className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
-                      style={{ resize: "none" }}
+                      style={{ resize: "vertical" }}
                       onChange={(e) => setReviewComment(e.target.value)}
                     />
                   </Form.Group>

@@ -38,5 +38,6 @@ next-env.d.ts
 
 # local ai files
 .ai
+.claude
 
 /src/generated/prisma

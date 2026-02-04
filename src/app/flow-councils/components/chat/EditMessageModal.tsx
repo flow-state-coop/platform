@@ -56,7 +56,7 @@ export default function EditMessageModal(props: EditMessageModalProps) {
             rows={4}
             value={content}
             className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
-            style={{ resize: "none" }}
+            style={{ resize: "vertical" }}
             onChange={(e) => setContent(e.target.value)}
             disabled={isSaving}
           />

@@ -70,7 +70,7 @@ export default function TeamMemberInput(props: TeamMemberInputProps) {
           value={member.roleDescription}
           placeholder="Role & Description"
           className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
-          style={{ resize: "none" }}
+          style={{ resize: "vertical" }}
           isInvalid={validated && isPrimary && !member.roleDescription.trim()}
           onChange={(e) =>
             onChange({ ...member, roleDescription: e.target.value })

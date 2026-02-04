@@ -537,7 +537,7 @@ export default function RoundTab(props: RoundTabProps) {
               value={form.previousParticipation.currentProjectState}
               placeholder=""
               className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.currentProjectState) && form.previousParticipation.hasParticipatedBefore && !isCurrentProjectStateValid ? "border-danger" : "border-dark"}`}
-              style={{ resize: "none", backgroundImage: "none" }}
+              style={{ resize: "vertical", backgroundImage: "none" }}
               isInvalid={
                 (validated || touched.currentProjectState) &&
                 form.previousParticipation.hasParticipatedBefore === true &&
@@ -714,7 +714,7 @@ export default function RoundTab(props: RoundTabProps) {
           value={form.maturityAndUsage.otherUsageData}
           placeholder=""
           className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
-          style={{ resize: "none" }}
+          style={{ resize: "vertical" }}
           onChange={(e) =>
             setForm({
               ...form,
@@ -838,7 +838,7 @@ export default function RoundTab(props: RoundTabProps) {
           value={form.integration.description}
           placeholder="Value for users + GoodDollar ecosystem"
           className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.integration.description.trim() ? "border-danger" : "border-dark"}`}
-          style={{ resize: "none" }}
+          style={{ resize: "vertical" }}
           isInvalid={validated && !form.integration.description.trim()}
           onChange={(e) =>
             setForm({
@@ -883,7 +883,7 @@ export default function RoundTab(props: RoundTabProps) {
           value={form.buildGoals.primaryBuildGoal}
           placeholder="A clear statement of your team's main objective for building in this round."
           className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.buildGoals.primaryBuildGoal.trim() ? "border-danger" : "border-dark"}`}
-          style={{ resize: "none" }}
+          style={{ resize: "vertical" }}
           isInvalid={validated && !form.buildGoals.primaryBuildGoal.trim()}
           onChange={(e) =>
             setForm({
@@ -934,7 +934,7 @@ export default function RoundTab(props: RoundTabProps) {
           value={form.buildGoals.ecosystemImpact}
           placeholder="Why your build matters for the GoodDollar ecosystem (utility, integrations, community value)."
           className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.buildEcosystemImpact) && form.buildGoals.ecosystemImpact.length > CHARACTER_LIMITS.ecosystemImpact.max ? "border-danger" : "border-dark"}`}
-          style={{ resize: "none", backgroundImage: "none" }}
+          style={{ resize: "vertical", backgroundImage: "none" }}
           isInvalid={
             (validated || touched.buildEcosystemImpact) &&
             form.buildGoals.ecosystemImpact.length >
@@ -971,7 +971,7 @@ export default function RoundTab(props: RoundTabProps) {
           value={form.growthGoals.primaryGrowthGoal}
           placeholder="What you aim to grow or activate during this round (users, tx, TVL, pilots, partners, adoption)"
           className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.growthGoals.primaryGrowthGoal.trim() ? "border-danger" : "border-dark"}`}
-          style={{ resize: "none" }}
+          style={{ resize: "vertical" }}
           isInvalid={validated && !form.growthGoals.primaryGrowthGoal.trim()}
           onChange={(e) =>
             setForm({
@@ -995,7 +995,7 @@ export default function RoundTab(props: RoundTabProps) {
           value={form.growthGoals.targetUsers}
           placeholder="Who will drive this growth (segments, communities, regions, partners)?"
           className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !form.growthGoals.targetUsers.trim() ? "border-danger" : "border-dark"}`}
-          style={{ resize: "none" }}
+          style={{ resize: "vertical" }}
           isInvalid={validated && !form.growthGoals.targetUsers.trim()}
           onChange={(e) =>
             setForm({
@@ -1043,7 +1043,7 @@ export default function RoundTab(props: RoundTabProps) {
           value={form.growthGoals.ecosystemImpact}
           placeholder="Why your growth matters for the GoodDollar ecosystem (network effects, G$ adoption, etc)"
           className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.growthEcosystemImpact) && form.growthGoals.ecosystemImpact.length > CHARACTER_LIMITS.ecosystemImpact.max ? "border-danger" : "border-dark"}`}
-          style={{ resize: "none", backgroundImage: "none" }}
+          style={{ resize: "vertical", backgroundImage: "none" }}
           isInvalid={
             (validated || touched.growthEcosystemImpact) &&
             form.growthGoals.ecosystemImpact.length >
@@ -1111,7 +1111,7 @@ export default function RoundTab(props: RoundTabProps) {
           value={form.additional.comments}
           placeholder="Provide any additional context or comments"
           className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
-          style={{ resize: "none" }}
+          style={{ resize: "vertical" }}
           onChange={(e) =>
             setForm({
               ...form,

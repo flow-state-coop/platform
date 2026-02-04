@@ -430,7 +430,7 @@ export default function ProjectTab(props: ProjectTabProps) {
           value={form.description}
           placeholder=""
           className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.description) && !isDescriptionValid ? "border-danger" : "border-dark"}`}
-          style={{ resize: "none", backgroundImage: "none" }}
+          style={{ resize: "vertical", backgroundImage: "none" }}
           isInvalid={(validated || touched.description) && !isDescriptionValid}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
           onBlur={() => setTouched((prev) => ({ ...prev, description: true }))}
