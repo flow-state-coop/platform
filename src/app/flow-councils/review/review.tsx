@@ -18,6 +18,7 @@ import Toast from "react-bootstrap/Toast";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Spinner from "react-bootstrap/Spinner";
+import ResizableTextarea from "@/components/ResizableTextarea";
 import Alert from "react-bootstrap/Alert";
 import Table from "react-bootstrap/Table";
 import Badge from "react-bootstrap/Badge";
@@ -497,13 +498,11 @@ export default function Review(props: ReviewProps) {
                     <Form.Label className="fw-semi-bold">
                       Review Comment (Shared with the project)
                     </Form.Label>
-                    <Form.Control
-                      as="textarea"
+                    <ResizableTextarea
                       rows={3}
                       value={reviewComment}
                       placeholder="Add a comment about this status change..."
                       className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
-                      style={{ resize: "vertical" }}
                       onChange={(e) => setReviewComment(e.target.value)}
                     />
                   </Form.Group>

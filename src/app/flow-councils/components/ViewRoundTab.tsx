@@ -213,7 +213,7 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
               placeholder="Describe progress made, blockers, and what you've been up to"
               disabled
               className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-              style={{ resize: "vertical" }}
+              style={{ resize: "none" }}
             />
           </Form.Group>
         </>
@@ -281,7 +281,7 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
           placeholder="Any other relevant usage data"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "vertical" }}
+          style={{ resize: "none" }}
         />
       </Form.Group>
 
@@ -342,7 +342,7 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
           placeholder="Value for users + GoodDollar ecosystem"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "vertical" }}
+          style={{ resize: "none" }}
         />
       </Form.Group>
 
@@ -357,7 +357,7 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
           placeholder="A clear statement of your team's main objective for building in this round"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "vertical" }}
+          style={{ resize: "none" }}
         />
       </Form.Group>
 
@@ -409,7 +409,7 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
           placeholder="Why your build matters for the GoodDollar ecosystem"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "vertical" }}
+          style={{ resize: "none" }}
         />
       </Form.Group>
 
@@ -424,7 +424,7 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
           placeholder="What you aim to grow or activate during this round"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "vertical" }}
+          style={{ resize: "none" }}
         />
       </Form.Group>
 
@@ -439,7 +439,7 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
           placeholder="Who will drive this growth (segments, communities, regions, partners)?"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "vertical" }}
+          style={{ resize: "none" }}
         />
       </Form.Group>
 
@@ -491,7 +491,7 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
           placeholder="Why your growth matters for the GoodDollar ecosystem"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "vertical" }}
+          style={{ resize: "none" }}
         />
       </Form.Group>
 
@@ -596,7 +596,7 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
           placeholder="Provide any additional context or comments"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "vertical" }}
+          style={{ resize: "none" }}
         />
       </Form.Group>
     </div>

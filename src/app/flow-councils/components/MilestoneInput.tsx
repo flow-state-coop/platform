@@ -154,7 +154,7 @@ export default function MilestoneInput(props: MilestoneInputProps) {
                        Include KPIs (numbers tied to your milestone) that will
                        serve as targets, not obligations. Examples include
                        transaction #s, repeat usage %, amount of liquidity added."
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.description) && required && (!milestone.description.trim() || milestone.description.length < CHARACTER_LIMITS.milestoneDescription.min || milestone.description.length > CHARACTER_LIMITS.milestoneDescription.max) ? "border-danger" : "border-dark"}`}
+          className={`bg-white border border-2 rounded-2 py-3 px-3 ${(validated || touched.description) && required && (!milestone.description.trim() || milestone.description.length < CHARACTER_LIMITS.milestoneDescription.min || milestone.description.length > CHARACTER_LIMITS.milestoneDescription.max) ? "border-danger" : "border-dark"}`}
           style={{ resize: "vertical", backgroundImage: "none" }}
           isInvalid={
             (validated || touched.description) &&
