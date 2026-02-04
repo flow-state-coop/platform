@@ -3,11 +3,13 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Address, isAddress } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "@wagmi/core";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { gql, useQuery } from "@apollo/client";
+import useSiwe from "@/hooks/siwe";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
@@ -25,7 +27,7 @@ import {
   RECIPIENT_MANAGER_ROLE,
 } from "../lib/constants";
 
-type PermissionsProps = { chainId?: number; councilId?: string };
+type PermissionsProps = { chainId?: number; councilId?: string; csrfToken: string };
 type ManagerEntry = {
   address: string;
   defaultAdminRole: boolean;
@@ -52,7 +54,7 @@ const FLOW_COUNCIL_QUERY = gql`
 `;
 
 export default function Permissions(props: PermissionsProps) {
-  const { chainId, councilId } = props;
+  const { chainId, councilId, csrfToken } = props;
 
   const [transactionError, setTransactionError] = useState("");
   const [transactionSuccess, setTransactionSuccess] = useState(false);
@@ -66,6 +68,10 @@ export default function Permissions(props: PermissionsProps) {
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
+  const { data: session } = useSession();
+  const { handleSignIn } = useSiwe();
+
+  const needsSignIn = !session || session.address !== address;
   const { data: flowCouncilQueryRes, loading: flowCouncilQueryResLoading } =
     useQuery(FLOW_COUNCIL_QUERY, {
       client: getApolloClient("flowCouncil", chainId),
@@ -561,23 +567,34 @@ export default function Permissions(props: PermissionsProps) {
           </Card.Text>
         )}
         <Stack direction="vertical" gap={3} className="mt-4 mb-30">
-          <Button
-            disabled={!isAdmin || !hasChanges || !isValidManagersEntry}
-            className="py-4 rounded-4 fs-lg fw-semi-bold"
-            onClick={() => {
-              !address && openConnectModal
-                ? openConnectModal()
-                : connectedChain?.id !== chainId
+          {needsSignIn ? (
+            <Button
+              className="py-4 rounded-4 fs-lg fw-semi-bold"
+              onClick={() => {
+                !address && openConnectModal
+                  ? openConnectModal()
+                  : handleSignIn(csrfToken);
+              }}
+            >
+              Sign In With Ethereum
+            </Button>
+          ) : (
+            <Button
+              disabled={!isAdmin || !hasChanges || !isValidManagersEntry}
+              className="py-4 rounded-4 fs-lg fw-semi-bold"
+              onClick={() => {
+                connectedChain?.id !== chainId
                   ? switchChain({ chainId })
                   : handleSubmit();
-            }}
-          >
-            {isTransactionLoading ? (
-              <Spinner size="sm" className="ms-2" />
-            ) : (
-              "Submit"
-            )}
-          </Button>
+              }}
+            >
+              {isTransactionLoading ? (
+                <Spinner size="sm" className="ms-2" />
+              ) : (
+                "Submit"
+              )}
+            </Button>
+          )}
           <Button
             variant="secondary"
             className="py-4 rounded-4 fs-lg fw-semi-bold"
