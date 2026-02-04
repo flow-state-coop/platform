@@ -40,6 +40,17 @@ type AnnouncementEmailData = {
   councilId: string;
 };
 
+type InternalCommentEmailData = {
+  baseUrl: string;
+  projectName: string;
+  roundName: string;
+  sender: string;
+  messageContent: string;
+  chainId: number;
+  councilId: string;
+  applicationId: number;
+};
+
 async function sendTemplatedEmail(
   to: string[],
   templateName: string,
@@ -257,6 +268,34 @@ export async function sendAnnouncementEmail(
     roundName,
     sender,
     messageContent,
+    ctaLink,
+    unsubLink,
+  });
+}
+
+export async function sendInternalCommentEmail(
+  recipients: string[],
+  data: InternalCommentEmailData,
+): Promise<void> {
+  const {
+    baseUrl,
+    projectName,
+    roundName,
+    sender,
+    messageContent,
+    chainId,
+    councilId,
+    applicationId,
+  } = data;
+
+  const ctaLink = `${baseUrl}/flow-councils/review/${chainId}/${councilId}?application=${applicationId}`;
+  const unsubLink = `${baseUrl}/flow-councils/review/${chainId}/${councilId}`;
+
+  await sendTemplatedEmail(recipients, "flow-council-internal-comment", {
+    project_name: projectName,
+    round_name: roundName,
+    sender,
+    message_content: messageContent,
     ctaLink,
     unsubLink,
   });
