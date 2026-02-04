@@ -280,27 +280,18 @@ export default function Permissions(props: PermissionsProps) {
         confirmations: 3,
       });
 
-      // Sync super admins to database as round admins
       const superAdmins = managersEntry
         .filter((m) => m.defaultAdminRole && m.address)
         .map((m) => m.address.toLowerCase());
 
-      // Find admins who lost all roles (no longer have any admin role)
-      const removedAdmins = changedEntries
-        .filter((e) => e.status === StatusChange.REMOVED)
-        .map((e) => e.account.toLowerCase())
-        .filter((addr) => {
-          const entry = managersEntry.find(
-            (m) => m.address.toLowerCase() === addr,
-          );
-          // Remove from DB only if they have no roles left
-          return (
-            entry &&
-            !entry.defaultAdminRole &&
-            !entry.voterManagerRole &&
-            !entry.recipientManagerRole
-          );
-        });
+      const previousSuperAdmins =
+        flowCouncil?.flowCouncilManagers
+          .filter((m: { role: string }) => m.role === DEFAULT_ADMIN_ROLE)
+          .map((m: { account: string }) => m.account.toLowerCase()) ?? [];
+
+      const removedAdmins = previousSuperAdmins.filter(
+        (addr: string) => !superAdmins.includes(addr),
+      );
 
       await fetch("/api/flow-council/admins", {
         method: "POST",
@@ -312,7 +303,6 @@ export default function Permissions(props: PermissionsProps) {
         }),
       });
 
-      // Remove former admins from database
       if (removedAdmins.length > 0) {
         await fetch("/api/flow-council/admins", {
           method: "DELETE",

@@ -140,30 +140,6 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Verify caller is a super admin on-chain
-    const publicClient = createPublicClient({
-      chain: chains[network.id],
-      transport: http(network.rpcUrl),
-    });
-
-    const hasRole = await publicClient.readContract({
-      address: flowCouncilAddress as Address,
-      abi: parseAbi([
-        "function hasRole(bytes32 role, address account) view returns (bool)",
-      ]),
-      functionName: "hasRole",
-      args: [DEFAULT_ADMIN_ROLE, session.address as Address],
-    });
-
-    if (!hasRole) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Not an admin of this council",
-        }),
-      );
-    }
-
     const round = await db
       .selectFrom("rounds")
       .select(["id"])
@@ -174,6 +150,22 @@ export async function DELETE(request: Request) {
     if (!round) {
       return new Response(
         JSON.stringify({ success: false, error: "Round not found" }),
+      );
+    }
+
+    const isRoundAdmin = await db
+      .selectFrom("roundAdmins")
+      .select("id")
+      .where("roundId", "=", round.id)
+      .where("adminAddress", "=", session.address.toLowerCase())
+      .executeTakeFirst();
+
+    if (!isRoundAdmin) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Not an admin of this council",
+        }),
       );
     }
 
