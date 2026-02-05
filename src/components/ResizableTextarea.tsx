@@ -13,8 +13,8 @@ export default function ResizableTextarea(props: ResizableTextareaProps) {
   const { minHeight = 80, style, isInvalid, disabled, ...rest } = props;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
       e.preventDefault();
       const textarea = textareaRef.current;
       if (!textarea) return;
@@ -22,18 +22,21 @@ export default function ResizableTextarea(props: ResizableTextareaProps) {
       const startY = e.clientY;
       const startHeight = textarea.offsetHeight;
 
-      const handleMouseMove = (e: MouseEvent) => {
-        const newHeight = Math.max(minHeight, startHeight + e.clientY - startY);
+      const handlePointerMove = (moveEvent: PointerEvent) => {
+        const newHeight = Math.max(
+          minHeight,
+          startHeight + moveEvent.clientY - startY,
+        );
         textarea.style.height = `${newHeight}px`;
       };
 
-      const handleMouseUp = () => {
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
+      const handlePointerUp = () => {
+        document.removeEventListener("pointermove", handlePointerMove);
+        document.removeEventListener("pointerup", handlePointerUp);
       };
 
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
+      document.addEventListener("pointermove", handlePointerMove);
+      document.addEventListener("pointerup", handlePointerUp);
     },
     [minHeight],
   );
@@ -48,28 +51,29 @@ export default function ResizableTextarea(props: ResizableTextareaProps) {
         disabled={disabled}
         {...(rest as object)}
       />
-      {!disabled && (
-        <div
-          onMouseDown={handleMouseDown}
-          style={{
-            position: "absolute",
-            bottom: 0,
-            right: 0,
-            cursor: "ns-resize",
-            opacity: 0.5,
-            userSelect: "none",
-          }}
-        >
-          <Image
-            src="/resize-handle.svg"
-            alt="resize"
-            width={24}
-            height={24}
-            style={{ transform: "rotate(-45deg)" }}
-            draggable={false}
-          />
-        </div>
-      )}
+      <div
+        onPointerDown={handlePointerDown}
+        style={{
+          position: "absolute",
+          bottom: 0,
+          right: 0,
+          cursor: "ns-resize",
+          opacity: 0.7,
+          userSelect: "none",
+          touchAction: "none",
+          paddingTop: 10,
+          paddingLeft: 10,
+        }}
+      >
+        <Image
+          src="/resize-handle.svg"
+          alt="resize"
+          width={24}
+          height={24}
+          style={{ transform: "rotate(-45deg)" }}
+          draggable={false}
+        />
+      </div>
     </div>
   );
 }

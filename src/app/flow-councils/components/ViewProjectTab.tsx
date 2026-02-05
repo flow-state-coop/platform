@@ -3,6 +3,7 @@
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Image from "react-bootstrap/Image";
+import ResizableTextarea from "@/components/ResizableTextarea";
 import { ProjectDetails, SmartContract, OtherLink } from "@/types/project";
 
 export type { SmartContract, OtherLink };
@@ -103,13 +104,11 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
       <h4 className="fw-bold mb-4 mt-8">2. Basics</h4>
       <Form.Group className="mb-4">
         <Form.Label className="fs-lg fw-bold">Description</Form.Label>
-        <Form.Control
-          as="textarea"
+        <ResizableTextarea
           rows={6}
           value={projectDetails.description ?? ""}
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "none" }}
         />
       </Form.Group>
 
