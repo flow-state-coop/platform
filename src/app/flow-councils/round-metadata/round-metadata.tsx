@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useAccount } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
@@ -79,10 +79,11 @@ export default function RoundMetadata(props: RoundMetadataProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { isMobile } = useMediaQuery();
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
   const { data: session } = useSession();
   const { handleSignIn } = useSiwe();
   const { openConnectModal } = useConnectModal();
+  const { switchChain } = useSwitchChain();
 
   useEffect(() => {
     (async () => {
@@ -338,12 +339,20 @@ export default function RoundMetadata(props: RoundMetadataProps) {
             <Button
               className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
               onClick={() => {
-                !address && openConnectModal
-                  ? openConnectModal()
-                  : handleSignIn(csrfToken);
+                if (!address && openConnectModal) {
+                  openConnectModal();
+                } else if (connectedChain?.id !== chainId) {
+                  switchChain({ chainId });
+                } else {
+                  handleSignIn(csrfToken);
+                }
               }}
             >
-              Sign In With Ethereum
+              {!address
+                ? "Connect Wallet"
+                : connectedChain?.id !== chainId
+                  ? "Switch Network"
+                  : "Sign In With Ethereum"}
             </Button>
           ) : (
             <Button
