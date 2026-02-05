@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import { useSession } from "next-auth/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Stack from "react-bootstrap/Stack";
@@ -43,6 +43,7 @@ export default function ApplicationLayout({
   const { data: session } = useSession();
   const { handleSignIn } = useSiwe();
   const { openConnectModal } = useConnectModal();
+  const { switchChain } = useSwitchChain();
 
   // Resolve params
   useEffect(() => {
@@ -163,13 +164,17 @@ export default function ApplicationLayout({
             if (!address && openConnectModal) {
               openConnectModal();
             } else if (connectedChain?.id !== chainId) {
-              // Chain mismatch - could add switch chain logic
+              switchChain({ chainId: chainId! });
             } else {
               handleSignIn(csrfToken);
             }
           }}
         >
-          Sign In With Ethereum
+          {!address
+            ? "Connect Wallet"
+            : connectedChain?.id !== chainId
+              ? "Switch Network"
+              : "Sign In With Ethereum"}
         </Button>
       </Stack>
     );

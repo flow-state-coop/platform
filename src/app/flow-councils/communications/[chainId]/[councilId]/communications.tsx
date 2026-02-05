@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAccount } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import { useSession } from "next-auth/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { gql, useQuery } from "@apollo/client";
@@ -57,6 +57,7 @@ export default function Communications(props: CommunicationsProps) {
   const { handleSignIn } = useSiwe();
   const { isMobile, isTablet } = useMediaQuery();
   const { openConnectModal } = useConnectModal();
+  const { switchChain } = useSwitchChain();
   const { data: flowCouncilQueryRes, loading: flowCouncilQueryResLoading } =
     useQuery(FLOW_COUNCIL_QUERY, {
       client: getApolloClient("flowCouncil", chainId),
@@ -197,14 +198,20 @@ export default function Communications(props: CommunicationsProps) {
           variant="secondary"
           className="d-flex justify-content-center align-items-center gap-2 mt-5 fs-lg fw-semi-bold py-4 rounded-4"
           onClick={() => {
-            !address && openConnectModal
-              ? openConnectModal()
-              : connectedChain?.id !== chainId
-                ? (() => {})()
-                : handleSignIn(csfrToken);
+            if (!address && openConnectModal) {
+              openConnectModal();
+            } else if (connectedChain?.id !== chainId) {
+              switchChain({ chainId });
+            } else {
+              handleSignIn(csfrToken);
+            }
           }}
         >
-          Sign In With Ethereum
+          {!address
+            ? "Connect Wallet"
+            : connectedChain?.id !== chainId
+              ? "Switch Network"
+              : "Sign In With Ethereum"}
         </Button>
       ) : isLoadingChannels ? (
         <Spinner className="mt-5 mx-auto" />

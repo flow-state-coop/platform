@@ -630,7 +630,10 @@ export async function POST(request: Request) {
       } else if (channelType === "INTERNAL_APPLICATION" && applicationId) {
         Promise.all([
           getProjectAndRoundDetails(messageProjectId!, effectiveRoundId),
-          getRoundAdminEmailsExcludingAddress(effectiveRoundId, session.address),
+          getRoundAdminEmailsExcludingAddress(
+            effectiveRoundId,
+            session.address,
+          ),
         ])
           .then(([details, recipients]) => {
             if (details) {

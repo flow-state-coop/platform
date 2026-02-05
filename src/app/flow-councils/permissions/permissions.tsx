@@ -27,7 +27,11 @@ import {
   RECIPIENT_MANAGER_ROLE,
 } from "../lib/constants";
 
-type PermissionsProps = { chainId?: number; councilId?: string; csrfToken: string };
+type PermissionsProps = {
+  chainId?: number;
+  councilId?: string;
+  csrfToken: string;
+};
 type ManagerEntry = {
   address: string;
   defaultAdminRole: boolean;
@@ -571,12 +575,20 @@ export default function Permissions(props: PermissionsProps) {
             <Button
               className="py-4 rounded-4 fs-lg fw-semi-bold"
               onClick={() => {
-                !address && openConnectModal
-                  ? openConnectModal()
-                  : handleSignIn(csrfToken);
+                if (!address && openConnectModal) {
+                  openConnectModal();
+                } else if (connectedChain?.id !== chainId) {
+                  switchChain({ chainId: chainId! });
+                } else {
+                  handleSignIn(csrfToken);
+                }
               }}
             >
-              Sign In With Ethereum
+              {!address
+                ? "Connect Wallet"
+                : connectedChain?.id !== chainId
+                  ? "Switch Network"
+                  : "Sign In With Ethereum"}
             </Button>
           ) : (
             <Button
