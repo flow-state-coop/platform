@@ -2,6 +2,7 @@
 
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
+import ResizableTextarea from "@/components/ResizableTextarea";
 
 export type IntegrationType =
   | "payments"
@@ -206,14 +207,12 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
             <Form.Label className="fs-lg fw-bold">
               Current state of the project
             </Form.Label>
-            <Form.Control
-              as="textarea"
+            <ResizableTextarea
               rows={4}
               value={previousParticipation.currentProjectState}
               placeholder="Describe progress made, blockers, and what you've been up to"
               disabled
               className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-              style={{ resize: "none" }}
             />
           </Form.Group>
         </>
@@ -274,14 +273,12 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
         <Form.Label className="fs-lg fw-bold">
           Other relevant usage data
         </Form.Label>
-        <Form.Control
-          as="textarea"
+        <ResizableTextarea
           rows={4}
           value={maturityAndUsage.otherUsageData}
           placeholder="Any other relevant usage data"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "none" }}
         />
       </Form.Group>
 
@@ -335,14 +332,12 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
         <Form.Label className="fs-lg fw-bold">
           Integration Description
         </Form.Label>
-        <Form.Control
-          as="textarea"
+        <ResizableTextarea
           rows={4}
           value={integration.description}
           placeholder="Value for users + GoodDollar ecosystem"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "none" }}
         />
       </Form.Group>
 
@@ -350,14 +345,12 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
       <h4 className="fw-bold mb-4 mt-8">4. What you&apos;ll build</h4>
       <Form.Group className="mb-4">
         <Form.Label className="fs-lg fw-bold">Primary Build Goal</Form.Label>
-        <Form.Control
-          as="textarea"
+        <ResizableTextarea
           rows={2}
           value={buildGoals.primaryBuildGoal}
           placeholder="A clear statement of your team's main objective for building in this round"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "none" }}
         />
       </Form.Group>
 
@@ -402,14 +395,12 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
         <Form.Label className="fs-lg fw-bold">
           Build Ecosystem Impact
         </Form.Label>
-        <Form.Control
-          as="textarea"
+        <ResizableTextarea
           rows={3}
           value={buildGoals.ecosystemImpact}
           placeholder="Why your build matters for the GoodDollar ecosystem"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "none" }}
         />
       </Form.Group>
 
@@ -417,14 +408,12 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
       <h4 className="fw-bold mb-4 mt-8">5. How you&apos;ll grow</h4>
       <Form.Group className="mb-4">
         <Form.Label className="fs-lg fw-bold">Primary Growth Goal</Form.Label>
-        <Form.Control
-          as="textarea"
+        <ResizableTextarea
           rows={2}
           value={growthGoals.primaryGrowthGoal}
           placeholder="What you aim to grow or activate during this round"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "none" }}
         />
       </Form.Group>
 
@@ -432,14 +421,12 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
         <Form.Label className="fs-lg fw-bold">
           Target Users, Communities, and/or Partners
         </Form.Label>
-        <Form.Control
-          as="textarea"
+        <ResizableTextarea
           rows={3}
           value={growthGoals.targetUsers}
           placeholder="Who will drive this growth (segments, communities, regions, partners)?"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "none" }}
         />
       </Form.Group>
 
@@ -484,14 +471,12 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
         <Form.Label className="fs-lg fw-bold">
           Growth Ecosystem Impact
         </Form.Label>
-        <Form.Control
-          as="textarea"
+        <ResizableTextarea
           rows={3}
           value={growthGoals.ecosystemImpact}
           placeholder="Why your growth matters for the GoodDollar ecosystem"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "none" }}
         />
       </Form.Group>
 
@@ -589,14 +574,12 @@ export default function ViewRoundTab(props: ViewRoundTabProps) {
       <h4 className="fw-bold mb-4 mt-8">7. Additional</h4>
       <Form.Group className="mb-4">
         <Form.Label className="fs-lg fw-bold">Additional Comments</Form.Label>
-        <Form.Control
-          as="textarea"
+        <ResizableTextarea
           rows={4}
           value={additional.comments}
           placeholder="Provide any additional context or comments"
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-          style={{ resize: "none" }}
         />
       </Form.Group>
     </div>

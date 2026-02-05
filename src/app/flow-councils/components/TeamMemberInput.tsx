@@ -4,6 +4,7 @@ import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
+import ResizableTextarea from "@/components/ResizableTextarea";
 
 export type TeamMember = {
   name: string;
@@ -64,13 +65,11 @@ export default function TeamMemberInput(props: TeamMemberInputProps) {
       </Form.Group>
 
       <Form.Group className="mb-3">
-        <Form.Control
-          as="textarea"
+        <ResizableTextarea
           rows={3}
           value={member.roleDescription}
           placeholder="Role & Description"
           className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
-          style={{ resize: "none" }}
           isInvalid={validated && isPrimary && !member.roleDescription.trim()}
           onChange={(e) =>
             onChange({ ...member, roleDescription: e.target.value })
