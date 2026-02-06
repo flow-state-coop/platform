@@ -6,14 +6,13 @@ import {
   keccak256,
   parseAbi,
   Address,
-  Chain,
   isAddress,
 } from "viem";
-import { optimism, arbitrum, base, optimismSepolia } from "wagmi/chains";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { networks } from "@/lib/networks";
 import { ChannelType } from "@/generated/kysely";
+import { chains } from "@/app/flow-councils/lib/constants";
 import {
   sendChatMessageEmail,
   sendAnnouncementEmail,
@@ -26,13 +25,6 @@ import {
 } from "../email";
 
 export const dynamic = "force-dynamic";
-
-const chains: { [id: number]: Chain } = {
-  10: optimism,
-  42161: arbitrum,
-  8453: base,
-  11155420: optimismSepolia,
-};
 
 const RECIPIENT_MANAGER_ROLE = keccak256(
   encodePacked(["string"], ["RECIPIENT_MANAGER_ROLE"]),
@@ -53,8 +45,11 @@ async function hasOnChainRole(
   const network = networks.find((n) => n.id === chainId);
   if (!network) return false;
 
+  const chain = chains[chainId];
+  if (!chain) return false;
+
   const publicClient = createPublicClient({
-    chain: chains[chainId],
+    chain,
     transport: http(network.rpcUrl),
   });
 
