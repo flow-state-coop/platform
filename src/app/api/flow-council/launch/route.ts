@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
     const network = networks.find((network) => network.id === chainId);
 
-    if (!network) {
+    if (!network || network.label !== "celo") {
       return new Response(
         JSON.stringify({ success: false, error: "Invalid network" }),
       );
