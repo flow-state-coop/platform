@@ -6,14 +6,13 @@ import {
   keccak256,
   parseAbi,
   Address,
-  Chain,
   isAddress,
 } from "viem";
-import { optimism, arbitrum, base, optimismSepolia } from "wagmi/chains";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { networks } from "@/lib/networks";
 import { ApplicationStatus } from "@/generated/kysely";
+import { chains } from "@/app/flow-councils/lib/constants";
 import {
   sendApplicationStatusChangedEmail,
   getProjectEmails,
@@ -22,13 +21,6 @@ import {
 import { errorResponse } from "../../utils";
 
 export const dynamic = "force-dynamic";
-
-const chains: { [id: number]: Chain } = {
-  10: optimism,
-  42161: arbitrum,
-  8453: base,
-  11155420: optimismSepolia,
-};
 
 export async function POST(request: Request) {
   try {
