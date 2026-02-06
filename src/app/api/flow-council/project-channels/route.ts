@@ -9,9 +9,9 @@ import {
   isAddress,
 } from "viem";
 import { db } from "../db";
+import { celo } from "viem/chains";
 import { networks } from "@/lib/networks";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { chains } from "@/app/flow-councils/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -34,11 +34,8 @@ async function hasOnChainRole(
   const network = networks.find((n) => n.id === chainId);
   if (!network) return false;
 
-  const chain = chains[chainId];
-  if (!chain) return false;
-
   const publicClient = createPublicClient({
-    chain,
+    chain: celo,
     transport: http(network.rpcUrl),
   });
 

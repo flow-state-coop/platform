@@ -123,7 +123,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
   const supportedNetworkConnection = networks.find(
-    (network) => network.id === connectedChain?.id,
+    (network) => network.id === connectedChain?.id && network.label === "celo",
   );
   const {
     data: flowCouncilsManagerQueryRes,
@@ -474,23 +474,25 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
               {selectedNetwork.name}
             </Dropdown.Toggle>
             <Dropdown.Menu className="border-4 border-dark lh-lg">
-              {networks.map((network, i) => (
-                <Dropdown.Item
-                  key={i}
-                  className="fw-semi-bold"
-                  onClick={() => {
-                    if (!connectedChain && openConnectModal) {
-                      openConnectModal();
-                    } else if (connectedChain?.id !== network.id) {
-                      switchChain({ chainId: network.id });
-                    }
+              {networks
+                .filter((network) => network.label === "celo")
+                .map((network, i) => (
+                  <Dropdown.Item
+                    key={i}
+                    className="fw-semi-bold"
+                    onClick={() => {
+                      if (!connectedChain && openConnectModal) {
+                        openConnectModal();
+                      } else if (connectedChain?.id !== network.id) {
+                        switchChain({ chainId: network.id });
+                      }
 
-                    setSelectedNetwork(network);
-                  }}
-                >
-                  {network.name}
-                </Dropdown.Item>
-              ))}
+                      setSelectedNetwork(network);
+                    }}
+                  >
+                    {network.name}
+                  </Dropdown.Item>
+                ))}
             </Dropdown.Menu>
           </Dropdown>
           <div

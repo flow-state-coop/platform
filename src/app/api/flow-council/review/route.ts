@@ -8,11 +8,11 @@ import {
   Address,
   isAddress,
 } from "viem";
+import { celo } from "viem/chains";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { networks } from "@/lib/networks";
 import { ApplicationStatus } from "@/generated/kysely";
-import { chains } from "@/app/flow-councils/lib/constants";
 import {
   sendApplicationStatusChangedEmail,
   getProjectEmails,
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     }
 
     const publicClient = createPublicClient({
-      chain: chains[network.id],
+      chain: celo,
       transport: http(network.rpcUrl),
     });
 

@@ -8,11 +8,11 @@ import {
   Address,
   isAddress,
 } from "viem";
+import { celo } from "viem/chains";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { networks } from "@/lib/networks";
 import { ChannelType } from "@/generated/kysely";
-import { chains } from "@/app/flow-councils/lib/constants";
 import {
   sendChatMessageEmail,
   sendAnnouncementEmail,
@@ -45,11 +45,8 @@ async function hasOnChainRole(
   const network = networks.find((n) => n.id === chainId);
   if (!network) return false;
 
-  const chain = chains[chainId];
-  if (!chain) return false;
-
   const publicClient = createPublicClient({
-    chain,
+    chain: celo,
     transport: http(network.rpcUrl),
   });
 
