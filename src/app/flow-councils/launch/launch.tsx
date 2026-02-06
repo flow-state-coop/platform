@@ -88,13 +88,14 @@ export default function Launch(props: LaunchProps) {
 
   const flowCouncil = flowCouncilQueryRes?.flowCouncil;
 
-  // Default to user's connected network when creating a new council
+  const launchNetworks = networks.filter((network) => network.label === "celo");
+
   useEffect(() => {
     if (councilId || !connectedChain) {
       return;
     }
 
-    const userNetwork = networks.find(
+    const userNetwork = launchNetworks.find(
       (network) => network.id === connectedChain.id,
     );
 
@@ -102,7 +103,7 @@ export default function Launch(props: LaunchProps) {
       setSelectedNetwork(userNetwork);
       setSelectedToken(userNetwork.tokens[0]);
     }
-  }, [councilId, connectedChain]);
+  }, [councilId, connectedChain, launchNetworks]);
 
   useEffect(() => {
     (async () => {
@@ -229,7 +230,7 @@ export default function Launch(props: LaunchProps) {
                 </Stack>
               </Dropdown.Toggle>
               <Dropdown.Menu className="border-0 p-2 lh-lg">
-                {networks.map((network, i) => (
+                {launchNetworks.map((network, i) => (
                   <Dropdown.Item
                     key={i}
                     className="fw-semi-bold"
