@@ -2,61 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount, useSwitchChain } from "wagmi";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { useSession } from "next-auth/react";
 import { isAddress } from "viem";
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import Toast from "react-bootstrap/Toast";
-import useSiwe from "@/hooks/siwe";
-import { type RoundForm } from "./RoundTab";
-
-export type RecipientType = "individual" | "organization";
-
-export type AttestationForm = {
-  commitment: {
-    agreedToCommitments: boolean;
-  };
-  identity: {
-    recipientType: RecipientType | null;
-    legalName: string;
-    country: string;
-    address: string;
-    contactEmail: string;
-    fundingWallet: string;
-    walletConfirmed: boolean;
-  };
-  dataAcknowledgement: {
-    gdprConsent: boolean;
-  };
-  privacyTransparency: {
-    agreedToPrivacy: boolean;
-  };
-};
-
-const initialForm: AttestationForm = {
-  commitment: {
-    agreedToCommitments: false,
-  },
-  identity: {
-    recipientType: null,
-    legalName: "",
-    country: "",
-    address: "",
-    contactEmail: "",
-    fundingWallet: "",
-    walletConfirmed: false,
-  },
-  dataAcknowledgement: {
-    gdprConsent: false,
-  },
-  privacyTransparency: {
-    agreedToPrivacy: false,
-  },
-};
+import useAuthSubmit from "@/app/flow-councils/hooks/authSubmit";
+import {
+  type RoundForm,
+  type AttestationForm,
+  INITIAL_ATTESTATION_FORM,
+} from "@/app/flow-councils/types/round";
 
 const isValidEmail = (email: string): boolean => {
   if (!email) return false;
@@ -91,7 +48,7 @@ export default function AttestationTab(props: AttestationTabProps) {
   } = props;
 
   const router = useRouter();
-  const [form, setForm] = useState<AttestationForm>(initialForm);
+  const [form, setForm] = useState<AttestationForm>(INITIAL_ATTESTATION_FORM);
   const [validated, setValidated] = useState(false);
   const [touched, setTouched] = useState({
     legalName: false,
@@ -104,16 +61,16 @@ export default function AttestationTab(props: AttestationTabProps) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const { openConnectModal } = useConnectModal();
-  const { address, chain: connectedChain } = useAccount();
-  const { switchChain } = useSwitchChain();
-  const { data: session } = useSession();
-  const { handleSignIn } = useSiwe();
+  const {
+    address,
+    session,
+    handleSubmit: authSubmit,
+  } = useAuthSubmit(chainId, csrfToken);
 
   useEffect(() => {
     if (existingAttestationData) {
       setForm({
-        ...initialForm,
+        ...INITIAL_ATTESTATION_FORM,
         ...existingAttestationData,
       });
     }
@@ -201,16 +158,7 @@ export default function AttestationTab(props: AttestationTabProps) {
   };
 
   const handleSubmit = () => {
-    setValidated(true);
-    if (!address && openConnectModal) {
-      openConnectModal();
-    } else if (connectedChain?.id !== chainId) {
-      switchChain({ chainId });
-    } else if (!session || session.address !== address) {
-      handleSignIn(csrfToken);
-    } else if (isValid) {
-      handleSubmitApplication();
-    }
+    authSubmit(isValid, setValidated, handleSubmitApplication);
   };
 
   if (isLoading) {

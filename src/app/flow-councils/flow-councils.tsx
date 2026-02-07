@@ -22,19 +22,11 @@ import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";
 import { truncateStr } from "@/lib/utils";
 
+import { type FlowCouncilListing } from "./types/flowCouncil";
+import { fetchRoundMetadata } from "./lib/fetchRoundMetadata";
+
 type FlowCouncilsProps = {
   defaultNetwork: Network;
-};
-
-type FlowCouncil = {
-  id: string;
-  superToken: string;
-  isManager: boolean;
-  isRecipient: boolean;
-  distributionPool: string;
-  isConnected: boolean;
-  units: bigint;
-  metadata: { name: string; description: string };
 };
 
 const FLOW_COUNCIL_MANAGER_QUERY = gql`
@@ -113,7 +105,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
 
   const [selectedNetwork, setSelectedNetwork] =
     useState<Network>(defaultNetwork);
-  const [flowCouncils, setFlowCouncils] = useState<FlowCouncil[]>([]);
+  const [flowCouncils, setFlowCouncils] = useState<FlowCouncilListing[]>([]);
 
   const router = useRouter();
   const { data: walletClient } = useWalletClient();
@@ -196,42 +188,25 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
         return;
       }
 
-      const councils: FlowCouncil[] = [];
+      const councils: FlowCouncilListing[] = [];
       const sfPoolMemberships = superfluidQueryRes?.account?.poolMemberships;
 
       const buildFlowCouncil = async (
-        flowCouncil: FlowCouncil & { metadata: string },
+        flowCouncil: FlowCouncilListing & { metadata: string },
       ) => {
         const poolMembership = sfPoolMemberships?.find(
           (membership: { pool: { id: string } }) =>
             membership.pool.id === flowCouncil?.distributionPool,
         );
 
-        // Fetch round name from database
-        let roundMetadata: { name: string; description: string } = {
-          name: "Flow Council",
-          description: "N/A",
+        const fetched = await fetchRoundMetadata(
+          selectedNetwork.id,
+          flowCouncil.id,
+        );
+        const roundMetadata = {
+          name: fetched.name,
+          description: fetched.description || "N/A",
         };
-        try {
-          const res = await fetch(
-            `/api/flow-council/rounds?chainId=${selectedNetwork.id}&flowCouncilAddress=${flowCouncil.id}`,
-          );
-          const data = await res.json();
-          if (data.success && data.round?.details) {
-            const details =
-              typeof data.round.details === "string"
-                ? JSON.parse(data.round.details)
-                : data.round.details;
-            if (details?.name) {
-              roundMetadata = {
-                name: details.name,
-                description: details.description ?? "N/A",
-              };
-            }
-          }
-        } catch (err) {
-          console.error(err);
-        }
 
         councils.push({
           id: flowCouncil.id,
@@ -314,7 +289,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
     flowCouncil,
     token,
   }: {
-    flowCouncil: FlowCouncil;
+    flowCouncil: FlowCouncilListing;
     token?: Token;
   }) => {
     const [nameRef, { clampedText }] = useClampText({

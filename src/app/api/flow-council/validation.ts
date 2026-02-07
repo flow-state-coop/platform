@@ -1,5 +1,10 @@
 import { z } from "zod";
 import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
+import type {
+  TeamMember,
+  BuildMilestone,
+  GrowthMilestone,
+} from "@/app/flow-councils/types/round";
 
 const smartContractSchema = z.object({
   type: z.enum(["projectAddress", "goodCollectivePool"]),
@@ -34,19 +39,19 @@ export const projectDetailsSchema = z.object({
   otherLinks: z.array(otherLinkSchema).optional(),
 });
 
-const buildMilestoneSchema = z.object({
+const buildMilestoneSchema: z.ZodType<BuildMilestone> = z.object({
   title: z.string(),
   description: z.string().max(CHARACTER_LIMITS.milestoneDescription.max),
   deliverables: z.array(z.string()),
 });
 
-const growthMilestoneSchema = z.object({
+const growthMilestoneSchema: z.ZodType<GrowthMilestone> = z.object({
   title: z.string(),
   description: z.string().max(CHARACTER_LIMITS.milestoneDescription.max),
   activations: z.array(z.string()),
 });
 
-const teamMemberSchema = z.object({
+const teamMemberSchema: z.ZodType<TeamMember> = z.object({
   name: z.string(),
   roleDescription: z.string(),
   telegram: z.string().optional(),

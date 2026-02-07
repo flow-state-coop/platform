@@ -36,8 +36,10 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { RECIPIENT_MANAGER_ROLE } from "../lib/constants";
 import { getApolloClient } from "@/lib/apollo";
-import type { RoundForm } from "@/app/flow-councils/components/ViewRoundTab";
-import type { AttestationForm } from "@/app/flow-councils/components/ViewAttestationTab";
+import type {
+  RoundForm,
+  AttestationForm,
+} from "@/app/flow-councils/types/round";
 import { ProjectDetails } from "@/types/project";
 
 type ReviewProps = {

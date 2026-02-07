@@ -7,8 +7,6 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import { OtherLink } from "@/types/project";
 
-export type { OtherLink };
-
 type OtherLinkRowProps = {
   links: OtherLink[];
   onChange: (links: OtherLink[]) => void;

@@ -7,18 +7,10 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import CharacterCounter from "./CharacterCounter";
 import { CHARACTER_LIMITS } from "../constants";
-
-export type BuildMilestone = {
-  title: string;
-  description: string;
-  deliverables: string[];
-};
-
-export type GrowthMilestone = {
-  title: string;
-  description: string;
-  activations: string[];
-};
+import {
+  type BuildMilestone,
+  type GrowthMilestone,
+} from "@/app/flow-councils/types/round";
 
 type MilestoneInputProps = {
   milestone: BuildMilestone | GrowthMilestone;

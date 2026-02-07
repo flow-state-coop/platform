@@ -9,6 +9,7 @@ import {
   getRoundAdminEmailsExcludingAddress,
 } from "../email";
 import { errorResponse } from "../../utils";
+import { findRoundByCouncil } from "../auth";
 
 export const dynamic = "force-dynamic";
 
@@ -67,12 +68,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const round = await db
-      .selectFrom("rounds")
-      .select("id")
-      .where("chainId", "=", chainId)
-      .where("flowCouncilAddress", "=", councilId.toLowerCase())
-      .executeTakeFirst();
+    const round = await findRoundByCouncil(chainId, councilId);
 
     if (!round) {
       return new Response(

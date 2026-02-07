@@ -10,8 +10,6 @@ import { isAddress } from "viem";
 import { networks } from "@/lib/networks";
 import { SmartContract } from "@/types/project";
 
-export type { SmartContract };
-
 // Custom network list for smart contracts dropdown
 const SMART_CONTRACT_NETWORKS = [
   { id: 1, name: "Ethereum", icon: "/eth.png" },

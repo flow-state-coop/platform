@@ -4,9 +4,7 @@ import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Image from "react-bootstrap/Image";
 import ResizableTextarea from "@/components/ResizableTextarea";
-import { ProjectDetails, SmartContract, OtherLink } from "@/types/project";
-
-export type { SmartContract, OtherLink };
+import { ProjectDetails } from "@/types/project";
 
 type ViewProjectTabProps = {
   projectDetails: ProjectDetails | null;
