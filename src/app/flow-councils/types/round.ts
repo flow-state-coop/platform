@@ -89,6 +89,39 @@ export type AttestationForm = {
   };
 };
 
+export const INTEGRATION_TYPE_LABELS: Record<IntegrationType, string> = {
+  payments: "Payments/rewards using G$",
+  identity: "Identity",
+  claimFlow: "Claim flow",
+  goodCollective: "GoodCollective pools",
+  supertoken: "G$ Supertoken/streaming",
+  activityFees: "Activity fees --> UBI Pool",
+  other: "Other",
+};
+
+export const PROJECT_STAGE_LABELS: Record<string, string> = {
+  early: "Early stage",
+  live: "Live product",
+  mature: "Mature product with active users",
+};
+
+export const INTEGRATION_STATUS_LABELS: Record<string, string> = {
+  live: "Live",
+  ready: "Ready soon",
+  planned: "Planned (eligible only if delivered)",
+};
+
+export const FREQUENCY_LABELS: Record<string, string> = {
+  daily: "Daily Active Users",
+  weekly: "Weekly Active Users",
+  monthly: "Monthly Active Users",
+};
+
+export const RECIPIENT_TYPE_LABELS: Record<RecipientType, string> = {
+  individual: "Individual",
+  organization: "Organization",
+};
+
 export const INITIAL_ROUND_FORM: RoundForm = {
   previousParticipation: {
     hasParticipatedBefore: null,

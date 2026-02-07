@@ -19,23 +19,17 @@ import {
   type GrowthMilestone,
   type TeamMember,
   INITIAL_ROUND_FORM,
+  INTEGRATION_TYPE_LABELS,
+  FREQUENCY_LABELS,
 } from "@/app/flow-councils/types/round";
 
-const INTEGRATION_TYPE_OPTIONS: { value: IntegrationType; label: string }[] = [
-  { value: "payments", label: "Payments/rewards using G$" },
-  { value: "identity", label: "Identity" },
-  { value: "claimFlow", label: "Claim flow" },
-  { value: "goodCollective", label: "GoodCollective pools" },
-  { value: "supertoken", label: "G$ Supertoken/streaming" },
-  { value: "activityFees", label: "Activity fees --> UBI Pool" },
-  { value: "other", label: "Other" },
-];
+const INTEGRATION_TYPE_OPTIONS = (
+  Object.entries(INTEGRATION_TYPE_LABELS) as [IntegrationType, string][]
+).map(([value, label]) => ({ value, label }));
 
-const ACTIVE_USERS_FREQUENCY_OPTIONS = [
-  { value: "daily", label: "Daily Active Users" },
-  { value: "weekly", label: "Weekly Active Users" },
-  { value: "monthly", label: "Monthly Active Users" },
-];
+const ACTIVE_USERS_FREQUENCY_OPTIONS = Object.entries(FREQUENCY_LABELS).map(
+  ([value, label]) => ({ value, label }),
+);
 
 type RoundTabProps = {
   chainId: number;

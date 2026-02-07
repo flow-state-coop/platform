@@ -149,10 +149,14 @@ export async function DELETE(
 
     // Check if user is moderator
     const isModerator = await canModerateChannel(
-      message,
+      {
+        channelType: message.channelType,
+        chainId,
+        councilId,
+        roundId: message.roundId ?? undefined,
+        projectId: message.projectId ?? undefined,
+      },
       session.address,
-      chainId,
-      councilId,
     );
 
     if (!isAuthor && !isModerator) {

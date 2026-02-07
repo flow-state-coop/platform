@@ -4,41 +4,16 @@ import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import ResizableTextarea from "@/components/ResizableTextarea";
 import {
-  type IntegrationType,
   type RoundForm,
   INITIAL_ROUND_FORM,
+  INTEGRATION_TYPE_LABELS,
+  PROJECT_STAGE_LABELS,
+  INTEGRATION_STATUS_LABELS,
+  FREQUENCY_LABELS,
 } from "@/app/flow-councils/types/round";
 
 type ViewRoundTabProps = {
   roundData: RoundForm | null;
-};
-
-const INTEGRATION_TYPE_LABELS: Record<IntegrationType, string> = {
-  payments: "Payments/rewards using G$",
-  identity: "Identity",
-  claimFlow: "Claim flow",
-  goodCollective: "GoodCollective pools",
-  supertoken: "G$ Supertoken/streaming",
-  activityFees: "Activity fees --> UBI Pool",
-  other: "Other",
-};
-
-const PROJECT_STAGE_LABELS: Record<string, string> = {
-  early: "Early stage",
-  live: "Live product",
-  mature: "Mature product with active users",
-};
-
-const INTEGRATION_STATUS_LABELS: Record<string, string> = {
-  live: "Live",
-  ready: "Ready soon",
-  planned: "Planned (eligible only if delivered)",
-};
-
-const FREQUENCY_LABELS: Record<string, string> = {
-  daily: "Daily Active Users",
-  weekly: "Weekly Active Users",
-  monthly: "Monthly Active Users",
 };
 
 export default function ViewRoundTab(props: ViewRoundTabProps) {

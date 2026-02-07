@@ -2,18 +2,13 @@
 
 import Form from "react-bootstrap/Form";
 import {
-  type RecipientType,
   type AttestationForm,
   INITIAL_ATTESTATION_FORM,
+  RECIPIENT_TYPE_LABELS,
 } from "@/app/flow-councils/types/round";
 
 type ViewAttestationTabProps = {
   attestationData: AttestationForm | null;
-};
-
-const RECIPIENT_TYPE_LABELS: Record<RecipientType, string> = {
-  individual: "Individual",
-  organization: "Organization",
 };
 
 export default function ViewAttestationTab(props: ViewAttestationTabProps) {

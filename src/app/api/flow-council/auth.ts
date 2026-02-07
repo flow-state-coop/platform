@@ -134,6 +134,19 @@ export async function findRoundByCouncil(
     .executeTakeFirst();
 }
 
+async function isAdmin(
+  roundId: number,
+  chainId: number,
+  councilId: string,
+  address: string,
+): Promise<boolean> {
+  const [isDbAdmin, isOnChainAdmin] = await Promise.all([
+    isRoundAdmin(roundId, address),
+    hasOnChainRole(chainId, councilId, address),
+  ]);
+  return isDbAdmin || isOnChainAdmin;
+}
+
 export async function canReadChannel(
   ctx: ChannelContext,
   address: string | null,
@@ -152,34 +165,27 @@ export async function canReadChannel(
 
     case "GROUP_ANNOUNCEMENTS": {
       if (!roundId) return false;
-      const [isGrantee, isDbAdmin, isOnChainAdmin] = await Promise.all([
+      const [isGrantee, hasAdminRole] = await Promise.all([
         isAcceptedGrantee(roundId, address),
-        isRoundAdmin(roundId, address),
-        hasOnChainRole(chainId, councilId, address),
+        isAdmin(roundId, chainId, councilId, address),
       ]);
-      return isGrantee || isDbAdmin || isOnChainAdmin;
+      return isGrantee || hasAdminRole;
     }
 
     case "GROUP_PROJECT": {
       if (!projectId || !roundId) return false;
-      const [isProjManager, isDbAdmin, isOnChainAdmin] = await Promise.all([
+      const [isProjManager, hasAdminRole] = await Promise.all([
         isProjectManager(projectId, address),
-        isRoundAdmin(roundId, address),
-        hasOnChainRole(chainId, councilId, address),
+        isAdmin(roundId, chainId, councilId, address),
       ]);
-      return isProjManager || isDbAdmin || isOnChainAdmin;
+      return isProjManager || hasAdminRole;
     }
 
     case "GROUP_APPLICANTS":
     case "GROUP_GRANTEES":
-    case "GROUP_ROUND_ADMINS": {
+    case "GROUP_ROUND_ADMINS":
       if (!roundId) return false;
-      const [isDbAdmin, isOnChainAdmin] = await Promise.all([
-        isRoundAdmin(roundId, address),
-        hasOnChainRole(chainId, councilId, address),
-      ]);
-      return isDbAdmin || isOnChainAdmin;
-    }
+      return isAdmin(roundId, chainId, councilId, address);
 
     default:
       return false;
@@ -196,48 +202,26 @@ export async function canWriteChannel(
     case "INTERNAL_APPLICATION":
       return hasOnChainRole(chainId, councilId, address);
 
-    case "GROUP_ANNOUNCEMENTS": {
-      if (!roundId) return false;
-      const [isDbAdmin, isOnChainAdmin] = await Promise.all([
-        isRoundAdmin(roundId, address),
-        hasOnChainRole(chainId, councilId, address),
-      ]);
-      return isDbAdmin || isOnChainAdmin;
-    }
-
     case "GROUP_PROJECT": {
       if (!projectId || !roundId) return false;
-      const [isProjManager, isDbAdmin, isOnChainAdmin] = await Promise.all([
+      const [isProjManager, hasAdminRole] = await Promise.all([
         isProjectManager(projectId, address),
-        isRoundAdmin(roundId, address),
-        hasOnChainRole(chainId, councilId, address),
+        isAdmin(roundId, chainId, councilId, address),
       ]);
-      return isProjManager || isDbAdmin || isOnChainAdmin;
-    }
-
-    case "PUBLIC_ROUND": {
-      if (!roundId) return false;
-      const [isDbAdmin, isOnChainAdmin] = await Promise.all([
-        isRoundAdmin(roundId, address),
-        hasOnChainRole(chainId, councilId, address),
-      ]);
-      return isDbAdmin || isOnChainAdmin;
+      return isProjManager || hasAdminRole;
     }
 
     case "PUBLIC_PROJECT":
       if (!projectId) return false;
       return isProjectManager(projectId, address);
 
+    case "GROUP_ANNOUNCEMENTS":
+    case "PUBLIC_ROUND":
     case "GROUP_APPLICANTS":
     case "GROUP_GRANTEES":
-    case "GROUP_ROUND_ADMINS": {
+    case "GROUP_ROUND_ADMINS":
       if (!roundId) return false;
-      const [isDbAdmin, isOnChainAdmin] = await Promise.all([
-        isRoundAdmin(roundId, address),
-        hasOnChainRole(chainId, councilId, address),
-      ]);
-      return isDbAdmin || isOnChainAdmin;
-    }
+      return isAdmin(roundId, chainId, councilId, address);
 
     default:
       return false;
@@ -245,16 +229,10 @@ export async function canWriteChannel(
 }
 
 export async function canModerateChannel(
-  message: {
-    channelType: ChannelType;
-    roundId: number | null;
-    projectId: number | null;
-  },
+  ctx: ChannelContext,
   address: string,
-  chainId: number,
-  councilId: string,
 ): Promise<boolean> {
-  const { channelType, roundId, projectId } = message;
+  const { channelType, chainId, councilId, roundId, projectId } = ctx;
 
   switch (channelType) {
     case "INTERNAL_APPLICATION":
@@ -265,14 +243,9 @@ export async function canModerateChannel(
     case "GROUP_APPLICANTS":
     case "GROUP_GRANTEES":
     case "GROUP_ROUND_ADMINS":
-    case "PUBLIC_ROUND": {
+    case "PUBLIC_ROUND":
       if (!roundId) return false;
-      const [isDbAdmin, isOnChainAdmin] = await Promise.all([
-        isRoundAdmin(roundId, address),
-        hasOnChainRole(chainId, councilId, address),
-      ]);
-      return isDbAdmin || isOnChainAdmin;
-    }
+      return isAdmin(roundId, chainId, councilId, address);
 
     case "PUBLIC_PROJECT":
       if (!projectId) return false;

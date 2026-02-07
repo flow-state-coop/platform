@@ -29,53 +29,29 @@ type FlowCouncilsProps = {
   defaultNetwork: Network;
 };
 
-const FLOW_COUNCIL_MANAGER_QUERY = gql`
-  query FlowCouncilManagerQuery($address: String!) {
-    flowCouncils(
-      first: 1000
-      orderBy: createdAtTimestamp
-      orderDirection: desc
-      where: { flowCouncilManagers_: { account: $address } }
-    ) {
-      id
-      superToken
-      distributionPool
-      metadata
+function flowCouncilsByRoleQuery(role: string) {
+  return gql`
+    query FlowCouncilByRoleQuery($address: String!) {
+      flowCouncils(
+        first: 1000
+        orderBy: createdAtTimestamp
+        orderDirection: desc
+        where: { ${role}_: { account: $address } }
+      ) {
+        id
+        superToken
+        distributionPool
+        metadata
+      }
     }
-  }
-`;
+  `;
+}
 
-const FLOW_COUNCIL_VOTER_QUERY = gql`
-  query FlowCouncilVoterQuery($address: String!) {
-    flowCouncils(
-      first: 1000
-      orderBy: createdAtTimestamp
-      orderDirection: desc
-      where: { voters_: { account: $address } }
-    ) {
-      id
-      superToken
-      distributionPool
-      metadata
-    }
-  }
-`;
-
-const FLOW_COUNCIL_RECIPIENT_QUERY = gql`
-  query FlowCouncilRecipientQuery($address: String!) {
-    flowCouncils(
-      first: 1000
-      orderBy: createdAtTimestamp
-      orderDirection: desc
-      where: { recipients_: { account: $address } }
-    ) {
-      id
-      superToken
-      distributionPool
-      metadata
-    }
-  }
-`;
+const FLOW_COUNCIL_MANAGER_QUERY = flowCouncilsByRoleQuery(
+  "flowCouncilManagers",
+);
+const FLOW_COUNCIL_VOTER_QUERY = flowCouncilsByRoleQuery("voters");
+const FLOW_COUNCIL_RECIPIENT_QUERY = flowCouncilsByRoleQuery("recipients");
 
 const SF_POOL_MEMBERSHIPS_QUERY = gql`
   query SFPoolMembershipsQuery($address: String) {
@@ -117,57 +93,33 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
   const supportedNetworkConnection = networks.find(
     (network) => network.id === connectedChain?.id && network.label === "celo",
   );
+  const networkId = supportedNetworkConnection
+    ? connectedChain?.id
+    : selectedNetwork.id;
+  const queryOptions = {
+    variables: { address: address?.toLowerCase() },
+    pollInterval: 10000,
+    skip: !address,
+  };
   const {
     data: flowCouncilsManagerQueryRes,
     loading: flowCouncilsManagerQueryLoading,
   } = useQuery(FLOW_COUNCIL_MANAGER_QUERY, {
-    client: getApolloClient(
-      "flowCouncil",
-      supportedNetworkConnection ? connectedChain?.id : selectedNetwork.id,
-    ),
-    variables: {
-      address: address?.toLowerCase(),
-    },
-    pollInterval: 10000,
-    skip: !address,
+    client: getApolloClient("flowCouncil", networkId),
+    ...queryOptions,
   });
   const { data: flowCouncilsVoterQueryRes } = useQuery(
     FLOW_COUNCIL_VOTER_QUERY,
-    {
-      client: getApolloClient(
-        "flowCouncil",
-        supportedNetworkConnection ? connectedChain?.id : selectedNetwork.id,
-      ),
-      variables: {
-        address: address?.toLowerCase(),
-      },
-      pollInterval: 10000,
-      skip: !address,
-    },
+    { client: getApolloClient("flowCouncil", networkId), ...queryOptions },
   );
   const { data: flowCouncilsRecipientQueryRes } = useQuery(
     FLOW_COUNCIL_RECIPIENT_QUERY,
-    {
-      client: getApolloClient(
-        "flowCouncil",
-        supportedNetworkConnection ? connectedChain?.id : selectedNetwork.id,
-      ),
-      variables: {
-        address: address?.toLowerCase(),
-      },
-      pollInterval: 10000,
-      skip: !address,
-    },
+    { client: getApolloClient("flowCouncil", networkId), ...queryOptions },
   );
   const { data: superfluidQueryRes, loading: superfluidQueryLoading } =
     useQuery(SF_POOL_MEMBERSHIPS_QUERY, {
-      client: getApolloClient(
-        "superfluid",
-        supportedNetworkConnection ? connectedChain?.id : selectedNetwork.id,
-      ),
-      variables: { address: address?.toLowerCase() },
-      pollInterval: 10000,
-      skip: !address,
+      client: getApolloClient("superfluid", networkId),
+      ...queryOptions,
     });
 
   useEffect(() => {
@@ -211,12 +163,8 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
         councils.push({
           id: flowCouncil.id,
           superToken: flowCouncil.superToken,
-          isManager: !!flowCouncilsManagerQueryRes.flowCouncils.find(
-            (c: { id: string }) => c.id === flowCouncil.id,
-          ),
-          isRecipient: !!flowCouncilsRecipientQueryRes.flowCouncils.find(
-            (c: { id: string }) => c.id === flowCouncil.id,
-          ),
+          isManager: managerIds.has(flowCouncil.id),
+          isRecipient: recipientIds.has(flowCouncil.id),
           distributionPool: flowCouncil.distributionPool,
           isConnected: poolMembership?.isConnected ?? false,
           units: BigInt(poolMembership?.units ?? 0),
@@ -224,37 +172,34 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
         });
       };
 
+      const managerIds = new Set(
+        flowCouncilsManagerQueryRes.flowCouncils.map(
+          (c: { id: string }) => c.id,
+        ),
+      );
+      const recipientIds = new Set(
+        flowCouncilsRecipientQueryRes.flowCouncils.map(
+          (c: { id: string }) => c.id,
+        ),
+      );
+      const seenIds = new Set<string>();
       const promises = [];
 
-      for (const flowCouncilManager of flowCouncilsManagerQueryRes.flowCouncils) {
-        promises.push(buildFlowCouncil(flowCouncilManager));
+      for (const council of flowCouncilsManagerQueryRes.flowCouncils) {
+        seenIds.add(council.id);
+        promises.push(buildFlowCouncil(council));
       }
 
-      for (const flowCouncilVoter of flowCouncilsVoterQueryRes.flowCouncils) {
-        if (
-          flowCouncilsManagerQueryRes?.flowCouncils
-            .map((flowCouncil: { id: string }) => flowCouncil.id)
-            .includes(flowCouncilVoter.id)
-        ) {
-          continue;
-        }
-
-        promises.push(buildFlowCouncil(flowCouncilVoter));
+      for (const council of flowCouncilsVoterQueryRes.flowCouncils) {
+        if (seenIds.has(council.id)) continue;
+        seenIds.add(council.id);
+        promises.push(buildFlowCouncil(council));
       }
 
-      for (const flowCouncilRecipient of flowCouncilsRecipientQueryRes.flowCouncils) {
-        if (
-          flowCouncilsManagerQueryRes?.flowCouncils
-            .map((flowCouncil: { id: string }) => flowCouncil.id)
-            .includes(flowCouncilRecipient.id) ||
-          flowCouncilsVoterQueryRes?.flowCouncils
-            .map((flowCouncil: { id: string }) => flowCouncil.id)
-            .includes(flowCouncilRecipient.id)
-        ) {
-          continue;
-        }
-
-        promises.push(buildFlowCouncil(flowCouncilRecipient));
+      for (const council of flowCouncilsRecipientQueryRes.flowCouncils) {
+        if (seenIds.has(council.id)) continue;
+        seenIds.add(council.id);
+        promises.push(buildFlowCouncil(council));
       }
 
       await Promise.all(promises);
