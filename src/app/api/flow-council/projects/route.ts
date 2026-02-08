@@ -340,7 +340,12 @@ export async function PATCH(request: Request) {
         await trx
           .deleteFrom("projectEmails")
           .where("projectId", "=", projectId)
-          .where("managerAddress", "=", session.address.toLowerCase())
+          .where((eb) =>
+            eb.or([
+              eb("managerAddress", "=", session.address.toLowerCase()),
+              eb("managerAddress", "is", null),
+            ]),
+          )
           .execute();
 
         // Insert new emails
