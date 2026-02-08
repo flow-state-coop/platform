@@ -1,60 +1,29 @@
 "use client";
 
 import Form from "react-bootstrap/Form";
-
-export type RecipientType = "individual" | "organization";
-
-export type AttestationForm = {
-  commitment: {
-    agreedToCommitments: boolean;
-  };
-  identity: {
-    recipientType: RecipientType | null;
-    legalName: string;
-    country: string;
-    address: string;
-    contactEmail: string;
-    fundingWallet: string;
-    walletConfirmed: boolean;
-  };
-  dataAcknowledgement: {
-    gdprConsent: boolean;
-  };
-  privacyTransparency: {
-    agreedToPrivacy: boolean;
-  };
-};
+import {
+  type AttestationForm,
+  INITIAL_ATTESTATION_FORM,
+  RECIPIENT_TYPE_LABELS,
+} from "@/app/flow-councils/types/round";
 
 type ViewAttestationTabProps = {
   attestationData: AttestationForm | null;
 };
 
-const RECIPIENT_TYPE_LABELS: Record<RecipientType, string> = {
-  individual: "Individual",
-  organization: "Organization",
-};
-
 export default function ViewAttestationTab(props: ViewAttestationTabProps) {
   const { attestationData } = props;
 
-  const commitment = attestationData?.commitment || {
-    agreedToCommitments: false,
-  };
-  const identity = attestationData?.identity || {
-    recipientType: null as RecipientType | null,
-    legalName: "",
-    country: "",
-    address: "",
-    contactEmail: "",
-    fundingWallet: "",
-    walletConfirmed: false,
-  };
-  const dataAcknowledgement = attestationData?.dataAcknowledgement || {
-    gdprConsent: false,
-  };
-  const privacyTransparency = attestationData?.privacyTransparency || {
-    agreedToPrivacy: false,
-  };
+  const commitment =
+    attestationData?.commitment || INITIAL_ATTESTATION_FORM.commitment;
+  const identity =
+    attestationData?.identity || INITIAL_ATTESTATION_FORM.identity;
+  const dataAcknowledgement =
+    attestationData?.dataAcknowledgement ||
+    INITIAL_ATTESTATION_FORM.dataAcknowledgement;
+  const privacyTransparency =
+    attestationData?.privacyTransparency ||
+    INITIAL_ATTESTATION_FORM.privacyTransparency;
 
   return (
     <div>

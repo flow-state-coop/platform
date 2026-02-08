@@ -1,7 +1,5 @@
 import { ProjectDetails } from "@/types/project";
 
-export type { ProjectDetails };
-
 export type Grantee = {
   id: string;
   address: `0x${string}`;

@@ -1,133 +1,35 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount, useSwitchChain } from "wagmi";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { useSession } from "next-auth/react";
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Dropdown from "react-bootstrap/Dropdown";
 import Spinner from "react-bootstrap/Spinner";
-import MilestoneInput, {
-  type BuildMilestone,
-  type GrowthMilestone,
-} from "./MilestoneInput";
-import TeamMemberInput, { type TeamMember } from "./TeamMemberInput";
+import MilestoneInput from "./MilestoneInput";
+import TeamMemberInput from "./TeamMemberInput";
 import InfoBox from "./InfoBox";
 import CharacterCounter from "./CharacterCounter";
 import { CHARACTER_LIMITS } from "../constants";
-import useSiwe from "@/hooks/siwe";
+import useAuthSubmit from "@/app/flow-councils/hooks/authSubmit";
+import {
+  type IntegrationType,
+  type RoundForm,
+  type BuildMilestone,
+  type GrowthMilestone,
+  type TeamMember,
+  INITIAL_ROUND_FORM,
+  INTEGRATION_TYPE_LABELS,
+  FREQUENCY_LABELS,
+} from "@/app/flow-councils/types/round";
 
-export type IntegrationType =
-  | "payments"
-  | "identity"
-  | "claimFlow"
-  | "goodCollective"
-  | "supertoken"
-  | "activityFees"
-  | "other";
+const INTEGRATION_TYPE_OPTIONS = (
+  Object.entries(INTEGRATION_TYPE_LABELS) as [IntegrationType, string][]
+).map(([value, label]) => ({ value, label }));
 
-export type RoundForm = {
-  previousParticipation: {
-    hasParticipatedBefore: boolean | null;
-    numberOfRounds: string;
-    previousKarmaUpdates: string;
-    currentProjectState: string;
-  };
-  maturityAndUsage: {
-    projectStage: "early" | "live" | "mature" | null;
-    lifetimeUsers: string;
-    activeUsers: string;
-    activeUsersFrequency: "daily" | "weekly" | "monthly";
-    otherUsageData: string;
-  };
-  integration: {
-    status: "live" | "ready" | "planned" | null;
-    types: IntegrationType[];
-    otherTypeExplanation: string;
-    description: string;
-  };
-  buildGoals: {
-    primaryBuildGoal: string;
-    milestones: BuildMilestone[];
-    ecosystemImpact: string;
-  };
-  growthGoals: {
-    primaryGrowthGoal: string;
-    targetUsers: string;
-    milestones: GrowthMilestone[];
-    ecosystemImpact: string;
-  };
-  team: {
-    primaryContact: TeamMember;
-    additionalTeammates: TeamMember[];
-  };
-  additional: {
-    comments: string;
-  };
-};
-
-const initialForm: RoundForm = {
-  previousParticipation: {
-    hasParticipatedBefore: null,
-    numberOfRounds: "",
-    previousKarmaUpdates: "",
-    currentProjectState: "",
-  },
-  maturityAndUsage: {
-    projectStage: null,
-    lifetimeUsers: "",
-    activeUsers: "",
-    activeUsersFrequency: "weekly",
-    otherUsageData: "",
-  },
-  integration: {
-    status: null,
-    types: [],
-    otherTypeExplanation: "",
-    description: "",
-  },
-  buildGoals: {
-    primaryBuildGoal: "",
-    milestones: [{ title: "", description: "", deliverables: [""] }],
-    ecosystemImpact: "",
-  },
-  growthGoals: {
-    primaryGrowthGoal: "",
-    targetUsers: "",
-    milestones: [{ title: "", description: "", activations: [""] }],
-    ecosystemImpact: "",
-  },
-  team: {
-    primaryContact: {
-      name: "",
-      roleDescription: "",
-      telegram: "",
-      githubOrLinkedin: "",
-    },
-    additionalTeammates: [],
-  },
-  additional: {
-    comments: "",
-  },
-};
-
-const INTEGRATION_TYPE_OPTIONS: { value: IntegrationType; label: string }[] = [
-  { value: "payments", label: "Payments/rewards using G$" },
-  { value: "identity", label: "Identity" },
-  { value: "claimFlow", label: "Claim flow" },
-  { value: "goodCollective", label: "GoodCollective pools" },
-  { value: "supertoken", label: "G$ Supertoken/streaming" },
-  { value: "activityFees", label: "Activity fees --> UBI Pool" },
-  { value: "other", label: "Other" },
-];
-
-const ACTIVE_USERS_FREQUENCY_OPTIONS = [
-  { value: "daily", label: "Daily Active Users" },
-  { value: "weekly", label: "Weekly Active Users" },
-  { value: "monthly", label: "Monthly Active Users" },
-];
+const ACTIVE_USERS_FREQUENCY_OPTIONS = Object.entries(FREQUENCY_LABELS).map(
+  ([value, label]) => ({ value, label }),
+);
 
 type RoundTabProps = {
   chainId: number;
@@ -152,7 +54,7 @@ export default function RoundTab(props: RoundTabProps) {
     onBack,
   } = props;
 
-  const [form, setForm] = useState<RoundForm>(initialForm);
+  const [form, setForm] = useState<RoundForm>(INITIAL_ROUND_FORM);
   const [validated, setValidated] = useState(false);
   const [touched, setTouched] = useState({
     currentProjectState: false,
@@ -162,11 +64,11 @@ export default function RoundTab(props: RoundTabProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const { openConnectModal } = useConnectModal();
-  const { address, chain: connectedChain } = useAccount();
-  const { switchChain } = useSwitchChain();
-  const { data: session } = useSession();
-  const { handleSignIn } = useSiwe();
+  const {
+    address,
+    session,
+    handleSubmit: authSubmit,
+  } = useAuthSubmit(chainId, csrfToken);
 
   useEffect(() => {
     if (existingRoundData) {
@@ -404,16 +306,7 @@ export default function RoundTab(props: RoundTabProps) {
   };
 
   const handleSubmit = () => {
-    setValidated(true);
-    if (!address && openConnectModal) {
-      openConnectModal();
-    } else if (connectedChain?.id !== chainId) {
-      switchChain({ chainId });
-    } else if (!session || session.address !== address) {
-      handleSignIn(csrfToken);
-    } else if (isValid) {
-      handleSaveRound();
-    }
+    authSubmit(isValid, setValidated, handleSaveRound);
   };
 
   if (isLoading) {

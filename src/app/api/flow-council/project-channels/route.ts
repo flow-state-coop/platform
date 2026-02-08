@@ -1,81 +1,11 @@
 import { getServerSession } from "next-auth/next";
-import {
-  createPublicClient,
-  http,
-  encodePacked,
-  keccak256,
-  parseAbi,
-  Address,
-  isAddress,
-} from "viem";
+import { isAddress } from "viem";
 import { db } from "../db";
-import { celo } from "viem/chains";
 import { networks } from "@/lib/networks";
 import { authOptions } from "../../auth/[...nextauth]/route";
+import { hasOnChainRole, findRoundByCouncil } from "../auth";
 
 export const dynamic = "force-dynamic";
-
-const RECIPIENT_MANAGER_ROLE = keccak256(
-  encodePacked(["string"], ["RECIPIENT_MANAGER_ROLE"]),
-);
-
-const VOTER_MANAGER_ROLE = keccak256(
-  encodePacked(["string"], ["VOTER_MANAGER_ROLE"]),
-);
-
-const DEFAULT_ADMIN_ROLE =
-  "0x0000000000000000000000000000000000000000000000000000000000000000";
-
-async function hasOnChainRole(
-  chainId: number,
-  councilId: string,
-  address: string,
-): Promise<boolean> {
-  const network = networks.find((n) => n.id === chainId);
-  if (!network) return false;
-
-  const publicClient = createPublicClient({
-    chain: celo,
-    transport: http(network.rpcUrl),
-  });
-
-  try {
-    const [hasRecipientManagerRole, hasVoterManagerRole, hasDefaultAdminRole] =
-      await Promise.all([
-        publicClient.readContract({
-          address: councilId as Address,
-          abi: parseAbi([
-            "function hasRole(bytes32 role, address account) view returns (bool)",
-          ]),
-          functionName: "hasRole",
-          args: [RECIPIENT_MANAGER_ROLE, address as Address],
-        }),
-        publicClient.readContract({
-          address: councilId as Address,
-          abi: parseAbi([
-            "function hasRole(bytes32 role, address account) view returns (bool)",
-          ]),
-          functionName: "hasRole",
-          args: [VOTER_MANAGER_ROLE, address as Address],
-        }),
-        publicClient.readContract({
-          address: councilId as Address,
-          abi: parseAbi([
-            "function hasRole(bytes32 role, address account) view returns (bool)",
-          ]),
-          functionName: "hasRole",
-          args: [DEFAULT_ADMIN_ROLE as `0x${string}`, address as Address],
-        }),
-      ]);
-
-    return (
-      hasRecipientManagerRole || hasVoterManagerRole || hasDefaultAdminRole
-    );
-  } catch (err) {
-    console.error("Error checking roles:", err);
-    return false;
-  }
-}
 
 export async function GET(request: Request) {
   try {
@@ -105,13 +35,7 @@ export async function GET(request: Request) {
       );
     }
 
-    // Find the round
-    const round = await db
-      .selectFrom("rounds")
-      .select("id")
-      .where("chainId", "=", chainId)
-      .where("flowCouncilAddress", "=", councilId.toLowerCase())
-      .executeTakeFirst();
+    const round = await findRoundByCouncil(chainId, councilId);
 
     if (!round) {
       return new Response(

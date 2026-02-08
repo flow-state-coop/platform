@@ -5,13 +5,7 @@ import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import ResizableTextarea from "@/components/ResizableTextarea";
-
-export type TeamMember = {
-  name: string;
-  roleDescription: string;
-  telegram: string;
-  githubOrLinkedin: string;
-};
+import { type TeamMember } from "@/app/flow-councils/types/round";
 
 type TeamMemberInputProps = {
   member: TeamMember;
@@ -80,7 +74,7 @@ export default function TeamMemberInput(props: TeamMemberInputProps) {
       <Form.Group className="mb-3">
         <Form.Control
           type="text"
-          value={member.telegram}
+          value={member.telegram ?? ""}
           placeholder="Telegram - https://t.me/..."
           className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
           onChange={(e) => onChange({ ...member, telegram: e.target.value })}
@@ -90,7 +84,7 @@ export default function TeamMemberInput(props: TeamMemberInputProps) {
       <Form.Group>
         <Form.Control
           type="text"
-          value={member.githubOrLinkedin}
+          value={member.githubOrLinkedin ?? ""}
           placeholder="Github/LinkedIn Profile"
           className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
           onChange={(e) =>

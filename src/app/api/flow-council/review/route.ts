@@ -1,13 +1,5 @@
 import { getServerSession } from "next-auth/next";
-import {
-  createPublicClient,
-  http,
-  encodePacked,
-  keccak256,
-  parseAbi,
-  Address,
-  isAddress,
-} from "viem";
+import { createPublicClient, http, parseAbi, Address, isAddress } from "viem";
 import { celo } from "viem/chains";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
@@ -19,6 +11,8 @@ import {
   getProjectAndRoundDetails,
 } from "../email";
 import { errorResponse } from "../../utils";
+import { RECIPIENT_MANAGER_ROLE } from "@/app/flow-councils/lib/constants";
+import { findRoundByCouncil } from "../auth";
 
 export const dynamic = "force-dynamic";
 
@@ -53,17 +47,13 @@ export async function POST(request: Request) {
       transport: http(network.rpcUrl),
     });
 
-    const recipientManagerRole = keccak256(
-      encodePacked(["string"], ["RECIPIENT_MANAGER_ROLE"]),
-    );
-
     const hasRole = await publicClient.readContract({
       address: councilId as Address,
       abi: parseAbi([
         "function hasRole(bytes32 role, address account) view returns (bool)",
       ]),
       functionName: "hasRole",
-      args: [recipientManagerRole, session.address as Address],
+      args: [RECIPIENT_MANAGER_ROLE, session.address as Address],
     });
 
     if (!hasRole) {
@@ -72,12 +62,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const round = await db
-      .selectFrom("rounds")
-      .select("id")
-      .where("chainId", "=", chainId)
-      .where("flowCouncilAddress", "=", councilId.toLowerCase())
-      .executeTakeFirst();
+    const round = await findRoundByCouncil(chainId, councilId);
 
     if (!round) {
       return new Response(

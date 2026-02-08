@@ -15,7 +15,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { truncateStr, formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
-import { ProjectDetails } from "../types/grantee";
+import { ProjectDetails } from "@/types/project";
 
 type GranteeDetailsProps = {
   id: string;

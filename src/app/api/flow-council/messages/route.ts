@@ -1,17 +1,7 @@
 import { getServerSession } from "next-auth/next";
-import {
-  createPublicClient,
-  http,
-  encodePacked,
-  keccak256,
-  parseAbi,
-  Address,
-  isAddress,
-} from "viem";
-import { celo } from "viem/chains";
+import { isAddress } from "viem";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { networks } from "@/lib/networks";
 import { ChannelType } from "@/generated/kysely";
 import {
   sendChatMessageEmail,
@@ -23,89 +13,16 @@ import {
   getAnnouncementRecipients,
   getRoundAdminEmailsExcludingAddress,
 } from "../email";
+import {
+  type AuthorAffiliation,
+  type ChannelContext,
+  hasOnChainRole,
+  findRoundByCouncil,
+  canReadChannel,
+  canWriteChannel,
+} from "../auth";
 
 export const dynamic = "force-dynamic";
-
-const RECIPIENT_MANAGER_ROLE = keccak256(
-  encodePacked(["string"], ["RECIPIENT_MANAGER_ROLE"]),
-);
-
-const DEFAULT_ADMIN_ROLE =
-  "0x0000000000000000000000000000000000000000000000000000000000000000";
-
-const VOTER_MANAGER_ROLE = keccak256(
-  encodePacked(["string"], ["VOTER_MANAGER_ROLE"]),
-);
-
-async function hasOnChainRole(
-  chainId: number,
-  councilId: string,
-  address: string,
-): Promise<boolean> {
-  const network = networks.find((n) => n.id === chainId);
-  if (!network) return false;
-
-  const publicClient = createPublicClient({
-    chain: celo,
-    transport: http(network.rpcUrl),
-  });
-
-  try {
-    const [hasRecipientManagerRole, hasVoterManagerRole, hasDefaultAdminRole] =
-      await Promise.all([
-        publicClient.readContract({
-          address: councilId as Address,
-          abi: parseAbi([
-            "function hasRole(bytes32 role, address account) view returns (bool)",
-          ]),
-          functionName: "hasRole",
-          args: [RECIPIENT_MANAGER_ROLE, address as Address],
-        }),
-        publicClient.readContract({
-          address: councilId as Address,
-          abi: parseAbi([
-            "function hasRole(bytes32 role, address account) view returns (bool)",
-          ]),
-          functionName: "hasRole",
-          args: [VOTER_MANAGER_ROLE, address as Address],
-        }),
-        publicClient.readContract({
-          address: councilId as Address,
-          abi: parseAbi([
-            "function hasRole(bytes32 role, address account) view returns (bool)",
-          ]),
-          functionName: "hasRole",
-          args: [DEFAULT_ADMIN_ROLE as `0x${string}`, address as Address],
-        }),
-      ]);
-
-    return (
-      hasRecipientManagerRole || hasVoterManagerRole || hasDefaultAdminRole
-    );
-  } catch (err) {
-    console.error("Error checking roles:", err);
-    return false;
-  }
-}
-
-async function isRoundAdmin(
-  roundId: number,
-  address: string,
-): Promise<boolean> {
-  const admin = await db
-    .selectFrom("roundAdmins")
-    .select("id")
-    .where("roundId", "=", roundId)
-    .where("adminAddress", "=", address.toLowerCase())
-    .executeTakeFirst();
-
-  return !!admin;
-}
-
-export type AuthorAffiliation = {
-  isAdmin: boolean;
-  projectName: string | null;
-};
 
 async function getAuthorAffiliations(
   addresses: string[],
@@ -195,168 +112,6 @@ async function getAuthorAffiliations(
   return result;
 }
 
-async function isProjectManager(
-  projectId: number,
-  address: string,
-): Promise<boolean> {
-  const manager = await db
-    .selectFrom("projectManagers")
-    .select("id")
-    .where("projectId", "=", projectId)
-    .where("managerAddress", "=", address.toLowerCase())
-    .executeTakeFirst();
-
-  return !!manager;
-}
-
-async function isAcceptedGrantee(
-  roundId: number,
-  address: string,
-): Promise<boolean> {
-  // Check if user is a manager of any project with an accepted application in this round
-  const result = await db
-    .selectFrom("applications")
-    .innerJoin(
-      "projectManagers",
-      "applications.projectId",
-      "projectManagers.projectId",
-    )
-    .select("applications.id")
-    .where("applications.roundId", "=", roundId)
-    .where("applications.status", "=", "ACCEPTED")
-    .where("projectManagers.managerAddress", "=", address.toLowerCase())
-    .executeTakeFirst();
-
-  return !!result;
-}
-
-type ChannelContext = {
-  channelType: ChannelType;
-  chainId: number;
-  councilId: string;
-  roundId?: number;
-  projectId?: number;
-  applicationId?: number;
-};
-
-async function canReadChannel(
-  ctx: ChannelContext,
-  address: string | null,
-): Promise<boolean> {
-  const { channelType, chainId, councilId, roundId, projectId } = ctx;
-
-  // Public channels - anyone can read
-  if (channelType === "PUBLIC_ROUND" || channelType === "PUBLIC_PROJECT") {
-    return true;
-  }
-
-  // All other channels require authentication
-  if (!address) return false;
-
-  switch (channelType) {
-    case "INTERNAL_APPLICATION":
-      return hasOnChainRole(chainId, councilId, address);
-
-    case "GROUP_ANNOUNCEMENTS": {
-      if (!roundId) return false;
-      // Read: Accepted grantee manager addresses OR Round admins (db or on-chain)
-      const [isGrantee, isDbAdmin, isOnChainAdmin] = await Promise.all([
-        isAcceptedGrantee(roundId, address),
-        isRoundAdmin(roundId, address),
-        hasOnChainRole(chainId, councilId, address),
-      ]);
-      return isGrantee || isDbAdmin || isOnChainAdmin;
-    }
-
-    case "GROUP_PROJECT": {
-      if (!projectId || !roundId) return false;
-      // Read: Project managers OR Round admins (db or on-chain)
-      const [isProjManager, isDbAdmin, isOnChainAdmin] = await Promise.all([
-        isProjectManager(projectId, address),
-        isRoundAdmin(roundId, address),
-        hasOnChainRole(chainId, councilId, address),
-      ]);
-      return isProjManager || isDbAdmin || isOnChainAdmin;
-    }
-
-    case "GROUP_APPLICANTS":
-    case "GROUP_GRANTEES":
-    case "GROUP_ROUND_ADMINS": {
-      if (!roundId) return false;
-      const [isDbAdmin, isOnChainAdmin] = await Promise.all([
-        isRoundAdmin(roundId, address),
-        hasOnChainRole(chainId, councilId, address),
-      ]);
-      return isDbAdmin || isOnChainAdmin;
-    }
-
-    default:
-      return false;
-  }
-}
-
-async function canWriteChannel(
-  ctx: ChannelContext,
-  address: string,
-): Promise<boolean> {
-  const { channelType, chainId, councilId, roundId, projectId } = ctx;
-
-  switch (channelType) {
-    case "INTERNAL_APPLICATION":
-      return hasOnChainRole(chainId, councilId, address);
-
-    case "GROUP_ANNOUNCEMENTS": {
-      // Write: Round admins only (db or on-chain)
-      if (!roundId) return false;
-      const [isDbAdmin, isOnChainAdmin] = await Promise.all([
-        isRoundAdmin(roundId, address),
-        hasOnChainRole(chainId, councilId, address),
-      ]);
-      return isDbAdmin || isOnChainAdmin;
-    }
-
-    case "GROUP_PROJECT": {
-      if (!projectId || !roundId) return false;
-      // Write: Project managers OR Round admins (db or on-chain)
-      const [isProjManager, isDbAdmin, isOnChainAdmin] = await Promise.all([
-        isProjectManager(projectId, address),
-        isRoundAdmin(roundId, address),
-        hasOnChainRole(chainId, councilId, address),
-      ]);
-      return isProjManager || isDbAdmin || isOnChainAdmin;
-    }
-
-    case "PUBLIC_ROUND": {
-      // Write: Round admins only (db or on-chain)
-      if (!roundId) return false;
-      const [isDbAdmin, isOnChainAdmin] = await Promise.all([
-        isRoundAdmin(roundId, address),
-        hasOnChainRole(chainId, councilId, address),
-      ]);
-      return isDbAdmin || isOnChainAdmin;
-    }
-
-    case "PUBLIC_PROJECT":
-      // Write: Project managers
-      if (!projectId) return false;
-      return isProjectManager(projectId, address);
-
-    case "GROUP_APPLICANTS":
-    case "GROUP_GRANTEES":
-    case "GROUP_ROUND_ADMINS": {
-      if (!roundId) return false;
-      const [isDbAdmin, isOnChainAdmin] = await Promise.all([
-        isRoundAdmin(roundId, address),
-        hasOnChainRole(chainId, councilId, address),
-      ]);
-      return isDbAdmin || isOnChainAdmin;
-    }
-
-    default:
-      return false;
-  }
-}
-
 // GET - Fetch messages for a channel
 export async function GET(request: Request) {
   try {
@@ -403,13 +158,7 @@ export async function GET(request: Request) {
     // Get session (may be null for public channels)
     const session = await getServerSession(authOptions);
 
-    // Get round from database
-    const round = await db
-      .selectFrom("rounds")
-      .select("id")
-      .where("chainId", "=", chainIdNum)
-      .where("flowCouncilAddress", "=", councilId.toLowerCase())
-      .executeTakeFirst();
+    const round = await findRoundByCouncil(chainIdNum, councilId);
 
     const roundIdNum = roundId ? parseInt(roundId, 10) : round?.id;
 
@@ -422,7 +171,6 @@ export async function GET(request: Request) {
       applicationId: applicationId ? parseInt(applicationId, 10) : undefined,
     };
 
-    // Check read permission
     const canRead = await canReadChannel(ctx, session?.address || null);
 
     if (!canRead) {
@@ -532,13 +280,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get round from database
-    const round = await db
-      .selectFrom("rounds")
-      .select("id")
-      .where("chainId", "=", chainId)
-      .where("flowCouncilAddress", "=", councilId.toLowerCase())
-      .executeTakeFirst();
+    const round = await findRoundByCouncil(chainId, councilId);
 
     const effectiveRoundId = roundId || round?.id;
 
@@ -551,7 +293,6 @@ export async function POST(request: Request) {
       applicationId,
     };
 
-    // Check write permission
     const canWrite = await canWriteChannel(ctx, session.address);
 
     if (!canWrite) {

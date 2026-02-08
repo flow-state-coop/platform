@@ -7,13 +7,13 @@ import Stack from "react-bootstrap/Stack";
 import Nav from "react-bootstrap/Nav";
 import Tab from "react-bootstrap/Tab";
 import ProjectTab from "@/app/flow-councils/components/ProjectTab";
-import RoundTab, {
-  type RoundForm,
-} from "@/app/flow-councils/components/RoundTab";
+import RoundTab from "@/app/flow-councils/components/RoundTab";
 import ViewRoundTab from "@/app/flow-councils/components/ViewRoundTab";
-import AttestationTab, {
-  type AttestationForm,
-} from "@/app/flow-councils/components/AttestationTab";
+import AttestationTab from "@/app/flow-councils/components/AttestationTab";
+import type {
+  RoundForm,
+  AttestationForm,
+} from "@/app/flow-councils/types/round";
 import ViewAttestationTab from "@/app/flow-councils/components/ViewAttestationTab";
 import { networks } from "@/lib/networks";
 import { Project } from "@/types/project";

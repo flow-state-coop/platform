@@ -13,38 +13,17 @@ import useFlowCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 import useDistributionPoolQuery from "@/app/flow-councils/hooks/distributionPoolQuery";
 import { Token } from "@/types/token";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
-
-type FlowCouncil = {
-  id: string;
-  metadata: string;
-  superToken: `0x${string}`;
-  recipients: {
-    metadata: string;
-    account: `0x${string}`;
-    votes: { votedBy: string; amount: string; createdAtTimestamp: string };
-  }[];
-  maxVotingSpread: number;
-  distributionPool: string;
-};
-
-type CouncilMember = {
-  account: `0x${string}`;
-  votingPower: number;
-};
-
-type Allocation = { recipient: `0x${string}`; amount: number };
-
-type CurrentAllocation = {
-  allocation: Allocation[];
-  votingPower: number;
-};
-
-type NewAllocation = {
-  allocation: Allocation[];
-};
+import {
+  type FlowCouncilData,
+  type CouncilMember,
+  type CurrentAllocation,
+  type NewAllocation,
+  type AllocationAction,
+  type ShowBallotAction,
+} from "@/app/flow-councils/types/flowCouncil";
 
 export const FlowCouncilContext = createContext<{
-  council?: FlowCouncil;
+  council?: FlowCouncilData;
   councilMetadata: { name: string; description: string; logoUrl: string };
   councilMember?: CouncilMember;
   currentAllocation?: CurrentAllocation;
@@ -69,15 +48,11 @@ export const FlowCouncilContext = createContext<{
   showBallot: boolean;
 } | null>(null);
 
-export const AllocationDispatchContext = createContext<React.Dispatch<{
-  type: string;
-  allocation?: Allocation;
-  currentAllocation?: CurrentAllocation;
-}> | null>(null);
+export const AllocationDispatchContext =
+  createContext<React.Dispatch<AllocationAction> | null>(null);
 
-export const ShowBallotDispatchContext = createContext<React.Dispatch<{
-  type: string;
-}> | null>(null);
+export const ShowBallotDispatchContext =
+  createContext<React.Dispatch<ShowBallotAction> | null>(null);
 
 export function useFlowCouncilContext() {
   const context = useContext(FlowCouncilContext);
@@ -109,12 +84,7 @@ export function useShowBallotDispatchContext() {
   return context;
 }
 
-function showBallotReducer(
-  showBallot: boolean,
-  action: {
-    type: string;
-  },
-) {
+function showBallotReducer(showBallot: boolean, action: ShowBallotAction) {
   switch (action.type) {
     case "show": {
       return true;
@@ -123,51 +93,38 @@ function showBallotReducer(
     case "hide": {
       return false;
     }
-
-    default: {
-      throw Error(`Unknown action: ${action.type}`);
-    }
   }
 }
 
 function newAllocationReducer(
   newAllocation: NewAllocation,
-  action: {
-    type: string;
-    currentAllocation?: CurrentAllocation;
-    allocation?: Allocation;
-  },
+  action: AllocationAction,
 ) {
   switch (action.type) {
     case "add": {
       if (!action.allocation) {
-        if (!action.currentAllocation) {
-          return { ...newAllocation };
-        }
-
-        return {
-          ...newAllocation,
-          allocation: action.currentAllocation.allocation,
-        };
+        return action.currentAllocation
+          ? {
+              ...newAllocation,
+              allocation: action.currentAllocation.allocation,
+            }
+          : { ...newAllocation };
       }
 
-      const nextAllocation =
-        action.currentAllocation?.allocation &&
-        (!newAllocation?.allocation || newAllocation.allocation.length === 0)
-          ? [...action.currentAllocation.allocation, action.allocation]
-          : newAllocation?.allocation
-            ? [...newAllocation.allocation, action.allocation]
-            : [action.allocation];
+      const base =
+        newAllocation.allocation.length > 0
+          ? newAllocation.allocation
+          : (action.currentAllocation?.allocation ?? []);
 
-      return { ...newAllocation, allocation: nextAllocation };
+      return { ...newAllocation, allocation: [...base, action.allocation] };
     }
     case "update": {
       const updatedAllocation = [...newAllocation.allocation];
       const index = newAllocation.allocation.findIndex(
-        (a) => a.recipient === action.allocation?.recipient,
+        (a) => a.recipient === action.allocation.recipient,
       );
 
-      if (index >= 0 && action.allocation) {
+      if (index >= 0) {
         updatedAllocation[index] = action.allocation;
       }
 
@@ -177,7 +134,7 @@ function newAllocationReducer(
       return {
         ...newAllocation,
         allocation: newAllocation.allocation.filter(
-          (a) => a.recipient !== action.allocation?.recipient,
+          (a) => a.recipient !== action.allocation.recipient,
         ),
       };
     }
@@ -185,9 +142,6 @@ function newAllocationReducer(
       return {
         allocation: [],
       };
-    }
-    default: {
-      throw Error(`Unknown action: ${action.type}`);
     }
   }
 }

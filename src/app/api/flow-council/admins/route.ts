@@ -3,6 +3,7 @@ import { isAddress } from "viem";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { networks } from "@/lib/networks";
+import { findRoundByCouncil, isRoundAdmin } from "../auth";
 
 export const dynamic = "force-dynamic";
 
@@ -41,12 +42,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const round = await db
-      .selectFrom("rounds")
-      .select(["id"])
-      .where("chainId", "=", chainId)
-      .where("flowCouncilAddress", "=", flowCouncilAddress.toLowerCase())
-      .executeTakeFirst();
+    const round = await findRoundByCouncil(chainId, flowCouncilAddress);
 
     if (!round) {
       return new Response(
@@ -54,14 +50,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const isRoundAdmin = await db
-      .selectFrom("roundAdmins")
-      .select("id")
-      .where("roundId", "=", round.id)
-      .where("adminAddress", "=", session.address.toLowerCase())
-      .executeTakeFirst();
+    const isAdmin = await isRoundAdmin(round.id, session.address);
 
-    if (!isRoundAdmin) {
+    if (!isAdmin) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -131,12 +122,7 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const round = await db
-      .selectFrom("rounds")
-      .select(["id"])
-      .where("chainId", "=", chainId)
-      .where("flowCouncilAddress", "=", flowCouncilAddress.toLowerCase())
-      .executeTakeFirst();
+    const round = await findRoundByCouncil(chainId, flowCouncilAddress);
 
     if (!round) {
       return new Response(
@@ -144,14 +130,9 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const isRoundAdmin = await db
-      .selectFrom("roundAdmins")
-      .select("id")
-      .where("roundId", "=", round.id)
-      .where("adminAddress", "=", session.address.toLowerCase())
-      .executeTakeFirst();
+    const isAdmin = await isRoundAdmin(round.id, session.address);
 
-    if (!isRoundAdmin) {
+    if (!isAdmin) {
       return new Response(
         JSON.stringify({
           success: false,
