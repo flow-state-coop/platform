@@ -10,6 +10,7 @@ import Button from "react-bootstrap/Button";
 import Collapse from "react-bootstrap/Collapse";
 import { GDAPool } from "@/types/gdaPool";
 import { Token } from "@/types/token";
+import { SuperAppFunderData } from "@/app/flow-councils/hooks/superAppFundersQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { roundWeiAmount, formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
@@ -18,18 +19,41 @@ interface DistributionPoolDetailsProps {
   distributionPool?: GDAPool;
   token: Token;
   councilMetadata: { name: string; description: string; logoUrl: string };
+  superAppFunderData?: SuperAppFunderData;
+  outflowToSplitter?: {
+    currentFlowRate: string;
+    streamedUntilUpdatedAt: string;
+    updatedAtTimestamp: number;
+  } | null;
 }
 
 export default function DistributionPoolDetails(
   props: DistributionPoolDetailsProps,
 ) {
-  const { distributionPool, token, councilMetadata } = props;
+  const {
+    distributionPool,
+    token,
+    councilMetadata,
+    superAppFunderData,
+    outflowToSplitter,
+  } = props;
 
   const [showFullDescription, setShowFullDescription] = useState(false);
   const { address } = useAccount();
   const isLongDescription = councilMetadata.description.length > 200;
+  const hasSplitter = !!superAppFunderData;
 
   const userDistributionInfo = useMemo(() => {
+    if (hasSplitter && outflowToSplitter) {
+      return {
+        totalDistributedUserUntilUpdatedAt: BigInt(
+          outflowToSplitter.streamedUntilUpdatedAt,
+        ),
+        updatedAtTimestamp: outflowToSplitter.updatedAtTimestamp,
+        flowRate: BigInt(outflowToSplitter.currentFlowRate),
+      };
+    }
+
     if (address && distributionPool) {
       const distributor = distributionPool.poolDistributors.find(
         (distributor: { account: { id: string } }) =>
@@ -48,19 +72,28 @@ export default function DistributionPoolDetails(
     }
 
     return null;
-  }, [address, distributionPool]);
+  }, [address, distributionPool, hasSplitter, outflowToSplitter]);
 
   const totalDistributedUser = useFlowingAmount(
     userDistributionInfo?.totalDistributedUserUntilUpdatedAt ?? BigInt(0),
     userDistributionInfo?.updatedAtTimestamp ?? 0,
     userDistributionInfo?.flowRate ?? BigInt(0),
   );
+  const poolFlowRate = hasSplitter
+    ? BigInt(superAppFunderData.totalInflowRate)
+    : BigInt(distributionPool?.flowRate ?? 0);
+  const poolTotalStreamed = hasSplitter
+    ? BigInt(superAppFunderData.totalAmountStreamedInUntilUpdatedAt)
+    : BigInt(
+        distributionPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
+      );
+  const poolUpdatedAt = hasSplitter
+    ? superAppFunderData.updatedAtTimestamp
+    : (distributionPool?.updatedAtTimestamp ?? 0);
   const totalDistributedAll = useFlowingAmount(
-    BigInt(
-      distributionPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? BigInt(0),
-    ),
-    distributionPool?.updatedAtTimestamp ?? 0,
-    BigInt(distributionPool?.flowRate ?? 0),
+    poolTotalStreamed,
+    poolUpdatedAt,
+    poolFlowRate,
   );
   const monthlyStreamToReceiver = Number(
     roundWeiAmount(
@@ -69,9 +102,7 @@ export default function DistributionPoolDetails(
     ),
   );
   const totalMonthlyStream = Number(
-    formatEther(
-      BigInt(distributionPool?.flowRate ?? 0) * BigInt(SECONDS_IN_MONTH),
-    ),
+    formatEther(poolFlowRate * BigInt(SECONDS_IN_MONTH)),
   );
 
   return (

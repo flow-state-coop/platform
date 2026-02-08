@@ -10,8 +10,14 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    const { chainId, flowCouncilAddress, name, description, logoUrl } =
-      await request.json();
+    const {
+      chainId,
+      flowCouncilAddress,
+      name,
+      description,
+      logoUrl,
+      superappSplitterAddress,
+    } = await request.json();
 
     const session = await getServerSession(authOptions);
 
@@ -70,15 +76,27 @@ export async function POST(request: Request) {
       );
     }
 
+    const validatedSplitterAddress =
+      superappSplitterAddress && isAddress(superappSplitterAddress)
+        ? superappSplitterAddress.toLowerCase()
+        : null;
+
     const round = await db.transaction().execute(async (trx) => {
       const insertedRound = await trx
         .insertInto("rounds")
         .values({
           chainId,
           flowCouncilAddress: flowCouncilAddress.toLowerCase(),
+          superappSplitterAddress: validatedSplitterAddress,
           details: JSON.stringify({ name, description, logoUrl }),
         })
-        .returning(["id", "chainId", "flowCouncilAddress", "details"])
+        .returning([
+          "id",
+          "chainId",
+          "flowCouncilAddress",
+          "superappSplitterAddress",
+          "details",
+        ])
         .executeTakeFirstOrThrow();
 
       await trx

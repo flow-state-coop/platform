@@ -76,6 +76,7 @@ export type Round = {
   id: Generated<number>;
   chainId: number;
   flowCouncilAddress: string;
+  superappSplitterAddress: string | null;
   details: unknown | null;
   createdAt: Generated<Timestamp>;
   updatedAt: Generated<Timestamp>;

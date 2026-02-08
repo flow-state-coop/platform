@@ -3,7 +3,6 @@ export enum Step {
   TOP_UP = "Top up required tokens",
   WRAP = "Wrap to Super Token",
   ELIGIBILITY = "Voter Eligibility",
-  SUPPORT = "Support Flow State",
   REVIEW = "Review",
   SUCCESS = "Success!",
 }

@@ -11,6 +11,9 @@ import useCouncilMemberQuery from "@/app/flow-councils/hooks/councilMemberQuery"
 import useRecipientsQuery from "@/app/flow-councils/hooks/recipientsQuery";
 import useFlowCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 import useDistributionPoolQuery from "@/app/flow-councils/hooks/distributionPoolQuery";
+import useSuperAppFundersQuery, {
+  type SuperAppFunderData,
+} from "@/app/flow-councils/hooks/superAppFundersQuery";
 import { Token } from "@/types/token";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 import {
@@ -24,7 +27,12 @@ import {
 
 export const FlowCouncilContext = createContext<{
   council?: FlowCouncilData;
-  councilMetadata: { name: string; description: string; logoUrl: string };
+  councilMetadata: {
+    name: string;
+    description: string;
+    logoUrl: string;
+    superappSplitterAddress: string | null;
+  };
   councilMember?: CouncilMember;
   currentAllocation?: CurrentAllocation;
   projects:
@@ -43,6 +51,7 @@ export const FlowCouncilContext = createContext<{
       }[]
     | null;
   distributionPool?: GDAPool;
+  superAppFunderData?: SuperAppFunderData;
   token: Token;
   newAllocation?: NewAllocation;
   showBallot: boolean;
@@ -183,6 +192,11 @@ export function FlowCouncilContextProvider({
     symbol: distributionPool?.token.symbol,
     icon: "",
   };
+  const superAppFunderData = useSuperAppFundersQuery(
+    network,
+    councilMetadata.superappSplitterAddress,
+    token.address,
+  );
 
   const [newAllocation, dispatchNewAllocation] = useReducer(
     newAllocationReducer,
@@ -198,6 +212,7 @@ export function FlowCouncilContextProvider({
         council,
         councilMetadata,
         distributionPool,
+        superAppFunderData,
         token,
         projects,
         councilMember,

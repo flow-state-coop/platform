@@ -88,11 +88,7 @@ export default function Wrap(props: WrapProps) {
         onClick={() => setStep(Step.WRAP)}
         style={{
           pointerEvents:
-            step === Step.SUPPORT ||
-            step === Step.REVIEW ||
-            step === Step.ELIGIBILITY
-              ? "auto"
-              : "none",
+            step === Step.REVIEW || step === Step.ELIGIBILITY ? "auto" : "none",
         }}
       >
         <Badge
@@ -111,8 +107,7 @@ export default function Wrap(props: WrapProps) {
             height: 28,
           }}
         >
-          {step === Step.SUPPORT ||
-          step === Step.REVIEW ||
+          {step === Step.REVIEW ||
           step === Step.ELIGIBILITY ||
           step === Step.SUCCESS ? (
             <Image
@@ -322,10 +317,7 @@ export default function Wrap(props: WrapProps) {
                   setStep(
                     !isFundingDistributionPool && !isEligible
                       ? Step.ELIGIBILITY
-                      : !sessionStorage.getItem("skipSupportFlowState") &&
-                          !localStorage.getItem("skipSupportFlowState")
-                        ? Step.SUPPORT
-                        : Step.REVIEW,
+                      : Step.REVIEW,
                   );
                 }}
               >
@@ -349,10 +341,7 @@ export default function Wrap(props: WrapProps) {
                 setStep(
                   !isFundingDistributionPool && !isEligible
                     ? Step.ELIGIBILITY
-                    : !sessionStorage.getItem("skipSupportFlowState") &&
-                        !localStorage.getItem("skipSupportFlowState")
-                      ? Step.SUPPORT
-                      : Step.REVIEW,
+                    : Step.REVIEW,
                 )
               }
             >

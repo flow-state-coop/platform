@@ -364,10 +364,7 @@ export default function TopUp(props: TopUpProps) {
                     ? Step.WRAP
                     : !isFundingDistributionPool && !isEligible
                       ? Step.ELIGIBILITY
-                      : !sessionStorage.getItem("skipSupportFlowState") &&
-                          !localStorage.getItem("skipSupportFlowState")
-                        ? Step.SUPPORT
-                        : Step.REVIEW,
+                      : Step.REVIEW,
                 )
               }
             >
@@ -386,10 +383,7 @@ export default function TopUp(props: TopUpProps) {
                     ? Step.WRAP
                     : !isFundingDistributionPool && !isEligible
                       ? Step.ELIGIBILITY
-                      : !sessionStorage.getItem("skipSupportFlowState") &&
-                          !localStorage.getItem("skipSupportFlowState")
-                        ? Step.SUPPORT
-                        : Step.REVIEW,
+                      : Step.REVIEW,
                 )
               }
             >

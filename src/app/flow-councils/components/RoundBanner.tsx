@@ -38,17 +38,28 @@ export default function PoolInfo(props: PoolInfoProps) {
 
   const [showFullInfo, setShowFullInfo] = useState(true);
 
-  const { council } = useFlowCouncil();
+  const { council, superAppFunderData } = useFlowCouncil();
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
 
-  const distributionMonthly =
-    BigInt(distributionPool?.flowRate ?? 0) * BigInt(SECONDS_IN_MONTH);
-  const distributionTotal = useFlowingAmount(
-    BigInt(distributionPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0),
-    distributionPool?.updatedAtTimestamp ?? 0,
-    BigInt(distributionPool?.flowRate ?? 0),
+  const poolFlowRate = superAppFunderData
+    ? BigInt(superAppFunderData.totalInflowRate)
+    : BigInt(distributionPool?.flowRate ?? 0);
+  const poolMonthly = poolFlowRate * BigInt(SECONDS_IN_MONTH);
+  const poolTotal = useFlowingAmount(
+    superAppFunderData
+      ? BigInt(superAppFunderData.totalAmountStreamedInUntilUpdatedAt)
+      : BigInt(
+          distributionPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
+        ),
+    superAppFunderData
+      ? superAppFunderData.updatedAtTimestamp
+      : (distributionPool?.updatedAtTimestamp ?? 0),
+    poolFlowRate,
   );
+  const funderCount = superAppFunderData
+    ? superAppFunderData.funderCount
+    : (distributionPool?.poolDistributors.length ?? 0);
   const recipient = council?.recipients.find(
     (recipient: { account: string }) =>
       recipient.account === address?.toLowerCase(),
@@ -126,14 +137,18 @@ export default function PoolInfo(props: PoolInfoProps) {
                     href={`${superfluidExplorer}/pools/${distributionPool?.id}`}
                     target="_blank"
                   >
-                    {formatNumber(Number(formatEther(distributionMonthly)))}
+                    {formatNumber(
+                      Number(formatEther(poolMonthly)),
+                    )}
                   </Card.Link>
                 </td>
                 <td className="w-25 bg-transparent">
-                  {formatNumber(Number(formatEther(distributionTotal)))}
+                  {formatNumber(
+                    Number(formatEther(poolTotal)),
+                  )}
                 </td>
                 <td className="w-25 bg-transparent">
-                  {formatNumber(distributionPool?.poolDistributors.length ?? 0)}
+                  {formatNumber(funderCount)}
                 </td>
               </tr>
             </tbody>

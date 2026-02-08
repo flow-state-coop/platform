@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useParams } from "next/navigation";
 import Offcanvas from "react-bootstrap/Offcanvas";
 import Stack from "react-bootstrap/Stack";
 import Image from "react-bootstrap/Image";
@@ -9,6 +10,7 @@ import Alert from "react-bootstrap/Alert";
 import FormControl from "react-bootstrap/FormControl";
 import useFlowCouncil from "../hooks/flowCouncil";
 import useWriteAllocation from "../hooks/writeAllocation";
+import { getVoteSocialShare } from "../lib/socialShare";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { isNumber } from "@/lib/utils";
 
@@ -21,8 +23,10 @@ export default function Ballot({
 
   const successCardRef = useRef<HTMLDivElement>(null);
 
+  const { chainId } = useParams();
   const {
     council,
+    councilMetadata,
     councilMember,
     currentAllocation,
     newAllocation,
@@ -115,25 +119,32 @@ export default function Ballot({
     }
   };
 
+  const socialShare = getVoteSocialShare({
+    councilName: councilMetadata.name,
+    councilUiLink: `https://flowstate.network/flow-councils/${chainId}/${council?.id}`,
+  });
+
+  const handleHide = () => {
+    const zeroAllocations = newAllocation?.allocation.filter(
+      (a) => a.amount === 0,
+    );
+
+    if (zeroAllocations) {
+      for (const allocation of zeroAllocations) {
+        dispatchNewAllocation({
+          type: "delete",
+          allocation,
+        });
+      }
+    }
+
+    dispatchShowBallot({ type: "hide" });
+  };
+
   return (
     <Offcanvas
       show
-      onHide={() => {
-        const zeroAllocations = newAllocation?.allocation.filter(
-          (a) => a.amount === 0,
-        );
-
-        if (zeroAllocations) {
-          for (const allocation of zeroAllocations) {
-            dispatchNewAllocation({
-              type: "delete",
-              allocation,
-            });
-          }
-        }
-
-        dispatchShowBallot({ type: "hide" });
-      }}
+      onHide={handleHide}
       placement={isMobile ? "bottom" : "end"}
       style={{ height: "100%" }}
       className="p-4"
@@ -148,7 +159,7 @@ export default function Ballot({
             votes at any time.
           </p>
         </Stack>
-        <Button variant="transparent" className="p-0">
+        <Button variant="transparent" className="p-0" onClick={handleHide}>
           <Image src="/close.svg" alt="Close" width={24} height={24} />
         </Button>
       </Offcanvas.Header>
@@ -317,6 +328,7 @@ export default function Ballot({
             </Card.Text>
             <Stack direction="horizontal" className="justify-content-around">
               <Card.Link
+                href={socialShare.twitter}
                 className="d-flex flex-column align-items-center twitter-share-button text-decoration-none fw-semi-bold m-0 w-50"
                 rel="noreferrer"
                 target="_blank"
@@ -331,6 +343,7 @@ export default function Ballot({
                 <span style={{ fontSize: "10px" }}>Post to X</span>
               </Card.Link>
               <Card.Link
+                href={socialShare.farcaster}
                 className="d-flex flex-column align-items-center text-decoration-none fw-semi-bold m-0 w-50"
                 rel="noreferrer"
                 target="_blank"
@@ -344,6 +357,7 @@ export default function Ballot({
                 <span style={{ fontSize: "10px" }}>Cast to Farcaster</span>
               </Card.Link>
               <Card.Link
+                href={socialShare.lens}
                 className="d-flex flex-column align-items-center text-decoration-none fw-semi-bold m-0 w-50"
                 rel="noreferrer"
                 target="_blank"
