@@ -2,12 +2,14 @@ export type RoundMetadata = {
   name: string;
   description: string;
   logoUrl: string;
+  superappSplitterAddress: string | null;
 };
 
 const DEFAULT_METADATA: RoundMetadata = {
   name: "Flow Council",
   description: "",
   logoUrl: "",
+  superappSplitterAddress: null,
 };
 
 export async function fetchRoundMetadata(
@@ -30,6 +32,7 @@ export async function fetchRoundMetadata(
         name: details?.name ?? DEFAULT_METADATA.name,
         description: details?.description ?? DEFAULT_METADATA.description,
         logoUrl: details?.logoUrl ?? DEFAULT_METADATA.logoUrl,
+        superappSplitterAddress: data.round.superappSplitterAddress ?? null,
       };
     }
   } catch (err) {

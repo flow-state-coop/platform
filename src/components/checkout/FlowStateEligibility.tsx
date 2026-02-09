@@ -87,8 +87,7 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
         variant="transparent"
         className="d-flex gap-3 p-4 border-0 rounded-0 shadow-none text-secondary fs-lg fw-semi-bold"
         style={{
-          pointerEvents:
-            step !== Step.SUPPORT && step !== Step.REVIEW ? "none" : "auto",
+          pointerEvents: step !== Step.REVIEW ? "none" : "auto",
         }}
         onClick={() => setStep(Step.ELIGIBILITY)}
       >
@@ -96,13 +95,10 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
           pill
           className={`d-flex justify-content-center p-0 ${
             step !== Step.ELIGIBILITY &&
-            step !== Step.SUPPORT &&
             step !== Step.REVIEW &&
             step !== Step.SUCCESS
               ? "bg-secondary"
-              : step === Step.SUPPORT ||
-                  step === Step.REVIEW ||
-                  step === Step.SUCCESS
+              : step === Step.REVIEW || step === Step.SUCCESS
                 ? "bg-info"
                 : "bg-primary"
           }`}
@@ -111,9 +107,7 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
             height: 28,
           }}
         >
-          {step === Step.SUPPORT ||
-          step === Step.REVIEW ||
-          step === Step.SUCCESS ? (
+          {step === Step.REVIEW || step === Step.SUCCESS ? (
             <Image
               src="/success.svg"
               alt="done"
@@ -225,14 +219,7 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
               <Button
                 disabled={!isEligible}
                 className="w-100 m-0 ms-auto mt-1 mb-3 text-light px-10py-10 rounded-4 fw-semi-bold"
-                onClick={() =>
-                  setStep(
-                    !sessionStorage.getItem("skipSupportFlowState") &&
-                      !localStorage.getItem("skipSupportFlowState")
-                      ? Step.SUPPORT
-                      : Step.REVIEW,
-                  )
-                }
+                onClick={() => setStep(Step.REVIEW)}
               >
                 Continue
               </Button>

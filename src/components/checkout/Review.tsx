@@ -19,7 +19,6 @@ import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
 import { Network } from "@/types/network";
 import { formatNumber, fromTimeUnitsToSeconds, truncateStr } from "@/lib/utils";
-import { FLOW_STATE_RECEIVER } from "@/lib/constants";
 
 dayjs().format();
 dayjs.extend(duration);
@@ -38,10 +37,7 @@ export type ReviewProps = {
   netImpact: bigint;
   newFlowRate: string;
   wrapAmount: string;
-  newFlowRateToFlowState: string;
-  flowRateToFlowState: string;
   amountPerTimeInterval: string;
-  supportFlowStateAmount: string;
   isFundingDistributionPool?: boolean;
   liquidationEstimate: number | null;
   token: Token;
@@ -65,10 +61,7 @@ type TransactionDetailsSnapshot = {
   netImpact: bigint;
   matchingMultiplier: number | null;
   newFlowRate: string;
-  newFlowRateToFlowState: string;
-  flowRateToFlowState: string;
   flowRateToReceiver: string;
-  supportFlowStateAmount: string;
 };
 
 dayjs().format();
@@ -88,10 +81,7 @@ export default function Review(props: ReviewProps) {
     flowRateToReceiver,
     newFlowRate,
     netImpact,
-    newFlowRateToFlowState,
-    flowRateToFlowState,
     wrapAmount,
-    supportFlowStateAmount,
     amountPerTimeInterval,
     token,
     isFundingDistributionPool,
@@ -144,9 +134,6 @@ export default function Review(props: ReviewProps) {
       netImpact,
       newFlowRate,
       flowRateToReceiver,
-      newFlowRateToFlowState,
-      flowRateToFlowState,
-      supportFlowStateAmount: supportFlowStateAmount.replace(/,/g, ""),
     });
 
     try {
@@ -201,10 +188,10 @@ export default function Review(props: ReviewProps) {
               style={{ fontFamily: "Helvetica" }}
             >
               {isFundingDistributionPool && isSuperTokenPure
-                ? 4
+                ? 3
                 : isFundingDistributionPool || isSuperTokenPure
-                  ? 5
-                  : 6}
+                  ? 4
+                  : 5}
             </Card.Text>
           )}
         </Badge>
@@ -366,6 +353,34 @@ export default function Review(props: ReviewProps) {
               />
             </Badge>
           </Stack>
+          {isFundingDistributionPool && (
+            <Stack
+              direction="horizontal"
+              gap={1}
+              className="mt-1 px-2 align-items-center"
+            >
+              <Card.Text className="m-0 text-secondary small">
+                Includes sustainability fee
+              </Card.Text>
+              <OverlayTrigger
+                overlay={
+                  <Tooltip id="t-sustainability-fee-info">
+                    <p className="m-0 p-2">
+                      7.5% of funding streamed to the Flow Council pool is
+                      directed to support Flow State platform sustainability.
+                    </p>
+                  </Tooltip>
+                }
+              >
+                <Image
+                  src="/info.svg"
+                  alt="sustainability fee info"
+                  width={16}
+                  height={16}
+                />
+              </OverlayTrigger>
+            </Stack>
+          )}
           <Stack direction="vertical">
             <Stack
               direction="horizontal"
@@ -510,119 +525,6 @@ export default function Review(props: ReviewProps) {
               </>
             )}
           </Stack>
-          {(areTransactionsLoading &&
-            transactionDetailsSnapshot &&
-            transactionDetailsSnapshot.newFlowRateToFlowState &&
-            transactionDetailsSnapshot.newFlowRateToFlowState !==
-              transactionDetailsSnapshot.flowRateToFlowState) ||
-          (newFlowRateToFlowState &&
-            newFlowRateToFlowState !== flowRateToFlowState) ? (
-            <>
-              <Stack direction="vertical" gap={1}>
-                <Card.Text className="border-bottom border-secondary m-0 pb-1">
-                  {Number(
-                    areTransactionsLoading && transactionDetailsSnapshot
-                      ? transactionDetailsSnapshot.wrapAmount
-                      : wrapAmount?.replace(/,/g, ""),
-                  ) > 0
-                    ? "C."
-                    : "B."}{" "}
-                  Edit Flow State Stream
-                </Card.Text>
-              </Stack>
-              <Stack
-                direction="horizontal"
-                className="justify-content-around px-2"
-              >
-                <Card.Text className="m-0 border-0 text-center">
-                  Sender
-                </Card.Text>
-                <Card.Text className="m-0 border-0 text-center">
-                  Receiver
-                </Card.Text>
-              </Stack>
-              <Stack direction="horizontal">
-                <Badge className="d-flex justify-content-around align-items-center w-50 bg-white text-info px-3 py-4 rounded-4 border-0 text-center fw-semi-bold">
-                  <Card.Text className="m-0 sensitive">
-                    {truncateStr(address ?? "", 12)}
-                  </Card.Text>
-                  <CopyTooltip
-                    contentClick="Address copied"
-                    contentHover="Copy address"
-                    handleCopy={() =>
-                      navigator.clipboard.writeText(address ?? "")
-                    }
-                    target={
-                      <Image
-                        src="/copy.svg"
-                        alt="copy"
-                        width={18}
-                        height={18}
-                      />
-                    }
-                  />
-                </Badge>
-                <Image
-                  className="bg-transparent"
-                  src="/arrow-right.svg"
-                  alt="forward arrow"
-                  width={18}
-                  height={18}
-                />
-                <Badge className="d-flex justify-content-around gap-2 align-items-center w-50 bg-white px-3 py-4 rounded-4 border-0 text-center text-info fw-semi-bold">
-                  flowstatecoop.eth
-                  <CopyTooltip
-                    contentClick="Address copied"
-                    contentHover="Copy address"
-                    handleCopy={() =>
-                      navigator.clipboard.writeText(FLOW_STATE_RECEIVER)
-                    }
-                    target={
-                      <Image
-                        src="/copy.svg"
-                        alt="copy"
-                        width={18}
-                        height={18}
-                      />
-                    }
-                  />
-                </Badge>
-              </Stack>
-              <Stack direction="vertical">
-                <Stack
-                  direction="horizontal"
-                  className={`mt-2 bg-purple p-2 ${
-                    !isFundingDistributionPool ? "rounded-top-4" : "rounded-4"
-                  }`}
-                >
-                  <Card.Text className="w-33 m-0">New Stream</Card.Text>
-                  <Stack
-                    direction="horizontal"
-                    gap={1}
-                    className="justify-content-end w-50 p-2"
-                  >
-                    <Image
-                      src={token.icon}
-                      alt="token"
-                      width={22}
-                      height={22}
-                      className="mx-1"
-                    />
-                    <Badge className="bg-info w-75 ps-2 pe-2 py-2 fs-lg fw-semi-bold text-start overflow-hidden text-truncate">
-                      {formatNumber(
-                        Number(
-                          areTransactionsLoading && transactionDetailsSnapshot
-                            ? transactionDetailsSnapshot.supportFlowStateAmount
-                            : supportFlowStateAmount.replace(/,/g, ""),
-                        ),
-                      )}
-                    </Badge>
-                  </Stack>
-                  <Card.Text className="w-20 m-0 ms-1">/mo</Card.Text>
-                </Stack>
-              </Stack>
-            </>
-          ) : null}
           {!!liquidationEstimate && !isNaN(liquidationEstimate) && (
             <Stack direction="horizontal" gap={1} className="mt-1 p-2">
               <Card.Text className="m-0">Est. Liquidation</Card.Text>

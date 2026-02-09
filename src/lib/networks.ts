@@ -28,6 +28,8 @@ const networks: Network[] = [
     alloRegistry: "0x4AAcca72145e1dF2aeC137E1f3C5E3D75DB8b5f3",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
+    superAppSplitterFactory: "0x",
+    feeRecipientPool: "0x",
     tokens: [
       {
         symbol: "ETHx",
@@ -78,6 +80,8 @@ const networks: Network[] = [
     alloRegistry: "0x4AAcca72145e1dF2aeC137E1f3C5E3D75DB8b5f3",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
+    superAppSplitterFactory: "0x",
+    feeRecipientPool: "0x",
     tokens: [
       {
         symbol: "DAIx",
@@ -133,6 +137,8 @@ const networks: Network[] = [
     alloRegistry: "0x4AAcca72145e1dF2aeC137E1f3C5E3D75DB8b5f3",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
+    superAppSplitterFactory: "0x6dEd495DEa4515d4303A01197B52A1B392E0FA80",
+    feeRecipientPool: "0xf6a45af98887c3bc39ac2373fb97091ea4d8989a",
     tokens: [
       {
         symbol: "CELOx",
@@ -173,6 +179,8 @@ const networks: Network[] = [
     alloRegistry: "0x4AAcca72145e1dF2aeC137E1f3C5E3D75DB8b5f3",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
+    superAppSplitterFactory: "0x",
+    feeRecipientPool: "0x",
     tokens: [
       {
         symbol: "DAIx",
@@ -228,6 +236,8 @@ const networks: Network[] = [
     alloRegistry: "0x4AAcca72145e1dF2aeC137E1f3C5E3D75DB8b5f3",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
+    superAppSplitterFactory: "0x",
+    feeRecipientPool: "0x",
     tokens: [
       {
         symbol: "ETHx",

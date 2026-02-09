@@ -31,15 +31,16 @@ enum ChannelType {
 }
 
 model Round {
-  id                 Int           @id @default(autoincrement())
-  chainId            Int           @map("chain_id")
-  flowCouncilAddress String        @map("flow_council_address") @db.VarChar(42)
-  details            Json?
-  createdAt          DateTime      @default(now()) @map("created_at")
-  updatedAt          DateTime      @default(now()) @updatedAt @map("updated_at")
-  admins             RoundAdmin[]
-  applications       Application[]
-  messages           Message[]
+  id                       Int           @id @default(autoincrement())
+  chainId                  Int           @map("chain_id")
+  flowCouncilAddress       String        @map("flow_council_address") @db.VarChar(42)
+  superappSplitterAddress  String?       @map("superapp_splitter_address") @db.VarChar(42)
+  details                  Json?
+  createdAt                DateTime      @default(now()) @map("created_at")
+  updatedAt                DateTime      @default(now()) @updatedAt @map("updated_at")
+  admins                   RoundAdmin[]
+  applications             Application[]
+  messages                 Message[]
 
   @@unique([chainId, flowCouncilAddress])
   @@map("rounds")

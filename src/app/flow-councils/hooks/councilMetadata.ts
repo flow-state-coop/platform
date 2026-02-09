@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
-import { fetchRoundMetadata } from "@/app/flow-councils/lib/fetchRoundMetadata";
+import {
+  fetchRoundMetadata,
+  type RoundMetadata,
+} from "@/app/flow-councils/lib/fetchRoundMetadata";
 
 export default function useCouncilMetadata(chainId: number, councilId: string) {
-  const [metadata, setMetadata] = useState({
+  const [metadata, setMetadata] = useState<RoundMetadata>({
     name: "",
     description: "",
     logoUrl: "",
+    superappSplitterAddress: null,
   });
 
   useEffect(() => {

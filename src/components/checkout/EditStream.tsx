@@ -258,10 +258,7 @@ export default function EditStream(props: EditStreamProps) {
                           ? Step.WRAP
                           : !isFundingDistributionPool && !isEligible
                             ? Step.ELIGIBILITY
-                            : !sessionStorage.getItem("skipSupportFlowState") &&
-                                !localStorage.getItem("skipSupportFlowState")
-                              ? Step.SUPPORT
-                              : Step.REVIEW,
+                            : Step.REVIEW,
                     );
                   }
                 }}

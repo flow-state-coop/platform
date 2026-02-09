@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Address, parseEventLogs, isAddress } from "viem";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Address, parseEventLogs } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "@wagmi/core";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { gql, useQuery, useLazyQuery } from "@apollo/client";
+import { gql, useQuery } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
 import Toast from "react-bootstrap/Toast";
@@ -19,29 +19,16 @@ import Alert from "react-bootstrap/Alert";
 import Image from "react-bootstrap/Image";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { Network } from "@/types/network";
-import { Token } from "@/types/token";
 import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";
 import { flowCouncilFactoryAbi } from "@/lib/abi/flowCouncilFactory";
+import { superAppSplitterFactoryAbi } from "@/lib/abi/superAppSplitterFactory";
+
+const SUPERAPP_SPLITTER_FEE_BPS = BigInt(75);
 
 type LaunchProps = { defaultNetwork: Network; councilId?: string };
-
-type CustomTokenEntry = {
-  address: string;
-  symbol: string;
-  validationError: string;
-};
-
-const SUPERTOKEN_QUERY = gql`
-  query SupertokenQuery($token: String!) {
-    token(id: $token) {
-      id
-      isSuperToken
-      symbol
-    }
-  }
-`;
 
 const FLOW_COUNCIL_QUERY = gql`
   query FlowCouncilQuery($councilId: String!) {
@@ -57,24 +44,22 @@ export default function Launch(props: LaunchProps) {
 
   const [selectedNetwork, setSelectedNetwork] =
     useState<Network>(defaultNetwork);
-  const [selectedToken, setSelectedToken] = useState<Token>();
-  const [customTokenSelection, setCustomTokenSelection] = useState(false);
-  const [customTokenEntry, setCustomTokenEntry] = useState<CustomTokenEntry>({
-    address: "",
-    symbol: "",
-    validationError: "",
-  });
   const [success, setSuccess] = useState(false);
-  const [transactionerror, setTransactionError] = useState("");
-  const [isTransactionLoading, setIsTransactionLoading] = useState(false);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const publicClient = usePublicClient();
   const wagmiConfig = useConfig();
   const { isMobile } = useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
+  const {
+    areTransactionsLoading,
+    completedTransactions,
+    transactionError,
+    executeTransactions,
+  } = useTransactionsQueue();
   const { data: flowCouncilQueryRes, loading: flowCouncilQueryLoading } =
     useQuery(FLOW_COUNCIL_QUERY, {
       client: getApolloClient("flowCouncil", selectedNetwork.id),
@@ -82,13 +67,13 @@ export default function Launch(props: LaunchProps) {
       pollInterval: 4000,
       skip: !councilId,
     });
-  const [checkSuperToken] = useLazyQuery(SUPERTOKEN_QUERY, {
-    client: getApolloClient("superfluid", selectedNetwork.id),
-  });
 
   const flowCouncil = flowCouncilQueryRes?.flowCouncil;
 
   const launchNetworks = networks.filter((network) => network.label === "celo");
+  const defaultToken =
+    selectedNetwork.tokens.find((t) => t.symbol === "G$") ??
+    selectedNetwork.tokens[0];
 
   useEffect(() => {
     if (councilId || !connectedChain) {
@@ -101,82 +86,96 @@ export default function Launch(props: LaunchProps) {
 
     if (userNetwork) {
       setSelectedNetwork(userNetwork);
-      setSelectedToken(userNetwork.tokens[0]);
     }
   }, [councilId, connectedChain, launchNetworks]);
-
-  useEffect(() => {
-    (async () => {
-      if (!flowCouncil) {
-        return;
-      }
-
-      const supportedToken = selectedNetwork.tokens.find(
-        (token) => token.address.toLowerCase() === flowCouncil.superToken,
-      );
-
-      if (supportedToken) {
-        setSelectedToken(supportedToken);
-      } else {
-        const { data: superTokenQueryRes } = await checkSuperToken({
-          variables: { token: flowCouncil.superToken },
-        });
-
-        setCustomTokenEntry({
-          address: flowCouncil.superToken,
-          symbol: superTokenQueryRes?.token.symbol ?? "N/A",
-          validationError: "",
-        });
-        setCustomTokenSelection(true);
-      }
-    })();
-  }, [flowCouncil, selectedNetwork, checkSuperToken]);
 
   const handleSubmit = async () => {
     if (!address || !publicClient) {
       return;
     }
 
-    const token = customTokenSelection
-      ? (customTokenEntry.address as Address)
-      : selectedToken
-        ? selectedToken.address
-        : selectedNetwork.tokens[0].address;
+    const token = defaultToken.address;
+    let flowCouncilAddress: Address = "" as Address;
+    let distributionPool: Address = "" as Address;
+    let splitterAddress = "";
+
+    const transactions: (() => Promise<void>)[] = [
+      async () => {
+        const hash = await writeContract(wagmiConfig, {
+          address: selectedNetwork.flowCouncilFactory as Address,
+          abi: flowCouncilFactoryAbi,
+          functionName: "createFlowCouncil",
+          args: ["", token],
+        });
+
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash,
+          confirmations: 5,
+        });
+
+        const eventArgs = parseEventLogs({
+          abi: flowCouncilFactoryAbi,
+          eventName: ["FlowCouncilCreated"],
+          logs: receipt.logs,
+        })[0].args;
+
+        flowCouncilAddress = eventArgs.flowCouncil;
+        distributionPool = eventArgs.distributionPool;
+      },
+    ];
+
+    if (selectedNetwork.superAppSplitterFactory) {
+      transactions.push(async () => {
+        const splitterHash = await writeContract(wagmiConfig, {
+          address: selectedNetwork.superAppSplitterFactory as Address,
+          abi: superAppSplitterFactoryAbi,
+          functionName: "createSuperAppSplitter",
+          args: [
+            selectedNetwork.superfluidHost,
+            token,
+            address,
+            distributionPool,
+            selectedNetwork.feeRecipientPool,
+            SUPERAPP_SPLITTER_FEE_BPS,
+          ],
+        });
+
+        const splitterReceipt = await publicClient.waitForTransactionReceipt({
+          hash: splitterHash,
+          confirmations: 5,
+        });
+
+        const appRegisteredLogs = parseEventLogs({
+          abi: [
+            {
+              type: "event",
+              name: "AppRegistered",
+              inputs: [{ name: "app", type: "address", indexed: true }],
+            },
+          ] as const,
+          eventName: ["AppRegistered"],
+          logs: splitterReceipt.logs,
+        });
+
+        if (!appRegisteredLogs.length) {
+          throw new Error(
+            "SuperApp Splitter deployment failed: AppRegistered event not found",
+          );
+        }
+
+        splitterAddress = appRegisteredLogs[0].args.app;
+      });
+    }
 
     try {
-      setTransactionError("");
-      setIsTransactionLoading(true);
+      await executeTransactions(transactions);
 
-      const hash = await writeContract(wagmiConfig, {
-        address: selectedNetwork.flowCouncilFactory as Address,
-        abi: flowCouncilFactoryAbi,
-        functionName: "createFlowCouncil",
-        args: ["", token],
-      });
-
-      const receipt = await publicClient.waitForTransactionReceipt({
-        hash,
-        confirmations: 5,
-      });
-
-      const flowCouncilAddress = parseEventLogs({
-        abi: flowCouncilFactoryAbi,
-        eventName: ["FlowCouncilCreated"],
-        logs: receipt.logs,
-      })[0].args.flowCouncil;
-
-      router.push(
-        `/flow-councils/launch/${selectedNetwork.id}/${flowCouncilAddress}`,
-      );
+      const launchUrl = `/flow-councils/launch/${selectedNetwork.id}/${flowCouncilAddress}${splitterAddress ? `?splitter=${splitterAddress}` : ""}`;
+      router.push(launchUrl);
       router.refresh();
-
-      setIsTransactionLoading(false);
       setSuccess(true);
-    } catch (err) {
-      console.error(err);
-
-      setTransactionError("Transaction Error");
-      setIsTransactionLoading(false);
+    } catch {
+      // Error state is handled by useTransactionsQueue
     }
   };
 
@@ -207,7 +206,7 @@ export default function Launch(props: LaunchProps) {
           </Card.Header>
           <Card.Body className="p-0">
             <Card.Text className="text-info">
-              Select the token you will distribute through your Flow Council.
+              The following token will be distributed through your Flow Council.
             </Card.Text>
             <Dropdown>
               <Dropdown.Toggle
@@ -236,7 +235,6 @@ export default function Launch(props: LaunchProps) {
                     className="fw-semi-bold"
                     onClick={() => {
                       setSelectedNetwork(network);
-                      setSelectedToken(network.tokens[0]);
                       router.push("/flow-councils/launch");
                     }}
                   >
@@ -258,143 +256,38 @@ export default function Launch(props: LaunchProps) {
               gap={isMobile ? 1 : 3}
               className="align-items-start mt-2"
             >
-              <Dropdown>
-                <Dropdown.Toggle
-                  disabled={!!councilId}
-                  className="d-flex justify-content-between align-items-center bg-white py-4 fw-semi-bold text-dark border-0"
-                  style={{ width: 256, paddingTop: 12, paddingBottom: 12 }}
-                >
-                  <Stack
-                    direction="horizontal"
-                    gap={1}
-                    className="align-items-center"
-                  >
-                    {!customTokenSelection && (
-                      <Image
-                        src={
-                          selectedToken?.icon ?? selectedNetwork.tokens[0].icon
-                        }
-                        alt="Token"
-                        width={18}
-                        height={18}
-                      />
-                    )}
-                    {customTokenSelection && customTokenEntry?.symbol
-                      ? customTokenEntry.symbol
-                      : customTokenSelection
-                        ? "Custom"
-                        : (selectedToken?.symbol ??
-                          selectedNetwork.tokens[0].symbol)}
-                  </Stack>
-                </Dropdown.Toggle>
-                <Dropdown.Menu className="border-0 lh-lg p-2">
-                  {selectedNetwork.tokens.map((token, i) => (
-                    <Dropdown.Item
-                      key={i}
-                      className="fw-semi-bold"
-                      onClick={() => {
-                        setCustomTokenSelection(false);
-                        setSelectedToken(token);
-                      }}
-                    >
-                      <Stack direction="horizontal" gap={1}>
-                        <Image
-                          src={token.icon}
-                          alt="Token Icon"
-                          width={16}
-                          height={16}
-                        />
-                        {token.symbol}
-                      </Stack>
-                    </Dropdown.Item>
-                  ))}
-                  <Dropdown.Item
-                    className="fw-semi-bold"
-                    onClick={() => setCustomTokenSelection(true)}
-                  >
-                    Custom
-                  </Dropdown.Item>
-                </Dropdown.Menu>
-              </Dropdown>
-              {customTokenSelection ? (
-                <Stack
-                  direction="vertical"
-                  className="position-relative align-self-sm-end"
-                >
-                  <Form.Control
-                    type="text"
-                    value={customTokenEntry.address}
-                    disabled={!!councilId}
-                    className="border-0 bg-white fs-lg fw-semi-bold"
-                    style={{
-                      width: !isMobile ? "50%" : "",
-                      paddingTop: 12,
-                      paddingBottom: 12,
-                    }}
-                    onChange={async (e) => {
-                      const value = e.target.value;
-
-                      let validationError = "";
-                      let symbol = "";
-
-                      if (!isAddress(value)) {
-                        validationError = "Invalid Address";
-                      } else {
-                        const { data: superTokenQueryRes } =
-                          await checkSuperToken({
-                            variables: { token: value.toLowerCase() },
-                          });
-
-                        if (!superTokenQueryRes?.token?.isSuperToken) {
-                          validationError = "Not a SuperToken";
-                        } else {
-                          symbol = superTokenQueryRes.token.symbol;
-                        }
-                      }
-
-                      setCustomTokenEntry({
-                        ...customTokenEntry,
-                        address: value,
-                        symbol,
-                        validationError,
-                      });
-                    }}
-                  />
-                  {customTokenEntry.validationError && (
-                    <Card.Text
-                      className="position-absolute mb-0 ms-2 ps-1 text-danger"
-                      style={{ bottom: 1, fontSize: "0.7rem" }}
-                    >
-                      {customTokenEntry.validationError}
-                    </Card.Text>
-                  )}
-                </Stack>
-              ) : (
-                <Stack direction="vertical" className="align-self-sm-end">
-                  <Form.Control
-                    type="text"
-                    disabled
-                    value={
-                      selectedToken?.address ??
-                      selectedNetwork.tokens[0].address
-                    }
-                    className="border-0 fs-lg fw-semi-bold"
-                    style={{
-                      paddingTop: 12,
-                      paddingBottom: 12,
-                    }}
-                  />
-                </Stack>
-              )}
+              <Stack
+                direction="horizontal"
+                gap={1}
+                className="align-items-center bg-white py-4 fw-semi-bold text-dark rounded-2 px-3"
+                style={{ width: 256, paddingTop: 12, paddingBottom: 12 }}
+              >
+                <Image
+                  src={defaultToken.icon}
+                  alt="Token"
+                  width={18}
+                  height={18}
+                />
+                {defaultToken.symbol}
+              </Stack>
+              <Stack direction="vertical" className="align-self-sm-end">
+                <Form.Control
+                  type="text"
+                  disabled
+                  value={defaultToken.address}
+                  className="border-0 fs-lg fw-semi-bold"
+                  style={{
+                    paddingTop: 12,
+                    paddingBottom: 12,
+                  }}
+                />
+              </Stack>
             </Stack>
           </Card.Body>
         </Card>
         <Stack direction="vertical" gap={3} className="mt-4 mb-30">
           <Button
-            disabled={
-              !!councilId ||
-              (customTokenSelection && !!customTokenEntry.validationError)
-            }
+            disabled={!!councilId}
             className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
             onClick={() =>
               !address && openConnectModal
@@ -404,8 +297,12 @@ export default function Launch(props: LaunchProps) {
                   : handleSubmit()
             }
           >
-            {isTransactionLoading ? (
-              <Spinner size="sm" className="ms-2" />
+            {areTransactionsLoading ? (
+              <>
+                <Spinner size="sm" className="ms-2" />
+                {completedTransactions > 0 &&
+                  ` ${completedTransactions}/${selectedNetwork.superAppSplitterFactory ? 2 : 1}`}
+              </>
             ) : (
               "Launch"
             )}
@@ -414,12 +311,12 @@ export default function Launch(props: LaunchProps) {
             variant="secondary"
             disabled={!councilId}
             className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
-            style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
-            onClick={() =>
-              router.push(
-                `/flow-councils/round-metadata/${selectedNetwork.id}/${councilId}`,
-              )
-            }
+            style={{ pointerEvents: areTransactionsLoading ? "none" : "auto" }}
+            onClick={() => {
+              const splitter = searchParams.get("splitter");
+              const roundMetadataUrl = `/flow-councils/round-metadata/${selectedNetwork.id}/${councilId}${splitter ? `?splitter=${splitter}` : ""}`;
+              router.push(roundMetadataUrl);
+            }}
           >
             Next
           </Button>
@@ -432,12 +329,12 @@ export default function Launch(props: LaunchProps) {
           >
             Success!
           </Toast>
-          {transactionerror ? (
+          {transactionError ? (
             <Alert
               variant="danger"
               className="w-100 p-4 fw-semi-bold text-danger"
             >
-              {transactionerror}
+              {transactionError}
             </Alert>
           ) : null}
         </Stack>

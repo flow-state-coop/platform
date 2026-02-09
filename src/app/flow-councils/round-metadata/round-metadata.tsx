@@ -52,6 +52,7 @@ type RoundMetadataProps = {
   chainId: number;
   councilId?: string;
   csrfToken: string;
+  splitterAddress: string | null;
 };
 
 type RoundDetails = {
@@ -61,7 +62,7 @@ type RoundDetails = {
 };
 
 export default function RoundMetadata(props: RoundMetadataProps) {
-  const { chainId, councilId, csrfToken } = props;
+  const { chainId, councilId, csrfToken, splitterAddress } = props;
 
   const [roundDetails, setRoundDetails] = useState<RoundDetails>({
     name: "",
@@ -167,6 +168,9 @@ export default function RoundMetadata(props: RoundMetadataProps) {
           name: roundDetails.name,
           description: roundDetails.description,
           logoUrl,
+          ...(splitterAddress && !roundExists
+            ? { superappSplitterAddress: splitterAddress }
+            : {}),
         }),
       });
 

@@ -41,7 +41,8 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
   } = props;
 
   const { isMobile } = useMediaQuery();
-  const { dispatchNewAllocation, distributionPool } = useFlowCouncil();
+  const { newAllocation, dispatchNewAllocation, distributionPool } =
+    useFlowCouncil();
   const { data: totalAmountReceivedByMember, dataUpdatedAt } = useReadContract({
     chainId,
     address: distributionPool?.id as Address,
@@ -190,32 +191,35 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
               {(details.description ?? "").replaceAll("•", "-")}
             </Markdown>
           </div>
-          {canAddToBallot && (
-            <Button
-              className="d-flex gap-2 justify-content-center align-items-center px-10 py-4 rounded-4 fw-semi-bold"
-              onClick={() =>
-                dispatchNewAllocation({
-                  type: "add",
-                  allocation: {
-                    recipient: granteeAddress,
-                    amount: 1,
-                  },
-                })
-              }
-            >
-              <Image
-                src="/add.svg"
-                alt=""
-                width={24}
-                height={24}
-                style={{
-                  filter:
-                    "invert(100%) sepia(0%) saturate(7497%) hue-rotate(175deg) brightness(103%) contrast(103%)",
-                }}
-              />
-              Add to Ballot
-            </Button>
-          )}
+          {canAddToBallot &&
+            !newAllocation?.allocation.some(
+              (a) => a.recipient === granteeAddress,
+            ) && (
+              <Button
+                className="d-flex gap-2 justify-content-center align-items-center px-10 py-4 rounded-4 fw-semi-bold"
+                onClick={() =>
+                  dispatchNewAllocation({
+                    type: "add",
+                    allocation: {
+                      recipient: granteeAddress,
+                      amount: 1,
+                    },
+                  })
+                }
+              >
+                <Image
+                  src="/add.svg"
+                  alt=""
+                  width={24}
+                  height={24}
+                  style={{
+                    filter:
+                      "invert(100%) sepia(0%) saturate(7497%) hue-rotate(175deg) brightness(103%) contrast(103%)",
+                  }}
+                />
+                Add to Ballot
+              </Button>
+            )}
           <Button
             variant="link"
             href={

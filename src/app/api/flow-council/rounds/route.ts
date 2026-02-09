@@ -31,7 +31,13 @@ export async function GET(request: Request) {
 
     const round = await db
       .selectFrom("rounds")
-      .select(["id", "chainId", "flowCouncilAddress", "details"])
+      .select([
+        "id",
+        "chainId",
+        "flowCouncilAddress",
+        "superappSplitterAddress",
+        "details",
+      ])
       .where("chainId", "=", chainId)
       .where("flowCouncilAddress", "=", flowCouncilAddress.toLowerCase())
       .executeTakeFirst();
