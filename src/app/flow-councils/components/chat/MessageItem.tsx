@@ -1,6 +1,7 @@
 "use client";
 
 import Stack from "react-bootstrap/Stack";
+import Markdown from "@/components/Markdown";
 import ProfilePic from "./ProfilePic";
 import MessageActions from "./MessageActions";
 import type { EnsData } from "@/hooks/useEnsResolution";
@@ -131,12 +132,11 @@ export default function MessageItem(props: MessageItemProps) {
           </Stack>
         </Stack>
       </Stack>
-      <p
+      <Markdown
         className={`mb-0 ms-5 ${isSystemMessage ? "fst-italic" : ""}`}
-        style={{ whiteSpace: "pre-wrap" }}
       >
         {message.content}
-      </p>
+      </Markdown>
     </div>
   );
 }
