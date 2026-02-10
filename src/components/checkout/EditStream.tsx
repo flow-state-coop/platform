@@ -188,10 +188,12 @@ export default function EditStream(props: EditStreamProps) {
                 value={amountPerTimeInterval}
                 onChange={handleAmountSelection}
                 className={`bg-white border-0 rounded-4 py-4 fw-semi-bold ${
-                  isNativeSuperToken ? "" : "rounded-end-0"
+                  isNativeSuperToken || isFundingDistributionPool
+                    ? ""
+                    : "rounded-end-0"
                 } shadow-none`}
               />
-              {!isNativeSuperToken && (
+              {!isNativeSuperToken && !isFundingDistributionPool && (
                 <>
                   <Button
                     disabled={!address || !flowRateToReceiver}

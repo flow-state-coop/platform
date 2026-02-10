@@ -26,7 +26,7 @@ import { networks } from "@/lib/networks";
 import { flowCouncilFactoryAbi } from "@/lib/abi/flowCouncilFactory";
 import { superAppSplitterFactoryAbi } from "@/lib/abi/superAppSplitterFactory";
 
-const SUPERAPP_SPLITTER_FEE_BPS = BigInt(75);
+const SUPERAPP_SPLITTER_SIDE_PORTION = BigInt(75);
 
 type LaunchProps = { defaultNetwork: Network; councilId?: string };
 
@@ -136,7 +136,7 @@ export default function Launch(props: LaunchProps) {
             address,
             distributionPool,
             selectedNetwork.feeRecipientPool,
-            SUPERAPP_SPLITTER_FEE_BPS,
+            SUPERAPP_SPLITTER_SIDE_PORTION,
           ],
         });
 

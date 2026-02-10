@@ -25,6 +25,11 @@ export function getPoolFlowRateConfig(token: string) {
         minAllocationPerMonth: 100,
         flowRateScaling: BigInt(1e6),
       };
+    case "G$":
+      return {
+        minAllocationPerMonth: 10000,
+        flowRateScaling: BigInt(1e6),
+      };
     default:
       return {
         minAllocationPerMonth: 1,
