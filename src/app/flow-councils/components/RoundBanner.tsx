@@ -137,15 +137,11 @@ export default function PoolInfo(props: PoolInfoProps) {
                     href={`${superfluidExplorer}/pools/${distributionPool?.id}`}
                     target="_blank"
                   >
-                    {formatNumber(
-                      Number(formatEther(poolMonthly)),
-                    )}
+                    {formatNumber(Number(formatEther(poolMonthly)))}
                   </Card.Link>
                 </td>
                 <td className="w-25 bg-transparent">
-                  {formatNumber(
-                    Number(formatEther(poolTotal)),
-                  )}
+                  {formatNumber(Number(formatEther(poolTotal)))}
                 </td>
                 <td className="w-25 bg-transparent">
                   {formatNumber(funderCount)}
