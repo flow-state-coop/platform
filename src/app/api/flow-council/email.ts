@@ -1,4 +1,5 @@
 import { SendTemplatedEmailCommand } from "@aws-sdk/client-ses";
+import removeMarkdown from "remove-markdown";
 import { sesClient, SES_FROM_EMAIL } from "./ses";
 import { db } from "./db";
 
@@ -248,7 +249,7 @@ export async function sendChatMessageEmail(
     projectName,
     roundName,
     sender,
-    messageContent,
+    messageContent: removeMarkdown(messageContent),
     ctaLink,
     unsubLink,
   });
@@ -267,7 +268,7 @@ export async function sendAnnouncementEmail(
   await sendTemplatedEmail(recipients, "flow-council-announcement", {
     roundName,
     sender,
-    messageContent,
+    messageContent: removeMarkdown(messageContent),
     ctaLink,
     unsubLink,
   });
@@ -295,7 +296,7 @@ export async function sendInternalCommentEmail(
     project_name: projectName,
     round_name: roundName,
     sender,
-    message_content: messageContent,
+    message_content: removeMarkdown(messageContent),
     ctaLink,
     unsubLink,
   });
