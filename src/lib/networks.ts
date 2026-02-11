@@ -127,7 +127,7 @@ const networks: Network[] = [
       "https://api.goldsky.com/api/public/project_cmbkdj2bd7cr601uwafoe4u3y/subgraphs/flow-splitter-celo/v0.0.3/gn",
     flowCouncilFactory: "0x27b27a6471fF12E24bE368E184B96654b3e03454",
     flowCouncilSubgraph:
-      "https://api.goldsky.com/api/public/project_cmbkdj2bd7cr601uwafoe4u3y/subgraphs/flow-council-celo/v0.3.2/gn",
+      "https://api.goldsky.com/api/public/project_cmbkdj2bd7cr601uwafoe4u3y/subgraphs/flow-council-celo/v0.3.4/gn",
     flowStateEligibilityNft: "",
     flowStateEligibilityMinScore: 15,
     superfluidHost: "0xA4Ff07cF81C02CFD356184879D953970cA957585",
