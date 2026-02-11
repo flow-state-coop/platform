@@ -21,7 +21,7 @@ export default function MessageInput(props: MessageInputProps) {
     isSending,
     showEmailCheckbox = false,
     disabled = false,
-    placeholder = "Write your message... Markdown syntax is supported.",
+    placeholder = "Write a message. Markdown is supported.",
   } = props;
 
   const [content, setContent] = useState("");
