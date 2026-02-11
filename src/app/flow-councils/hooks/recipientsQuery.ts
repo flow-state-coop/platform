@@ -8,7 +8,7 @@ export default function useRecipientsQuery(
   councilId?: string,
 ) {
   const [projects, setProjects] = useState<
-    { id: string; details: ProjectDetails }[] | null
+    { id: string; fundingAddress: string; details: ProjectDetails }[] | null
   >(null);
 
   useEffect(() => {
@@ -32,18 +32,27 @@ export default function useRecipientsQuery(
           return;
         }
 
-        const result: { id: string; details: ProjectDetails }[] = [];
+        const result: {
+          id: string;
+          fundingAddress: string;
+          details: ProjectDetails;
+        }[] = [];
 
         for (const recipient of recipients) {
           const application = applications.find(
-            (app: { fundingAddress: string; status: string }) =>
+            (app: {
+              fundingAddress: string;
+              status: string;
+              projectId: number;
+            }) =>
               app.fundingAddress.toLowerCase() ===
                 recipient.account.toLowerCase() && app.status === "ACCEPTED",
           );
 
           if (application?.projectDetails) {
             result.push({
-              id: recipient.account,
+              id: String(application.projectId),
+              fundingAddress: recipient.account,
               details: application.projectDetails,
             });
           }

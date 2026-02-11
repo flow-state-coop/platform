@@ -153,7 +153,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             {!!details.farcaster && (
               <Button
                 variant="link"
-                href={`https://warpcast.com/${details.farcaster}`}
+                href={`https://farcaster.xyz/${details.farcaster}`}
                 target="_blank"
                 className="p-0"
               >
@@ -168,7 +168,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             {!!details.telegram && (
               <Button
                 variant="link"
-                href={`https://t.me/${details.telegram}`}
+                href={details.telegram}
                 target="_blank"
                 className="p-0"
               >
@@ -183,7 +183,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             {!!details.discord && (
               <Button
                 variant="link"
-                href={`https://discord.com/invite/${details.discord}`}
+                href={details.discord}
                 target="_blank"
                 className="p-0"
               >
@@ -198,7 +198,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             {!!details.karmaProfile && (
               <Button
                 variant="link"
-                href={`https://gap.karmahq.xyz/project/${details.karmaProfile}`}
+                href={details.karmaProfile}
                 target="_blank"
                 className="p-0"
               >
@@ -277,7 +277,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             )}
           <Button
             variant="link"
-            href={`/projects/${id}/?chainId=${chainId}`}
+            href={`/projects/${id}`}
             target="_blank"
             className="d-flex justify-content-center align-items-center gap-2 mt-2 px-10 py-4 rounded-4 bg-secondary text-light text-decoration-none fw-semi-bold"
           >

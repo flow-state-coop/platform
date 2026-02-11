@@ -38,6 +38,7 @@ export const FlowCouncilContext = createContext<{
   projects:
     | {
         id: string;
+        fundingAddress: string;
         details: {
           name?: string;
           description?: string;
