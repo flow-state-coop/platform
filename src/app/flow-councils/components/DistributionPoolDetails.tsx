@@ -84,9 +84,7 @@ export default function DistributionPoolDetails(
     : BigInt(distributionPool?.flowRate ?? 0);
   const poolTotalStreamed = hasSplitter
     ? BigInt(superAppFunderData.totalAmountStreamedInUntilUpdatedAt)
-    : BigInt(
-        distributionPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
-      );
+    : BigInt(distributionPool?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0);
   const poolUpdatedAt = hasSplitter
     ? superAppFunderData.updatedAtTimestamp
     : (distributionPool?.updatedAtTimestamp ?? 0);

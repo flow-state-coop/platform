@@ -107,8 +107,13 @@ export default function DistributionPoolFunding(props: {
 
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
-  const { council, councilMetadata, token, distributionPool, superAppFunderData } =
-    useFlowCouncil();
+  const {
+    council,
+    councilMetadata,
+    token,
+    distributionPool,
+    superAppFunderData,
+  } = useFlowCouncil();
   const {
     areTransactionsLoading,
     completedTransactions,

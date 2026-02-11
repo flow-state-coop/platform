@@ -195,7 +195,7 @@ export default function Project(props: ProjectProps) {
           {!!details?.karmaProfile && (
             <Button
               variant="link"
-              href={`https://gap.karmahq.xyz/project/${details.karmaProfile}`}
+              href={details.karmaProfile}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
               style={{ width: !isMobile ? "33%" : "" }}
@@ -207,7 +207,7 @@ export default function Project(props: ProjectProps) {
                 height={18}
               />
               <Card.Text className="text-truncate">
-                {`gap.karmahq.xyz/project/${details.karmaProfile}`}
+                {details.karmaProfile}
               </Card.Text>
             </Button>
           )}
@@ -228,7 +228,7 @@ export default function Project(props: ProjectProps) {
           {!!details?.farcaster && (
             <Button
               variant="link"
-              href={`https://warpcast.com/${details.farcaster}`}
+              href={`https://farcaster.xyz/${details.farcaster}`}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
               style={{ width: !isMobile ? "33%" : "" }}
@@ -240,14 +240,14 @@ export default function Project(props: ProjectProps) {
                 height={16}
               />
               <Card.Text className="text-truncate">
-                {`warpcast.com/${details.farcaster}`}
+                {`farcaster.xyz/${details.farcaster}`}
               </Card.Text>
             </Button>
           )}
           {!!details?.telegram && (
             <Button
               variant="link"
-              href={`https://t.me/${details.telegram}`}
+              href={details.telegram}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
               style={{ width: !isMobile ? "33%" : "" }}
@@ -259,22 +259,20 @@ export default function Project(props: ProjectProps) {
                 height={16}
               />
               <Card.Text className="text-truncate">
-                {`t.me/${details.telegram}`}
+                {details.telegram}
               </Card.Text>
             </Button>
           )}
           {!!details?.discord && (
             <Button
               variant="link"
-              href={`https://discord.com/invite/${details.discord}`}
+              href={details.discord}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
               style={{ width: !isMobile ? "33%" : "" }}
             >
               <Image src="/discord.svg" alt="discord" width={16} height={16} />
-              <Card.Text className="text-truncate">
-                {`discord.com/invite/${details.discord}`}
-              </Card.Text>
+              <Card.Text className="text-truncate">{details.discord}</Card.Text>
             </Button>
           )}
         </Stack>

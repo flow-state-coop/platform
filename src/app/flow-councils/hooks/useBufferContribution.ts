@@ -36,18 +36,20 @@ export default function useBufferContribution(
       "function getConfigAsUint256(address host, address superToken, bytes32 key) view returns (uint256)",
     ]),
     functionName: "getConfigAsUint256",
-    args: [network.superfluidHost, distributionTokenAddress, CFAV1_PPP_CONFIG_KEY],
+    args: [
+      network.superfluidHost,
+      distributionTokenAddress,
+      CFAV1_PPP_CONFIG_KEY,
+    ],
     chainId: network.id,
     query: { enabled: !!governanceAddress },
   });
   const liquidationPeriod = pppConfigValue
-    ? (pppConfigValue >> 32n) & 0xFFFFFFFFn
+    ? (pppConfigValue >> 32n) & 0xffffffffn
     : 0n;
   const { data: sideRecipientPortion } = useReadContract({
     address: splitterAddress as Address | undefined,
-    abi: parseAbi([
-      "function SIDE_RECIPIENT_PORTION() view returns (int96)",
-    ]),
+    abi: parseAbi(["function SIDE_RECIPIENT_PORTION() view returns (int96)"]),
     functionName: "SIDE_RECIPIENT_PORTION",
     chainId: network.id,
     query: { enabled: !!splitterAddress },

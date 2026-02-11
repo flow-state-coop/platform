@@ -186,7 +186,8 @@ export default function FlowCouncil({
 
         const recipient = council.recipients[i];
         const project = projects.find(
-          (p) => p.id.toLowerCase() === recipient?.account.toLowerCase(),
+          (p) =>
+            p.fundingAddress.toLowerCase() === recipient?.account.toLowerCase(),
         );
 
         if (project && recipient) {

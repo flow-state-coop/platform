@@ -123,35 +123,90 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             {!!details.website && (
               <Button
                 variant="link"
-                href={details.website}
+                href={`https://${details.website}`}
                 target="_blank"
                 className="p-0"
               >
-                <Image src="/web.svg" alt="Web" width={20} height={20} />
+                <Image src="/web.svg" alt="Website" width={20} height={20} />
               </Button>
             )}
-            {!!details.github && (
+            {!!details.demoUrl && (
               <Button
                 variant="link"
-                href={details.github}
+                href={details.demoUrl}
                 target="_blank"
                 className="p-0"
               >
-                <Image src="/github.svg" alt="Github" width={18} height={18} />
+                <Image src="/link.svg" alt="Demo" width={18} height={18} />
               </Button>
             )}
             {!!details.twitter && (
               <Button
                 variant="link"
-                href={details.twitter}
+                href={`https://x.com/${details.twitter}`}
+                target="_blank"
+                className="p-0"
+              >
+                <Image src="/x-logo.svg" alt="X" width={13} height={13} />
+              </Button>
+            )}
+            {!!details.farcaster && (
+              <Button
+                variant="link"
+                href={`https://farcaster.xyz/${details.farcaster}`}
                 target="_blank"
                 className="p-0"
               >
                 <Image
-                  src="/x-logo.svg"
-                  alt="X Social Network"
-                  width={13}
-                  height={13}
+                  src="/farcaster.svg"
+                  alt="Farcaster"
+                  width={16}
+                  height={16}
+                />
+              </Button>
+            )}
+            {!!details.telegram && (
+              <Button
+                variant="link"
+                href={details.telegram}
+                target="_blank"
+                className="p-0"
+              >
+                <Image
+                  src="/telegram.svg"
+                  alt="Telegram"
+                  width={16}
+                  height={16}
+                />
+              </Button>
+            )}
+            {!!details.discord && (
+              <Button
+                variant="link"
+                href={details.discord}
+                target="_blank"
+                className="p-0"
+              >
+                <Image
+                  src="/discord.svg"
+                  alt="Discord"
+                  width={16}
+                  height={16}
+                />
+              </Button>
+            )}
+            {!!details.karmaProfile && (
+              <Button
+                variant="link"
+                href={details.karmaProfile}
+                target="_blank"
+                className="p-0"
+              >
+                <Image
+                  src="/karma-gap.svg"
+                  alt="Karma"
+                  width={18}
+                  height={18}
                 />
               </Button>
             )}
@@ -222,11 +277,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             )}
           <Button
             variant="link"
-            href={
-              details?.karmaProfile
-                ? `https://gap.karmahq.xyz/project/${details.karmaProfile}`
-                : `/projects/${id}/?chainId=${chainId}`
-            }
+            href={`/projects/${id}`}
             target="_blank"
             className="d-flex justify-content-center align-items-center gap-2 mt-2 px-10 py-4 rounded-4 bg-secondary text-light text-decoration-none fw-semi-bold"
           >
@@ -240,7 +291,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
                   "invert(100%) sepia(0%) saturate(7497%) hue-rotate(175deg) brightness(103%) contrast(103%)",
               }}
             />
-            {details?.karmaProfile ? "Karma GAP" : "Project Page"}
+            Project Page
           </Button>
         </Stack>
       </Offcanvas.Body>
