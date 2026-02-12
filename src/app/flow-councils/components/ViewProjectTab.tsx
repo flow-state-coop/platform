@@ -29,7 +29,7 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
       {/* Section 1: Admin */}
       <h4 className="fw-bold mb-4">1. Admin</h4>
       <Form.Group className="mb-4">
-        <Form.Label className="fs-lg fw-bold">Name</Form.Label>
+        <Form.Label className="fs-lg fw-bold">Project Name</Form.Label>
         <Form.Control
           type="text"
           value={projectDetails.name ?? ""}
