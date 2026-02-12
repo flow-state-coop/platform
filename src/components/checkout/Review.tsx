@@ -366,7 +366,7 @@ export default function Review(props: ReviewProps) {
                 overlay={
                   <Tooltip id="t-sustainability-fee-info">
                     <p className="m-0 p-2">
-                      7.5% of funding streamed to the Flow Council pool is
+                      5% of funding streamed to the Flow Council pool is
                       directed to support Flow State platform sustainability.
                     </p>
                   </Tooltip>

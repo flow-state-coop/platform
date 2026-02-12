@@ -188,10 +188,12 @@ export default function EditStream(props: EditStreamProps) {
                 value={amountPerTimeInterval}
                 onChange={handleAmountSelection}
                 className={`bg-white border-0 rounded-4 py-4 fw-semi-bold ${
-                  isNativeSuperToken ? "" : "rounded-end-0"
+                  isNativeSuperToken || isFundingDistributionPool
+                    ? ""
+                    : "rounded-end-0"
                 } shadow-none`}
               />
-              {!isNativeSuperToken && (
+              {!isNativeSuperToken && !isFundingDistributionPool && (
                 <>
                   <Button
                     disabled={!address || !flowRateToReceiver}
@@ -221,8 +223,9 @@ export default function EditStream(props: EditStreamProps) {
               /month
             </Badge>
           </Stack>
-          {Number(amountPerTimeInterval) > 0 &&
-            Number(amountPerTimeInterval) < minAllocationPerMonth && (
+          {Number(amountPerTimeInterval.replace(/,/g, "")) > 0 &&
+            Number(amountPerTimeInterval.replace(/,/g, "")) <
+              minAllocationPerMonth && (
               <Alert variant="warning" className="m-0 px-3 py-4 fw-semi-bold">
                 Minimum Donation = {minAllocationPerMonth} {token.symbol}/mo
               </Alert>
@@ -237,7 +240,8 @@ export default function EditStream(props: EditStreamProps) {
                   (BigInt(flowRateToReceiver) === BigInt(0) &&
                     Number(amountPerTimeInterval.replace(/,/g, "")) === 0) ||
                   (!isDeletingStream &&
-                    Number(amountPerTimeInterval) < minAllocationPerMonth) ||
+                    Number(amountPerTimeInterval.replace(/,/g, "")) <
+                      minAllocationPerMonth) ||
                   newFlowRate === flowRateToReceiver
                 }
                 className="px-10 py-4 rounded-4 fw-semi-bold text-light"

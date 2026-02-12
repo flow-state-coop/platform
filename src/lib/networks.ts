@@ -138,7 +138,7 @@ const networks: Network[] = [
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     superAppSplitterFactory: "0x6dEd495DEa4515d4303A01197B52A1B392E0FA80",
-    feeRecipientPool: "0xf6a45af98887c3bc39ac2373fb97091ea4d8989a",
+    feeRecipientPool: "0x75dbcecd12c6650f35373d774033190a3b2a23ea",
     tokens: [
       {
         symbol: "CELOx",
