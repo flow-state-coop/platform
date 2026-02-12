@@ -26,7 +26,7 @@ import { networks } from "@/lib/networks";
 import { flowCouncilFactoryAbi } from "@/lib/abi/flowCouncilFactory";
 import { superAppSplitterFactoryAbi } from "@/lib/abi/superAppSplitterFactory";
 
-const SUPERAPP_SPLITTER_SIDE_PORTION = BigInt(75);
+const SUPERAPP_SPLITTER_SIDE_PORTION = BigInt(50);
 
 type LaunchProps = { defaultNetwork: Network; councilId?: string };
 

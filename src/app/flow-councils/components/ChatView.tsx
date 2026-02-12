@@ -272,7 +272,9 @@ export default function ChatView(props: ChatViewProps) {
           showEmailCheckbox={showEmailCheckbox}
           disabled={!session?.address}
           placeholder={
-            session?.address ? "Write a message. Markdown is supported." : "Sign in to send messages"
+            session?.address
+              ? "Write a message. Markdown is supported."
+              : "Sign in to send messages"
           }
         />
       )}

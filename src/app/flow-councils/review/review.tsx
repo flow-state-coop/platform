@@ -503,7 +503,7 @@ export default function Review(props: ReviewProps) {
                     <ResizableTextarea
                       rows={3}
                       value={reviewComment}
-                      placeholder="Add a comment about this status change..."
+                      placeholder="Write a message. Markdown is supported."
                       className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
                       onChange={(e) => setReviewComment(e.target.value)}
                     />

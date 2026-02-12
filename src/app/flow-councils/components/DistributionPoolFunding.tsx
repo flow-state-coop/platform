@@ -33,7 +33,7 @@ import DistributionPoolDetails from "./DistributionPoolDetails";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useFlowCouncil from "../hooks/flowCouncil";
-import useBufferContribution from "../hooks/useBufferContribution";
+
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
@@ -212,17 +212,8 @@ export default function DistributionPoolFunding(props: {
 
   const flowRateToReceiver = outflowToReceiver?.currentFlowRate ?? "0";
 
-  const userBufferContribution = useBufferContribution(
-    network,
-    splitterAddress,
-    distributionTokenAddress,
-    newFlowRate,
-    flowRateToReceiver,
-    superAppFunderData?.totalInflowRate ?? "0",
-  );
   const suggestedTokenBalance = newFlowRate
-    ? BigInt(newFlowRate) * BigInt(SECONDS_IN_MONTH) * BigInt(3) +
-      userBufferContribution
+    ? BigInt(newFlowRate) * BigInt(SECONDS_IN_MONTH) * BigInt(3)
     : BigInt(0);
   const hasSufficientEthBalance =
     ethBalance && ethBalance.value > parseEther(minEthBalance.toString())
@@ -378,16 +369,6 @@ export default function DistributionPoolFunding(props: {
       }
     }
 
-    if (userBufferContribution > 0n) {
-      operations.push(
-        superToken.transferFrom({
-          sender: address,
-          receiver: splitterAddress,
-          amount: userBufferContribution.toString(),
-        }),
-      );
-    }
-
     if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToReceiver) > 0) {
       operations.push(
         superToken.deleteFlow({
@@ -432,7 +413,6 @@ export default function DistributionPoolFunding(props: {
     splitterAddress,
     distributionTokenAddress,
     underlyingTokenAllowance,
-    userBufferContribution,
   ]);
 
   useEffect(() => {
