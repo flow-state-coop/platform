@@ -16,11 +16,13 @@ import useFlowingAmount from "@/hooks/flowingAmount";
 import { networks } from "@/lib/networks";
 import { formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
+import EligibilityButton from "./EligibilityButton";
 
 type PoolInfoProps = {
   name: string;
   description: string;
   chainId: number;
+  councilId: string;
   distributionTokenInfo: Token;
   distributionPool?: GDAPool;
   showDistributionPoolFunding: () => void;
@@ -31,6 +33,7 @@ export default function PoolInfo(props: PoolInfoProps) {
     name,
     description,
     chainId,
+    councilId,
     distributionTokenInfo,
     distributionPool,
     showDistributionPoolFunding,
@@ -164,6 +167,11 @@ export default function PoolInfo(props: PoolInfoProps) {
                 Grow the Pie
               </Button>
             )}
+            <EligibilityButton
+              chainId={chainId}
+              councilId={councilId}
+              isMobile={isMobile}
+            />
             {recipient && (
               <Button
                 variant="link"

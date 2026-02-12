@@ -190,7 +190,9 @@ export default function Ballot({
         >
           {newAllocation?.allocation?.map((allocation, i) => {
             const project = projects?.find(
-              (p) => p.id.toLowerCase() === allocation.recipient.toLowerCase(),
+              (p) =>
+                p.fundingAddress.toLowerCase() ===
+                allocation.recipient.toLowerCase(),
             );
 
             return (

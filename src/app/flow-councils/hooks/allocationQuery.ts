@@ -7,7 +7,7 @@ const ALLOCATION_QUERY = gql`
     voter(id: $voter) {
       votingPower
     }
-    allocations(
+    ballots(
       first: 1
       where: { flowCouncil: $councilId, voter: $voter }
       orderBy: createdAtTimestamp
@@ -37,7 +37,7 @@ export default function useAllocationQuery(
     skip: !address || !councilId,
     pollInterval: 10000,
   });
-  const currentAllocation = allocationQueryRes?.allocations[0];
+  const currentAllocation = allocationQueryRes?.ballots[0];
   const allocation = currentAllocation?.votes.map(
     ({
       recipient: { account },

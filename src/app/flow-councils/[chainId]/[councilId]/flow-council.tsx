@@ -267,6 +267,7 @@ export default function FlowCouncil({
           name={councilMetadata.name ?? "Flow Council"}
           description={councilMetadata.description ?? "N/A"}
           chainId={chainId}
+          councilId={councilId}
           distributionTokenInfo={token}
           distributionPool={distributionPool}
           showDistributionPoolFunding={() =>
