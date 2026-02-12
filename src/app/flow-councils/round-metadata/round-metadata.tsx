@@ -16,6 +16,7 @@ import Image from "react-bootstrap/Image";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useSiwe from "@/hooks/siwe";
+import MarkdownEditor from "@/components/MarkdownEditor";
 
 async function uploadToS3(file: Blob, fileName: string): Promise<string> {
   const presignRes = await fetch("/api/flow-council/images", {
@@ -248,18 +249,12 @@ export default function RoundMetadata(props: RoundMetadataProps) {
                 setRoundDetails({ ...roundDetails, name: e.target.value })
               }
             />
-            <Form.Control
-              as="textarea"
+            <MarkdownEditor
               rows={3}
-              placeholder="Description (Supports Markdown)"
+              placeholder="Description"
               value={roundDetails.description}
               disabled={!session || session.address !== address}
-              className="border-0 py-4 bg-white mt-3 fs-lg fw-semi-bold"
-              style={{
-                resize: "none",
-                paddingTop: 12,
-                paddingBottom: 12,
-              }}
+              className="mt-3"
               onChange={(e) =>
                 setRoundDetails({
                   ...roundDetails,

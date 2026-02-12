@@ -5,7 +5,7 @@ import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
-import ResizableTextarea from "@/components/ResizableTextarea";
+import MarkdownEditor from "@/components/MarkdownEditor";
 
 type MessageInputProps = {
   onSend: (content: string, sendEmail?: boolean) => Promise<void>;
@@ -45,14 +45,14 @@ export default function MessageInput(props: MessageInputProps) {
   return (
     <div>
       <Form.Group className="mb-3">
-        <ResizableTextarea
+        <MarkdownEditor
           rows={3}
           value={content}
           placeholder={placeholder}
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={isSending || disabled}
+          resizable
         />
       </Form.Group>
 
