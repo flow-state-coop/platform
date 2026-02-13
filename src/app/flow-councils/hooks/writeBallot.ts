@@ -2,7 +2,7 @@ import { useState } from "react";
 import { usePublicClient, useWalletClient } from "wagmi";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 
-export default function useWriteAllocation(council: `0x${string}`) {
+export default function useWriteBallot(council: `0x${string}`) {
   const [transactionError, setTransactionError] = useState("");
   const [isVoting, setIsVoting] = useState(false);
 

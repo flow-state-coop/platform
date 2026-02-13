@@ -46,7 +46,7 @@ export default function Grantee(props: GranteeProps) {
     onAddToBallot,
   } = props;
 
-  const { newAllocation, dispatchNewAllocation } = useFlowCouncil();
+  const { newBallot, dispatchNewBallot } = useFlowCouncil();
   const [percentage, setPercentage] = useState(0);
   const [descriptionRef, { noClamp, clampedText }] = useClampText({
     text: removeMarkdown(description).replace(/\r?\n|\r/g, " "),
@@ -56,29 +56,24 @@ export default function Grantee(props: GranteeProps) {
 
   const monthlyFlow = Number(formatEther(flowRate * BigInt(SECONDS_IN_MONTH)));
 
-  const granteeAllocation = useMemo(
-    () =>
-      newAllocation?.allocation.find(
-        (allocation) => allocation.recipient === granteeAddress,
-      ),
-    [newAllocation, granteeAddress],
+  const granteeVote = useMemo(
+    () => newBallot?.votes.find((v) => v.recipient === granteeAddress),
+    [newBallot, granteeAddress],
   );
 
   useEffect(() => {
-    if (!newAllocation?.allocation) {
+    if (!newBallot?.votes) {
       return;
     }
 
     const votes =
-      newAllocation.allocation.find(
-        (allocation) => allocation.recipient === granteeAddress,
-      )?.amount ?? 0;
+      newBallot.votes.find((v) => v.recipient === granteeAddress)?.amount ?? 0;
 
     setPercentage((votes / votingPower) * 100);
-  }, [newAllocation, granteeAddress, votingPower]);
+  }, [newBallot, granteeAddress, votingPower]);
 
   const handleSlide = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!granteeAllocation) {
+    if (!granteeVote) {
       return;
     }
 
@@ -101,9 +96,9 @@ export default function Grantee(props: GranteeProps) {
       );
       const votingAmount = Math.round((newPercentage / 100) * votingPower);
 
-      dispatchNewAllocation({
+      dispatchNewBallot({
         type: "update",
-        allocation: {
+        vote: {
           recipient: granteeAddress,
           amount: votingAmount,
         },
@@ -187,7 +182,7 @@ export default function Grantee(props: GranteeProps) {
               </Card.Text>
             </Stack>
           </Stack>
-          {!!votingPower && granteeAllocation && (
+          {!!votingPower && granteeVote && (
             <Stack
               direction="horizontal"
               className="justify-content-center mt-4"
@@ -200,17 +195,17 @@ export default function Grantee(props: GranteeProps) {
                   e.stopPropagation();
                 }}
               >
-                {granteeAllocation.amount === 1
-                  ? `${granteeAllocation.amount} vote`
-                  : granteeAllocation.amount > 1
-                    ? `${granteeAllocation.amount} votes`
+                {granteeVote.amount === 1
+                  ? `${granteeVote.amount} vote`
+                  : granteeVote.amount > 1
+                    ? `${granteeVote.amount} votes`
                     : null}
               </Card.Text>
             </Stack>
           )}
         </Card.Body>
         <Card.Footer className="position-relative bg-lace-100 border-0 px-0 py-0 rounded-3">
-          {votingPower && granteeAllocation ? (
+          {votingPower && granteeVote ? (
             <>
               <Stack
                 direction="horizontal"
@@ -274,9 +269,9 @@ export default function Grantee(props: GranteeProps) {
                 style={{ paddingTop: 14, paddingBottom: 14 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  dispatchNewAllocation({
+                  dispatchNewBallot({
                     type: "add",
-                    allocation: {
+                    vote: {
                       recipient: granteeAddress,
                       amount: 1,
                     },

@@ -9,7 +9,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
 import FormControl from "react-bootstrap/FormControl";
 import useFlowCouncil from "../hooks/flowCouncil";
-import useWriteAllocation from "../hooks/writeAllocation";
+import useWriteBallot from "../hooks/writeBallot";
 import { getVoteSocialShare } from "../lib/socialShare";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { isNumber } from "@/lib/utils";
@@ -28,22 +28,19 @@ export default function Ballot({
     council,
     councilMetadata,
     councilMember,
-    currentAllocation,
-    newAllocation,
+    currentBallot,
+    newBallot,
     projects,
     dispatchShowBallot,
-    dispatchNewAllocation,
+    dispatchNewBallot,
   } = useFlowCouncil();
   const { isMobile } = useMediaQuery();
-  const { vote, isVoting, transactionError } =
-    useWriteAllocation(councilAddress);
+  const { vote, isVoting, transactionError } = useWriteBallot(councilAddress);
 
   const votingPower = councilMember?.votingPower ?? 0;
   const totalVotes =
-    newAllocation?.allocation
-      ?.map((a) => a.amount)
-      ?.reduce((a, b) => a + b, 0) ?? 0;
-  const newAllocationsCount = newAllocation?.allocation?.length ?? 0;
+    newBallot?.votes?.map((a) => a.amount)?.reduce((a, b) => a + b, 0) ?? 0;
+  const newVotesCount = newBallot?.votes?.length ?? 0;
   const maxVotingSpread = council?.maxVotingSpread ?? 0;
 
   useEffect(() => {
@@ -60,8 +57,8 @@ export default function Ballot({
   }) => {
     const { increment, granteeIndex } = args;
 
-    const granteeAddress = newAllocation?.allocation[granteeIndex].recipient;
-    const currentAmount = newAllocation?.allocation[granteeIndex].amount ?? 0;
+    const granteeAddress = newBallot?.votes[granteeIndex].recipient;
+    const currentAmount = newBallot?.votes[granteeIndex].amount ?? 0;
 
     if (granteeAddress) {
       const newAmount = increment
@@ -71,9 +68,9 @@ export default function Ballot({
           : currentAmount - 1;
 
       setSuccess(false);
-      dispatchNewAllocation({
+      dispatchNewBallot({
         type: "update",
-        allocation: { recipient: granteeAddress, amount: newAmount },
+        vote: { recipient: granteeAddress, amount: newAmount },
       });
     }
   };
@@ -84,19 +81,19 @@ export default function Ballot({
   ) => {
     const { value } = e.target;
 
-    const granteeAddress = newAllocation?.allocation[granteeIndex].recipient;
+    const granteeAddress = newBallot?.votes[granteeIndex].recipient;
 
     if (isNumber(value) && granteeAddress) {
-      dispatchNewAllocation({
+      dispatchNewBallot({
         type: "update",
-        allocation: { recipient: granteeAddress, amount: Number(value) },
+        vote: { recipient: granteeAddress, amount: Number(value) },
       });
 
       setSuccess(false);
     } else if (value === "" && granteeAddress) {
-      dispatchNewAllocation({
+      dispatchNewBallot({
         type: "update",
-        allocation: { recipient: granteeAddress, amount: 0 },
+        vote: { recipient: granteeAddress, amount: 0 },
       });
 
       setSuccess(false);
@@ -104,18 +101,37 @@ export default function Ballot({
   };
 
   const handleVote = async () => {
-    if (newAllocation && newAllocation?.allocation.length > 0) {
-      const nonZeroAllocations = newAllocation.allocation.filter(
-        (a) => a.amount !== 0,
-      );
-      const accounts = nonZeroAllocations.map((a) => a.recipient);
-      const amounts = nonZeroAllocations.map((a) => BigInt(a.amount));
+    if (!newBallot) {
+      return;
+    }
 
-      const receipt = await vote(accounts as `0x${string}`[], amounts);
+    const removedVotes =
+      currentBallot?.votes?.filter(
+        (current) =>
+          !newBallot.votes.some(
+            (a) =>
+              a.recipient.toLowerCase() === current.recipient.toLowerCase(),
+          ),
+      ) ?? [];
 
-      if (receipt?.status === "success") {
-        setSuccess(true);
-      }
+    const zeroedRemovedVotes = removedVotes.map((a) => ({
+      ...a,
+      amount: 0,
+    }));
+
+    const ballot = [...newBallot.votes, ...zeroedRemovedVotes];
+
+    if (ballot.length === 0) {
+      return;
+    }
+
+    const accounts = ballot.map((a) => a.recipient);
+    const amounts = ballot.map((a) => BigInt(a.amount));
+
+    const receipt = await vote(accounts as `0x${string}`[], amounts);
+
+    if (receipt?.status === "success") {
+      setSuccess(true);
     }
   };
 
@@ -125,15 +141,13 @@ export default function Ballot({
   });
 
   const handleHide = () => {
-    const zeroAllocations = newAllocation?.allocation.filter(
-      (a) => a.amount === 0,
-    );
+    const zeroVotes = newBallot?.votes.filter((a) => a.amount === 0);
 
-    if (zeroAllocations) {
-      for (const allocation of zeroAllocations) {
-        dispatchNewAllocation({
+    if (zeroVotes) {
+      for (const v of zeroVotes) {
+        dispatchNewBallot({
           type: "delete",
-          allocation,
+          vote: v,
         });
       }
     }
@@ -169,13 +183,12 @@ export default function Ballot({
           className="justify-content-around flex-grow-0 mb-1"
         >
           <p
-            className={`m-0 fs-lg fw-semi-bold ${newAllocationsCount > maxVotingSpread ? "text-danger" : "text-info"}`}
+            className={`m-0 fs-lg fw-semi-bold ${newVotesCount > maxVotingSpread ? "text-danger" : "text-info"}`}
             style={{
               visibility: maxVotingSpread === 0 ? "hidden" : "visible",
             }}
           >
-            ({newAllocation?.allocation?.length ?? 0}/{maxVotingSpread}{" "}
-            Projects)
+            ({newBallot?.votes?.length ?? 0}/{maxVotingSpread} Projects)
           </p>
           <p
             className={`m-0 fs-lg fw-semi-bold ${totalVotes > votingPower ? "text-danger" : "text-info"}`}
@@ -188,9 +201,10 @@ export default function Ballot({
           gap={4}
           className="flex-grow-0 mt-2 bg-lace-100 rounded-4 p-4"
         >
-          {newAllocation?.allocation?.map((allocation, i) => {
+          {newBallot?.votes?.map((v, i) => {
             const project = projects?.find(
-              (p) => p.id.toLowerCase() === allocation.recipient.toLowerCase(),
+              (p) =>
+                p.fundingAddress.toLowerCase() === v.recipient.toLowerCase(),
             );
 
             return (
@@ -205,9 +219,9 @@ export default function Ballot({
                     className="p-0"
                     onClick={() => {
                       setSuccess(false);
-                      dispatchNewAllocation({
+                      dispatchNewBallot({
                         type: "delete",
-                        allocation,
+                        vote: v,
                       });
                     }}
                   >
@@ -249,7 +263,7 @@ export default function Ballot({
                   </Button>
                   <FormControl
                     type="text"
-                    value={allocation.amount}
+                    value={v.amount}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       handleAmountSelection(e, i)
                     }
@@ -275,11 +289,13 @@ export default function Ballot({
             disabled={
               !success &&
               (totalVotes > votingPower ||
-                (maxVotingSpread && newAllocationsCount > maxVotingSpread) ||
-                !newAllocation?.allocation ||
-                newAllocation.allocation.length === 0 ||
-                JSON.stringify(currentAllocation?.allocation) ===
-                  JSON.stringify(newAllocation?.allocation))
+                (maxVotingSpread && newVotesCount > maxVotingSpread) ||
+                !newBallot?.votes ||
+                (newBallot.votes.length === 0 &&
+                  (!currentBallot?.votes ||
+                    currentBallot.votes.length === 0)) ||
+                JSON.stringify(currentBallot?.votes) ===
+                  JSON.stringify(newBallot?.votes))
             }
             className="d-flex justify-content-center align-items-center align-self-end w-50 px-10 py-4 rounded-4 fs-lg fw-semi-bold"
             style={{ pointerEvents: success ? "none" : "auto", height: 56 }}

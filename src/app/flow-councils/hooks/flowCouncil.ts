@@ -1,6 +1,6 @@
 import {
   useFlowCouncilContext,
-  useAllocationDispatchContext,
+  useBallotDispatchContext,
   useShowBallotDispatchContext,
 } from "@/context/FlowCouncil";
 
@@ -14,11 +14,11 @@ export default function useFlowCouncil() {
     token,
     showBallot,
     councilMember,
-    currentAllocation,
-    newAllocation,
+    currentBallot,
+    newBallot,
   } = useFlowCouncilContext();
 
-  const dispatchNewAllocation = useAllocationDispatchContext();
+  const dispatchNewBallot = useBallotDispatchContext();
   const dispatchShowBallot = useShowBallotDispatchContext();
 
   return {
@@ -28,11 +28,11 @@ export default function useFlowCouncil() {
     distributionPool,
     superAppFunderData,
     token,
-    currentAllocation,
-    newAllocation,
+    currentBallot,
+    newBallot,
     showBallot,
     councilMember,
-    dispatchNewAllocation,
+    dispatchNewBallot,
     dispatchShowBallot,
   };
 }

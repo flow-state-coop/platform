@@ -9,18 +9,12 @@ import useFlowCouncil from "../hooks/flowCouncil";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
 export default function FlowCouncilWallet() {
-  const {
-    councilMember,
-    currentAllocation,
-    newAllocation,
-    dispatchShowBallot,
-  } = useFlowCouncil();
+  const { councilMember, currentBallot, newBallot, dispatchShowBallot } =
+    useFlowCouncil();
   const { isMobile } = useMediaQuery();
 
   const currentVotes =
-    newAllocation?.allocation
-      ?.map((a) => a.amount)
-      ?.reduce((a, b) => a + b, 0) ?? 0;
+    newBallot?.votes?.map((a) => a.amount)?.reduce((a, b) => a + b, 0) ?? 0;
 
   return (
     <>
@@ -92,10 +86,10 @@ export default function FlowCouncilWallet() {
                         className="d-flex align-items-center gap-1 py-4 border border-4 border-dark rounded-4 fw-semi-bold shadow"
                         onClick={() => dispatchShowBallot({ type: "show" })}
                       >
-                        {newAllocation?.allocation &&
-                        newAllocation.allocation.length > 0 &&
-                        JSON.stringify(currentAllocation?.allocation) !==
-                          JSON.stringify(newAllocation?.allocation) ? (
+                        {newBallot?.votes &&
+                        newBallot.votes.length > 0 &&
+                        JSON.stringify(currentBallot?.votes) !==
+                          JSON.stringify(newBallot?.votes) ? (
                           <Stack direction="horizontal" gap={2}>
                             <Badge className="p-1 bg-danger rounded-circle">
                               <Image

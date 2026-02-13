@@ -17,67 +17,64 @@ export default function VoteBubble(props: VoteBubbleProps) {
   const { grantees, granteeColors, votingPower, voteBubbleRef } = props;
 
   const { isMobile } = useMediaQuery();
-  const { newAllocation, council, dispatchShowBallot } = useFlowCouncil();
+  const { newBallot, council, dispatchShowBallot } = useFlowCouncil();
 
-  const totalAllocatedProjects =
-    newAllocation?.allocation.filter((allocation) => allocation.amount !== 0)
-      .length ?? 0;
-  const totalAllocatedVotes =
-    newAllocation?.allocation
-      ?.map((allocation) => allocation.amount)
-      .reduce((a, b) => a + b, 0) ?? 0;
+  const totalVotedProjects =
+    newBallot?.votes.filter((v) => v.amount !== 0).length ?? 0;
+  const totalVotes =
+    newBallot?.votes?.map((v) => v.amount).reduce((a, b) => a + b, 0) ?? 0;
 
   const pieData = useMemo(() => {
     if (!grantees.length) {
       return [];
     }
 
-    const allocatedVotes = newAllocation?.allocation
-      ? newAllocation.allocation.reduce((sum, a) => sum + a.amount, 0)
+    const usedVotes = newBallot?.votes
+      ? newBallot.votes.reduce((sum, a) => sum + a.amount, 0)
       : 0;
-    const unallocatedVotes = votingPower - allocatedVotes;
+    const remainingVotes = votingPower - usedVotes;
     const data = grantees.map((grantee) => {
-      const allocation = newAllocation?.allocation?.find(
+      const granteeVote = newBallot?.votes?.find(
         (a) => a.recipient === grantee.address,
       );
 
       return {
         id: grantee.address,
         name: grantee.details.name ?? "",
-        value: allocation ? allocation.amount : 0,
+        value: granteeVote ? granteeVote.amount : 0,
         color:
-          allocation && allocation.amount > 0
+          granteeVote && granteeVote.amount > 0
             ? granteeColors[grantee.address]
             : "#e0e0e0",
       };
     });
 
-    if (newAllocation?.allocation) {
-      newAllocation.allocation.forEach((allocation) => {
-        if (data.some((item) => item.id === allocation.recipient)) {
+    if (newBallot?.votes) {
+      newBallot.votes.forEach((v) => {
+        if (data.some((item) => item.id === v.recipient)) {
           return;
         }
 
         data.push({
-          id: allocation.recipient,
-          name: allocation.recipient.substring(0, 6),
-          value: allocation.amount,
-          color: granteeColors[allocation.recipient] || "#1f77b4",
+          id: v.recipient,
+          name: v.recipient.substring(0, 6),
+          value: v.amount,
+          color: granteeColors[v.recipient] || "#1f77b4",
         });
       });
     }
 
-    if (unallocatedVotes > 0) {
+    if (remainingVotes > 0) {
       data.push({
         id: "0xdead",
         name: "Unallocated",
-        value: unallocatedVotes,
+        value: remainingVotes,
         color: "#e0e0e0",
       });
     }
 
     return data.filter((entry) => entry.value > 0 || entry.id === "0xdead");
-  }, [grantees, newAllocation?.allocation, granteeColors, votingPower]);
+  }, [grantees, newBallot?.votes, granteeColors, votingPower]);
 
   const VoteButton = () => {
     return (
@@ -119,13 +116,13 @@ export default function VoteBubble(props: VoteBubbleProps) {
         <Stack direction="vertical">
           <span className="fs-6 fw-semi-bold d-block text-center">VOTE</span>
           <span
-            className={`fs-lg d-block ${totalAllocatedVotes > votingPower ? "text-warning" : "text-white-50"}`}
+            className={`fs-lg d-block ${totalVotes > votingPower ? "text-warning" : "text-white-50"}`}
           >
-            {totalAllocatedProjects}
+            {totalVotedProjects}
             {council?.maxVotingSpread ? `/${council.maxVotingSpread}` : ""}{" "}
-            Project{totalAllocatedProjects > 1 ? "s" : ""},{" "}
-            {totalAllocatedVotes}/{votingPower} Vote
-            {totalAllocatedVotes > 1 ? "s" : ""}
+            Project{totalVotedProjects > 1 ? "s" : ""}, {totalVotes}/
+            {votingPower} Vote
+            {totalVotes > 1 ? "s" : ""}
           </span>
         </Stack>
       </Button>
