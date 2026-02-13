@@ -91,16 +91,8 @@ export default function MessageItem(props: MessageItemProps) {
           ensAvatar={isSystemMessage ? undefined : ensData?.avatar}
           size={32}
         />
-        <Stack
-          direction="vertical"
-          gap={0}
-          className="flex-grow-1 overflow-hidden"
-        >
-          <Stack
-            direction="horizontal"
-            gap={2}
-            className="justify-content-between"
-          >
+        <div className="flex-grow-1 overflow-hidden">
+          <div className="d-flex flex-wrap gap-1 align-items-center justify-content-between">
             <span className="d-flex gap-1 text-truncate">
               <span
                 className={`fw-semi-bold text-truncate ${isSystemMessage ? "fst-italic text-muted" : ""}`}
@@ -111,11 +103,7 @@ export default function MessageItem(props: MessageItemProps) {
                 <span className="text-muted text-nowrap">{affiliationTag}</span>
               )}
             </span>
-            <Stack
-              direction="horizontal"
-              gap={1}
-              className="align-items-center"
-            >
+            <span className="d-flex gap-1 align-items-center">
               <span className="text-muted small text-nowrap">
                 {formatTimestamp(message.createdAt)}
                 {edited && " (edited)"}
@@ -128,9 +116,9 @@ export default function MessageItem(props: MessageItemProps) {
                   onDelete={onDelete}
                 />
               )}
-            </Stack>
-          </Stack>
-        </Stack>
+            </span>
+          </div>
+        </div>
       </Stack>
       <Markdown
         className={`mb-0 ms-5 ${isSystemMessage ? "fst-italic" : ""}`}

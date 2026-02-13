@@ -3,6 +3,7 @@
   border-radius: 0.75rem;
   overflow: hidden;
   background: #fbf7ef;
+  max-width: 100%;
 }
 
 .editor.invalid {
@@ -54,6 +55,7 @@
   display: flex;
   gap: 0.25rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .toolbarButton {

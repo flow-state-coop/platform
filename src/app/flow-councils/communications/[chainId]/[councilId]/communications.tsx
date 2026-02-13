@@ -250,7 +250,7 @@ export default function Communications(props: CommunicationsProps) {
             )}
 
             {/* Chat Area */}
-            <div className="flex-grow-1">
+            <div className="flex-grow-1 overflow-hidden">
               {isAnnouncementsSelected ? (
                 <ChatView
                   channelType={ChannelType.GROUP_ANNOUNCEMENTS}
