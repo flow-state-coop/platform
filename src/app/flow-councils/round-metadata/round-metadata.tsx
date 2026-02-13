@@ -251,6 +251,7 @@ export default function RoundMetadata(props: RoundMetadataProps) {
             />
             <MarkdownEditor
               rows={3}
+              resizable
               placeholder="Description"
               value={roundDetails.description}
               disabled={!session || session.address !== address}
