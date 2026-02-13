@@ -114,7 +114,7 @@ export default function EligibilityButton({
         style={{ width: isMobile ? "100%" : 240 }}
         disabled
       >
-        <span className="text-success">&#10003;</span> Eligibility Confirmed!
+        <span className="text-success">&#10003;</span> Confirmed!
       </Button>
     );
   }
