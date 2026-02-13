@@ -81,26 +81,30 @@ export default function MessageItem(props: MessageItemProps) {
           : null
       : null;
 
+  const showActions = !isSystemMessage && (canEdit || canDelete);
+
   return (
     <div
-      className={`rounded-4 p-3 ${isSystemMessage ? "bg-secondary bg-opacity-10" : "bg-lace-100"}`}
+      className={`rounded-4 p-3 position-relative ${isSystemMessage ? "bg-secondary bg-opacity-10" : "bg-lace-100"}`}
     >
+      {showActions && (
+        <div className="position-absolute top-0 end-0 mt-2 me-2">
+          <MessageActions
+            canEdit={canEdit}
+            canDelete={canDelete}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        </div>
+      )}
       <Stack direction="horizontal" gap={2} className="mb-2">
         <ProfilePic
           address={message.authorAddress}
           ensAvatar={isSystemMessage ? undefined : ensData?.avatar}
           size={32}
         />
-        <Stack
-          direction="vertical"
-          gap={0}
-          className="flex-grow-1 overflow-hidden"
-        >
-          <Stack
-            direction="horizontal"
-            gap={2}
-            className="justify-content-between"
-          >
+        <div className="flex-grow-1 overflow-hidden pe-4">
+          <div className="d-flex flex-wrap gap-1 align-items-center">
             <span className="d-flex gap-1 text-truncate">
               <span
                 className={`fw-semi-bold text-truncate ${isSystemMessage ? "fst-italic text-muted" : ""}`}
@@ -111,26 +115,12 @@ export default function MessageItem(props: MessageItemProps) {
                 <span className="text-muted text-nowrap">{affiliationTag}</span>
               )}
             </span>
-            <Stack
-              direction="horizontal"
-              gap={1}
-              className="align-items-center"
-            >
-              <span className="text-muted small text-nowrap">
-                {formatTimestamp(message.createdAt)}
-                {edited && " (edited)"}
-              </span>
-              {!isSystemMessage && (
-                <MessageActions
-                  canEdit={canEdit}
-                  canDelete={canDelete}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                />
-              )}
-            </Stack>
-          </Stack>
-        </Stack>
+            <span className="text-muted small text-nowrap">
+              {formatTimestamp(message.createdAt)}
+              {edited && " (edited)"}
+            </span>
+          </div>
+        </div>
       </Stack>
       <Markdown
         className={`mb-0 ms-5 ${isSystemMessage ? "fst-italic" : ""}`}

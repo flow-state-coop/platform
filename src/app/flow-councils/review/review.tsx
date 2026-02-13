@@ -18,7 +18,7 @@ import Toast from "react-bootstrap/Toast";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Spinner from "react-bootstrap/Spinner";
-import ResizableTextarea from "@/components/ResizableTextarea";
+import MarkdownEditor from "@/components/MarkdownEditor";
 import Alert from "react-bootstrap/Alert";
 import Table from "react-bootstrap/Table";
 import Badge from "react-bootstrap/Badge";
@@ -500,12 +500,12 @@ export default function Review(props: ReviewProps) {
                     <Form.Label className="fw-semi-bold">
                       Review Comment (Shared with the project)
                     </Form.Label>
-                    <ResizableTextarea
+                    <MarkdownEditor
                       rows={3}
                       value={reviewComment}
-                      placeholder="Write a message. Markdown is supported."
-                      className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+                      placeholder="Write a message..."
                       onChange={(e) => setReviewComment(e.target.value)}
+                      resizable
                     />
                   </Form.Group>
 

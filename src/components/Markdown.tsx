@@ -2,6 +2,7 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import rehypeExternalLinks from "rehype-external-links";
 
 type MarkdownProps = {
@@ -16,7 +17,7 @@ export default function Markdown({ children, className }: MarkdownProps) {
     <ReactMarkdown
       className={className}
       skipHtml={true}
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={[remarkGfm, remarkBreaks]}
       rehypePlugins={[[rehypeExternalLinks, { target: "_blank" }]]}
       components={{
         h1: (props) => <h1 className="fs-4 fw-bold" {...props} />,

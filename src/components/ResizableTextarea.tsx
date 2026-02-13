@@ -1,6 +1,12 @@
 "use client";
 
-import { useRef, useCallback, TextareaHTMLAttributes } from "react";
+import {
+  useRef,
+  useCallback,
+  forwardRef,
+  useImperativeHandle,
+  TextareaHTMLAttributes,
+} from "react";
 import Form from "react-bootstrap/Form";
 import Image from "next/image";
 
@@ -9,9 +15,14 @@ type ResizableTextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   isInvalid?: boolean;
 };
 
-export default function ResizableTextarea(props: ResizableTextareaProps) {
+const ResizableTextarea = forwardRef<
+  HTMLTextAreaElement,
+  ResizableTextareaProps
+>(function ResizableTextarea(props, ref) {
   const { minHeight = 80, style, isInvalid, disabled, ...rest } = props;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useImperativeHandle(ref, () => textareaRef.current as HTMLTextAreaElement);
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -76,4 +87,6 @@ export default function ResizableTextarea(props: ResizableTextareaProps) {
       </div>
     </div>
   );
-}
+});
+
+export default ResizableTextarea;

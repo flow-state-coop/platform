@@ -14,9 +14,9 @@ import MultiInput from "./MultiInput";
 import SmartContractRow from "./SmartContractRow";
 import OtherLinkRow from "./OtherLinkRow";
 import { type SmartContract, type OtherLink } from "@/types/project";
-import CharacterCounter from "./CharacterCounter";
 import { CHARACTER_LIMITS } from "../constants";
 import useSiwe from "@/hooks/siwe";
+import MarkdownEditor from "@/components/MarkdownEditor";
 import { Project } from "@/types/project";
 
 async function uploadToS3(file: Blob, fileName: string): Promise<string> {
@@ -422,24 +422,18 @@ export default function ProjectTab(props: ProjectTabProps) {
       {/* Section 2: Basics */}
       <h4 className="fw-bold mb-4 mt-8">2. Basics</h4>
       <Form.Group className="mb-4">
-        <Form.Label className="fs-lg fw-bold">
-          Description* (Markdown supported)
-        </Form.Label>
-        <Form.Control
-          as="textarea"
+        <Form.Label className="fs-lg fw-bold">Description*</Form.Label>
+        <MarkdownEditor
           rows={6}
           value={form.description}
-          placeholder=""
-          className={`bg-white border border-2 rounded-2 py-3 px-3 ${(validated || touched.description) && !isDescriptionValid ? "border-danger" : "border-dark"}`}
-          style={{ resize: "vertical", backgroundImage: "none" }}
           isInvalid={(validated || touched.description) && !isDescriptionValid}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
           onBlur={() => setTouched((prev) => ({ ...prev, description: true }))}
-        />
-        <CharacterCounter
-          value={form.description}
-          min={CHARACTER_LIMITS.projectDescription.min}
-          max={CHARACTER_LIMITS.projectDescription.max}
+          characterCounter={{
+            value: form.description,
+            min: CHARACTER_LIMITS.projectDescription.min,
+            max: CHARACTER_LIMITS.projectDescription.max,
+          }}
         />
       </Form.Group>
 

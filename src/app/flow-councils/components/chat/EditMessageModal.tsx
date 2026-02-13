@@ -6,7 +6,7 @@ import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
-import ResizableTextarea from "@/components/ResizableTextarea";
+import MarkdownEditor from "@/components/MarkdownEditor";
 
 type EditMessageModalProps = {
   show: boolean;
@@ -52,12 +52,12 @@ export default function EditMessageModal(props: EditMessageModalProps) {
       </Modal.Header>
       <Modal.Body className="p-4">
         <Form.Group>
-          <ResizableTextarea
+          <MarkdownEditor
             rows={4}
             value={content}
-            className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
             onChange={(e) => setContent(e.target.value)}
             disabled={isSaving}
+            resizable
           />
         </Form.Group>
         {error && (
