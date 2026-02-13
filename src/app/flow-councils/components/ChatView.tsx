@@ -33,6 +33,7 @@ type ChatViewProps = {
   showEmailCheckbox?: boolean;
   emptyMessage?: string;
   infoText?: string;
+  newestFirst?: boolean;
 };
 
 export default function ChatView(props: ChatViewProps) {
@@ -49,6 +50,7 @@ export default function ChatView(props: ChatViewProps) {
     showEmailCheckbox = false,
     emptyMessage = "No messages yet.",
     infoText,
+    newestFirst = false,
   } = props;
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -71,6 +73,11 @@ export default function ChatView(props: ChatViewProps) {
   }, [messages]);
 
   const { ensByAddress } = useEnsResolution(authorAddresses);
+
+  const displayMessages = useMemo(
+    () => (newestFirst ? [...messages].reverse() : messages),
+    [messages, newestFirst],
+  );
 
   const buildQueryParams = useCallback(() => {
     const params = new URLSearchParams({
@@ -116,13 +123,14 @@ export default function ChatView(props: ChatViewProps) {
     fetchMessages();
   }, [fetchMessages]);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
+    if (newestFirst) return;
+
     const container = messagesContainerRef.current;
     if (container) {
       container.scrollTop = container.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, newestFirst]);
 
   const handleSendMessage = async (content: string, sendEmail?: boolean) => {
     if (!session?.address) return;
@@ -228,6 +236,20 @@ export default function ChatView(props: ChatViewProps) {
     );
   }
 
+  const messageInput = canWrite && (
+    <MessageInput
+      onSend={handleSendMessage}
+      isSending={isSending}
+      showEmailCheckbox={showEmailCheckbox}
+      disabled={!session?.address}
+      placeholder={
+        session?.address
+          ? "Write a message. Markdown is supported."
+          : "Sign in to send messages"
+      }
+    />
+  );
+
   return (
     <div>
       {infoText && <p className="text-muted mb-4">{infoText}</p>}
@@ -238,17 +260,20 @@ export default function ChatView(props: ChatViewProps) {
         </Alert>
       )}
 
-      {/* Messages List */}
+      {newestFirst && messageInput && (
+        <div className="mb-5">{messageInput}</div>
+      )}
+
       <div
         ref={messagesContainerRef}
         className="rounded-4 p-3 mb-4"
-        style={{ maxHeight: 400, overflowY: "auto" }}
+        style={newestFirst ? undefined : { maxHeight: 400, overflowY: "auto" }}
       >
-        {messages.length === 0 ? (
+        {displayMessages.length === 0 ? (
           <p className="text-muted text-center mb-0">{emptyMessage}</p>
         ) : (
           <Stack direction="vertical" gap={3}>
-            {messages.map((message) => (
+            {displayMessages.map((message) => (
               <MessageItem
                 key={message.id}
                 message={message}
@@ -264,22 +289,8 @@ export default function ChatView(props: ChatViewProps) {
         )}
       </div>
 
-      {/* Message Input - only show if user can write */}
-      {canWrite && (
-        <MessageInput
-          onSend={handleSendMessage}
-          isSending={isSending}
-          showEmailCheckbox={showEmailCheckbox}
-          disabled={!session?.address}
-          placeholder={
-            session?.address
-              ? "Write a message. Markdown is supported."
-              : "Sign in to send messages"
-          }
-        />
-      )}
+      {!newestFirst && messageInput}
 
-      {/* Edit Modal */}
       <EditMessageModal
         show={!!editingMessage}
         initialContent={editingMessage?.content || ""}

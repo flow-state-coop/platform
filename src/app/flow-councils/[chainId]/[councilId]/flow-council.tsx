@@ -7,9 +7,12 @@ import { useAccount, useSwitchChain } from "wagmi";
 import Stack from "react-bootstrap/Stack";
 import Modal from "react-bootstrap/Modal";
 import Spinner from "react-bootstrap/Spinner";
+import Nav from "react-bootstrap/Nav";
+import Tab from "react-bootstrap/Tab";
 import Dropdown from "react-bootstrap/Dropdown";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
 import GranteeCard from "@/app/flow-councils/components/GranteeCard";
+import FeedTab from "@/app/flow-councils/components/FeedTab";
 import RoundBanner from "@/app/flow-councils/components/RoundBanner";
 import GranteeDetails from "@/app/flow-councils/components/GranteeDetails";
 import Ballot from "@/app/flow-councils/components/Ballot";
@@ -26,10 +29,13 @@ import { shuffle, getPlaceholderImageSrc, generateColor } from "@/lib/utils";
 export default function FlowCouncil({
   chainId,
   councilId,
+  csfrToken,
 }: {
   chainId: number;
   councilId: string;
+  csfrToken: string;
 }) {
+  const [selectedTab, setSelectedTab] = useState("grantees");
   const [grantees, setGrantees] = useState<Grantee[]>([]);
   const [sortingMethod, setSortingMethod] = useState(SortingMethod.RANDOM);
   const [showGranteeDetails, setShowGranteeDetails] = useState<Grantee | null>(
@@ -273,83 +279,116 @@ export default function FlowCouncil({
             setShowDistributionPoolFunding(true)
           }
         />
-        <Stack direction="horizontal" gap={4} className="pt-8 pb-6 fs-6">
-          Grantees
-          <Dropdown>
-            <Dropdown.Toggle
-              variant="transparent"
-              className="d-flex justify-content-between align-items-center border border-4 border-dark fw-semi-bold"
-              style={{ width: 156 }}
-            >
-              {sortingMethod}
-            </Dropdown.Toggle>
-            <Dropdown.Menu className="p-2 lh-sm bg-white border border-4 border-dark">
-              <Dropdown.Item
-                className="fw-semi-bold"
-                onClick={() => setSortingMethod(SortingMethod.RANDOM)}
+        <Tab.Container
+          activeKey={selectedTab}
+          onSelect={(key) => setSelectedTab(key ?? "grantees")}
+        >
+          <Nav className="pt-8 pb-6 fs-6 gap-2">
+            <Nav.Item>
+              <Nav.Link
+                eventKey="grantees"
+                className={`py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${selectedTab === "grantees" ? "bg-primary text-white" : "bg-white text-primary"}`}
+                style={{ width: 140 }}
               >
-                {SortingMethod.RANDOM}
-              </Dropdown.Item>
-              <Dropdown.Item
-                className="fw-semi-bold"
-                onClick={() => setSortingMethod(SortingMethod.ALPHABETICAL)}
+                Grantees
+              </Nav.Link>
+            </Nav.Item>
+            <Nav.Item>
+              <Nav.Link
+                eventKey="feed"
+                className={`py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${selectedTab === "feed" ? "bg-primary text-white" : "bg-white text-primary"}`}
+                style={{ width: 140 }}
               >
-                {SortingMethod.ALPHABETICAL}
-              </Dropdown.Item>
-              <Dropdown.Item
-                className="fw-semi-bold"
-                onClick={() => setSortingMethod(SortingMethod.POPULAR)}
-              >
-                {SortingMethod.POPULAR}
-              </Dropdown.Item>
-            </Dropdown.Menu>
-          </Dropdown>
-        </Stack>
-        <Stack direction="vertical" className="flex-grow-0">
-          <div
-            className="pb-5"
-            style={{
-              display: "grid",
-              columnGap: "1.5rem",
-              rowGap: "3rem",
-              gridTemplateColumns: isTablet
-                ? "repeat(2,minmax(0,1fr))"
-                : isSmallScreen
-                  ? "repeat(3,minmax(0,1fr))"
-                  : isMediumScreen || isBigScreen
-                    ? "repeat(4,minmax(0,1fr))"
-                    : "",
-            }}
-          >
-            {grantees.map((grantee: Grantee) => (
-              <GranteeCard
-                key={`${grantee.address}-${grantee.id}`}
-                granteeAddress={grantee.address}
-                name={grantee.details.name ?? ""}
-                description={grantee.details.description ?? ""}
-                logoUrl={grantee.details.logoUrl ?? ""}
-                bannerUrl={grantee.details.bannerUrl ?? ""}
-                placeholderLogo={grantee.placeholderLogo}
-                placeholderBanner={grantee.placeholderBanner}
-                flowRate={grantee.flowRate}
-                units={grantee.units}
-                token={token}
-                votingPower={votingPower}
-                showGranteeDetails={() => setShowGranteeDetails(grantee)}
-                granteeColor={granteeColors[grantee.address]}
-                onAddToBallot={animateVoteBubble}
+                Feed
+              </Nav.Link>
+            </Nav.Item>
+          </Nav>
+          <Tab.Content>
+            <Tab.Pane eventKey="grantees">
+              <Dropdown className="pb-6">
+                <Dropdown.Toggle
+                  variant="transparent"
+                  className="d-flex justify-content-between align-items-center border border-4 border-dark fw-semi-bold"
+                  style={{ width: 156 }}
+                >
+                  {sortingMethod}
+                </Dropdown.Toggle>
+                <Dropdown.Menu className="p-2 lh-sm bg-white border border-4 border-dark">
+                  <Dropdown.Item
+                    className="fw-semi-bold"
+                    onClick={() => setSortingMethod(SortingMethod.RANDOM)}
+                  >
+                    {SortingMethod.RANDOM}
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    className="fw-semi-bold"
+                    onClick={() => setSortingMethod(SortingMethod.ALPHABETICAL)}
+                  >
+                    {SortingMethod.ALPHABETICAL}
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    className="fw-semi-bold"
+                    onClick={() => setSortingMethod(SortingMethod.POPULAR)}
+                  >
+                    {SortingMethod.POPULAR}
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown>
+              <Stack direction="vertical" className="flex-grow-0">
+                <div
+                  className="pb-5"
+                  style={{
+                    display: "grid",
+                    columnGap: "1.5rem",
+                    rowGap: "3rem",
+                    gridTemplateColumns: isTablet
+                      ? "repeat(2,minmax(0,1fr))"
+                      : isSmallScreen
+                        ? "repeat(3,minmax(0,1fr))"
+                        : isMediumScreen || isBigScreen
+                          ? "repeat(4,minmax(0,1fr))"
+                          : "",
+                  }}
+                >
+                  {grantees.map((grantee: Grantee) => (
+                    <GranteeCard
+                      key={`${grantee.address}-${grantee.id}`}
+                      granteeAddress={grantee.address}
+                      name={grantee.details.name ?? ""}
+                      description={grantee.details.description ?? ""}
+                      logoUrl={grantee.details.logoUrl ?? ""}
+                      bannerUrl={grantee.details.bannerUrl ?? ""}
+                      placeholderLogo={grantee.placeholderLogo}
+                      placeholderBanner={grantee.placeholderBanner}
+                      flowRate={grantee.flowRate}
+                      units={grantee.units}
+                      token={token}
+                      votingPower={votingPower}
+                      showGranteeDetails={() => setShowGranteeDetails(grantee)}
+                      granteeColor={granteeColors[grantee.address]}
+                      onAddToBallot={animateVoteBubble}
+                    />
+                  ))}
+                </div>
+                {hasNextGrantee.current === true && (
+                  <Stack
+                    direction="horizontal"
+                    className="justify-content-center m-auto"
+                  >
+                    <Spinner />
+                  </Stack>
+                )}
+              </Stack>
+            </Tab.Pane>
+            <Tab.Pane eventKey="feed">
+              <FeedTab
+                chainId={chainId}
+                councilId={councilId}
+                csfrToken={csfrToken}
               />
-            ))}
-          </div>
-          {hasNextGrantee.current === true && (
-            <Stack
-              direction="horizontal"
-              className="justify-content-center m-auto"
-            >
-              <Spinner />
-            </Stack>
-          )}
-        </Stack>
+            </Tab.Pane>
+          </Tab.Content>
+        </Tab.Container>
       </Stack>
       {showGranteeDetails ? (
         <GranteeDetails

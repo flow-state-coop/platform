@@ -122,9 +122,7 @@ export default function MessageItem(props: MessageItemProps) {
           </div>
         </div>
       </Stack>
-      <Markdown
-        className={`mb-0 ms-5 ${isSystemMessage ? "fst-italic" : ""}`}
-      >
+      <Markdown className={`mb-0 ms-5 ${isSystemMessage ? "fst-italic" : ""}`}>
         {message.content}
       </Markdown>
     </div>

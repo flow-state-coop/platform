@@ -255,10 +255,7 @@ export default function MarkdownEditor(props: MarkdownEditorProps) {
           />
         )
       ) : (
-        <div
-          className={styles.preview}
-          style={{ minHeight: rows * 24 + 24 }}
-        >
+        <div className={styles.preview} style={{ minHeight: rows * 24 + 24 }}>
           {value ? (
             <Markdown>{value}</Markdown>
           ) : (
