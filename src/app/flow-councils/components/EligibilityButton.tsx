@@ -45,10 +45,8 @@ export default function EligibilityButton({
 
       if (data.success) {
         setStatus("confirmed");
-      } else if (data.error === "Not whitelisted") {
-        setStatus("failed");
       } else {
-        setStatus("idle");
+        setStatus("failed");
       }
     } catch {
       setStatus("idle");
@@ -97,7 +95,7 @@ export default function EligibilityButton({
   if (status === "failed") {
     return (
       <Button
-        variant="secondary"
+        variant="primary"
         className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
         style={{ width: isMobile ? "100%" : 240 }}
         href="https://goodwallet.xyz/"
@@ -111,7 +109,7 @@ export default function EligibilityButton({
   if (status === "confirmed") {
     return (
       <Button
-        variant="secondary"
+        variant="primary"
         className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
         style={{ width: isMobile ? "100%" : 240 }}
         disabled
@@ -124,7 +122,7 @@ export default function EligibilityButton({
   if (status === "viewBallot") {
     return (
       <Button
-        variant="secondary"
+        variant="primary"
         className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
         style={{ width: isMobile ? "100%" : 240 }}
         onClick={() => dispatchShowBallot({ type: "show" })}
@@ -136,7 +134,7 @@ export default function EligibilityButton({
 
   return (
     <Button
-      variant="secondary"
+      variant="primary"
       className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
       style={{ width: isMobile ? "100%" : 240 }}
       onClick={handleClick}
