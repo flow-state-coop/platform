@@ -134,6 +134,106 @@ export default function Review(props: ReviewProps) {
 
   const granteeApplicationLink = `${hostname}/flow-councils/application/${chainId}/${councilId}`;
   const flowCouncil = flowCouncilQueryRes?.flowCouncil;
+  const [roundName, setRoundName] = useState("Flow Council");
+
+  useEffect(() => {
+    if (!chainId || !councilId) return;
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/flow-council/rounds?chainId=${chainId}&flowCouncilAddress=${councilId}`,
+        );
+        const data = await res.json();
+
+        if (data.success && data.round?.details) {
+          const details =
+            typeof data.round.details === "string"
+              ? JSON.parse(data.round.details)
+              : data.round.details;
+          setRoundName(details?.name ?? "Flow Council");
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    })();
+  }, [chainId, councilId]);
+
+  const handleExportCsv = useCallback(() => {
+    if (!applications.length) return;
+
+    const headers = [
+      "application_status",
+      "project_name",
+      "funding_address",
+      "manager_emails",
+      "contact_name",
+      "contact_telegram",
+      "project_addresses",
+      "goodcollective_pool_addresses",
+      "x_handle",
+      "farcaster_handle",
+      "github_repo",
+    ];
+
+    const escCsv = (value: string) => {
+      if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    };
+
+    const rows = applications.map((app) => {
+      const projectDetails = app.projectDetails;
+      const smartContracts = projectDetails?.smartContracts ?? [];
+
+      const projectAddresses = smartContracts
+        .filter((sc) => sc.type === "projectAddress")
+        .map((sc) => sc.address)
+        .join("|");
+
+      const goodCollectivePools = smartContracts
+        .filter((sc) => sc.type === "goodCollectivePool")
+        .map((sc) => sc.address)
+        .join("|");
+
+      const githubRepos = [
+        projectDetails?.github,
+        ...(projectDetails?.githubRepos ?? []),
+      ]
+        .filter(Boolean)
+        .join("|");
+
+      return [
+        STATUS_LABELS[app.status] || app.status,
+        projectDetails?.name ?? "",
+        app.fundingAddress ?? "",
+        (app.managerEmails ?? []).join("|"),
+        app.details?.team?.primaryContact?.name ?? "",
+        app.details?.team?.primaryContact?.telegram ?? "",
+        projectAddresses,
+        goodCollectivePools,
+        projectDetails?.twitter ?? "",
+        projectDetails?.farcaster ?? "",
+        githubRepos,
+      ].map(escCsv);
+    });
+
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+    const safeName = roundName.replace(/[^a-zA-Z0-9-_ ]/g, "").trim();
+    const filename = `${safeName}_${dateStr}.csv`;
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [applications, roundName]);
 
   const fetchApplications = useCallback(async () => {
     if (!flowCouncil || !address || !chainId) {
@@ -393,7 +493,23 @@ export default function Review(props: ReviewProps) {
                     <th>Address</th>
                     <th>Name</th>
                     <th className="text-center">Status</th>
-                    <th></th>
+                    <th className="text-end">
+                      {applications.length > 0 && (
+                        <Button
+                          variant="link"
+                          className="p-0"
+                          title="Export CSV"
+                          onClick={handleExportCsv}
+                        >
+                          <Image
+                            src="/csv.svg"
+                            alt="Export CSV"
+                            width={24}
+                            height={24}
+                          />
+                        </Button>
+                      )}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
