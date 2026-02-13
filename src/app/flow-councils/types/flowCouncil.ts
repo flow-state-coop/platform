@@ -24,25 +24,25 @@ export type FlowCouncilListing = {
   metadata: { name: string; description: string };
 };
 
-export type Allocation = { recipient: `0x${string}`; amount: number };
+export type Vote = { recipient: `0x${string}`; amount: number };
 
-export type CurrentAllocation = {
-  allocation: Allocation[];
+export type CurrentBallot = {
+  votes: Vote[];
   votingPower: number;
 };
 
-export type NewAllocation = {
-  allocation: Allocation[];
+export type NewBallot = {
+  votes: Vote[];
 };
 
-export type AllocationAction =
+export type BallotAction =
   | {
       type: "add";
-      allocation?: Allocation;
-      currentAllocation?: CurrentAllocation;
+      vote?: Vote;
+      currentBallot?: CurrentBallot;
     }
-  | { type: "update"; allocation: Allocation }
-  | { type: "delete"; allocation: Allocation }
+  | { type: "update"; vote: Vote }
+  | { type: "delete"; vote: Vote }
   | { type: "clear" };
 
 export type ShowBallotAction = { type: "show" } | { type: "hide" };

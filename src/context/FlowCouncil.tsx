@@ -6,7 +6,7 @@ import { useAccount } from "wagmi";
 import { GDAPool } from "@/types/gdaPool";
 import { networks } from "@/lib/networks";
 import useCouncilQuery from "@/app/flow-councils/hooks/councilQuery";
-import useAllocationQuery from "@/app/flow-councils/hooks/allocationQuery";
+import useBallotQuery from "@/app/flow-councils/hooks/ballotQuery";
 import useCouncilMemberQuery from "@/app/flow-councils/hooks/councilMemberQuery";
 import useRecipientsQuery from "@/app/flow-councils/hooks/recipientsQuery";
 import useFlowCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
@@ -19,9 +19,9 @@ import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 import {
   type FlowCouncilData,
   type CouncilMember,
-  type CurrentAllocation,
-  type NewAllocation,
-  type AllocationAction,
+  type CurrentBallot,
+  type NewBallot,
+  type BallotAction,
   type ShowBallotAction,
 } from "@/app/flow-councils/types/flowCouncil";
 
@@ -34,7 +34,7 @@ export const FlowCouncilContext = createContext<{
     superappSplitterAddress: string | null;
   };
   councilMember?: CouncilMember;
-  currentAllocation?: CurrentAllocation;
+  currentBallot?: CurrentBallot;
   projects:
     | {
         id: string;
@@ -54,12 +54,12 @@ export const FlowCouncilContext = createContext<{
   distributionPool?: GDAPool;
   superAppFunderData?: SuperAppFunderData;
   token: Token;
-  newAllocation?: NewAllocation;
+  newBallot?: NewBallot;
   showBallot: boolean;
 } | null>(null);
 
-export const AllocationDispatchContext =
-  createContext<React.Dispatch<AllocationAction> | null>(null);
+export const BallotDispatchContext =
+  createContext<React.Dispatch<BallotAction> | null>(null);
 
 export const ShowBallotDispatchContext =
   createContext<React.Dispatch<ShowBallotAction> | null>(null);
@@ -74,11 +74,11 @@ export function useFlowCouncilContext() {
   return context;
 }
 
-export function useAllocationDispatchContext() {
-  const context = useContext(AllocationDispatchContext);
+export function useBallotDispatchContext() {
+  const context = useContext(BallotDispatchContext);
 
   if (!context) {
-    throw Error("AllocationDispatch context was not found");
+    throw Error("BallotDispatch context was not found");
   }
 
   return context;
@@ -106,51 +106,48 @@ function showBallotReducer(showBallot: boolean, action: ShowBallotAction) {
   }
 }
 
-function newAllocationReducer(
-  newAllocation: NewAllocation,
-  action: AllocationAction,
-) {
+function newBallotReducer(newBallot: NewBallot, action: BallotAction) {
   switch (action.type) {
     case "add": {
-      if (!action.allocation) {
-        return action.currentAllocation
+      if (!action.vote) {
+        return action.currentBallot
           ? {
-              ...newAllocation,
-              allocation: action.currentAllocation.allocation,
+              ...newBallot,
+              votes: action.currentBallot.votes,
             }
-          : { ...newAllocation };
+          : { ...newBallot };
       }
 
       const base =
-        newAllocation.allocation.length > 0
-          ? newAllocation.allocation
-          : (action.currentAllocation?.allocation ?? []);
+        newBallot.votes.length > 0
+          ? newBallot.votes
+          : (action.currentBallot?.votes ?? []);
 
-      return { ...newAllocation, allocation: [...base, action.allocation] };
+      return { ...newBallot, votes: [...base, action.vote] };
     }
     case "update": {
-      const updatedAllocation = [...newAllocation.allocation];
-      const index = newAllocation.allocation.findIndex(
-        (a) => a.recipient === action.allocation.recipient,
+      const updatedVotes = [...newBallot.votes];
+      const index = newBallot.votes.findIndex(
+        (a) => a.recipient === action.vote.recipient,
       );
 
       if (index >= 0) {
-        updatedAllocation[index] = action.allocation;
+        updatedVotes[index] = action.vote;
       }
 
-      return { ...newAllocation, allocation: updatedAllocation };
+      return { ...newBallot, votes: updatedVotes };
     }
     case "delete": {
       return {
-        ...newAllocation,
-        allocation: newAllocation.allocation.filter(
-          (a) => a.recipient !== action.allocation.recipient,
+        ...newBallot,
+        votes: newBallot.votes.filter(
+          (a) => a.recipient !== action.vote.recipient,
         ),
       };
     }
     case "clear": {
       return {
-        allocation: [],
+        votes: [],
       };
     }
   }
@@ -176,11 +173,7 @@ export function FlowCouncilContextProvider({
     network,
     council?.distributionPool,
   );
-  const currentAllocation = useAllocationQuery(
-    network,
-    councilId,
-    address ?? "",
-  );
+  const currentBallot = useBallotQuery(network, councilId, address ?? "");
   const councilMember = useCouncilMemberQuery(
     network,
     councilId,
@@ -199,12 +192,9 @@ export function FlowCouncilContextProvider({
     token.address,
   );
 
-  const [newAllocation, dispatchNewAllocation] = useReducer(
-    newAllocationReducer,
-    {
-      allocation: [],
-    },
-  );
+  const [newBallot, dispatchNewBallot] = useReducer(newBallotReducer, {
+    votes: [],
+  });
   const [showBallot, dispatchShowBallot] = useReducer(showBallotReducer, false);
 
   return (
@@ -217,16 +207,16 @@ export function FlowCouncilContextProvider({
         token,
         projects,
         councilMember,
-        currentAllocation,
-        newAllocation,
+        currentBallot,
+        newBallot,
         showBallot,
       }}
     >
-      <AllocationDispatchContext.Provider value={dispatchNewAllocation}>
+      <BallotDispatchContext.Provider value={dispatchNewBallot}>
         <ShowBallotDispatchContext.Provider value={dispatchShowBallot}>
           {children}
         </ShowBallotDispatchContext.Provider>
-      </AllocationDispatchContext.Provider>
+      </BallotDispatchContext.Provider>
     </FlowCouncilContext.Provider>
   );
 }

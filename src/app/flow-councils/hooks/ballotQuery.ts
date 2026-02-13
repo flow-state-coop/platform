@@ -2,8 +2,8 @@ import { useQuery, gql } from "@apollo/client";
 import { Network } from "@/types/network";
 import { getApolloClient } from "@/lib/apollo";
 
-const ALLOCATION_QUERY = gql`
-  query AllocationQuery($councilId: String, $voter: String) {
+const BALLOT_QUERY = gql`
+  query BallotQuery($councilId: String, $voter: String) {
     voter(id: $voter) {
       votingPower
     }
@@ -23,12 +23,12 @@ const ALLOCATION_QUERY = gql`
   }
 `;
 
-export default function useAllocationQuery(
+export default function useBallotQuery(
   network: Network,
   councilId: string,
   address: string,
 ) {
-  const { data: allocationQueryRes } = useQuery(ALLOCATION_QUERY, {
+  const { data: ballotQueryRes } = useQuery(BALLOT_QUERY, {
     client: getApolloClient("flowCouncil", network.id),
     variables: {
       councilId: councilId?.toLowerCase(),
@@ -37,25 +37,27 @@ export default function useAllocationQuery(
     skip: !address || !councilId,
     pollInterval: 10000,
   });
-  const currentAllocation = allocationQueryRes?.ballots[0];
-  const allocation = currentAllocation?.votes.map(
-    ({
-      recipient: { account },
-      amount,
-    }: {
-      recipient: { account: string };
-      amount: string;
-    }) => {
-      return {
-        recipient: account,
-        amount: Number(amount),
-      };
-    },
-  );
-  const votingPower = allocationQueryRes?.voter?.votingPower;
+  const currentBallot = ballotQueryRes?.ballots[0];
+  const votes = currentBallot?.votes
+    .filter(({ amount }: { amount: string }) => Number(amount) > 0)
+    .map(
+      ({
+        recipient: { account },
+        amount,
+      }: {
+        recipient: { account: string };
+        amount: string;
+      }) => {
+        return {
+          recipient: account,
+          amount: Number(amount),
+        };
+      },
+    );
+  const votingPower = ballotQueryRes?.voter?.votingPower;
 
   return {
-    allocation,
+    votes,
     votingPower,
   };
 }

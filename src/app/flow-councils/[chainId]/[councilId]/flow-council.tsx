@@ -50,8 +50,8 @@ export default function FlowCouncil({
   const { isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const {
-    currentAllocation,
-    newAllocation,
+    currentBallot,
+    newBallot,
     council,
     councilMetadata,
     councilMember,
@@ -59,7 +59,7 @@ export default function FlowCouncil({
     distributionPool,
     token,
     showBallot,
-    dispatchNewAllocation,
+    dispatchNewBallot,
   } = useFlowCouncil();
   const { voteBubbleRef, animateVoteBubble } = useAnimateVoteBubble();
 
@@ -70,7 +70,7 @@ export default function FlowCouncil({
   const shouldConnect = !!poolMember && !poolMember.isConnected;
   const votingPower =
     !!address && councilMember?.votingPower ? councilMember.votingPower : 0;
-  const currentAllocationStringified = JSON.stringify(currentAllocation);
+  const currentBallotStringified = JSON.stringify(currentBallot);
 
   const getGrantee = useCallback(
     (recipient: { id: string; address: string; details: ProjectDetails }) => {
@@ -146,19 +146,19 @@ export default function FlowCouncil({
   }, [grantees]);
 
   useEffect(() => {
-    dispatchNewAllocation({ type: "clear" });
-  }, [address, dispatchNewAllocation]);
+    dispatchNewBallot({ type: "clear" });
+  }, [address, dispatchNewBallot]);
 
   useEffect(() => {
-    const currentAllocation = JSON.parse(currentAllocationStringified);
+    const currentBallot = JSON.parse(currentBallotStringified);
 
-    if (currentAllocation?.allocation) {
-      dispatchNewAllocation({
+    if (currentBallot?.votes) {
+      dispatchNewBallot({
         type: "add",
-        currentAllocation,
+        currentBallot,
       });
     }
-  }, [currentAllocationStringified, dispatchNewAllocation]);
+  }, [currentBallotStringified, dispatchNewBallot]);
 
   useEffect(() => {
     if (!council || !projects) {
@@ -238,16 +238,14 @@ export default function FlowCouncil({
     setGrantees((prev) => sortGrantees(prev));
   }, [sortingMethod, sortGrantees]);
 
-  const clearUnallocated = () => {
-    const zeroAllocations = newAllocation?.allocation.filter(
-      (a) => a.amount === 0,
-    );
+  const clearZeroVotes = () => {
+    const zeroVotes = newBallot?.votes.filter((a) => a.amount === 0);
 
-    if (zeroAllocations) {
-      for (const allocation of zeroAllocations) {
-        dispatchNewAllocation({
+    if (zeroVotes) {
+      for (const v of zeroVotes) {
+        dispatchNewBallot({
           type: "delete",
-          allocation,
+          vote: v,
         });
       }
     }
@@ -260,8 +258,8 @@ export default function FlowCouncil({
       <Stack
         direction="vertical"
         className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
-        onMouseUp={clearUnallocated}
-        onTouchEnd={clearUnallocated}
+        onMouseUp={clearZeroVotes}
+        onTouchEnd={clearZeroVotes}
       >
         <RoundBanner
           name={councilMetadata.name ?? "Flow Council"}
@@ -400,7 +398,7 @@ export default function FlowCouncil({
           />
         </Modal.Footer>
       </Modal>
-      {newAllocation?.allocation && newAllocation.allocation.length > 0 && (
+      {newBallot?.votes && newBallot.votes.length > 0 && (
         <VoteBubble
           grantees={grantees}
           granteeColors={granteeColors}

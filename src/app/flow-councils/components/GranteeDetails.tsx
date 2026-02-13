@@ -41,8 +41,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
   } = props;
 
   const { isMobile } = useMediaQuery();
-  const { newAllocation, dispatchNewAllocation, distributionPool } =
-    useFlowCouncil();
+  const { newBallot, dispatchNewBallot, distributionPool } = useFlowCouncil();
   const { data: totalAmountReceivedByMember, dataUpdatedAt } = useReadContract({
     chainId,
     address: distributionPool?.id as Address,
@@ -247,15 +246,13 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             </Markdown>
           </div>
           {canAddToBallot &&
-            !newAllocation?.allocation.some(
-              (a) => a.recipient === granteeAddress,
-            ) && (
+            !newBallot?.votes.some((a) => a.recipient === granteeAddress) && (
               <Button
                 className="d-flex gap-2 justify-content-center align-items-center px-10 py-4 rounded-4 fw-semi-bold"
                 onClick={() =>
-                  dispatchNewAllocation({
+                  dispatchNewBallot({
                     type: "add",
-                    allocation: {
+                    vote: {
                       recipient: granteeAddress,
                       amount: 1,
                     },
