@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Address, encodeFunctionData, formatEther } from "viem";
+import {
+  Address,
+  encodeAbiParameters,
+  encodeFunctionData,
+  formatEther,
+} from "viem";
 import {
   useAccount,
   useWriteContract,
@@ -98,6 +103,8 @@ function CustomNode(props: NodeProps<Node>) {
 
   const [showToolbar, setShowToolbar] = useState(false);
   const [connectStatus, setConnectStatus] = useState<ConnectStatus>("idle");
+  const [connectAllStatus, setConnectAllStatus] =
+    useState<ConnectStatus>("idle");
 
   const { chain: connectedChain } = useAccount();
   const { switchChainAsync } = useSwitchChain();
@@ -119,6 +126,13 @@ function CustomNode(props: NodeProps<Node>) {
       return () => clearTimeout(timeout);
     }
   }, [connectStatus]);
+
+  useEffect(() => {
+    if (connectAllStatus === "success" || connectAllStatus === "error") {
+      const timeout = setTimeout(() => setConnectAllStatus("idle"), 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [connectAllStatus]);
 
   const network = data.network as Network | undefined;
 
@@ -176,6 +190,62 @@ function CustomNode(props: NodeProps<Node>) {
     data.chainId,
     data.poolAddress,
     data.address,
+  ]);
+
+  const handleConnectAll = useCallback(async () => {
+    if (!network || !publicClient) return;
+
+    const disconnectedMembers = data.disconnectedMembers as Address[];
+    if (!disconnectedMembers?.length) return;
+
+    const poolAddress = data.poolAddress as Address;
+
+    try {
+      setConnectAllStatus("pending");
+
+      if (connectedChain?.id !== data.chainId) {
+        await switchChainAsync({ chainId: data.chainId as number });
+      }
+
+      const operations = disconnectedMembers.map((member) => ({
+        operationType: 201,
+        target: network.gda,
+        data: encodeAbiParameters(
+          [{ type: "bytes" }, { type: "bytes" }],
+          [
+            encodeFunctionData({
+              abi: gdaAbi,
+              functionName: "tryConnectPoolFor",
+              args: [poolAddress, member, "0x" as `0x${string}`],
+            }),
+            "0x" as `0x${string}`,
+          ],
+        ),
+      }));
+
+      const hash = await writeContractAsync({
+        address: network.superfluidHost,
+        abi: superfluidHostAbi,
+        functionName: "batchCall",
+        args: [operations],
+      });
+
+      await publicClient.waitForTransactionReceipt({ hash, confirmations: 3 });
+
+      setConnectAllStatus("success");
+    } catch (err) {
+      console.error(err);
+      setConnectAllStatus("error");
+    }
+  }, [
+    network,
+    publicClient,
+    writeContractAsync,
+    switchChainAsync,
+    connectedChain?.id,
+    data.chainId,
+    data.disconnectedMembers,
+    data.poolAddress,
   ]);
 
   const statusOverlay =
@@ -253,6 +323,35 @@ function CustomNode(props: NodeProps<Node>) {
           offset={0}
         >
           <Stack direction="vertical" gap={2}>
+            {(data.disconnectedMembers as Address[])?.length > 0 ? (
+              <Button
+                variant="light"
+                onClick={handleConnectAll}
+                disabled={
+                  connectAllStatus === "pending" ||
+                  connectAllStatus === "success"
+                }
+                className="border border-4 border-dark fw-semi-bold"
+              >
+                {connectAllStatus === "pending" ? (
+                  <Spinner size="sm" />
+                ) : connectAllStatus === "success" ? (
+                  "All Connected"
+                ) : connectAllStatus === "error" ? (
+                  "Connect All"
+                ) : (
+                  "Connect All"
+                )}
+              </Button>
+            ) : (
+              <Button
+                variant="light"
+                disabled
+                className="border border-4 border-dark fw-semi-bold"
+              >
+                All Connected
+              </Button>
+            )}
             <Button
               variant="light"
               onClick={() =>
@@ -571,6 +670,11 @@ export default function PoolGraph(props: PoolGraphProps) {
             updatedAtTimestamp: pool.updatedAtTimestamp,
             isMobile: isMobile || isTablet,
             chainId,
+            network,
+            poolAddress: pool.id,
+            disconnectedMembers: pool.poolMembers
+              .filter((member) => member.units !== "0" && !member.isConnected)
+              .map((member) => member.account.id),
           },
         },
         ...nodesFromPoolMembers,

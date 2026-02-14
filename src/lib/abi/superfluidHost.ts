@@ -14,4 +14,22 @@ export const superfluidHostAbi = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [
+      {
+        components: [
+          { internalType: "uint32", name: "operationType", type: "uint32" },
+          { internalType: "address", name: "target", type: "address" },
+          { internalType: "bytes", name: "data", type: "bytes" },
+        ],
+        internalType: "struct ISuperfluid.Operation[]",
+        name: "operations",
+        type: "tuple[]",
+      },
+    ],
+    name: "batchCall",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
 ] as const;
