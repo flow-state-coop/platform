@@ -202,67 +202,69 @@ export default function MarkdownEditor(props: MarkdownEditorProps) {
   };
 
   return (
-    <div className={editorClassName}>
-      <div className={styles.header}>
-        <div className={styles.tabs}>
-          <button
-            type="button"
-            className={`${styles.tab} ${activeTab === "write" ? styles.active : ""}`}
-            onClick={() => setActiveTab("write")}
-          >
-            Write
-          </button>
-          <button
-            type="button"
-            className={`${styles.tab} ${activeTab === "preview" ? styles.active : ""}`}
-            onClick={() => setActiveTab("preview")}
-          >
-            Preview
-          </button>
+    <>
+      <div className={editorClassName}>
+        <div className={styles.header}>
+          <div className={styles.tabs}>
+            <button
+              type="button"
+              className={`${styles.tab} ${activeTab === "write" ? styles.active : ""}`}
+              onClick={() => setActiveTab("write")}
+            >
+              Write
+            </button>
+            <button
+              type="button"
+              className={`${styles.tab} ${activeTab === "preview" ? styles.active : ""}`}
+              onClick={() => setActiveTab("preview")}
+            >
+              Preview
+            </button>
+          </div>
+
+          {activeTab === "write" && (
+            <div className={styles.toolbar}>
+              {TOOLBAR_ACTIONS.map(({ action, icon }) => (
+                <button
+                  key={action}
+                  type="button"
+                  className={styles.toolbarButton}
+                  disabled={disabled}
+                  onMouseDown={(e) => handleToolbarMouseDown(e, action)}
+                  title={action.charAt(0).toUpperCase() + action.slice(1)}
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {activeTab === "write" && (
-          <div className={styles.toolbar}>
-            {TOOLBAR_ACTIONS.map(({ action, icon }) => (
-              <button
-                key={action}
-                type="button"
-                className={styles.toolbarButton}
-                disabled={disabled}
-                onMouseDown={(e) => handleToolbarMouseDown(e, action)}
-                title={action.charAt(0).toUpperCase() + action.slice(1)}
-              >
-                {icon}
-              </button>
-            ))}
+        {activeTab === "write" ? (
+          resizable ? (
+            <ResizableTextarea
+              ref={textareaRef}
+              minHeight={minHeight}
+              {...textareaProps}
+            />
+          ) : (
+            <Form.Control
+              as="textarea"
+              ref={textareaRef}
+              style={{ resize: "none", backgroundImage: "none" }}
+              {...textareaProps}
+            />
+          )
+        ) : (
+          <div className={styles.preview} style={{ minHeight: rows * 24 + 24 }}>
+            {value ? (
+              <Markdown>{value}</Markdown>
+            ) : (
+              <span className={styles.emptyPreview}>Nothing to preview</span>
+            )}
           </div>
         )}
       </div>
-
-      {activeTab === "write" ? (
-        resizable ? (
-          <ResizableTextarea
-            ref={textareaRef}
-            minHeight={minHeight}
-            {...textareaProps}
-          />
-        ) : (
-          <Form.Control
-            as="textarea"
-            ref={textareaRef}
-            style={{ resize: "none", backgroundImage: "none" }}
-            {...textareaProps}
-          />
-        )
-      ) : (
-        <div className={styles.preview} style={{ minHeight: rows * 24 + 24 }}>
-          {value ? (
-            <Markdown>{value}</Markdown>
-          ) : (
-            <span className={styles.emptyPreview}>Nothing to preview</span>
-          )}
-        </div>
-      )}
 
       {characterCounter && (
         <CharacterCounter
@@ -271,6 +273,6 @@ export default function MarkdownEditor(props: MarkdownEditorProps) {
           max={characterCounter.max}
         />
       )}
-    </div>
+    </>
   );
 }
