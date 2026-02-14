@@ -398,6 +398,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
             <PoolGraph
               pool={superfluidQueryRes?.pool}
               chainId={chainId}
+              network={network}
               ensByAddress={ensByAddress}
             />
             <Button
