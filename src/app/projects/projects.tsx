@@ -173,6 +173,7 @@ export default function Projects(props: ProjectsProps) {
         handleClose={() => setShowProjectCreationModal(false)}
         onProjectCreated={fetchProjects}
         mode="create"
+        project={null}
       />
     </Stack>
   );

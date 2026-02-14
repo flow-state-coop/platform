@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useSession } from "next-auth/react";
 import { usePostHog } from "posthog-js/react";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
@@ -15,6 +17,7 @@ import Markdown from "@/components/Markdown";
 import ProjectModal from "@/app/flow-councils/components/ProjectModal";
 import ProjectFeedTab from "@/app/projects/[id]/ProjectFeedTab";
 import { ProjectDetails } from "@/types/project";
+import useSiwe from "@/hooks/siwe";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getPlaceholderImageSrc } from "@/lib/utils";
 
@@ -42,10 +45,15 @@ export default function Project(props: ProjectProps) {
   const [error, setError] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(editMode);
   const [selectedTab, setSelectedTab] = useState("details");
+  const [pendingEdit, setPendingEdit] = useState(editMode);
 
   const router = useRouter();
   const postHog = usePostHog();
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
+  const { switchChain } = useSwitchChain();
+  const { openConnectModal } = useConnectModal();
+  const { data: session } = useSession();
+  const { handleSignIn } = useSiwe();
   const { isMobile, isTablet } = useMediaQuery();
 
   const placeholderLogo = getPlaceholderImageSrc();
@@ -89,6 +97,26 @@ export default function Project(props: ProjectProps) {
     () => postHog.stopSessionRecording(),
     [postHog, postHog.decideEndpointWasHit],
   );
+
+  useEffect(() => {
+    if (pendingEdit && address && session?.address === address) {
+      setShowEditModal(true);
+      setPendingEdit(false);
+    }
+  }, [pendingEdit, session, address]);
+
+  const handleEditClick = () => {
+    if (!address && openConnectModal) {
+      openConnectModal();
+    } else if (connectedChain?.id !== 42220) {
+      switchChain({ chainId: 42220 });
+    } else if (!session || session.address !== address) {
+      handleSignIn(csrfToken);
+      setPendingEdit(true);
+    } else {
+      setShowEditModal(true);
+    }
+  };
 
   if (loading) {
     return <Spinner className="m-auto" />;
@@ -156,7 +184,7 @@ export default function Project(props: ProjectProps) {
             <Button
               variant="secondary"
               className="w-20 px-10 py-4 rounded-4 fw-semi-bold"
-              onClick={() => setShowEditModal(true)}
+              onClick={handleEditClick}
             >
               Edit
             </Button>
@@ -331,20 +359,7 @@ export default function Project(props: ProjectProps) {
           }}
           onProjectCreated={fetchProject}
           mode="edit"
-          project={{
-            id: project.id,
-            details: details
-              ? {
-                  name: details.name || "",
-                  description: details.description || "",
-                  logoUrl: details.logoUrl,
-                  bannerUrl: details.bannerUrl,
-                  website: details.website,
-                  twitter: details.twitter,
-                  github: details.github,
-                }
-              : null,
-          }}
+          project={project}
         />
       )}
     </>
