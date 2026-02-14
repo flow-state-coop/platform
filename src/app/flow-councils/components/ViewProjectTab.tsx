@@ -102,7 +102,10 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
       <h4 className="fw-bold mb-4 mt-8">2. Basics</h4>
       <Form.Group className="mb-4">
         <Form.Label className="fs-lg fw-bold">Description</Form.Label>
-        <div className="bg-light rounded-4 py-3 px-3" style={{ minHeight: 144 }}>
+        <div
+          className="bg-light rounded-4 py-3 px-3"
+          style={{ minHeight: 144 }}
+        >
           <Markdown>{projectDetails.description ?? ""}</Markdown>
         </div>
       </Form.Group>
