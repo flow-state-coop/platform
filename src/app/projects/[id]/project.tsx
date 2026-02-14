@@ -9,8 +9,11 @@ import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
+import Nav from "react-bootstrap/Nav";
+import Tab from "react-bootstrap/Tab";
 import Markdown from "@/components/Markdown";
 import ProjectModal from "@/app/flow-councils/components/ProjectModal";
+import ProjectFeedTab from "@/app/projects/[id]/ProjectFeedTab";
 import { ProjectDetails } from "@/types/project";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getPlaceholderImageSrc } from "@/lib/utils";
@@ -38,6 +41,7 @@ export default function Project(props: ProjectProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(editMode);
+  const [selectedTab, setSelectedTab] = useState("details");
 
   const router = useRouter();
   const postHog = usePostHog();
@@ -276,9 +280,45 @@ export default function Project(props: ProjectProps) {
             </Button>
           )}
         </Stack>
-        <Markdown className="mt-2 px-3 sm:px-0">
-          {details?.description}
-        </Markdown>
+        <Tab.Container
+          activeKey={selectedTab}
+          onSelect={(key) => setSelectedTab(key ?? "details")}
+        >
+          <Nav className="pt-8 pb-6 fs-6 gap-2 px-3 sm:px-0">
+            <Nav.Item>
+              <Nav.Link
+                eventKey="details"
+                className={`py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${selectedTab === "details" ? "bg-primary text-white" : "bg-white text-primary"}`}
+                style={{ width: 140 }}
+              >
+                Details
+              </Nav.Link>
+            </Nav.Item>
+            <Nav.Item>
+              <Nav.Link
+                eventKey="feed"
+                className={`py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${selectedTab === "feed" ? "bg-primary text-white" : "bg-white text-primary"}`}
+                style={{ width: 140 }}
+              >
+                Feed
+              </Nav.Link>
+            </Nav.Item>
+          </Nav>
+          <Tab.Content>
+            <Tab.Pane eventKey="details">
+              <Markdown className="px-3 sm:px-0">
+                {details?.description}
+              </Markdown>
+            </Tab.Pane>
+            <Tab.Pane eventKey="feed">
+              <ProjectFeedTab
+                projectId={projectId}
+                isManager={isManager}
+                csrfToken={csrfToken}
+              />
+            </Tab.Pane>
+          </Tab.Content>
+        </Tab.Container>
       </Stack>
       {project && isManager && (
         <ProjectModal
