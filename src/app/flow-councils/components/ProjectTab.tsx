@@ -425,6 +425,7 @@ export default function ProjectTab(props: ProjectTabProps) {
         <Form.Label className="fs-lg fw-bold">Description*</Form.Label>
         <MarkdownEditor
           rows={6}
+          resizable
           value={form.description}
           isInvalid={(validated || touched.description) && !isDescriptionValid}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
