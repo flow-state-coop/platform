@@ -2,7 +2,12 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Address, encodeFunctionData, formatEther } from "viem";
-import { useWriteContract, usePublicClient } from "wagmi";
+import {
+  useAccount,
+  useWriteContract,
+  usePublicClient,
+  useSwitchChain,
+} from "wagmi";
 import {
   ReactFlow,
   Background,
@@ -94,6 +99,8 @@ function CustomNode(props: NodeProps<Node>) {
   const [showToolbar, setShowToolbar] = useState(false);
   const [connectStatus, setConnectStatus] = useState<ConnectStatus>("idle");
 
+  const { chain: connectedChain } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
 
@@ -120,6 +127,10 @@ function CustomNode(props: NodeProps<Node>) {
 
     try {
       setConnectStatus("pending");
+
+      if (connectedChain?.id !== data.chainId) {
+        await switchChainAsync({ chainId: data.chainId as number });
+      }
 
       const callData = encodeFunctionData({
         abi: gdaAbi,
@@ -160,6 +171,9 @@ function CustomNode(props: NodeProps<Node>) {
     network,
     publicClient,
     writeContractAsync,
+    switchChainAsync,
+    connectedChain?.id,
+    data.chainId,
     data.poolAddress,
     data.address,
   ]);
