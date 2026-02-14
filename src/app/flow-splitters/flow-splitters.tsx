@@ -270,7 +270,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
 
     return (
       <Card
-        className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-5 fs-6 shadow p-2 cursor-pointer"
+        className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-4 fs-6 shadow p-2 cursor-pointer"
         style={{ height: 420 }}
         onClick={() =>
           router.push(`/flow-splitters/${selectedNetwork.id}/${pool.id}`)
@@ -403,7 +403,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
           {pool.isAdmin && (
             <Button
               variant="primary"
-              className="w-100 rounded-4 py-4 fs-lg fw-semi-bold"
+              className="w-100 rounded-4 py-4 fw-semi-bold"
               onClick={(e) => {
                 e.stopPropagation();
                 router.push(
@@ -417,7 +417,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
           {pool.isConnected ? (
             <Button
               variant="secondary"
-              className="w-100 rounded-4 py-4 fs-lg fw-semi-bold"
+              className="w-100 rounded-4 py-4 fw-semi-bold"
               onClick={(e) => {
                 e.stopPropagation();
                 router.push(`/flow-splitters/${selectedNetwork.id}/${pool.id}`);
