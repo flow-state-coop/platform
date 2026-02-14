@@ -296,21 +296,57 @@ function CustomNode(props: NodeProps<Node>) {
         onMouseEnter={() => setShowToolbar(true)}
         onMouseLeave={() => setShowToolbar(false)}
       >
-        <Stack
-          direction="vertical"
-          gap={1}
-          className="align-items-center p-3 rounded-4 cursor-pointer bg-lace-100 shadow"
-        >
-          <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
-            {data?.label?.toString() ?? ""}
-          </span>
-          <span style={{ fontSize: "0.6rem" }}>
-            Total{" "}
-            {`${formatNumber(
-              Number(formatEther(totalFlowed)),
-            )} ${(data.token as { symbol: string }).symbol}`}
-          </span>
-        </Stack>
+        <div className="position-relative">
+          <Stack
+            direction="vertical"
+            gap={1}
+            className="align-items-center p-3 rounded-4 cursor-pointer bg-lace-100 shadow"
+          >
+            <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>
+              {data?.label?.toString() ?? ""}
+            </span>
+            <span style={{ fontSize: "0.6rem" }}>
+              Total{" "}
+              {`${formatNumber(
+                Number(formatEther(totalFlowed)),
+              )} ${(data.token as { symbol: string }).symbol}`}
+            </span>
+          </Stack>
+          {connectAllStatus === "pending" && (
+            <div
+              className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4"
+              style={{ backgroundColor: "rgba(255,255,255,0.7)" }}
+            >
+              <Spinner size="sm" />
+            </div>
+          )}
+          {connectAllStatus === "success" && (
+            <div
+              className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.7)",
+                color: "green",
+                fontSize: "1.2rem",
+                fontWeight: "bold",
+              }}
+            >
+              &#10003;
+            </div>
+          )}
+          {connectAllStatus === "error" && (
+            <div
+              className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.7)",
+                color: "red",
+                fontSize: "1.2rem",
+                fontWeight: "bold",
+              }}
+            >
+              &#10007;
+            </div>
+          )}
+        </div>
         <Handle className="invisible" type="target" position={Position.Top} />
         <Handle
           className="invisible"
