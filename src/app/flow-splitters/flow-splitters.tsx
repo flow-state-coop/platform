@@ -270,8 +270,11 @@ export default function FlowSplitters(props: FlowSplittersProps) {
 
     return (
       <Card
-        className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-5 fs-6 shadow p-2"
+        className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-5 fs-6 shadow p-2 cursor-pointer"
         style={{ height: 420 }}
+        onClick={() =>
+          router.push(`/flow-splitters/${selectedNetwork.id}/${pool.id}`)
+        }
       >
         <Card.Header className="h-25 bg-white border-0 rounded-4 py-4">
           <Card.Title
@@ -291,6 +294,7 @@ export default function FlowSplitters(props: FlowSplittersProps) {
               href={selectedNetwork.superfluidDashboard}
               target="_blank"
               className="d-flex gap-2 align-items-center text-decoration-none"
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
             >
               {token && (
                 <Image src={token.icon} alt="" width={22} height={22} />
@@ -302,7 +306,8 @@ export default function FlowSplitters(props: FlowSplittersProps) {
             <Button
               variant="transparent"
               className="p-0"
-              onClick={() =>
+              onClick={(e) => {
+                e.stopPropagation();
                 !address && openConnectModal
                   ? openConnectModal()
                   : connectedChain?.id !== selectedNetwork.id
@@ -313,8 +318,8 @@ export default function FlowSplitters(props: FlowSplittersProps) {
                           symbol: "",
                           icon: "",
                         },
-                      )
-              }
+                      );
+              }}
             >
               <InfoTooltip
                 position={{ top: true }}
@@ -399,11 +404,12 @@ export default function FlowSplitters(props: FlowSplittersProps) {
             <Button
               variant="primary"
               className="w-100 rounded-4 py-4 fs-lg fw-semi-bold"
-              onClick={() =>
+              onClick={(e) => {
+                e.stopPropagation();
                 router.push(
                   `/flow-splitters/${selectedNetwork.id}/${pool.id}/admin`,
-                )
-              }
+                );
+              }}
             >
               Edit
             </Button>
@@ -412,18 +418,21 @@ export default function FlowSplitters(props: FlowSplittersProps) {
             <Button
               variant="secondary"
               className="w-100 rounded-4 py-4 fs-lg fw-semi-bold"
-              onClick={() =>
-                router.push(`/flow-splitters/${selectedNetwork.id}/${pool.id}`)
-              }
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/flow-splitters/${selectedNetwork.id}/${pool.id}`);
+              }}
             >
               View
             </Button>
           ) : (
-            <PoolConnectionButton
-              network={selectedNetwork}
-              poolAddress={pool.poolAddress}
-              isConnected={pool.isConnected}
-            />
+            <div onClick={(e) => e.stopPropagation()}>
+              <PoolConnectionButton
+                network={selectedNetwork}
+                poolAddress={pool.poolAddress}
+                isConnected={pool.isConnected}
+              />
+            </div>
           )}
         </Card.Footer>
       </Card>
