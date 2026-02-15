@@ -41,7 +41,7 @@ export default function PoolInfo(props: PoolInfoProps) {
 
   const [showFullInfo, setShowFullInfo] = useState(true);
 
-  const { council, superAppFunderData } = useFlowCouncil();
+  const { council, projects, superAppFunderData } = useFlowCouncil();
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
 
@@ -66,6 +66,9 @@ export default function PoolInfo(props: PoolInfoProps) {
   const recipient = council?.recipients.find(
     (recipient: { account: string }) =>
       recipient.account === address?.toLowerCase(),
+  );
+  const recipientProject = projects?.find(
+    (p) => p.fundingAddress.toLowerCase() === address?.toLowerCase(),
   );
   const superfluidExplorer = networks.find(
     (network) => network.id === chainId,
@@ -172,15 +175,14 @@ export default function PoolInfo(props: PoolInfoProps) {
               councilId={councilId}
               isMobile={isMobile}
             />
-            {recipient && (
+            {recipient && recipientProject && (
               <Button
                 variant="link"
-                href={`https://flowstate.network/projects/${recipient.metadata}/?chainId=${chainId}&edit=true`}
-                target="_blank"
+                href={`/projects/${recipientProject.id}?edit=true`}
                 className="bg-primary py-4 text-light rounded-4 fs-lg fw-semi-bold text-decoration-none"
                 style={{ width: isMobile ? "100%" : 240 }}
               >
-                Edit Builder Profile
+                Edit Project
               </Button>
             )}
           </Stack>
