@@ -17,14 +17,22 @@ import RoundBanner from "@/app/flow-councils/components/RoundBanner";
 import GranteeDetails from "@/app/flow-councils/components/GranteeDetails";
 import Ballot from "@/app/flow-councils/components/Ballot";
 import DistributionPoolFunding from "@/app/flow-councils/components/DistributionPoolFunding";
+import StreamMigrationModal from "@/app/flow-councils/components/StreamMigrationModal";
 import VoteBubble from "@/app/flow-councils/components/VoteBubble";
 import { Grantee, SortingMethod } from "../../types/grantee";
 import { ProjectDetails } from "@/types/project";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowCouncil from "../../hooks/flowCouncil";
+import useS2StreamMigration from "../../hooks/s2StreamMigration";
 import useAnimateVoteBubble from "../../hooks/animateVoteBubble";
 import { networks } from "@/lib/networks";
-import { shuffle, getPlaceholderImageSrc, generateColor } from "@/lib/utils";
+import { SECONDS_IN_MONTH } from "@/lib/constants";
+import {
+  shuffle,
+  getPlaceholderImageSrc,
+  generateColor,
+  roundWeiAmount,
+} from "@/lib/utils";
 
 export default function FlowCouncil({
   chainId,
@@ -44,6 +52,7 @@ export default function FlowCouncil({
   const [showDistributionPoolFunding, setShowDistributionPoolFunding] =
     useState(false);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
+  const [showMigrationModal, setShowMigrationModal] = useState(false);
 
   const skipGrantees = useRef(0);
   const hasNextGrantee = useRef(true);
@@ -68,6 +77,20 @@ export default function FlowCouncil({
     dispatchNewBallot,
   } = useFlowCouncil();
   const { voteBubbleRef, animateVoteBubble } = useAnimateVoteBubble();
+  const {
+    hasS2Streams,
+    combinedS2FlowRate,
+    isCancelling,
+    isTransferring,
+    transactionError: migrationError,
+    cancelS2Streams,
+    transferToS3,
+  } = useS2StreamMigration(
+    chainId,
+    councilId,
+    councilMetadata.superappSplitterAddress,
+    token.address,
+  );
 
   const poolMember = distributionPool?.poolMembers.find(
     (member: { account: { id: string } }) =>
@@ -264,6 +287,15 @@ export default function FlowCouncil({
 
   useEffect(() => setShowConnectionModal(shouldConnect), [shouldConnect]);
 
+  useEffect(() => {
+    setShowMigrationModal(hasS2Streams);
+  }, [hasS2Streams]);
+
+  const combinedMonthlyAmount = roundWeiAmount(
+    combinedS2FlowRate * BigInt(SECONDS_IN_MONTH),
+    2,
+  );
+
   return (
     <>
       <Stack
@@ -442,6 +474,17 @@ export default function FlowCouncil({
           />
         </Modal.Footer>
       </Modal>
+      <StreamMigrationModal
+        show={showMigrationModal}
+        onHide={() => setShowMigrationModal(false)}
+        tokenSymbol={token.symbol ?? ""}
+        combinedMonthlyAmount={combinedMonthlyAmount}
+        isCancelling={isCancelling}
+        isTransferring={isTransferring}
+        transactionError={migrationError}
+        onCancel={cancelS2Streams}
+        onTransfer={transferToS3}
+      />
       {newBallot?.votes && newBallot.votes.length > 0 && (
         <VoteBubble
           grantees={grantees}
