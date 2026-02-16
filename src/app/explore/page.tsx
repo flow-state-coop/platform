@@ -103,6 +103,13 @@ export default async function Page() {
       gdaPool: "0xafcab1ab378354b8ce0dbd0ae2e2c0dea01dcf0b",
     },
   );
+  const goodBuildersS3QueryRes = await request<{ pool: GDAPool }>(
+    networks.find((network) => network.id === celo.id)!.superfluidSubgraph,
+    GDA_POOL_QUERY,
+    {
+      gdaPool: "0xd56e85acdd6481c912c2020dff35e4207824aac2",
+    },
+  );
   const flowCasterArbQueryRes = await request<{ pool: GDAPool }>(
     networks.find((network) => network.id === arbitrum.id)!.superfluidSubgraph,
     GDA_POOL_QUERY,
@@ -148,6 +155,7 @@ export default async function Page() {
       guildGuildInflow={guildGuildQueryRes.account.accountTokenSnapshots[0]}
       chonesGuildInflow={chonesGuildQueryRes.account.accountTokenSnapshots[0]}
       goodDollarPool={goodDollarQueryRes.pool}
+      goodBuildersS3Pool={goodBuildersS3QueryRes.pool}
       flowCasterArbFlowInfo={flowCasterArbFlowInfo}
     />
   );
