@@ -23,6 +23,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { VOTER_MANAGER_ROLE } from "../lib/constants";
+import Papa from "papaparse";
 import { isNumber } from "@/lib/utils";
 
 type MembershipProps = { chainId?: number; councilId?: string };
@@ -227,6 +228,77 @@ export default function Membership(props: MembershipProps) {
     ) {
       setMembersToRemove(membersToRemove.concat(memberEntry));
     }
+  };
+
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) {
+      return;
+    }
+
+    Papa?.parse(e.target.files[0], {
+      complete: (results: { data: string[] }) => {
+        const { data } = results;
+
+        const newMembersEntry: MemberEntry[] = [];
+
+        for (const row of data) {
+          if (!row[0]) {
+            continue;
+          }
+
+          newMembersEntry.push({
+            address: row[0],
+            votingPower:
+              isNumber(row[1]) && !row[1].includes(".")
+                ? row[1].replace(/\s/g, "")
+                : "",
+            addressValidationError: !isAddress(row[0])
+              ? "Invalid Address"
+              : newMembersEntry
+                    .map((memberEntry) => memberEntry.address.toLowerCase())
+                    .includes(row[0].toLowerCase())
+                ? "Address already added"
+                : "",
+            votesValidationError:
+              !isNumber(row[1]) || row[1].includes(".")
+                ? "Must be a number"
+                : Number(row[1]) === 0
+                  ? "Must be > 0"
+                  : Number(row[1]) > 1e6
+                    ? "Must be ≤ 1M"
+                    : "",
+          });
+        }
+
+        const csvMembersToRemove: MemberEntry[] = [];
+
+        const csvAddresses = data.map((row) => row[0]?.toLowerCase());
+        const existingVoters = flowCouncil?.voters?.filter(
+          (member: { votingPower: string }) => member.votingPower !== "0",
+        );
+
+        if (existingVoters) {
+          for (const existingVoter of existingVoters) {
+            if (
+              !csvAddresses.includes(
+                (existingVoter as { account: string }).account,
+              )
+            ) {
+              csvMembersToRemove.push({
+                address: (existingVoter as { account: string }).account,
+                votingPower: (existingVoter as { votingPower: string })
+                  .votingPower,
+                addressValidationError: "",
+                votesValidationError: "",
+              });
+            }
+          }
+        }
+
+        setMembersEntry(newMembersEntry);
+        setMembersToRemove(csvMembersToRemove);
+      },
+    });
   };
 
   const handleSubmit = async () => {
@@ -655,6 +727,51 @@ export default function Membership(props: MembershipProps) {
                 </Card.Text>
               </Button>
             </Stack>
+            <Stack
+              direction="horizontal"
+              gap={2}
+              className="justify-content-end mt-3"
+            >
+              <Card.Link
+                href={URL.createObjectURL(
+                  new Blob([
+                    Papa.unparse(
+                      membersEntry.map((memberEntry) => {
+                        return [memberEntry.address, memberEntry.votingPower];
+                      }),
+                    ),
+                  ]),
+                )}
+                target="_blank"
+                download="Flow_Council.csv"
+                className="m-0 bg-secondary px-10 py-4 rounded-4 text-light fw-semi-bold text-decoration-none"
+              >
+                Export Current
+              </Card.Link>
+              <>
+                <Form.Label
+                  htmlFor="upload-council-csv"
+                  className={`text-white fw-semi-bold text-center m-0 px-10 py-4 rounded-4 ${isManager ? "bg-primary cursor-pointer" : "bg-info opacity-75"}`}
+                >
+                  Upload CSV
+                </Form.Label>
+                <Form.Control
+                  type="file"
+                  id="upload-council-csv"
+                  accept=".csv"
+                  hidden
+                  disabled={!isManager}
+                  onChange={handleCsvUpload}
+                />
+              </>
+            </Stack>
+            <Card.Link
+              href="https://docs.google.com/spreadsheets/d/1BKo20lc4ZdRWKjvxQuTcOldQo_qL7Y5tXOvhFMJlwug/edit?gid=0#gid=0"
+              target="_blank"
+              className="float-end mt-2 pe-1 text-primary fw-semi-bold"
+            >
+              Template
+            </Card.Link>
           </Card.Body>
         </Card>
         <Stack direction="vertical" gap={3} className="mt-6 mb-30">
