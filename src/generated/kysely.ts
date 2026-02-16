@@ -45,6 +45,16 @@ export type Message = {
   applicationId: number | null;
   authorAddress: string;
   content: string;
+  messageType: Generated<string>;
+  createdAt: Generated<Timestamp>;
+  updatedAt: Generated<Timestamp>;
+};
+export type MilestoneProgress = {
+  id: Generated<number>;
+  applicationId: number;
+  milestoneType: string;
+  milestoneIndex: number;
+  progress: unknown | null;
   createdAt: Generated<Timestamp>;
   updatedAt: Generated<Timestamp>;
 };
@@ -96,6 +106,7 @@ export type RoundAdminEmail = {
 export type DB = {
   applications: Application;
   messages: Message;
+  milestoneProgress: MilestoneProgress;
   projectEmails: ProjectEmail;
   projectManagers: ProjectManager;
   projects: Project;

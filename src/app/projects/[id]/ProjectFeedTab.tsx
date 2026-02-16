@@ -13,12 +13,14 @@ type ProjectFeedTabProps = {
   projectId: string;
   isManager: boolean;
   csrfToken: string;
+  active?: boolean;
 };
 
 export default function ProjectFeedTab({
   projectId,
   isManager,
   csrfToken,
+  active,
 }: ProjectFeedTabProps) {
   const [chainId, setChainId] = useState<number | null>(null);
   const [councilId, setCouncilId] = useState<string | null>(null);
@@ -102,6 +104,7 @@ export default function ProjectFeedTab({
           currentUserAddress={address}
           newestFirst
           emptyMessage="No posts yet."
+          active={active}
         />
       </div>
     );
@@ -118,6 +121,7 @@ export default function ProjectFeedTab({
       currentUserAddress={address}
       newestFirst
       emptyMessage="No posts yet."
+      active={active}
     />
   );
 }

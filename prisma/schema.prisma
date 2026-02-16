@@ -95,18 +95,19 @@ model ProjectEmail {
 }
 
 model Application {
-  id             Int               @id @default(autoincrement())
-  projectId      Int               @map("project_id")
-  roundId        Int               @map("round_id")
-  fundingAddress String            @map("funding_address") @db.VarChar(42)
-  status         ApplicationStatus @default(SUBMITTED)
-  details        Json?
-  project        Project           @relation(fields: [projectId], references: [id])
-  round          Round             @relation(fields: [roundId], references: [id])
-  recipient      Recipient?
-  messages       Message[]
-  createdAt      DateTime          @default(now()) @map("created_at")
-  updatedAt      DateTime          @default(now()) @updatedAt @map("updated_at")
+  id                 Int                  @id @default(autoincrement())
+  projectId          Int                  @map("project_id")
+  roundId            Int                  @map("round_id")
+  fundingAddress     String               @map("funding_address") @db.VarChar(42)
+  status             ApplicationStatus    @default(SUBMITTED)
+  details            Json?
+  project            Project              @relation(fields: [projectId], references: [id])
+  round              Round                @relation(fields: [roundId], references: [id])
+  recipient          Recipient?
+  messages           Message[]
+  milestoneProgress  MilestoneProgress[]
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @default(now()) @updatedAt @map("updated_at")
 
   @@unique([projectId, roundId])
   @@index([roundId], name: "idx_applications_round")
@@ -120,6 +121,20 @@ model Recipient {
   application   Application @relation(fields: [applicationId], references: [id])
 
   @@map("recipients")
+}
+
+model MilestoneProgress {
+  id              Int         @id @default(autoincrement())
+  applicationId   Int         @map("application_id")
+  milestoneType   String      @map("milestone_type") @db.VarChar(10)
+  milestoneIndex  Int         @map("milestone_index")
+  progress        Json?
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at")
+  application     Application @relation(fields: [applicationId], references: [id])
+
+  @@unique([applicationId, milestoneType, milestoneIndex])
+  @@map("milestone_progress")
 }
 
 model ProjectManager {
@@ -141,6 +156,7 @@ model Message {
   applicationId Int?         @map("application_id")
   authorAddress String       @map("author_address") @db.VarChar(42)
   content       String
+  messageType   String       @default("user") @map("message_type") @db.VarChar(20)
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @default(now()) @updatedAt @map("updated_at")
   round         Round?       @relation(fields: [roundId], references: [id])

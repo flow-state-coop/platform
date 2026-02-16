@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useSession } from "next-auth/react";
@@ -16,6 +16,7 @@ import Tab from "react-bootstrap/Tab";
 import Markdown from "@/components/Markdown";
 import ProjectModal from "@/app/flow-councils/components/ProjectModal";
 import ProjectFeedTab from "@/app/projects/[id]/ProjectFeedTab";
+import ProjectMilestonesTab from "@/app/projects/[id]/milestones/ProjectMilestonesTab";
 import { ProjectDetails } from "@/types/project";
 import useSiwe from "@/hooks/siwe";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -36,15 +37,22 @@ type ProjectData = {
   updatedAt: string;
 };
 
+const VALID_TABS = ["details", "feed", "milestones"];
+
 export default function Project(props: ProjectProps) {
   const { projectId, csrfToken, editMode } = props;
+
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab");
 
   const [project, setProject] = useState<ProjectData | null>(null);
   const [isManager, setIsManager] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(editMode);
-  const [selectedTab, setSelectedTab] = useState("details");
+  const [selectedTab, setSelectedTab] = useState(
+    initialTab && VALID_TABS.includes(initialTab) ? initialTab : "details",
+  );
   const [pendingEdit, setPendingEdit] = useState(editMode);
 
   const router = useRouter();
@@ -331,6 +339,15 @@ export default function Project(props: ProjectProps) {
                 Feed
               </Nav.Link>
             </Nav.Item>
+            <Nav.Item>
+              <Nav.Link
+                eventKey="milestones"
+                className={`py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${selectedTab === "milestones" ? "bg-primary text-white" : "bg-white text-primary"}`}
+                style={{ width: 140 }}
+              >
+                Milestones
+              </Nav.Link>
+            </Nav.Item>
           </Nav>
           <Tab.Content>
             <Tab.Pane eventKey="details">
@@ -340,6 +357,14 @@ export default function Project(props: ProjectProps) {
             </Tab.Pane>
             <Tab.Pane eventKey="feed">
               <ProjectFeedTab
+                projectId={projectId}
+                isManager={isManager}
+                csrfToken={csrfToken}
+                active={selectedTab === "feed"}
+              />
+            </Tab.Pane>
+            <Tab.Pane eventKey="milestones">
+              <ProjectMilestonesTab
                 projectId={projectId}
                 isManager={isManager}
                 csrfToken={csrfToken}

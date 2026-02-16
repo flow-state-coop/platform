@@ -29,7 +29,7 @@ export default function ProjectCard(props: ProjectCardProps) {
   const [descriptionRef, { noClamp, clampedText }] = useClampText({
     text: removeMarkdown(description).replace(/\r?\n|\r/g, " "),
     ellipsis: "...",
-    lines: 8,
+    lines: 6,
   });
 
   return (
@@ -54,7 +54,7 @@ export default function ProjectCard(props: ProjectCardProps) {
         className="rounded-3 position-absolute border border-4 border-white bg-white"
         style={{ bottom: 280, left: 16 }}
       />
-      <Card.Body className="mt-6 p-4">
+      <Card.Body className="mt-6 p-4 overflow-hidden flex-grow-1">
         <Card.Text
           className="d-inline-block m-0 lh-sm fs-lg fw-semi-bold word-wrap text-truncate"
           style={{ maxWidth: 256 }}
@@ -70,7 +70,7 @@ export default function ProjectCard(props: ProjectCardProps) {
         </Card.Text>
       </Card.Body>
       <Card.Footer
-        className="d-flex justify-content-between bg-lace-100 border-0 py-3"
+        className="d-flex justify-content-between bg-lace-100 border-0 py-3 flex-shrink-0"
         style={{ fontSize: "15px" }}
       >
         <Button

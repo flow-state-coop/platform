@@ -34,6 +34,7 @@ type ChatViewProps = {
   emptyMessage?: string;
   infoText?: string;
   newestFirst?: boolean;
+  active?: boolean;
 };
 
 export default function ChatView(props: ChatViewProps) {
@@ -51,12 +52,17 @@ export default function ChatView(props: ChatViewProps) {
     emptyMessage = "No messages yet.",
     infoText,
     newestFirst = false,
+    active,
   } = props;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [affiliations, setAffiliations] = useState<
     Record<string, AuthorAffiliation>
   >({});
+  const [projectLogos, setProjectLogos] = useState<
+    Record<number, string | null>
+  >({});
+  const [managedProjectIds, setManagedProjectIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
@@ -104,10 +110,14 @@ export default function ChatView(props: ChatViewProps) {
       if (data.success) {
         setMessages(data.messages || []);
         setAffiliations(data.affiliations || {});
+        setProjectLogos(data.projectLogos || {});
+        setManagedProjectIds(data.managedProjectIds || []);
         setError("");
       } else {
         setMessages([]);
         setAffiliations({});
+        setProjectLogos({});
+        setManagedProjectIds([]);
         setError(data.error || "Failed to load messages");
       }
     } catch (err) {
@@ -122,6 +132,14 @@ export default function ChatView(props: ChatViewProps) {
   useEffect(() => {
     fetchMessages();
   }, [fetchMessages]);
+
+  const prevActiveRef = useRef(active);
+  useEffect(() => {
+    if (active && !prevActiveRef.current) {
+      fetchMessages();
+    }
+    prevActiveRef.current = active;
+  }, [active, fetchMessages]);
 
   useEffect(() => {
     if (newestFirst) return;
@@ -213,6 +231,7 @@ export default function ChatView(props: ChatViewProps) {
   };
 
   const canEditMessage = (message: Message): boolean => {
+    if (message.messageType === "milestone_update") return false;
     return (
       !!currentUserAddress &&
       message.authorAddress.toLowerCase() === currentUserAddress.toLowerCase()
@@ -224,6 +243,14 @@ export default function ChatView(props: ChatViewProps) {
 
     const isAuthor =
       message.authorAddress.toLowerCase() === currentUserAddress.toLowerCase();
+
+    if (
+      message.messageType === "milestone_update" &&
+      message.projectId &&
+      managedProjectIds.includes(message.projectId)
+    ) {
+      return true;
+    }
 
     return isAuthor || canModerate;
   };
@@ -279,6 +306,12 @@ export default function ChatView(props: ChatViewProps) {
                 message={message}
                 ensData={ensByAddress?.[message.authorAddress.toLowerCase()]}
                 affiliation={affiliations[message.authorAddress.toLowerCase()]}
+                projectLogoUrl={
+                  message.messageType === "milestone_update" &&
+                  message.projectId
+                    ? projectLogos[message.projectId]
+                    : undefined
+                }
                 canEdit={canEditMessage(message)}
                 canDelete={canDeleteMessage(message)}
                 onEdit={() => setEditingMessage(message)}

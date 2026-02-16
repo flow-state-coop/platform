@@ -10,6 +10,8 @@ export type Message = {
   id: number;
   authorAddress: string;
   content: string;
+  messageType?: string;
+  projectId?: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -23,6 +25,7 @@ type MessageItemProps = {
   message: Message;
   ensData?: EnsData | null;
   affiliation?: AuthorAffiliation | null;
+  projectLogoUrl?: string | null;
   canEdit: boolean;
   canDelete: boolean;
   onEdit: () => void;
@@ -59,21 +62,25 @@ export default function MessageItem(props: MessageItemProps) {
     message,
     ensData,
     affiliation,
+    projectLogoUrl,
     canEdit,
     canDelete,
     onEdit,
     onDelete,
   } = props;
 
-  const isSystemMessage = message.authorAddress === SYSTEM_ADDRESS;
-  const displayName = isSystemMessage
-    ? "System"
-    : ensData?.name || shortenAddress(message.authorAddress);
+  const isMilestoneUpdate = message.messageType === "milestone_update";
+  const isSystemMessage =
+    !isMilestoneUpdate && message.authorAddress === SYSTEM_ADDRESS;
+  const displayName = isMilestoneUpdate
+    ? "Milestone Update"
+    : isSystemMessage
+      ? "System"
+      : ensData?.name || shortenAddress(message.authorAddress);
   const edited = isEdited(message.createdAt, message.updatedAt);
 
-  // Get affiliation tag - project takes precedence over admin
   const affiliationTag =
-    !isSystemMessage && affiliation
+    !isSystemMessage && !isMilestoneUpdate && affiliation
       ? affiliation.projectName
         ? `(${affiliation.projectName})`
         : affiliation.isAdmin
@@ -81,7 +88,8 @@ export default function MessageItem(props: MessageItemProps) {
           : null
       : null;
 
-  const showActions = !isSystemMessage && (canEdit || canDelete);
+  const effectiveCanEdit = isMilestoneUpdate ? false : canEdit;
+  const showActions = !isSystemMessage && (effectiveCanEdit || canDelete);
 
   return (
     <div
@@ -90,7 +98,7 @@ export default function MessageItem(props: MessageItemProps) {
       {showActions && (
         <div className="position-absolute top-0 end-0 mt-2 me-2">
           <MessageActions
-            canEdit={canEdit}
+            canEdit={effectiveCanEdit}
             canDelete={canDelete}
             onEdit={onEdit}
             onDelete={onDelete}
@@ -101,6 +109,7 @@ export default function MessageItem(props: MessageItemProps) {
         <ProfilePic
           address={message.authorAddress}
           ensAvatar={isSystemMessage ? undefined : ensData?.avatar}
+          imageUrl={isMilestoneUpdate ? projectLogoUrl : undefined}
           size={32}
         />
         <div className="flex-grow-1 overflow-hidden pe-4">

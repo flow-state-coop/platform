@@ -111,6 +111,21 @@ export const roundDetailsSchema = z.object({
   attestation: z.any().optional(),
 });
 
+const evidenceLinkSchema = z.object({
+  name: z.string().min(1).max(200),
+  link: z.string().url().max(2000),
+});
+
+const deliverableProgressSchema = z.object({
+  completion: z.number().int().min(0).max(100),
+  evidence: z.array(evidenceLinkSchema).max(20),
+});
+
+export const milestoneProgressSchema = z.object({
+  otherDetails: z.string().max(5000),
+  items: z.array(deliverableProgressSchema),
+});
+
 type ValidationSuccess<T> = { success: true; data: T };
 type ValidationError = { success: false; error: string };
 type ValidationResult<T> = ValidationSuccess<T> | ValidationError;
