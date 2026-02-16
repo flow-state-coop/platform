@@ -156,6 +156,11 @@ export default function FlowCouncil({
   }, [address, dispatchNewBallot]);
 
   useEffect(() => {
+    if (!councilMember) {
+      dispatchNewBallot({ type: "clear" });
+      return;
+    }
+
     const currentBallot = JSON.parse(currentBallotStringified);
 
     if (currentBallot?.votes) {
@@ -164,7 +169,7 @@ export default function FlowCouncil({
         currentBallot,
       });
     }
-  }, [currentBallotStringified, dispatchNewBallot]);
+  }, [currentBallotStringified, councilMember, dispatchNewBallot]);
 
   useEffect(() => {
     if (!council || !projects) {
@@ -205,7 +210,7 @@ export default function FlowCouncil({
             }),
           );
         } else {
-          break;
+          continue;
         }
       }
 
