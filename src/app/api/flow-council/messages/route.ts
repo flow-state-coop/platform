@@ -179,10 +179,17 @@ export async function GET(request: Request) {
       );
     }
 
-    // Build query based on channel type
     let query = db
       .selectFrom("messages")
-      .select(["id", "authorAddress", "content", "createdAt", "updatedAt"])
+      .select([
+        "id",
+        "authorAddress",
+        "content",
+        "messageType",
+        "projectId",
+        "createdAt",
+        "updatedAt",
+      ])
       .where("channelType", "=", effectiveChannelType)
       .orderBy("createdAt", "asc");
 
@@ -214,11 +221,46 @@ export async function GET(request: Request) {
       );
     }
 
+    let projectLogos: Record<number, string | null> = {};
+    const milestoneMessages = messages.filter(
+      (m) => m.messageType === "milestone_update" && m.projectId,
+    );
+    if (milestoneMessages.length > 0) {
+      const projectIds = [
+        ...new Set(milestoneMessages.map((m) => m.projectId!)),
+      ];
+      const projects = await db
+        .selectFrom("projects")
+        .select(["id", "details"])
+        .where("id", "in", projectIds)
+        .execute();
+
+      projectLogos = Object.fromEntries(
+        projects.map((p) => {
+          const details =
+            typeof p.details === "string" ? JSON.parse(p.details) : p.details;
+          return [p.id, (details as { logoUrl?: string })?.logoUrl ?? null];
+        }),
+      );
+    }
+
+    let managedProjectIds: number[] = [];
+    if (session?.address) {
+      const managed = await db
+        .selectFrom("projectManagers")
+        .select("projectId")
+        .where("managerAddress", "=", session.address.toLowerCase())
+        .execute();
+      managedProjectIds = managed.map((m) => m.projectId);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         messages,
         affiliations,
+        projectLogos,
+        managedProjectIds,
       }),
     );
   } catch (err) {

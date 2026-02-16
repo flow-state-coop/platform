@@ -6,11 +6,25 @@ import Jazzicon, { jsNumberForAddress } from "react-jazzicon";
 type ProfilePicProps = {
   address: string;
   ensAvatar?: string | null;
+  imageUrl?: string | null;
   size?: number;
 };
 
 export default function ProfilePic(props: ProfilePicProps) {
-  const { address, ensAvatar, size = 32 } = props;
+  const { address, ensAvatar, imageUrl, size = 32 } = props;
+
+  if (imageUrl) {
+    return (
+      <Image
+        src={imageUrl}
+        alt=""
+        width={size}
+        height={size}
+        className="rounded-circle"
+        style={{ objectFit: "cover" }}
+      />
+    );
+  }
 
   if (ensAvatar) {
     return (

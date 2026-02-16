@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { isAddress } from "viem";
 import { db } from "../../db";
 import { authOptions } from "../../../auth/[...nextauth]/route";
-import { canModerateChannel } from "../../auth";
+import { canModerateChannel, isProjectManager } from "../../auth";
 
 export const dynamic = "force-dynamic";
 
@@ -131,10 +131,18 @@ export async function DELETE(
       );
     }
 
-    // Fetch the message
     const message = await db
       .selectFrom("messages")
-      .select(["id", "authorAddress", "channelType", "roundId", "projectId"])
+      .select([
+        "id",
+        "authorAddress",
+        "channelType",
+        "roundId",
+        "projectId",
+        "messageType",
+        "content",
+        "createdAt",
+      ])
       .where("id", "=", messageIdNum)
       .executeTakeFirst();
 
@@ -147,7 +155,6 @@ export async function DELETE(
     const isAuthor =
       message.authorAddress.toLowerCase() === session.address.toLowerCase();
 
-    // Check if user is moderator
     const isModerator = await canModerateChannel(
       {
         channelType: message.channelType,
@@ -159,7 +166,17 @@ export async function DELETE(
       session.address,
     );
 
-    if (!isAuthor && !isModerator) {
+    let isManager = false;
+    if (
+      !isAuthor &&
+      !isModerator &&
+      message.messageType === "milestone_update" &&
+      message.projectId
+    ) {
+      isManager = await isProjectManager(message.projectId, session.address);
+    }
+
+    if (!isAuthor && !isModerator && !isManager) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -168,8 +185,18 @@ export async function DELETE(
       );
     }
 
-    // Delete the message
     await db.deleteFrom("messages").where("id", "=", messageIdNum).execute();
+
+    if (message.messageType === "milestone_update") {
+      await db
+        .deleteFrom("messages")
+        .where("authorAddress", "=", message.authorAddress)
+        .where("messageType", "=", "milestone_update")
+        .where("content", "=", message.content)
+        .where("createdAt", "=", message.createdAt)
+        .where("id", "!=", messageIdNum)
+        .execute();
+    }
 
     return new Response(
       JSON.stringify({
