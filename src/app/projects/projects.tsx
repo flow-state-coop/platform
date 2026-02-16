@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAccount } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useSession } from "next-auth/react";
 import { usePostHog } from "posthog-js/react";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
@@ -11,6 +12,7 @@ import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import ProjectModal from "@/app/flow-councils/components/ProjectModal";
 import ProjectCard from "@/components/ProjectCard";
+import useSiwe from "@/hooks/siwe";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { Project, ProjectDetails } from "@/types/project";
 
@@ -26,11 +28,15 @@ export default function Projects(props: ProjectsProps) {
     useState(false);
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pendingCreate, setPendingCreate] = useState(false);
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
+  const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
+  const { data: session } = useSession();
+  const { handleSignIn } = useSiwe();
   const { isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const postHog = usePostHog();
@@ -87,6 +93,26 @@ export default function Projects(props: ProjectsProps) {
     [postHog, postHog.decideEndpointWasHit],
   );
 
+  useEffect(() => {
+    if (pendingCreate && address && session?.address === address) {
+      setShowProjectCreationModal(true);
+      setPendingCreate(false);
+    }
+  }, [pendingCreate, session, address]);
+
+  const handleCreateClick = () => {
+    if (!address && openConnectModal) {
+      openConnectModal();
+    } else if (connectedChain?.id !== 42220) {
+      switchChain({ chainId: 42220 });
+    } else if (!session || session.address !== address) {
+      handleSignIn(csrfToken);
+      setPendingCreate(true);
+    } else {
+      setShowProjectCreationModal(true);
+    }
+  };
+
   return (
     <Stack direction="vertical" className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52">
       {loading || projects === null ? (
@@ -115,19 +141,7 @@ export default function Projects(props: ProjectsProps) {
               <Card
                 className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-4 cursor-pointer"
                 style={{ height: 418 }}
-                onClick={() => {
-                  if (
-                    (!!owner &&
-                      !!address &&
-                      owner.toString().toLowerCase() ===
-                        address.toLowerCase()) ||
-                    (!owner && !!address)
-                  ) {
-                    setShowProjectCreationModal(true);
-                  } else if (openConnectModal) {
-                    openConnectModal();
-                  }
-                }}
+                onClick={handleCreateClick}
               >
                 <Image src="/add.svg" alt="add" width={64} />
                 <Card.Text className="d-inline-block m-0 overflow-hidden fs-6 fw-semi-bold text-center word-wrap">
