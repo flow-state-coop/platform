@@ -39,20 +39,21 @@ export default function useBallotQuery(
   });
   const currentBallot = ballotQueryRes?.ballots[0];
   const votes = currentBallot?.votes
-    .filter(({ amount }: { amount: string }) => Number(amount) > 0)
+    ?.filter(
+      (v: { recipient: { account: string } | null; amount: string }) =>
+        v.recipient !== null && Number(v.amount) > 0,
+    )
     .map(
       ({
-        recipient: { account },
+        recipient,
         amount,
       }: {
         recipient: { account: string };
         amount: string;
-      }) => {
-        return {
-          recipient: account,
-          amount: Number(amount),
-        };
-      },
+      }) => ({
+        recipient: recipient.account,
+        amount: Number(amount),
+      }),
     );
   const votingPower = ballotQueryRes?.voter?.votingPower;
 
