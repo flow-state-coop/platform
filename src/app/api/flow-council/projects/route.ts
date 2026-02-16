@@ -336,16 +336,9 @@ export async function PATCH(request: Request) {
         (e) => e && e.includes("@"),
       );
       if (validEmails !== undefined) {
-        // Delete existing emails added by this manager
         await trx
           .deleteFrom("projectEmails")
           .where("projectId", "=", projectId)
-          .where((eb) =>
-            eb.or([
-              eb("managerAddress", "=", session.address.toLowerCase()),
-              eb("managerAddress", "is", null),
-            ]),
-          )
           .execute();
 
         // Insert new emails
