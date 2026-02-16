@@ -26,10 +26,13 @@ type MessageItemProps = {
   ensData?: EnsData | null;
   affiliation?: AuthorAffiliation | null;
   projectLogoUrl?: string | null;
+  projectSource?: string | null;
   canEdit: boolean;
   canDelete: boolean;
+  canHide?: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onHide?: () => void;
 };
 
 const SYSTEM_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -63,10 +66,13 @@ export default function MessageItem(props: MessageItemProps) {
     ensData,
     affiliation,
     projectLogoUrl,
+    projectSource,
     canEdit,
     canDelete,
+    canHide,
     onEdit,
     onDelete,
+    onHide,
   } = props;
 
   const isMilestoneUpdate = message.messageType === "milestone_update";
@@ -89,7 +95,7 @@ export default function MessageItem(props: MessageItemProps) {
       : null;
 
   const effectiveCanEdit = isMilestoneUpdate ? false : canEdit;
-  const showActions = !isSystemMessage && (effectiveCanEdit || canDelete);
+  const showActions = !isSystemMessage && (canEdit || canDelete || canHide);
 
   return (
     <div
@@ -100,10 +106,17 @@ export default function MessageItem(props: MessageItemProps) {
           <MessageActions
             canEdit={effectiveCanEdit}
             canDelete={canDelete}
+            canHide={canHide}
             onEdit={onEdit}
             onDelete={onDelete}
+            onHide={onHide}
           />
         </div>
+      )}
+      {projectSource && (
+        <span className="badge bg-info bg-opacity-10 text-info mb-2">
+          {projectSource}
+        </span>
       )}
       <Stack direction="horizontal" gap={2} className="mb-2">
         <ProfilePic

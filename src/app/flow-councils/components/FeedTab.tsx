@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
-import ChatView from "@/app/flow-councils/components/ChatView";
+import RoundFeedView from "@/app/flow-councils/components/RoundFeedView";
 import useSiwe from "@/hooks/siwe";
 
 type FeedTabProps = {
@@ -96,32 +96,24 @@ export default function FeedTab({
               ? "Switch Network"
               : "Sign In With Ethereum"}
         </Button>
-        <ChatView
-          channelType="PUBLIC_ROUND"
+        <RoundFeedView
           chainId={chainId}
           councilId={councilId}
           roundId={roundId ?? undefined}
-          canWrite={false}
-          canModerate={false}
+          isAdmin={false}
           currentUserAddress={address}
-          newestFirst
-          emptyMessage="No announcements yet."
         />
       </div>
     );
   }
 
   return (
-    <ChatView
-      channelType="PUBLIC_ROUND"
+    <RoundFeedView
       chainId={chainId}
       councilId={councilId}
       roundId={roundId ?? undefined}
-      canWrite={isAdmin && hasSession}
-      canModerate={isAdmin && hasSession}
+      isAdmin={isAdmin && hasSession}
       currentUserAddress={address}
-      newestFirst
-      emptyMessage="No announcements yet."
     />
   );
 }

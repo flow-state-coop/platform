@@ -103,6 +103,12 @@ export type RoundAdminEmail = {
   email: string;
   createdAt: Generated<Timestamp>;
 };
+export type RoundFeedRepost = {
+  id: Generated<number>;
+  messageId: number;
+  roundId: number;
+  createdAt: Generated<Timestamp>;
+};
 export type DB = {
   applications: Application;
   messages: Message;
@@ -113,5 +119,6 @@ export type DB = {
   recipients: Recipient;
   roundAdminEmails: RoundAdminEmail;
   roundAdmins: RoundAdmin;
+  roundFeedReposts: RoundFeedRepost;
   rounds: Round;
 };

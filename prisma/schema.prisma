@@ -41,6 +41,7 @@ model Round {
   admins                   RoundAdmin[]
   applications             Application[]
   messages                 Message[]
+  roundFeedReposts         RoundFeedRepost[]
 
   @@unique([chainId, flowCouncilAddress])
   @@map("rounds")
@@ -167,4 +168,19 @@ model Message {
   @@index([channelType, projectId, createdAt], name: "idx_messages_project_feed")
   @@index([channelType, applicationId, createdAt], name: "idx_messages_application_feed")
   @@map("messages")
+
+  roundFeedReposts RoundFeedRepost[]
+}
+
+model RoundFeedRepost {
+  id        Int      @id @default(autoincrement())
+  messageId Int      @map("message_id")
+  roundId   Int      @map("round_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  round     Round    @relation(fields: [roundId], references: [id])
+
+  @@unique([messageId, roundId])
+  @@index([roundId], name: "idx_round_feed_reposts_round")
+  @@map("round_feed_reposts")
 }

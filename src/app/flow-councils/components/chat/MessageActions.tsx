@@ -5,14 +5,16 @@ import Dropdown from "react-bootstrap/Dropdown";
 type MessageActionsProps = {
   canEdit: boolean;
   canDelete: boolean;
+  canHide?: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onHide?: () => void;
 };
 
 export default function MessageActions(props: MessageActionsProps) {
-  const { canEdit, canDelete, onEdit, onDelete } = props;
+  const { canEdit, canDelete, canHide, onEdit, onDelete, onHide } = props;
 
-  if (!canEdit && !canDelete) {
+  if (!canEdit && !canDelete && !canHide) {
     return null;
   }
 
@@ -44,6 +46,11 @@ export default function MessageActions(props: MessageActionsProps) {
         {canEdit && (
           <Dropdown.Item className="fw-semi-bold" onClick={onEdit}>
             Edit
+          </Dropdown.Item>
+        )}
+        {canHide && (
+          <Dropdown.Item className="fw-semi-bold" onClick={onHide}>
+            Hide from feed
           </Dropdown.Item>
         )}
         {canDelete && (
