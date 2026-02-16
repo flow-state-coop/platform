@@ -30,5 +30,5 @@ export default function useCouncilMemberQuery(
 
   const voter = councilQueryRes?.flowCouncil?.voters?.[0];
 
-  return voter;
+  return voter && Number(voter.votingPower) > 0 ? voter : undefined;
 }
