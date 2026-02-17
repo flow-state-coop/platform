@@ -1,5 +1,7 @@
 import { db } from "./db";
 import { type AuthorAffiliation, hasOnChainRole } from "./auth";
+import { parseDetails } from "./utils";
+import type { ProjectDetails } from "@/types/project";
 
 export async function getAuthorAffiliations(
   addresses: string[],
@@ -11,8 +13,7 @@ export async function getAuthorAffiliations(
     return {};
   }
 
-  const normalizedAddresses = addresses.map((a) => a.toLowerCase());
-  const uniqueAddresses = [...new Set(normalizedAddresses)];
+  const uniqueAddresses = [...new Set(addresses.map((a) => a.toLowerCase()))];
 
   const dbAdmins = await db
     .selectFrom("roundAdmins")
@@ -40,9 +41,7 @@ export async function getAuthorAffiliations(
   for (const pm of projectManagersData) {
     const addr = pm.managerAddress.toLowerCase();
     if (!projectManagerMap.has(addr)) {
-      const projectDetails =
-        typeof pm.details === "string" ? JSON.parse(pm.details) : pm.details;
-      const projectName = (projectDetails as { name?: string })?.name;
+      const projectName = parseDetails<ProjectDetails>(pm.details)?.name;
       if (projectName) {
         projectManagerMap.set(addr, projectName);
       }

@@ -21,6 +21,8 @@ import {
   canWriteChannel,
 } from "../auth";
 import { getAuthorAffiliations } from "../affiliations";
+import { parseDetails, type ProjectMetadata } from "../utils";
+import type { ProjectDetails } from "@/types/project";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +37,6 @@ export async function GET(request: Request) {
     const roundId = searchParams.get("roundId");
     const projectId = searchParams.get("projectId");
 
-    // For backwards compatibility, default to INTERNAL_APPLICATION if applicationId is provided
     const effectiveChannelType =
       channelType || (applicationId ? "INTERNAL_APPLICATION" : null);
 
@@ -133,27 +134,30 @@ export async function GET(request: Request) {
       );
     }
 
-    let projectLogos: Record<number, string | null> = {};
-    const milestoneMessages = messages.filter(
-      (m) => m.messageType === "milestone_update" && m.projectId,
-    );
-    if (milestoneMessages.length > 0) {
-      const projectIds = [
-        ...new Set(milestoneMessages.map((m) => m.projectId!)),
-      ];
+    const projectMetadata: Record<number, ProjectMetadata> = {};
+    const projectIds = [
+      ...new Set(
+        messages
+          .map((m) => m.projectId)
+          .filter((id): id is number => id !== null),
+      ),
+    ];
+    if (projectIds.length > 0) {
       const projects = await db
         .selectFrom("projects")
         .select(["id", "details"])
         .where("id", "in", projectIds)
         .execute();
 
-      projectLogos = Object.fromEntries(
-        projects.map((p) => {
-          const details =
-            typeof p.details === "string" ? JSON.parse(p.details) : p.details;
-          return [p.id, (details as { logoUrl?: string })?.logoUrl ?? null];
-        }),
-      );
+      for (const p of projects) {
+        const details = parseDetails<ProjectDetails>(p.details);
+        if (details?.name) {
+          projectMetadata[p.id] = {
+            name: details.name,
+            logoUrl: details.logoUrl ?? null,
+          };
+        }
+      }
     }
 
     let managedProjectIds: number[] = [];
@@ -171,7 +175,7 @@ export async function GET(request: Request) {
         success: true,
         messages,
         affiliations,
-        projectLogos,
+        projectMetadata,
         managedProjectIds,
       }),
     );
@@ -300,11 +304,16 @@ export async function POST(request: Request) {
 
       if (activeRounds.length > 0) {
         await db
-          .insertInto("roundFeedReposts")
+          .insertInto("messages")
           .values(
             activeRounds.map((r) => ({
-              messageId: message.id,
+              channelType: "PUBLIC_ROUND" as const,
               roundId: r.roundId,
+              projectId: messageProjectId,
+              applicationId: null,
+              authorAddress: session.address.toLowerCase(),
+              content: content.trim(),
+              createdAt: message.createdAt,
             })),
           )
           .execute();

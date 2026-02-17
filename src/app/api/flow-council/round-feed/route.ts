@@ -2,6 +2,8 @@ import { isAddress } from "viem";
 import { db } from "../db";
 import { findRoundByCouncil } from "../auth";
 import { getAuthorAffiliations } from "../affiliations";
+import { parseDetails, type ProjectMetadata } from "../utils";
+import type { ProjectDetails } from "@/types/project";
 
 export const dynamic = "force-dynamic";
 
@@ -40,44 +42,32 @@ export async function GET(request: Request) {
       );
     }
 
-    const roundMessages = await db
+    const messages = await db
       .selectFrom("messages")
       .select([
         "messages.id",
         "messages.channelType",
         "messages.authorAddress",
         "messages.content",
+        "messages.messageType",
+        "messages.projectId",
         "messages.createdAt",
         "messages.updatedAt",
       ])
       .where("messages.channelType", "=", "PUBLIC_ROUND")
       .where("messages.roundId", "=", round.id)
-      .execute();
-
-    const repostedMessages = await db
-      .selectFrom("roundFeedReposts")
-      .innerJoin("messages", "roundFeedReposts.messageId", "messages.id")
-      .select([
-        "messages.id",
-        "messages.channelType",
-        "messages.authorAddress",
-        "messages.content",
-        "messages.createdAt",
-        "messages.updatedAt",
-        "messages.projectId",
-      ])
-      .where("roundFeedReposts.roundId", "=", round.id)
+      .orderBy("messages.createdAt", "asc")
       .execute();
 
     const projectIds = [
       ...new Set(
-        repostedMessages
+        messages
           .map((m) => m.projectId)
           .filter((id): id is number => id !== null),
       ),
     ];
 
-    let projectNames: Record<number, string> = {};
+    const projectMetadata: Record<number, ProjectMetadata> = {};
     if (projectIds.length > 0) {
       const projects = await db
         .selectFrom("projects")
@@ -85,45 +75,18 @@ export async function GET(request: Request) {
         .where("id", "in", projectIds)
         .execute();
 
-      projectNames = Object.fromEntries(
-        projects
-          .map((p) => {
-            const details =
-              typeof p.details === "string" ? JSON.parse(p.details) : p.details;
-            return [p.id, (details as { name?: string })?.name] as const;
-          })
-          .filter(
-            (entry): entry is [number, string] => typeof entry[1] === "string",
-          ),
-      );
+      for (const p of projects) {
+        const details = parseDetails<ProjectDetails>(p.details);
+        if (details?.name) {
+          projectMetadata[p.id] = {
+            name: details.name,
+            logoUrl: details.logoUrl ?? null,
+          };
+        }
+      }
     }
 
-    const allMessages = [
-      ...roundMessages.map((m) => ({
-        id: m.id,
-        channelType: m.channelType,
-        authorAddress: m.authorAddress,
-        content: m.content,
-        createdAt: m.createdAt,
-        updatedAt: m.updatedAt,
-        projectId: null as number | null,
-      })),
-      ...repostedMessages.map((m) => ({
-        id: m.id,
-        channelType: m.channelType,
-        authorAddress: m.authorAddress,
-        content: m.content,
-        createdAt: m.createdAt,
-        updatedAt: m.updatedAt,
-        projectId: m.projectId,
-      })),
-    ].sort(
-      (a, b) =>
-        new Date(a.createdAt as string | Date).getTime() -
-        new Date(b.createdAt as string | Date).getTime(),
-    );
-
-    const authorAddresses = allMessages.map((m) => m.authorAddress);
+    const authorAddresses = messages.map((m) => m.authorAddress);
     const affiliations = await getAuthorAffiliations(
       authorAddresses,
       round.id,
@@ -134,9 +97,9 @@ export async function GET(request: Request) {
     return new Response(
       JSON.stringify({
         success: true,
-        messages: allMessages,
+        messages,
         affiliations,
-        projectNames,
+        projectMetadata,
       }),
     );
   } catch (err) {

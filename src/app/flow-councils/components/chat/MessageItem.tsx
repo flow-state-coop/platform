@@ -25,14 +25,12 @@ type MessageItemProps = {
   message: Message;
   ensData?: EnsData | null;
   affiliation?: AuthorAffiliation | null;
-  projectLogoUrl?: string | null;
-  projectSource?: string | null;
+  projectLogoUrl?: string;
+  projectSource?: string;
   canEdit: boolean;
   canDelete: boolean;
-  canHide?: boolean;
   onEdit: () => void;
   onDelete: () => void;
-  onHide?: () => void;
 };
 
 const SYSTEM_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -69,33 +67,33 @@ export default function MessageItem(props: MessageItemProps) {
     projectSource,
     canEdit,
     canDelete,
-    canHide,
     onEdit,
     onDelete,
-    onHide,
   } = props;
 
   const isMilestoneUpdate = message.messageType === "milestone_update";
   const isSystemMessage =
     !isMilestoneUpdate && message.authorAddress === SYSTEM_ADDRESS;
-  const displayName = isMilestoneUpdate
-    ? "Milestone Update"
-    : isSystemMessage
-      ? "System"
-      : ensData?.name || shortenAddress(message.authorAddress);
+  const displayName = projectSource
+    ? projectSource
+    : isMilestoneUpdate
+      ? "Milestone Update"
+      : isSystemMessage
+        ? "System"
+        : ensData?.name || shortenAddress(message.authorAddress);
   const edited = isEdited(message.createdAt, message.updatedAt);
 
   const affiliationTag =
-    !isSystemMessage && !isMilestoneUpdate && affiliation
-      ? affiliation.projectName
-        ? `(${affiliation.projectName})`
-        : affiliation.isAdmin
-          ? "(Admin)"
+    !projectSource && !isSystemMessage && !isMilestoneUpdate && affiliation
+      ? affiliation.isAdmin
+        ? "(Admin)"
+        : affiliation.projectName
+          ? `(${affiliation.projectName})`
           : null
       : null;
 
   const effectiveCanEdit = isMilestoneUpdate ? false : canEdit;
-  const showActions = !isSystemMessage && (canEdit || canDelete || canHide);
+  const showActions = !isSystemMessage && (canEdit || canDelete);
 
   return (
     <div
@@ -106,23 +104,16 @@ export default function MessageItem(props: MessageItemProps) {
           <MessageActions
             canEdit={effectiveCanEdit}
             canDelete={canDelete}
-            canHide={canHide}
             onEdit={onEdit}
             onDelete={onDelete}
-            onHide={onHide}
           />
         </div>
-      )}
-      {projectSource && (
-        <span className="badge bg-info bg-opacity-10 text-info mb-2">
-          {projectSource}
-        </span>
       )}
       <Stack direction="horizontal" gap={2} className="mb-2">
         <ProfilePic
           address={message.authorAddress}
           ensAvatar={isSystemMessage ? undefined : ensData?.avatar}
-          imageUrl={isMilestoneUpdate ? projectLogoUrl : undefined}
+          imageUrl={projectLogoUrl || undefined}
           size={32}
         />
         <div className="flex-grow-1 overflow-hidden pe-4">

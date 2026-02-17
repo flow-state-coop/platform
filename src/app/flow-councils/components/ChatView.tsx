@@ -10,6 +10,7 @@ import MessageInput from "./chat/MessageInput";
 import EditMessageModal from "./chat/EditMessageModal";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
 import { ChannelType } from "@/generated/kysely";
+import type { ProjectMetadata } from "@/app/api/flow-council/utils";
 
 type ChatViewProps = {
   // Required identifiers
@@ -59,8 +60,8 @@ export default function ChatView(props: ChatViewProps) {
   const [affiliations, setAffiliations] = useState<
     Record<string, AuthorAffiliation>
   >({});
-  const [projectLogos, setProjectLogos] = useState<
-    Record<number, string | null>
+  const [projectMetadata, setProjectMetadata] = useState<
+    Record<number, ProjectMetadata>
   >({});
   const [managedProjectIds, setManagedProjectIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,13 +111,13 @@ export default function ChatView(props: ChatViewProps) {
       if (data.success) {
         setMessages(data.messages || []);
         setAffiliations(data.affiliations || {});
-        setProjectLogos(data.projectLogos || {});
+        setProjectMetadata(data.projectMetadata || {});
         setManagedProjectIds(data.managedProjectIds || []);
         setError("");
       } else {
         setMessages([]);
         setAffiliations({});
-        setProjectLogos({});
+        setProjectMetadata({});
         setManagedProjectIds([]);
         setError(data.error || "Failed to load messages");
       }
@@ -306,10 +307,14 @@ export default function ChatView(props: ChatViewProps) {
                 message={message}
                 ensData={ensByAddress?.[message.authorAddress.toLowerCase()]}
                 affiliation={affiliations[message.authorAddress.toLowerCase()]}
-                projectLogoUrl={
-                  message.messageType === "milestone_update" &&
+                projectSource={
                   message.projectId
-                    ? projectLogos[message.projectId]
+                    ? projectMetadata[message.projectId]?.name
+                    : undefined
+                }
+                projectLogoUrl={
+                  message.projectId
+                    ? (projectMetadata[message.projectId]?.logoUrl ?? undefined)
                     : undefined
                 }
                 canEdit={canEditMessage(message)}

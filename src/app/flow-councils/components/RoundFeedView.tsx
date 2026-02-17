@@ -9,10 +9,12 @@ import MessageItem, { Message, AuthorAffiliation } from "./chat/MessageItem";
 import MessageInput from "./chat/MessageInput";
 import EditMessageModal from "./chat/EditMessageModal";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
+import type { ProjectMetadata } from "@/app/api/flow-council/utils";
 
-type RoundFeedMessage = Message & {
+type RoundFeedMessage = Omit<Message, "projectId" | "messageType"> & {
   channelType: string;
   projectId: number | null;
+  messageType: string | null;
 };
 
 type RoundFeedViewProps = {
@@ -38,7 +40,9 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
   const [affiliations, setAffiliations] = useState<
     Record<string, AuthorAffiliation>
   >({});
-  const [projectNames, setProjectNames] = useState<Record<number, string>>({});
+  const [projectMetadata, setProjectMetadata] = useState<
+    Record<number, ProjectMetadata>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
@@ -69,12 +73,12 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
       if (data.success) {
         setMessages(data.messages || []);
         setAffiliations(data.affiliations || {});
-        setProjectNames(data.projectNames || {});
+        setProjectMetadata(data.projectMetadata || {});
         setError("");
       } else {
         setMessages([]);
         setAffiliations({});
-        setProjectNames({});
+        setProjectMetadata({});
         setError(data.error || "Failed to load messages");
       }
     } catch (err) {
@@ -168,56 +172,21 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
     }
   };
 
-  const handleHideMessage = async (messageId: number) => {
-    try {
-      setError("");
-
-      const res = await fetch("/api/flow-council/round-feed/hide", {
-        method: "POST",
-        body: JSON.stringify({ messageId, chainId, councilId }),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        fetchMessages();
-      } else {
-        setError(data.error || "Failed to hide message");
-      }
-    } catch (err) {
-      console.error(err);
-      setError("Failed to hide message");
-    }
-  };
-
   const canEditMessage = (message: RoundFeedMessage): boolean => {
-    if (message.channelType !== "PUBLIC_ROUND") return false;
-
+    if (message.projectId) return false;
+    if (!currentUserAddress) return false;
     return (
-      !!currentUserAddress &&
       message.authorAddress.toLowerCase() === currentUserAddress.toLowerCase()
     );
   };
 
   const canDeleteMessage = (message: RoundFeedMessage): boolean => {
-    if (message.channelType !== "PUBLIC_ROUND") return false;
     if (!currentUserAddress) return false;
 
     const isAuthor =
       message.authorAddress.toLowerCase() === currentUserAddress.toLowerCase();
 
     return isAuthor || isAdmin;
-  };
-
-  const canHideMessage = (message: RoundFeedMessage): boolean => {
-    return isAdmin && message.channelType === "PUBLIC_PROJECT";
-  };
-
-  const getProjectSource = (message: RoundFeedMessage): string | null => {
-    if (message.channelType !== "PUBLIC_PROJECT" || !message.projectId) {
-      return null;
-    }
-    return projectNames[message.projectId] || null;
   };
 
   if (isLoading) {
@@ -260,16 +229,27 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
             {displayMessages.map((message) => (
               <MessageItem
                 key={message.id}
-                message={message}
+                message={{
+                  ...message,
+                  projectId: message.projectId ?? undefined,
+                  messageType: message.messageType ?? undefined,
+                }}
                 ensData={ensByAddress?.[message.authorAddress.toLowerCase()]}
                 affiliation={affiliations[message.authorAddress.toLowerCase()]}
-                projectSource={getProjectSource(message)}
+                projectSource={
+                  message.projectId
+                    ? projectMetadata[message.projectId]?.name
+                    : undefined
+                }
+                projectLogoUrl={
+                  message.projectId
+                    ? (projectMetadata[message.projectId]?.logoUrl ?? undefined)
+                    : undefined
+                }
                 canEdit={canEditMessage(message)}
                 canDelete={canDeleteMessage(message)}
-                canHide={canHideMessage(message)}
                 onEdit={() => setEditingMessage(message)}
                 onDelete={() => handleDeleteMessage(message.id)}
-                onHide={() => handleHideMessage(message.id)}
               />
             ))}
           </Stack>
