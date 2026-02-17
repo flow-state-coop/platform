@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     );
     const data = await res.json();
 
-    if (data?.ok >= 0) {
+    if (data?.ok > 0) {
       return new Response(
         JSON.stringify({
           success: true,
