@@ -1,6 +1,7 @@
 import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
+import { formatNumberWithCommas } from "@/lib/utils";
 
 type StreamMigrationModalProps = {
   show: boolean;
@@ -31,7 +32,7 @@ export default function StreamMigrationModal({
         <Modal.Title className="fs-5 fw-bold">Stream Migration</Modal.Title>
       </Modal.Header>
       <Modal.Body className="fs-5 p-4">
-        You still have a {Number(combinedMonthlyAmount).toLocaleString()}{" "}
+        You still have a {formatNumberWithCommas(combinedMonthlyAmount)}{" "}
         {tokenSymbol}/mo stream open to the GoodBuilders S2 Pool!
         {transactionError && (
           <p className="text-danger mt-2 mb-0 fs-6">{transactionError}</p>
