@@ -12,3 +12,9 @@ export const GOODBUILDERS_COUNCIL_ADDRESSES: `0x${string}`[] = [
 
 export const GOODDOLLAR_IDENTITY_ADDRESS: `0x${string}` =
   "0xC361A6E67822a0EDc17D899227dd9FC50BD62F42";
+
+export const GOODBUILDERS_S2_POOL_ADDRESS: `0x${string}` =
+  "0xafcab1ab378354b8ce0dbd0ae2e2c0dea01dcf0b";
+
+export const GOODBUILDERS_S2_FEE_ADDRESS: `0x${string}` =
+  "0x0d9d26375b882e0ddb38a781a40e80945e3d0b9b";
