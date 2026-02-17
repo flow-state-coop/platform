@@ -25,7 +25,8 @@ type MessageItemProps = {
   message: Message;
   ensData?: EnsData | null;
   affiliation?: AuthorAffiliation | null;
-  projectLogoUrl?: string | null;
+  projectLogoUrl?: string;
+  projectSource?: string;
   canEdit: boolean;
   canDelete: boolean;
   onEdit: () => void;
@@ -63,6 +64,7 @@ export default function MessageItem(props: MessageItemProps) {
     ensData,
     affiliation,
     projectLogoUrl,
+    projectSource,
     canEdit,
     canDelete,
     onEdit,
@@ -72,24 +74,26 @@ export default function MessageItem(props: MessageItemProps) {
   const isMilestoneUpdate = message.messageType === "milestone_update";
   const isSystemMessage =
     !isMilestoneUpdate && message.authorAddress === SYSTEM_ADDRESS;
-  const displayName = isMilestoneUpdate
-    ? "Milestone Update"
-    : isSystemMessage
-      ? "System"
-      : ensData?.name || shortenAddress(message.authorAddress);
+  const displayName = projectSource
+    ? projectSource
+    : isMilestoneUpdate
+      ? "Milestone Update"
+      : isSystemMessage
+        ? "System"
+        : ensData?.name || shortenAddress(message.authorAddress);
   const edited = isEdited(message.createdAt, message.updatedAt);
 
   const affiliationTag =
-    !isSystemMessage && !isMilestoneUpdate && affiliation
-      ? affiliation.projectName
-        ? `(${affiliation.projectName})`
-        : affiliation.isAdmin
-          ? "(Admin)"
+    !projectSource && !isSystemMessage && !isMilestoneUpdate && affiliation
+      ? affiliation.isAdmin
+        ? "(Admin)"
+        : affiliation.projectName
+          ? `(${affiliation.projectName})`
           : null
       : null;
 
   const effectiveCanEdit = isMilestoneUpdate ? false : canEdit;
-  const showActions = !isSystemMessage && (effectiveCanEdit || canDelete);
+  const showActions = !isSystemMessage && (canEdit || canDelete);
 
   return (
     <div
@@ -109,7 +113,7 @@ export default function MessageItem(props: MessageItemProps) {
         <ProfilePic
           address={message.authorAddress}
           ensAvatar={isSystemMessage ? undefined : ensData?.avatar}
-          imageUrl={isMilestoneUpdate ? projectLogoUrl : undefined}
+          imageUrl={projectLogoUrl || undefined}
           size={32}
         />
         <div className="flex-grow-1 overflow-hidden pe-4">

@@ -39,10 +39,9 @@ export async function PATCH(
       );
     }
 
-    // Fetch the message
     const message = await db
       .selectFrom("messages")
-      .select(["id", "authorAddress"])
+      .select(["id", "authorAddress", "channelType", "projectId", "createdAt"])
       .where("id", "=", messageIdNum)
       .executeTakeFirst();
 
@@ -62,7 +61,6 @@ export async function PATCH(
       );
     }
 
-    // Update the message
     const updatedMessage = await db
       .updateTable("messages")
       .set({
@@ -71,6 +69,17 @@ export async function PATCH(
       .where("id", "=", messageIdNum)
       .returning(["id", "authorAddress", "content", "createdAt", "updatedAt"])
       .executeTakeFirstOrThrow();
+
+    if (message.channelType === "PUBLIC_PROJECT" && message.projectId) {
+      await db
+        .updateTable("messages")
+        .set({ content: content.trim() })
+        .where("authorAddress", "=", message.authorAddress)
+        .where("channelType", "=", "PUBLIC_ROUND")
+        .where("projectId", "=", message.projectId)
+        .where("createdAt", "=", message.createdAt)
+        .execute();
+    }
 
     return new Response(
       JSON.stringify({
@@ -195,6 +204,14 @@ export async function DELETE(
         .where("content", "=", message.content)
         .where("createdAt", "=", message.createdAt)
         .where("id", "!=", messageIdNum)
+        .execute();
+    } else if (message.channelType === "PUBLIC_PROJECT" && message.projectId) {
+      await db
+        .deleteFrom("messages")
+        .where("authorAddress", "=", message.authorAddress)
+        .where("channelType", "=", "PUBLIC_ROUND")
+        .where("projectId", "=", message.projectId)
+        .where("createdAt", "=", message.createdAt)
         .execute();
     }
 

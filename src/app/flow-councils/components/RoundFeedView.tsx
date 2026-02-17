@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import Stack from "react-bootstrap/Stack";
 import Spinner from "react-bootstrap/Spinner";
@@ -9,116 +9,76 @@ import MessageItem, { Message, AuthorAffiliation } from "./chat/MessageItem";
 import MessageInput from "./chat/MessageInput";
 import EditMessageModal from "./chat/EditMessageModal";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
-import { ChannelType } from "@/generated/kysely";
 import type { ProjectMetadata } from "@/app/api/flow-council/utils";
 
-type ChatViewProps = {
-  // Required identifiers
-  channelType: ChannelType;
-  chainId: number;
-  councilId: string;
-
-  // Context identifiers (varies by channel type)
-  roundId?: number;
-  applicationId?: number;
-  projectId?: number;
-
-  // Access control (determined by parent based on channel type)
-  canWrite: boolean;
-  canModerate: boolean;
-
-  // User info
-  currentUserAddress?: string; // undefined for public read-only
-
-  // UI options
-  showEmailCheckbox?: boolean;
-  emptyMessage?: string;
-  infoText?: string;
-  newestFirst?: boolean;
-  active?: boolean;
+type RoundFeedMessage = Omit<Message, "projectId" | "messageType"> & {
+  channelType: string;
+  projectId: number | null;
+  messageType: string | null;
 };
 
-export default function ChatView(props: ChatViewProps) {
+type RoundFeedViewProps = {
+  chainId: number;
+  councilId: string;
+  roundId?: number;
+  isAdmin: boolean;
+  currentUserAddress?: string;
+  showEmailCheckbox?: boolean;
+};
+
+export default function RoundFeedView(props: RoundFeedViewProps) {
   const {
-    channelType,
     chainId,
     councilId,
     roundId,
-    applicationId,
-    projectId,
-    canWrite,
-    canModerate,
+    isAdmin,
     currentUserAddress,
     showEmailCheckbox = false,
-    emptyMessage = "No messages yet.",
-    infoText,
-    newestFirst = false,
-    active,
   } = props;
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<RoundFeedMessage[]>([]);
   const [affiliations, setAffiliations] = useState<
     Record<string, AuthorAffiliation>
   >({});
   const [projectMetadata, setProjectMetadata] = useState<
     Record<number, ProjectMetadata>
   >({});
-  const [managedProjectIds, setManagedProjectIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
-
-  // Edit modal state
-  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [editingMessage, setEditingMessage] = useState<RoundFeedMessage | null>(
+    null,
+  );
 
   const { data: session } = useSession();
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Get unique author addresses for ENS resolution
   const authorAddresses = useMemo(() => {
     return messages.map((m) => m.authorAddress);
   }, [messages]);
 
   const { ensByAddress } = useEnsResolution(authorAddresses);
 
-  const displayMessages = useMemo(
-    () => (newestFirst ? [...messages].reverse() : messages),
-    [messages, newestFirst],
-  );
-
-  const buildQueryParams = useCallback(() => {
-    const params = new URLSearchParams({
-      channelType,
-      chainId: chainId.toString(),
-      councilId,
-    });
-
-    if (roundId) params.set("roundId", roundId.toString());
-    if (applicationId) params.set("applicationId", applicationId.toString());
-    if (projectId) params.set("projectId", projectId.toString());
-
-    return params.toString();
-  }, [channelType, chainId, councilId, roundId, applicationId, projectId]);
+  const displayMessages = useMemo(() => [...messages].reverse(), [messages]);
 
   const fetchMessages = useCallback(async () => {
     try {
       setIsLoading(true);
-      const res = await fetch(
-        `/api/flow-council/messages?${buildQueryParams()}`,
-      );
+      const params = new URLSearchParams({
+        chainId: chainId.toString(),
+        councilId,
+      });
+      const res = await fetch(`/api/flow-council/round-feed?${params}`);
       const data = await res.json();
 
       if (data.success) {
         setMessages(data.messages || []);
         setAffiliations(data.affiliations || {});
         setProjectMetadata(data.projectMetadata || {});
-        setManagedProjectIds(data.managedProjectIds || []);
         setError("");
       } else {
         setMessages([]);
         setAffiliations({});
         setProjectMetadata({});
-        setManagedProjectIds([]);
         setError(data.error || "Failed to load messages");
       }
     } catch (err) {
@@ -128,28 +88,11 @@ export default function ChatView(props: ChatViewProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [buildQueryParams]);
+  }, [chainId, councilId]);
 
   useEffect(() => {
     fetchMessages();
   }, [fetchMessages]);
-
-  const prevActiveRef = useRef(active);
-  useEffect(() => {
-    if (active && !prevActiveRef.current) {
-      fetchMessages();
-    }
-    prevActiveRef.current = active;
-  }, [active, fetchMessages]);
-
-  useEffect(() => {
-    if (newestFirst) return;
-
-    const container = messagesContainerRef.current;
-    if (container) {
-      container.scrollTop = container.scrollHeight;
-    }
-  }, [messages, newestFirst]);
 
   const handleSendMessage = async (content: string, sendEmail?: boolean) => {
     if (!session?.address) return;
@@ -161,12 +104,10 @@ export default function ChatView(props: ChatViewProps) {
       const res = await fetch("/api/flow-council/messages", {
         method: "POST",
         body: JSON.stringify({
-          channelType,
+          channelType: "PUBLIC_ROUND",
           chainId,
           councilId,
           roundId,
-          applicationId,
-          projectId,
           content,
           sendEmail,
         }),
@@ -231,29 +172,21 @@ export default function ChatView(props: ChatViewProps) {
     }
   };
 
-  const canEditMessage = (message: Message): boolean => {
-    if (message.messageType === "milestone_update") return false;
+  const canEditMessage = (message: RoundFeedMessage): boolean => {
+    if (message.projectId) return false;
+    if (!currentUserAddress) return false;
     return (
-      !!currentUserAddress &&
       message.authorAddress.toLowerCase() === currentUserAddress.toLowerCase()
     );
   };
 
-  const canDeleteMessage = (message: Message): boolean => {
+  const canDeleteMessage = (message: RoundFeedMessage): boolean => {
     if (!currentUserAddress) return false;
 
     const isAuthor =
       message.authorAddress.toLowerCase() === currentUserAddress.toLowerCase();
 
-    if (
-      message.messageType === "milestone_update" &&
-      message.projectId &&
-      managedProjectIds.includes(message.projectId)
-    ) {
-      return true;
-    }
-
-    return isAuthor || canModerate;
+    return isAuthor || isAdmin;
   };
 
   if (isLoading) {
@@ -264,7 +197,7 @@ export default function ChatView(props: ChatViewProps) {
     );
   }
 
-  const messageInput = canWrite && (
+  const messageInput = isAdmin && (
     <MessageInput
       onSend={handleSendMessage}
       isSending={isSending}
@@ -272,7 +205,7 @@ export default function ChatView(props: ChatViewProps) {
       disabled={!session?.address}
       placeholder={
         session?.address
-          ? "Write a message. Markdown is supported."
+          ? "Write an announcement. Markdown is supported."
           : "Sign in to send messages"
       }
     />
@@ -280,31 +213,27 @@ export default function ChatView(props: ChatViewProps) {
 
   return (
     <div>
-      {infoText && <p className="text-muted mb-4">{infoText}</p>}
-
       {error && (
         <Alert variant="danger" className="mb-4">
           {error}
         </Alert>
       )}
 
-      {newestFirst && messageInput && (
-        <div className="mb-5">{messageInput}</div>
-      )}
+      {messageInput && <div className="mb-5">{messageInput}</div>}
 
-      <div
-        ref={messagesContainerRef}
-        className="rounded-4 p-3 mb-4"
-        style={newestFirst ? undefined : { maxHeight: 400, overflowY: "auto" }}
-      >
+      <div className="rounded-4 p-3 mb-4">
         {displayMessages.length === 0 ? (
-          <p className="text-muted text-center mb-0">{emptyMessage}</p>
+          <p className="text-muted text-center mb-0">No announcements yet.</p>
         ) : (
           <Stack direction="vertical" gap={3}>
             {displayMessages.map((message) => (
               <MessageItem
                 key={message.id}
-                message={message}
+                message={{
+                  ...message,
+                  projectId: message.projectId ?? undefined,
+                  messageType: message.messageType ?? undefined,
+                }}
                 ensData={ensByAddress?.[message.authorAddress.toLowerCase()]}
                 affiliation={affiliations[message.authorAddress.toLowerCase()]}
                 projectSource={
@@ -326,8 +255,6 @@ export default function ChatView(props: ChatViewProps) {
           </Stack>
         )}
       </div>
-
-      {!newestFirst && messageInput}
 
       <EditMessageModal
         show={!!editingMessage}

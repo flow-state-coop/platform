@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { db } from "@/app/api/flow-council/db";
 import { isProjectManager } from "@/app/api/flow-council/auth";
+import { parseDetails } from "@/app/api/flow-council/utils";
 import { milestoneProgressSchema } from "@/app/api/flow-council/validation";
 import type { RoundForm } from "@/app/flow-councils/types/round";
 import type {
@@ -14,18 +15,6 @@ import type {
 export const dynamic = "force-dynamic";
 
 type RouteParams = { params: Promise<{ projectId: string }> };
-
-function parseDetails<T>(raw: unknown): T | null {
-  if (!raw) return null;
-  if (typeof raw === "string") {
-    try {
-      return JSON.parse(raw) as T;
-    } catch {
-      return null;
-    }
-  }
-  return raw as T;
-}
 
 function emptyProgress(itemCount: number): MilestoneProgressData {
   return {

@@ -16,101 +16,15 @@ import {
 import {
   type AuthorAffiliation,
   type ChannelContext,
-  hasOnChainRole,
   findRoundByCouncil,
   canReadChannel,
   canWriteChannel,
 } from "../auth";
+import { getAuthorAffiliations } from "../affiliations";
+import { parseDetails, type ProjectMetadata } from "../utils";
+import type { ProjectDetails } from "@/types/project";
 
 export const dynamic = "force-dynamic";
-
-async function getAuthorAffiliations(
-  addresses: string[],
-  roundId: number,
-  chainId: number,
-  councilId: string,
-): Promise<Record<string, AuthorAffiliation>> {
-  if (addresses.length === 0) {
-    return {};
-  }
-
-  const normalizedAddresses = addresses.map((a) => a.toLowerCase());
-  const uniqueAddresses = [...new Set(normalizedAddresses)];
-
-  // Batch query round admins
-  const dbAdmins = await db
-    .selectFrom("roundAdmins")
-    .select("adminAddress")
-    .where("roundId", "=", roundId)
-    .where("adminAddress", "in", uniqueAddresses)
-    .execute();
-
-  const dbAdminSet = new Set(dbAdmins.map((a) => a.adminAddress.toLowerCase()));
-
-  // Batch query project managers with applications in this round and project details
-  const projectManagersData = await db
-    .selectFrom("projectManagers")
-    .innerJoin(
-      "applications",
-      "projectManagers.projectId",
-      "applications.projectId",
-    )
-    .innerJoin("projects", "projectManagers.projectId", "projects.id")
-    .select(["projectManagers.managerAddress", "projects.details"])
-    .where("applications.roundId", "=", roundId)
-    .where("projectManagers.managerAddress", "in", uniqueAddresses)
-    .execute();
-
-  // Map manager addresses to their project names (parsed from JSON details)
-  const projectManagerMap = new Map<string, string>();
-  for (const pm of projectManagersData) {
-    const addr = pm.managerAddress.toLowerCase();
-    // First project found wins (in case manager has multiple projects)
-    if (!projectManagerMap.has(addr)) {
-      const projectDetails =
-        typeof pm.details === "string" ? JSON.parse(pm.details) : pm.details;
-      const projectName = projectDetails?.name;
-      if (projectName) {
-        projectManagerMap.set(addr, projectName);
-      }
-    }
-  }
-
-  // Check on-chain roles for addresses that are not DB admins
-  const addressesNeedingOnChainCheck = uniqueAddresses.filter(
-    (addr) => !dbAdminSet.has(addr),
-  );
-
-  const onChainAdminSet = new Set<string>();
-  if (addressesNeedingOnChainCheck.length > 0) {
-    const onChainResults = await Promise.all(
-      addressesNeedingOnChainCheck.map(async (addr) => {
-        const hasRole = await hasOnChainRole(chainId, councilId, addr);
-        return { addr, hasRole };
-      }),
-    );
-
-    for (const { addr, hasRole } of onChainResults) {
-      if (hasRole) {
-        onChainAdminSet.add(addr);
-      }
-    }
-  }
-
-  // Build the result map
-  const result: Record<string, AuthorAffiliation> = {};
-  for (const addr of uniqueAddresses) {
-    const isAdmin = dbAdminSet.has(addr) || onChainAdminSet.has(addr);
-    const projectName = projectManagerMap.get(addr) || null;
-
-    // Only include if there's something to show
-    if (isAdmin || projectName) {
-      result[addr] = { isAdmin, projectName };
-    }
-  }
-
-  return result;
-}
 
 // GET - Fetch messages for a channel
 export async function GET(request: Request) {
@@ -123,7 +37,6 @@ export async function GET(request: Request) {
     const roundId = searchParams.get("roundId");
     const projectId = searchParams.get("projectId");
 
-    // For backwards compatibility, default to INTERNAL_APPLICATION if applicationId is provided
     const effectiveChannelType =
       channelType || (applicationId ? "INTERNAL_APPLICATION" : null);
 
@@ -221,27 +134,30 @@ export async function GET(request: Request) {
       );
     }
 
-    let projectLogos: Record<number, string | null> = {};
-    const milestoneMessages = messages.filter(
-      (m) => m.messageType === "milestone_update" && m.projectId,
-    );
-    if (milestoneMessages.length > 0) {
-      const projectIds = [
-        ...new Set(milestoneMessages.map((m) => m.projectId!)),
-      ];
+    const projectMetadata: Record<number, ProjectMetadata> = {};
+    const projectIds = [
+      ...new Set(
+        messages
+          .map((m) => m.projectId)
+          .filter((id): id is number => id !== null),
+      ),
+    ];
+    if (projectIds.length > 0) {
       const projects = await db
         .selectFrom("projects")
         .select(["id", "details"])
         .where("id", "in", projectIds)
         .execute();
 
-      projectLogos = Object.fromEntries(
-        projects.map((p) => {
-          const details =
-            typeof p.details === "string" ? JSON.parse(p.details) : p.details;
-          return [p.id, (details as { logoUrl?: string })?.logoUrl ?? null];
-        }),
-      );
+      for (const p of projects) {
+        const details = parseDetails<ProjectDetails>(p.details);
+        if (details?.name) {
+          projectMetadata[p.id] = {
+            name: details.name,
+            logoUrl: details.logoUrl ?? null,
+          };
+        }
+      }
     }
 
     let managedProjectIds: number[] = [];
@@ -259,7 +175,7 @@ export async function GET(request: Request) {
         success: true,
         messages,
         affiliations,
-        projectLogos,
+        projectMetadata,
         managedProjectIds,
       }),
     );
@@ -377,6 +293,32 @@ export async function POST(request: Request) {
       })
       .returning(["id", "authorAddress", "content", "createdAt", "updatedAt"])
       .executeTakeFirstOrThrow();
+
+    if (channelType === "PUBLIC_PROJECT" && messageProjectId) {
+      const activeRounds = await db
+        .selectFrom("applications")
+        .select("roundId")
+        .where("projectId", "=", messageProjectId)
+        .where("status", "=", "ACCEPTED")
+        .execute();
+
+      if (activeRounds.length > 0) {
+        await db
+          .insertInto("messages")
+          .values(
+            activeRounds.map((r) => ({
+              channelType: "PUBLIC_ROUND" as const,
+              roundId: r.roundId,
+              projectId: messageProjectId,
+              applicationId: null,
+              authorAddress: session.address.toLowerCase(),
+              content: content.trim(),
+              createdAt: message.createdAt,
+            })),
+          )
+          .execute();
+      }
+    }
 
     // Send email notification if requested (non-blocking)
     if (sendEmail === true && effectiveRoundId) {
