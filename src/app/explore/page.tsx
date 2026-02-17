@@ -103,11 +103,12 @@ export default async function Page() {
       gdaPool: "0xafcab1ab378354b8ce0dbd0ae2e2c0dea01dcf0b",
     },
   );
-  const goodBuildersS3QueryRes = await request<{ pool: GDAPool }>(
+  const goodBuildersS3QueryRes = await request<{ account: Account }>(
     networks.find((network) => network.id === celo.id)!.superfluidSubgraph,
-    GDA_POOL_QUERY,
+    FLOW_GUILD_QUERY,
     {
-      gdaPool: "0xd56e85acdd6481c912c2020dff35e4207824aac2",
+      safeAddress: "0x496e247cc0dc5e707cc2684ae04e8e337637f3fa",
+      token: "0x62b8b11039fcfe5ab0c56e502b1c372a3d2a9c7a",
     },
   );
   const flowCasterArbQueryRes = await request<{ pool: GDAPool }>(
@@ -155,7 +156,9 @@ export default async function Page() {
       guildGuildInflow={guildGuildQueryRes.account.accountTokenSnapshots[0]}
       chonesGuildInflow={chonesGuildQueryRes.account.accountTokenSnapshots[0]}
       goodDollarPool={goodDollarQueryRes.pool}
-      goodBuildersS3Pool={goodBuildersS3QueryRes.pool}
+      goodBuildersS3Inflow={
+        goodBuildersS3QueryRes.account.accountTokenSnapshots[0]
+      }
       flowCasterArbFlowInfo={flowCasterArbFlowInfo}
     />
   );

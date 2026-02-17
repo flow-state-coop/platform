@@ -17,7 +17,7 @@ type ExploreProps = {
   guildGuildInflow: Inflow;
   chonesGuildInflow: Inflow;
   goodDollarPool: GDAPool;
-  goodBuildersS3Pool: GDAPool;
+  goodBuildersS3Inflow: Inflow;
   flowCasterArbFlowInfo: {
     totalDistributed: bigint;
     flowRate: bigint;
@@ -59,7 +59,7 @@ export default function Explore(props: ExploreProps) {
     guildGuildInflow,
     chonesGuildInflow,
     goodDollarPool,
-    goodBuildersS3Pool,
+    goodBuildersS3Inflow,
     flowCasterArbFlowInfo,
   } = props;
 
@@ -160,12 +160,15 @@ export default function Explore(props: ExploreProps) {
               image="/good-dollar.png"
               roundType="Flow Council"
               totalStreamedUntilUpdatedAt={BigInt(
-                goodBuildersS3Pool?.totalAmountFlowedDistributedUntilUpdatedAt ??
-                  0,
+                goodBuildersS3Inflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,
               ).toString()}
-              flowRate={BigInt(goodBuildersS3Pool?.flowRate ?? 0).toString()}
-              updatedAt={goodBuildersS3Pool?.updatedAtTimestamp}
-              activeStreamCount={goodBuildersS3Pool?.poolDistributors.length}
+              flowRate={BigInt(
+                goodBuildersS3Inflow?.totalInflowRate ?? 0,
+              ).toString()}
+              updatedAt={goodBuildersS3Inflow?.updatedAtTimestamp}
+              activeStreamCount={
+                goodBuildersS3Inflow?.activeIncomingStreamCount
+              }
               tokenSymbol="G$"
               link="https://flowstate.network/goodbuilders-3"
             />
