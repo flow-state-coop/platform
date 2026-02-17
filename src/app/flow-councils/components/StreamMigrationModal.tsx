@@ -31,8 +31,8 @@ export default function StreamMigrationModal({
         <Modal.Title className="fs-5 fw-bold">Stream Migration</Modal.Title>
       </Modal.Header>
       <Modal.Body className="fs-5 p-4">
-        You still have a {combinedMonthlyAmount} {tokenSymbol}/mo stream open to
-        the GoodBuilders S2 Pool!
+        You still have a {Number(combinedMonthlyAmount).toLocaleString()}{" "}
+        {tokenSymbol}/mo stream open to the GoodBuilders S2 Pool!
         {transactionError && (
           <p className="text-danger mt-2 mb-0 fs-6">{transactionError}</p>
         )}
@@ -40,6 +40,7 @@ export default function StreamMigrationModal({
       <Modal.Footer className="border-0 p-4 pt-0">
         <Button
           variant="danger"
+          className="text-white fw-semi-bold"
           disabled={isCancelling || isTransferring}
           onClick={onCancel}
         >
@@ -47,6 +48,7 @@ export default function StreamMigrationModal({
         </Button>
         <Button
           variant="success"
+          className="text-white fw-semi-bold"
           disabled={isCancelling || isTransferring}
           onClick={onTransfer}
         >
