@@ -12,7 +12,6 @@ import { formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 
 type GranteeProps = {
-  projectId: string;
   name: string;
   granteeAddress: `0x${string}`;
   description: string;
@@ -31,7 +30,6 @@ type GranteeProps = {
 
 export default function Grantee(props: GranteeProps) {
   const {
-    projectId,
     name,
     granteeAddress,
     description,
@@ -145,33 +143,21 @@ export default function Grantee(props: GranteeProps) {
           height={102}
           className="bg-lace-100"
         />
-        <a
-          href={`/projects/${projectId}`}
-          target="_blank"
-          rel="noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="position-absolute"
+        <Image
+          src={logoUrl || placeholderLogo}
+          alt=""
+          width={52}
+          height={52}
+          className="position-absolute rounded-4 border border-4 border-white bg-white"
           style={{ bottom: 295, left: 16 }}
-        >
-          <Image
-            src={logoUrl || placeholderLogo}
-            alt=""
-            width={52}
-            height={52}
-            className="rounded-4 border border-4 border-white bg-white"
-          />
-        </a>
+        />
         <Card.Body className="mt-5 p-4 pb-0">
-          <a
-            href={`/projects/${projectId}`}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="d-inline-block m-0 fs-lg fw-semi-bold word-wrap text-truncate text-decoration-none text-dark"
+          <Card.Text
+            className="d-inline-block m-0 fs-lg fw-semi-bold word-wrap text-truncate text-dark"
             style={{ maxWidth: 256 }}
           >
             {name}
-          </a>
+          </Card.Text>
           <Card.Text
             ref={descriptionRef as React.RefObject<HTMLParagraphElement>}
             style={{ fontSize: "0.9rem", minHeight: noClamp ? "4lh" : "auto" }}

@@ -92,16 +92,30 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             gap={2}
             className="align-items-center my-3"
           >
-            <Image
-              src={details.logoUrl || placeholderLogo}
-              alt=""
-              width={96}
-              height={96}
-              className="ms-2 rounded-4"
-            />
+            <a
+              href={`/projects/${id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="ms-2"
+            >
+              <Image
+                src={details.logoUrl || placeholderLogo}
+                alt=""
+                width={96}
+                height={96}
+                className="rounded-4"
+              />
+            </a>
             <Card className="bg-transparent border-0 ms-3">
-              <Card.Title className="fw-semi-bold text-secondary m-0">
-                {details.name}
+              <Card.Title className="fw-semi-bold m-0">
+                <a
+                  href={`/projects/${id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-secondary text-decoration-none"
+                >
+                  {details.name}
+                </a>
               </Card.Title>
               <Card.Subtitle className="m-0">
                 <Card.Link
@@ -272,24 +286,6 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
                 Add to Ballot
               </Button>
             )}
-          <Button
-            variant="link"
-            href={`/projects/${id}`}
-            target="_blank"
-            className="d-flex justify-content-center align-items-center gap-2 mt-2 px-10 py-4 rounded-4 bg-secondary text-light text-decoration-none fw-semi-bold"
-          >
-            <Image
-              src="/open-new.svg"
-              alt=""
-              width={24}
-              height={24}
-              style={{
-                filter:
-                  "invert(100%) sepia(0%) saturate(7497%) hue-rotate(175deg) brightness(103%) contrast(103%)",
-              }}
-            />
-            Project Page
-          </Button>
         </Stack>
       </Offcanvas.Body>
     </Offcanvas>

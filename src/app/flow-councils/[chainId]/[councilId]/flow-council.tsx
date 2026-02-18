@@ -389,7 +389,6 @@ export default function FlowCouncil({
                   {grantees.map((grantee: Grantee) => (
                     <GranteeCard
                       key={`${grantee.address}-${grantee.id}`}
-                      projectId={grantee.id}
                       granteeAddress={grantee.address}
                       name={grantee.details.name ?? ""}
                       description={grantee.details.description ?? ""}
