@@ -83,9 +83,13 @@ const isValidEmail = (email: string): boolean => {
   return emailRegex.test(email);
 };
 
-const isValidUrl = (url: string): boolean => {
+const isValidGithubRepo = (url: string): boolean => {
   if (!url) return true;
-  return url.startsWith("https://");
+  const normalized = url.replace(/\/+$/, "");
+  return (
+    /^https:\/\/github\.com\/[^/]+\/[^/]+$/.test(normalized) &&
+    !normalized.endsWith(".git")
+  );
 };
 
 export default function ProjectTab(props: ProjectTabProps) {
@@ -218,7 +222,7 @@ export default function ProjectTab(props: ProjectTabProps) {
   const hasValidManagerEmail =
     form.managerEmails.filter((e) => e && isValidEmail(e)).length > 0;
   const hasValidGithubRepo =
-    form.githubRepos.filter((r) => r && isValidUrl(r)).length > 0;
+    form.githubRepos.filter((r) => r && isValidGithubRepo(r)).length > 0;
 
   const isDescriptionValid =
     !!form.description &&
@@ -303,7 +307,7 @@ export default function ProjectTab(props: ProjectTabProps) {
         telegram: form.telegram,
         discord: form.discord,
         karmaProfile: form.karmaProfile,
-        githubRepos: form.githubRepos.filter((r) => r && isValidUrl(r)),
+        githubRepos: form.githubRepos.filter((r) => r && isValidGithubRepo(r)),
         smartContracts: form.smartContracts.filter((c) => c.address),
         otherLinks: form.otherLinks.filter((l) => l.url && l.description),
       };
@@ -658,11 +662,12 @@ export default function ProjectTab(props: ProjectTabProps) {
         label="Github Repositories"
         values={form.githubRepos}
         onChange={(values) => setForm({ ...form, githubRepos: values })}
-        placeholder="https://github.com/org-name/repo-name"
+        placeholder="https://github.com/orgname/reponame"
         addLabel="Add Another"
-        validate={isValidUrl}
+        validate={isValidGithubRepo}
         required
         validated={validated}
+        invalidFeedback="Copy/paste your link in https://github.com/orgname/reponame format. Don't include a .git suffix"
       />
 
       <SmartContractRow
