@@ -1,3 +1,5 @@
+export const revalidate = 0;
+
 import Explore from "./explore";
 import { arbitrum, base, celo, optimism } from "viem/chains";
 import { gql, request } from "graphql-request";
