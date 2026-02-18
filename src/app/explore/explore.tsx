@@ -17,6 +17,7 @@ type ExploreProps = {
   guildGuildInflow: Inflow;
   chonesGuildInflow: Inflow;
   goodDollarPool: GDAPool;
+  goodBuildersS3Inflow: Inflow;
   flowCasterArbFlowInfo: {
     totalDistributed: bigint;
     flowRate: bigint;
@@ -58,6 +59,7 @@ export default function Explore(props: ExploreProps) {
     guildGuildInflow,
     chonesGuildInflow,
     goodDollarPool,
+    goodBuildersS3Inflow,
     flowCasterArbFlowInfo,
   } = props;
 
@@ -153,6 +155,23 @@ export default function Explore(props: ExploreProps) {
                     : "",
             }}
           >
+            <RoundCard
+              name="GoodBuilders S3"
+              image="/good-dollar.png"
+              roundType="Flow Council"
+              totalStreamedUntilUpdatedAt={BigInt(
+                goodBuildersS3Inflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,
+              ).toString()}
+              flowRate={BigInt(
+                goodBuildersS3Inflow?.totalInflowRate ?? 0,
+              ).toString()}
+              updatedAt={goodBuildersS3Inflow?.updatedAtTimestamp}
+              activeStreamCount={
+                goodBuildersS3Inflow?.activeIncomingStreamCount
+              }
+              tokenSymbol="G$"
+              link="https://flowstate.network/goodbuilders-3"
+            />
             <RoundCard
               name="Arbitrum Mini Apps"
               image="/arb.png"
