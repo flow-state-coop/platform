@@ -236,9 +236,14 @@ export default function Ballot({
                       }}
                     />
                   </Button>
-                  <p className="m-0 text-truncate fs-lg fw-semi-bold">
+                  <a
+                    href={`/projects/${project?.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="m-0 text-truncate fs-lg fw-semi-bold text-decoration-none text-dark"
+                  >
                     {project?.details?.name}
-                  </p>
+                  </a>
                 </Stack>
                 <Stack
                   direction="horizontal"

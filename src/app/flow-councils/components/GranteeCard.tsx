@@ -148,12 +148,12 @@ export default function Grantee(props: GranteeProps) {
           alt=""
           width={52}
           height={52}
-          className="rounded-4 position-absolute border border-4 border-white bg-white"
+          className="position-absolute rounded-4 border border-4 border-white bg-white"
           style={{ bottom: 295, left: 16 }}
         />
         <Card.Body className="mt-5 p-4 pb-0">
           <Card.Text
-            className="d-inline-block m-0 fs-lg fw-semi-bold word-wrap text-truncate"
+            className="d-inline-block m-0 fs-lg fw-semi-bold word-wrap text-truncate text-dark"
             style={{ maxWidth: 256 }}
           >
             {name}
