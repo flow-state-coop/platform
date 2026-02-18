@@ -619,7 +619,7 @@ export default function Review(props: ReviewProps) {
               </Stack>
             ) : isDeletingStream ? (
               "Cancel Stream"
-            ) : transactions.length > 0 ? (
+            ) : transactions.length > 1 ? (
               `Submit (${transactions.length})`
             ) : (
               "Submit"
