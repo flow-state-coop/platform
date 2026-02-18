@@ -34,7 +34,24 @@ export const projectDetailsSchema = z.object({
   telegram: z.string().optional(),
   discord: z.string().optional(),
   karmaProfile: z.string().optional(),
-  githubRepos: z.array(z.string()).optional(),
+  githubRepos: z
+    .array(
+      z.string().refine(
+        (url) => {
+          if (!url) return true;
+          const normalized = url.replace(/\/+$/, "");
+          return (
+            /^https:\/\/github\.com\/[^/]+\/[^/]+$/.test(normalized) &&
+            !normalized.endsWith(".git")
+          );
+        },
+        {
+          message:
+            "Must be in https://github.com/orgname/reponame format without .git suffix",
+        },
+      ),
+    )
+    .optional(),
   smartContracts: z.array(smartContractSchema).optional(),
   otherLinks: z.array(otherLinkSchema).optional(),
 });
