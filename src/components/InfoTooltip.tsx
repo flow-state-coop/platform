@@ -5,10 +5,11 @@ export type InfoTooltipProps = {
   content: React.JSX.Element;
   target: React.JSX.Element;
   position?: { top?: boolean; bottom?: boolean; right?: boolean };
+  tooltipStyle?: React.CSSProperties;
 };
 
 function InfoTooltip(props: InfoTooltipProps) {
-  const { content, target, position } = props;
+  const { content, target, position, tooltipStyle } = props;
 
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -38,6 +39,7 @@ function InfoTooltip(props: InfoTooltipProps) {
         <Tooltip
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
+          style={tooltipStyle}
         >
           {content}
         </Tooltip>
