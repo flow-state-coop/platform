@@ -3,8 +3,18 @@
 import { Suspense, useEffect } from "react";
 import { SessionProvider } from "next-auth/react";
 import { http } from "viem";
-import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
-import { WagmiProvider } from "wagmi";
+import {
+  connectorsForWallets,
+  RainbowKitProvider,
+} from "@rainbow-me/rainbowkit";
+import {
+  walletConnectWallet,
+  injectedWallet,
+  metaMaskWallet,
+  rabbyWallet,
+  coinbaseWallet,
+} from "@rainbow-me/rainbowkit/wallets";
+import { createConfig, WagmiProvider } from "wagmi";
 import {
   mainnet,
   arbitrum,
@@ -23,10 +33,27 @@ import { WALLET_CONNECT_PROJECT_ID } from "@/lib/constants";
 import "@rainbow-me/rainbowkit/styles.css";
 import "@/styles.scss";
 
-const config = getDefaultConfig({
-  appName: "Flow State",
-  projectId: WALLET_CONNECT_PROJECT_ID,
-  chains: [mainnet, arbitrum, base, celo, optimism, optimismSepolia],
+const chains = [mainnet, arbitrum, base, celo, optimism, optimismSepolia] as const;
+
+const connectors = connectorsForWallets(
+  [
+    {
+      groupName: "Recommended",
+      wallets: [
+        walletConnectWallet,
+        injectedWallet,
+        metaMaskWallet,
+        rabbyWallet,
+        coinbaseWallet,
+      ],
+    },
+  ],
+  { appName: "Flow State", projectId: WALLET_CONNECT_PROJECT_ID },
+);
+
+const config = createConfig({
+  connectors,
+  chains,
   ssr: true,
   transports: {
     [arbitrum.id]: http(
