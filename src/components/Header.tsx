@@ -294,9 +294,13 @@ export default function Header() {
                 </Button>
               </Link>
             ) : params.chainId && params.councilId ? (
-              <FlowCouncilWallet />
+              <FlowCouncilWallet
+                onConnect={() => setShowMobileMenu(false)}
+              />
             ) : (
-              <ConnectWallet />
+              <ConnectWallet
+                onConnect={() => setShowMobileMenu(false)}
+              />
             )}
           </Suspense>
         </Offcanvas.Body>

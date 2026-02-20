@@ -92,6 +92,8 @@ export default function PoolInfo(props: PoolInfoProps) {
         <Stack direction="horizontal" gap={1}>
           <Card.Text className="m-0 fs-3 fw-semi-bold">{name}</Card.Text>
           <InfoTooltip
+            position={{ bottom: true }}
+            tooltipStyle={{ maxWidth: 400 }}
             content=<p className="m-0 p-2">
               {removeMarkdown(description).replace(/\r?\n|\r/g, " ")}
             </p>

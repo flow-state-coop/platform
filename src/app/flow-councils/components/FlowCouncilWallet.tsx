@@ -8,7 +8,11 @@ import ConnectWallet from "@/components/ConnectWallet";
 import useFlowCouncil from "../hooks/flowCouncil";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
-export default function FlowCouncilWallet() {
+export default function FlowCouncilWallet({
+  onConnect,
+}: {
+  onConnect?: () => void;
+}) {
   const { councilMember, currentBallot, newBallot, dispatchShowBallot } =
     useFlowCouncil();
   const { isMobile } = useMediaQuery();
@@ -45,7 +49,10 @@ export default function FlowCouncilWallet() {
                   if (!connected) {
                     return (
                       <Button
-                        onClick={openConnectModal}
+                        onClick={() => {
+                          onConnect?.();
+                          openConnectModal();
+                        }}
                         className="px-10 py-4 rounded-4 fw-semi-bold text-light shadow"
                       >
                         Connect Wallet
@@ -151,7 +158,7 @@ export default function FlowCouncilWallet() {
           }}
         </ConnectButton.Custom>
       ) : (
-        <ConnectWallet />
+        <ConnectWallet onConnect={onConnect} />
       )}
     </>
   );

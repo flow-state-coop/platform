@@ -4,6 +4,7 @@ import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Address } from "viem";
 import { useAccount, useSwitchChain } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Stack from "react-bootstrap/Stack";
 import Modal from "react-bootstrap/Modal";
 import Spinner from "react-bootstrap/Spinner";
@@ -62,6 +63,7 @@ export default function FlowCouncil({
   useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
+  const { openConnectModal } = useConnectModal();
   const { isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const {
@@ -312,7 +314,9 @@ export default function FlowCouncil({
           distributionTokenInfo={token}
           distributionPool={distributionPool}
           showDistributionPoolFunding={() =>
-            setShowDistributionPoolFunding(true)
+            address
+              ? setShowDistributionPoolFunding(true)
+              : openConnectModal?.()
           }
         />
         <Tab.Container
