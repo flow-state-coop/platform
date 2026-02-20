@@ -130,7 +130,7 @@ export default function Grantee(props: GranteeProps) {
   return (
     <>
       <Card
-        className="rounded-5 border border-4 border-dark overflow-hidden cursor-pointer shadow"
+        className="grantee-card rounded-5 border border-4 border-dark overflow-hidden cursor-pointer shadow"
         onClick={showGranteeDetails}
         style={{
           height: 430,

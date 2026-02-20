@@ -224,6 +224,24 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
               </Button>
             )}
           </Stack>
+          <Button
+            variant="link"
+            href={`/projects/${id}`}
+            target="_blank"
+            className="d-flex justify-content-center align-items-center gap-2 mt-2 px-10 py-4 rounded-4 bg-primary text-light text-decoration-none fw-semi-bold"
+          >
+            <Image
+              src="/open-new.svg"
+              alt=""
+              width={24}
+              height={24}
+              style={{
+                filter:
+                  "invert(100%) sepia(0%) saturate(7497%) hue-rotate(175deg) brightness(103%) contrast(103%)",
+              }}
+            />
+            Learn More
+          </Button>
           <Stack direction="horizontal" gap={1} className="p-2 pb-0">
             <Stack direction="vertical" gap={1} className="w-33">
               <Card.Text className="m-0 pe-0 text-nowrap text-center">
