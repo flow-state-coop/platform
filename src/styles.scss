@@ -369,3 +369,13 @@ input[type="email"].mailing-list-input::placeholder {
   color: $light;
   opacity: 0.65;
 }
+
+.grantee-card {
+  &:hover {
+    box-shadow: 0 1rem 2.5rem rgba(#000, 0.2) !important;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}

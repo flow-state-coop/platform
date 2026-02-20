@@ -228,7 +228,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             variant="link"
             href={`/projects/${id}`}
             target="_blank"
-            className="d-flex justify-content-center align-items-center gap-2 mt-2 px-10 py-4 rounded-4 bg-secondary text-light text-decoration-none fw-semi-bold"
+            className="d-flex justify-content-center align-items-center gap-2 mt-2 px-10 py-4 rounded-4 bg-primary text-light text-decoration-none fw-semi-bold"
           >
             <Image
               src="/open-new.svg"
