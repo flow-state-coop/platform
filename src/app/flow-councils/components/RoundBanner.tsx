@@ -117,7 +117,13 @@ export default function PoolInfo(props: PoolInfoProps) {
           </Button>
         )}
       </Stack>
-      <Card.Text className="mb-8 fs-lg">Flow Council Allocation</Card.Text>
+      <Card.Text className="mb-8 fs-lg">
+        <Card.Link
+          href={`/flow-councils/application/${chainId}/${councilId}`}
+        >
+          Apply to the Round
+        </Card.Link>
+      </Card.Text>
       {(!isMobile || showFullInfo) && (
         <>
           <Table borderless className="fs-lg">
