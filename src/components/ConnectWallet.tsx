@@ -6,7 +6,11 @@ import Stack from "react-bootstrap/Stack";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 
-export default function ConnectWallet() {
+export default function ConnectWallet({
+  onConnect,
+}: {
+  onConnect?: () => void;
+}) {
   const { disconnect } = useDisconnect();
 
   return (
@@ -29,7 +33,10 @@ export default function ConnectWallet() {
               if (!connected) {
                 return (
                   <Button
-                    onClick={openConnectModal}
+                    onClick={() => {
+                      onConnect?.();
+                      openConnectModal();
+                    }}
                     className="border-4 rounded-4 px-10 py-4 fs-lg fw-semi-bold"
                   >
                     Connect Wallet
