@@ -30,15 +30,15 @@ export function getVoteSocialShare({
 }) {
   return {
     twitter:
-      "https://twitter.com/intent/tweet?text=I%20just%20voted%20in%20the%20" +
+      "https://twitter.com/intent/tweet?text=I%20just%20voted%20in%20" +
       `${councilName}%20on%20Flow%20State.%0AJoin%20me%20in%20supporting%20` +
       `these%20builders%3A%20${encodeURIComponent(councilUiLink)}`,
     farcaster:
-      "https://farcaster.xyz/~/compose?text=I+just+voted+in+the+" +
+      "https://farcaster.xyz/~/compose?text=I+just+voted+in+" +
       `${councilName}+on+Flow+State.%0AJoin+me+in+supporting+these+builders%3A` +
       `&embeds[]=${encodeURIComponent(councilUiLink)}`,
     lens:
-      `https://hey.xyz/?text=I+just+voted+in+the+${councilName}+on+Flow+` +
+      `https://hey.xyz/?text=I+just+voted+in+${councilName}+on+Flow+` +
       `State.%0AJoin+me+in+supporting+these+builders%3A+` +
       encodeURIComponent(councilUiLink),
   };
