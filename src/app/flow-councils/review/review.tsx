@@ -282,19 +282,16 @@ export default function Review(props: ReviewProps) {
     if (!selectedApplication) return [];
     const currentStatus = selectedApplication.status;
 
-    // If accepted, can be removed or graduated
     if (currentStatus === "ACCEPTED") {
-      return ["REMOVED", "GRADUATED"] as Status[];
+      return ["REMOVED", "GRADUATED", "CHANGES_REQUESTED"] as Status[];
     }
 
-    // If removed, can only be re-accepted
     if (currentStatus === "REMOVED") {
-      return ["ACCEPTED"] as Status[];
+      return ["ACCEPTED", "CHANGES_REQUESTED"] as Status[];
     }
 
-    // If graduated, can be re-accepted or removed
     if (currentStatus === "GRADUATED") {
-      return ["ACCEPTED", "REMOVED"] as Status[];
+      return ["ACCEPTED", "REMOVED", "CHANGES_REQUESTED"] as Status[];
     }
 
     // If not yet accepted, can accept, request changes, or reject
@@ -339,7 +336,9 @@ export default function Review(props: ReviewProps) {
       const isAddingOnChain =
         newStatus === "ACCEPTED" && currentStatus !== "ACCEPTED";
       const isRemovingOnChain =
-        (newStatus === "REMOVED" || newStatus === "GRADUATED") &&
+        (newStatus === "REMOVED" ||
+          newStatus === "GRADUATED" ||
+          newStatus === "CHANGES_REQUESTED") &&
         currentStatus === "ACCEPTED";
 
       if (isAddingOnChain || isRemovingOnChain) {
