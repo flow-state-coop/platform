@@ -33,10 +33,6 @@ export default function Success(props: SuccessProps) {
         >
           &#x1F64F;
         </Card.Text>
-        <Card.Text className="text-center">
-          Help spread the word about Streaming Quadratic Funding by sharing your
-          contribution with your network:
-        </Card.Text>
         <Stack direction="horizontal" className="justify-content-around mt-2">
           <Button
             variant="link"

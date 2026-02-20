@@ -344,9 +344,6 @@ export default function Ballot({
             >
               &#x1F64F;
             </Card.Text>
-            <Card.Text className="text-center mt-5">
-              Tell more builders and voters about the round.
-            </Card.Text>
             <Stack direction="horizontal" className="justify-content-around">
               <Card.Link
                 href={socialShare.twitter}
