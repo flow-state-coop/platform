@@ -11,6 +11,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Nav from "react-bootstrap/Nav";
 import Tab from "react-bootstrap/Tab";
 import Dropdown from "react-bootstrap/Dropdown";
+import Toast from "react-bootstrap/Toast";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
 import GranteeCard from "@/app/flow-councils/components/GranteeCard";
 import FeedTab from "@/app/flow-councils/components/FeedTab";
@@ -26,6 +27,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowCouncil from "../../hooks/flowCouncil";
 import useS2StreamMigration from "../../hooks/s2StreamMigration";
 import useAnimateVoteBubble from "../../hooks/animateVoteBubble";
+import useGasTopUp from "../../hooks/gasTopUp";
 import { networks } from "@/lib/networks";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 import {
@@ -101,6 +103,11 @@ export default function FlowCouncil({
   const shouldConnect = !!poolMember && !poolMember.isConnected;
   const votingPower =
     !!address && councilMember?.votingPower ? councilMember.votingPower : 0;
+  const { gasTopUpSuccess, dismissGasTopUp } = useGasTopUp(
+    address,
+    councilId,
+    votingPower,
+  );
   const currentBallotStringified = JSON.stringify(currentBallot);
 
   const getGrantee = useCallback(
@@ -496,6 +503,19 @@ export default function FlowCouncil({
           votingPower={votingPower}
           voteBubbleRef={voteBubbleRef}
         />
+      )}
+      {gasTopUpSuccess !== null && (
+        <Toast
+          show
+          delay={8000}
+          autohide
+          onClose={dismissGasTopUp}
+          className={`position-fixed end-0 top-0 mt-3 me-3 p-3 fs-5 text-light ${gasTopUpSuccess ? "bg-success" : "bg-danger"}`}
+        >
+          {gasTopUpSuccess
+            ? "Your wallet is eligible for gas sponsorship from GoodDollar. You should receive CELO to process your transactions shortly."
+            : "Your wallet isn't currently eligible for gas sponsorship from GoodDollar. You may need to deposit CELO to complete your next transaction."}
+        </Toast>
       )}
     </>
   );
