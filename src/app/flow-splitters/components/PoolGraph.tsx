@@ -13,6 +13,7 @@ import {
   usePublicClient,
   useSwitchChain,
 } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import {
   ReactFlow,
   Background,
@@ -106,7 +107,8 @@ function CustomNode(props: NodeProps<Node>) {
   const [connectAllStatus, setConnectAllStatus] =
     useState<ConnectStatus>("idle");
 
-  const { chain: connectedChain } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const { switchChainAsync } = useSwitchChain();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
@@ -137,6 +139,11 @@ function CustomNode(props: NodeProps<Node>) {
   const network = data.network as Network | undefined;
 
   const handleTryConnect = useCallback(async () => {
+    if (!address) {
+      openConnectModal?.();
+      return;
+    }
+
     if (!network || !publicClient) return;
 
     try {
@@ -182,6 +189,8 @@ function CustomNode(props: NodeProps<Node>) {
       setConnectStatus("error");
     }
   }, [
+    address,
+    openConnectModal,
     network,
     publicClient,
     writeContractAsync,
@@ -193,6 +202,11 @@ function CustomNode(props: NodeProps<Node>) {
   ]);
 
   const handleConnectAll = useCallback(async () => {
+    if (!address) {
+      openConnectModal?.();
+      return;
+    }
+
     if (!network || !publicClient) return;
 
     const disconnectedMembers = data.disconnectedMembers as Address[];
@@ -238,6 +252,8 @@ function CustomNode(props: NodeProps<Node>) {
       setConnectAllStatus("error");
     }
   }, [
+    address,
+    openConnectModal,
     network,
     publicClient,
     writeContractAsync,
