@@ -29,7 +29,6 @@ export default function InternalComments(props: InternalCommentsProps) {
       canWrite={canWrite}
       canModerate={canModerate}
       currentUserAddress={session?.address}
-      showEmailCheckbox={true}
       emptyMessage="No comments yet."
       infoText="Internal comments are only visible to managers and admins with access to this application review."
     />

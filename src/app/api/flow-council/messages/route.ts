@@ -9,9 +9,9 @@ import {
   sendInternalCommentEmail,
   getProjectAndRoundDetails,
   getRoundDetails,
-  getChatMessageRecipients,
-  getAnnouncementRecipients,
   getRoundAdminEmailsExcludingAddress,
+  getAcceptedGranteeEmails,
+  getProjectEmails,
 } from "../email";
 import {
   type AuthorAffiliation,
@@ -320,25 +320,40 @@ export async function POST(request: Request) {
       }
     }
 
-    // Send email notification if requested (non-blocking)
-    if (sendEmail === true && effectiveRoundId) {
+    if (effectiveRoundId) {
       const baseUrl = new URL(request.url).origin;
       const messageContent = content.trim();
+
       if (channelType === "GROUP_ANNOUNCEMENTS") {
         Promise.all([
           getRoundDetails(effectiveRoundId),
-          getAnnouncementRecipients(effectiveRoundId, session.address),
+          getRoundAdminEmailsExcludingAddress(
+            effectiveRoundId,
+            session.address,
+          ),
         ])
-          .then(([details, recipients]) => {
+          .then(([details, adminEmails]) => {
             if (details) {
-              return sendAnnouncementEmail(recipients, {
+              const emailData = {
                 baseUrl,
                 roundName: details.roundName,
                 sender: session.address,
                 messageContent,
                 chainId: details.chainId,
                 councilId: details.councilId,
-              });
+              };
+              const promises = [sendAnnouncementEmail(adminEmails, emailData)];
+              if (sendEmail === true) {
+                promises.push(
+                  getAcceptedGranteeEmails(
+                    effectiveRoundId,
+                    session.address,
+                  ).then((granteeEmails) =>
+                    sendAnnouncementEmail(granteeEmails, emailData),
+                  ),
+                );
+              }
+              return Promise.all(promises);
             }
           })
           .catch((err) =>
@@ -352,9 +367,9 @@ export async function POST(request: Request) {
             session.address,
           ),
         ])
-          .then(([details, recipients]) => {
+          .then(([details, adminEmails]) => {
             if (details) {
-              return sendInternalCommentEmail(recipients, {
+              return sendInternalCommentEmail(adminEmails, {
                 baseUrl,
                 projectName: details.projectName,
                 roundName: details.roundName,
@@ -372,15 +387,14 @@ export async function POST(request: Request) {
       } else if (messageProjectId) {
         Promise.all([
           getProjectAndRoundDetails(messageProjectId, effectiveRoundId),
-          getChatMessageRecipients(
-            messageProjectId,
+          getRoundAdminEmailsExcludingAddress(
             effectiveRoundId,
             session.address,
           ),
         ])
-          .then(([details, recipients]) => {
+          .then(([details, adminEmails]) => {
             if (details) {
-              return sendChatMessageEmail(recipients, {
+              const emailData = {
                 baseUrl,
                 projectName: details.projectName,
                 roundName: details.roundName,
@@ -389,7 +403,17 @@ export async function POST(request: Request) {
                 chainId: details.chainId,
                 councilId: details.councilId,
                 projectId: messageProjectId,
-              });
+              };
+              const promises = [sendChatMessageEmail(adminEmails, emailData)];
+              if (sendEmail === true) {
+                promises.push(
+                  getProjectEmails(messageProjectId, session.address).then(
+                    (projectManagerEmails) =>
+                      sendChatMessageEmail(projectManagerEmails, emailData),
+                  ),
+                );
+              }
+              return Promise.all(promises);
             }
           })
           .catch((err) =>
