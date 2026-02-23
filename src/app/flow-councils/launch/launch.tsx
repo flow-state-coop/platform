@@ -189,7 +189,9 @@ export default function Launch(props: LaunchProps) {
         }),
       });
 
-      router.push(`/flow-councils/launch/${selectedNetwork.id}/${flowCouncilAddress}`);
+      router.push(
+        `/flow-councils/launch/${selectedNetwork.id}/${flowCouncilAddress}`,
+      );
       setSuccess(true);
     } catch {
       // Error state is handled by useTransactionsQueue
