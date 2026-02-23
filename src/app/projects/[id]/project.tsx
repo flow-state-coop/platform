@@ -209,7 +209,7 @@ export default function Project(props: ProjectProps) {
           {!!details?.website && (
             <Button
               variant="link"
-              href={`https://${details.website}`}
+              href={`https://${details.website.replace(/^https?:\/\//, "")}`}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
               style={{ width: !isMobile ? "33%" : "" }}
