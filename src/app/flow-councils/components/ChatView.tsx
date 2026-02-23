@@ -319,6 +319,7 @@ export default function ChatView(props: ChatViewProps) {
                     ? (projectMetadata[message.projectId]?.logoUrl ?? undefined)
                     : undefined
                 }
+                hideAdminTag={channelType === "PUBLIC_PROJECT"}
                 canEdit={canEditMessage(message)}
                 canDelete={canDeleteMessage(message)}
                 onEdit={() => setEditingMessage(message)}

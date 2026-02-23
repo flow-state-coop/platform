@@ -27,6 +27,7 @@ type MessageItemProps = {
   affiliation?: AuthorAffiliation | null;
   projectLogoUrl?: string;
   projectSource?: string;
+  hideAdminTag?: boolean;
   canEdit: boolean;
   canDelete: boolean;
   onEdit: () => void;
@@ -65,6 +66,7 @@ export default function MessageItem(props: MessageItemProps) {
     affiliation,
     projectLogoUrl,
     projectSource,
+    hideAdminTag,
     canEdit,
     canDelete,
     onEdit,
@@ -83,7 +85,7 @@ export default function MessageItem(props: MessageItemProps) {
 
   const affiliationTag =
     !isSystemMessage && !isMilestoneUpdate && affiliation
-      ? affiliation.isAdmin
+      ? affiliation.isAdmin && !hideAdminTag
         ? "(Admin)"
         : affiliation.projectName
           ? `(${affiliation.projectName})`
