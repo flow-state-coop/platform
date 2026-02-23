@@ -34,6 +34,7 @@ export type Application = {
   fundingAddress: string;
   status: Generated<ApplicationStatus>;
   details: unknown | null;
+  editsUnlocked: Generated<boolean>;
   createdAt: Generated<Timestamp>;
   updatedAt: Generated<Timestamp>;
 };

@@ -47,6 +47,7 @@ export async function POST(request: Request) {
         "applications.fundingAddress",
         "applications.status",
         "applications.details",
+        "applications.editsUnlocked",
         "projects.details as projectDetails",
       ])
       .where("applications.roundId", "=", round.id)
@@ -179,15 +180,28 @@ export async function PUT(request: Request) {
 
     const existingApplication = await db
       .selectFrom("applications")
-      .select(["id", "status"])
+      .select(["id", "status", "editsUnlocked"])
       .where("projectId", "=", projectId)
       .where("roundId", "=", round.id)
       .executeTakeFirst();
 
+    const LOCKED_STATUSES = ["ACCEPTED", "GRADUATED", "REMOVED"];
+    if (
+      existingApplication &&
+      LOCKED_STATUSES.includes(existingApplication.status) &&
+      !existingApplication.editsUnlocked
+    ) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Application is locked and cannot be edited",
+        }),
+      );
+    }
+
     let application;
 
     if (existingApplication) {
-      // Update existing application
       application = await db
         .updateTable("applications")
         .set({
