@@ -32,6 +32,8 @@ type AttestationTabProps = {
   existingRoundData: RoundForm | null;
   isLoading: boolean;
   onBack: () => void;
+  fundingWalletLocked?: boolean;
+  saveOnly?: boolean;
 };
 
 export default function AttestationTab(props: AttestationTabProps) {
@@ -45,6 +47,8 @@ export default function AttestationTab(props: AttestationTabProps) {
     existingRoundData,
     isLoading,
     onBack,
+    fundingWalletLocked,
+    saveOnly,
   } = props;
 
   const router = useRouter();
@@ -127,15 +131,23 @@ export default function AttestationTab(props: AttestationTabProps) {
         attestation: form,
       };
 
+      const patchBody: Record<string, unknown> = {
+        details: combinedDetails,
+      };
+
+      if (saveOnly) {
+        patchBody.fundingAddress = undefined;
+        patchBody.submit = undefined;
+      } else {
+        patchBody.fundingAddress = form.identity.fundingWallet;
+        patchBody.submit = true;
+      }
+
       const res = await fetch(
         `/api/flow-council/applications/${applicationId}`,
         {
           method: "PATCH",
-          body: JSON.stringify({
-            details: combinedDetails,
-            fundingAddress: form.identity.fundingWallet,
-            submit: true,
-          }),
+          body: JSON.stringify(patchBody),
         },
       );
 
@@ -149,7 +161,10 @@ export default function AttestationTab(props: AttestationTabProps) {
 
       setIsSubmitting(false);
       setSuccess(true);
-      router.push(`/flow-councils/application/${chainId}/${councilId}`);
+
+      if (!saveOnly) {
+        router.push(`/flow-councils/application/${chainId}/${councilId}`);
+      }
     } catch (err) {
       console.error(err);
       setError("Failed to submit application");
@@ -339,7 +354,7 @@ export default function AttestationTab(props: AttestationTabProps) {
           <Form.Label className="fs-lg fw-bold mb-0">
             Wallet to receive funding
           </Form.Label>
-          {defaultFundingAddress && (
+          {defaultFundingAddress && !fundingWalletLocked && (
             <Button
               variant="link"
               className="p-0 text-decoration-underline fw-semi-bold text-primary"
@@ -353,6 +368,7 @@ export default function AttestationTab(props: AttestationTabProps) {
           type="text"
           value={form.identity.fundingWallet}
           placeholder="0x..."
+          disabled={fundingWalletLocked}
           className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.fundingWallet) && (!form.identity.fundingWallet.trim() || !isAddress(form.identity.fundingWallet)) ? "border-danger" : "border-dark"}`}
           isInvalid={
             (validated || touched.fundingWallet) &&
@@ -521,7 +537,13 @@ export default function AttestationTab(props: AttestationTabProps) {
               style={{ width: 140 }}
               onClick={handleSubmit}
             >
-              {isSubmitting ? <Spinner size="sm" /> : "Submit"}
+              {isSubmitting ? (
+                <Spinner size="sm" />
+              ) : saveOnly ? (
+                "Save"
+              ) : (
+                "Submit"
+              )}
             </Button>
           )}
         </Stack>
@@ -532,7 +554,9 @@ export default function AttestationTab(props: AttestationTabProps) {
           onClose={() => setSuccess(false)}
           className="bg-success py-2 px-3 fw-semi-bold fs-6 text-white m-0"
         >
-          Application submitted successfully!
+          {saveOnly
+            ? "Changes saved successfully!"
+            : "Application submitted successfully!"}
         </Toast>
         {error && <p className="text-danger fw-semi-bold m-0">{error}</p>}
         {validated && !isValid && (

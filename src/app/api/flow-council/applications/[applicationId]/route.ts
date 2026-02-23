@@ -46,6 +46,7 @@ export async function GET(
         "applications.fundingAddress",
         "applications.status",
         "applications.details",
+        "applications.editsUnlocked",
       ])
       .where("applications.id", "=", appId)
       .where(
@@ -109,7 +110,11 @@ export async function PATCH(
         "applications.projectId",
         "projectManagers.projectId",
       )
-      .select(["applications.id", "applications.status"])
+      .select([
+        "applications.id",
+        "applications.status",
+        "applications.editsUnlocked",
+      ])
       .where("applications.id", "=", appId)
       .where(
         "projectManagers.managerAddress",
@@ -127,14 +132,24 @@ export async function PATCH(
       );
     }
 
-    // Build the update object
+    const LOCKED_STATUSES = ["ACCEPTED", "GRADUATED", "REMOVED"];
+    const isLocked = LOCKED_STATUSES.includes(existingApp.status);
+
+    if (isLocked && !existingApp.editsUnlocked) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Application is locked and cannot be edited",
+        }),
+      );
+    }
+
     const updateData: Record<string, unknown> = {
       details: details,
       updatedAt: new Date(),
     };
 
-    // Update funding address if provided and valid
-    if (fundingAddress && typeof fundingAddress === "string") {
+    if (!isLocked && fundingAddress && typeof fundingAddress === "string") {
       if (!isAddress(fundingAddress)) {
         return new Response(
           JSON.stringify({
@@ -146,7 +161,6 @@ export async function PATCH(
       updateData.fundingAddress = fundingAddress.toLowerCase();
     }
 
-    // Change status to SUBMITTED if submit flag is true and current status is INCOMPLETE or CHANGES_REQUESTED
     const canSubmit =
       existingApp.status === "INCOMPLETE" ||
       existingApp.status === "CHANGES_REQUESTED";

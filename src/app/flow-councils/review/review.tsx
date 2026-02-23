@@ -59,6 +59,7 @@ type Application = {
   roundId: number;
   fundingAddress: string;
   status: Status;
+  editsUnlocked: boolean;
   projectDetails: ProjectDetails | null;
   details: ApplicationDetails | null;
   managerAddresses?: string[];
@@ -108,6 +109,7 @@ export default function Review(props: ReviewProps) {
   const [newStatus, setNewStatus] = useState<Status | null>(null);
   const [reviewComment, setReviewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isTogglingLock, setIsTogglingLock] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
@@ -316,6 +318,48 @@ export default function Review(props: ReviewProps) {
     setNewStatus(null);
     setReviewComment("");
     setError("");
+  };
+
+  const handleToggleEditsUnlocked = async (application: Application) => {
+    if (!flowCouncil) return;
+
+    try {
+      setIsTogglingLock(true);
+      setError("");
+
+      const res = await fetch("/api/flow-council/review/unlock", {
+        method: "POST",
+        body: JSON.stringify({
+          chainId,
+          councilId: flowCouncil.id,
+          applicationId: application.id,
+          editsUnlocked: !application.editsUnlocked,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!json.success) {
+        setError(json.error);
+        setIsTogglingLock(false);
+        return;
+      }
+
+      const updatedApp = {
+        ...application,
+        editsUnlocked: !application.editsUnlocked,
+      };
+      setSelectedApplication(updatedApp);
+      setApplications((prev) =>
+        prev.map((a) => (a.id === application.id ? updatedApp : a)),
+      );
+
+      setIsTogglingLock(false);
+    } catch (err) {
+      console.error(err);
+      setIsTogglingLock(false);
+      setError("Failed to toggle edit lock");
+    }
   };
 
   const handleSubmitReview = async () => {
@@ -560,13 +604,50 @@ export default function Review(props: ReviewProps) {
                       {selectedApplication.projectDetails?.name ??
                         "Application Review"}
                     </h4>
-                    <Button
-                      variant="link"
-                      className="p-0"
-                      onClick={handleCloseReview}
-                    >
-                      <Image src="/close.svg" alt="Close" width={24} />
-                    </Button>
+                    <Stack direction="horizontal" gap={3}>
+                      {["ACCEPTED", "GRADUATED", "REMOVED"].includes(
+                        selectedApplication.status,
+                      ) && (
+                        <Stack
+                          direction="horizontal"
+                          gap={2}
+                          className="align-items-center"
+                        >
+                          <Image
+                            src={
+                              selectedApplication.editsUnlocked
+                                ? "/unlock.svg"
+                                : "/lock.svg"
+                            }
+                            alt=""
+                            width={18}
+                            height={18}
+                          />
+                          <Form.Check
+                            type="switch"
+                            id="edits-unlocked-toggle"
+                            label={
+                              selectedApplication.editsUnlocked
+                                ? "Unlocked"
+                                : "Locked"
+                            }
+                            checked={selectedApplication.editsUnlocked}
+                            disabled={isTogglingLock}
+                            onChange={() =>
+                              handleToggleEditsUnlocked(selectedApplication)
+                            }
+                            className="fw-semi-bold"
+                          />
+                        </Stack>
+                      )}
+                      <Button
+                        variant="link"
+                        className="p-0"
+                        onClick={handleCloseReview}
+                      >
+                        <Image src="/close.svg" alt="Close" width={24} />
+                      </Button>
+                    </Stack>
                   </Stack>
 
                   <Row className="mb-3">

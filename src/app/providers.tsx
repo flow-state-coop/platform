@@ -32,7 +32,14 @@ import { WALLET_CONNECT_PROJECT_ID } from "@/lib/constants";
 import "@rainbow-me/rainbowkit/styles.css";
 import "@/styles.scss";
 
-const chains = [mainnet, arbitrum, base, celo, optimism, optimismSepolia] as const;
+const chains = [
+  mainnet,
+  arbitrum,
+  base,
+  celo,
+  optimism,
+  optimismSepolia,
+] as const;
 
 const connectors = connectorsForWallets(
   [

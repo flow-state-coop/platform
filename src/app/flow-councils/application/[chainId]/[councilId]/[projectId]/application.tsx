@@ -41,16 +41,16 @@ export default function Application(props: ApplicationProps) {
     null,
   );
   const [savedProjectId, setSavedProjectId] = useState<number | null>(null);
+  const [editsUnlocked, setEditsUnlocked] = useState(false);
   const [isLoading, setIsLoading] = useState(!!projectId);
 
-  // Track sequential tab completion - tabs are unlocked when previous tabs are complete
   const [projectComplete, setProjectComplete] = useState(false);
   const [roundComplete, setRoundComplete] = useState(false);
 
-  // Application is locked when in certain final states
   const LOCKED_STATUSES = ["ACCEPTED", "REJECTED", "GRADUATED", "REMOVED"];
-  const isApplicationLocked =
+  const isInLockedStatus =
     applicationStatus !== null && LOCKED_STATUSES.includes(applicationStatus);
+  const isApplicationLocked = isInLockedStatus && !editsUnlocked;
 
   const network = networks.find((n) => n.id === chainId);
 
@@ -101,6 +101,7 @@ export default function Application(props: ApplicationProps) {
         if (app) {
           setApplicationId(app.id);
           setApplicationStatus(app.status);
+          setEditsUnlocked(app.editsUnlocked ?? false);
           if (app.details) {
             const details =
               typeof app.details === "string"
@@ -264,6 +265,8 @@ export default function Application(props: ApplicationProps) {
                 existingRoundData={roundData}
                 isLoading={isLoading}
                 onBack={() => setActiveTab("round")}
+                fundingWalletLocked={isInLockedStatus && editsUnlocked}
+                saveOnly={isInLockedStatus && editsUnlocked}
               />
             ) : (
               <ViewAttestationTab attestationData={attestationData} />

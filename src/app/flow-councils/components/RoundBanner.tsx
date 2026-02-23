@@ -118,9 +118,7 @@ export default function PoolInfo(props: PoolInfoProps) {
         )}
       </Stack>
       <Card.Text className="mb-8 fs-lg">
-        <Card.Link
-          href={`/flow-councils/application/${chainId}/${councilId}`}
-        >
+        <Card.Link href={`/flow-councils/application/${chainId}/${councilId}`}>
           Apply to the Round
         </Card.Link>
       </Card.Text>
