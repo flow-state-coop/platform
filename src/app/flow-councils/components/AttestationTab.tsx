@@ -370,12 +370,14 @@ export default function AttestationTab(props: AttestationTabProps) {
               ? "Changing the funding address requires a new application."
               : undefined
           }
+          style={fundingWalletLocked ? { cursor: "not-allowed" } : undefined}
         >
           <Form.Control
             type="text"
             value={form.identity.fundingWallet}
             placeholder="0x..."
             disabled={fundingWalletLocked}
+            style={fundingWalletLocked ? { pointerEvents: "none" } : undefined}
             className={`${!fundingWalletLocked ? "bg-white" : ""} border border-2 rounded-4 py-3 px-3 ${(validated || touched.fundingWallet) && (!form.identity.fundingWallet.trim() || !isAddress(form.identity.fundingWallet)) ? "border-danger" : "border-dark"}`}
             isInvalid={
               (validated || touched.fundingWallet) &&

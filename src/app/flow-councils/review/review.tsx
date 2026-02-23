@@ -619,17 +619,24 @@ export default function Review(props: ReviewProps) {
                             width={20}
                             height={20}
                           />
-                          <div style={{ fontSize: "1.25rem" }}>
-                            <Form.Check
-                              type="switch"
+                          <div
+                            className="form-switch"
+                            style={{
+                              paddingLeft: 0,
+                              display: "flex",
+                              fontSize: "1.25rem",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              role="switch"
                               id="edits-unlocked-toggle"
-                              label=""
+                              className="form-check-input m-0"
                               checked={selectedApplication.editsUnlocked}
                               disabled={isTogglingLock}
                               onChange={() =>
                                 handleToggleEditsUnlocked(selectedApplication)
                               }
-                              className="m-0"
                             />
                           </div>
                           <Image
