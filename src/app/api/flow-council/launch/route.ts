@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!name || !description) {
+    if (!name && !superappSplitterAddress) {
       return new Response(
         JSON.stringify({
           success: false,
