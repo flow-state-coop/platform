@@ -55,8 +55,14 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const { chainId, flowCouncilAddress, name, description, logoUrl } =
-      await request.json();
+    const {
+      chainId,
+      flowCouncilAddress,
+      name,
+      description,
+      logoUrl,
+      superappSplitterAddress,
+    } = await request.json();
 
     const session = await getServerSession(authOptions);
 
@@ -110,14 +116,28 @@ export async function PATCH(request: Request) {
       );
     }
 
+    const validatedSplitterAddress =
+      superappSplitterAddress && isAddress(superappSplitterAddress)
+        ? superappSplitterAddress.toLowerCase()
+        : undefined;
+
     const updatedRound = await db
       .updateTable("rounds")
       .set({
         details: JSON.stringify({ name, description, logoUrl }),
+        ...(validatedSplitterAddress
+          ? { superappSplitterAddress: validatedSplitterAddress }
+          : {}),
         updatedAt: new Date(),
       })
       .where("id", "=", round.id)
-      .returning(["id", "chainId", "flowCouncilAddress", "details"])
+      .returning([
+        "id",
+        "chainId",
+        "flowCouncilAddress",
+        "superappSplitterAddress",
+        "details",
+      ])
       .executeTakeFirstOrThrow();
 
     return new Response(JSON.stringify({ success: true, round: updatedRound }));

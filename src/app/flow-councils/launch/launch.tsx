@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Address, parseEventLogs } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "@wagmi/core";
@@ -18,7 +18,9 @@ import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
 import Image from "react-bootstrap/Image";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
+import { useSession } from "next-auth/react";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import useSiwe from "@/hooks/siwe";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { Network } from "@/types/network";
 import { getApolloClient } from "@/lib/apollo";
@@ -28,7 +30,11 @@ import { superAppSplitterFactoryAbi } from "@/lib/abi/superAppSplitterFactory";
 
 const SUPERAPP_SPLITTER_SIDE_PORTION = BigInt(50);
 
-type LaunchProps = { defaultNetwork: Network; councilId?: string };
+type LaunchProps = {
+  defaultNetwork: Network;
+  councilId?: string;
+  csrfToken: string;
+};
 
 const FLOW_COUNCIL_QUERY = gql`
   query FlowCouncilQuery($councilId: String!) {
@@ -40,20 +46,21 @@ const FLOW_COUNCIL_QUERY = gql`
 `;
 
 export default function Launch(props: LaunchProps) {
-  const { defaultNetwork, councilId } = props;
+  const { defaultNetwork, councilId, csrfToken } = props;
 
   const [selectedNetwork, setSelectedNetwork] =
     useState<Network>(defaultNetwork);
   const [success, setSuccess] = useState(false);
 
   const router = useRouter();
-  const searchParams = useSearchParams();
   const publicClient = usePublicClient();
   const wagmiConfig = useConfig();
   const { isMobile } = useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
+  const { data: session } = useSession();
+  const { handleSignIn } = useSiwe();
   const {
     areTransactionsLoading,
     completedTransactions,
@@ -170,9 +177,19 @@ export default function Launch(props: LaunchProps) {
     try {
       await executeTransactions(transactions);
 
-      const launchUrl = `/flow-councils/launch/${selectedNetwork.id}/${flowCouncilAddress}${splitterAddress ? `?splitter=${splitterAddress}` : ""}`;
-      router.push(launchUrl);
-      router.refresh();
+      await fetch("/api/flow-council/launch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chainId: selectedNetwork.id,
+          flowCouncilAddress,
+          superappSplitterAddress: splitterAddress || undefined,
+          name: "",
+          description: "",
+        }),
+      });
+
+      router.push(`/flow-councils/launch/${selectedNetwork.id}/${flowCouncilAddress}`);
       setSuccess(true);
     } catch {
       // Error state is handled by useTransactionsQueue
@@ -294,7 +311,9 @@ export default function Launch(props: LaunchProps) {
                 ? openConnectModal()
                 : connectedChain?.id !== selectedNetwork.id
                   ? switchChain({ chainId: selectedNetwork.id })
-                  : handleSubmit()
+                  : !session || session.address !== address
+                    ? handleSignIn(csrfToken)
+                    : handleSubmit()
             }
           >
             {areTransactionsLoading ? (
@@ -303,6 +322,12 @@ export default function Launch(props: LaunchProps) {
                 {completedTransactions > 0 &&
                   ` ${completedTransactions}/${selectedNetwork.superAppSplitterFactory ? 2 : 1}`}
               </>
+            ) : !address ? (
+              "Connect Wallet"
+            ) : connectedChain?.id !== selectedNetwork.id ? (
+              "Switch Network"
+            ) : !session || session.address !== address ? (
+              "Sign In With Ethereum"
             ) : (
               "Launch"
             )}
@@ -312,11 +337,11 @@ export default function Launch(props: LaunchProps) {
             disabled={!councilId}
             className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
             style={{ pointerEvents: areTransactionsLoading ? "none" : "auto" }}
-            onClick={() => {
-              const splitter = searchParams.get("splitter");
-              const roundMetadataUrl = `/flow-councils/round-metadata/${selectedNetwork.id}/${councilId}${splitter ? `?splitter=${splitter}` : ""}`;
-              router.push(roundMetadataUrl);
-            }}
+            onClick={() =>
+              router.push(
+                `/flow-councils/round-metadata/${selectedNetwork.id}/${councilId}`,
+              )
+            }
           >
             Next
           </Button>
