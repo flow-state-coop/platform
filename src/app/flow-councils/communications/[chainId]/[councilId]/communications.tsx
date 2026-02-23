@@ -237,7 +237,7 @@ export default function Communications(props: CommunicationsProps) {
           )}
 
           {/* Desktop: Sidebar inline with chat */}
-          <Stack direction="horizontal" gap={4} className="align-items-start">
+          <Stack direction="horizontal" gap={4} className="align-items-stretch">
             {!isMobile && !isTablet && (
               <ProjectChannelsSidebar
                 channels={channels}
