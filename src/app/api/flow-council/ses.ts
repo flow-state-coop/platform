@@ -10,3 +10,5 @@ export const sesClient = new SESClient({
 
 export const SES_FROM_EMAIL =
   process.env.SES_FROM_EMAIL || "no-reply@flowstate.network";
+
+export const SES_CONFIGURATION_SET = process.env.SES_CONFIGURATION_SET;

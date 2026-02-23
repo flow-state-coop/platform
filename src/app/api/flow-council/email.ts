@@ -1,6 +1,6 @@
 import { SendTemplatedEmailCommand } from "@aws-sdk/client-ses";
 import removeMarkdown from "remove-markdown";
-import { sesClient, SES_FROM_EMAIL } from "./ses";
+import { sesClient, SES_FROM_EMAIL, SES_CONFIGURATION_SET } from "./ses";
 import { db } from "./db";
 
 type ApplicationSubmittedEmailData = {
@@ -68,6 +68,9 @@ async function sendTemplatedEmail(
       },
       Template: templateName,
       TemplateData: JSON.stringify(templateData),
+      ...(SES_CONFIGURATION_SET && {
+        ConfigurationSetName: SES_CONFIGURATION_SET,
+      }),
     });
 
     await sesClient.send(command);
