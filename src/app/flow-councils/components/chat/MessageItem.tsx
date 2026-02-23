@@ -74,17 +74,15 @@ export default function MessageItem(props: MessageItemProps) {
   const isMilestoneUpdate = message.messageType === "milestone_update";
   const isSystemMessage =
     !isMilestoneUpdate && message.authorAddress === SYSTEM_ADDRESS;
-  const displayName = projectSource
-    ? projectSource
-    : isMilestoneUpdate
-      ? "Milestone Update"
-      : isSystemMessage
-        ? "System"
-        : ensData?.name || shortenAddress(message.authorAddress);
+  const displayName = isMilestoneUpdate
+    ? (projectSource ?? "Milestone Update")
+    : isSystemMessage
+      ? "System"
+      : ensData?.name || shortenAddress(message.authorAddress);
   const edited = isEdited(message.createdAt, message.updatedAt);
 
   const affiliationTag =
-    !projectSource && !isSystemMessage && !isMilestoneUpdate && affiliation
+    !isSystemMessage && !isMilestoneUpdate && affiliation
       ? affiliation.isAdmin
         ? "(Admin)"
         : affiliation.projectName

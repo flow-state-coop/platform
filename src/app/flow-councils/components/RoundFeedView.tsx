@@ -237,11 +237,13 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
                 ensData={ensByAddress?.[message.authorAddress.toLowerCase()]}
                 affiliation={affiliations[message.authorAddress.toLowerCase()]}
                 projectSource={
+                  message.messageType === "milestone_update" &&
                   message.projectId
                     ? projectMetadata[message.projectId]?.name
                     : undefined
                 }
                 projectLogoUrl={
+                  message.messageType === "milestone_update" &&
                   message.projectId
                     ? (projectMetadata[message.projectId]?.logoUrl ?? undefined)
                     : undefined
