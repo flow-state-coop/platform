@@ -364,30 +364,38 @@ export default function AttestationTab(props: AttestationTabProps) {
             </Button>
           )}
         </Stack>
-        <Form.Control
-          type="text"
-          value={form.identity.fundingWallet}
-          placeholder="0x..."
-          disabled={fundingWalletLocked}
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.fundingWallet) && (!form.identity.fundingWallet.trim() || !isAddress(form.identity.fundingWallet)) ? "border-danger" : "border-dark"}`}
-          isInvalid={
-            (validated || touched.fundingWallet) &&
-            (!form.identity.fundingWallet.trim() ||
-              !isAddress(form.identity.fundingWallet))
+        <div
+          title={
+            fundingWalletLocked
+              ? "Changing the funding address requires a new application."
+              : undefined
           }
-          onChange={(e) =>
-            setForm({
-              ...form,
-              identity: { ...form.identity, fundingWallet: e.target.value },
-            })
-          }
-          onBlur={() =>
-            setTouched((prev) => ({ ...prev, fundingWallet: true }))
-          }
-        />
-        <Form.Control.Feedback type="invalid">
-          Please enter a valid ETH address
-        </Form.Control.Feedback>
+        >
+          <Form.Control
+            type="text"
+            value={form.identity.fundingWallet}
+            placeholder="0x..."
+            disabled={fundingWalletLocked}
+            className={`${!fundingWalletLocked ? "bg-white" : ""} border border-2 rounded-4 py-3 px-3 ${(validated || touched.fundingWallet) && (!form.identity.fundingWallet.trim() || !isAddress(form.identity.fundingWallet)) ? "border-danger" : "border-dark"}`}
+            isInvalid={
+              (validated || touched.fundingWallet) &&
+              (!form.identity.fundingWallet.trim() ||
+                !isAddress(form.identity.fundingWallet))
+            }
+            onChange={(e) =>
+              setForm({
+                ...form,
+                identity: { ...form.identity, fundingWallet: e.target.value },
+              })
+            }
+            onBlur={() =>
+              setTouched((prev) => ({ ...prev, fundingWallet: true }))
+            }
+          />
+          <Form.Control.Feedback type="invalid">
+            Please enter a valid ETH address
+          </Form.Control.Feedback>
+        </div>
       </Form.Group>
 
       <Form.Group className="mb-4">

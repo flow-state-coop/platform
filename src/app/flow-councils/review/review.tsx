@@ -614,29 +614,29 @@ export default function Review(props: ReviewProps) {
                           className="align-items-center"
                         >
                           <Image
-                            src={
-                              selectedApplication.editsUnlocked
-                                ? "/unlock.svg"
-                                : "/lock.svg"
-                            }
-                            alt=""
-                            width={18}
-                            height={18}
+                            src="/lock.svg"
+                            alt="Locked"
+                            width={20}
+                            height={20}
                           />
-                          <Form.Check
-                            type="switch"
-                            id="edits-unlocked-toggle"
-                            label={
-                              selectedApplication.editsUnlocked
-                                ? "Unlocked"
-                                : "Locked"
-                            }
-                            checked={selectedApplication.editsUnlocked}
-                            disabled={isTogglingLock}
-                            onChange={() =>
-                              handleToggleEditsUnlocked(selectedApplication)
-                            }
-                            className="fw-semi-bold"
+                          <div style={{ fontSize: "1.25rem" }}>
+                            <Form.Check
+                              type="switch"
+                              id="edits-unlocked-toggle"
+                              label=""
+                              checked={selectedApplication.editsUnlocked}
+                              disabled={isTogglingLock}
+                              onChange={() =>
+                                handleToggleEditsUnlocked(selectedApplication)
+                              }
+                              className="m-0"
+                            />
+                          </div>
+                          <Image
+                            src="/unlock.svg"
+                            alt="Unlocked"
+                            width={20}
+                            height={20}
                           />
                         </Stack>
                       )}
