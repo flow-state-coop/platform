@@ -26,6 +26,7 @@ type ActivityFeedProps = {
   ensByAddress: {
     [key: Address]: { name: string | null; avatar: string | null };
   } | null;
+  poolLabel?: string;
 };
 
 type PoolCreationMemberUnitsUpdates = {
@@ -113,6 +114,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
     flowDistributionUpdatedEvents,
     instantDistributionUpdatedEvents,
     ensByAddress,
+    poolLabel = "Flow Splitter",
   } = props;
   const { isMobile, isTablet } = useMediaQuery();
 
@@ -224,7 +226,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                   direction={isMobile || isTablet ? "vertical" : "horizontal"}
                   className="w-100 justify-content-between"
                 >
-                  <p className="m-0">Flow Splitter Created</p>
+                  <p className="m-0">{poolLabel} Created</p>
                   <Link
                     href={`${network.blockExplorer}/tx/${(event as PoolCreationMemberUnitsUpdates).poolCreatedEvent.transactionHash}`}
                     target="_blank"
@@ -323,7 +325,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                   direction={isMobile || isTablet ? "vertical" : "horizontal"}
                   className="w-100 justify-content-between"
                 >
-                  <p className="m-0">Flow Splitter Updated</p>
+                  <p className="m-0">{poolLabel} Updated</p>
                   <Link
                     href={`${network.blockExplorer}/tx/${(event as PoolUpdateMemberUnitsUpdates).transactionHash}`}
                     target="_blank"
@@ -460,7 +462,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     ]?.name ??
                       truncateStr((event as PoolAdminAddedEvent).address, 15)}
                   </Link>{" "}
-                  added as a Flow Splitter admin
+                  added as a {poolLabel} admin
                 </p>
                 <Link
                   href={`${network.blockExplorer}/tx/${(event as PoolAdminAddedEvent).transactionHash}`}
@@ -529,7 +531,7 @@ export default function ActivityFeed(props: ActivityFeedProps) {
                     ]?.name ??
                       truncateStr((event as PoolAdminRemovedEvent).address, 15)}
                   </Link>{" "}
-                  removed as a Flow Splitter admin.
+                  removed as a {poolLabel} admin.
                 </p>
                 <Link
                   href={`${network.blockExplorer}/tx/${(event as PoolAdminRemovedEvent).transactionHash}`}
