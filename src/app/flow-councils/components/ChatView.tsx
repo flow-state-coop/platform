@@ -295,7 +295,11 @@ export default function ChatView(props: ChatViewProps) {
       <div
         ref={messagesContainerRef}
         className="rounded-4 p-3 mb-4"
-        style={newestFirst ? undefined : { maxHeight: 400, overflowY: "auto" }}
+        style={
+          newestFirst
+            ? undefined
+            : { maxHeight: "calc(100vh - 360px)", overflowY: "auto" }
+        }
       >
         {displayMessages.length === 0 ? (
           <p className="text-muted text-center mb-0">{emptyMessage}</p>

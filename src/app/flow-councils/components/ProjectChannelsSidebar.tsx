@@ -146,7 +146,12 @@ export default function ProjectChannelsSidebar(
       direction="vertical"
       gap={2}
       className="bg-lace-100 rounded-4 p-3"
-      style={{ minWidth: 220, maxWidth: 280 }}
+      style={{
+        minWidth: 220,
+        maxWidth: 280,
+        maxHeight: "calc(100vh - 180px)",
+        overflowY: "auto",
+      }}
     >
       <SidebarContent />
     </Stack>
