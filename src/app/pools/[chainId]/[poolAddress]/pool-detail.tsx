@@ -169,7 +169,7 @@ export default function PoolDetail(props: PoolDetailProps) {
   const poolToken = network?.tokens.find(
     (token) => token.address.toLowerCase() === tokenAddress,
   ) ?? {
-    address: tokenAddress ?? "",
+    address: (tokenAddress ?? "") as Address,
     symbol: superfluidQueryRes?.token?.symbol ?? "N/A",
     icon: "",
   };
@@ -342,7 +342,7 @@ export default function PoolDetail(props: PoolDetailProps) {
                     : connectedChain?.id !== chainId
                       ? switchChain({ chainId })
                       : addToWallet({
-                          address: tokenAddress ?? "",
+                          address: (tokenAddress ?? "") as Address,
                           symbol: superfluidQueryRes?.token.symbol,
                           decimals: 18,
                           image: poolToken?.icon ?? "",
