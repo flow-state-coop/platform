@@ -229,6 +229,8 @@ export default function ProjectTab(props: ProjectTabProps) {
     form.description.length >= CHARACTER_LIMITS.projectDescription.min &&
     form.description.length <= CHARACTER_LIMITS.projectDescription.max;
 
+  const hasAtLeastOneSocial = !!form.twitter || !!form.farcaster;
+
   const isValid =
     !!form.name &&
     hasValidManagerAddress &&
@@ -238,7 +240,8 @@ export default function ProjectTab(props: ProjectTabProps) {
     hasLogo &&
     hasBanner &&
     !!form.website &&
-    hasValidGithubRepo;
+    hasValidGithubRepo &&
+    hasAtLeastOneSocial;
 
   const handleFileUploadLogo = () => {
     if (!fileInputRefLogo.current?.files) return;
@@ -588,8 +591,9 @@ export default function ProjectTab(props: ProjectTabProps) {
         <Form.Control
           type="text"
           value={form.twitter}
-          placeholder="@"
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          placeholder="@ - At least one social account is required"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !hasAtLeastOneSocial ? "border-danger" : "border-dark"}`}
+          isInvalid={validated && !hasAtLeastOneSocial}
           onChange={(e) => setForm({ ...form, twitter: e.target.value })}
         />
       </Form.Group>
@@ -599,8 +603,9 @@ export default function ProjectTab(props: ProjectTabProps) {
         <Form.Control
           type="text"
           value={form.farcaster}
-          placeholder="@"
-          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+          placeholder="@ - At least one social account is required"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !hasAtLeastOneSocial ? "border-danger" : "border-dark"}`}
+          isInvalid={validated && !hasAtLeastOneSocial}
           onChange={(e) => setForm({ ...form, farcaster: e.target.value })}
         />
       </Form.Group>
