@@ -27,6 +27,7 @@ type MessageItemProps = {
   affiliation?: AuthorAffiliation | null;
   projectLogoUrl?: string;
   projectSource?: string;
+  hideAdminTag?: boolean;
   canEdit: boolean;
   canDelete: boolean;
   onEdit: () => void;
@@ -65,6 +66,7 @@ export default function MessageItem(props: MessageItemProps) {
     affiliation,
     projectLogoUrl,
     projectSource,
+    hideAdminTag,
     canEdit,
     canDelete,
     onEdit,
@@ -74,18 +76,16 @@ export default function MessageItem(props: MessageItemProps) {
   const isMilestoneUpdate = message.messageType === "milestone_update";
   const isSystemMessage =
     !isMilestoneUpdate && message.authorAddress === SYSTEM_ADDRESS;
-  const displayName = projectSource
-    ? projectSource
-    : isMilestoneUpdate
-      ? "Milestone Update"
-      : isSystemMessage
-        ? "System"
-        : ensData?.name || shortenAddress(message.authorAddress);
+  const displayName = isMilestoneUpdate
+    ? (projectSource ?? "Milestone Update")
+    : isSystemMessage
+      ? "System"
+      : ensData?.name || shortenAddress(message.authorAddress);
   const edited = isEdited(message.createdAt, message.updatedAt);
 
   const affiliationTag =
-    !projectSource && !isSystemMessage && !isMilestoneUpdate && affiliation
-      ? affiliation.isAdmin
+    !isSystemMessage && !isMilestoneUpdate && affiliation
+      ? affiliation.isAdmin && !hideAdminTag
         ? "(Admin)"
         : affiliation.projectName
           ? `(${affiliation.projectName})`
