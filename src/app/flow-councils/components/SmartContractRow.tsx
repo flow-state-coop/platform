@@ -82,8 +82,8 @@ export default function SmartContractRow(props: SmartContractRowProps) {
       <Form.Label className="fs-lg fw-bold mb-1">Smart Contracts</Form.Label>
       <p className="text-muted small mb-2">
         Add the contracts associated to your project for metrics evaluation. If
-        not deployed yet, make sure to add it & notify round admins when
-        available for metrics tracking.
+        not deployed yet, make sure to add them & notify round admins when
+        available.
       </p>
       <Stack direction="vertical" gap={3}>
         {contracts.map((contract, index) => (
