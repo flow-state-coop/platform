@@ -26,6 +26,8 @@ type GranteeProps = {
   votingPower: number;
   granteeColor: string;
   onAddToBallot: () => void;
+  isGraduated: boolean;
+  totalAmountReceived: bigint;
 };
 
 export default function Grantee(props: GranteeProps) {
@@ -44,6 +46,8 @@ export default function Grantee(props: GranteeProps) {
     votingPower,
     granteeColor,
     onAddToBallot,
+    isGraduated,
+    totalAmountReceived,
   } = props;
 
   const { newBallot, dispatchNewBallot } = useFlowCouncil();
@@ -165,24 +169,38 @@ export default function Grantee(props: GranteeProps) {
             {clampedText}
           </Card.Text>
           <Stack direction="horizontal" className="me-2">
-            <Stack direction="vertical" className="align-items-center w-33">
-              <Card.Text as="small" className="mb-1">
-                Total Votes
-              </Card.Text>
-              <Card.Text as="small" className="m-0 fw-bold">
-                {units}
-              </Card.Text>
-            </Stack>
-            <Stack direction="vertical" className="align-items-center w-33">
-              <Card.Text as="small" className="mb-1">
-                Current Stream
-              </Card.Text>
-              <Card.Text as="small" className="m-0 fw-bold">
-                {formatNumber(monthlyFlow)} {token.symbol} /mo
-              </Card.Text>
-            </Stack>
+            {isGraduated ? (
+              <Stack direction="vertical" className="align-items-center w-100">
+                <Card.Text as="small" className="mb-1">
+                  Total Funding Received
+                </Card.Text>
+                <Card.Text as="small" className="m-0 fw-bold">
+                  {formatNumber(Number(formatEther(totalAmountReceived)))}{" "}
+                  {token.symbol}
+                </Card.Text>
+              </Stack>
+            ) : (
+              <>
+                <Stack direction="vertical" className="align-items-center w-33">
+                  <Card.Text as="small" className="mb-1">
+                    Total Votes
+                  </Card.Text>
+                  <Card.Text as="small" className="m-0 fw-bold">
+                    {units}
+                  </Card.Text>
+                </Stack>
+                <Stack direction="vertical" className="align-items-center w-33">
+                  <Card.Text as="small" className="mb-1">
+                    Current Stream
+                  </Card.Text>
+                  <Card.Text as="small" className="m-0 fw-bold">
+                    {formatNumber(monthlyFlow)} {token.symbol} /mo
+                  </Card.Text>
+                </Stack>
+              </>
+            )}
           </Stack>
-          {!!votingPower && granteeVote && (
+          {!!votingPower && !isGraduated && granteeVote && (
             <Stack
               direction="horizontal"
               className="justify-content-center mt-4"
@@ -205,7 +223,18 @@ export default function Grantee(props: GranteeProps) {
           )}
         </Card.Body>
         <Card.Footer className="position-relative bg-lace-100 border-0 px-0 py-0 rounded-3">
-          {votingPower && granteeVote ? (
+          {isGraduated ? (
+            <Stack
+              direction="horizontal"
+              className="justify-content-center align-items-center"
+              style={{
+                backgroundColor: "#e0e0e0",
+                height: 52,
+              }}
+            >
+              <Card.Text className="fw-bold m-0">Graduated</Card.Text>
+            </Stack>
+          ) : votingPower && granteeVote ? (
             <>
               <Stack
                 direction="horizontal"

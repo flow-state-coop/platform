@@ -49,6 +49,7 @@ export const FlowCouncilContext = createContext<{
           github?: string;
           karmaProfile?: string;
         };
+        status: string;
       }[]
     | null;
   distributionPool?: GDAPool;

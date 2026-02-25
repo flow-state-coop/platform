@@ -9,6 +9,8 @@ export type Grantee = {
   units: number;
   placeholderLogo: string;
   placeholderBanner: string;
+  isGraduated: boolean;
+  totalAmountReceived: bigint;
 };
 
 export enum SortingMethod {

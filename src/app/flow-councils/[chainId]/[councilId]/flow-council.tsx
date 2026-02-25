@@ -104,7 +104,12 @@ export default function FlowCouncil({
   const currentBallotStringified = JSON.stringify(currentBallot);
 
   const getGrantee = useCallback(
-    (recipient: { id: string; address: string; details: ProjectDetails }) => {
+    (recipient: {
+      id: string;
+      address: string;
+      details: ProjectDetails;
+      status: string;
+    }) => {
       const adjustedFlowRate =
         BigInt(distributionPool?.flowRate ?? 0) -
         BigInt(distributionPool?.adjustmentFlowRate ?? 0);
@@ -118,6 +123,10 @@ export default function FlowCouncil({
           ? (BigInt(memberUnits) * adjustedFlowRate) /
             BigInt(distributionPool?.totalUnits ?? 0)
           : BigInt(0);
+      const isGraduated = recipient.status === "GRADUATED";
+      const totalAmountReceived = BigInt(
+        member?.totalAmountReceivedUntilUpdatedAt ?? 0,
+      );
 
       return {
         id: recipient.id,
@@ -128,6 +137,8 @@ export default function FlowCouncil({
         units: memberUnits,
         placeholderLogo: getPlaceholderImageSrc(),
         placeholderBanner: getPlaceholderImageSrc(),
+        isGraduated,
+        totalAmountReceived,
       };
     },
     [distributionPool],
@@ -135,12 +146,15 @@ export default function FlowCouncil({
 
   const sortGrantees = useCallback(
     (grantees: Grantee[]) => {
+      const active = grantees.filter((g) => !g.isGraduated);
+      const graduated = grantees.filter((g) => g.isGraduated);
+
       if (sortingMethod === SortingMethod.RANDOM) {
-        return shuffle(grantees);
+        return [...shuffle(active), ...shuffle(graduated)];
       }
 
       if (sortingMethod === SortingMethod.ALPHABETICAL) {
-        return grantees.sort((a, b) => {
+        return [...grantees].sort((a, b) => {
           if ((a.details.name ?? "") < (b.details.name ?? "")) {
             return -1;
           }
@@ -154,7 +168,10 @@ export default function FlowCouncil({
       }
 
       if (sortingMethod === SortingMethod.POPULAR) {
-        return grantees.sort((a, b) => b.units - a.units);
+        return [
+          ...active.sort((a, b) => b.units - a.units),
+          ...graduated.sort((a, b) => b.units - a.units),
+        ];
       }
 
       return grantees;
@@ -232,6 +249,7 @@ export default function FlowCouncil({
               id: project.id,
               address: recipient.account as `0x${string}`,
               details: project.details,
+              status: project.status,
             }),
           );
         } else {
@@ -249,6 +267,7 @@ export default function FlowCouncil({
             id: prev[i].id,
             address: prev[i].address as `0x${string}`,
             details: prev[i].details,
+            status: prev[i].isGraduated ? "GRADUATED" : "ACCEPTED",
           });
         }
 
@@ -407,6 +426,8 @@ export default function FlowCouncil({
                       showGranteeDetails={() => setShowGranteeDetails(grantee)}
                       granteeColor={granteeColors[grantee.address]}
                       onAddToBallot={animateVoteBubble}
+                      isGraduated={grantee.isGraduated}
+                      totalAmountReceived={grantee.totalAmountReceived}
                     />
                   ))}
                 </div>
@@ -439,7 +460,7 @@ export default function FlowCouncil({
           details={showGranteeDetails.details}
           placeholderLogo={showGranteeDetails.placeholderLogo}
           granteeAddress={showGranteeDetails.address}
-          canAddToBallot={!!votingPower}
+          canAddToBallot={!!votingPower && !showGranteeDetails.isGraduated}
           hide={() => setShowGranteeDetails(null)}
         />
       ) : showDistributionPoolFunding ? (

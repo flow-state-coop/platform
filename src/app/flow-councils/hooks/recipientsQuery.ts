@@ -8,7 +8,13 @@ export default function useRecipientsQuery(
   councilId?: string,
 ) {
   const [projects, setProjects] = useState<
-    { id: string; fundingAddress: string; details: ProjectDetails }[] | null
+    | {
+        id: string;
+        fundingAddress: string;
+        details: ProjectDetails;
+        status: string;
+      }[]
+    | null
   >(null);
 
   useEffect(() => {
@@ -36,6 +42,7 @@ export default function useRecipientsQuery(
           id: string;
           fundingAddress: string;
           details: ProjectDetails;
+          status: string;
         }[] = [];
 
         for (const recipient of recipients) {
@@ -46,7 +53,8 @@ export default function useRecipientsQuery(
               projectId: number;
             }) =>
               app.fundingAddress.toLowerCase() ===
-                recipient.account.toLowerCase() && app.status === "ACCEPTED",
+                recipient.account.toLowerCase() &&
+              (app.status === "ACCEPTED" || app.status === "GRADUATED"),
           );
 
           if (application?.projectDetails) {
@@ -54,6 +62,7 @@ export default function useRecipientsQuery(
               id: String(application.projectId),
               fundingAddress: recipient.account,
               details: application.projectDetails,
+              status: application.status,
             });
           }
         }
