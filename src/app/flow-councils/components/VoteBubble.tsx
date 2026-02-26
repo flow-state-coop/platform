@@ -33,21 +33,23 @@ export default function VoteBubble(props: VoteBubbleProps) {
       ? newBallot.votes.reduce((sum, a) => sum + a.amount, 0)
       : 0;
     const remainingVotes = votingPower - usedVotes;
-    const data = grantees.map((grantee) => {
-      const granteeVote = newBallot?.votes?.find(
-        (a) => a.recipient === grantee.address,
-      );
+    const data = grantees
+      .filter((g) => !g.isGraduated)
+      .map((grantee) => {
+        const granteeVote = newBallot?.votes?.find(
+          (a) => a.recipient === grantee.address,
+        );
 
-      return {
-        id: grantee.address,
-        name: grantee.details.name ?? "",
-        value: granteeVote ? granteeVote.amount : 0,
-        color:
-          granteeVote && granteeVote.amount > 0
-            ? granteeColors[grantee.address]
-            : "#e0e0e0",
-      };
-    });
+        return {
+          id: grantee.address,
+          name: grantee.details.name ?? "",
+          value: granteeVote ? granteeVote.amount : 0,
+          color:
+            granteeVote && granteeVote.amount > 0
+              ? granteeColors[grantee.address]
+              : "#e0e0e0",
+        };
+      });
 
     if (newBallot?.votes) {
       newBallot.votes.forEach((v) => {
