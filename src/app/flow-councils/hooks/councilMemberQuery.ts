@@ -5,6 +5,7 @@ import { getApolloClient } from "@/lib/apollo";
 const VOTER_QUERY = gql`
   query VoterQuery($councilId: String, $address: String) {
     flowCouncil(id: $councilId) {
+      id
       voters(where: { account: $address }) {
         account
         votingPower
