@@ -229,6 +229,7 @@ export default function FlowCouncil({
 
     if (hasNextGrantee.current) {
       const grantees: Grantee[] = [];
+      const includedAddresses = new Set<string>();
 
       for (let i = skipGrantees.current; i < council.recipients.length; i++) {
         skipGrantees.current = i + 1;
@@ -244,6 +245,7 @@ export default function FlowCouncil({
         );
 
         if (project && recipient) {
+          includedAddresses.add(project.fundingAddress.toLowerCase());
           grantees.push(
             getGrantee({
               id: project.id,
@@ -254,6 +256,22 @@ export default function FlowCouncil({
           );
         } else {
           continue;
+        }
+      }
+
+      for (const project of projects) {
+        if (
+          project.status === "GRADUATED" &&
+          !includedAddresses.has(project.fundingAddress.toLowerCase())
+        ) {
+          grantees.push(
+            getGrantee({
+              id: project.id,
+              address: project.fundingAddress as `0x${string}`,
+              details: project.details,
+              status: project.status,
+            }),
+          );
         }
       }
 

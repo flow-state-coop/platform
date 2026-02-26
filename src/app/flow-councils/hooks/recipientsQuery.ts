@@ -45,6 +45,8 @@ export default function useRecipientsQuery(
           status: string;
         }[] = [];
 
+        const includedAddresses = new Set<string>();
+
         for (const recipient of recipients) {
           const application = applications.find(
             (app: {
@@ -58,9 +60,25 @@ export default function useRecipientsQuery(
           );
 
           if (application?.projectDetails) {
+            includedAddresses.add(application.fundingAddress.toLowerCase());
             result.push({
               id: String(application.projectId),
               fundingAddress: recipient.account,
+              details: application.projectDetails,
+              status: application.status,
+            });
+          }
+        }
+
+        for (const application of applications) {
+          if (
+            application.status === "GRADUATED" &&
+            application.projectDetails &&
+            !includedAddresses.has(application.fundingAddress.toLowerCase())
+          ) {
+            result.push({
+              id: String(application.projectId),
+              fundingAddress: application.fundingAddress,
               details: application.projectDetails,
               status: application.status,
             });
