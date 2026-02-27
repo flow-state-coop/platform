@@ -3,8 +3,17 @@
 import { Suspense, useEffect } from "react";
 import { SessionProvider } from "next-auth/react";
 import { http } from "viem";
-import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
-import { WagmiProvider } from "wagmi";
+import {
+  connectorsForWallets,
+  RainbowKitProvider,
+} from "@rainbow-me/rainbowkit";
+import {
+  walletConnectWallet,
+  injectedWallet,
+  baseAccount,
+  rainbowWallet,
+} from "@rainbow-me/rainbowkit/wallets";
+import { createConfig, WagmiProvider } from "wagmi";
 import {
   mainnet,
   arbitrum,
@@ -32,9 +41,23 @@ const chains = [
   optimismSepolia,
 ] as const;
 
-const config = getDefaultConfig({
-  appName: "Flow State",
-  projectId: WALLET_CONNECT_PROJECT_ID,
+const connectors = connectorsForWallets(
+  [
+    {
+      groupName: "Recommended",
+      wallets: [
+        walletConnectWallet,
+        injectedWallet,
+        baseAccount,
+        rainbowWallet,
+      ],
+    },
+  ],
+  { appName: "Flow State", projectId: WALLET_CONNECT_PROJECT_ID },
+);
+
+const config = createConfig({
+  connectors,
   chains,
   ssr: true,
   transports: {
