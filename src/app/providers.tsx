@@ -65,7 +65,7 @@ const config = createConfig({
       networks.find((network) => network.id === arbitrum.id)!.rpcUrl,
     ),
     [base.id]: http(networks.find((network) => network.id === base.id)!.rpcUrl),
-    [mainnet.id]: http("https://mainnet.infura.io"),
+    [mainnet.id]: http(),
     [celo.id]: http(networks.find((network) => network.id === celo.id)!.rpcUrl),
     [optimism.id]: http(
       networks.find((network) => network.id === optimism.id)!.rpcUrl,
