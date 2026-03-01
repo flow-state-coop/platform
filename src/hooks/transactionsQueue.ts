@@ -22,7 +22,11 @@ export default function useTransactionsQueue() {
     } catch (err: any) {
       let errorMessage = "An error occured executing the transaction";
 
-      if (err.code === "ACTION_REJECTED") {
+      if (
+        err.code === "ACTION_REJECTED" ||
+        err.code === 4001 ||
+        err.name === "UserRejectedRequestError"
+      ) {
         errorMessage = "Transaction rejected";
       }
 

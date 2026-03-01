@@ -7,7 +7,7 @@ import {
   parseUnits,
   formatUnits,
 } from "viem";
-import { useAccount, useBalance, useReadContract } from "wagmi";
+import { useAccount, useBalance, usePublicClient, useReadContract } from "wagmi";
 import dayjs from "dayjs";
 import { useQuery, gql } from "@apollo/client";
 import {
@@ -177,6 +177,7 @@ export default function DistributionPoolFunding(props: {
   });
   const ethersProvider = useEthersProvider({ chainId: network.id });
   const ethersSigner = useEthersSigner({ chainId: network.id });
+  const publicClient = usePublicClient({ chainId: network.id });
 
   const poolMemberships = superfluidQueryRes?.account?.poolMemberships ?? null;
   const userAccountSnapshot =
@@ -346,7 +347,7 @@ export default function DistributionPoolFunding(props: {
             })
             .exec(ethersSigner);
 
-          await tx.wait();
+          await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
         });
       }
 
@@ -364,7 +365,7 @@ export default function DistributionPoolFunding(props: {
             })
             .exec(ethersSigner);
 
-          await tx.wait();
+          await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
         });
       }
     }
@@ -397,7 +398,7 @@ export default function DistributionPoolFunding(props: {
     transactions.push(async () => {
       const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
 
-      await tx.wait();
+      await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
     });
 
     return transactions;
@@ -410,6 +411,7 @@ export default function DistributionPoolFunding(props: {
     flowRateToReceiver,
     ethersProvider,
     ethersSigner,
+    publicClient,
     splitterAddress,
     distributionTokenAddress,
     underlyingTokenAllowance,

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Address, parseAbi, parseEther, parseUnits, formatEther } from "viem";
-import { useAccount, useBalance, useReadContract } from "wagmi";
+import { useAccount, useBalance, usePublicClient, useReadContract } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import {
   SuperToken,
@@ -83,6 +83,7 @@ export default function DonateOnce(props: DonateOnceProps) {
   const router = useRouter();
   const ethersProvider = useEthersProvider({ chainId: network.id });
   const ethersSigner = useEthersSigner({ chainId: network.id });
+  const publicClient = usePublicClient({ chainId: network.id });
   const {
     areTransactionsLoading,
     completedTransactions,
@@ -220,7 +221,7 @@ export default function DonateOnce(props: DonateOnceProps) {
               })
               .exec(ethersSigner);
 
-            await tx.wait();
+            await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
           });
         }
 
@@ -232,7 +233,7 @@ export default function DonateOnce(props: DonateOnceProps) {
               })
               .exec(ethersSigner);
 
-            await tx.wait();
+            await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
           });
         } else {
           transactions.push(async () => {
@@ -242,7 +243,7 @@ export default function DonateOnce(props: DonateOnceProps) {
               })
               .exec(ethersSigner);
 
-            await tx.wait();
+            await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
           });
         }
       }
@@ -255,7 +256,7 @@ export default function DonateOnce(props: DonateOnceProps) {
           })
           .exec(ethersSigner);
 
-        await tx.wait();
+        await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
       });
 
       setTransactions(transactions);
@@ -270,6 +271,7 @@ export default function DonateOnce(props: DonateOnceProps) {
     sfFramework,
     ethersProvider,
     ethersSigner,
+    publicClient,
     distributionSuperToken,
     isSuperTokenPure,
     isSuperTokenWrapper,

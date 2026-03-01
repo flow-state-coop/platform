@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Address, parseAbi, parseEther, parseUnits, formatEther } from "viem";
-import { useAccount, useBalance, useReadContract } from "wagmi";
+import { useAccount, useBalance, usePublicClient, useReadContract } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import {
   SuperToken,
@@ -81,6 +81,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
   const { address } = useAccount();
   const ethersProvider = useEthersProvider({ chainId: network.id });
   const ethersSigner = useEthersSigner({ chainId: network.id });
+  const publicClient = usePublicClient({ chainId: network.id });
   const {
     areTransactionsLoading,
     completedTransactions,
@@ -220,7 +221,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
               })
               .exec(ethersSigner);
 
-            await tx.wait();
+            await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
           });
         }
 
@@ -238,7 +239,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
               })
               .exec(ethersSigner);
 
-            await tx.wait();
+            await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
           });
         }
       }
@@ -254,7 +255,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
       transactions.push(async () => {
         const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
 
-        await tx.wait();
+        await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
       });
 
       setTransactions(transactions);
@@ -269,6 +270,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
     sfFramework,
     ethersProvider,
     ethersSigner,
+    publicClient,
     distributionSuperToken,
     isSuperTokenPure,
     isSuperTokenWrapper,

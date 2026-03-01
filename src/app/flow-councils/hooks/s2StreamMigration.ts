@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, gql } from "@apollo/client";
-import { useAccount } from "wagmi";
+import { useAccount, usePublicClient } from "wagmi";
 import { Framework, SuperToken, Operation } from "@superfluid-finance/sdk-core";
 import { getApolloClient } from "@/lib/apollo";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
@@ -48,6 +48,7 @@ export default function useS2StreamMigration(
   const network = networks.find((n) => n.id === chainId) ?? networks[0];
   const ethersProvider = useEthersProvider({ chainId });
   const ethersSigner = useEthersSigner({ chainId });
+  const publicClient = usePublicClient({ chainId });
 
   const [sfFramework, setSfFramework] = useState<Framework | null>(null);
   const [superToken, setSuperToken] = useState<SuperToken | null>(null);
@@ -137,7 +138,7 @@ export default function useS2StreamMigration(
       }
 
       const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
-      await tx.wait();
+      await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
 
       successRef.current = true;
     } catch (err: unknown) {
@@ -155,6 +156,7 @@ export default function useS2StreamMigration(
     sfFramework,
     superToken,
     ethersSigner,
+    publicClient,
     s2GdaFlowRate,
     s2CfaFlowRate,
   ]);
@@ -219,7 +221,7 @@ export default function useS2StreamMigration(
       }
 
       const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
-      await tx.wait();
+      await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
 
       successRef.current = true;
     } catch (err: unknown) {
@@ -237,6 +239,7 @@ export default function useS2StreamMigration(
     sfFramework,
     superToken,
     ethersSigner,
+    publicClient,
     superappSplitterAddress,
     s2GdaFlowRate,
     s2CfaFlowRate,
