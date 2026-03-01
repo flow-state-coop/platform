@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useDisconnect } from "wagmi";
+import { networks } from "@/lib/networks";
 import Stack from "react-bootstrap/Stack";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
@@ -62,14 +63,21 @@ export default function ConnectWallet({
                     onClick={openChainModal}
                     className="d-flex align-items-center gap-1 px-5 py-2 border-4 rounded-4"
                   >
-                    {chain.iconUrl && (
-                      <Image
-                        alt={chain.name ?? "Chain icon"}
-                        src={chain.iconUrl}
-                        width={24}
-                        height={24}
-                      />
-                    )}
+                    {(() => {
+                      const iconUrl =
+                        networks.find((n) => n.id === chain.id)?.icon ??
+                        chain.iconUrl;
+                      return (
+                        iconUrl && (
+                          <Image
+                            alt={chain.name ?? "Chain icon"}
+                            src={iconUrl}
+                            width={24}
+                            height={24}
+                          />
+                        )
+                      );
+                    })()}
                   </Button>
                   <Dropdown align={{ md: "start" }}>
                     <Dropdown.Toggle
