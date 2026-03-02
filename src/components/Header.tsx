@@ -201,21 +201,21 @@ export default function Header() {
               <Button
                 variant="transparent"
                 className="px-10 py-4 fs-lg fw-bold border-0"
-                onClick={() => router.push("/?for-funders=true")}
+                onClick={() => { router.push("/?for-funders=true"); setShowMobileMenu(false); }}
               >
                 For funders
               </Button>
               <Button
                 variant="transparent"
                 className="px-10 py-4 fs-lg fw-bold border-0"
-                onClick={() => router.push("/?for-builders=true")}
+                onClick={() => { router.push("/?for-builders=true"); setShowMobileMenu(false); }}
               >
                 For builders
               </Button>
               <Button
                 variant="transparent"
                 className="px-10 py-4 fs-lg fw-bold border-0"
-                onClick={() => router.push("/?for-everyone=true")}
+                onClick={() => { router.push("/?for-everyone=true"); setShowMobileMenu(false); }}
               >
                 For everyone
               </Button>
@@ -225,14 +225,14 @@ export default function Header() {
               <Button
                 variant="transparent"
                 className="px-10 py-4 fs-lg fw-bold border-0"
-                onClick={() => router.push("/flow-councils")}
+                onClick={() => { router.push("/flow-councils"); setShowMobileMenu(false); }}
               >
                 Flow Council
               </Button>
               <Button
                 variant="transparent"
                 className="px-10 py-4 fs-lg fw-bold border-0"
-                onClick={() => router.push("/flow-splitters")}
+                onClick={() => { router.push("/flow-splitters"); setShowMobileMenu(false); }}
               >
                 Flow Splitter
               </Button>
@@ -288,7 +288,7 @@ export default function Header() {
           </Stack>
           <Suspense>
             {pathname === "/" ? (
-              <Link className="w-100" href="/explore">
+              <Link className="w-100" href="/explore" onClick={() => setShowMobileMenu(false)}>
                 <Button className="w-100 px-10 py-4 rounded-3 text-white fs-lg fw-bold">
                   Explore flows
                 </Button>
