@@ -5,7 +5,7 @@ const networks: Network[] = [
     id: 42161,
     name: "Arbitrum One",
     label: "arbitrum-one",
-    icon: "/arb.png",
+    icon: "/arb.svg",
     rpcUrl: "https://arb1.arbitrum.io/rpc",
     blockExplorer: "https://arbiscan.io/",
     superfluidExplorer: "https://explorer.superfluid.finance/arbitrum-one",
@@ -39,7 +39,7 @@ const networks: Network[] = [
       {
         symbol: "ARBx",
         address: "0xB3EDb2F90fEc1Bf1F872a9ef143cfd614773Ad04",
-        icon: "/arb.png",
+        icon: "/arb.svg",
       },
       {
         symbol: "DAIx",
