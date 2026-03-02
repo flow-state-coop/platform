@@ -251,6 +251,20 @@ export default function Project(props: ProjectProps) {
               </Card.Text>
             </Button>
           )}
+          {!!details?.gardensPool && (
+            <Button
+              variant="link"
+              href={`https://${details.gardensPool.replace(/^https?:\/\//, "")}`}
+              target="_blank"
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
+              style={{ width: !isMobile ? "33%" : "" }}
+            >
+              <Image src="/gardens.svg" alt="Gardens" width={18} height={18} />
+              <Card.Text className="text-truncate">
+                {details.gardensPool}
+              </Card.Text>
+            </Button>
+          )}
           {!!details?.twitter && (
             <Button
               variant="link"

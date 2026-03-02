@@ -228,6 +228,16 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
         />
       </Form.Group>
 
+      <Form.Group className="mb-4">
+        <Form.Label className="fs-lg fw-bold">Gardens Pool</Form.Label>
+        <Form.Control
+          type="text"
+          value={projectDetails.gardensPool ?? "N/A"}
+          disabled
+          className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
+        />
+      </Form.Group>
+
       {/* Section 4: Technical */}
       <h4 className="fw-bold mb-4 mt-8">4. Technical</h4>
       <Form.Group className="mb-4">

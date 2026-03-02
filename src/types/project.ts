@@ -23,6 +23,7 @@ export type ProjectDetails = {
   telegram?: string;
   discord?: string;
   karmaProfile?: string;
+  gardensPool?: string;
   githubRepos?: string[];
   smartContracts?: SmartContract[];
   otherLinks?: OtherLink[];

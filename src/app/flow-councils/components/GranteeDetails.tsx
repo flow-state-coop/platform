@@ -223,6 +223,21 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
                 />
               </Button>
             )}
+            {!!details.gardensPool && (
+              <Button
+                variant="link"
+                href={`https://${details.gardensPool.replace(/^https?:\/\//, "")}`}
+                target="_blank"
+                className="p-0"
+              >
+                <Image
+                  src="/gardens.svg"
+                  alt="Gardens"
+                  width={18}
+                  height={18}
+                />
+              </Button>
+            )}
           </Stack>
           <Button
             variant="link"
