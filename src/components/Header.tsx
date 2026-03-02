@@ -288,7 +288,7 @@ export default function Header() {
           </Stack>
           <Suspense>
             {pathname === "/" ? (
-              <Link className="w-100" href="/explore">
+              <Link className="w-100" href="/explore" onClick={() => setShowMobileMenu(false)}>
                 <Button className="w-100 px-10 py-4 rounded-3 text-white fs-lg fw-bold">
                   Explore flows
                 </Button>
