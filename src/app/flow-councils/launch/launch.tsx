@@ -65,7 +65,7 @@ export default function Launch(props: LaunchProps) {
     areTransactionsLoading,
     completedTransactions,
     transactionError,
-    executeTransactions,
+    executeLegacyTransactions,
   } = useTransactionsQueue();
   const { data: flowCouncilQueryRes, loading: flowCouncilQueryLoading } =
     useQuery(FLOW_COUNCIL_QUERY, {
@@ -175,7 +175,7 @@ export default function Launch(props: LaunchProps) {
     }
 
     try {
-      await executeTransactions(transactions);
+      await executeLegacyTransactions(transactions);
 
       await fetch("/api/flow-council/launch", {
         method: "POST",

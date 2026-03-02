@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Address, parseAbi, parseEther, parseUnits, formatEther } from "viem";
-import { useAccount, useBalance, usePublicClient, useReadContract } from "wagmi";
+import { useAccount, useBalance, useReadContract } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import {
   SuperToken,
@@ -29,9 +29,14 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
-import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
+import { useEthersProvider } from "@/hooks/ethersAdapters";
 import { getApolloClient } from "@/lib/apollo";
 import { formatNumber, isNumber } from "@/lib/utils";
+import {
+  TransactionCall,
+  operationToCall,
+  batchOperationsToCall,
+} from "@/lib/transactionCalls";
 import { ZERO_ADDRESS } from "@/lib/constants";
 
 dayjs().format();
@@ -75,17 +80,16 @@ export default function InstantDistribution(props: InstantDistributionProps) {
     NativeAssetSuperToken | WrapperSuperToken | SuperToken
   >();
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("");
-  const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
+  const [calls, setCalls] = useState<TransactionCall[]>([]);
 
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
   const ethersProvider = useEthersProvider({ chainId: network.id });
-  const ethersSigner = useEthersSigner({ chainId: network.id });
-  const publicClient = usePublicClient({ chainId: network.id });
   const {
     areTransactionsLoading,
     completedTransactions,
     transactionError,
+    isBatchSupported,
     executeTransactions,
   } = useTransactionsQueue();
   const { data: superfluidQueryRes } = useQuery(ACCOUNT_TOKEN_SNAPSHOT_QUERY, {
@@ -192,8 +196,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
         !underlyingTokenAllowance ||
         !distributionSuperToken ||
         !sfFramework ||
-        !ethersProvider ||
-        !ethersSigner
+        !ethersProvider
       ) {
         return [];
       }
@@ -205,24 +208,22 @@ export default function InstantDistribution(props: InstantDistributionProps) {
         wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0)
           ? 1
           : 0;
-      const transactions: (() => Promise<void>)[] = [];
+      const newCalls: TransactionCall[] = [];
       const operations: Operation[] = [];
 
       if (!isSuperTokenPure && wrapAmountWei > 0) {
         if (underlyingToken && approvalTransactionsCount > 0) {
-          transactions.push(async () => {
-            const tx = await underlyingToken
-              .approve({
+          newCalls.push(
+            await operationToCall(
+              underlyingToken.approve({
                 receiver: distributionSuperToken.address,
                 amount: parseUnits(
                   wrapAmount,
                   underlyingTokenBalance?.decimals ?? 18,
                 ).toString(),
-              })
-              .exec(ethersSigner);
-
-            await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
-          });
+              }),
+            ),
+          );
         }
 
         if (isSuperTokenWrapper) {
@@ -232,15 +233,13 @@ export default function InstantDistribution(props: InstantDistributionProps) {
             }),
           );
         } else {
-          transactions.push(async () => {
-            const tx = await (distributionSuperToken as NativeAssetSuperToken)
-              .upgrade({
+          newCalls.push(
+            await operationToCall(
+              (distributionSuperToken as NativeAssetSuperToken).upgrade({
                 amount: wrapAmountWei.toString(),
-              })
-              .exec(ethersSigner);
-
-            await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
-          });
+              }),
+            ),
+          );
         }
       }
 
@@ -252,13 +251,9 @@ export default function InstantDistribution(props: InstantDistributionProps) {
         }),
       );
 
-      transactions.push(async () => {
-        const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
+      newCalls.push(await batchOperationsToCall(sfFramework, operations));
 
-        await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
-      });
-
-      setTransactions(transactions);
+      setCalls(newCalls);
     })();
   }, [
     address,
@@ -269,8 +264,6 @@ export default function InstantDistribution(props: InstantDistributionProps) {
     underlyingTokenAllowance,
     sfFramework,
     ethersProvider,
-    ethersSigner,
-    publicClient,
     distributionSuperToken,
     isSuperTokenPure,
     isSuperTokenWrapper,
@@ -310,7 +303,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
 
   const handleSubmit = async () => {
     try {
-      await executeTransactions(transactions);
+      await executeTransactions(calls);
 
       setSuccess(true);
       setWrapAmount("");
@@ -440,19 +433,19 @@ export default function InstantDistribution(props: InstantDistributionProps) {
           {areTransactionsLoading ? (
             <>
               <Spinner size="sm" />{" "}
-              {transactions.length > 1 && (
+              {!isBatchSupported && calls.length > 1 && (
                 <>
-                  ({completedTransactions + 1}/{transactions.length})
+                  ({completedTransactions + 1}/{calls.length})
                 </>
               )}
             </>
-          ) : canSubmit && transactions.length > 1 ? (
-            <>Submit ({transactions.length})</>
+          ) : canSubmit && !isBatchSupported && calls.length > 1 ? (
+            <>Submit ({calls.length})</>
           ) : (
             <>Submit</>
           )}
         </Button>
-        {canSubmit && transactions.length > 1 && (
+        {canSubmit && !isBatchSupported && calls.length > 1 && (
           <Stack
             direction="horizontal"
             gap={2}

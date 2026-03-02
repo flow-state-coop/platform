@@ -138,7 +138,9 @@ export default function useS2StreamMigration(
       }
 
       const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
-      await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
+      await publicClient!.waitForTransactionReceipt({
+        hash: tx.hash as `0x${string}`,
+      });
 
       successRef.current = true;
     } catch (err: unknown) {
@@ -221,7 +223,9 @@ export default function useS2StreamMigration(
       }
 
       const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
-      await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
+      await publicClient!.waitForTransactionReceipt({
+        hash: tx.hash as `0x${string}`,
+      });
 
       successRef.current = true;
     } catch (err: unknown) {

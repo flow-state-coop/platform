@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Address, parseAbi, parseEther, parseUnits, formatEther } from "viem";
-import { useAccount, useBalance, usePublicClient, useReadContract } from "wagmi";
+import { useAccount, useBalance, useReadContract } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import {
   SuperToken,
@@ -27,7 +27,8 @@ import CopyTooltip from "@/components/CopyTooltip";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
-import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
+import { useEthersProvider } from "@/hooks/ethersAdapters";
+import { TransactionCall, operationToCall } from "@/lib/transactionCalls";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { truncateStr, formatNumber, isNumber } from "@/lib/utils";
@@ -76,18 +77,17 @@ export default function DonateOnce(props: DonateOnceProps) {
     NativeAssetSuperToken | WrapperSuperToken | SuperToken
   >();
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("");
-  const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
+  const [calls, setCalls] = useState<TransactionCall[]>([]);
 
   const { isMobile, isTablet } = useMediaQuery();
   const { address } = useAccount();
   const router = useRouter();
   const ethersProvider = useEthersProvider({ chainId: network.id });
-  const ethersSigner = useEthersSigner({ chainId: network.id });
-  const publicClient = usePublicClient({ chainId: network.id });
   const {
     areTransactionsLoading,
     completedTransactions,
     transactionError,
+    isBatchSupported,
     executeTransactions,
   } = useTransactionsQueue();
   const { data: superfluidQueryRes } = useQuery(ACCOUNT_TOKEN_SNAPSHOT_QUERY, {
@@ -193,8 +193,7 @@ export default function DonateOnce(props: DonateOnceProps) {
         !underlyingTokenAllowance ||
         !distributionSuperToken ||
         !sfFramework ||
-        !ethersProvider ||
-        !ethersSigner
+        !ethersProvider
       ) {
         return [];
       }
@@ -206,60 +205,52 @@ export default function DonateOnce(props: DonateOnceProps) {
         wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0)
           ? 1
           : 0;
-      const transactions: (() => Promise<void>)[] = [];
+      const newCalls: TransactionCall[] = [];
 
       if (!isSuperTokenPure && wrapAmountWei > 0) {
         if (underlyingToken && approvalTransactionsCount > 0) {
-          transactions.push(async () => {
-            const tx = await underlyingToken
-              .approve({
+          newCalls.push(
+            await operationToCall(
+              underlyingToken.approve({
                 receiver: distributionSuperToken.address,
                 amount: parseUnits(
                   wrapAmount,
                   underlyingTokenBalance?.decimals ?? 18,
                 ).toString(),
-              })
-              .exec(ethersSigner);
-
-            await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
-          });
+              }),
+            ),
+          );
         }
 
         if (isSuperTokenWrapper) {
-          transactions.push(async () => {
-            const tx = await (distributionSuperToken as WrapperSuperToken)
-              .upgrade({
+          newCalls.push(
+            await operationToCall(
+              (distributionSuperToken as WrapperSuperToken).upgrade({
                 amount: wrapAmountWei.toString(),
-              })
-              .exec(ethersSigner);
-
-            await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
-          });
+              }),
+            ),
+          );
         } else {
-          transactions.push(async () => {
-            const tx = await (distributionSuperToken as NativeAssetSuperToken)
-              .upgrade({
+          newCalls.push(
+            await operationToCall(
+              (distributionSuperToken as NativeAssetSuperToken).upgrade({
                 amount: wrapAmountWei.toString(),
-              })
-              .exec(ethersSigner);
-
-            await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
-          });
+              }),
+            ),
+          );
         }
       }
 
-      transactions.push(async () => {
-        const tx = await distributionSuperToken
-          .transfer({
+      newCalls.push(
+        await operationToCall(
+          distributionSuperToken.transfer({
             receiver: flowGuildConfig.safe,
             amount: amountWei.toString(),
-          })
-          .exec(ethersSigner);
+          }),
+        ),
+      );
 
-        await publicClient!.waitForTransactionReceipt({ hash: tx.hash as `0x${string}` });
-      });
-
-      setTransactions(transactions);
+      setCalls(newCalls);
     })();
   }, [
     address,
@@ -270,8 +261,6 @@ export default function DonateOnce(props: DonateOnceProps) {
     underlyingTokenAllowance,
     sfFramework,
     ethersProvider,
-    ethersSigner,
-    publicClient,
     distributionSuperToken,
     isSuperTokenPure,
     isSuperTokenWrapper,
@@ -311,7 +300,7 @@ export default function DonateOnce(props: DonateOnceProps) {
 
   const handleSubmit = async () => {
     try {
-      await executeTransactions(transactions);
+      await executeTransactions(calls);
 
       setSuccess(true);
       setWrapAmount("");
@@ -459,19 +448,19 @@ export default function DonateOnce(props: DonateOnceProps) {
         {areTransactionsLoading ? (
           <>
             <Spinner size="sm" />{" "}
-            {transactions.length > 1 && (
+            {calls.length > 1 && !isBatchSupported && (
               <>
-                ({completedTransactions + 1}/{transactions.length})
+                ({completedTransactions + 1}/{calls.length})
               </>
             )}
           </>
-        ) : canSubmit && transactions.length > 1 ? (
-          <>Submit ({transactions.length})</>
+        ) : canSubmit && calls.length > 1 && !isBatchSupported ? (
+          <>Submit ({calls.length})</>
         ) : (
           <>Submit</>
         )}
       </Button>
-      {canSubmit && transactions.length > 1 && (
+      {canSubmit && calls.length > 1 && !isBatchSupported && (
         <Stack
           direction="horizontal"
           gap={2}
