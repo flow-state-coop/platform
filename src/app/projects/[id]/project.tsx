@@ -232,39 +232,6 @@ export default function Project(props: ProjectProps) {
               </Card.Text>
             </Button>
           )}
-          {!!details?.karmaProfile && (
-            <Button
-              variant="link"
-              href={details.karmaProfile}
-              target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
-            >
-              <Image
-                src="/karma-gap.svg"
-                alt="Karma Gap"
-                width={18}
-                height={18}
-              />
-              <Card.Text className="text-truncate">
-                {details.karmaProfile.replace(/^https?:\/\//, "")}
-              </Card.Text>
-            </Button>
-          )}
-          {!!details?.gardensPool && (
-            <Button
-              variant="link"
-              href={`https://${details.gardensPool.replace(/^https?:\/\//, "")}`}
-              target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
-            >
-              <Image src="/gardens.svg" alt="Gardens" width={18} height={18} />
-              <Card.Text className="text-truncate">
-                {details.gardensPool.replace(/^https?:\/\//, "")}
-              </Card.Text>
-            </Button>
-          )}
           {!!details?.twitter && (
             <Button
               variant="link"
@@ -328,6 +295,39 @@ export default function Project(props: ProjectProps) {
               <Image src="/discord.svg" alt="discord" width={16} height={16} />
               <Card.Text className="text-truncate">
                 {details.discord.replace(/^https?:\/\//, "")}
+              </Card.Text>
+            </Button>
+          )}
+          {!!details?.karmaProfile && (
+            <Button
+              variant="link"
+              href={details.karmaProfile}
+              target="_blank"
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
+              style={{ width: !isMobile ? "33%" : "" }}
+            >
+              <Image
+                src="/karma-gap.svg"
+                alt="Karma Gap"
+                width={18}
+                height={18}
+              />
+              <Card.Text className="text-truncate">
+                {details.karmaProfile.replace(/^https?:\/\//, "")}
+              </Card.Text>
+            </Button>
+          )}
+          {!!details?.gardensPool && (
+            <Button
+              variant="link"
+              href={`https://${details.gardensPool.replace(/^https?:\/\//, "")}`}
+              target="_blank"
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
+              style={{ width: !isMobile ? "33%" : "" }}
+            >
+              <Image src="/gardens.svg" alt="Gardens" width={18} height={18} />
+              <Card.Text className="text-truncate">
+                {details.gardensPool.replace(/^https?:\/\//, "")}
               </Card.Text>
             </Button>
           )}
