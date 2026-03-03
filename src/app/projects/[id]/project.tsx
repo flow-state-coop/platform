@@ -215,7 +215,9 @@ export default function Project(props: ProjectProps) {
               style={{ width: !isMobile ? "33%" : "" }}
             >
               <Image src="/web.svg" alt="Website" width={18} height={18} />
-              <Card.Text className="text-truncate">{details.website}</Card.Text>
+              <Card.Text className="text-truncate">
+                {details.website.replace(/^https?:\/\//, "")}
+              </Card.Text>
             </Button>
           )}
           {!!details?.demoUrl && (
