@@ -247,7 +247,7 @@ export default function Project(props: ProjectProps) {
                 height={18}
               />
               <Card.Text className="text-truncate">
-                {details.karmaProfile}
+                {details.karmaProfile.replace(/^https?:\/\//, "")}
               </Card.Text>
             </Button>
           )}
@@ -261,7 +261,7 @@ export default function Project(props: ProjectProps) {
             >
               <Image src="/gardens.svg" alt="Gardens" width={18} height={18} />
               <Card.Text className="text-truncate">
-                {details.gardensPool}
+                {details.gardensPool.replace(/^https?:\/\//, "")}
               </Card.Text>
             </Button>
           )}
@@ -313,7 +313,7 @@ export default function Project(props: ProjectProps) {
                 height={16}
               />
               <Card.Text className="text-truncate">
-                {details.telegram}
+                {details.telegram.replace(/^https?:\/\//, "")}
               </Card.Text>
             </Button>
           )}
@@ -326,7 +326,9 @@ export default function Project(props: ProjectProps) {
               style={{ width: !isMobile ? "33%" : "" }}
             >
               <Image src="/discord.svg" alt="discord" width={16} height={16} />
-              <Card.Text className="text-truncate">{details.discord}</Card.Text>
+              <Card.Text className="text-truncate">
+                {details.discord.replace(/^https?:\/\//, "")}
+              </Card.Text>
             </Button>
           )}
         </Stack>
