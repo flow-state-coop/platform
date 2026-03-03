@@ -34,6 +34,7 @@ export const projectDetailsSchema = z.object({
   telegram: z.string().optional(),
   discord: z.string().optional(),
   karmaProfile: z.string().optional(),
+  gardensPool: z.string().optional(),
   githubRepos: z
     .array(
       z.string().refine(

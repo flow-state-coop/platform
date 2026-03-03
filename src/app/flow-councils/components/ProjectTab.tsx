@@ -72,6 +72,7 @@ type ProjectForm = {
   telegram: string;
   discord: string;
   karmaProfile: string;
+  gardensPool: string;
   githubRepos: string[];
   smartContracts: SmartContract[];
   otherLinks: OtherLink[];
@@ -108,6 +109,7 @@ export default function ProjectTab(props: ProjectTabProps) {
     telegram: "",
     discord: "",
     karmaProfile: "",
+    gardensPool: "",
     githubRepos: [""],
     smartContracts: [
       { type: "projectAddress", network: "Arbitrum One", address: "" },
@@ -128,6 +130,7 @@ export default function ProjectTab(props: ProjectTabProps) {
     telegram: false,
     discord: false,
     karmaProfile: false,
+    gardensPool: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [logoError, setLogoError] = useState("");
@@ -164,6 +167,7 @@ export default function ProjectTab(props: ProjectTabProps) {
         telegram: project.details.telegram ?? "",
         discord: project.details.discord ?? "",
         karmaProfile: project.details.karmaProfile ?? "",
+        gardensPool: project.details.gardensPool ?? "",
         githubRepos:
           project.details.githubRepos && project.details.githubRepos.length > 0
             ? project.details.githubRepos
@@ -310,6 +314,7 @@ export default function ProjectTab(props: ProjectTabProps) {
         telegram: form.telegram,
         discord: form.discord,
         karmaProfile: form.karmaProfile,
+        gardensPool: form.gardensPool,
         githubRepos: form.githubRepos.filter((r) => r && isValidGithubRepo(r)),
         smartContracts: form.smartContracts.filter((c) => c.address),
         otherLinks: form.otherLinks.filter((l) => l.url && l.description),
@@ -658,6 +663,23 @@ export default function ProjectTab(props: ProjectTabProps) {
           }
           onChange={(e) => setForm({ ...form, karmaProfile: e.target.value })}
           onBlur={() => setTouched((prev) => ({ ...prev, karmaProfile: true }))}
+        />
+      </Form.Group>
+
+      <Form.Group className="mb-4">
+        <Form.Label className="fs-lg fw-bold">Gardens Pool</Form.Label>
+        <Form.Control
+          type="text"
+          value={form.gardensPool}
+          placeholder="https://app.gardens.fund/gardens/chainID/.../poolID"
+          className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.gardensPool) && !!form.gardensPool && !form.gardensPool.startsWith("https://") ? "border-danger" : "border-dark"}`}
+          isInvalid={
+            (validated || touched.gardensPool) &&
+            !!form.gardensPool &&
+            !form.gardensPool.startsWith("https://")
+          }
+          onChange={(e) => setForm({ ...form, gardensPool: e.target.value })}
+          onBlur={() => setTouched((prev) => ({ ...prev, gardensPool: true }))}
         />
       </Form.Group>
 
