@@ -153,6 +153,16 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
                 <Image src="/link.svg" alt="Demo" width={18} height={18} />
               </Button>
             )}
+            {!!details.github && (
+              <Button
+                variant="link"
+                href={`https://github.com/${details.github}`}
+                target="_blank"
+                className="p-0"
+              >
+                <Image src="/github.svg" alt="GitHub" width={18} height={18} />
+              </Button>
+            )}
             {!!details.twitter && (
               <Button
                 variant="link"
