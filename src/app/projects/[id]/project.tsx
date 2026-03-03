@@ -214,8 +214,22 @@ export default function Project(props: ProjectProps) {
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
               style={{ width: !isMobile ? "33%" : "" }}
             >
-              <Image src="/link.svg" alt="link" width={18} height={18} />
+              <Image src="/web.svg" alt="Website" width={18} height={18} />
               <Card.Text className="text-truncate">{details.website}</Card.Text>
+            </Button>
+          )}
+          {!!details?.demoUrl && (
+            <Button
+              variant="link"
+              href={details.demoUrl}
+              target="_blank"
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
+              style={{ width: !isMobile ? "33%" : "" }}
+            >
+              <Image src="/link.svg" alt="Demo" width={18} height={18} />
+              <Card.Text className="text-truncate">
+                {details.demoUrl.replace(/^https?:\/\//, "")}
+              </Card.Text>
             </Button>
           )}
           {!!details?.github && (
