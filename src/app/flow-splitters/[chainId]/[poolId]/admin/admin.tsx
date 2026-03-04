@@ -348,7 +348,8 @@ export default function Admin(props: AdminProps) {
         const csvAddresses = data.map((row) => row[0].toLowerCase());
         const existingMembers = superfluidQueryRes?.pool.poolMembers;
         const excludedMembers = existingMembers.filter(
-          (existingMember: { account: { id: string } }) =>
+          (existingMember: { account: { id: string }; units: string }) =>
+            existingMember.units !== "0" &&
             !csvAddresses.some(
               (address) => existingMember.account.id === address,
             ),
