@@ -251,7 +251,8 @@ export default function Ballot({
                 >
                   <Button
                     variant="white"
-                    className="d-flex justify-content-center align-items-center border-4 border-dark w-25 rounded-0 rounded-start-4 px-1 py-3"
+                    className="d-flex justify-content-center align-items-center border-4 border-dark rounded-0 rounded-start-4 px-1 py-3"
+                    style={{ minWidth: 40 }}
                     onClick={() =>
                       handleAmountStepping({
                         increment: false,
@@ -272,11 +273,12 @@ export default function Ballot({
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       handleAmountSelection(e, i)
                     }
-                    className="fw-semi-bold text-center w-33 bg-white border-4 border-start-0 border-end-0 border-dark rounded-0 shadow-none"
+                    className="fw-semi-bold text-center bg-white border-4 border-start-0 border-end-0 border-dark rounded-0 shadow-none flex-grow-1"
                   />
                   <Button
                     variant="white"
-                    className="d-flex justify-content-center align-items-center w-25 border-4 border-black rounded-0 rounded-end-3 fs-4 px-1 py-3"
+                    className="d-flex justify-content-center align-items-center border-4 border-black rounded-0 rounded-end-3 fs-4 px-1 py-3"
+                    style={{ minWidth: 40 }}
                     onClick={() =>
                       handleAmountStepping({ increment: true, granteeIndex: i })
                     }
