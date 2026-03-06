@@ -24,6 +24,7 @@ export type Network = {
   tokens: Token[];
   allo: Address;
   alloRegistry: Address;
+  gda: Address;
   gdaForwarder: Address;
   cfaForwarder: Address;
   superAppSplitterFactory: Address;

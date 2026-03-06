@@ -245,8 +245,11 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
 
     return (
       <Card
-        className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-4 p-4 shadow"
+        className="d-flex flex-col justify-content-center align-items-center border-4 border-dark rounded-4 p-4 shadow cursor-pointer"
         style={{ height: 400 }}
+        onClick={() =>
+          router.push(`/flow-councils/${selectedNetwork.id}/${flowCouncil.id}`)
+        }
       >
         <Card.Header className="h-25 bg-white border-0 rounded-4">
           <Card.Title
@@ -266,6 +269,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
               href={selectedNetwork.superfluidDashboard}
               target="_blank"
               className="d-flex gap-2 align-items-center text-decoration-none fw-semi-bold"
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
             >
               {token && (
                 <Image src={token.icon} alt="" width={22} height={22} />
@@ -277,7 +281,8 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
             <Button
               variant="transparent"
               className="p-0"
-              onClick={() =>
+              onClick={(e) => {
+                e.stopPropagation();
                 !address && openConnectModal
                   ? openConnectModal()
                   : connectedChain?.id !== selectedNetwork.id
@@ -288,8 +293,8 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
                           symbol: "",
                           icon: "",
                         },
-                      )
-              }
+                      );
+              }}
             >
               <InfoTooltip
                 position={{ top: true }}
@@ -311,30 +316,34 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
             <Button
               variant="primary"
               className="w-100 py-4 rounded-4 fw-semi-bold"
-              onClick={() =>
+              onClick={(e) => {
+                e.stopPropagation();
                 router.push(
                   `/flow-councils/permissions/${selectedNetwork.id}/${flowCouncil.id}`,
-                )
-              }
+                );
+              }}
             >
               Edit
             </Button>
           )}
           {flowCouncil.isRecipient && !flowCouncil.isConnected ? (
-            <PoolConnectionButton
-              network={selectedNetwork}
-              poolAddress={flowCouncil.distributionPool}
-              isConnected={flowCouncil.isConnected}
-            />
+            <div onClick={(e) => e.stopPropagation()}>
+              <PoolConnectionButton
+                network={selectedNetwork}
+                poolAddress={flowCouncil.distributionPool}
+                isConnected={flowCouncil.isConnected}
+              />
+            </div>
           ) : (
             <Button
               variant="secondary"
               className="w-100 py-4 rounded-4 fw-semi-bold"
-              onClick={() =>
+              onClick={(e) => {
+                e.stopPropagation();
                 router.push(
                   `/flow-councils/${selectedNetwork.id}/${flowCouncil.id}`,
-                )
-              }
+                );
+              }}
             >
               View
             </Button>
