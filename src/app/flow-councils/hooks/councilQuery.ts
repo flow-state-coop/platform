@@ -7,9 +7,7 @@ const FLOW_COUNCIL_QUERY = gql`
     flowCouncil(id: $councilId) {
       id
       distributionPool
-      metadata
       recipients {
-        metadata
         account
         votes(first: 1000, orderBy: createdAtTimestamp, orderDirection: desc) {
           votedBy

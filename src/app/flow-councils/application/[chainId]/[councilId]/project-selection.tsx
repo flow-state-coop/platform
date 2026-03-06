@@ -48,7 +48,6 @@ const FLOW_COUNCIL_QUERY = gql`
       id
       maxVotingSpread
       superToken
-      metadata
     }
   }
 `;

@@ -24,19 +24,36 @@ export default function useRecipientsQuery(
       }
 
       try {
-        const res = await fetch("/api/flow-council/applications", {
-          method: "POST",
-          body: JSON.stringify({
-            chainId: network.id,
-            councilId,
-          }),
+        const params = new URLSearchParams({
+          chainId: String(network.id),
+          councilId,
         });
+
+        const res = await fetch(
+          `/api/flow-council/applications/public?${params}`,
+        );
 
         const { success, applications } = await res.json();
 
         if (!success || !applications) {
           return;
         }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const toProjectDetails = (app: any): ProjectDetails => ({
+          name: app.project_name || undefined,
+          description: app.project_description || undefined,
+          logoUrl: app.logo || undefined,
+          bannerUrl: app.banner || undefined,
+          website: app.website || undefined,
+          twitter: app.x_handle || undefined,
+          farcaster: app.farcaster_handle || undefined,
+          telegram: app.telegram_group || undefined,
+          discord: app.discord_channel || undefined,
+          demoUrl: app.demo_link || undefined,
+          karmaProfile: app.karma_gap_link || undefined,
+          gardensPool: app.gardens_link || undefined,
+        });
 
         const result: {
           id: string;
@@ -50,21 +67,21 @@ export default function useRecipientsQuery(
         for (const recipient of recipients) {
           const application = applications.find(
             (app: {
-              fundingAddress: string;
+              funding_address: string;
               status: string;
-              projectId: number;
+              project_id: number;
             }) =>
-              app.fundingAddress.toLowerCase() ===
+              app.funding_address.toLowerCase() ===
                 recipient.account.toLowerCase() &&
               (app.status === "ACCEPTED" || app.status === "GRADUATED"),
           );
 
-          if (application?.projectDetails) {
-            includedAddresses.add(application.fundingAddress.toLowerCase());
+          if (application) {
+            includedAddresses.add(application.funding_address.toLowerCase());
             result.push({
-              id: String(application.projectId),
+              id: String(application.project_id),
               fundingAddress: recipient.account,
-              details: application.projectDetails,
+              details: toProjectDetails(application),
               status: application.status,
             });
           }
@@ -73,13 +90,12 @@ export default function useRecipientsQuery(
         for (const application of applications) {
           if (
             application.status === "GRADUATED" &&
-            application.projectDetails &&
-            !includedAddresses.has(application.fundingAddress.toLowerCase())
+            !includedAddresses.has(application.funding_address.toLowerCase())
           ) {
             result.push({
-              id: String(application.projectId),
-              fundingAddress: application.fundingAddress,
-              details: application.projectDetails,
+              id: String(application.project_id),
+              fundingAddress: application.funding_address,
+              details: toProjectDetails(application),
               status: application.status,
             });
           }
