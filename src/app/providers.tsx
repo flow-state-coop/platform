@@ -10,8 +10,8 @@ import {
 import {
   walletConnectWallet,
   injectedWallet,
-  rabbyWallet,
-  coinbaseWallet,
+  baseAccount,
+  rainbowWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 import { createConfig, WagmiProvider } from "wagmi";
 import {
@@ -48,8 +48,8 @@ const connectors = connectorsForWallets(
       wallets: [
         walletConnectWallet,
         injectedWallet,
-        rabbyWallet,
-        coinbaseWallet,
+        baseAccount,
+        rainbowWallet,
       ],
     },
   ],

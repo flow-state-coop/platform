@@ -14,7 +14,9 @@ import Alert from "react-bootstrap/Button";
 import Badge from "react-bootstrap/Badge";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Tooltip from "react-bootstrap/Tooltip";
+import { TransactionReceipt } from "viem";
 import CopyTooltip from "@/components/CopyTooltip";
+import { TransactionCall } from "@/lib/transactionCalls";
 import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
 import { Network } from "@/types/network";
@@ -28,11 +30,14 @@ export type ReviewProps = {
   setStep: (step: Step) => void;
   network?: Network;
   receiver: string;
-  transactions: (() => Promise<void>)[];
-  executeTransactions: (transactions: (() => Promise<void>)[]) => Promise<void>;
+  calls: TransactionCall[];
+  executeTransactions: (
+    calls: TransactionCall[],
+  ) => Promise<TransactionReceipt[]>;
   areTransactionsLoading: boolean;
   completedTransactions: number;
   transactionError: string;
+  isBatchSupported: boolean;
   flowRateToReceiver: string;
   netImpact: bigint;
   newFlowRate: string;
@@ -72,11 +77,12 @@ export default function Review(props: ReviewProps) {
     setStep,
     network,
     receiver,
-    transactions,
+    calls,
     completedTransactions,
     areTransactionsLoading,
     executeTransactions,
     transactionError,
+    isBatchSupported,
     liquidationEstimate,
     flowRateToReceiver,
     newFlowRate,
@@ -137,7 +143,7 @@ export default function Review(props: ReviewProps) {
     });
 
     try {
-      await executeTransactions(transactions);
+      await executeTransactions(calls);
     } catch (err) {
       console.error(err);
 
@@ -590,7 +596,7 @@ export default function Review(props: ReviewProps) {
           <Button
             variant={isDeletingStream ? "danger" : "primary"}
             disabled={
-              transactions.length === 0 ||
+              calls.length === 0 ||
               step === Step.SUCCESS ||
               (isLiquidationClose && !hasAcceptedCloseLiquidationWarning)
             }
@@ -613,14 +619,16 @@ export default function Review(props: ReviewProps) {
                   role="status"
                   className="p-2"
                 />
-                <Card.Text className="m-0 fw-semi-bold">
-                  {completedTransactions + 1}/{transactions.length}
-                </Card.Text>
+                {!isBatchSupported && calls.length > 1 && (
+                  <Card.Text className="m-0 fw-semi-bold">
+                    {completedTransactions + 1}/{calls.length}
+                  </Card.Text>
+                )}
               </Stack>
             ) : isDeletingStream ? (
               "Cancel Stream"
-            ) : transactions.length > 1 ? (
-              `Submit (${transactions.length})`
+            ) : !isBatchSupported && calls.length > 1 ? (
+              `Submit (${calls.length})`
             ) : (
               "Submit"
             )}
