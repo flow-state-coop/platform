@@ -41,7 +41,6 @@ function flowCouncilsByRoleQuery(role: string) {
         id
         superToken
         distributionPool
-        metadata
       }
     }
   `;
@@ -143,9 +142,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
       const councils: FlowCouncilListing[] = [];
       const sfPoolMemberships = superfluidQueryRes?.account?.poolMemberships;
 
-      const buildFlowCouncil = async (
-        flowCouncil: FlowCouncilListing & { metadata: string },
-      ) => {
+      const buildFlowCouncil = async (flowCouncil: FlowCouncilListing) => {
         const poolMembership = sfPoolMemberships?.find(
           (membership: { pool: { id: string } }) =>
             membership.pool.id === flowCouncil?.distributionPool,

@@ -5,11 +5,21 @@ import { networks } from "@/lib/networks";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { errorResponse } from "../../utils";
 import { validateRoundDetails } from "../validation";
+import { isRoundAdmin, hasOnChainRole } from "../auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.address) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthenticated" }),
+        { status: 401 },
+      );
+    }
+
     const { chainId, councilId } = await request.json();
 
     const network = networks.find((network) => network.id === chainId);
@@ -37,23 +47,66 @@ export async function POST(request: Request) {
       return new Response(JSON.stringify({ success: true, applications: [] }));
     }
 
-    const applications = await db
-      .selectFrom("applications")
-      .innerJoin("projects", "applications.projectId", "projects.id")
-      .select([
-        "applications.id",
-        "applications.projectId",
-        "applications.roundId",
-        "applications.fundingAddress",
-        "applications.status",
-        "applications.details",
-        "applications.editsUnlocked",
-        "projects.details as projectDetails",
-      ])
-      .where("applications.roundId", "=", round.id)
-      .execute();
+    const userAddress = session.address.toLowerCase();
 
-    // Fetch manager addresses and emails for each project
+    const [dbAdmin, onChainAdmin] = await Promise.all([
+      isRoundAdmin(round.id, userAddress),
+      hasOnChainRole(chainId, councilId, userAddress),
+    ]);
+
+    const admin = dbAdmin || onChainAdmin;
+
+    let applications;
+
+    if (admin) {
+      applications = await db
+        .selectFrom("applications")
+        .innerJoin("projects", "applications.projectId", "projects.id")
+        .select([
+          "applications.id",
+          "applications.projectId",
+          "applications.roundId",
+          "applications.fundingAddress",
+          "applications.status",
+          "applications.details",
+          "applications.editsUnlocked",
+          "projects.details as projectDetails",
+        ])
+        .where("applications.roundId", "=", round.id)
+        .execute();
+    } else {
+      const managedProjects = await db
+        .selectFrom("projectManagers")
+        .select("projectId")
+        .where("managerAddress", "=", userAddress)
+        .execute();
+
+      const managedProjectIds = managedProjects.map((p) => p.projectId);
+
+      if (managedProjectIds.length === 0) {
+        return new Response(
+          JSON.stringify({ success: true, applications: [] }),
+        );
+      }
+
+      applications = await db
+        .selectFrom("applications")
+        .innerJoin("projects", "applications.projectId", "projects.id")
+        .select([
+          "applications.id",
+          "applications.projectId",
+          "applications.roundId",
+          "applications.fundingAddress",
+          "applications.status",
+          "applications.details",
+          "applications.editsUnlocked",
+          "projects.details as projectDetails",
+        ])
+        .where("applications.roundId", "=", round.id)
+        .where("applications.projectId", "in", managedProjectIds)
+        .execute();
+    }
+
     const projectIds = [...new Set(applications.map((a) => a.projectId))];
 
     const [managerAddresses, managerEmails] = await Promise.all([
@@ -69,7 +122,6 @@ export async function POST(request: Request) {
         .execute(),
     ]);
 
-    // Group by projectId
     const managerAddressesByProject: Record<number, string[]> = {};
     const managerEmailsByProject: Record<number, string[]> = {};
 
@@ -87,7 +139,6 @@ export async function POST(request: Request) {
       managerEmailsByProject[e.projectId].push(e.email);
     }
 
-    // Enrich applications with manager data
     const enrichedApplications = applications.map((app) => ({
       ...app,
       managerAddresses: managerAddressesByProject[app.projectId] || [],

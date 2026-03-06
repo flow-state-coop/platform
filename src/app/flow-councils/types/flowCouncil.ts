@@ -2,10 +2,8 @@ import { type CouncilMember } from "./councilMember";
 
 export type FlowCouncilData = {
   id: string;
-  metadata: string;
   superToken: `0x${string}`;
   recipients: {
-    metadata: string;
     account: `0x${string}`;
     votes: { votedBy: string; amount: string; createdAtTimestamp: string };
   }[];
