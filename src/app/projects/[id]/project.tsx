@@ -363,7 +363,13 @@ export default function Project(props: ProjectProps) {
         </Stack>
         <Tab.Container
           activeKey={selectedTab}
-          onSelect={(key) => setSelectedTab(key ?? "details")}
+          onSelect={(key) => {
+            const tab = key ?? "details";
+            setSelectedTab(tab);
+            router.replace(`/projects/${projectId}?tab=${tab}`, {
+              scroll: false,
+            });
+          }}
         >
           <Nav className="pt-8 pb-6 fs-6 gap-2 px-3 sm:px-0">
             <Nav.Item>
