@@ -58,10 +58,11 @@ export default function ProjectMilestonesTab({
     if (!isLoading && scrollToMilestone && applications.length > 0) {
       const el = document.getElementById(`milestone-${scrollToMilestone}`);
       if (el) {
-        setTimeout(
+        const timeout = setTimeout(
           () => el.scrollIntoView({ behavior: "smooth", block: "center" }),
           100,
         );
+        return () => clearTimeout(timeout);
       }
     }
   }, [isLoading, scrollToMilestone, applications]);

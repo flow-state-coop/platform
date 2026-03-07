@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -98,15 +98,20 @@ export default function Project(props: ProjectProps) {
     }
   }, [projectId, address]);
 
+  const prevSessionAddress = useRef(session?.address);
+
   useEffect(() => {
     fetchProject();
   }, [fetchProject]);
 
   useEffect(() => {
-    if (session?.address === address && address) {
-      fetchProject();
+    if (session?.address !== prevSessionAddress.current) {
+      prevSessionAddress.current = session?.address;
+      if (session?.address === address && address) {
+        fetchProject();
+      }
     }
-  }, [session?.address]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [session?.address, address, fetchProject]);
 
   useEffect(() => {
     if (tabParam && VALID_TABS.includes(tabParam)) {

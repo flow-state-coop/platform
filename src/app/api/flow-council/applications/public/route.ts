@@ -10,10 +10,9 @@ import { ApplicationStatus } from "@/generated/kysely";
 export const dynamic = "force-dynamic";
 
 const queryParamsSchema = z.object({
-  chainId: z.coerce.number().refine(
-    (id) => networks.some((n) => n.id === id),
-    "Wrong network",
-  ),
+  chainId: z.coerce
+    .number()
+    .refine((id) => networks.some((n) => n.id === id), "Wrong network"),
   councilId: z.string().refine(isAddress, "Invalid council ID"),
 });
 

@@ -262,33 +262,39 @@ export default function MilestoneCard({
     milestone.progress.otherDetails,
   ]);
 
-  const requireAuth = (onAuthed: () => void) => {
+  useEffect(() => {
+    setPendingEditIndex(null);
+    setPendingOtherDetails(false);
+  }, [address]);
+
+  const requireAuth = (onAuthed: () => void): boolean => {
     if (!address && openConnectModal) {
       openConnectModal();
-      return;
+      return false;
     }
     if (connectedChainId !== 42220 && switchChain) {
       switchChain({ chainId: 42220 });
-      return;
+      return false;
     }
     if (!hasSession && handleSignIn && csrfToken) {
       handleSignIn(csrfToken);
-      return;
+      return false;
     }
     onAuthed();
+    return true;
   };
 
   const handleEditDeliverableClick = (index: number) => {
-    requireAuth(() => setEditingItemIndex(index));
-    if (!hasSession) setPendingEditIndex(index);
+    const authed = requireAuth(() => setEditingItemIndex(index));
+    if (!authed) setPendingEditIndex(index);
   };
 
   const handleEditOtherDetailsClick = () => {
-    requireAuth(() => {
+    const authed = requireAuth(() => {
       setOtherDetailsValue(milestone.progress.otherDetails);
       setEditingOtherDetails(true);
     });
-    if (!hasSession) setPendingOtherDetails(true);
+    if (!authed) setPendingOtherDetails(true);
   };
 
   const saveProgress = async (updatedProgress: MilestoneProgressData) => {
