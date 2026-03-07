@@ -6,9 +6,9 @@ import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
+import ProgressBar from "react-bootstrap/ProgressBar";
 import Markdown from "@/components/Markdown";
 import MarkdownEditor from "@/components/MarkdownEditor";
-import InfoTooltip from "@/components/InfoTooltip";
 import { normalizeEvidenceUrl } from "@/app/api/flow-council/validation";
 import type {
   MilestoneWithProgress,
@@ -42,21 +42,54 @@ const TYPE_LABELS: Record<string, string> = {
   growth: "Growth",
 };
 
+function CompletionBar({ completion }: { completion: number }) {
+  const variant =
+    completion === 100 ? "success" : completion >= 50 ? "primary" : "info";
+
+  return (
+    <Stack direction="horizontal" gap={2} className="align-items-center">
+      <ProgressBar
+        now={completion}
+        variant={variant}
+        className="rounded-pill flex-shrink-0"
+        style={{ width: 80, height: 8, backgroundColor: "#e9ecef" }}
+      />
+      <span
+        className={`fs-sm fw-semi-bold text-nowrap text-${variant}`}
+        style={{ minWidth: 32 }}
+      >
+        {completion}%
+      </span>
+    </Stack>
+  );
+}
+
 function EvidencePills({ evidence }: { evidence: EvidenceLink[] }) {
   if (evidence.length === 0) return null;
   return (
-    <Stack direction="horizontal" className="flex-wrap gap-1 mt-1">
+    <Stack direction="horizontal" className="flex-wrap gap-2 mt-2">
       {evidence.map((e, i) => (
         <a
           key={i}
           href={e.link}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-decoration-none"
+          className="text-decoration-none d-inline-flex align-items-center gap-1 rounded-pill px-3 py-1 fs-sm fw-semi-bold"
+          style={{
+            backgroundColor: "rgba(60, 101, 91, 0.1)",
+            color: "#3c655b",
+            border: "1px solid rgba(60, 101, 91, 0.25)",
+          }}
         >
-          <span className="badge bg-white text-primary border rounded-pill fw-normal">
-            {e.name}
-          </span>
+          <Image src="/link.svg" alt="" width={12} height={12} />
+          {e.name}
+          <Image
+            src="/open-new.svg"
+            alt=""
+            width={10}
+            height={10}
+            style={{ opacity: 0.6 }}
+          />
         </a>
       ))}
     </Stack>
@@ -98,21 +131,33 @@ function DeliverableEditForm({
   };
 
   return (
-    <Stack direction="vertical" gap={2} className="mt-2 bg-white rounded-3 p-3">
+    <Stack direction="vertical" gap={3} className="mt-3">
       <Form.Label className="mb-0 fw-semi-bold">Evidence Links</Form.Label>
       {evidence.map((e, i) => (
-        <Stack
+        <div
           key={i}
-          direction="horizontal"
-          gap={2}
-          className="align-items-center"
+          className="border rounded-3 p-3 position-relative"
+          style={{ backgroundColor: "#fafafa" }}
         >
+          <Stack direction="horizontal" className="align-items-center mb-2">
+            <span className="fs-xs fw-semi-bold text-muted">
+              Evidence {i + 1}
+            </span>
+            <Button
+              variant="link"
+              size="sm"
+              className="p-0 ms-auto d-flex align-items-center"
+              onClick={() => removeEvidence(i)}
+            >
+              <Image src="/trash.svg" alt="remove" width={14} height={14} />
+            </Button>
+          </Stack>
           <Form.Control
             size="sm"
-            placeholder="Name"
+            placeholder="Label (e.g., GitHub PR)"
             value={e.name}
             onChange={(ev) => handleEvidenceChange(i, "name", ev.target.value)}
-            className="rounded-2"
+            className="rounded-2 mb-2"
           />
           <Form.Control
             size="sm"
@@ -121,24 +166,16 @@ function DeliverableEditForm({
             onChange={(ev) => handleEvidenceChange(i, "link", ev.target.value)}
             className="rounded-2"
           />
-          <Button
-            variant="outline-danger"
-            size="sm"
-            className="flex-shrink-0 rounded-2 d-flex align-items-center justify-content-center"
-            onClick={() => removeEvidence(i)}
-            style={{ width: 30, height: 30 }}
-          >
-            &times;
-          </Button>
-        </Stack>
+        </div>
       ))}
       <Button
-        variant="link"
+        variant="outline-primary"
         size="sm"
-        className="p-0 align-self-start text-decoration-none"
+        className="align-self-start rounded-3 d-flex align-items-center gap-1"
         onClick={addEvidence}
       >
-        + Add Evidence
+        <Image src="/add.svg" alt="" width={14} height={14} />
+        Add Evidence
       </Button>
       <Stack direction="horizontal" gap={2} className="align-items-center">
         <Form.Label className="mb-0 text-nowrap fw-semi-bold">
@@ -318,133 +355,143 @@ export default function MilestoneCard({
   return (
     <div
       id={`milestone-${milestone.type}-${milestone.index}`}
-      className="bg-lace-100 rounded-4 p-3 mb-3"
+      className="border border-2 rounded-4 overflow-hidden mb-4"
     >
-      <Stack
-        direction="horizontal"
-        className="justify-content-between align-items-start mb-1"
-      >
-        <h5 className="fw-bold mb-0">{milestone.title}</h5>
-        <span className="text-muted text-nowrap ms-3 fst-italic">
+      <div className="bg-secondary d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-1 px-3 px-sm-4 py-3">
+        <h5 className="fw-bold mb-0 text-light">{milestone.title}</h5>
+        <span
+          className="fs-sm fw-semi-bold text-light text-nowrap rounded-pill px-3 py-1"
+          style={{ backgroundColor: "rgba(255, 255, 255, 0.2)" }}
+        >
           {badgeLabel}
         </span>
-      </Stack>
-      <p className="mb-3">{milestone.description}</p>
+      </div>
+      <div className="p-3 p-sm-4" style={{ backgroundColor: "#fff" }}>
+        <p className="text-info mb-4">{milestone.description}</p>
 
-      <div className="mb-3">
-        {milestone.itemNames.map((name, i) => {
-          const itemProgress = milestone.progress.items[i] ?? {
-            completion: 0,
-            evidence: [],
-          };
-          const isEditing = editingItemIndex === i;
+        <div className="mb-3">
+          {milestone.itemNames.map((name, i) => {
+            const itemProgress = milestone.progress.items[i] ?? {
+              completion: 0,
+              evidence: [],
+            };
+            const isEditing = editingItemIndex === i;
 
-          return (
-            <div key={i} className="mb-3">
-              <Stack
-                direction="horizontal"
-                gap={2}
-                className="align-items-center mb-1"
+            return (
+              <div
+                key={i}
+                className={`border rounded-4 p-3 mb-3 ${isEditing ? "border-primary border-2" : ""}`}
+                style={{ backgroundColor: isEditing ? "#fff" : "#fbf7ef" }}
               >
-                <span className="text-muted" style={{ fontSize: "0.85rem" }}>
-                  {itemLabel.slice(0, -1)} {i + 1}
-                </span>
-                {isManager && !isEditing && (
-                  <InfoTooltip
-                    position={{ top: true }}
-                    target={
+                <div className="d-flex flex-column flex-sm-row justify-content-between gap-2">
+                  <div>
+                    <span
+                      className="fs-xs text-muted text-uppercase fw-semi-bold"
+                      style={{ letterSpacing: "0.05em" }}
+                    >
+                      {itemLabel.slice(0, -1)} {i + 1}
+                    </span>
+                    <div className="fw-semi-bold mt-1">{name}</div>
+                  </div>
+                  <Stack
+                    direction="horizontal"
+                    gap={3}
+                    className="align-items-center align-self-end align-self-sm-center flex-shrink-0"
+                  >
+                    <CompletionBar completion={itemProgress.completion} />
+                    {isManager && !isEditing && (
                       <Button
-                        variant="link"
+                        variant="outline-primary"
                         size="sm"
-                        className="p-0 flex-shrink-0 d-flex align-items-center"
+                        className="rounded-3 d-flex align-items-center gap-1 flex-shrink-0"
                         onClick={() => handleEditDeliverableClick(i)}
                       >
-                        <Image
-                          src="/edit.svg"
-                          alt="edit"
-                          width={16}
-                          height={16}
-                        />
+                        <Image src="/edit.svg" alt="" width={14} height={14} />
+                        <span className="d-none d-sm-inline">Edit</span>
                       </Button>
-                    }
-                    content={<p className="m-0 p-2">Add evidence & details</p>}
-                  />
+                    )}
+                  </Stack>
+                </div>
+                {!isEditing && (
+                  <EvidencePills evidence={itemProgress.evidence} />
                 )}
-              </Stack>
-              <div className="border rounded-4 bg-white p-3">
-                <Stack
-                  direction="horizontal"
-                  className="justify-content-between align-items-start"
-                >
-                  <span>{name}</span>
-                  <span className="text-nowrap ms-3 fs-5 fw-semi-bold">
-                    {itemProgress.completion}%
-                  </span>
-                </Stack>
-                <EvidencePills evidence={itemProgress.evidence} />
+                {isEditing && (
+                  <>
+                    <hr className="my-3" />
+                    <DeliverableEditForm
+                      initial={itemProgress}
+                      onCancel={() => setEditingItemIndex(null)}
+                      onSave={(data) => handleDeliverableSave(i, data)}
+                      saving={saving}
+                    />
+                  </>
+                )}
               </div>
-              {isEditing && (
-                <DeliverableEditForm
-                  initial={itemProgress}
-                  onCancel={() => setEditingItemIndex(null)}
-                  onSave={(data) => handleDeliverableSave(i, data)}
-                  saving={saving}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
 
-      <Stack direction="horizontal" gap={2} className="align-items-center mb-2">
-        <span className="fw-bold">Other Details & Updates</span>
-        {isManager && !editingOtherDetails && (
-          <Button
-            variant="link"
-            size="sm"
-            className="p-0 d-flex align-items-center"
-            onClick={handleEditOtherDetailsClick}
-          >
-            <Image src="/edit.svg" alt="edit" width={16} height={16} />
-          </Button>
-        )}
-      </Stack>
-      {saveError && <p className="text-danger small mb-2">{saveError}</p>}
-      {editingOtherDetails ? (
-        <Stack direction="vertical" gap={2}>
-          <MarkdownEditor
-            value={otherDetailsValue}
-            onChange={(e) => setOtherDetailsValue(e.target.value)}
-            resizable
-            minHeight={100}
-            characterCounter={{ value: otherDetailsValue, max: 5000 }}
-          />
-          <Stack direction="horizontal" gap={2} className="justify-content-end">
+        <hr className="my-3" />
+
+        <Stack
+          direction="horizontal"
+          gap={2}
+          className="align-items-center mb-2"
+        >
+          <span className="fw-bold">Other Details & Updates</span>
+          {isManager && !editingOtherDetails && (
             <Button
-              variant="outline-secondary"
-              className="rounded-3"
-              onClick={() => setEditingOtherDetails(false)}
-              disabled={saving}
-              style={{ width: 100 }}
+              variant="outline-primary"
+              size="sm"
+              className="rounded-3 d-flex align-items-center gap-1"
+              onClick={handleEditOtherDetailsClick}
             >
-              Cancel
+              <Image src="/edit.svg" alt="" width={14} height={14} />
+              <span className="d-none d-sm-inline">Edit</span>
             </Button>
-            <Button
-              variant="primary"
-              className="rounded-3"
-              onClick={handleOtherDetailsSave}
-              disabled={saving}
-              style={{ width: 100 }}
-            >
-              {saving ? <Spinner size="sm" /> : "Save"}
-            </Button>
-          </Stack>
+          )}
         </Stack>
-      ) : milestone.progress.otherDetails ? (
-        <Markdown>{milestone.progress.otherDetails}</Markdown>
-      ) : (
-        <p className="text-muted mb-0">(No additional details)</p>
-      )}
+        {saveError && <p className="text-danger small mb-2">{saveError}</p>}
+        {editingOtherDetails ? (
+          <Stack direction="vertical" gap={2}>
+            <MarkdownEditor
+              value={otherDetailsValue}
+              onChange={(e) => setOtherDetailsValue(e.target.value)}
+              resizable
+              minHeight={100}
+              characterCounter={{ value: otherDetailsValue, max: 5000 }}
+            />
+            <Stack
+              direction="horizontal"
+              gap={2}
+              className="justify-content-end"
+            >
+              <Button
+                variant="outline-secondary"
+                className="rounded-3"
+                onClick={() => setEditingOtherDetails(false)}
+                disabled={saving}
+                style={{ width: 100 }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                className="rounded-3"
+                onClick={handleOtherDetailsSave}
+                disabled={saving}
+                style={{ width: 100 }}
+              >
+                {saving ? <Spinner size="sm" /> : "Save"}
+              </Button>
+            </Stack>
+          </Stack>
+        ) : milestone.progress.otherDetails ? (
+          <Markdown>{milestone.progress.otherDetails}</Markdown>
+        ) : (
+          <p className="text-muted mb-0">(No additional details)</p>
+        )}
+      </div>
     </div>
   );
 }
