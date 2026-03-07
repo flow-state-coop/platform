@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
 import { useSession } from "next-auth/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import ChatView from "@/app/flow-councils/components/ChatView";
 import useSiwe from "@/hooks/siwe";
@@ -32,7 +31,30 @@ export default function ProjectFeedTab({
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
 
+  const hasSession = !!session && session.address === address;
+
+  const handleAuthRequired = useCallback(() => {
+    if (!address && openConnectModal) {
+      openConnectModal();
+    } else if (connectedChain?.id !== chainId && switchChain && chainId) {
+      switchChain({ chainId });
+    } else if (!hasSession) {
+      handleSignIn(csrfToken);
+    }
+  }, [
+    address,
+    openConnectModal,
+    connectedChain?.id,
+    chainId,
+    switchChain,
+    hasSession,
+    handleSignIn,
+    csrfToken,
+  ]);
+
   useEffect(() => {
+    let cancelled = false;
+
     const fetchRoundInfo = async () => {
       try {
         const res = await fetch(
@@ -40,18 +62,22 @@ export default function ProjectFeedTab({
         );
         const data = await res.json();
 
-        if (data.success) {
+        if (!cancelled && data.success) {
           setChainId(data.chainId);
           setCouncilId(data.councilId);
         }
       } catch (err) {
-        console.error(err);
+        if (!cancelled) console.error(err);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     fetchRoundInfo();
+
+    return () => {
+      cancelled = true;
+    };
   }, [projectId]);
 
   if (isLoading) {
@@ -70,58 +96,19 @@ export default function ProjectFeedTab({
     );
   }
 
-  const hasSession = !!session && session.address === address;
-
-  if (isManager && !hasSession) {
-    return (
-      <div>
-        <Button
-          variant="secondary"
-          className="d-flex justify-content-center align-items-center gap-2 mt-5 fs-lg fw-semi-bold py-4 rounded-4 w-100"
-          onClick={() => {
-            if (!address && openConnectModal) {
-              openConnectModal();
-            } else if (connectedChain?.id !== chainId) {
-              switchChain({ chainId });
-            } else {
-              handleSignIn(csrfToken);
-            }
-          }}
-        >
-          {!address
-            ? "Connect Wallet"
-            : connectedChain?.id !== chainId
-              ? "Switch Network"
-              : "Sign In With Ethereum"}
-        </Button>
-        <ChatView
-          channelType="PUBLIC_PROJECT"
-          chainId={chainId}
-          councilId={councilId}
-          projectId={Number(projectId)}
-          canWrite={false}
-          canModerate={false}
-          currentUserAddress={address}
-          newestFirst
-          emptyMessage="No posts yet."
-          active={active}
-        />
-      </div>
-    );
-  }
-
   return (
     <ChatView
       channelType="PUBLIC_PROJECT"
       chainId={chainId}
       councilId={councilId}
       projectId={Number(projectId)}
-      canWrite={isManager && hasSession}
+      canWrite={isManager}
       canModerate={isManager && hasSession}
       currentUserAddress={address}
       newestFirst
       emptyMessage="No posts yet."
       active={active}
+      onAuthRequired={!hasSession ? handleAuthRequired : undefined}
     />
   );
 }

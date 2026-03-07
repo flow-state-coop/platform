@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -43,7 +43,8 @@ export default function Project(props: ProjectProps) {
   const { projectId, csrfToken, editMode } = props;
 
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get("tab");
+  const tabParam = searchParams.get("tab");
+  const milestoneParam = searchParams.get("milestone");
 
   const [project, setProject] = useState<ProjectData | null>(null);
   const [isManager, setIsManager] = useState(false);
@@ -51,7 +52,7 @@ export default function Project(props: ProjectProps) {
   const [error, setError] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(editMode);
   const [selectedTab, setSelectedTab] = useState(
-    initialTab && VALID_TABS.includes(initialTab) ? initialTab : "details",
+    tabParam && VALID_TABS.includes(tabParam) ? tabParam : "details",
   );
   const [pendingEdit, setPendingEdit] = useState(editMode);
 
@@ -97,9 +98,26 @@ export default function Project(props: ProjectProps) {
     }
   }, [projectId, address]);
 
+  const prevSessionAddress = useRef(session?.address);
+
   useEffect(() => {
     fetchProject();
   }, [fetchProject]);
+
+  useEffect(() => {
+    if (session?.address !== prevSessionAddress.current) {
+      prevSessionAddress.current = session?.address;
+      if (session?.address === address && address) {
+        fetchProject();
+      }
+    }
+  }, [session?.address, address, fetchProject]);
+
+  useEffect(() => {
+    if (tabParam && VALID_TABS.includes(tabParam)) {
+      setSelectedTab(tabParam);
+    }
+  }, [tabParam]);
 
   useEffect(
     () => postHog.stopSessionRecording(),
@@ -350,7 +368,13 @@ export default function Project(props: ProjectProps) {
         </Stack>
         <Tab.Container
           activeKey={selectedTab}
-          onSelect={(key) => setSelectedTab(key ?? "details")}
+          onSelect={(key) => {
+            const tab = key ?? "details";
+            setSelectedTab(tab);
+            router.replace(`/projects/${projectId}?tab=${tab}`, {
+              scroll: false,
+            });
+          }}
         >
           <Nav className="pt-8 pb-6 fs-6 gap-2 px-3 sm:px-0">
             <Nav.Item>
@@ -400,6 +424,7 @@ export default function Project(props: ProjectProps) {
                 projectId={projectId}
                 isManager={isManager}
                 csrfToken={csrfToken}
+                scrollToMilestone={milestoneParam}
               />
             </Tab.Pane>
           </Tab.Content>

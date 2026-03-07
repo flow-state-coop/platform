@@ -43,6 +43,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
         "applications.id as applicationId",
         "applications.details as appDetails",
         "rounds.details as roundDetails",
+        "rounds.chainId",
+        "rounds.flowCouncilAddress as councilId",
       ])
       .where("applications.projectId", "=", pid)
       .where("applications.status", "=", "ACCEPTED")
@@ -105,6 +107,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
       return {
         applicationId: app.applicationId,
         roundName: roundDetails?.name ?? "Round",
+        chainId: app.chainId,
+        councilId: app.councilId,
         milestones,
       };
     });
@@ -125,25 +129,37 @@ const MILESTONE_TYPE_LABELS: Record<string, string> = {
   growth: "Growth",
 };
 
+const MILESTONE_ITEM_LABELS: Record<string, string> = {
+  build: "Deliverable",
+  growth: "Activation",
+};
+
 function buildEvidencePostContent(
+  verb: "added to" | "updated on",
   roundName: string,
+  milestoneType: string,
   typeLabel: string,
   milestoneIndex: number,
   itemIndex: number,
-  evidence: EvidenceLink,
+  itemLabel: string,
+  completion: number,
+  evidence: EvidenceLink[],
   pid: number,
 ): string {
-  return `Evidence added to ${roundName} - ${typeLabel} Milestone ${milestoneIndex + 1} - Deliverable ${itemIndex + 1}:\n\n[${evidence.name}](${evidence.link})\n\n[Go to the milestone](/projects/${pid}?tab=milestones)`;
+  const header = `Evidence ${verb} ${roundName} - ${typeLabel} Milestone ${milestoneIndex + 1} - ${itemLabel} ${itemIndex + 1} (${completion}% Complete)`;
+  const lines = evidence.map((e) => `- [${e.name}](${e.link})`);
+  return `${header}:\n\n${lines.join("\n")}\n\n[Go to the milestone](/projects/${pid}?tab=milestones&milestone=${milestoneType}-${milestoneIndex})`;
 }
 
 function buildTextUpdatePostContent(
   roundName: string,
+  milestoneType: string,
   typeLabel: string,
   milestoneIndex: number,
   otherDetails: string,
   pid: number,
 ): string {
-  return `Details updated on ${roundName} - ${typeLabel} Milestone ${milestoneIndex + 1}:\n\n${otherDetails}\n\n[Go to the milestone](/projects/${pid}?tab=milestones)`;
+  return `Details updated on ${roundName} - ${typeLabel} Milestone ${milestoneIndex + 1}:\n\n${otherDetails}\n\n[Go to the milestone](/projects/${pid}?tab=milestones&milestone=${milestoneType}-${milestoneIndex})`;
 }
 
 export async function PATCH(request: Request, { params }: RouteParams) {
@@ -251,20 +267,44 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     const roundDetails = parseDetails<{ name?: string }>(roundData?.details);
     const roundName = roundDetails?.name ?? "Round";
     const typeLabel = MILESTONE_TYPE_LABELS[milestoneType] ?? milestoneType;
+    const itemLabel = MILESTONE_ITEM_LABELS[milestoneType] ?? "Deliverable";
 
     for (let i = 0; i < newProgress.items.length; i++) {
       const newItem = newProgress.items[i];
-      const oldEvidenceCount = oldProgress?.items?.[i]?.evidence?.length ?? 0;
-      const newEvidence = newItem.evidence.slice(oldEvidenceCount);
+      const oldItem = oldProgress?.items?.[i];
+      const oldEvidence = oldItem?.evidence ?? [];
 
-      for (const evidence of newEvidence) {
+      const hasNewEntries = newItem.evidence.length > oldEvidence.length;
+      const minLen = Math.min(oldEvidence.length, newItem.evidence.length);
+      let hasEdits = oldEvidence.length > newItem.evidence.length;
+      for (let j = 0; j < minLen && !hasEdits; j++) {
+        if (
+          oldEvidence[j].name !== newItem.evidence[j].name ||
+          oldEvidence[j].link !== newItem.evidence[j].link
+        ) {
+          hasEdits = true;
+        }
+      }
+
+      if (!hasNewEntries && !hasEdits) continue;
+
+      const verb = hasEdits ? "updated on" : "added to";
+      const evidenceToShow = hasEdits
+        ? newItem.evidence
+        : newItem.evidence.slice(oldEvidence.length);
+
+      if (evidenceToShow.length > 0) {
         feedMessages.push(
           buildEvidencePostContent(
+            verb,
             roundName,
+            milestoneType,
             typeLabel,
             milestoneIndex,
             i,
-            evidence,
+            itemLabel,
+            newItem.completion,
+            evidenceToShow,
             pid,
           ),
         );
@@ -278,6 +318,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       feedMessages.push(
         buildTextUpdatePostContent(
           roundName,
+          milestoneType,
           typeLabel,
           milestoneIndex,
           newProgress.otherDetails,
@@ -293,21 +334,23 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           channelType: "PUBLIC_PROJECT" as const,
           projectId: pid,
           roundId: application.roundId,
-          applicationId: null,
+          applicationId: null as number | null,
           authorAddress: MILESTONE_AUTHOR_ADDRESS,
           messageType: "milestone_update",
           content,
           createdAt: now,
+          updatedAt: now,
         },
         {
           channelType: "PUBLIC_ROUND" as const,
           projectId: pid,
           roundId: application.roundId,
-          applicationId: null,
+          applicationId: null as number | null,
           authorAddress: MILESTONE_AUTHOR_ADDRESS,
           messageType: "milestone_update",
           content,
           createdAt: now,
+          updatedAt: now,
         },
       ]);
 

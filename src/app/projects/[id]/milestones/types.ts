@@ -25,5 +25,7 @@ export type MilestoneWithProgress = {
 export type ApplicationMilestones = {
   applicationId: number;
   roundName: string;
+  chainId: number;
+  councilId: string;
   milestones: MilestoneWithProgress[];
 };
