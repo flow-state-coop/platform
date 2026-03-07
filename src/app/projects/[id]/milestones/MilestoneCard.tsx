@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import Markdown from "@/components/Markdown";
+import MarkdownEditor from "@/components/MarkdownEditor";
 import InfoTooltip from "@/components/InfoTooltip";
-import ResizableTextarea from "@/components/ResizableTextarea";
+import { normalizeEvidenceUrl } from "@/app/api/flow-council/validation";
 import type {
   MilestoneWithProgress,
   DeliverableProgress,
@@ -22,6 +23,13 @@ type MilestoneCardProps = {
   projectId: string;
   isManager: boolean;
   onSaved: () => void;
+  hasSession?: boolean;
+  csrfToken?: string;
+  address?: string;
+  connectedChainId?: number;
+  openConnectModal?: (() => void) | undefined;
+  switchChain?: (args: { chainId: number }) => void;
+  handleSignIn?: (csrfToken: string) => void;
 };
 
 type EditingDeliverable = {
@@ -179,6 +187,13 @@ export default function MilestoneCard({
   projectId,
   isManager,
   onSaved,
+  hasSession,
+  csrfToken,
+  address,
+  connectedChainId,
+  openConnectModal,
+  switchChain,
+  handleSignIn,
 }: MilestoneCardProps) {
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [editingOtherDetails, setEditingOtherDetails] = useState(false);
@@ -186,12 +201,62 @@ export default function MilestoneCard({
     milestone.progress.otherDetails,
   );
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [pendingEditIndex, setPendingEditIndex] = useState<number | null>(null);
+  const [pendingOtherDetails, setPendingOtherDetails] = useState(false);
 
   const badgeLabel = `${TYPE_LABELS[milestone.type]} Milestone ${milestone.index + 1}`;
   const itemLabel = milestone.type === "build" ? "Deliverables" : "Activations";
 
+  useEffect(() => {
+    if (hasSession && pendingEditIndex !== null) {
+      setEditingItemIndex(pendingEditIndex);
+      setPendingEditIndex(null);
+    }
+    if (hasSession && pendingOtherDetails) {
+      setOtherDetailsValue(milestone.progress.otherDetails);
+      setEditingOtherDetails(true);
+      setPendingOtherDetails(false);
+    }
+  }, [
+    hasSession,
+    pendingEditIndex,
+    pendingOtherDetails,
+    milestone.progress.otherDetails,
+  ]);
+
+  const requireAuth = (onAuthed: () => void) => {
+    if (!address && openConnectModal) {
+      openConnectModal();
+      return;
+    }
+    if (connectedChainId !== 42220 && switchChain) {
+      switchChain({ chainId: 42220 });
+      return;
+    }
+    if (!hasSession && handleSignIn && csrfToken) {
+      handleSignIn(csrfToken);
+      return;
+    }
+    onAuthed();
+  };
+
+  const handleEditDeliverableClick = (index: number) => {
+    requireAuth(() => setEditingItemIndex(index));
+    if (!hasSession) setPendingEditIndex(index);
+  };
+
+  const handleEditOtherDetailsClick = () => {
+    requireAuth(() => {
+      setOtherDetailsValue(milestone.progress.otherDetails);
+      setEditingOtherDetails(true);
+    });
+    if (!hasSession) setPendingOtherDetails(true);
+  };
+
   const saveProgress = async (updatedProgress: MilestoneProgressData) => {
     setSaving(true);
+    setSaveError(null);
     try {
       const res = await fetch(
         `/api/flow-council/projects/${projectId}/milestones`,
@@ -209,9 +274,12 @@ export default function MilestoneCard({
       const data = await res.json();
       if (data.success) {
         onSaved();
+      } else {
+        setSaveError(data.error || "Failed to save");
       }
     } catch (err) {
       console.error("Failed to save milestone progress:", err);
+      setSaveError("Failed to save. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -221,9 +289,9 @@ export default function MilestoneCard({
     itemIndex: number,
     data: EditingDeliverable,
   ) => {
-    const filteredEvidence = data.evidence.filter(
-      (e) => e.name.trim() !== "" && e.link.trim() !== "",
-    );
+    const filteredEvidence = data.evidence
+      .filter((e) => e.name.trim() !== "" && e.link.trim() !== "")
+      .map((e) => ({ ...e, link: normalizeEvidenceUrl(e.link) }));
     const updatedItems = [...milestone.progress.items];
     while (updatedItems.length <= itemIndex) {
       updatedItems.push({ completion: 0, evidence: [] });
@@ -248,7 +316,10 @@ export default function MilestoneCard({
   };
 
   return (
-    <div className="bg-lace-100 rounded-4 p-3 mb-3">
+    <div
+      id={`milestone-${milestone.type}-${milestone.index}`}
+      className="bg-lace-100 rounded-4 p-3 mb-3"
+    >
       <Stack
         direction="horizontal"
         className="justify-content-between align-items-start mb-1"
@@ -286,7 +357,7 @@ export default function MilestoneCard({
                         variant="link"
                         size="sm"
                         className="p-0 flex-shrink-0 d-flex align-items-center"
-                        onClick={() => setEditingItemIndex(i)}
+                        onClick={() => handleEditDeliverableClick(i)}
                       >
                         <Image
                           src="/edit.svg"
@@ -332,23 +403,21 @@ export default function MilestoneCard({
             variant="link"
             size="sm"
             className="p-0 d-flex align-items-center"
-            onClick={() => {
-              setOtherDetailsValue(milestone.progress.otherDetails);
-              setEditingOtherDetails(true);
-            }}
+            onClick={handleEditOtherDetailsClick}
           >
             <Image src="/edit.svg" alt="edit" width={16} height={16} />
           </Button>
         )}
       </Stack>
+      {saveError && <p className="text-danger small mb-2">{saveError}</p>}
       {editingOtherDetails ? (
         <Stack direction="vertical" gap={2}>
-          <ResizableTextarea
+          <MarkdownEditor
             value={otherDetailsValue}
             onChange={(e) => setOtherDetailsValue(e.target.value)}
-            maxLength={5000}
+            resizable
             minHeight={100}
-            className="bg-white border rounded-3 py-3 px-3"
+            characterCounter={{ value: otherDetailsValue, max: 5000 }}
           />
           <Stack direction="horizontal" gap={2} className="justify-content-end">
             <Button

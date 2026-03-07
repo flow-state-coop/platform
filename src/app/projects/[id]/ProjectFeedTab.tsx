@@ -1,13 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount, useSwitchChain } from "wagmi";
+import { useAccount } from "wagmi";
 import { useSession } from "next-auth/react";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
-import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import ChatView from "@/app/flow-councils/components/ChatView";
-import useSiwe from "@/hooks/siwe";
 
 type ProjectFeedTabProps = {
   projectId: string;
@@ -19,18 +16,14 @@ type ProjectFeedTabProps = {
 export default function ProjectFeedTab({
   projectId,
   isManager,
-  csrfToken,
   active,
 }: ProjectFeedTabProps) {
   const [chainId, setChainId] = useState<number | null>(null);
   const [councilId, setCouncilId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { address, chain: connectedChain } = useAccount();
+  const { address } = useAccount();
   const { data: session } = useSession();
-  const { handleSignIn } = useSiwe();
-  const { openConnectModal } = useConnectModal();
-  const { switchChain } = useSwitchChain();
 
   useEffect(() => {
     const fetchRoundInfo = async () => {
@@ -71,44 +64,6 @@ export default function ProjectFeedTab({
   }
 
   const hasSession = !!session && session.address === address;
-
-  if (isManager && !hasSession) {
-    return (
-      <div>
-        <Button
-          variant="secondary"
-          className="d-flex justify-content-center align-items-center gap-2 mt-5 fs-lg fw-semi-bold py-4 rounded-4 w-100"
-          onClick={() => {
-            if (!address && openConnectModal) {
-              openConnectModal();
-            } else if (connectedChain?.id !== chainId) {
-              switchChain({ chainId });
-            } else {
-              handleSignIn(csrfToken);
-            }
-          }}
-        >
-          {!address
-            ? "Connect Wallet"
-            : connectedChain?.id !== chainId
-              ? "Switch Network"
-              : "Sign In With Ethereum"}
-        </Button>
-        <ChatView
-          channelType="PUBLIC_PROJECT"
-          chainId={chainId}
-          councilId={councilId}
-          projectId={Number(projectId)}
-          canWrite={false}
-          canModerate={false}
-          currentUserAddress={address}
-          newestFirst
-          emptyMessage="No posts yet."
-          active={active}
-        />
-      </div>
-    );
-  }
 
   return (
     <ChatView

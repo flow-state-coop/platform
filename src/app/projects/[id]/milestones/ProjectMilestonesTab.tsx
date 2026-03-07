@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
 import { useSession } from "next-auth/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
+import Image from "react-bootstrap/Image";
 import MilestoneCard from "./MilestoneCard";
 import useSiwe from "@/hooks/siwe";
 import type { ApplicationMilestones } from "./types";
@@ -16,12 +16,14 @@ type ProjectMilestonesTabProps = {
   projectId: string;
   isManager: boolean;
   csrfToken: string;
+  scrollToMilestone?: string | null;
 };
 
 export default function ProjectMilestonesTab({
   projectId,
   isManager,
   csrfToken,
+  scrollToMilestone,
 }: ProjectMilestonesTabProps) {
   const [applications, setApplications] = useState<ApplicationMilestones[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,6 +54,18 @@ export default function ProjectMilestonesTab({
     fetchMilestones();
   }, [fetchMilestones]);
 
+  useEffect(() => {
+    if (!isLoading && scrollToMilestone && applications.length > 0) {
+      const el = document.getElementById(`milestone-${scrollToMilestone}`);
+      if (el) {
+        setTimeout(
+          () => el.scrollIntoView({ behavior: "smooth", block: "center" }),
+          100,
+        );
+      }
+    }
+  }, [isLoading, scrollToMilestone, applications]);
+
   if (isLoading) {
     return (
       <div className="d-flex justify-content-center py-5">
@@ -74,32 +88,19 @@ export default function ProjectMilestonesTab({
 
   return (
     <div>
-      {isManager && !hasSession && (
-        <Button
-          variant="secondary"
-          className="d-flex justify-content-center align-items-center gap-2 mt-5 fs-lg fw-semi-bold py-4 rounded-4 w-100"
-          onClick={() => {
-            if (!address && openConnectModal) {
-              openConnectModal();
-            } else if (connectedChain?.id !== 42220) {
-              switchChain({ chainId: 42220 });
-            } else {
-              handleSignIn(csrfToken);
-            }
-          }}
-        >
-          {!address
-            ? "Connect Wallet"
-            : connectedChain?.id !== 42220
-              ? "Switch Network"
-              : "Sign In With Ethereum"}
-        </Button>
-      )}
       {applications.map(
         (app) =>
           app.milestones.length > 0 && (
             <Form.Group key={app.applicationId} className="mb-4">
-              <Form.Label className="fs-lg fw-bold">{app.roundName}</Form.Label>
+              <a
+                href={`/flow-councils/${app.chainId}/${app.councilId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="fs-lg fw-bold text-decoration-none d-inline-flex align-items-center gap-1 mb-2"
+              >
+                {app.roundName}
+                <Image src="/open-new.svg" alt="" width={14} height={14} />
+              </a>
               <Stack direction="vertical" gap={3}>
                 {app.milestones.map((m) => (
                   <MilestoneCard
@@ -107,8 +108,15 @@ export default function ProjectMilestonesTab({
                     milestone={m}
                     applicationId={app.applicationId}
                     projectId={projectId}
-                    isManager={isManager && hasSession}
+                    isManager={isManager}
                     onSaved={fetchMilestones}
+                    hasSession={hasSession}
+                    csrfToken={csrfToken}
+                    address={address}
+                    connectedChainId={connectedChain?.id}
+                    openConnectModal={openConnectModal ?? undefined}
+                    switchChain={switchChain}
+                    handleSignIn={handleSignIn}
                   />
                 ))}
               </Stack>
