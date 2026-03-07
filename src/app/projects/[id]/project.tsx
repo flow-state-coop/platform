@@ -43,7 +43,8 @@ export default function Project(props: ProjectProps) {
   const { projectId, csrfToken, editMode } = props;
 
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get("tab");
+  const tabParam = searchParams.get("tab");
+  const milestoneParam = searchParams.get("milestone");
 
   const [project, setProject] = useState<ProjectData | null>(null);
   const [isManager, setIsManager] = useState(false);
@@ -51,7 +52,7 @@ export default function Project(props: ProjectProps) {
   const [error, setError] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(editMode);
   const [selectedTab, setSelectedTab] = useState(
-    initialTab && VALID_TABS.includes(initialTab) ? initialTab : "details",
+    tabParam && VALID_TABS.includes(tabParam) ? tabParam : "details",
   );
   const [pendingEdit, setPendingEdit] = useState(editMode);
 
@@ -100,6 +101,18 @@ export default function Project(props: ProjectProps) {
   useEffect(() => {
     fetchProject();
   }, [fetchProject]);
+
+  useEffect(() => {
+    if (session?.address === address && address) {
+      fetchProject();
+    }
+  }, [session?.address]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (tabParam && VALID_TABS.includes(tabParam)) {
+      setSelectedTab(tabParam);
+    }
+  }, [tabParam]);
 
   useEffect(
     () => postHog.stopSessionRecording(),
@@ -400,6 +413,7 @@ export default function Project(props: ProjectProps) {
                 projectId={projectId}
                 isManager={isManager}
                 csrfToken={csrfToken}
+                scrollToMilestone={milestoneParam}
               />
             </Tab.Pane>
           </Tab.Content>

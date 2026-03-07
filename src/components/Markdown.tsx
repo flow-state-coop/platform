@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
@@ -11,6 +12,8 @@ type MarkdownProps = {
 };
 
 export default function Markdown({ children, className }: MarkdownProps) {
+  const router = useRouter();
+
   if (!children) return null;
 
   return (
@@ -27,6 +30,27 @@ export default function Markdown({ children, className }: MarkdownProps) {
         h5: (props) => <h5 className="fs-6 fw-semi-bold" {...props} />,
         h6: (props) => <h6 className="fs-6" {...props} />,
         table: (props) => <table className="table table-striped" {...props} />,
+        a: ({ href, children: linkChildren, ...rest }) => {
+          if (href?.startsWith("/")) {
+            return (
+              <a
+                href={href}
+                onClick={(e) => {
+                  e.preventDefault();
+                  router.push(href, { scroll: false });
+                }}
+                {...rest}
+              >
+                {linkChildren}
+              </a>
+            );
+          }
+          return (
+            <a href={href} {...rest}>
+              {linkChildren}
+            </a>
+          );
+        },
       }}
     >
       {children}
