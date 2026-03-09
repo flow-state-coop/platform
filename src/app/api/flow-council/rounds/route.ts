@@ -36,6 +36,7 @@ export async function GET(request: Request) {
         "chainId",
         "flowCouncilAddress",
         "superappSplitterAddress",
+        "applicationsClosed",
         "details",
       ])
       .where("chainId", "=", chainId)

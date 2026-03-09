@@ -35,6 +35,7 @@ model Round {
   chainId                  Int           @map("chain_id")
   flowCouncilAddress       String        @map("flow_council_address") @db.VarChar(42)
   superappSplitterAddress  String?       @map("superapp_splitter_address") @db.VarChar(42)
+  applicationsClosed       Boolean       @default(false) @map("applications_closed")
   details                  Json?
   createdAt                DateTime      @default(now()) @map("created_at")
   updatedAt                DateTime      @default(now()) @updatedAt @map("updated_at")
