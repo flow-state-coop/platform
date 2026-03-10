@@ -76,6 +76,15 @@ export async function POST(request: Request) {
       );
     }
 
+    if (round.applicationsClosed) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Applications are currently closed",
+        }),
+      );
+    }
+
     const existingApplication = await db
       .selectFrom("applications")
       .select(["id", "status"])

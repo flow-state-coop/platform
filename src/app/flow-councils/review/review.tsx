@@ -110,6 +110,9 @@ export default function Review(props: ReviewProps) {
   const [reviewComment, setReviewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTogglingLock, setIsTogglingLock] = useState(false);
+  const [applicationsClosed, setApplicationsClosed] = useState(false);
+  const [isTogglingApplicationsClosed, setIsTogglingApplicationsClosed] =
+    useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
@@ -148,12 +151,16 @@ export default function Review(props: ReviewProps) {
         );
         const data = await res.json();
 
-        if (data.success && data.round?.details) {
-          const details =
-            typeof data.round.details === "string"
-              ? JSON.parse(data.round.details)
-              : data.round.details;
-          setRoundName(details?.name ?? "Flow Council");
+        if (data.success && data.round) {
+          setApplicationsClosed(data.round.applicationsClosed ?? false);
+
+          if (data.round.details) {
+            const details =
+              typeof data.round.details === "string"
+                ? JSON.parse(data.round.details)
+                : data.round.details;
+            setRoundName(details?.name ?? "Flow Council");
+          }
         }
       } catch (err) {
         console.error(err);
@@ -362,6 +369,39 @@ export default function Review(props: ReviewProps) {
     }
   };
 
+  const handleToggleApplicationsClosed = async () => {
+    if (!flowCouncil) return;
+
+    try {
+      setIsTogglingApplicationsClosed(true);
+      setError("");
+
+      const res = await fetch("/api/flow-council/rounds/close-applications", {
+        method: "POST",
+        body: JSON.stringify({
+          chainId,
+          councilId: flowCouncil.id,
+          applicationsClosed: !applicationsClosed,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!json.success) {
+        setError(json.error);
+        setIsTogglingApplicationsClosed(false);
+        return;
+      }
+
+      setApplicationsClosed(!applicationsClosed);
+      setIsTogglingApplicationsClosed(false);
+    } catch (err) {
+      console.error(err);
+      setIsTogglingApplicationsClosed(false);
+      setError("Failed to toggle applications status");
+    }
+  };
+
   const handleSubmitReview = async () => {
     if (!session) {
       throw Error("Account is not signed in");
@@ -521,6 +561,32 @@ export default function Review(props: ReviewProps) {
                   navigator.clipboard.writeText(granteeApplicationLink)
                 }
               />
+            </Stack>
+            <Stack
+              direction="horizontal"
+              gap={2}
+              className="align-items-center mb-4"
+            >
+              <Image src="/unlock.svg" alt="Open" width={20} height={20} />
+              <div
+                className="form-switch"
+                style={{
+                  paddingLeft: 0,
+                  display: "flex",
+                  fontSize: "1.25rem",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  role="switch"
+                  id="applications-closed-toggle"
+                  className="form-check-input m-0"
+                  checked={applicationsClosed}
+                  disabled={isTogglingApplicationsClosed}
+                  onChange={handleToggleApplicationsClosed}
+                />
+              </div>
+              <Image src="/lock.svg" alt="Closed" width={20} height={20} />
             </Stack>
 
             {/* Applications Table */}

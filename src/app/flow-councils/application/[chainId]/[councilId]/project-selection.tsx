@@ -68,6 +68,7 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
   const [applications, setApplications] = useState<Application[]>([]);
   const selectedProjectIndex = null;
   const isSubmitting = false;
+  const [applicationsClosed, setApplicationsClosed] = useState(false);
   const [councilMetadata, setCouncilMetadata] = useState({
     name: "",
     description: "",
@@ -214,15 +215,19 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
           `/api/flow-council/rounds?chainId=${chainId}&flowCouncilAddress=${councilId}`,
         );
         const data = await res.json();
-        if (data.success && data.round?.details) {
-          const details =
-            typeof data.round.details === "string"
-              ? JSON.parse(data.round.details)
-              : data.round.details;
-          setCouncilMetadata({
-            name: details?.name ?? "Flow Council",
-            description: details?.description ?? "N/A",
-          });
+        if (data.success && data.round) {
+          setApplicationsClosed(data.round.applicationsClosed ?? false);
+
+          if (data.round.details) {
+            const details =
+              typeof data.round.details === "string"
+                ? JSON.parse(data.round.details)
+                : data.round.details;
+            setCouncilMetadata({
+              name: details?.name ?? "Flow Council",
+              description: details?.description ?? "N/A",
+            });
+          }
         }
       } catch (err) {
         console.error(err);
@@ -259,6 +264,17 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
   ) {
     return <span className="m-auto fs-4 fw-bold">No council found</span>;
   }
+
+  const applicationPreviewLink = !applicationsClosed && (
+    <a
+      href="https://docs.google.com/document/d/1AnyrCNnXMJ9LYC_wXTK_Xu6il2duswp_QiM8oeU9iFA/edit?tab=t.0"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-primary"
+    >
+      Preview the full application here.
+    </a>
+  );
 
   return (
     <Stack direction="vertical" className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52">
@@ -298,20 +314,19 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
         {councilMetadata.description}
       </Markdown>
       <h2 className="mt-5 mb-2 fw-bold fs-3">
-        {isAuthenticated ? "My Projects" : "Apply Now"}
+        {applicationsClosed
+          ? "Applications Closed"
+          : isAuthenticated
+            ? "My Projects"
+            : "Apply Now"}
       </h2>
       {!isAuthenticated ? (
         <Stack direction="vertical" gap={3} className="mt-4">
           <Card.Text className="fs-6 mb-0">
-            Sign in with your wallet to view and manage your projects.{" "}
-            <a
-              href="https://docs.google.com/document/d/1AnyrCNnXMJ9LYC_wXTK_Xu6il2duswp_QiM8oeU9iFA/edit?tab=t.0"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary"
-            >
-              Preview the full application here.
-            </a>
+            {applicationsClosed
+              ? "Applications for this round are currently closed. If you have an existing application, sign in to view or edit it."
+              : "Sign in with your wallet to view and manage your projects."}{" "}
+            {applicationPreviewLink}
           </Card.Text>
           <Button
             className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
@@ -336,15 +351,10 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
       ) : (
         <>
           <Card.Text className="fs-6">
-            Select or create a project to begin your application.{" "}
-            <a
-              href="https://docs.google.com/document/d/1AnyrCNnXMJ9LYC_wXTK_Xu6il2duswp_QiM8oeU9iFA/edit?tab=t.0"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary"
-            >
-              Preview the full application here.
-            </a>
+            {applicationsClosed
+              ? "Applications for this round are currently closed. You can still view and edit your existing applications below."
+              : "Select or create a project to begin your application."}{" "}
+            {applicationPreviewLink}
           </Card.Text>
           <div
             style={{
@@ -366,6 +376,10 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
                 return null;
               }
 
+              if (applicationsClosed && project.status === null) {
+                return null;
+              }
+
               return (
                 <ProjectCard
                   key={project.id}
@@ -375,7 +389,7 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
                   bannerUrl={project.details.bannerUrl ?? ""}
                   status={project.status}
                   hasApplied={hasApplied}
-                  canReapply={true}
+                  canReapply={!applicationsClosed}
                   isSelected={selectedProjectIndex === i}
                   selectProject={() => {
                     router.push(
@@ -391,20 +405,22 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
                 />
               );
             })}
-            <Card
-              className="d-flex flex-col justify-content-center align-items-center border-2 border-secondary rounded-4 fs-6 cursor-pointer"
-              style={{ height: 430 }}
-              onClick={() => {
-                router.push(
-                  `/flow-councils/application/${chainId}/${councilId}/new`,
-                );
-              }}
-            >
-              <span className="fs-1 text-secondary">+</span>
-              <Card.Text className="d-inline-block m-0 overflow-hidden text-center word-wrap text-secondary">
-                Create Project
-              </Card.Text>
-            </Card>
+            {!applicationsClosed && (
+              <Card
+                className="d-flex flex-col justify-content-center align-items-center border-2 border-secondary rounded-4 fs-6 cursor-pointer"
+                style={{ height: 430 }}
+                onClick={() => {
+                  router.push(
+                    `/flow-councils/application/${chainId}/${councilId}/new`,
+                  );
+                }}
+              >
+                <span className="fs-1 text-secondary">+</span>
+                <Card.Text className="d-inline-block m-0 overflow-hidden text-center word-wrap text-secondary">
+                  Create Project
+                </Card.Text>
+              </Card>
+            )}
           </div>
         </>
       )}

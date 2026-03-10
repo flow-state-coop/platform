@@ -5,7 +5,7 @@ import { networks } from "@/lib/networks";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { errorResponse } from "../../utils";
 import { validateRoundDetails } from "../validation";
-import { isRoundAdmin, hasOnChainRole } from "../auth";
+import { isRoundAdmin, hasOnChainRole, findRoundByCouncil } from "../auth";
 
 export const dynamic = "force-dynamic";
 
@@ -206,13 +206,7 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Find the round
-    const round = await db
-      .selectFrom("rounds")
-      .select("id")
-      .where("chainId", "=", chainId)
-      .where("flowCouncilAddress", "=", councilId.toLowerCase())
-      .executeTakeFirst();
+    const round = await findRoundByCouncil(chainId, councilId);
 
     if (!round) {
       return new Response(
@@ -270,7 +264,15 @@ export async function PUT(request: Request) {
         ])
         .executeTakeFirstOrThrow();
     } else {
-      // Get default funding address from project
+      if (round.applicationsClosed) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Applications are currently closed",
+          }),
+        );
+      }
+
       const project = await db
         .selectFrom("projects")
         .select("details")

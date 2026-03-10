@@ -125,16 +125,16 @@ export async function isAcceptedGrantee(
 export async function findRoundByCouncil(
   chainId: number,
   councilAddress: string,
-): Promise<{ id: number } | undefined> {
+): Promise<{ id: number; applicationsClosed: boolean } | undefined> {
   return db
     .selectFrom("rounds")
-    .select("id")
+    .select(["id", "applicationsClosed"])
     .where("chainId", "=", chainId)
     .where("flowCouncilAddress", "=", councilAddress.toLowerCase())
     .executeTakeFirst();
 }
 
-async function isAdmin(
+export async function isAdmin(
   roundId: number,
   chainId: number,
   councilId: string,
