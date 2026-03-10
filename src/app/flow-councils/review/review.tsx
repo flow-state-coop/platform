@@ -567,7 +567,7 @@ export default function Review(props: ReviewProps) {
               gap={2}
               className="align-items-center mb-4"
             >
-              <Image src="/lock.svg" alt="Closed" width={20} height={20} />
+              <Image src="/unlock.svg" alt="Open" width={20} height={20} />
               <div
                 className="form-switch"
                 style={{
@@ -586,7 +586,7 @@ export default function Review(props: ReviewProps) {
                   onChange={handleToggleApplicationsClosed}
                 />
               </div>
-              <Image src="/unlock.svg" alt="Open" width={20} height={20} />
+              <Image src="/lock.svg" alt="Closed" width={20} height={20} />
             </Stack>
 
             {/* Applications Table */}
