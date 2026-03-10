@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { isAddress } from "viem";
-import { useAccount, useSwitchChain } from "wagmi";
+import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useSession } from "next-auth/react";
 import Form from "react-bootstrap/Form";
@@ -51,7 +51,6 @@ async function uploadToS3(file: Blob, fileName: string): Promise<string> {
 }
 
 type ProjectTabProps = {
-  chainId: number;
   csrfToken: string;
   project: Project | null;
   isLoading: boolean;
@@ -94,7 +93,7 @@ const isValidGithubRepo = (url: string): boolean => {
 };
 
 export default function ProjectTab(props: ProjectTabProps) {
-  const { chainId, csrfToken, project, isLoading, onSave, onCancel } = props;
+  const { csrfToken, project, isLoading, onSave, onCancel } = props;
 
   const [form, setForm] = useState<ProjectForm>({
     name: "",
@@ -141,8 +140,7 @@ export default function ProjectTab(props: ProjectTabProps) {
   const fileInputRefBanner = useRef<HTMLInputElement>(null);
 
   const { openConnectModal } = useConnectModal();
-  const { address, chain: connectedChain } = useAccount();
-  const { switchChain } = useSwitchChain();
+  const { address } = useAccount();
   const { data: session } = useSession();
   const { handleSignIn } = useSiwe();
 
@@ -342,8 +340,6 @@ export default function ProjectTab(props: ProjectTabProps) {
     setValidated(true);
     if (!address && openConnectModal) {
       openConnectModal();
-    } else if (connectedChain?.id !== chainId) {
-      switchChain({ chainId });
     } else if (!session || session.address !== address) {
       handleSignIn(csrfToken);
     } else if (isValid) {

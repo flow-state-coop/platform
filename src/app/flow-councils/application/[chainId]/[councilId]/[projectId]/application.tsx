@@ -226,7 +226,6 @@ export default function Application(props: ApplicationProps) {
         <Tab.Content>
           <Tab.Pane eventKey="project">
             <ProjectTab
-              chainId={chainId}
               csrfToken={csrfToken}
               project={project}
               isLoading={isLoading}
