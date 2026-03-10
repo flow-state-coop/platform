@@ -4,7 +4,7 @@ import { getCsrfToken, useSession } from "next-auth/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import useSiwe from "./siwe";
 
-let latestPendingId = 0;
+let latestAuthRequestId = 0;
 
 export default function useRequireAuth() {
   const { address } = useAccount();
@@ -19,15 +19,17 @@ export default function useRequireAuth() {
     (onAuthed: () => void): boolean => {
       if (!address) {
         openConnectModal?.();
-        const id = ++latestPendingId;
+        const id = ++latestAuthRequestId;
         pendingRef.current = { id, callback: onAuthed };
         return false;
       }
       if (!hasSession) {
-        getCsrfToken().then((token) => {
-          if (token) handleSignIn(token);
-        });
-        const id = ++latestPendingId;
+        getCsrfToken()
+          .then((token) => {
+            if (token) handleSignIn(token);
+          })
+          .catch(console.error);
+        const id = ++latestAuthRequestId;
         pendingRef.current = { id, callback: onAuthed };
         return false;
       }
@@ -39,7 +41,7 @@ export default function useRequireAuth() {
 
   useEffect(() => {
     if (hasSession && pendingRef.current) {
-      if (pendingRef.current.id === latestPendingId) {
+      if (pendingRef.current.id === latestAuthRequestId) {
         pendingRef.current.callback();
       }
       pendingRef.current = null;
