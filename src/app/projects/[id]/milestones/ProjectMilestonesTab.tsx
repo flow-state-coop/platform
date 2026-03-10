@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAccount, useSwitchChain } from "wagmi";
+import { useAccount } from "wagmi";
 import { useSession } from "next-auth/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Spinner from "react-bootstrap/Spinner";
@@ -28,11 +28,10 @@ export default function ProjectMilestonesTab({
   const [applications, setApplications] = useState<ApplicationMilestones[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { address, chain: connectedChain } = useAccount();
+  const { address } = useAccount();
   const { data: session } = useSession();
   const { handleSignIn } = useSiwe();
   const { openConnectModal } = useConnectModal();
-  const { switchChain } = useSwitchChain();
 
   const fetchMilestones = useCallback(async () => {
     try {
@@ -114,9 +113,7 @@ export default function ProjectMilestonesTab({
                     hasSession={hasSession}
                     csrfToken={csrfToken}
                     address={address}
-                    connectedChainId={connectedChain?.id}
-                    openConnectModal={openConnectModal ?? undefined}
-                    switchChain={switchChain}
+                    openConnectModal={openConnectModal}
                     handleSignIn={handleSignIn}
                   />
                 ))}

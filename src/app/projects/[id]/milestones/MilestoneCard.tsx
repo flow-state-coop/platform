@@ -26,9 +26,7 @@ type MilestoneCardProps = {
   hasSession?: boolean;
   csrfToken?: string;
   address?: string;
-  connectedChainId?: number;
   openConnectModal?: (() => void) | undefined;
-  switchChain?: (args: { chainId: number }) => void;
   handleSignIn?: (csrfToken: string) => void;
 };
 
@@ -227,9 +225,7 @@ export default function MilestoneCard({
   hasSession,
   csrfToken,
   address,
-  connectedChainId,
   openConnectModal,
-  switchChain,
   handleSignIn,
 }: MilestoneCardProps) {
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
@@ -270,10 +266,6 @@ export default function MilestoneCard({
   const requireAuth = (onAuthed: () => void): boolean => {
     if (!address && openConnectModal) {
       openConnectModal();
-      return false;
-    }
-    if (connectedChainId !== 42220 && switchChain) {
-      switchChain({ chainId: 42220 });
       return false;
     }
     if (!hasSession && handleSignIn && csrfToken) {

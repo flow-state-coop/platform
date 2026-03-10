@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAccount, useSwitchChain } from "wagmi";
+import { useAccount } from "wagmi";
 import { useSession } from "next-auth/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Spinner from "react-bootstrap/Spinner";
@@ -25,32 +25,20 @@ export default function ProjectFeedTab({
   const [councilId, setCouncilId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { address, chain: connectedChain } = useAccount();
+  const { address } = useAccount();
   const { data: session } = useSession();
   const { handleSignIn } = useSiwe();
   const { openConnectModal } = useConnectModal();
-  const { switchChain } = useSwitchChain();
 
   const hasSession = !!session && session.address === address;
 
   const handleAuthRequired = useCallback(() => {
     if (!address && openConnectModal) {
       openConnectModal();
-    } else if (connectedChain?.id !== chainId && switchChain && chainId) {
-      switchChain({ chainId });
     } else if (!hasSession) {
       handleSignIn(csrfToken);
     }
-  }, [
-    address,
-    openConnectModal,
-    connectedChain?.id,
-    chainId,
-    switchChain,
-    hasSession,
-    handleSignIn,
-    csrfToken,
-  ]);
+  }, [address, openConnectModal, hasSession, handleSignIn, csrfToken]);
 
   useEffect(() => {
     let cancelled = false;

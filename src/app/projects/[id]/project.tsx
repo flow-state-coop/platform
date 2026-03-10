@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAccount, useSwitchChain } from "wagmi";
+import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useSession } from "next-auth/react";
 import { usePostHog } from "posthog-js/react";
@@ -58,8 +58,7 @@ export default function Project(props: ProjectProps) {
 
   const router = useRouter();
   const postHog = usePostHog();
-  const { address, chain: connectedChain } = useAccount();
-  const { switchChain } = useSwitchChain();
+  const { address } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { data: session } = useSession();
   const { handleSignIn } = useSiwe();
@@ -134,8 +133,6 @@ export default function Project(props: ProjectProps) {
   const handleEditClick = () => {
     if (!address && openConnectModal) {
       openConnectModal();
-    } else if (connectedChain?.id !== 42220) {
-      switchChain({ chainId: 42220 });
     } else if (!session || session.address !== address) {
       handleSignIn(csrfToken);
       setPendingEdit(true);
@@ -433,7 +430,6 @@ export default function Project(props: ProjectProps) {
       {project && isManager && (
         <ProjectModal
           show={showEditModal}
-          chainId={42220}
           csrfToken={csrfToken}
           handleClose={() => {
             setShowEditModal(false);
