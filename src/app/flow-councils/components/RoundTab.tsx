@@ -68,7 +68,7 @@ export default function RoundTab(props: RoundTabProps) {
     address,
     session,
     handleSubmit: authSubmit,
-  } = useAuthSubmit(chainId, csrfToken);
+  } = useAuthSubmit(csrfToken);
 
   useEffect(() => {
     if (existingRoundData) {

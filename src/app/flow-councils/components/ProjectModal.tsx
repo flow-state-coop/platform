@@ -6,7 +6,6 @@ import { Project } from "@/types/project";
 
 type ProjectModalProps = {
   show: boolean;
-  chainId: number;
   csrfToken: string;
   handleClose: () => void;
   onProjectCreated: () => void;
@@ -15,15 +14,8 @@ type ProjectModalProps = {
 };
 
 export default function ProjectModal(props: ProjectModalProps) {
-  const {
-    show,
-    chainId,
-    csrfToken,
-    handleClose,
-    onProjectCreated,
-    mode,
-    project,
-  } = props;
+  const { show, csrfToken, handleClose, onProjectCreated, mode, project } =
+    props;
 
   return (
     <Modal
@@ -41,7 +33,6 @@ export default function ProjectModal(props: ProjectModalProps) {
       </Modal.Header>
       <Modal.Body className="p-4">
         <ProjectTab
-          chainId={chainId}
           csrfToken={csrfToken}
           project={project}
           isLoading={false}

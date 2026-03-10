@@ -61,10 +61,13 @@ export async function PATCH(
       );
     }
 
+    const now = new Date();
+
     const updatedMessage = await db
       .updateTable("messages")
       .set({
         content: content.trim(),
+        updatedAt: now,
       })
       .where("id", "=", messageIdNum)
       .returning(["id", "authorAddress", "content", "createdAt", "updatedAt"])
@@ -73,7 +76,7 @@ export async function PATCH(
     if (message.channelType === "PUBLIC_PROJECT" && message.projectId) {
       await db
         .updateTable("messages")
-        .set({ content: content.trim() })
+        .set({ content: content.trim(), updatedAt: now })
         .where("authorAddress", "=", message.authorAddress)
         .where("channelType", "=", "PUBLIC_ROUND")
         .where("projectId", "=", message.projectId)

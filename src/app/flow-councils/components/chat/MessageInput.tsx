@@ -13,6 +13,7 @@ type MessageInputProps = {
   showEmailCheckbox?: boolean;
   disabled?: boolean;
   placeholder?: string;
+  onAuthRequired?: () => void;
 };
 
 export default function MessageInput(props: MessageInputProps) {
@@ -22,6 +23,7 @@ export default function MessageInput(props: MessageInputProps) {
     showEmailCheckbox = false,
     disabled = false,
     placeholder = "Write a message. Markdown is supported.",
+    onAuthRequired,
   } = props;
 
   const [content, setContent] = useState("");
@@ -34,6 +36,18 @@ export default function MessageInput(props: MessageInputProps) {
     setContent("");
     setSendEmail(false);
   };
+
+  if (disabled && onAuthRequired) {
+    return (
+      <Button
+        variant="secondary"
+        className="w-100 py-4 rounded-4 fw-semi-bold fs-lg d-flex justify-content-center align-items-center gap-2"
+        onClick={onAuthRequired}
+      >
+        Sign In to Post
+      </Button>
+    );
+  }
 
   return (
     <div>

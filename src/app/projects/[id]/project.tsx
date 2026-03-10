@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAccount, useSwitchChain } from "wagmi";
+import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useSession } from "next-auth/react";
 import { usePostHog } from "posthog-js/react";
@@ -43,7 +43,8 @@ export default function Project(props: ProjectProps) {
   const { projectId, csrfToken, editMode } = props;
 
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get("tab");
+  const tabParam = searchParams.get("tab");
+  const milestoneParam = searchParams.get("milestone");
 
   const [project, setProject] = useState<ProjectData | null>(null);
   const [isManager, setIsManager] = useState(false);
@@ -51,14 +52,13 @@ export default function Project(props: ProjectProps) {
   const [error, setError] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(editMode);
   const [selectedTab, setSelectedTab] = useState(
-    initialTab && VALID_TABS.includes(initialTab) ? initialTab : "details",
+    tabParam && VALID_TABS.includes(tabParam) ? tabParam : "details",
   );
   const [pendingEdit, setPendingEdit] = useState(editMode);
 
   const router = useRouter();
   const postHog = usePostHog();
-  const { address, chain: connectedChain } = useAccount();
-  const { switchChain } = useSwitchChain();
+  const { address } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { data: session } = useSession();
   const { handleSignIn } = useSiwe();
@@ -97,9 +97,26 @@ export default function Project(props: ProjectProps) {
     }
   }, [projectId, address]);
 
+  const prevSessionAddress = useRef(session?.address);
+
   useEffect(() => {
     fetchProject();
   }, [fetchProject]);
+
+  useEffect(() => {
+    if (session?.address !== prevSessionAddress.current) {
+      prevSessionAddress.current = session?.address;
+      if (session?.address === address && address) {
+        fetchProject();
+      }
+    }
+  }, [session?.address, address, fetchProject]);
+
+  useEffect(() => {
+    if (tabParam && VALID_TABS.includes(tabParam)) {
+      setSelectedTab(tabParam);
+    }
+  }, [tabParam]);
 
   useEffect(
     () => postHog.stopSessionRecording(),
@@ -116,8 +133,6 @@ export default function Project(props: ProjectProps) {
   const handleEditClick = () => {
     if (!address && openConnectModal) {
       openConnectModal();
-    } else if (connectedChain?.id !== 42220) {
-      switchChain({ chainId: 42220 });
     } else if (!session || session.address !== address) {
       handleSignIn(csrfToken);
       setPendingEdit(true);
@@ -350,7 +365,13 @@ export default function Project(props: ProjectProps) {
         </Stack>
         <Tab.Container
           activeKey={selectedTab}
-          onSelect={(key) => setSelectedTab(key ?? "details")}
+          onSelect={(key) => {
+            const tab = key ?? "details";
+            setSelectedTab(tab);
+            router.replace(`/projects/${projectId}?tab=${tab}`, {
+              scroll: false,
+            });
+          }}
         >
           <Nav className="pt-8 pb-6 fs-6 gap-2 px-3 sm:px-0">
             <Nav.Item>
@@ -400,6 +421,7 @@ export default function Project(props: ProjectProps) {
                 projectId={projectId}
                 isManager={isManager}
                 csrfToken={csrfToken}
+                scrollToMilestone={milestoneParam}
               />
             </Tab.Pane>
           </Tab.Content>
@@ -408,7 +430,6 @@ export default function Project(props: ProjectProps) {
       {project && isManager && (
         <ProjectModal
           show={showEditModal}
-          chainId={42220}
           csrfToken={csrfToken}
           handleClose={() => {
             setShowEditModal(false);

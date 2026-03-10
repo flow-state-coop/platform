@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAccount, useSwitchChain } from "wagmi";
+import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useSession } from "next-auth/react";
 import { usePostHog } from "posthog-js/react";
@@ -32,8 +32,7 @@ export default function Projects(props: ProjectsProps) {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { address, chain: connectedChain } = useAccount();
-  const { switchChain } = useSwitchChain();
+  const { address } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { data: session } = useSession();
   const { handleSignIn } = useSiwe();
@@ -103,8 +102,6 @@ export default function Projects(props: ProjectsProps) {
   const handleCreateClick = () => {
     if (!address && openConnectModal) {
       openConnectModal();
-    } else if (connectedChain?.id !== 42220) {
-      switchChain({ chainId: 42220 });
     } else if (!session || session.address !== address) {
       handleSignIn(csrfToken);
       setPendingCreate(true);
@@ -182,7 +179,6 @@ export default function Projects(props: ProjectsProps) {
       )}
       <ProjectModal
         show={showProjectCreationModal}
-        chainId={42220}
         csrfToken={csrfToken}
         handleClose={() => setShowProjectCreationModal(false)}
         onProjectCreated={fetchProjects}

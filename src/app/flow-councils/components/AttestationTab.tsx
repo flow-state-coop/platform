@@ -69,7 +69,7 @@ export default function AttestationTab(props: AttestationTabProps) {
     address,
     session,
     handleSubmit: authSubmit,
-  } = useAuthSubmit(chainId, csrfToken);
+  } = useAuthSubmit(csrfToken);
 
   useEffect(() => {
     if (existingAttestationData) {

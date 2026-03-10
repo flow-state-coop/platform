@@ -1,12 +1,11 @@
-import { useAccount, useSwitchChain } from "wagmi";
+import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useSession } from "next-auth/react";
 import useSiwe from "@/hooks/siwe";
 
-export default function useAuthSubmit(chainId: number, csrfToken: string) {
+export default function useAuthSubmit(csrfToken: string) {
   const { openConnectModal } = useConnectModal();
-  const { address, chain: connectedChain } = useAccount();
-  const { switchChain } = useSwitchChain();
+  const { address } = useAccount();
   const { data: session } = useSession();
   const { handleSignIn } = useSiwe();
 
@@ -18,8 +17,6 @@ export default function useAuthSubmit(chainId: number, csrfToken: string) {
     setValidated(true);
     if (!address && openConnectModal) {
       openConnectModal();
-    } else if (connectedChain?.id !== chainId) {
-      switchChain({ chainId });
     } else if (!session || session.address !== address) {
       handleSignIn(csrfToken);
     } else if (isValid) {

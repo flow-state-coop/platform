@@ -36,6 +36,7 @@ type ChatViewProps = {
   infoText?: string;
   newestFirst?: boolean;
   active?: boolean;
+  onAuthRequired?: () => void;
 };
 
 export default function ChatView(props: ChatViewProps) {
@@ -54,6 +55,7 @@ export default function ChatView(props: ChatViewProps) {
     infoText,
     newestFirst = false,
     active,
+    onAuthRequired,
   } = props;
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -269,12 +271,13 @@ export default function ChatView(props: ChatViewProps) {
       onSend={handleSendMessage}
       isSending={isSending}
       showEmailCheckbox={showEmailCheckbox}
-      disabled={!session?.address}
+      disabled={!session?.address || !!onAuthRequired}
       placeholder={
-        session?.address
+        session?.address && !onAuthRequired
           ? "Write a message. Markdown is supported."
           : "Sign in to send messages"
       }
+      onAuthRequired={onAuthRequired}
     />
   );
 

@@ -129,9 +129,31 @@ export const roundDetailsSchema = z.object({
   attestation: z.any().optional(),
 });
 
+export function normalizeEvidenceUrl(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith("//")) return `https:${trimmed}`;
+  return `https://${trimmed}`;
+}
+
 const evidenceLinkSchema = z.object({
   name: z.string().min(1).max(200),
-  link: z.string().url().max(2000),
+  link: z
+    .string()
+    .max(2000)
+    .transform(normalizeEvidenceUrl)
+    .refine(
+      (url) => {
+        try {
+          new URL(url);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Invalid URL" },
+    ),
 });
 
 const deliverableProgressSchema = z.object({
