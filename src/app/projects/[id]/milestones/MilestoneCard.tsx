@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
@@ -9,6 +9,7 @@ import Spinner from "react-bootstrap/Spinner";
 import ProgressBar from "react-bootstrap/ProgressBar";
 import Markdown from "@/components/Markdown";
 import MarkdownEditor from "@/components/MarkdownEditor";
+import useRequireAuth from "@/hooks/requireAuth";
 import { normalizeEvidenceUrl } from "@/app/api/flow-council/validation";
 import type {
   MilestoneWithProgress,
@@ -23,11 +24,6 @@ type MilestoneCardProps = {
   projectId: string;
   isManager: boolean;
   onSaved: () => void;
-  hasSession?: boolean;
-  csrfToken?: string;
-  address?: string;
-  openConnectModal?: (() => void) | undefined;
-  handleSignIn?: (csrfToken: string) => void;
 };
 
 type EditingDeliverable = {
@@ -222,12 +218,9 @@ export default function MilestoneCard({
   projectId,
   isManager,
   onSaved,
-  hasSession,
-  csrfToken,
-  address,
-  openConnectModal,
-  handleSignIn,
 }: MilestoneCardProps) {
+  const { requireAuth } = useRequireAuth();
+
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [editingOtherDetails, setEditingOtherDetails] = useState(false);
   const [otherDetailsValue, setOtherDetailsValue] = useState(
@@ -235,58 +228,19 @@ export default function MilestoneCard({
   );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [pendingEditIndex, setPendingEditIndex] = useState<number | null>(null);
-  const [pendingOtherDetails, setPendingOtherDetails] = useState(false);
 
   const badgeLabel = `${TYPE_LABELS[milestone.type]} Milestone ${milestone.index + 1}`;
   const itemLabel = milestone.type === "build" ? "Deliverables" : "Activations";
 
-  useEffect(() => {
-    if (hasSession && pendingEditIndex !== null) {
-      setEditingItemIndex(pendingEditIndex);
-      setPendingEditIndex(null);
-    }
-    if (hasSession && pendingOtherDetails) {
-      setOtherDetailsValue(milestone.progress.otherDetails);
-      setEditingOtherDetails(true);
-      setPendingOtherDetails(false);
-    }
-  }, [
-    hasSession,
-    pendingEditIndex,
-    pendingOtherDetails,
-    milestone.progress.otherDetails,
-  ]);
-
-  useEffect(() => {
-    setPendingEditIndex(null);
-    setPendingOtherDetails(false);
-  }, [address]);
-
-  const requireAuth = (onAuthed: () => void): boolean => {
-    if (!address && openConnectModal) {
-      openConnectModal();
-      return false;
-    }
-    if (!hasSession && handleSignIn && csrfToken) {
-      handleSignIn(csrfToken);
-      return false;
-    }
-    onAuthed();
-    return true;
-  };
-
   const handleEditDeliverableClick = (index: number) => {
-    const authed = requireAuth(() => setEditingItemIndex(index));
-    if (!authed) setPendingEditIndex(index);
+    requireAuth(() => setEditingItemIndex(index));
   };
 
   const handleEditOtherDetailsClick = () => {
-    const authed = requireAuth(() => {
+    requireAuth(() => {
       setOtherDetailsValue(milestone.progress.otherDetails);
       setEditingOtherDetails(true);
     });
-    if (!authed) setPendingOtherDetails(true);
   };
 
   const saveProgress = async (updatedProgress: MilestoneProgressData) => {

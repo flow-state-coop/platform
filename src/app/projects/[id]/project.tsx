@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount } from "wagmi";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useSession } from "next-auth/react";
 import { usePostHog } from "posthog-js/react";
 import Stack from "react-bootstrap/Stack";
@@ -18,7 +17,7 @@ import ProjectModal from "@/app/flow-councils/components/ProjectModal";
 import ProjectFeedTab from "@/app/projects/[id]/ProjectFeedTab";
 import ProjectMilestonesTab from "@/app/projects/[id]/milestones/ProjectMilestonesTab";
 import { ProjectDetails } from "@/types/project";
-import useSiwe from "@/hooks/siwe";
+import useRequireAuth from "@/hooks/requireAuth";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getPlaceholderImageSrc } from "@/lib/utils";
 
@@ -54,14 +53,12 @@ export default function Project(props: ProjectProps) {
   const [selectedTab, setSelectedTab] = useState(
     tabParam && VALID_TABS.includes(tabParam) ? tabParam : "details",
   );
-  const [pendingEdit, setPendingEdit] = useState(editMode);
 
   const router = useRouter();
   const postHog = usePostHog();
   const { address } = useAccount();
-  const { openConnectModal } = useConnectModal();
   const { data: session } = useSession();
-  const { handleSignIn } = useSiwe();
+  const { requireAuth } = useRequireAuth();
   const { isMobile, isTablet } = useMediaQuery();
 
   const placeholderLogo = getPlaceholderImageSrc();
@@ -123,22 +120,8 @@ export default function Project(props: ProjectProps) {
     [postHog, postHog.decideEndpointWasHit],
   );
 
-  useEffect(() => {
-    if (pendingEdit && address && session?.address === address) {
-      setShowEditModal(true);
-      setPendingEdit(false);
-    }
-  }, [pendingEdit, session, address]);
-
   const handleEditClick = () => {
-    if (!address && openConnectModal) {
-      openConnectModal();
-    } else if (!session || session.address !== address) {
-      handleSignIn(csrfToken);
-      setPendingEdit(true);
-    } else {
-      setShowEditModal(true);
-    }
+    requireAuth(() => setShowEditModal(true));
   };
 
   if (loading) {
@@ -412,7 +395,6 @@ export default function Project(props: ProjectProps) {
               <ProjectFeedTab
                 projectId={projectId}
                 isManager={isManager}
-                csrfToken={csrfToken}
                 active={selectedTab === "feed"}
               />
             </Tab.Pane>
@@ -420,7 +402,6 @@ export default function Project(props: ProjectProps) {
               <ProjectMilestonesTab
                 projectId={projectId}
                 isManager={isManager}
-                csrfToken={csrfToken}
                 scrollToMilestone={milestoneParam}
               />
             </Tab.Pane>
