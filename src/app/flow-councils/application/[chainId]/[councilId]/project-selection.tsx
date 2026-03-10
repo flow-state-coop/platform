@@ -324,7 +324,7 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
         <Stack direction="vertical" gap={3} className="mt-4">
           <Card.Text className="fs-6 mb-0">
             {applicationsClosed
-              ? "Applications for this round are currently closed. If you have an existing application, sign in to view or edit it."
+              ? "Applications for this Flow Council are currently closed. If you have an existing application, sign in to view or edit it."
               : "Sign in with your wallet to view and manage your projects."}{" "}
             {applicationPreviewLink}
           </Card.Text>
@@ -352,7 +352,7 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
         <>
           <Card.Text className="fs-6">
             {applicationsClosed
-              ? "Applications for this round are currently closed. You can still view and edit your existing applications below."
+              ? "Applications for this Flow Council are currently closed. You can still view and edit your existing applications below."
               : "Select or create a project to begin your application."}{" "}
             {applicationPreviewLink}
           </Card.Text>
