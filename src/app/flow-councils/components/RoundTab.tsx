@@ -11,7 +11,7 @@ import TeamMemberInput from "./TeamMemberInput";
 import InfoBox from "./InfoBox";
 import CharacterCounter from "./CharacterCounter";
 import { CHARACTER_LIMITS } from "../constants";
-import useAuthSubmit from "@/app/flow-councils/hooks/authSubmit";
+import useRequireAuth from "@/hooks/requireAuth";
 import {
   type IntegrationType,
   type RoundForm,
@@ -35,7 +35,6 @@ type RoundTabProps = {
   chainId: number;
   councilId: string;
   projectId: number;
-  csrfToken: string;
   existingRoundData: RoundForm | null;
   isLoading: boolean;
   onSave: (roundData: RoundForm, applicationId?: number) => void;
@@ -47,7 +46,6 @@ export default function RoundTab(props: RoundTabProps) {
     chainId,
     councilId,
     projectId,
-    csrfToken,
     existingRoundData,
     isLoading,
     onSave,
@@ -64,11 +62,7 @@ export default function RoundTab(props: RoundTabProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const {
-    address,
-    session,
-    handleSubmit: authSubmit,
-  } = useAuthSubmit(csrfToken);
+  const { hasSession, requireAuth } = useRequireAuth();
 
   useEffect(() => {
     if (existingRoundData) {
@@ -272,8 +266,6 @@ export default function RoundTab(props: RoundTabProps) {
   };
 
   const handleSaveRound = async () => {
-    if (!session?.address) throw Error("Account is not signed in");
-
     try {
       setIsSubmitting(true);
       setError("");
@@ -306,7 +298,9 @@ export default function RoundTab(props: RoundTabProps) {
   };
 
   const handleSubmit = () => {
-    authSubmit(isValid, setValidated, handleSaveRound);
+    setValidated(true);
+    if (!isValid) return;
+    requireAuth(handleSaveRound);
   };
 
   if (isLoading) {
@@ -1024,7 +1018,7 @@ export default function RoundTab(props: RoundTabProps) {
         >
           Back
         </Button>
-        {!session || session.address !== address ? (
+        {!hasSession ? (
           <Button
             className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
             onClick={handleSubmit}
