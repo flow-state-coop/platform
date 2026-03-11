@@ -239,7 +239,6 @@ export default function Application(props: ApplicationProps) {
                 chainId={chainId}
                 councilId={councilId}
                 projectId={savedProjectId ?? project?.id ?? 0}
-                csrfToken={csrfToken}
                 existingRoundData={roundData}
                 isLoading={isLoading}
                 onSave={handleRoundSaved}
@@ -256,7 +255,6 @@ export default function Application(props: ApplicationProps) {
                 councilId={councilId}
                 projectId={savedProjectId ?? project?.id ?? 0}
                 applicationId={applicationId}
-                csrfToken={csrfToken}
                 defaultFundingAddress={
                   project?.details?.defaultFundingAddress || ""
                 }

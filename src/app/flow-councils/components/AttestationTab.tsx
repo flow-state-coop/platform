@@ -8,7 +8,7 @@ import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import Toast from "react-bootstrap/Toast";
-import useAuthSubmit from "@/app/flow-councils/hooks/authSubmit";
+import useRequireAuth from "@/hooks/requireAuth";
 import {
   type RoundForm,
   type AttestationForm,
@@ -26,7 +26,6 @@ type AttestationTabProps = {
   councilId: string;
   projectId: number;
   applicationId: number | null;
-  csrfToken: string;
   defaultFundingAddress: string;
   existingAttestationData: AttestationForm | null;
   existingRoundData: RoundForm | null;
@@ -41,7 +40,6 @@ export default function AttestationTab(props: AttestationTabProps) {
     chainId,
     councilId,
     applicationId,
-    csrfToken,
     defaultFundingAddress,
     existingAttestationData,
     existingRoundData,
@@ -65,11 +63,7 @@ export default function AttestationTab(props: AttestationTabProps) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const {
-    address,
-    session,
-    handleSubmit: authSubmit,
-  } = useAuthSubmit(csrfToken);
+  const { hasSession, requireAuth } = useRequireAuth();
 
   useEffect(() => {
     if (existingAttestationData) {
@@ -118,7 +112,6 @@ export default function AttestationTab(props: AttestationTabProps) {
   };
 
   const handleSubmitApplication = async () => {
-    if (!session?.address) throw Error("Account is not signed in");
     if (!applicationId) throw Error("Application ID not found");
 
     try {
@@ -173,7 +166,9 @@ export default function AttestationTab(props: AttestationTabProps) {
   };
 
   const handleSubmit = () => {
-    authSubmit(isValid, setValidated, handleSubmitApplication);
+    setValidated(true);
+    if (!isValid) return;
+    requireAuth(handleSubmitApplication);
   };
 
   if (isLoading) {
@@ -533,7 +528,7 @@ export default function AttestationTab(props: AttestationTabProps) {
           >
             Back
           </Button>
-          {!session || session.address !== address ? (
+          {!hasSession ? (
             <Button
               className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
               onClick={handleSubmit}

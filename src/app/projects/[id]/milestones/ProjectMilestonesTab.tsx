@@ -1,37 +1,26 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAccount } from "wagmi";
-import { useSession } from "next-auth/react";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Spinner from "react-bootstrap/Spinner";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
 import Image from "react-bootstrap/Image";
 import MilestoneCard from "./MilestoneCard";
-import useSiwe from "@/hooks/siwe";
 import type { ApplicationMilestones } from "./types";
 
 type ProjectMilestonesTabProps = {
   projectId: string;
   isManager: boolean;
-  csrfToken: string;
   scrollToMilestone?: string | null;
 };
 
 export default function ProjectMilestonesTab({
   projectId,
   isManager,
-  csrfToken,
   scrollToMilestone,
 }: ProjectMilestonesTabProps) {
   const [applications, setApplications] = useState<ApplicationMilestones[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  const { address } = useAccount();
-  const { data: session } = useSession();
-  const { handleSignIn } = useSiwe();
-  const { openConnectModal } = useConnectModal();
 
   const fetchMilestones = useCallback(async () => {
     try {
@@ -84,8 +73,6 @@ export default function ProjectMilestonesTab({
     );
   }
 
-  const hasSession = !!session && session.address === address;
-
   return (
     <div>
       {applications.map(
@@ -110,11 +97,6 @@ export default function ProjectMilestonesTab({
                     projectId={projectId}
                     isManager={isManager}
                     onSaved={fetchMilestones}
-                    hasSession={hasSession}
-                    csrfToken={csrfToken}
-                    address={address}
-                    openConnectModal={openConnectModal}
-                    handleSignIn={handleSignIn}
                   />
                 ))}
               </Stack>
