@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount } from "wagmi";
 import { useSession } from "next-auth/react";
@@ -12,14 +12,18 @@ import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import Nav from "react-bootstrap/Nav";
 import Tab from "react-bootstrap/Tab";
+import Row from "react-bootstrap/Row";
+import Col from "react-bootstrap/Col";
 import Markdown from "@/components/Markdown";
 import ProjectModal from "@/app/flow-councils/components/ProjectModal";
 import ProjectFeedTab from "@/app/projects/[id]/ProjectFeedTab";
 import ProjectMilestonesTab from "@/app/projects/[id]/milestones/ProjectMilestonesTab";
+import GardensPoolFunding from "@/app/projects/[id]/GardensPoolFunding";
 import { ProjectDetails } from "@/types/project";
 import useRequireAuth from "@/hooks/requireAuth";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getPlaceholderImageSrc } from "@/lib/utils";
+import { getGardensPoolNetwork } from "@/lib/gardensPool";
 
 type ProjectProps = {
   projectId: string;
@@ -32,6 +36,7 @@ type ProjectData = {
   details: ProjectDetails | null;
   managerAddresses: string[];
   managerEmails: string[];
+  fundingAddresses: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -120,6 +125,18 @@ export default function Project(props: ProjectProps) {
     [postHog, postHog.decideEndpointWasHit],
   );
 
+  const allFundingAddresses = useMemo(() => {
+    if (!project) return [];
+
+    const addresses = [...(project.fundingAddresses ?? [])];
+
+    if (project.details?.defaultFundingAddress) {
+      addresses.push(project.details.defaultFundingAddress);
+    }
+
+    return [...new Set(addresses)];
+  }, [project]);
+
   const handleEditClick = () => {
     requireAuth(() => setShowEditModal(true));
   };
@@ -151,6 +168,10 @@ export default function Project(props: ProjectProps) {
 
   const details = project.details;
 
+  const gardensPoolNetwork = details?.gardensPool
+    ? getGardensPoolNetwork(details.gardensPool)
+    : null;
+
   return (
     <>
       <Stack
@@ -159,23 +180,28 @@ export default function Project(props: ProjectProps) {
       >
         <Card
           className="position-relative border-0"
-          style={{ height: isMobile ? 180 : isTablet ? 340 : 550 }}
+          style={{ aspectRatio: "3/1" }}
         >
-          <Card.Img
-            variant="top"
-            src={details?.bannerUrl || placeholderBanner}
-            height={isMobile ? 200 : isTablet ? 300 : 500}
-            className="bg-light rounded-0 rounded-4"
-          />
+          <div
+            className="rounded-4"
+            style={{ overflow: "hidden", width: "100%", height: "100%" }}
+          >
+            <Card.Img
+              variant="top"
+              src={details?.bannerUrl || placeholderBanner}
+              className="bg-light rounded-0"
+              style={{ objectFit: "cover", width: "100%", height: "100%" }}
+            />
+          </div>
           <Image
             src={details?.logoUrl || placeholderLogo}
             alt=""
-            width={isMobile || isTablet ? 100 : 200}
-            height={isMobile || isTablet ? 100 : 200}
+            width={isMobile ? 80 : isTablet ? 100 : 150}
+            height={isMobile ? 80 : isTablet ? 100 : 150}
             className="rounded-4 position-absolute border border-2 border-light bg-white"
             style={{
-              bottom: isTablet ? -10 : -50,
-              left: isMobile ? 30 : 50,
+              bottom: isMobile ? -30 : isTablet ? -30 : -50,
+              left: isMobile ? 20 : isTablet ? 40 : 50,
             }}
           />
         </Card>
@@ -189,7 +215,7 @@ export default function Project(props: ProjectProps) {
           {isManager && (
             <Button
               variant="secondary"
-              className="w-20 px-10 py-4 rounded-4 fw-semi-bold"
+              className="px-6 py-2 rounded-4 fw-semi-bold"
               onClick={handleEditClick}
             >
               Edit
@@ -385,27 +411,40 @@ export default function Project(props: ProjectProps) {
               </Nav.Link>
             </Nav.Item>
           </Nav>
-          <Tab.Content>
-            <Tab.Pane eventKey="details">
-              <Markdown className="px-3 sm:px-0">
-                {details?.description}
-              </Markdown>
-            </Tab.Pane>
-            <Tab.Pane eventKey="feed">
-              <ProjectFeedTab
-                projectId={projectId}
-                isManager={isManager}
-                active={selectedTab === "feed"}
-              />
-            </Tab.Pane>
-            <Tab.Pane eventKey="milestones">
-              <ProjectMilestonesTab
-                projectId={projectId}
-                isManager={isManager}
-                scrollToMilestone={milestoneParam}
-              />
-            </Tab.Pane>
-          </Tab.Content>
+          <Row>
+            <Col lg={gardensPoolNetwork ? 7 : 12}>
+              <Tab.Content>
+                <Tab.Pane eventKey="details">
+                  <Markdown className="px-3 sm:px-0">
+                    {details?.description}
+                  </Markdown>
+                </Tab.Pane>
+                <Tab.Pane eventKey="feed">
+                  <ProjectFeedTab
+                    projectId={projectId}
+                    isManager={isManager}
+                    active={selectedTab === "feed"}
+                  />
+                </Tab.Pane>
+                <Tab.Pane eventKey="milestones">
+                  <ProjectMilestonesTab
+                    projectId={projectId}
+                    isManager={isManager}
+                    scrollToMilestone={milestoneParam}
+                  />
+                </Tab.Pane>
+              </Tab.Content>
+            </Col>
+            {gardensPoolNetwork && details?.gardensPool && (
+              <Col lg={5} className="mt-6 mt-lg-0">
+                <GardensPoolFunding
+                  gardensPoolUrl={details.gardensPool}
+                  network={gardensPoolNetwork}
+                  fundingAddresses={allFundingAddresses}
+                />
+              </Col>
+            )}
+          </Row>
         </Tab.Container>
       </Stack>
       {project && isManager && (

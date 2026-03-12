@@ -1,4 +1,5 @@
 import { isAddress } from "viem";
+import { ApplicationStatus } from "@/generated/kysely";
 import { db } from "../../db";
 
 export const dynamic = "force-dynamic";
@@ -56,6 +57,15 @@ export async function GET(
       managerEmails = emails.map((e) => e.email);
     }
 
+    const acceptedApplications = await db
+      .selectFrom("applications")
+      .select(["fundingAddress"])
+      .where("projectId", "=", Number(projectId))
+      .where("status", "=", ApplicationStatus.ACCEPTED)
+      .execute();
+
+    const fundingAddresses = acceptedApplications.map((a) => a.fundingAddress);
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -63,6 +73,7 @@ export async function GET(
           ...project,
           managerAddresses,
           managerEmails,
+          fundingAddresses,
         },
         isManager,
       }),
