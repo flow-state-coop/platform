@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useReducer } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { useAccount } from "wagmi";
 import { GDAPool } from "@/types/gdaPool";
 import { networks } from "@/lib/networks";
@@ -161,24 +161,37 @@ export function FlowCouncilContextProvider({
 }) {
   const { address } = useAccount();
   const params = useParams();
+  const pathname = usePathname();
   const chainId = params.chainId ? params.chainId.toString() : DEFAULT_CHAIN_ID;
   const councilId = params.councilId as string;
+  const isVotingPage =
+    !!councilId &&
+    !pathname.includes("/review") &&
+    !pathname.includes("/application") &&
+    !pathname.includes("/launch");
   const network =
     networks.find(
       (network) => network.id === Number(chainId ?? DEFAULT_CHAIN_ID),
     ) ?? networks[0];
-  const council = useCouncilQuery(network, councilId);
+  const council = useCouncilQuery(network, councilId, isVotingPage);
   const councilMetadata = useFlowCouncilMetadata(Number(chainId), councilId);
   const projects = useRecipientsQuery(network, council?.recipients, councilId);
   const distributionPool = useDistributionPoolQuery(
     network,
     council?.distributionPool,
+    isVotingPage,
   );
-  const currentBallot = useBallotQuery(network, councilId, address ?? "");
+  const currentBallot = useBallotQuery(
+    network,
+    councilId,
+    address ?? "",
+    isVotingPage,
+  );
   const councilMember = useCouncilMemberQuery(
     network,
     councilId,
     address ?? "",
+    isVotingPage,
   );
   const token = network.tokens.find(
     (token) => token.address.toLowerCase() === council?.superToken,
@@ -191,6 +204,7 @@ export function FlowCouncilContextProvider({
     network,
     councilMetadata.superappSplitterAddress,
     token.address,
+    isVotingPage,
   );
 
   const [newBallot, dispatchNewBallot] = useReducer(newBallotReducer, {

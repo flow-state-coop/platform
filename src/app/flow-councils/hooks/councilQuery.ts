@@ -9,11 +9,6 @@ const FLOW_COUNCIL_QUERY = gql`
       distributionPool
       recipients {
         account
-        votes(first: 1000, orderBy: createdAtTimestamp, orderDirection: desc) {
-          votedBy
-          amount
-          createdAtTimestamp
-        }
       }
       superToken
       maxVotingSpread
@@ -21,14 +16,18 @@ const FLOW_COUNCIL_QUERY = gql`
   }
 `;
 
-export default function useCouncilQuery(network: Network, councilId: string) {
+export default function useCouncilQuery(
+  network: Network,
+  councilId: string,
+  enabled = true,
+) {
   const { data: councilQueryRes } = useQuery(FLOW_COUNCIL_QUERY, {
     client: getApolloClient("flowCouncil", network.id),
     variables: {
       councilId: councilId?.toLowerCase(),
     },
-    pollInterval: 4000,
-    skip: !councilId,
+    pollInterval: 15000,
+    skip: !councilId || !enabled,
   });
 
   return councilQueryRes?.flowCouncil;

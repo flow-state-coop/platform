@@ -20,7 +20,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const { chainId, councilId } = await request.json();
+    const { chainId, councilId, mode } = await request.json();
+    const isListMode = mode === "list";
 
     const network = networks.find((network) => network.id === chainId);
 
@@ -58,20 +59,28 @@ export async function POST(request: Request) {
 
     let applications;
 
+    const listColumns = [
+      "applications.id",
+      "applications.projectId",
+      "applications.fundingAddress",
+      "applications.status",
+      "applications.editsUnlocked",
+      "projects.details as projectDetails",
+    ] as const;
+
+    const fullColumns = [
+      ...listColumns,
+      "applications.roundId",
+      "applications.details",
+    ] as const;
+
+    const columns = isListMode ? listColumns : fullColumns;
+
     if (admin) {
       applications = await db
         .selectFrom("applications")
         .innerJoin("projects", "applications.projectId", "projects.id")
-        .select([
-          "applications.id",
-          "applications.projectId",
-          "applications.roundId",
-          "applications.fundingAddress",
-          "applications.status",
-          "applications.details",
-          "applications.editsUnlocked",
-          "projects.details as projectDetails",
-        ])
+        .select([...columns])
         .where("applications.roundId", "=", round.id)
         .execute();
     } else {
@@ -92,19 +101,35 @@ export async function POST(request: Request) {
       applications = await db
         .selectFrom("applications")
         .innerJoin("projects", "applications.projectId", "projects.id")
-        .select([
-          "applications.id",
-          "applications.projectId",
-          "applications.roundId",
-          "applications.fundingAddress",
-          "applications.status",
-          "applications.details",
-          "applications.editsUnlocked",
-          "projects.details as projectDetails",
-        ])
+        .select([...columns])
         .where("applications.roundId", "=", round.id)
         .where("applications.projectId", "in", managedProjectIds)
         .execute();
+    }
+
+    if (isListMode) {
+      const listApplications = applications.map((app) => {
+        const projectDetails =
+          typeof app.projectDetails === "string"
+            ? JSON.parse(app.projectDetails)
+            : app.projectDetails;
+
+        return {
+          id: app.id,
+          projectId: app.projectId,
+          fundingAddress: app.fundingAddress,
+          status: app.status,
+          editsUnlocked: app.editsUnlocked,
+          projectDetails: projectDetails ? { name: projectDetails.name } : null,
+        };
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          applications: listApplications,
+        }),
+      );
     }
 
     const projectIds = [...new Set(applications.map((a) => a.projectId))];

@@ -7,6 +7,7 @@ import {
   getProjectAndRoundDetails,
   getRoundAdminEmailsExcludingAddress,
 } from "../../email";
+import { isRoundAdmin, hasOnChainRole } from "../../auth";
 
 export const dynamic = "force-dynamic";
 
@@ -31,36 +32,101 @@ export async function GET(
       );
     }
 
-    // Verify user is a manager of the project
-    const application = await db
-      .selectFrom("applications")
-      .innerJoin(
-        "projectManagers",
-        "applications.projectId",
-        "projectManagers.projectId",
-      )
-      .select([
-        "applications.id",
-        "applications.projectId",
-        "applications.roundId",
-        "applications.fundingAddress",
-        "applications.status",
-        "applications.details",
-        "applications.editsUnlocked",
-      ])
-      .where("applications.id", "=", appId)
-      .where(
-        "projectManagers.managerAddress",
-        "=",
-        session.address.toLowerCase(),
-      )
-      .executeTakeFirst();
+    const url = new URL(request.url);
+    const chainId = url.searchParams.get("chainId");
+    const councilId = url.searchParams.get("councilId");
+
+    const userAddress = session.address.toLowerCase();
+
+    let isAdmin = false;
+    if (chainId && councilId && isAddress(councilId)) {
+      const round = await db
+        .selectFrom("rounds")
+        .select("id")
+        .where("chainId", "=", Number(chainId))
+        .where("flowCouncilAddress", "=", councilId.toLowerCase())
+        .executeTakeFirst();
+
+      if (round) {
+        const [dbAdmin, onChainAdmin] = await Promise.all([
+          isRoundAdmin(round.id, userAddress),
+          hasOnChainRole(Number(chainId), councilId, userAddress),
+        ]);
+        isAdmin = dbAdmin || onChainAdmin;
+      }
+    }
+
+    let application;
+
+    if (isAdmin) {
+      application = await db
+        .selectFrom("applications")
+        .innerJoin("projects", "applications.projectId", "projects.id")
+        .select([
+          "applications.id",
+          "applications.projectId",
+          "applications.roundId",
+          "applications.fundingAddress",
+          "applications.status",
+          "applications.details",
+          "applications.editsUnlocked",
+          "projects.details as projectDetails",
+        ])
+        .where("applications.id", "=", appId)
+        .executeTakeFirst();
+    } else {
+      application = await db
+        .selectFrom("applications")
+        .innerJoin(
+          "projectManagers",
+          "applications.projectId",
+          "projectManagers.projectId",
+        )
+        .select([
+          "applications.id",
+          "applications.projectId",
+          "applications.roundId",
+          "applications.fundingAddress",
+          "applications.status",
+          "applications.details",
+          "applications.editsUnlocked",
+        ])
+        .where("applications.id", "=", appId)
+        .where("projectManagers.managerAddress", "=", userAddress)
+        .executeTakeFirst();
+    }
 
     if (!application) {
       return new Response(
         JSON.stringify({
           success: false,
           error: "Application not found or not authorized",
+        }),
+      );
+    }
+
+    if (isAdmin) {
+      const [managerAddresses, managerEmails] = await Promise.all([
+        db
+          .selectFrom("projectManagers")
+          .select("managerAddress")
+          .where("projectId", "=", application.projectId)
+          .execute(),
+        db
+          .selectFrom("projectEmails")
+          .select("email")
+          .where("projectId", "=", application.projectId)
+          .execute(),
+      ]);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          application: {
+            ...application,
+            managerAddresses: managerAddresses.map((m) => m.managerAddress),
+            managerEmails: managerEmails.map((e) => e.email),
+          },
         }),
       );
     }

@@ -22,13 +22,14 @@ export default function useBallotQuery(
   network: Network,
   councilId: string,
   address: string,
+  enabled = true,
 ) {
   const { data: ballotQueryRes } = useQuery(BALLOT_QUERY, {
     client: getApolloClient("flowCouncil", network.id),
     variables: {
       voter: `${councilId?.toLowerCase()}-${address?.toLowerCase()}`,
     },
-    skip: !address || !councilId,
+    skip: !address || !councilId || !enabled,
     pollInterval: 10000,
   });
   const voter = ballotQueryRes?.voter;

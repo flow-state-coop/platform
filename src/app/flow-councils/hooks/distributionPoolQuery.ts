@@ -39,13 +39,14 @@ const SUPERFLUID_QUERY = gql`
 export default function useDistributionPoolQuery(
   network: Network,
   distributionPoolAddress?: string,
+  enabled = true,
 ) {
   const { data: superfluidQueryRes } = useQuery(SUPERFLUID_QUERY, {
     client: getApolloClient("superfluid", network.id),
     variables: {
       distributionPool: distributionPoolAddress?.toLowerCase(),
     },
-    skip: !distributionPoolAddress,
+    skip: !distributionPoolAddress || !enabled,
     pollInterval: 10000,
   });
 
