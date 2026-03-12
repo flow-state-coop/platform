@@ -9,7 +9,11 @@ import { Network } from "@/types/network";
 import { Token } from "@/types/token";
 import { networks } from "@/lib/networks";
 import useStreamFunding from "./useStreamFunding";
-import { TokenDropdown, StreamInputs } from "./GardensPoolFunding";
+import {
+  FlowRateMetrics,
+  TokenDropdown,
+  StreamInputs,
+} from "./GardensPoolFunding";
 
 const TESTNET_CHAIN_IDS = [11155420, 11155111];
 
@@ -48,6 +52,7 @@ export default function DirectFunding({ receiverAddress }: DirectFundingProps) {
         <span className="fw-bold fs-lg d-block mb-5">Fund Project</span>
 
         <Stack direction="vertical" gap={3}>
+          <FlowRateMetrics stream={stream} />
           <NetworkDropdown
             networks={mainnetNetworks}
             selected={selectedNetwork}

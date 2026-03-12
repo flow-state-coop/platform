@@ -1,8 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
 import { formatEther } from "viem";
-import { useQuery, gql } from "@apollo/client";
 import Card from "react-bootstrap/Card";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
@@ -12,83 +10,22 @@ import Image from "react-bootstrap/Image";
 import Dropdown from "react-bootstrap/Dropdown";
 import { Network } from "@/types/network";
 import { parseGardensPoolUrl } from "@/lib/gardensPool";
-import { getApolloClient } from "@/lib/apollo";
-import { roundWeiAmount, formatNumber } from "@/lib/utils";
-import { SECONDS_IN_MONTH } from "@/lib/constants";
+import { formatNumber } from "@/lib/utils";
 import useStreamFunding from "./useStreamFunding";
-
-const GARDENS_POOL_QUERY = gql`
-  query GardensPoolQuery($poolAddress: ID!, $token: String!) {
-    account(id: $poolAddress) {
-      accountTokenSnapshots(where: { token: $token }) {
-        totalInflowRate
-      }
-      inflows(where: { currentFlowRate_gt: "0", token: $token }) {
-        sender {
-          id
-        }
-        currentFlowRate
-      }
-    }
-  }
-`;
 
 type GardensPoolFundingProps = {
   gardensPoolUrl: string;
   network: Network;
-  fundingAddresses: string[];
 };
 
 export default function GardensPoolFunding({
   gardensPoolUrl,
   network,
-  fundingAddresses,
 }: GardensPoolFundingProps) {
   const parsed = parseGardensPoolUrl(gardensPoolUrl);
   const poolAddress = parsed?.poolAddress ?? "";
 
   const stream = useStreamFunding(network, poolAddress);
-
-  const { data: poolQueryRes } = useQuery(GARDENS_POOL_QUERY, {
-    client: getApolloClient("superfluid", network.id),
-    variables: {
-      poolAddress: poolAddress.toLowerCase(),
-      token: stream.selectedToken.address.toLowerCase(),
-    },
-    skip: !poolAddress,
-    pollInterval: 10000,
-  });
-
-  const poolSnapshot =
-    poolQueryRes?.account?.accountTokenSnapshots?.[0] ?? null;
-  const totalInflowRate = poolSnapshot?.totalInflowRate ?? "0";
-
-  const fundingAddressSet = useMemo(
-    () => new Set(fundingAddresses.map((a) => a.toLowerCase())),
-    [fundingAddresses],
-  );
-
-  const projectInflowRate = useMemo(() => {
-    const inflows = poolQueryRes?.account?.inflows ?? [];
-    let rate = BigInt(0);
-
-    for (const inflow of inflows) {
-      if (fundingAddressSet.has(inflow.sender.id.toLowerCase())) {
-        rate += BigInt(inflow.currentFlowRate);
-      }
-    }
-
-    return rate;
-  }, [poolQueryRes?.account?.inflows, fundingAddressSet]);
-
-  const totalMonthly = roundWeiAmount(
-    BigInt(totalInflowRate) * BigInt(SECONDS_IN_MONTH),
-    4,
-  );
-  const projectMonthly = roundWeiAmount(
-    projectInflowRate * BigInt(SECONDS_IN_MONTH),
-    4,
-  );
 
   return (
     <Card
@@ -110,89 +47,84 @@ export default function GardensPoolFunding({
           <span className="fw-bold fs-lg">Fund Gardens Pool</span>
         </Stack>
 
-        <Stack direction="horizontal" gap={4} className="mb-5">
-          <Stack direction="vertical" className="flex-fill">
-            <span
-              className="text-uppercase fw-bold"
-              style={{
-                fontSize: "0.65rem",
-                letterSpacing: "0.05em",
-                opacity: 0.5,
-              }}
-            >
-              Total rate
-            </span>
-            <span className="fw-bold">
-              {formatNumber(Number(totalMonthly))}{" "}
-              <span
-                className="text-muted fw-normal"
-                style={{ fontSize: "0.8rem" }}
-              >
-                {stream.selectedToken.symbol}/mo
-              </span>
-            </span>
+        <Stack direction="vertical" gap={3}>
+          <FlowRateMetrics stream={stream} />
+          <Stack
+            direction="horizontal"
+            gap={2}
+            className="align-items-center rounded-3 px-3 py-2 bg-light"
+          >
+            <Image
+              src={network.icon}
+              alt=""
+              width={20}
+              height={20}
+              className="rounded-circle"
+            />
+            <span style={{ fontSize: "0.85rem" }}>{network.name}</span>
           </Stack>
-          <Stack direction="vertical" className="flex-fill">
-            <span
-              className="text-uppercase fw-bold"
-              style={{
-                fontSize: "0.65rem",
-                letterSpacing: "0.05em",
-                opacity: 0.5,
-              }}
-            >
-              From project
-            </span>
-            <span className="fw-bold">
-              {formatNumber(Number(projectMonthly))}{" "}
-              <span
-                className="text-muted fw-normal"
-                style={{ fontSize: "0.8rem" }}
-              >
-                {stream.selectedToken.symbol}/mo
-              </span>
-            </span>
-          </Stack>
+          <TokenDropdown
+            tokens={network.tokens}
+            selected={stream.selectedToken}
+            onSelect={(token) => {
+              stream.setSelectedToken(token);
+              stream.setWrapAmount("");
+            }}
+          />
+          <StreamInputs stream={stream} network={network} />
         </Stack>
-
-        <StreamFormFields stream={stream} network={network} />
       </Card.Body>
     </Card>
   );
 }
 
-function StreamFormFields({
+const metricLabelStyle = {
+  fontSize: "0.65rem",
+  letterSpacing: "0.05em",
+  opacity: 0.5,
+};
+
+function FlowRateMetrics({
   stream,
-  network,
 }: {
   stream: ReturnType<typeof useStreamFunding>;
-  network: Network;
 }) {
   return (
-    <Stack direction="vertical" gap={3}>
-      <Stack
-        direction="horizontal"
-        gap={2}
-        className="align-items-center rounded-3 px-3 py-2 bg-light"
-      >
-        <Image
-          src={network.icon}
-          alt=""
-          width={20}
-          height={20}
-          className="rounded-circle"
-        />
-        <span style={{ fontSize: "0.85rem" }}>{network.name}</span>
-      </Stack>
-      <TokenDropdown
-        tokens={network.tokens}
-        selected={stream.selectedToken}
-        onSelect={(token) => {
-          stream.setSelectedToken(token);
-          stream.setWrapAmount("");
-        }}
+    <Stack direction="horizontal" gap={4}>
+      <RateMetric
+        label="Total rate"
+        value={stream.totalReceiverMonthlyRate}
+        symbol={stream.selectedToken.symbol}
       />
-      <StreamInputs stream={stream} network={network} />
+      <RateMetric
+        label="Your rate"
+        value={stream.userMonthlyRate}
+        symbol={stream.selectedToken.symbol}
+      />
+    </Stack>
+  );
+}
+
+function RateMetric({
+  label,
+  value,
+  symbol,
+}: {
+  label: string;
+  value: string;
+  symbol: string;
+}) {
+  return (
+    <Stack direction="vertical" className="flex-fill">
+      <span className="text-uppercase fw-bold" style={metricLabelStyle}>
+        {label}
+      </span>
+      <span className="fw-bold">
+        {formatNumber(Number(value))}{" "}
+        <span className="text-muted fw-normal" style={{ fontSize: "0.8rem" }}>
+          {symbol}/mo
+        </span>
+      </span>
     </Stack>
   );
 }
@@ -272,16 +204,6 @@ function StreamInputs({
           onChange={(e) => stream.handleMonthlyAmountChange(e.target.value)}
           className="rounded-3"
         />
-        {stream.hasExistingFlow && (
-          <Form.Text className="text-success">
-            Current:{" "}
-            {roundWeiAmount(
-              BigInt(stream.flowRateToReceiver) * BigInt(SECONDS_IN_MONTH),
-              4,
-            )}{" "}
-            {stream.selectedToken.symbol}/mo
-          </Form.Text>
-        )}
       </Form.Group>
 
       {!stream.isSuperTokenPure && (
@@ -321,9 +243,17 @@ function StreamInputs({
           <span className="fw-bold" style={{ fontSize: "0.85rem" }}>
             {formatNumber(Number(formatEther(stream.superTokenBalance)))}
           </span>
-          {stream.userInflowMonthly && (
-            <span className="text-success" style={{ fontSize: "0.75rem" }}>
-              +{stream.userInflowMonthly}/mo
+          {stream.userNetMonthlyFlow && (
+            <span
+              className={
+                stream.userNetMonthlyFlow.isPositive
+                  ? "text-success"
+                  : "text-danger"
+              }
+              style={{ fontSize: "0.75rem" }}
+            >
+              {stream.userNetMonthlyFlow.isPositive ? "+" : "-"}
+              {stream.userNetMonthlyFlow.value}/mo
             </span>
           )}
         </Stack>
@@ -335,10 +265,7 @@ function StreamInputs({
         </div>
       )}
       {stream.successMessage && (
-        <div
-          className="text-success fw-bold"
-          style={{ fontSize: "0.85rem" }}
-        >
+        <div className="text-success fw-bold" style={{ fontSize: "0.85rem" }}>
           {stream.successMessage}
         </div>
       )}
@@ -352,10 +279,10 @@ function StreamInputs({
           Switch to {network.name}
         </Button>
       ) : (
-        <Stack direction="horizontal" gap={2}>
+        <Stack direction="vertical" className="align-items-center">
           <Button
             variant="primary"
-            className="flex-fill rounded-3 fw-bold"
+            className="w-100 rounded-3 fw-bold"
             disabled={!stream.canExecute}
             onClick={stream.handleExecute}
           >
@@ -369,12 +296,14 @@ function StreamInputs({
           </Button>
           {stream.hasExistingFlow && (
             <Button
-              variant="outline-danger"
-              className="rounded-3 fw-bold"
-              disabled={stream.areTransactionsLoading}
+              variant="transparent"
+              className="text-primary text-decoration-underline border-0 pb-0 fw-semi-bold"
+              style={{
+                pointerEvents: stream.areTransactionsLoading ? "none" : "auto",
+              }}
               onClick={stream.handleCancel}
             >
-              Cancel
+              Cancel stream
             </Button>
           )}
         </Stack>
@@ -383,4 +312,4 @@ function StreamInputs({
   );
 }
 
-export { TokenDropdown, StreamInputs };
+export { FlowRateMetrics, TokenDropdown, StreamInputs };

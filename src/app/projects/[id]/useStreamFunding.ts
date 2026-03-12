@@ -1,11 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import {
-  Address,
-  isAddress,
-  parseAbi,
-  parseEther,
-  formatUnits,
-} from "viem";
+import { Address, isAddress, parseAbi, parseEther, formatUnits } from "viem";
 import { useAccount, useBalance, useReadContract, useSwitchChain } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import {
@@ -56,6 +50,16 @@ const USER_ACCOUNT_QUERY = gql`
   }
 `;
 
+const RECEIVER_INFLOW_QUERY = gql`
+  query ReceiverInflowQuery($receiverAddress: ID!, $token: String!) {
+    account(id: $receiverAddress) {
+      accountTokenSnapshots(where: { token: $token }) {
+        totalInflowRate
+      }
+    }
+  }
+`;
+
 export default function useStreamFunding(
   network: Network,
   receiverAddress: string,
@@ -68,8 +72,7 @@ export default function useStreamFunding(
   const [superToken, setSuperToken] = useState<
     NativeAssetSuperToken | WrapperSuperToken | SuperToken | null
   >(null);
-  const [underlyingTokenAllowance, setUnderlyingTokenAllowance] =
-    useState("0");
+  const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("0");
   const [successMessage, setSuccessMessage] = useState("");
 
   const { address, chainId: walletChainId } = useAccount();
@@ -110,6 +113,16 @@ export default function useStreamFunding(
       token: selectedToken.address.toLowerCase(),
     },
     skip: !address,
+    pollInterval: 10000,
+  });
+
+  const { data: receiverQueryRes } = useQuery(RECEIVER_INFLOW_QUERY, {
+    client: getApolloClient("superfluid", network.id),
+    variables: {
+      receiverAddress: receiverAddress.toLowerCase(),
+      token: selectedToken.address.toLowerCase(),
+    },
+    skip: !receiverAddress,
     pollInterval: 10000,
   });
 
@@ -236,10 +249,7 @@ export default function useStreamFunding(
       }
     }
 
-    if (
-      BigInt(newFlowRate) === BigInt(0) &&
-      BigInt(flowRateToReceiver) > 0
-    ) {
+    if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToReceiver) > 0) {
       operations.push(
         superToken.deleteFlow({
           sender: address,
@@ -290,9 +300,7 @@ export default function useStreamFunding(
     try {
       await executeTransactions(transactions);
       setSuccessMessage(
-        BigInt(flowRateToReceiver) > 0
-          ? "Stream updated!"
-          : "Stream started!",
+        BigInt(flowRateToReceiver) > 0 ? "Stream updated!" : "Stream started!",
       );
     } catch {
       // transactionError state is set by the hook
@@ -362,15 +370,45 @@ export default function useStreamFunding(
     }
   }, []);
 
-  const userInflowRate =
-    BigInt(userAccountSnapshot?.totalNetFlowRate ?? 0) +
-    BigInt(userAccountSnapshot?.totalOutflowRate ?? 0);
-  const userInflowMonthly =
-    userInflowRate > BigInt(0)
-      ? formatNumber(
-          Number(roundWeiAmount(userInflowRate * BigInt(SECONDS_IN_MONTH), 4)),
-        )
-      : null;
+  const userNetMonthlyFlow = useMemo(() => {
+    const rate = BigInt(userAccountSnapshot?.totalNetFlowRate ?? 0);
+
+    if (rate === BigInt(0)) return null;
+
+    return {
+      value: formatNumber(
+        Number(
+          roundWeiAmount(
+            (rate < 0 ? -rate : rate) * BigInt(SECONDS_IN_MONTH),
+            4,
+          ),
+        ),
+      ),
+      isPositive: rate > BigInt(0),
+    };
+  }, [userAccountSnapshot?.totalNetFlowRate]);
+
+  const receiverSnapshot =
+    receiverQueryRes?.account?.accountTokenSnapshots?.[0] ?? null;
+
+  const totalReceiverMonthlyRate = useMemo(
+    () =>
+      roundWeiAmount(
+        BigInt(receiverSnapshot?.totalInflowRate ?? 0) *
+          BigInt(SECONDS_IN_MONTH),
+        4,
+      ),
+    [receiverSnapshot?.totalInflowRate],
+  );
+
+  const userMonthlyRate = useMemo(
+    () =>
+      roundWeiAmount(
+        BigInt(flowRateToReceiver) * BigInt(SECONDS_IN_MONTH),
+        4,
+      ),
+    [flowRateToReceiver],
+  );
 
   const hasExistingFlow = BigInt(flowRateToReceiver) > 0;
   const canExecute =
@@ -411,7 +449,9 @@ export default function useStreamFunding(
         }
       : null,
     superTokenBalance,
-    userInflowMonthly,
+    userNetMonthlyFlow,
+    totalReceiverMonthlyRate,
+    userMonthlyRate,
     flowRateToReceiver,
     hasExistingFlow,
     areTransactionsLoading,

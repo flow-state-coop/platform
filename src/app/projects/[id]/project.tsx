@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount } from "wagmi";
 import { useSession } from "next-auth/react";
@@ -37,7 +37,6 @@ type ProjectData = {
   details: ProjectDetails | null;
   managerAddresses: string[];
   managerEmails: string[];
-  fundingAddresses: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -125,18 +124,6 @@ export default function Project(props: ProjectProps) {
     () => postHog.stopSessionRecording(),
     [postHog, postHog.decideEndpointWasHit],
   );
-
-  const allFundingAddresses = useMemo(() => {
-    if (!project) return [];
-
-    const addresses = [...(project.fundingAddresses ?? [])];
-
-    if (project.details?.defaultFundingAddress) {
-      addresses.push(project.details.defaultFundingAddress);
-    }
-
-    return [...new Set(addresses)];
-  }, [project]);
 
   const handleEditClick = () => {
     requireAuth(() => setShowEditModal(true));
@@ -431,7 +418,6 @@ export default function Project(props: ProjectProps) {
                         <GardensPoolFunding
                           gardensPoolUrl={details.gardensPool}
                           network={gardensPoolNetwork}
-                          fundingAddresses={allFundingAddresses}
                         />
                       )}
                       {details?.defaultFundingAddress && (

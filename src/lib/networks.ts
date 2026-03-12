@@ -141,14 +141,14 @@ const networks: Network[] = [
     feeRecipientPool: "0x75dbcecd12c6650f35373d774033190a3b2a23ea",
     tokens: [
       {
-        symbol: "CELOx",
-        address: "0x671425Ae1f272Bc6F79beC3ed5C4b00e9c628240",
-        icon: "/celo.svg",
-      },
-      {
         symbol: "G$",
         address: "0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A",
         icon: "/good-dollar.png",
+      },
+      {
+        symbol: "CELOx",
+        address: "0x671425Ae1f272Bc6F79beC3ed5C4b00e9c628240",
+        icon: "/celo.svg",
       },
     ],
   },

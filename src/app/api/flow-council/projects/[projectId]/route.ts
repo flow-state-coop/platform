@@ -1,5 +1,4 @@
 import { isAddress } from "viem";
-import { ApplicationStatus } from "@/generated/kysely";
 import { db } from "../../db";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +18,6 @@ export async function GET(
       );
     }
 
-    // Fetch project with managers
     const project = await db
       .selectFrom("projects")
       .select(["id", "details", "createdAt", "updatedAt"])
@@ -46,7 +44,6 @@ export async function GET(
         (m) => m.toLowerCase() === managerAddress.toLowerCase(),
       );
 
-    // Only include emails for managers
     let managerEmails: string[] = [];
     if (isManager) {
       const emails = await db
@@ -57,15 +54,6 @@ export async function GET(
       managerEmails = emails.map((e) => e.email);
     }
 
-    const acceptedApplications = await db
-      .selectFrom("applications")
-      .select(["fundingAddress"])
-      .where("projectId", "=", Number(projectId))
-      .where("status", "=", ApplicationStatus.ACCEPTED)
-      .execute();
-
-    const fundingAddresses = acceptedApplications.map((a) => a.fundingAddress);
-
     return new Response(
       JSON.stringify({
         success: true,
@@ -73,7 +61,6 @@ export async function GET(
           ...project,
           managerAddresses,
           managerEmails,
-          fundingAddresses,
         },
         isManager,
       }),
