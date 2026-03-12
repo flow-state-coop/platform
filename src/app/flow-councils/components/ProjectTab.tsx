@@ -667,7 +667,7 @@ export default function ProjectTab(props: ProjectTabProps) {
         <Form.Control
           type="text"
           value={form.gardensPool}
-          placeholder="https://app.gardens.fund/gardens/chainID/.../poolID"
+          placeholder="https://app.gardens.fund/gardens/chain/community-address/pool-address"
           className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.gardensPool) && !!form.gardensPool && !form.gardensPool.startsWith("https://") ? "border-danger" : "border-dark"}`}
           isInvalid={
             (validated || touched.gardensPool) &&
