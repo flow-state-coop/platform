@@ -19,6 +19,7 @@ import ProjectModal from "@/app/flow-councils/components/ProjectModal";
 import ProjectFeedTab from "@/app/projects/[id]/ProjectFeedTab";
 import ProjectMilestonesTab from "@/app/projects/[id]/milestones/ProjectMilestonesTab";
 import GardensPoolFunding from "@/app/projects/[id]/GardensPoolFunding";
+import DirectFunding from "@/app/projects/[id]/DirectFunding";
 import { ProjectDetails } from "@/types/project";
 import useRequireAuth from "@/hooks/requireAuth";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -172,6 +173,10 @@ export default function Project(props: ProjectProps) {
     ? getGardensPoolNetwork(details.gardensPool)
     : null;
 
+  const hasFundingWidgets =
+    !!(gardensPoolNetwork && details?.gardensPool) ||
+    !!details?.defaultFundingAddress;
+
   return (
     <>
       <Stack
@@ -227,7 +232,7 @@ export default function Project(props: ProjectProps) {
         </Card.Text>
         <Stack
           direction="horizontal"
-          className="flex-wrap my-2 px-3 sm:px-0"
+          className="flex-wrap my-2 px-3 sm:px-0 overflow-hidden"
           style={{ rowGap: 8 }}
         >
           {!!details?.website && (
@@ -236,7 +241,7 @@ export default function Project(props: ProjectProps) {
               href={`https://${details.website.replace(/^https?:\/\//, "")}`}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/web.svg" alt="Website" width={18} height={18} />
               <Card.Text className="text-truncate">
@@ -250,7 +255,7 @@ export default function Project(props: ProjectProps) {
               href={details.demoUrl}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/link.svg" alt="Demo" width={18} height={18} />
               <Card.Text className="text-truncate">
@@ -264,7 +269,7 @@ export default function Project(props: ProjectProps) {
               href={`https://github.com/${details.github}`}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/github.svg" alt="github" width={18} height={18} />
               <Card.Text className="text-truncate">
@@ -278,7 +283,7 @@ export default function Project(props: ProjectProps) {
               href={`https://x.com/${details.twitter}`}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/x-logo.svg" alt="x" width={14} height={14} />
               <Card.Text className="text-truncate">
@@ -292,7 +297,7 @@ export default function Project(props: ProjectProps) {
               href={`https://farcaster.xyz/${details.farcaster}`}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image
                 src="/farcaster.svg"
@@ -311,7 +316,7 @@ export default function Project(props: ProjectProps) {
               href={details.telegram}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image
                 src="/telegram.svg"
@@ -330,7 +335,7 @@ export default function Project(props: ProjectProps) {
               href={details.discord}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/discord.svg" alt="discord" width={16} height={16} />
               <Card.Text className="text-truncate">
@@ -344,7 +349,7 @@ export default function Project(props: ProjectProps) {
               href={details.karmaProfile}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image
                 src="/karma-gap.svg"
@@ -363,7 +368,7 @@ export default function Project(props: ProjectProps) {
               href={`https://${details.gardensPool.replace(/^https?:\/\//, "")}`}
               target="_blank"
               className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/gardens.svg" alt="Gardens" width={18} height={18} />
               <Card.Text className="text-truncate">
@@ -411,40 +416,49 @@ export default function Project(props: ProjectProps) {
               </Nav.Link>
             </Nav.Item>
           </Nav>
-          <Row>
-            <Col lg={gardensPoolNetwork ? 7 : 12}>
-              <Tab.Content>
-                <Tab.Pane eventKey="details">
+          <Tab.Content>
+            <Tab.Pane eventKey="details">
+              <Row>
+                <Col lg={hasFundingWidgets ? 8 : 12}>
                   <Markdown className="px-3 sm:px-0">
                     {details?.description}
                   </Markdown>
-                </Tab.Pane>
-                <Tab.Pane eventKey="feed">
-                  <ProjectFeedTab
-                    projectId={projectId}
-                    isManager={isManager}
-                    active={selectedTab === "feed"}
-                  />
-                </Tab.Pane>
-                <Tab.Pane eventKey="milestones">
-                  <ProjectMilestonesTab
-                    projectId={projectId}
-                    isManager={isManager}
-                    scrollToMilestone={milestoneParam}
-                  />
-                </Tab.Pane>
-              </Tab.Content>
-            </Col>
-            {gardensPoolNetwork && details?.gardensPool && (
-              <Col lg={5} className="mt-6 mt-lg-0">
-                <GardensPoolFunding
-                  gardensPoolUrl={details.gardensPool}
-                  network={gardensPoolNetwork}
-                  fundingAddresses={allFundingAddresses}
-                />
-              </Col>
-            )}
-          </Row>
+                </Col>
+                {hasFundingWidgets && (
+                  <Col lg={4} className="mt-6 mt-lg-0">
+                    <Stack direction="vertical" gap={4}>
+                      {gardensPoolNetwork && details?.gardensPool && (
+                        <GardensPoolFunding
+                          gardensPoolUrl={details.gardensPool}
+                          network={gardensPoolNetwork}
+                          fundingAddresses={allFundingAddresses}
+                        />
+                      )}
+                      {details?.defaultFundingAddress && (
+                        <DirectFunding
+                          receiverAddress={details.defaultFundingAddress}
+                        />
+                      )}
+                    </Stack>
+                  </Col>
+                )}
+              </Row>
+            </Tab.Pane>
+            <Tab.Pane eventKey="feed">
+              <ProjectFeedTab
+                projectId={projectId}
+                isManager={isManager}
+                active={selectedTab === "feed"}
+              />
+            </Tab.Pane>
+            <Tab.Pane eventKey="milestones">
+              <ProjectMilestonesTab
+                projectId={projectId}
+                isManager={isManager}
+                scrollToMilestone={milestoneParam}
+              />
+            </Tab.Pane>
+          </Tab.Content>
         </Tab.Container>
       </Stack>
       {project && isManager && (

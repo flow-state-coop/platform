@@ -27,7 +27,7 @@ import Image from "react-bootstrap/Image";
 import Dropdown from "react-bootstrap/Dropdown";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
-import { parseGardensPoolUrl } from "@/lib/gardensPool";
+import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
@@ -41,31 +41,12 @@ import {
 } from "@/lib/utils";
 import { SECONDS_IN_MONTH, MAX_FLOW_RATE, ZERO_ADDRESS } from "@/lib/constants";
 
-const GARDENS_POOL_QUERY = gql`
-  query GardensPoolQuery($poolAddress: ID!, $token: String!) {
-    account(id: $poolAddress) {
-      accountTokenSnapshots(where: { token: $token }) {
-        totalInflowRate
-        totalAmountStreamedInUntilUpdatedAt
-        updatedAtTimestamp
-      }
-      inflows(where: { currentFlowRate_gt: "0", token: $token }) {
-        sender {
-          id
-        }
-        currentFlowRate
-      }
-    }
-  }
-`;
-
-const USER_OUTFLOW_QUERY = gql`
-  query UserOutflowQuery($userAddress: String!, $token: String!) {
+const USER_ACCOUNT_QUERY = gql`
+  query UserAccountQuery($userAddress: String!, $token: String!) {
     account(id: $userAddress) {
       accountTokenSnapshots {
         totalNetFlowRate
         totalOutflowRate
-        totalDeposit
         balanceUntilUpdatedAt
         updatedAtTimestamp
         token {
@@ -86,21 +67,21 @@ const USER_OUTFLOW_QUERY = gql`
   }
 `;
 
-type GardensPoolFundingProps = {
-  gardensPoolUrl: string;
-  network: Network;
-  fundingAddresses: string[];
+const mainnetNetworks = networks.filter(
+  (n) => n.id !== 11155420 && n.id !== 11155111,
+);
+
+type DirectFundingProps = {
+  receiverAddress: string;
 };
 
-export default function GardensPoolFunding({
-  gardensPoolUrl,
-  network,
-  fundingAddresses,
-}: GardensPoolFundingProps) {
-  const parsed = parseGardensPoolUrl(gardensPoolUrl);
-  const poolAddress = parsed?.poolAddress ?? "";
-
-  const [selectedToken, setSelectedToken] = useState<Token>(network.tokens[0]);
+export default function DirectFunding({ receiverAddress }: DirectFundingProps) {
+  const [selectedNetwork, setSelectedNetwork] = useState<Network>(
+    mainnetNetworks[0],
+  );
+  const [selectedToken, setSelectedToken] = useState<Token>(
+    selectedNetwork.tokens[0],
+  );
   const [monthlyAmount, setMonthlyAmount] = useState("");
   const [wrapAmount, setWrapAmount] = useState("");
   const [newFlowRate, setNewFlowRate] = useState("");
@@ -113,18 +94,18 @@ export default function GardensPoolFunding({
 
   const { address, chainId: walletChainId } = useAccount();
   const { switchChain } = useSwitchChain();
-  const ethersProvider = useEthersProvider({ chainId: network.id });
-  const ethersSigner = useEthersSigner({ chainId: network.id });
+  const ethersProvider = useEthersProvider({ chainId: selectedNetwork.id });
+  const ethersSigner = useEthersSigner({ chainId: selectedNetwork.id });
   const { areTransactionsLoading, transactionError, executeTransactions } =
     useTransactionsQueue();
 
-  const isCorrectChain = walletChainId === network.id;
+  const isCorrectChain = walletChainId === selectedNetwork.id;
 
   const { data: underlyingTokenAddress } = useReadContract({
     address: selectedToken.address,
     abi: parseAbi(["function getUnderlyingToken() view returns (address)"]),
     functionName: "getUnderlyingToken",
-    chainId: network.id,
+    chainId: selectedNetwork.id,
   });
 
   const isSuperTokenNative =
@@ -134,7 +115,7 @@ export default function GardensPoolFunding({
 
   const { data: underlyingTokenBalance } = useBalance({
     address,
-    chainId: network.id,
+    chainId: selectedNetwork.id,
     token:
       isSuperTokenNative || !underlyingTokenAddress
         ? void 0
@@ -142,18 +123,8 @@ export default function GardensPoolFunding({
     query: { refetchInterval: 10000, enabled: !isSuperTokenPure },
   });
 
-  const { data: poolQueryRes } = useQuery(GARDENS_POOL_QUERY, {
-    client: getApolloClient("superfluid", network.id),
-    variables: {
-      poolAddress: poolAddress.toLowerCase(),
-      token: selectedToken.address.toLowerCase(),
-    },
-    skip: !poolAddress,
-    pollInterval: 10000,
-  });
-
-  const { data: userQueryRes } = useQuery(USER_OUTFLOW_QUERY, {
-    client: getApolloClient("superfluid", network.id),
+  const { data: userQueryRes } = useQuery(USER_ACCOUNT_QUERY, {
+    client: getApolloClient("superfluid", selectedNetwork.id),
     variables: {
       userAddress: address?.toLowerCase() ?? "",
       token: selectedToken.address.toLowerCase(),
@@ -161,24 +132,6 @@ export default function GardensPoolFunding({
     skip: !address,
     pollInterval: 10000,
   });
-
-  const poolSnapshot =
-    poolQueryRes?.account?.accountTokenSnapshots?.[0] ?? null;
-  const totalInflowRate = poolSnapshot?.totalInflowRate ?? "0";
-
-  const projectInflowRate = useMemo(() => {
-    const inflows = poolQueryRes?.account?.inflows ?? [];
-    const normalizedAddresses = fundingAddresses.map((a) => a.toLowerCase());
-    let rate = BigInt(0);
-
-    for (const inflow of inflows) {
-      if (normalizedAddresses.includes(inflow.sender.id.toLowerCase())) {
-        rate += BigInt(inflow.currentFlowRate);
-      }
-    }
-
-    return rate;
-  }, [poolQueryRes, fundingAddresses]);
 
   const userAccountSnapshot =
     userQueryRes?.account?.accountTokenSnapshots?.find(
@@ -192,29 +145,29 @@ export default function GardensPoolFunding({
     BigInt(userAccountSnapshot?.totalNetFlowRate ?? 0),
   );
 
-  const outflowToPool = useMemo(() => {
-    if (!address || !poolAddress || !userQueryRes?.account?.outflows) {
+  const outflowToReceiver = useMemo(() => {
+    if (!address || !receiverAddress || !userQueryRes?.account?.outflows) {
       return null;
     }
 
     return (
       userQueryRes.account.outflows.find(
         (o: { receiver: { id: string } }) =>
-          o.receiver.id === poolAddress.toLowerCase(),
+          o.receiver.id === receiverAddress.toLowerCase(),
       ) ?? null
     );
-  }, [address, poolAddress, userQueryRes]);
+  }, [address, receiverAddress, userQueryRes]);
 
-  const flowRateToPool = outflowToPool?.currentFlowRate ?? "0";
+  const flowRateToReceiver = outflowToReceiver?.currentFlowRate ?? "0";
 
   useEffect(() => {
     const currentStreamValue = roundWeiAmount(
-      BigInt(flowRateToPool) * BigInt(SECONDS_IN_MONTH),
+      BigInt(flowRateToReceiver) * BigInt(SECONDS_IN_MONTH),
       4,
     );
 
     setMonthlyAmount(currentStreamValue !== "0" ? currentStreamValue : "");
-  }, [flowRateToPool]);
+  }, [flowRateToReceiver]);
 
   useEffect(() => {
     if (!areTransactionsLoading && monthlyAmount) {
@@ -232,8 +185,8 @@ export default function GardensPoolFunding({
     (async () => {
       if (address && ethersProvider && isAddress(selectedToken.address)) {
         const framework = await Framework.create({
-          chainId: network.id,
-          resolverAddress: network.superfluidResolver,
+          chainId: selectedNetwork.id,
+          resolverAddress: selectedNetwork.superfluidResolver,
           provider: ethersProvider,
         });
         const token = await framework.loadSuperToken(selectedToken.address);
@@ -249,7 +202,7 @@ export default function GardensPoolFunding({
         setSuperToken(token);
       }
     })();
-  }, [address, ethersProvider, selectedToken.address, network]);
+  }, [address, ethersProvider, selectedToken.address, selectedNetwork]);
 
   const transactions = useMemo(() => {
     if (
@@ -259,7 +212,7 @@ export default function GardensPoolFunding({
       !newFlowRate ||
       !ethersProvider ||
       !ethersSigner ||
-      !poolAddress
+      !receiverAddress
     ) {
       return [];
     }
@@ -303,18 +256,18 @@ export default function GardensPoolFunding({
       }
     }
 
-    if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToPool) > 0) {
+    if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToReceiver) > 0) {
       operations.push(
         superToken.deleteFlow({
           sender: address,
-          receiver: poolAddress,
+          receiver: receiverAddress,
         }),
       );
-    } else if (BigInt(flowRateToPool) > 0) {
+    } else if (BigInt(flowRateToReceiver) > 0) {
       operations.push(
         superToken.updateFlow({
           sender: address,
-          receiver: poolAddress,
+          receiver: receiverAddress,
           flowRate: newFlowRate,
         }),
       );
@@ -322,7 +275,7 @@ export default function GardensPoolFunding({
       operations.push(
         superToken.createFlow({
           sender: address,
-          receiver: poolAddress,
+          receiver: receiverAddress,
           flowRate: newFlowRate,
         }),
       );
@@ -340,10 +293,10 @@ export default function GardensPoolFunding({
     superToken,
     wrapAmount,
     newFlowRate,
-    flowRateToPool,
+    flowRateToReceiver,
     ethersProvider,
     ethersSigner,
-    poolAddress,
+    receiverAddress,
     selectedToken.address,
     underlyingTokenAllowance,
   ]);
@@ -354,12 +307,12 @@ export default function GardensPoolFunding({
     try {
       await executeTransactions(transactions);
       setSuccessMessage(
-        BigInt(flowRateToPool) > 0 ? "Stream updated!" : "Stream started!",
+        BigInt(flowRateToReceiver) > 0 ? "Stream updated!" : "Stream started!",
       );
     } catch {
       // transactionError state is set by the hook
     }
-  }, [transactions, executeTransactions, flowRateToPool]);
+  }, [transactions, executeTransactions, flowRateToReceiver]);
 
   const handleCancel = useCallback(async () => {
     if (
@@ -367,7 +320,7 @@ export default function GardensPoolFunding({
       !sfFramework ||
       !superToken ||
       !ethersSigner ||
-      !poolAddress
+      !receiverAddress
     ) {
       return;
     }
@@ -380,7 +333,7 @@ export default function GardensPoolFunding({
           .batchCall([
             superToken.deleteFlow({
               sender: address,
-              receiver: poolAddress,
+              receiver: receiverAddress,
             }),
           ])
           .exec(ethersSigner);
@@ -401,7 +354,7 @@ export default function GardensPoolFunding({
     sfFramework,
     superToken,
     ethersSigner,
-    poolAddress,
+    receiverAddress,
     executeTransactions,
   ]);
 
@@ -424,14 +377,6 @@ export default function GardensPoolFunding({
     }
   };
 
-  const totalMonthly = roundWeiAmount(
-    BigInt(totalInflowRate) * BigInt(SECONDS_IN_MONTH),
-    4,
-  );
-  const projectMonthly = roundWeiAmount(
-    projectInflowRate * BigInt(SECONDS_IN_MONTH),
-    4,
-  );
   const userInflowRate =
     BigInt(userAccountSnapshot?.totalNetFlowRate ?? 0) +
     BigInt(userAccountSnapshot?.totalOutflowRate ?? 0);
@@ -442,7 +387,7 @@ export default function GardensPoolFunding({
         )
       : null;
 
-  const hasExistingFlow = BigInt(flowRateToPool) > 0;
+  const hasExistingFlow = BigInt(flowRateToReceiver) > 0;
   const canExecute =
     !!address &&
     !!newFlowRate &&
@@ -460,75 +405,61 @@ export default function GardensPoolFunding({
       }}
     >
       <Card.Body className="p-5">
-        <Stack
-          direction="horizontal"
-          gap={2}
-          className="mb-5 align-items-center"
-        >
-          <Image src="/gardens.svg" alt="" width={24} height={24} />
-          <span className="fw-bold fs-lg">Fund Gardens Pool</span>
-        </Stack>
-
-        <Stack direction="horizontal" gap={4} className="mb-5">
-          <Stack direction="vertical" className="flex-fill">
-            <span
-              className="text-uppercase fw-bold"
-              style={{
-                fontSize: "0.65rem",
-                letterSpacing: "0.05em",
-                opacity: 0.5,
-              }}
-            >
-              Total rate
-            </span>
-            <span className="fw-bold">
-              {formatNumber(Number(totalMonthly))}{" "}
-              <span
-                className="text-muted fw-normal"
-                style={{ fontSize: "0.8rem" }}
-              >
-                {selectedToken.symbol}/mo
-              </span>
-            </span>
-          </Stack>
-          <Stack direction="vertical" className="flex-fill">
-            <span
-              className="text-uppercase fw-bold"
-              style={{
-                fontSize: "0.65rem",
-                letterSpacing: "0.05em",
-                opacity: 0.5,
-              }}
-            >
-              From project
-            </span>
-            <span className="fw-bold">
-              {formatNumber(Number(projectMonthly))}{" "}
-              <span
-                className="text-muted fw-normal"
-                style={{ fontSize: "0.8rem" }}
-              >
-                {selectedToken.symbol}/mo
-              </span>
-            </span>
-          </Stack>
-        </Stack>
+        <span className="fw-bold fs-lg d-block mb-5">Fund Project</span>
 
         <Stack direction="vertical" gap={3}>
-          <Stack
-            direction="horizontal"
-            gap={2}
-            className="align-items-center rounded-3 px-3 py-2 bg-light"
-          >
-            <Image
-              src={network.icon}
-              alt=""
-              width={20}
-              height={20}
-              className="rounded-circle"
-            />
-            <span style={{ fontSize: "0.85rem" }}>{network.name}</span>
-          </Stack>
+          <Dropdown>
+            <Dropdown.Toggle
+              variant="outline-secondary"
+              className="w-100 d-flex align-items-center justify-content-between rounded-3"
+            >
+              <Stack
+                direction="horizontal"
+                gap={2}
+                className="align-items-center"
+              >
+                <Image
+                  src={selectedNetwork.icon}
+                  alt=""
+                  width={20}
+                  height={20}
+                  className="rounded-circle"
+                />
+                {selectedNetwork.name}
+              </Stack>
+            </Dropdown.Toggle>
+            <Dropdown.Menu className="w-100">
+              {mainnetNetworks.map((net) => (
+                <Dropdown.Item
+                  key={net.id}
+                  active={net.id === selectedNetwork.id}
+                  onClick={() => {
+                    setSelectedNetwork(net);
+                    setSelectedToken(net.tokens[0]);
+                    setWrapAmount("");
+                    setMonthlyAmount("");
+                    setNewFlowRate("");
+                  }}
+                >
+                  <Stack
+                    direction="horizontal"
+                    gap={2}
+                    className="align-items-center"
+                  >
+                    <Image
+                      src={net.icon}
+                      alt=""
+                      width={20}
+                      height={20}
+                      className="rounded-circle"
+                    />
+                    {net.name}
+                  </Stack>
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown>
+
           <Dropdown>
             <Dropdown.Toggle
               variant="outline-secondary"
@@ -550,7 +481,7 @@ export default function GardensPoolFunding({
               </Stack>
             </Dropdown.Toggle>
             <Dropdown.Menu className="w-100">
-              {network.tokens.map((token) => (
+              {selectedNetwork.tokens.map((token) => (
                 <Dropdown.Item
                   key={token.address}
                   active={token.address === selectedToken.address}
@@ -594,7 +525,7 @@ export default function GardensPoolFunding({
               <Form.Text className="text-success">
                 Current:{" "}
                 {roundWeiAmount(
-                  BigInt(flowRateToPool) * BigInt(SECONDS_IN_MONTH),
+                  BigInt(flowRateToReceiver) * BigInt(SECONDS_IN_MONTH),
                   4,
                 )}{" "}
                 {selectedToken.symbol}/mo
@@ -678,9 +609,9 @@ export default function GardensPoolFunding({
             <Button
               variant="primary"
               className="w-100 rounded-3 fw-bold"
-              onClick={() => switchChain({ chainId: network.id })}
+              onClick={() => switchChain({ chainId: selectedNetwork.id })}
             >
-              Switch to {network.name}
+              Switch to {selectedNetwork.name}
             </Button>
           ) : (
             <Stack direction="horizontal" gap={2}>
