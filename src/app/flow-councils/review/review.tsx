@@ -197,11 +197,13 @@ export default function Review(props: ReviewProps) {
       const data = await res.json();
       if (!data.success) {
         setIsExportingCsv(false);
+        setError("Failed to export CSV");
         return;
       }
       fullApplications = data.applications;
     } catch {
       setIsExportingCsv(false);
+      setError("Failed to export CSV");
       return;
     }
 

@@ -165,10 +165,7 @@ export function FlowCouncilContextProvider({
   const chainId = params.chainId ? params.chainId.toString() : DEFAULT_CHAIN_ID;
   const councilId = params.councilId as string;
   const isVotingPage =
-    !!councilId &&
-    !pathname.includes("/review") &&
-    !pathname.includes("/application") &&
-    !pathname.includes("/launch");
+    !!councilId && pathname === `/flow-councils/${chainId}/${councilId}`;
   const network =
     networks.find(
       (network) => network.id === Number(chainId ?? DEFAULT_CHAIN_ID),

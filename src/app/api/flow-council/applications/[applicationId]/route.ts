@@ -7,7 +7,7 @@ import {
   getProjectAndRoundDetails,
   getRoundAdminEmailsExcludingAddress,
 } from "../../email";
-import { isRoundAdmin, hasOnChainRole } from "../../auth";
+import { findRoundByCouncil, isAdmin } from "../../auth";
 
 export const dynamic = "force-dynamic";
 
@@ -38,27 +38,24 @@ export async function GET(
 
     const userAddress = session.address.toLowerCase();
 
-    let isAdmin = false;
+    let admin = false;
+    let round: { id: number } | undefined;
     if (chainId && councilId && isAddress(councilId)) {
-      const round = await db
-        .selectFrom("rounds")
-        .select("id")
-        .where("chainId", "=", Number(chainId))
-        .where("flowCouncilAddress", "=", councilId.toLowerCase())
-        .executeTakeFirst();
+      round = await findRoundByCouncil(Number(chainId), councilId);
 
       if (round) {
-        const [dbAdmin, onChainAdmin] = await Promise.all([
-          isRoundAdmin(round.id, userAddress),
-          hasOnChainRole(Number(chainId), councilId, userAddress),
-        ]);
-        isAdmin = dbAdmin || onChainAdmin;
+        admin = await isAdmin(
+          round.id,
+          Number(chainId),
+          councilId,
+          userAddress,
+        );
       }
     }
 
     let application;
 
-    if (isAdmin) {
+    if (admin && round) {
       application = await db
         .selectFrom("applications")
         .innerJoin("projects", "applications.projectId", "projects.id")
@@ -73,6 +70,7 @@ export async function GET(
           "projects.details as projectDetails",
         ])
         .where("applications.id", "=", appId)
+        .where("applications.roundId", "=", round.id)
         .executeTakeFirst();
     } else {
       application = await db
@@ -105,7 +103,7 @@ export async function GET(
       );
     }
 
-    if (isAdmin) {
+    if (admin) {
       const [managerAddresses, managerEmails] = await Promise.all([
         db
           .selectFrom("projectManagers")
