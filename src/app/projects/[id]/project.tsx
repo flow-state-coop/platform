@@ -181,7 +181,7 @@ export default function Project(props: ProjectProps) {
     <>
       <Stack
         direction="vertical"
-        className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
+        className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52 overflow-hidden"
       >
         <Card
           className="position-relative border-0"
@@ -240,11 +240,11 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={`https://${details.website.replace(/^https?:\/\//, "")}`}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
               style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/web.svg" alt="Website" width={18} height={18} />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {details.website.replace(/^https?:\/\//, "")}
               </Card.Text>
             </Button>
@@ -254,11 +254,11 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={details.demoUrl}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
               style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/link.svg" alt="Demo" width={18} height={18} />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {details.demoUrl.replace(/^https?:\/\//, "")}
               </Card.Text>
             </Button>
@@ -268,11 +268,11 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={`https://github.com/${details.github}`}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
               style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/github.svg" alt="github" width={18} height={18} />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {`github.com/${details.github}`}
               </Card.Text>
             </Button>
@@ -282,11 +282,11 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={`https://x.com/${details.twitter}`}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
               style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/x-logo.svg" alt="x" width={14} height={14} />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {`x.com/${details.twitter}`}
               </Card.Text>
             </Button>
@@ -296,7 +296,7 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={`https://farcaster.xyz/${details.farcaster}`}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
               style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image
@@ -305,7 +305,7 @@ export default function Project(props: ProjectProps) {
                 width={16}
                 height={16}
               />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {`farcaster.xyz/${details.farcaster}`}
               </Card.Text>
             </Button>
@@ -315,7 +315,7 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={details.telegram}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
               style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image
@@ -324,7 +324,7 @@ export default function Project(props: ProjectProps) {
                 width={16}
                 height={16}
               />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {details.telegram.replace(/^https?:\/\//, "")}
               </Card.Text>
             </Button>
@@ -334,11 +334,11 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={details.discord}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
               style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/discord.svg" alt="discord" width={16} height={16} />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {details.discord.replace(/^https?:\/\//, "")}
               </Card.Text>
             </Button>
@@ -348,7 +348,7 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={details.karmaProfile}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
               style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image
@@ -357,7 +357,7 @@ export default function Project(props: ProjectProps) {
                 width={18}
                 height={18}
               />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {details.karmaProfile.replace(/^https?:\/\//, "")}
               </Card.Text>
             </Button>
@@ -367,11 +367,11 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={`https://${details.gardensPool.replace(/^https?:\/\//, "")}`}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
               style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/gardens.svg" alt="Gardens" width={18} height={18} />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {details.gardensPool.replace(/^https?:\/\//, "")}
               </Card.Text>
             </Button>
