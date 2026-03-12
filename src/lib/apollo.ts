@@ -35,9 +35,26 @@ const apolloClient: ApolloClientOptions<NormalizedCacheObject> = {
 };
 
 const flowStateClient = new ApolloClient(apolloClient);
-const flowSplitterClient = new ApolloClient(apolloClient);
-const flowCouncilClient = new ApolloClient(apolloClient);
-const superfluidClient = new ApolloClient(apolloClient);
+
+const clientsByTypeAndChain = new Map<
+  string,
+  ApolloClient<NormalizedCacheObject>
+>();
+
+function getOrCreateClient(key: string, uri: string) {
+  let client = clientsByTypeAndChain.get(key);
+
+  if (!client) {
+    client = new ApolloClient({
+      cache: new InMemoryCache(),
+      link: new HttpLink({ uri }),
+      defaultOptions: apolloClient.defaultOptions,
+    });
+    clientsByTypeAndChain.set(key, client);
+  }
+
+  return client;
+}
 
 export const getApolloClient = (type: ApiType, chainId?: number) => {
   if (type === "flowState") {
@@ -46,35 +63,21 @@ export const getApolloClient = (type: ApiType, chainId?: number) => {
     );
 
     return flowStateClient;
-  } else if (type === "flowSplitter") {
-    const network = networks.find((network) => network.id === chainId);
-
-    if (network) {
-      flowSplitterClient.setLink(
-        new HttpLink({ uri: network.flowSplitterSubgraph }),
-      );
-    }
-
-    return flowSplitterClient;
-  } else if (type === "flowCouncil") {
-    const network = networks.find((network) => network.id === chainId);
-
-    if (network) {
-      flowCouncilClient.setLink(
-        new HttpLink({ uri: network.flowCouncilSubgraph }),
-      );
-    }
-
-    return flowCouncilClient;
-  } else if (type === "superfluid") {
-    const network = networks.find((network) => network.id === chainId);
-
-    if (network) {
-      superfluidClient.setLink(
-        new HttpLink({ uri: network.superfluidSubgraph }),
-      );
-    }
-
-    return superfluidClient;
   }
+
+  const network = networks.find((network) => network.id === chainId);
+
+  if (!network) return getOrCreateClient("fallback", "");
+
+  const subgraphMap: Record<string, string | undefined> = {
+    flowSplitter: network.flowSplitterSubgraph,
+    flowCouncil: network.flowCouncilSubgraph,
+    superfluid: network.superfluidSubgraph,
+  };
+
+  const uri = subgraphMap[type];
+
+  if (!uri) return getOrCreateClient("fallback", "");
+
+  return getOrCreateClient(`${type}-${chainId}`, uri);
 };

@@ -391,23 +391,30 @@ export default function useStreamFunding(
   const receiverSnapshot =
     receiverQueryRes?.account?.accountTokenSnapshots?.[0] ?? null;
 
+  const receiverDataReady = receiverQueryRes?.account !== undefined;
+  const userDataReady = userQueryRes?.account !== undefined;
+
   const totalReceiverMonthlyRate = useMemo(
     () =>
-      roundWeiAmount(
-        BigInt(receiverSnapshot?.totalInflowRate ?? 0) *
-          BigInt(SECONDS_IN_MONTH),
-        4,
-      ),
-    [receiverSnapshot?.totalInflowRate],
+      receiverDataReady
+        ? roundWeiAmount(
+            BigInt(receiverSnapshot?.totalInflowRate ?? 0) *
+              BigInt(SECONDS_IN_MONTH),
+            4,
+          )
+        : null,
+    [receiverDataReady, receiverSnapshot?.totalInflowRate],
   );
 
   const userMonthlyRate = useMemo(
     () =>
-      roundWeiAmount(
-        BigInt(flowRateToReceiver) * BigInt(SECONDS_IN_MONTH),
-        4,
-      ),
-    [flowRateToReceiver],
+      userDataReady
+        ? roundWeiAmount(
+            BigInt(flowRateToReceiver) * BigInt(SECONDS_IN_MONTH),
+            4,
+          )
+        : null,
+    [userDataReady, flowRateToReceiver],
   );
 
   const hasExistingFlow = BigInt(flowRateToReceiver) > 0;

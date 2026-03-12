@@ -111,7 +111,7 @@ function RateMetric({
   symbol,
 }: {
   label: string;
-  value: string;
+  value: string | null;
   symbol: string;
 }) {
   return (
@@ -119,12 +119,22 @@ function RateMetric({
       <span className="text-uppercase fw-bold" style={metricLabelStyle}>
         {label}
       </span>
-      <span className="fw-bold">
-        {formatNumber(Number(value))}{" "}
-        <span className="text-muted fw-normal" style={{ fontSize: "0.8rem" }}>
-          {symbol}/mo
+      {value === null ? (
+        <span
+          className="bg-light rounded-2"
+          style={{ width: "5rem", height: "1.2rem" }}
+        />
+      ) : (
+        <span className="fw-bold">
+          {formatNumber(Number(value))}{" "}
+          <span
+            className="text-muted fw-normal"
+            style={{ fontSize: "0.8rem" }}
+          >
+            {symbol}/mo
+          </span>
         </span>
-      </span>
+      )}
     </Stack>
   );
 }
@@ -239,24 +249,31 @@ function StreamInputs({
         <span style={{ fontSize: "0.8rem" }}>
           {stream.selectedToken.symbol} balance
         </span>
-        <Stack direction="horizontal" gap={1} className="align-items-center">
-          <span className="fw-bold" style={{ fontSize: "0.85rem" }}>
-            {formatNumber(Number(formatEther(stream.superTokenBalance)))}
-          </span>
-          {stream.userNetMonthlyFlow && (
-            <span
-              className={
-                stream.userNetMonthlyFlow.isPositive
-                  ? "text-success"
-                  : "text-danger"
-              }
-              style={{ fontSize: "0.75rem" }}
-            >
-              {stream.userNetMonthlyFlow.isPositive ? "+" : "-"}
-              {stream.userNetMonthlyFlow.value}/mo
+        {stream.userMonthlyRate === null ? (
+          <span
+            className="bg-light rounded-2"
+            style={{ width: "5rem", height: "1.1rem" }}
+          />
+        ) : (
+          <Stack direction="horizontal" gap={1} className="align-items-center">
+            <span className="fw-bold" style={{ fontSize: "0.85rem" }}>
+              {formatNumber(Number(formatEther(stream.superTokenBalance)))}
             </span>
-          )}
-        </Stack>
+            {stream.userNetMonthlyFlow && (
+              <span
+                className={
+                  stream.userNetMonthlyFlow.isPositive
+                    ? "text-success"
+                    : "text-danger"
+                }
+                style={{ fontSize: "0.75rem" }}
+              >
+                {stream.userNetMonthlyFlow.isPositive ? "+" : "-"}
+                {stream.userNetMonthlyFlow.value}/mo
+              </span>
+            )}
+          </Stack>
+        )}
       </Stack>
 
       {stream.transactionError && (
