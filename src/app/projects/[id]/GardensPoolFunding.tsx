@@ -123,7 +123,7 @@ function RateMetric({
       {value === null ? (
         <span className="placeholder-wave">
           <span
-            className="placeholder bg-light rounded-2"
+            className="placeholder rounded-2 opacity-25"
             style={{ width: "5rem", height: "1.2rem", display: "inline-block" }}
           />
         </span>
@@ -252,7 +252,7 @@ function StreamInputs({
         {stream.userMonthlyRate === null ? (
           <span className="placeholder-wave">
             <span
-              className="placeholder bg-light rounded-2"
+              className="placeholder rounded-2 opacity-25"
               style={{
                 width: "5rem",
                 height: "1.1rem",
