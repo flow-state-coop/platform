@@ -8,6 +8,7 @@ import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import Image from "react-bootstrap/Image";
 import Dropdown from "react-bootstrap/Dropdown";
+import NextImage from "next/image";
 import { Network } from "@/types/network";
 import { parseGardensPoolUrl } from "@/lib/gardensPool";
 import { formatNumber } from "@/lib/utils";
@@ -120,17 +121,16 @@ function RateMetric({
         {label}
       </span>
       {value === null ? (
-        <span
-          className="bg-light rounded-2"
-          style={{ width: "5rem", height: "1.2rem" }}
-        />
+        <span className="placeholder-wave">
+          <span
+            className="placeholder bg-light rounded-2"
+            style={{ width: "5rem", height: "1.2rem", display: "inline-block" }}
+          />
+        </span>
       ) : (
         <span className="fw-bold">
           {formatNumber(Number(value))}{" "}
-          <span
-            className="text-muted fw-normal"
-            style={{ fontSize: "0.8rem" }}
-          >
+          <span className="text-muted fw-normal" style={{ fontSize: "0.8rem" }}>
             {symbol}/mo
           </span>
         </span>
@@ -250,10 +250,16 @@ function StreamInputs({
           {stream.selectedToken.symbol} balance
         </span>
         {stream.userMonthlyRate === null ? (
-          <span
-            className="bg-light rounded-2"
-            style={{ width: "5rem", height: "1.1rem" }}
-          />
+          <span className="placeholder-wave">
+            <span
+              className="placeholder bg-light rounded-2"
+              style={{
+                width: "5rem",
+                height: "1.1rem",
+                display: "inline-block",
+              }}
+            />
+          </span>
         ) : (
           <Stack direction="horizontal" gap={1} className="align-items-center">
             <span className="fw-bold" style={{ fontSize: "0.85rem" }}>
@@ -281,12 +287,6 @@ function StreamInputs({
           {stream.transactionError}
         </div>
       )}
-      {stream.successMessage && (
-        <div className="text-success fw-bold" style={{ fontSize: "0.85rem" }}>
-          {stream.successMessage}
-        </div>
-      )}
-
       {!stream.isCorrectChain ? (
         <Button
           variant="primary"
@@ -298,20 +298,43 @@ function StreamInputs({
       ) : (
         <Stack direction="vertical" className="align-items-center">
           <Button
-            variant="primary"
+            variant={stream.isSuccess ? "success" : "primary"}
             className="w-100 rounded-3 fw-bold"
-            disabled={!stream.canExecute}
+            disabled={!stream.canExecute && !stream.isSuccess}
+            style={{ pointerEvents: stream.isSuccess ? "none" : "auto" }}
             onClick={stream.handleExecute}
           >
             {stream.areTransactionsLoading ? (
-              <Spinner size="sm" />
+              <Stack
+                direction="horizontal"
+                gap={2}
+                className="justify-content-center"
+              >
+                <Spinner size="sm" />
+                {stream.transactionCount > 1 && (
+                  <span>
+                    {stream.completedTransactions + 1}/{stream.transactionCount}
+                  </span>
+                )}
+              </Stack>
+            ) : stream.isSuccess ? (
+              <NextImage
+                src="/success.svg"
+                alt="Success"
+                width={20}
+                height={20}
+                style={{
+                  filter:
+                    "brightness(0) saturate(100%) invert(85%) sepia(8%) saturate(138%) hue-rotate(138deg) brightness(93%) contrast(106%)",
+                }}
+              />
             ) : stream.hasExistingFlow ? (
               "Update Stream"
             ) : (
               "Start Stream"
             )}
           </Button>
-          {stream.hasExistingFlow && (
+          {stream.hasExistingFlow && !stream.isSuccess && (
             <Button
               variant="transparent"
               className="text-primary text-decoration-underline border-0 pb-0 fw-semi-bold"

@@ -73,14 +73,18 @@ export default function useStreamFunding(
     NativeAssetSuperToken | WrapperSuperToken | SuperToken | null
   >(null);
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("0");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const { address, chainId: walletChainId } = useAccount();
   const { switchChain } = useSwitchChain();
   const ethersProvider = useEthersProvider({ chainId: network.id });
   const ethersSigner = useEthersSigner({ chainId: network.id });
-  const { areTransactionsLoading, transactionError, executeTransactions } =
-    useTransactionsQueue();
+  const {
+    areTransactionsLoading,
+    completedTransactions,
+    transactionError,
+    executeTransactions,
+  } = useTransactionsQueue();
 
   const isCorrectChain = walletChainId === network.id;
 
@@ -106,25 +110,31 @@ export default function useStreamFunding(
     query: { refetchInterval: 10000, enabled: !isSuperTokenPure },
   });
 
-  const { data: userQueryRes } = useQuery(USER_ACCOUNT_QUERY, {
-    client: getApolloClient("superfluid", network.id),
-    variables: {
-      userAddress: address?.toLowerCase() ?? "",
-      token: selectedToken.address.toLowerCase(),
+  const { data: userQueryRes, refetch: refetchUserAccount } = useQuery(
+    USER_ACCOUNT_QUERY,
+    {
+      client: getApolloClient("superfluid", network.id),
+      variables: {
+        userAddress: address?.toLowerCase() ?? "",
+        token: selectedToken.address.toLowerCase(),
+      },
+      skip: !address,
+      pollInterval: 10000,
     },
-    skip: !address,
-    pollInterval: 10000,
-  });
+  );
 
-  const { data: receiverQueryRes } = useQuery(RECEIVER_INFLOW_QUERY, {
-    client: getApolloClient("superfluid", network.id),
-    variables: {
-      receiverAddress: receiverAddress.toLowerCase(),
-      token: selectedToken.address.toLowerCase(),
+  const { data: receiverQueryRes, refetch: refetchReceiverInflow } = useQuery(
+    RECEIVER_INFLOW_QUERY,
+    {
+      client: getApolloClient("superfluid", network.id),
+      variables: {
+        receiverAddress: receiverAddress.toLowerCase(),
+        token: selectedToken.address.toLowerCase(),
+      },
+      skip: !receiverAddress,
+      pollInterval: 10000,
     },
-    skip: !receiverAddress,
-    pollInterval: 10000,
-  });
+  );
 
   const userAccountSnapshot =
     userQueryRes?.account?.accountTokenSnapshots?.find(
@@ -295,17 +305,23 @@ export default function useStreamFunding(
   ]);
 
   const handleExecute = useCallback(async () => {
-    setSuccessMessage("");
+    setIsSuccess(false);
 
     try {
       await executeTransactions(transactions);
-      setSuccessMessage(
-        BigInt(flowRateToReceiver) > 0 ? "Stream updated!" : "Stream started!",
-      );
+      setIsSuccess(true);
+      setTimeout(() => setIsSuccess(false), 3000);
+      refetchUserAccount();
+      refetchReceiverInflow();
     } catch {
       // transactionError state is set by the hook
     }
-  }, [transactions, executeTransactions, flowRateToReceiver]);
+  }, [
+    transactions,
+    executeTransactions,
+    refetchUserAccount,
+    refetchReceiverInflow,
+  ]);
 
   const handleCancel = useCallback(async () => {
     if (
@@ -318,7 +334,7 @@ export default function useStreamFunding(
       return;
     }
 
-    setSuccessMessage("");
+    setIsSuccess(false);
 
     const cancelTxs = [
       async () => {
@@ -338,7 +354,10 @@ export default function useStreamFunding(
       await executeTransactions(cancelTxs);
       setMonthlyAmount("");
       setNewFlowRate("");
-      setSuccessMessage("Stream cancelled.");
+      setIsSuccess(true);
+      setTimeout(() => setIsSuccess(false), 3000);
+      refetchUserAccount();
+      refetchReceiverInflow();
     } catch {
       // transactionError state is set by the hook
     }
@@ -349,6 +368,8 @@ export default function useStreamFunding(
     ethersSigner,
     receiverAddress,
     executeTransactions,
+    refetchUserAccount,
+    refetchReceiverInflow,
   ]);
 
   const handleMonthlyAmountChange = useCallback((value: string) => {
@@ -428,7 +449,7 @@ export default function useStreamFunding(
     setWrapAmount("");
     setMonthlyAmount("");
     setNewFlowRate("");
-    setSuccessMessage("");
+    setIsSuccess(false);
   }, []);
 
   return {
@@ -462,8 +483,10 @@ export default function useStreamFunding(
     flowRateToReceiver,
     hasExistingFlow,
     areTransactionsLoading,
+    completedTransactions,
+    transactionCount: transactions.length,
     transactionError,
-    successMessage,
+    isSuccess,
     canExecute,
     handleExecute,
     handleCancel,
