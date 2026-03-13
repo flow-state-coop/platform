@@ -194,6 +194,11 @@ export default function Review(props: ReviewProps) {
           councilId: flowCouncil.id,
         }),
       });
+      if (!res.ok) {
+        setIsExportingCsv(false);
+        setError("Failed to export CSV");
+        return;
+      }
       const data = await res.json();
       if (!data.success) {
         setIsExportingCsv(false);
@@ -282,7 +287,7 @@ export default function Review(props: ReviewProps) {
   }, [applications, flowCouncil, chainId, isExportingCsv, roundName]);
 
   const fetchApplications = useCallback(async () => {
-    if (!flowCouncil || !address || !chainId) {
+    if (!flowCouncil || !chainId) {
       return;
     }
 
@@ -304,7 +309,7 @@ export default function Review(props: ReviewProps) {
     } catch (err) {
       console.error(err);
     }
-  }, [flowCouncil, address, chainId]);
+  }, [flowCouncil, chainId]);
 
   const isManager = useMemo(() => {
     const flowCouncilManager = flowCouncil?.flowCouncilManagers.find(
@@ -361,6 +366,10 @@ export default function Review(props: ReviewProps) {
       const res = await fetch(
         `/api/flow-council/applications/${summary.id}?chainId=${chainId}&councilId=${councilId}`,
       );
+      if (!res.ok) {
+        setError("Failed to load application details");
+        return;
+      }
       const data = await res.json();
 
       if (data.success) {
