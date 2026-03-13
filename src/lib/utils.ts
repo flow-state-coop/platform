@@ -1,4 +1,4 @@
-import { formatEther, PublicClient } from "viem";
+import { formatEther, PublicClient, HttpRequestError, TimeoutError } from "viem";
 
 export enum TimeInterval {
   DAY = "/day",
@@ -184,7 +184,9 @@ export async function waitForReceipt(
         confirmations,
       });
     } catch (err) {
-      if (attempt === 4) throw err;
+      const isTransient =
+        err instanceof HttpRequestError || err instanceof TimeoutError;
+      if (!isTransient || attempt === 4) throw err;
       await new Promise((r) => setTimeout(r, 3000));
     }
   }
