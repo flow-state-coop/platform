@@ -13,6 +13,7 @@ import {
 } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Papa from "papaparse";
+import { waitForReceipt } from "@/lib/utils";
 import { writeContract } from "@wagmi/core";
 import { useQuery, gql } from "@apollo/client";
 import { usePostHog } from "posthog-js/react";
@@ -441,10 +442,7 @@ export default function Admin(props: AdminProps) {
         ],
       });
 
-      await publicClient.waitForTransactionReceipt({
-        hash,
-        confirmations: 3,
-      });
+      await waitForReceipt(publicClient, hash);
 
       setIsTransactionLoading(false);
       setTransactionSuccess("Flow Splitter Updated Successfully");

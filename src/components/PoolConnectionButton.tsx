@@ -3,6 +3,7 @@ import { Address } from "viem";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { Network } from "@/types/network";
 import { gdaForwarderAbi } from "@/lib/abi/gdaForwarder";
+import { waitForReceipt } from "@/lib/utils";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 
@@ -34,10 +35,7 @@ export default function PoolConnectionButton(props: {
         args: [poolAddress as Address, "0x"],
       });
 
-      await publicClient.waitForTransactionReceipt({
-        hash,
-        confirmations: 5,
-      });
+      await waitForReceipt(publicClient, hash);
 
       setIsTransactionConfirming(false);
     } catch (err) {

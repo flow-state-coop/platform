@@ -1,4 +1,4 @@
-import { formatEther } from "viem";
+import { formatEther, PublicClient } from "viem";
 
 export enum TimeInterval {
   DAY = "/day",
@@ -170,6 +170,26 @@ export function getPlaceholderImageSrc() {
   const max = 5;
 
   return `/placeholders/${Math.floor(Math.random() * (max - min + 1)) + min}.jpg`;
+}
+
+export async function waitForReceipt(
+  publicClient: PublicClient,
+  hash: `0x${string}`,
+  confirmations = 3,
+) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      return await publicClient.waitForTransactionReceipt({
+        hash,
+        confirmations,
+      });
+    } catch (err) {
+      if (attempt === 4) throw err;
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+  }
+
+  throw new Error("Failed to get transaction receipt");
 }
 
 export function generateColor(str: string) {

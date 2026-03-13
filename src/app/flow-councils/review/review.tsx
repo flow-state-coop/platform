@@ -21,6 +21,7 @@ import Spinner from "react-bootstrap/Spinner";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import Alert from "react-bootstrap/Alert";
 import Table from "react-bootstrap/Table";
+import { waitForReceipt } from "@/lib/utils";
 import Badge from "react-bootstrap/Badge";
 import Nav from "react-bootstrap/Nav";
 import Tab from "react-bootstrap/Tab";
@@ -444,11 +445,7 @@ export default function Review(props: ReviewProps) {
           ],
         });
 
-        await publicClient?.waitForTransactionReceipt({
-          hash,
-          confirmations: 3,
-          retryCount: 10,
-        });
+        await waitForReceipt(publicClient!, hash);
       }
 
       // Update status in DB and create automated message
