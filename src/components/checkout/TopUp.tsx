@@ -118,18 +118,123 @@ export default function TopUp(props: TopUpProps) {
       <Accordion.Collapse eventKey={Step.TOP_UP} className="p-4 pt-0">
         <>
           <Card.Text className="small mb-4">
-            Make sure you have enough {ethBalance?.symbol}{" "}
-            {!isUnderlyingTokenNative
-              ? `and ${underlyingTokenBalance?.symbol}`
-              : ""}{" "}
-            to pay for gas and to fund your stream. We recommend having at least
-            3 months of{" "}
-            {isUnderlyingTokenNative
-              ? ethBalance?.symbol
-              : underlyingTokenBalance?.symbol}{" "}
-            to stream.
+            {isSuperTokenPure ? (
+              <>
+                Make sure you have enough {ethBalance?.symbol} for gas and{" "}
+                {superTokenInfo.symbol} to fund your stream. We recommend having
+                at least 3 months of {superTokenInfo.symbol} to stream.
+              </>
+            ) : (
+              <>
+                Make sure you have enough {ethBalance?.symbol}{" "}
+                {!isUnderlyingTokenNative
+                  ? `and ${underlyingTokenBalance?.symbol}`
+                  : ""}{" "}
+                to pay for gas and to fund your stream. We recommend having at
+                least 3 months of{" "}
+                {isUnderlyingTokenNative
+                  ? ethBalance?.symbol
+                  : underlyingTokenBalance?.symbol}{" "}
+                to stream.
+              </>
+            )}
           </Card.Text>
-          {isUnderlyingTokenNative ? (
+          {isSuperTokenPure ? (
+            <Stack
+              direction={isMobile ? "vertical" : "horizontal"}
+              gap={3}
+              className="justify-content-center"
+            >
+              <Stack
+                direction="vertical"
+                gap={3}
+                className="align-items-center flex-grow-0 px-3 py-4 rounded-4 bg-white"
+                style={{ width: isMobile ? "100%" : "50%" }}
+              >
+                <Card.Text className="m-0 small">
+                  {ethBalance?.symbol ?? "ETH"}:
+                </Card.Text>
+                <Card.Text
+                  className={`d-flex align-items-center gap-2 m-0 fw-semi-bold ${
+                    hasSufficientEthBalance ? "" : "text-danger"
+                  }`}
+                >
+                  {ethBalance
+                    ? formatNumber(Number(ethBalance.formatted))
+                    : "0"}
+                  {hasSufficientEthBalance && (
+                    <Image
+                      src="/success.svg"
+                      alt="success"
+                      width={18}
+                      height={18}
+                    />
+                  )}
+                </Card.Text>
+                <Card.Text as="small" className="m-0 text-center">
+                  Suggested {minEthBalance}
+                  <br />
+                  <br />
+                </Card.Text>
+                <Button
+                  variant="link"
+                  href="https://app.across.to/bridge"
+                  target="_blank"
+                  className="w-100 bg-secondary text-decoration-none rounded-4 py-4 text-light fw-semi-bold overflow-hidden"
+                >
+                  <Card.Text className="m-0 text-truncate">
+                    Bridge to {network?.name}
+                  </Card.Text>
+                </Button>
+              </Stack>
+              <Stack
+                direction="vertical"
+                gap={3}
+                className="align-items-center bg-white px-3 py-4 rounded-4"
+                style={{ width: isMobile ? "100%" : "50%" }}
+              >
+                <Card.Text className="m-0 small">
+                  {superTokenInfo.symbol}:
+                </Card.Text>
+                <Card.Text
+                  className={`d-flex align-items-center gap-2 m-0 fw-semi-bold text-truncate ${
+                    hasSuggestedTokenBalance
+                      ? ""
+                      : superTokenBalance === BigInt(0)
+                        ? "text-danger"
+                        : "text-warning"
+                  }`}
+                >
+                  {formatNumber(Number(formatEther(superTokenBalance)))}
+                  {hasSuggestedTokenBalance && (
+                    <Image
+                      src="/success.svg"
+                      alt="success"
+                      width={18}
+                      height={18}
+                    />
+                  )}
+                </Card.Text>
+                <Card.Text as="small" className="fs-sm m-0 text-center">
+                  Suggested{" "}
+                  {formatNumber(
+                    Number(roundWeiAmount(suggestedTokenBalance, 6)),
+                  )}
+                  +
+                  <br />
+                  <span style={{ fontSize: "0.8rem" }}>(3 months stream)</span>
+                </Card.Text>
+                <Button
+                  variant="link"
+                  href={`https://jumper.exchange/?fromChain=${network?.id ?? ""}&fromToken=0x0000000000000000000000000000000000000000&toChain=${network?.id ?? ""}&toToken=${superTokenInfo.address}`}
+                  target="_blank"
+                  className="w-100 bg-primary text-decoration-none py-4 rounded-4 text-light fw-semi-bold"
+                >
+                  Get {superTokenInfo.symbol}
+                </Button>
+              </Stack>
+            </Stack>
+          ) : isUnderlyingTokenNative ? (
             <Stack
               direction="vertical"
               gap={3}

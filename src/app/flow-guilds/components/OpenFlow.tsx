@@ -177,7 +177,8 @@ export default function OpenFlow(props: OpenFlowProps) {
   const isSuperTokenPure =
     !isSuperTokenNative &&
     superfluidQueryRes?.token?.underlyingAddress === ZERO_ADDRESS;
-  const isSuperTokenWrapper = !isSuperTokenNative && !isSuperTokenPure;
+  const isSuperTokenWrapper =
+    !!superfluidQueryRes?.token && !isSuperTokenNative && !isSuperTokenPure;
   const { data: ethBalance } = useBalance({
     address,
     chainId: network?.id,
