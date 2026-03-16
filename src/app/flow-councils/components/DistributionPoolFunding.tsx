@@ -83,6 +83,10 @@ const SF_ACCOUNT_QUERY = gql`
         currentFlowRate
       }
     }
+    token(id: $token) {
+      isNativeAssetSuperToken
+      underlyingAddress
+    }
   }
 `;
 
@@ -122,11 +126,6 @@ export default function DistributionPoolFunding(props: {
   } = useTransactionsQueue();
   const distributionTokenAddress = token.address;
   const splitterAddress = councilMetadata.superappSplitterAddress;
-  const { data: underlyingTokenAddress } = useReadContract({
-    address: distributionTokenAddress,
-    abi: parseAbi(["function getUnderlyingToken() view returns (address)"]),
-    functionName: "getUnderlyingToken",
-  });
   const { data: realtimeBalanceOfNow } = useReadContract({
     address: distributionTokenAddress,
     functionName: "realtimeBalanceOfNow",
@@ -150,22 +149,6 @@ export default function DistributionPoolFunding(props: {
       refetchInterval: 10000,
     },
   });
-  const isSuperTokenNative =
-    token.symbol === "ETHx" || token.symbol === "CELOx";
-  const isSuperTokenPure =
-    !isSuperTokenNative && underlyingTokenAddress === ZERO_ADDRESS;
-  const { data: underlyingTokenBalance } = useBalance({
-    address,
-    chainId: network?.id,
-    token:
-      isSuperTokenNative || !underlyingTokenAddress
-        ? void 0
-        : (underlyingTokenAddress as Address),
-    query: {
-      refetchInterval: 10000,
-      enabled: !isSuperTokenPure,
-    },
-  });
   const { data: superfluidQueryRes } = useQuery(SF_ACCOUNT_QUERY, {
     client: getApolloClient("superfluid", network.id),
     variables: {
@@ -174,6 +157,21 @@ export default function DistributionPoolFunding(props: {
     },
     skip: !council?.distributionPool,
     pollInterval: 10000,
+  });
+  const isSuperTokenNative = superfluidQueryRes?.token?.isNativeAssetSuperToken;
+  const isSuperTokenPure =
+    !isSuperTokenNative &&
+    superfluidQueryRes?.token?.underlyingAddress === ZERO_ADDRESS;
+  const { data: underlyingTokenBalance } = useBalance({
+    address,
+    chainId: network?.id,
+    token: isSuperTokenNative
+      ? void 0
+      : (superfluidQueryRes?.token?.underlyingAddress as Address),
+    query: {
+      refetchInterval: 10000,
+      enabled: !!superfluidQueryRes?.token && !isSuperTokenPure,
+    },
   });
   const ethersProvider = useEthersProvider({ chainId: network.id });
   const ethersSigner = useEthersSigner({ chainId: network.id });
