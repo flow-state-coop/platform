@@ -18,6 +18,7 @@ export default function useCouncilMemberQuery(
   network: Network,
   councilId: string,
   address: string,
+  enabled = true,
 ) {
   const { data: councilQueryRes } = useQuery(VOTER_QUERY, {
     client: getApolloClient("flowCouncil", network.id),
@@ -25,8 +26,8 @@ export default function useCouncilMemberQuery(
       councilId: councilId?.toLowerCase(),
       address: address.toLowerCase(),
     },
-    pollInterval: 4000,
-    skip: !councilId || !address,
+    pollInterval: 15000,
+    skip: !councilId || !address || !enabled,
   });
 
   const voter = councilQueryRes?.flowCouncil?.voters?.[0];

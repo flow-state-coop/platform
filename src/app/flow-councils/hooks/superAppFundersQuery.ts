@@ -28,6 +28,7 @@ export default function useSuperAppFundersQuery(
   network: Network,
   superAppAddress?: string | null,
   tokenAddress?: string,
+  enabled = true,
 ): SuperAppFunderData | undefined {
   const { data } = useQuery(SUPER_APP_FUNDERS_QUERY, {
     client: getApolloClient("superfluid", network.id),
@@ -35,7 +36,7 @@ export default function useSuperAppFundersQuery(
       superApp: superAppAddress?.toLowerCase(),
       token: tokenAddress?.toLowerCase(),
     },
-    skip: !superAppAddress || !tokenAddress,
+    skip: !superAppAddress || !tokenAddress || !enabled,
     pollInterval: 10000,
   });
 

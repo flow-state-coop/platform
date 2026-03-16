@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useReducer } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { useAccount } from "wagmi";
 import { GDAPool } from "@/types/gdaPool";
 import { networks } from "@/lib/networks";
@@ -159,26 +159,59 @@ export function FlowCouncilContextProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { address } = useAccount();
   const params = useParams();
-  const chainId = params.chainId ? params.chainId.toString() : DEFAULT_CHAIN_ID;
+  const chainId = params.chainId
+    ? params.chainId.toString()
+    : String(DEFAULT_CHAIN_ID);
   const councilId = params.councilId as string;
+
+  return (
+    <FlowCouncilContextProviderInner
+      key={`${chainId}-${councilId}`}
+      chainId={chainId}
+      councilId={councilId}
+    >
+      {children}
+    </FlowCouncilContextProviderInner>
+  );
+}
+
+function FlowCouncilContextProviderInner({
+  children,
+  chainId,
+  councilId,
+}: {
+  children: React.ReactNode;
+  chainId: string;
+  councilId: string;
+}) {
+  const { address } = useAccount();
+  const pathname = usePathname();
+  const isVotingPage =
+    !!councilId && pathname === `/flow-councils/${chainId}/${councilId}`;
   const network =
     networks.find(
       (network) => network.id === Number(chainId ?? DEFAULT_CHAIN_ID),
     ) ?? networks[0];
-  const council = useCouncilQuery(network, councilId);
+  const council = useCouncilQuery(network, councilId, isVotingPage);
   const councilMetadata = useFlowCouncilMetadata(Number(chainId), councilId);
   const projects = useRecipientsQuery(network, council?.recipients, councilId);
   const distributionPool = useDistributionPoolQuery(
     network,
     council?.distributionPool,
+    isVotingPage,
   );
-  const currentBallot = useBallotQuery(network, councilId, address ?? "");
+  const currentBallot = useBallotQuery(
+    network,
+    councilId,
+    address ?? "",
+    isVotingPage,
+  );
   const councilMember = useCouncilMemberQuery(
     network,
     councilId,
     address ?? "",
+    isVotingPage,
   );
   const token = network.tokens.find(
     (token) => token.address.toLowerCase() === council?.superToken,
@@ -191,6 +224,7 @@ export function FlowCouncilContextProvider({
     network,
     councilMetadata.superappSplitterAddress,
     token.address,
+    isVotingPage,
   );
 
   const [newBallot, dispatchNewBallot] = useReducer(newBallotReducer, {
