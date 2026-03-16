@@ -159,11 +159,34 @@ export function FlowCouncilContextProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { address } = useAccount();
   const params = useParams();
-  const pathname = usePathname();
-  const chainId = params.chainId ? params.chainId.toString() : DEFAULT_CHAIN_ID;
+  const chainId = params.chainId
+    ? params.chainId.toString()
+    : String(DEFAULT_CHAIN_ID);
   const councilId = params.councilId as string;
+
+  return (
+    <FlowCouncilContextProviderInner
+      key={`${chainId}-${councilId}`}
+      chainId={chainId}
+      councilId={councilId}
+    >
+      {children}
+    </FlowCouncilContextProviderInner>
+  );
+}
+
+function FlowCouncilContextProviderInner({
+  children,
+  chainId,
+  councilId,
+}: {
+  children: React.ReactNode;
+  chainId: string;
+  councilId: string;
+}) {
+  const { address } = useAccount();
+  const pathname = usePathname();
   const isVotingPage =
     !!councilId && pathname === `/flow-councils/${chainId}/${councilId}`;
   const network =

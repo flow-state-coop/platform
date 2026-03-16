@@ -12,9 +12,9 @@ type ApiType = "flowState" | "flowSplitter" | "flowCouncil" | "superfluid";
 const apolloClient: ApolloClientOptions<NormalizedCacheObject> = {
   cache: new InMemoryCache({
     typePolicies: {
-      Council: {
+      FlowCouncil: {
         fields: {
-          councilMembers: {
+          voters: {
             keyArgs: false,
             merge(existing = [], incoming) {
               return [...existing, ...incoming];
