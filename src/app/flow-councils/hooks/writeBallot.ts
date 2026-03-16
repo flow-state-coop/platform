@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { usePublicClient, useWalletClient } from "wagmi";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
+import { waitForReceipt } from "@/lib/utils";
 
 export default function useWriteBallot(council: `0x${string}`) {
   const [transactionError, setTransactionError] = useState("");
@@ -30,10 +31,7 @@ export default function useWriteBallot(council: `0x${string}`) {
         args: [votes],
       });
 
-      const receipt = await publicClient.waitForTransactionReceipt({
-        hash,
-        confirmations: 3,
-      });
+      const receipt = await waitForReceipt(publicClient, hash);
 
       if (receipt.status !== "success") {
         throw Error(`Transaction status: ${receipt.status}`);

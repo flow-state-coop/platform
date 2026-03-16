@@ -18,6 +18,7 @@ import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
 import Image from "react-bootstrap/Image";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
+import { waitForReceipt } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useSiwe from "@/hooks/siwe";
@@ -115,10 +116,7 @@ export default function Launch(props: LaunchProps) {
           args: ["", token],
         });
 
-        const receipt = await publicClient.waitForTransactionReceipt({
-          hash,
-          confirmations: 5,
-        });
+        const receipt = await waitForReceipt(publicClient, hash);
 
         const eventArgs = parseEventLogs({
           abi: flowCouncilFactoryAbi,
@@ -147,10 +145,7 @@ export default function Launch(props: LaunchProps) {
           ],
         });
 
-        const splitterReceipt = await publicClient.waitForTransactionReceipt({
-          hash: splitterHash,
-          confirmations: 5,
-        });
+        const splitterReceipt = await waitForReceipt(publicClient, splitterHash);
 
         const appRegisteredLogs = parseEventLogs({
           abi: [
