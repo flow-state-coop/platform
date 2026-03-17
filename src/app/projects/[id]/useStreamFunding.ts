@@ -3,6 +3,8 @@ import { Address, isAddress, parseAbi, parseEther, formatUnits } from "viem";
 import { useAccount, useBalance, useReadContract, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useQuery, gql } from "@apollo/client";
+import dayjs from "dayjs";
+import duration from "dayjs/plugin/duration";
 import {
   NativeAssetSuperToken,
   WrapperSuperToken,
@@ -24,6 +26,8 @@ import {
   formatNumber,
 } from "@/lib/utils";
 import { SECONDS_IN_MONTH, MAX_FLOW_RATE, ZERO_ADDRESS } from "@/lib/constants";
+
+dayjs.extend(duration);
 
 const USER_ACCOUNT_QUERY = gql`
   query UserAccountQuery($userAddress: String!, $token: String!) {
@@ -316,6 +320,7 @@ export default function useStreamFunding(
 
     try {
       await executeTransactions(transactions);
+      setWrapAmount("");
       setIsSuccess(true);
       setTimeout(() => setIsSuccess(false), 3000);
       refetchUserAccount();
@@ -416,6 +421,95 @@ export default function useStreamFunding(
     };
   }, [userAccountSnapshot?.totalNetFlowRate]);
 
+  const wrapAmountWei = useMemo(
+    () => parseEther(wrapAmount?.replace(/,/g, "") || "0"),
+    [wrapAmount],
+  );
+
+  const hasPendingChanges =
+    wrapAmountWei > BigInt(0) ||
+    (!!newFlowRate && BigInt(newFlowRate) !== BigInt(flowRateToReceiver));
+
+  const pendingBalance = useMemo(
+    () => superTokenBalance + wrapAmountWei,
+    [superTokenBalance, wrapAmountWei],
+  );
+
+  const pendingNetMonthlyFlow = useMemo(() => {
+    if (!hasPendingChanges) return null;
+
+    const totalNetFlowRate = BigInt(userAccountSnapshot?.totalNetFlowRate ?? 0);
+    const pendingRate =
+      totalNetFlowRate +
+      BigInt(flowRateToReceiver) -
+      BigInt(newFlowRate || "0");
+
+    if (pendingRate === BigInt(0)) return null;
+
+    return {
+      value: formatNumber(
+        Number(
+          roundWeiAmount(
+            (pendingRate < 0 ? -pendingRate : pendingRate) *
+              BigInt(SECONDS_IN_MONTH),
+            4,
+          ),
+        ),
+      ),
+      isPositive: pendingRate > BigInt(0),
+    };
+  }, [
+    hasPendingChanges,
+    userAccountSnapshot?.totalNetFlowRate,
+    flowRateToReceiver,
+    newFlowRate,
+  ]);
+
+  const liquidationEstimate = useMemo(() => {
+    if (!address || !newFlowRate || BigInt(newFlowRate) === BigInt(0)) {
+      return null;
+    }
+
+    const totalNetFlowRate = BigInt(userAccountSnapshot?.totalNetFlowRate ?? 0);
+    const existingRate = BigInt(flowRateToReceiver);
+    const proposedRate = BigInt(newFlowRate);
+    const newNetRate = totalNetFlowRate + existingRate - proposedRate;
+
+    if (newNetRate >= BigInt(0)) {
+      return null;
+    }
+
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    const updatedAt = BigInt(userAccountSnapshot?.updatedAtTimestamp ?? 0);
+    const snapshotBalance = BigInt(
+      userAccountSnapshot?.balanceUntilUpdatedAt ?? 0,
+    );
+    const elapsed = updatedAt > BigInt(0) ? now - updatedAt : BigInt(0);
+    const currentBalance = snapshotBalance + totalNetFlowRate * elapsed;
+    const effectiveBalance = currentBalance + wrapAmountWei;
+
+    if (effectiveBalance <= BigInt(0)) {
+      return { timestamp: 0, bufferExceedsBalance: true };
+    }
+
+    const secondsFromNow = effectiveBalance / -newNetRate;
+    const timestamp = Number(now + secondsFromNow);
+
+    if (timestamp <= Math.floor(Date.now() / 1000)) {
+      return { timestamp: 0, bufferExceedsBalance: true };
+    }
+
+    return { timestamp, bufferExceedsBalance: false };
+  }, [
+    address,
+    newFlowRate,
+    wrapAmountWei,
+    flowRateToReceiver,
+    userAccountSnapshot?.totalNetFlowRate,
+    userAccountSnapshot?.balanceUntilUpdatedAt,
+    userAccountSnapshot?.updatedAtTimestamp,
+  ]);
+
   const receiverSnapshot =
     receiverQueryRes?.account?.accountTokenSnapshots?.[0] ?? null;
 
@@ -446,11 +540,27 @@ export default function useStreamFunding(
   );
 
   const hasExistingFlow = BigInt(flowRateToReceiver) > 0;
+
+  const wrapAmountExceedsBalance = useMemo(() => {
+    if (!wrapAmount || !underlyingTokenBalance) return false;
+
+    const cleaned = wrapAmount.replace(/,/g, "");
+    if (!cleaned || Number(cleaned) === 0) return false;
+
+    const wrapWei = parseEther(cleaned);
+    return wrapWei > underlyingTokenBalance.value;
+  }, [wrapAmount, underlyingTokenBalance]);
+
+  const bufferExceedsBalance =
+    !!liquidationEstimate && liquidationEstimate.bufferExceedsBalance;
+
   const canExecute =
     !!address &&
     !!newFlowRate &&
     BigInt(newFlowRate) > 0 &&
-    !areTransactionsLoading;
+    !areTransactionsLoading &&
+    !wrapAmountExceedsBalance &&
+    !bufferExceedsBalance;
 
   const resetInputs = useCallback(() => {
     setWrapAmount("");
@@ -489,6 +599,12 @@ export default function useStreamFunding(
       : null,
     superTokenBalance,
     userNetMonthlyFlow,
+    hasPendingChanges,
+    pendingBalance,
+    pendingNetMonthlyFlow,
+    liquidationEstimate,
+    bufferExceedsBalance,
+    wrapAmountExceedsBalance,
     totalReceiverMonthlyRate,
     userMonthlyRate,
     flowRateToReceiver,

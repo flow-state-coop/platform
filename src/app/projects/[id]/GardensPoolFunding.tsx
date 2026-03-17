@@ -1,5 +1,6 @@
 "use client";
 
+import dayjs from "dayjs";
 import { formatEther } from "viem";
 import Card from "react-bootstrap/Card";
 import Stack from "react-bootstrap/Stack";
@@ -12,6 +13,7 @@ import NextImage from "next/image";
 import { Network } from "@/types/network";
 import { parseGardensPoolUrl } from "@/lib/gardensPool";
 import { formatNumber } from "@/lib/utils";
+import InfoTooltip from "@/components/InfoTooltip";
 import useStreamFunding from "./useStreamFunding";
 
 type GardensPoolFundingProps = {
@@ -46,6 +48,19 @@ export default function GardensPoolFunding({
         >
           <Image src="/gardens.svg" alt="" width={24} height={24} />
           <span className="fw-bold fs-lg">Fund Gardens Pool</span>
+          <a
+            href={`https://${gardensPoolUrl.replace(/^https?:\/\//, "")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ms-auto"
+          >
+            <NextImage
+              src="/open-new.svg"
+              alt="Open in new tab"
+              width={18}
+              height={18}
+            />
+          </a>
         </Stack>
 
         <Stack direction="vertical" gap={3}>
@@ -234,9 +249,14 @@ function StreamInputs({
               stream.setWrapAmount(e.target.value.replace(/[^0-9.,]/g, ""))
             }
             className="rounded-3"
+            isInvalid={stream.wrapAmountExceedsBalance}
           />
           {stream.underlyingTokenBalance && (
-            <Form.Text>
+            <Form.Text
+              className={
+                stream.wrapAmountExceedsBalance ? "text-danger" : undefined
+              }
+            >
               Available: {stream.underlyingTokenBalance.formatted}{" "}
               {stream.underlyingTokenBalance.symbol}
             </Form.Text>
@@ -245,40 +265,84 @@ function StreamInputs({
       )}
 
       <Stack
-        direction="horizontal"
-        className="justify-content-between align-items-center rounded-3 px-3 py-2"
+        direction="vertical"
+        gap={1}
+        className="rounded-3 px-3 py-2"
         style={{ background: "rgba(var(--bs-primary-rgb), 0.06)" }}
       >
-        <span style={{ fontSize: "0.8rem" }}>
-          {stream.selectedToken.symbol} balance
-        </span>
-        {!stream.address || stream.userMonthlyRate === null ? (
-          <span className="placeholder-wave">
-            <span
-              className="placeholder rounded-2 opacity-25"
-              style={{
-                width: "5rem",
-                height: "1.1rem",
-                display: "inline-block",
-              }}
-            />
+        <Stack
+          direction="horizontal"
+          className="justify-content-between align-items-center"
+        >
+          <span style={{ fontSize: "0.8rem" }}>
+            {stream.hasPendingChanges ? "Pending " : ""}
+            {stream.selectedToken.symbol} balance
           </span>
-        ) : (
-          <Stack direction="horizontal" gap={1} className="align-items-center">
-            <span className="fw-bold" style={{ fontSize: "0.85rem" }}>
-              {formatNumber(Number(formatEther(stream.superTokenBalance)))}
+          {!stream.address || stream.userMonthlyRate === null ? (
+            <span className="placeholder-wave">
+              <span
+                className="placeholder rounded-2 opacity-25"
+                style={{
+                  width: "5rem",
+                  height: "1.1rem",
+                  display: "inline-block",
+                }}
+              />
             </span>
-            {stream.userNetMonthlyFlow && (
+          ) : (
+            <BalanceValue stream={stream} />
+          )}
+        </Stack>
+        {stream.liquidationEstimate && (
+          <Stack
+            direction="horizontal"
+            className="justify-content-between align-items-center"
+          >
+            <Stack
+              direction="horizontal"
+              gap={1}
+              className="align-items-center"
+            >
+              <span style={{ fontSize: "0.75rem", opacity: 0.7 }}>
+                Est. Liquidation
+              </span>
+              <span style={{ marginTop: "-2px" }}>
+                <InfoTooltip
+                  position={{ top: true }}
+                  target={
+                    <Image src="/info.svg" alt="" width={14} height={14} />
+                  }
+                  content={
+                    <p className="m-0 p-2">
+                      You need a positive token balance to keep your streams
+                      open. Wrap/deposit tokens or adjust your stream rates
+                      before this date.
+                    </p>
+                  }
+                />
+              </span>
+            </Stack>
+            {stream.bufferExceedsBalance ? (
+              <span
+                className="text-danger fw-bold"
+                style={{ fontSize: "0.75rem" }}
+              >
+                Buffer required exceeds balance
+              </span>
+            ) : (
               <span
                 className={
-                  stream.userNetMonthlyFlow.isPositive
-                    ? "text-success"
-                    : "text-danger"
+                  dayjs
+                    .unix(stream.liquidationEstimate.timestamp)
+                    .isBefore(dayjs().add(2, "day"))
+                    ? "text-danger fw-bold"
+                    : "text-muted"
                 }
                 style={{ fontSize: "0.75rem" }}
               >
-                {stream.userNetMonthlyFlow.isPositive ? "+" : "-"}
-                {stream.userNetMonthlyFlow.value}/mo
+                {dayjs
+                  .unix(stream.liquidationEstimate.timestamp)
+                  .format("MMM D, YYYY")}
               </span>
             )}
           </Stack>
@@ -360,6 +424,35 @@ function StreamInputs({
         </Stack>
       )}
     </>
+  );
+}
+
+function BalanceValue({
+  stream,
+}: {
+  stream: ReturnType<typeof useStreamFunding>;
+}) {
+  const isPending = stream.hasPendingChanges;
+  const balance = isPending ? stream.pendingBalance : stream.superTokenBalance;
+  const flow = isPending
+    ? stream.pendingNetMonthlyFlow
+    : stream.userNetMonthlyFlow;
+
+  return (
+    <Stack direction="horizontal" gap={1} className="align-items-center">
+      <span className="fw-bold" style={{ fontSize: "0.85rem" }}>
+        {formatNumber(Number(formatEther(balance)))}
+      </span>
+      {flow && (
+        <span
+          className={flow.isPositive ? "text-success" : "text-danger"}
+          style={{ fontSize: "0.75rem" }}
+        >
+          {flow.isPositive ? "+" : "-"}
+          {flow.value}/mo
+        </span>
+      )}
+    </Stack>
   );
 }
 

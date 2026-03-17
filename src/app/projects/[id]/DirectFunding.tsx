@@ -16,19 +16,22 @@ import {
 } from "./GardensPoolFunding";
 
 const TESTNET_CHAIN_IDS = [11155420, 11155111];
+const CELO_CHAIN_ID = 42220;
 
 const mainnetNetworks = networks.filter(
   (n) => !TESTNET_CHAIN_IDS.includes(n.id),
 );
+
+const defaultNetwork =
+  mainnetNetworks.find((n) => n.id === CELO_CHAIN_ID) ?? mainnetNetworks[0];
 
 type DirectFundingProps = {
   receiverAddress: string;
 };
 
 export default function DirectFunding({ receiverAddress }: DirectFundingProps) {
-  const [selectedNetwork, setSelectedNetwork] = useState<Network>(
-    mainnetNetworks[0],
-  );
+  const [selectedNetwork, setSelectedNetwork] =
+    useState<Network>(defaultNetwork);
 
   const stream = useStreamFunding(selectedNetwork, receiverAddress);
 
