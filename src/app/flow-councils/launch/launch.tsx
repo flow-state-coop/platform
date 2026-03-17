@@ -145,7 +145,10 @@ export default function Launch(props: LaunchProps) {
           ],
         });
 
-        const splitterReceipt = await waitForReceipt(publicClient, splitterHash);
+        const splitterReceipt = await waitForReceipt(
+          publicClient,
+          splitterHash,
+        );
 
         const appRegisteredLogs = parseEventLogs({
           abi: [

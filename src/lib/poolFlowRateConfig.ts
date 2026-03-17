@@ -15,16 +15,6 @@ export function getPoolFlowRateConfig(token: string) {
         minAllocationPerMonth: 3,
         flowRateScaling: BigInt(1e6),
       };
-    case "DEGENx":
-      return {
-        minAllocationPerMonth: 500,
-        flowRateScaling: BigInt(1e6),
-      };
-    case "HIGHERx":
-      return {
-        minAllocationPerMonth: 100,
-        flowRateScaling: BigInt(1e6),
-      };
     case "G$":
       return {
         minAllocationPerMonth: 10000,
