@@ -67,7 +67,9 @@ export const getApolloClient = (type: ApiType, chainId?: number) => {
 
   const network = networks.find((network) => network.id === chainId);
 
-  if (!network) return getOrCreateClient("fallback", "");
+  if (!network) {
+    throw new Error(`No network configured for chainId ${chainId}`);
+  }
 
   const subgraphMap: Record<string, string | undefined> = {
     flowSplitter: network.flowSplitterSubgraph,
@@ -77,7 +79,9 @@ export const getApolloClient = (type: ApiType, chainId?: number) => {
 
   const uri = subgraphMap[type];
 
-  if (!uri) return getOrCreateClient("fallback", "");
+  if (!uri) {
+    throw new Error(`No subgraph URI for type "${type}" on chain ${chainId}`);
+  }
 
   return getOrCreateClient(`${type}-${chainId}`, uri);
 };
