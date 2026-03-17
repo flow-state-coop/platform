@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Address, isAddress, parseAbi, parseEther, formatUnits } from "viem";
 import { useAccount, useBalance, useReadContract, useSwitchChain } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useQuery, gql } from "@apollo/client";
 import {
   NativeAssetSuperToken,
@@ -27,7 +28,7 @@ import { SECONDS_IN_MONTH, MAX_FLOW_RATE, ZERO_ADDRESS } from "@/lib/constants";
 const USER_ACCOUNT_QUERY = gql`
   query UserAccountQuery($userAddress: String!, $token: String!) {
     account(id: $userAddress) {
-      accountTokenSnapshots {
+      accountTokenSnapshots(where: { token: $token }) {
         totalNetFlowRate
         totalOutflowRate
         balanceUntilUpdatedAt
@@ -77,6 +78,7 @@ export default function useStreamFunding(
 
   const { address, chainId: walletChainId } = useAccount();
   const { switchChain } = useSwitchChain();
+  const { openConnectModal } = useConnectModal();
   const ethersProvider = useEthersProvider({ chainId: network.id });
   const ethersSigner = useEthersSigner({ chainId: network.id });
   const {
@@ -88,17 +90,22 @@ export default function useStreamFunding(
 
   const isCorrectChain = walletChainId === network.id;
 
+  const isSuperTokenNative =
+    selectedToken.symbol === "ETHx" || selectedToken.symbol === "CELOx";
+
   const { data: underlyingTokenAddress } = useReadContract({
     address: selectedToken.address,
     abi: parseAbi(["function getUnderlyingToken() view returns (address)"]),
     functionName: "getUnderlyingToken",
     chainId: network.id,
+    query: { enabled: !isSuperTokenNative },
   });
-
-  const isSuperTokenNative =
-    selectedToken.symbol === "ETHx" || selectedToken.symbol === "CELOx";
-  const isSuperTokenPure =
-    !isSuperTokenNative && underlyingTokenAddress === ZERO_ADDRESS;
+  const isSuperTokenWrapper =
+    !isSuperTokenNative &&
+    !!underlyingTokenAddress &&
+    underlyingTokenAddress !== ZERO_ADDRESS;
+  const isSuperTokenPure = !isSuperTokenNative && !isSuperTokenWrapper;
+  const nativeTokenSymbol = selectedToken.symbol === "CELOx" ? "CELO" : "ETH";
 
   const { data: underlyingTokenBalance } = useBalance({
     address,
@@ -107,7 +114,10 @@ export default function useStreamFunding(
       isSuperTokenNative || !underlyingTokenAddress
         ? void 0
         : (underlyingTokenAddress as Address),
-    query: { refetchInterval: 10000, enabled: !isSuperTokenPure },
+    query: {
+      refetchInterval: 10000,
+      enabled: !!address && (isSuperTokenNative || isSuperTokenWrapper),
+    },
   });
 
   const { data: userQueryRes, refetch: refetchUserAccount } = useQuery(
@@ -137,10 +147,7 @@ export default function useStreamFunding(
   );
 
   const userAccountSnapshot =
-    userQueryRes?.account?.accountTokenSnapshots?.find(
-      (s: { token: { id: string } }) =>
-        s.token.id === selectedToken.address.toLowerCase(),
-    ) ?? null;
+    userQueryRes?.account?.accountTokenSnapshots?.[0] ?? null;
 
   const superTokenBalance = useFlowingAmount(
     BigInt(userAccountSnapshot?.balanceUntilUpdatedAt ?? 0),
@@ -453,6 +460,8 @@ export default function useStreamFunding(
   }, []);
 
   return {
+    address,
+    openConnectModal,
     selectedToken,
     setSelectedToken,
     monthlyAmount,
@@ -461,6 +470,8 @@ export default function useStreamFunding(
     setWrapAmount,
     isSuperTokenNative,
     isSuperTokenPure,
+    isSuperTokenWrapper,
+    nativeTokenSymbol,
     underlyingTokenBalance: underlyingTokenBalance
       ? {
           value: underlyingTokenBalance.value,

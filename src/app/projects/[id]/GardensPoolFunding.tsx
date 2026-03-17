@@ -216,11 +216,14 @@ function StreamInputs({
         />
       </Form.Group>
 
-      {!stream.isSuperTokenPure && (
+      {(stream.isSuperTokenNative || stream.isSuperTokenWrapper) && (
         <Form.Group>
           <Form.Label className="fw-bold" style={{ fontSize: "0.75rem" }}>
             Wrap amount (
-            {stream.isSuperTokenNative ? "ETH" : "underlying token"})
+            {stream.isSuperTokenNative
+              ? stream.nativeTokenSymbol
+              : (stream.underlyingTokenBalance?.symbol ?? "underlying token")}
+            )
           </Form.Label>
           <Form.Control
             type="text"
@@ -249,7 +252,7 @@ function StreamInputs({
         <span style={{ fontSize: "0.8rem" }}>
           {stream.selectedToken.symbol} balance
         </span>
-        {stream.userMonthlyRate === null ? (
+        {!stream.address || stream.userMonthlyRate === null ? (
           <span className="placeholder-wave">
             <span
               className="placeholder rounded-2 opacity-25"
@@ -287,7 +290,15 @@ function StreamInputs({
           {stream.transactionError}
         </div>
       )}
-      {!stream.isCorrectChain ? (
+      {!stream.address ? (
+        <Button
+          variant="primary"
+          className="w-100 rounded-3 fw-bold"
+          onClick={() => stream.openConnectModal?.()}
+        >
+          Connect
+        </Button>
+      ) : !stream.isCorrectChain ? (
         <Button
           variant="primary"
           className="w-100 rounded-3 fw-bold"
