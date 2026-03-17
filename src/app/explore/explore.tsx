@@ -225,21 +225,6 @@ export default function Explore(props: ExploreProps) {
               tokenSymbol="ETHx"
               link="/flow-guilds/guild-guild"
             />
-            <RoundCard
-              name="Chones Guild"
-              image="/chones-guild.svg"
-              roundType="Flow Guild"
-              totalStreamedUntilUpdatedAt={BigInt(
-                guildGuildInflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,
-              ).toString()}
-              flowRate={BigInt(
-                chonesGuildInflow?.totalInflowRate ?? 0,
-              ).toString()}
-              updatedAt={chonesGuildInflow?.updatedAtTimestamp}
-              activeStreamCount={chonesGuildInflow?.activeIncomingStreamCount}
-              tokenSymbol="ETHx"
-              link="/flow-guilds/chonesguild"
-            />
           </div>
           <span className="fs-4 fw-semi-bold">Completed</span>
           <div
@@ -296,6 +281,21 @@ export default function Explore(props: ExploreProps) {
               activeStreamCount={greenpillInflow?.activeIncomingStreamCount}
               tokenSymbol="ETHx"
               link="/flow-guilds/greenpilldevguild"
+            />
+            <RoundCard
+              name="Chones Guild"
+              image="/chones-guild.svg"
+              roundType="Flow Guild"
+              totalStreamedUntilUpdatedAt={BigInt(
+                chonesGuildInflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,
+              ).toString()}
+              flowRate={BigInt(
+                chonesGuildInflow?.totalInflowRate ?? 0,
+              ).toString()}
+              updatedAt={chonesGuildInflow?.updatedAtTimestamp}
+              activeStreamCount={chonesGuildInflow?.activeIncomingStreamCount}
+              tokenSymbol="ETHx"
+              link="/flow-guilds/chonesguild"
             />
           </div>
         </div>

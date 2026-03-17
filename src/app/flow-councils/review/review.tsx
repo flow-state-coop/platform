@@ -21,6 +21,7 @@ import Spinner from "react-bootstrap/Spinner";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import Alert from "react-bootstrap/Alert";
 import Table from "react-bootstrap/Table";
+import { waitForReceipt } from "@/lib/utils";
 import Badge from "react-bootstrap/Badge";
 import Nav from "react-bootstrap/Nav";
 import Tab from "react-bootstrap/Tab";
@@ -51,6 +52,15 @@ type ReviewProps = {
 
 type ApplicationDetails = RoundForm & {
   attestation?: AttestationForm;
+};
+
+type ApplicationSummary = {
+  id: number;
+  projectId: number;
+  fundingAddress: string;
+  status: Status;
+  editsUnlocked: boolean;
+  projectDetails: { name?: string } | null;
 };
 
 type Application = {
@@ -102,9 +112,11 @@ const FLOW_COUNCIL_QUERY = gql`
 export default function Review(props: ReviewProps) {
   const { chainId, councilId, hostname, csfrToken } = props;
 
-  const [applications, setApplications] = useState<Application[]>([]);
+  const [applications, setApplications] = useState<ApplicationSummary[]>([]);
   const [selectedApplication, setSelectedApplication] =
     useState<Application | null>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [selectedTab, setSelectedTab] = useState<string>("project");
   const [newStatus, setNewStatus] = useState<Status | null>(null);
   const [reviewComment, setReviewComment] = useState("");
@@ -168,8 +180,38 @@ export default function Review(props: ReviewProps) {
     })();
   }, [chainId, councilId]);
 
-  const handleExportCsv = useCallback(() => {
-    if (!applications.length) return;
+  const handleExportCsv = useCallback(async () => {
+    if (!flowCouncil || !applications.length || isExportingCsv) return;
+
+    setIsExportingCsv(true);
+
+    let fullApplications: Application[];
+
+    try {
+      const res = await fetch("/api/flow-council/applications", {
+        method: "POST",
+        body: JSON.stringify({
+          chainId,
+          councilId: flowCouncil.id,
+        }),
+      });
+      if (!res.ok) {
+        setIsExportingCsv(false);
+        setError("Failed to export CSV");
+        return;
+      }
+      const data = await res.json();
+      if (!data.success) {
+        setIsExportingCsv(false);
+        setError("Failed to export CSV");
+        return;
+      }
+      fullApplications = data.applications;
+    } catch {
+      setIsExportingCsv(false);
+      setError("Failed to export CSV");
+      return;
+    }
 
     const headers = [
       "application_status",
@@ -192,7 +234,7 @@ export default function Review(props: ReviewProps) {
       return value;
     };
 
-    const rows = applications.map((app) => {
+    const rows = fullApplications.map((app) => {
       const projectDetails = app.projectDetails;
       const smartContracts = projectDetails?.smartContracts ?? [];
 
@@ -242,10 +284,11 @@ export default function Review(props: ReviewProps) {
     link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
-  }, [applications, roundName]);
+    setIsExportingCsv(false);
+  }, [applications, flowCouncil, chainId, isExportingCsv, roundName]);
 
   const fetchApplications = useCallback(async () => {
-    if (!flowCouncil || !address || !chainId) {
+    if (!flowCouncil || !chainId) {
       return;
     }
 
@@ -255,6 +298,7 @@ export default function Review(props: ReviewProps) {
         body: JSON.stringify({
           chainId,
           councilId: flowCouncil.id,
+          mode: "list",
         }),
       });
 
@@ -266,7 +310,7 @@ export default function Review(props: ReviewProps) {
     } catch (err) {
       console.error(err);
     }
-  }, [flowCouncil, address, chainId]);
+  }, [flowCouncil, chainId]);
 
   const isManager = useMemo(() => {
     const flowCouncilManager = flowCouncil?.flowCouncilManagers.find(
@@ -312,12 +356,33 @@ export default function Review(props: ReviewProps) {
     );
   }, [selectedApplication]);
 
-  const handleSelectApplication = (application: Application) => {
-    setSelectedApplication(application);
+  const handleSelectApplication = async (summary: ApplicationSummary) => {
     setSelectedTab("project");
     setNewStatus(null);
     setReviewComment("");
     setError("");
+    setIsLoadingDetail(true);
+
+    try {
+      const res = await fetch(
+        `/api/flow-council/applications/${summary.id}?chainId=${chainId}&councilId=${councilId}`,
+      );
+      if (!res.ok) {
+        setError("Failed to load application details");
+        return;
+      }
+      const data = await res.json();
+
+      if (data.success) {
+        setSelectedApplication(data.application);
+      } else {
+        setError("Failed to load application details");
+      }
+    } catch {
+      setError("Failed to load application details");
+    } finally {
+      setIsLoadingDetail(false);
+    }
   };
 
   const handleCloseReview = () => {
@@ -444,11 +509,7 @@ export default function Review(props: ReviewProps) {
           ],
         });
 
-        await publicClient?.waitForTransactionReceipt({
-          hash,
-          confirmations: 3,
-          retryCount: 10,
-        });
+        await waitForReceipt(publicClient!, hash);
       }
 
       // Update status in DB and create automated message
@@ -609,57 +670,74 @@ export default function Review(props: ReviewProps) {
                           variant="link"
                           className="p-0"
                           title="Export CSV"
+                          disabled={isExportingCsv}
                           onClick={handleExportCsv}
                         >
-                          <Image
-                            src="/csv.svg"
-                            alt="Export CSV"
-                            width={24}
-                            height={24}
-                          />
+                          {isExportingCsv ? (
+                            <Spinner size="sm" />
+                          ) : (
+                            <Image
+                              src="/csv.svg"
+                              alt="Export CSV"
+                              width={24}
+                              height={24}
+                            />
+                          )}
                         </Button>
                       )}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {applications?.map((application: Application, i: number) => (
-                    <tr key={i}>
-                      <td className="w-25 align-middle">
-                        {application.fundingAddress}
-                      </td>
-                      <td className="w-25 align-middle">
-                        {application.projectDetails?.name ?? "N/A"}
-                      </td>
-                      <td className="w-25 text-center align-middle">
-                        {STATUS_LABELS[application.status] ||
-                          application.status}
-                      </td>
-                      <td className="w-25 align-middle">
-                        {application.status === "SUBMITTED" ? (
-                          <Button
-                            className="w-100 px-10 py-4 rounded-4 fw-semi-bold text-light"
-                            onClick={() => handleSelectApplication(application)}
-                          >
-                            Review
-                          </Button>
-                        ) : application.status !== "INCOMPLETE" ? (
-                          <Button
-                            variant="secondary"
-                            className="w-100 py-4 rounded-4 fw-semi-bold"
-                            onClick={() => handleSelectApplication(application)}
-                          >
-                            Edit Status
-                          </Button>
-                        ) : null}
-                      </td>
-                    </tr>
-                  ))}
+                  {applications?.map(
+                    (application: ApplicationSummary, i: number) => (
+                      <tr key={i}>
+                        <td className="w-25 align-middle">
+                          {application.fundingAddress}
+                        </td>
+                        <td className="w-25 align-middle">
+                          {application.projectDetails?.name ?? "N/A"}
+                        </td>
+                        <td className="w-25 text-center align-middle">
+                          {STATUS_LABELS[application.status] ||
+                            application.status}
+                        </td>
+                        <td className="w-25 align-middle">
+                          {application.status === "SUBMITTED" ? (
+                            <Button
+                              className="w-100 px-10 py-4 rounded-4 fw-semi-bold text-light"
+                              onClick={() =>
+                                handleSelectApplication(application)
+                              }
+                            >
+                              Review
+                            </Button>
+                          ) : application.status !== "INCOMPLETE" ? (
+                            <Button
+                              variant="secondary"
+                              className="w-100 py-4 rounded-4 fw-semi-bold"
+                              onClick={() =>
+                                handleSelectApplication(application)
+                              }
+                            >
+                              Edit Status
+                            </Button>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ),
+                  )}
                 </tbody>
               </Table>
             </div>
 
-            {selectedApplication !== null && (
+            {isLoadingDetail && (
+              <div className="d-flex justify-content-center mt-4">
+                <Spinner />
+              </div>
+            )}
+
+            {selectedApplication !== null && !isLoadingDetail && (
               <Stack direction="vertical" gap={4} className="mt-4">
                 <div className="bg-lace-100 rounded-4 p-4">
                   <Stack

@@ -9,6 +9,7 @@ import Papa from "papaparse";
 import { writeContract } from "@wagmi/core";
 import { useLazyQuery, gql } from "@apollo/client";
 import { usePostHog } from "posthog-js/react";
+import { waitForReceipt } from "@/lib/utils";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
@@ -180,10 +181,7 @@ export default function Launch(props: LaunchProps) {
         ],
       });
 
-      const receipt = await publicClient.waitForTransactionReceipt({
-        hash,
-        confirmations: 5,
-      });
+      const receipt = await waitForReceipt(publicClient, hash);
       const poolId = parseEventLogs({
         abi: flowSplitterAbi,
         eventName: ["PoolCreated"],

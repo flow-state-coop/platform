@@ -18,6 +18,7 @@ import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
 import Image from "react-bootstrap/Image";
 import InfoTooltip from "@/components/InfoTooltip";
+import { waitForReceipt } from "@/lib/utils";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
@@ -347,10 +348,7 @@ export default function Membership(props: MembershipProps) {
         ],
       });
 
-      await publicClient.waitForTransactionReceipt({
-        hash,
-        confirmations: 3,
-      });
+      await waitForReceipt(publicClient, hash);
 
       setTransactionSuccess(true);
       setIsTransactionLoading(false);

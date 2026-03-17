@@ -134,17 +134,34 @@ export async function findRoundByCouncil(
     .executeTakeFirst();
 }
 
+const adminCache = new Map<string, { value: boolean; expiry: number }>();
+const ADMIN_CACHE_TTL = 60_000;
+
 export async function isAdmin(
   roundId: number,
   chainId: number,
   councilId: string,
   address: string,
 ): Promise<boolean> {
+  const cacheKey = `${roundId}:${chainId}:${councilId}:${address}`;
+  const cached = adminCache.get(cacheKey);
+
+  if (cached && cached.expiry > Date.now()) {
+    return cached.value;
+  }
+
   const [isDbAdmin, isOnChainAdmin] = await Promise.all([
     isRoundAdmin(roundId, address),
     hasOnChainRole(chainId, councilId, address),
   ]);
-  return isDbAdmin || isOnChainAdmin;
+  const result = isDbAdmin || isOnChainAdmin;
+
+  adminCache.set(cacheKey, {
+    value: result,
+    expiry: Date.now() + ADMIN_CACHE_TTL,
+  });
+
+  return result;
 }
 
 export async function canReadChannel(

@@ -18,6 +18,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
+import { waitForReceipt } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
@@ -285,10 +286,7 @@ export default function Permissions(props: PermissionsProps) {
         args: [changedEntries],
       });
 
-      await publicClient.waitForTransactionReceipt({
-        hash,
-        confirmations: 3,
-      });
+      await waitForReceipt(publicClient, hash);
 
       const superAdmins = managersEntry
         .filter((m) => m.defaultAdminRole && m.address)
