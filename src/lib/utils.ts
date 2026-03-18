@@ -1,4 +1,9 @@
-import { formatEther, PublicClient, HttpRequestError, TimeoutError } from "viem";
+import {
+  formatEther,
+  PublicClient,
+  HttpRequestError,
+  TimeoutError,
+} from "viem";
 
 export enum TimeInterval {
   DAY = "/day",

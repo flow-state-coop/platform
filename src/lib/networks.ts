@@ -42,14 +42,14 @@ const networks: Network[] = [
         icon: "/arb.svg",
       },
       {
-        symbol: "DAIx",
-        address: "0x521677A61D101A80cE0fB903b13cb485232774ee",
-        icon: "/dai.png",
-      },
-      {
         symbol: "USDCx",
         address: "0xfc55f2854e74b4f42d01a6d3daac4c52d9dfdcff",
         icon: "/usdc.png",
+      },
+      {
+        symbol: "USND",
+        address: "0xCE0b686E0Aab25132937cF176f44AccE110cCd7f",
+        icon: "/usnd.svg",
       },
     ],
   },
@@ -84,24 +84,9 @@ const networks: Network[] = [
     feeRecipientPool: "0x",
     tokens: [
       {
-        symbol: "DAIx",
-        address: "0x708169c8C87563Ce904E0a7F3BFC1F3b0b767f41",
-        icon: "/dai.png",
-      },
-      {
-        symbol: "DEGENx",
-        address: "0x1efF3Dd78F4A14aBfa9Fa66579bD3Ce9E1B30529",
-        icon: "/degen.png",
-      },
-      {
         symbol: "ETHx",
         address: "0x46fd5cfB4c12D87acD3a13e92BAa53240C661D93",
         icon: "/eth.png",
-      },
-      {
-        symbol: "HIGHERx",
-        address: "0x5f2Fab273F1F64b6bc6ab8F35314CD21501F35C5",
-        icon: "/higher.png",
       },
       {
         symbol: "USDCx",
@@ -182,11 +167,6 @@ const networks: Network[] = [
     superAppSplitterFactory: "0x",
     feeRecipientPool: "0x",
     tokens: [
-      {
-        symbol: "DAIx",
-        address: "0x7d342726B69C28D942ad8BfE6Ac81b972349d524",
-        icon: "/dai.png",
-      },
       {
         symbol: "ETHx",
         address: "0x4ac8bD1bDaE47beeF2D1c6Aa62229509b962Aa0d",

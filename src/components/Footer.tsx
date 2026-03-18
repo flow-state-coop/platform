@@ -181,7 +181,7 @@ export default function Footer() {
           gap={isMobile ? 5 : 0}
           className="justify-content-between"
         >
-          <span className="text-white">Flow State LCA - &#169; 2025</span>
+          <span className="text-white">Flow State LCA - &#169; 2025-2026</span>
           <Stack direction="horizontal" gap={10}>
             <Link href="/terms" className="text-white text-decoration-none">
               Term of use
