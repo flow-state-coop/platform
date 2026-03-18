@@ -214,10 +214,13 @@ function FlowCouncilContextProviderInner({
     address ?? "",
     isVotingPage,
   );
-  const staleVotes = useStaleVotesQuery(councilId, address ?? "");
+  const { staleVotes, isLoading: isLoadingStaleVotes } = useStaleVotesQuery(
+    councilId,
+    address ?? "",
+  );
   const councilMember = useMemo(
     () =>
-      councilMemberRaw
+      councilMemberRaw && !isLoadingStaleVotes
         ? {
             ...councilMemberRaw,
             votingPower: Math.max(
@@ -226,7 +229,7 @@ function FlowCouncilContextProviderInner({
             ),
           }
         : undefined,
-    [councilMemberRaw, staleVotes],
+    [councilMemberRaw, staleVotes, isLoadingStaleVotes],
   );
   const token = network.tokens.find(
     (token) => token.address.toLowerCase() === council?.superToken,

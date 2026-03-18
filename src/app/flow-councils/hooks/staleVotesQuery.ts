@@ -4,33 +4,43 @@ import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 export default function useStaleVotesQuery(councilId: string, address: string) {
   const councilAddress = councilId as `0x${string}`;
   const voterAddress = address as `0x${string}`;
+  const enabled = !!councilId && !!address;
 
-  const { data: voterData } = useReadContract({
+  const { data: voterData, isLoading: isLoadingVoter } = useReadContract({
     address: councilAddress,
     abi: flowCouncilAbi,
     functionName: "getVoter",
     args: [voterAddress],
     query: {
-      enabled: !!councilId && !!address,
+      enabled,
     },
   });
 
   const votes = voterData?.votes ?? [];
 
-  const { data: recipientResults } = useReadContracts({
-    contracts: votes.map((v) => ({
-      address: councilAddress,
-      abi: flowCouncilAbi,
-      functionName: "recipientById" as const,
-      args: [v.recipientId],
-    })),
-    query: {
-      enabled: votes.length > 0,
-    },
-  });
+  const { data: recipientResults, isLoading: isLoadingRecipients } =
+    useReadContracts({
+      contracts: votes.map((v) => ({
+        address: councilAddress,
+        abi: flowCouncilAbi,
+        functionName: "recipientById" as const,
+        args: [v.recipientId],
+      })),
+      query: {
+        enabled: votes.length > 0,
+      },
+    });
+
+  if (!enabled) {
+    return { staleVotes: 0, isLoading: false };
+  }
+
+  if (isLoadingVoter || (votes.length > 0 && isLoadingRecipients)) {
+    return { staleVotes: 0, isLoading: true };
+  }
 
   if (!votes.length || !recipientResults) {
-    return 0;
+    return { staleVotes: 0, isLoading: false };
   }
 
   let stale = 0;
@@ -47,5 +57,5 @@ export default function useStaleVotesQuery(councilId: string, address: string) {
     }
   }
 
-  return stale;
+  return { staleVotes: stale, isLoading: false };
 }
