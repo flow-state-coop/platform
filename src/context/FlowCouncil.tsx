@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useReducer } from "react";
+import { createContext, useContext, useMemo, useReducer } from "react";
 import { useParams, usePathname } from "next/navigation";
 import { useAccount } from "wagmi";
 import { GDAPool } from "@/types/gdaPool";
@@ -11,6 +11,7 @@ import useCouncilMemberQuery from "@/app/flow-councils/hooks/councilMemberQuery"
 import useRecipientsQuery from "@/app/flow-councils/hooks/recipientsQuery";
 import useFlowCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 import useDistributionPoolQuery from "@/app/flow-councils/hooks/distributionPoolQuery";
+import useStaleVotesQuery from "@/app/flow-councils/hooks/staleVotesQuery";
 import useSuperAppFundersQuery, {
   type SuperAppFunderData,
 } from "@/app/flow-councils/hooks/superAppFundersQuery";
@@ -207,11 +208,25 @@ function FlowCouncilContextProviderInner({
     address ?? "",
     isVotingPage,
   );
-  const councilMember = useCouncilMemberQuery(
+  const councilMemberRaw = useCouncilMemberQuery(
     network,
     councilId,
     address ?? "",
     isVotingPage,
+  );
+  const staleVotes = useStaleVotesQuery(councilId, address ?? "");
+  const councilMember = useMemo(
+    () =>
+      councilMemberRaw
+        ? {
+            ...councilMemberRaw,
+            votingPower: Math.max(
+              0,
+              Number(councilMemberRaw.votingPower) - staleVotes,
+            ),
+          }
+        : undefined,
+    [councilMemberRaw, staleVotes],
   );
   const token = network.tokens.find(
     (token) => token.address.toLowerCase() === council?.superToken,
