@@ -29,6 +29,7 @@ export default function useBallotQuery(
     variables: {
       voter: `${councilId?.toLowerCase()}-${address?.toLowerCase()}`,
     },
+    fetchPolicy: "no-cache",
     skip: !address || !councilId || !enabled,
     pollInterval: 10000,
   });
