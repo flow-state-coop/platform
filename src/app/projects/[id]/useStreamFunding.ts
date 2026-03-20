@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Address, isAddress, parseAbi, parseEther, formatUnits } from "viem";
 import { useAccount, useBalance, useReadContract, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -79,6 +79,7 @@ export default function useStreamFunding(
   >(null);
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("0");
   const [isSuccess, setIsSuccess] = useState(false);
+  const userEditedMonthlyAmount = useRef(false);
 
   const { address, chainId: walletChainId } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -175,6 +176,12 @@ export default function useStreamFunding(
   const flowRateToReceiver = outflowToReceiver?.currentFlowRate ?? "0";
 
   useEffect(() => {
+    userEditedMonthlyAmount.current = false;
+  }, [selectedToken.address]);
+
+  useEffect(() => {
+    if (userEditedMonthlyAmount.current) return;
+
     const currentStreamValue = roundWeiAmount(
       BigInt(flowRateToReceiver) * BigInt(SECONDS_IN_MONTH),
       4,
@@ -196,6 +203,8 @@ export default function useStreamFunding(
   }, [areTransactionsLoading, monthlyAmount]);
 
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
       if (address && ethersProvider && isAddress(selectedToken.address)) {
         const framework = await Framework.create({
@@ -211,11 +220,17 @@ export default function useStreamFunding(
           providerOrSigner: ethersProvider,
         });
 
-        setUnderlyingTokenAllowance(allowance ?? "0");
-        setSfFramework(framework);
-        setSuperToken(token);
+        if (!cancelled) {
+          setUnderlyingTokenAllowance(allowance ?? "0");
+          setSfFramework(framework);
+          setSuperToken(token);
+        }
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [address, ethersProvider, selectedToken.address, network]);
 
   const transactions = useMemo(() => {
@@ -321,6 +336,7 @@ export default function useStreamFunding(
     try {
       await executeTransactions(transactions);
       setWrapAmount("");
+      userEditedMonthlyAmount.current = false;
       setIsSuccess(true);
       setTimeout(() => setIsSuccess(false), 3000);
       refetchUserAccount();
@@ -364,6 +380,7 @@ export default function useStreamFunding(
 
     try {
       await executeTransactions(cancelTxs);
+      userEditedMonthlyAmount.current = false;
       setMonthlyAmount("");
       setNewFlowRate("");
       setIsSuccess(true);
@@ -384,8 +401,28 @@ export default function useStreamFunding(
     refetchReceiverInflow,
   ]);
 
+  const handleWrapAmountChange = useCallback((value: string) => {
+    const stripped = value.replace(/[^0-9.,]/g, "");
+    const dotIndex = stripped.indexOf(".");
+    const cleaned =
+      dotIndex === -1
+        ? stripped
+        : stripped.slice(0, dotIndex + 1) +
+          stripped.slice(dotIndex + 1).replace(/\./g, "");
+
+    setWrapAmount(cleaned);
+  }, []);
+
   const handleMonthlyAmountChange = useCallback((value: string) => {
-    const cleaned = value.replace(/[^0-9.]/g, "");
+    userEditedMonthlyAmount.current = true;
+
+    const stripped = value.replace(/[^0-9.]/g, "");
+    const dotIndex = stripped.indexOf(".");
+    const cleaned =
+      dotIndex === -1
+        ? stripped
+        : stripped.slice(0, dotIndex + 1) +
+          stripped.slice(dotIndex + 1).replace(/\./g, "");
 
     if (cleaned === "" || cleaned === ".") {
       setMonthlyAmount(cleaned);
@@ -563,6 +600,7 @@ export default function useStreamFunding(
     !bufferExceedsBalance;
 
   const resetInputs = useCallback(() => {
+    userEditedMonthlyAmount.current = false;
     setWrapAmount("");
     setMonthlyAmount("");
     setNewFlowRate("");
@@ -578,6 +616,7 @@ export default function useStreamFunding(
     handleMonthlyAmountChange,
     wrapAmount,
     setWrapAmount,
+    handleWrapAmountChange,
     isSuperTokenNative,
     isSuperTokenPure,
     isSuperTokenWrapper,

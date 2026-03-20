@@ -1,54 +1,54 @@
 import {
   ApolloClient,
-  ApolloClientOptions,
+  DefaultOptions,
   HttpLink,
   InMemoryCache,
   NormalizedCacheObject,
+  TypePolicies,
 } from "@apollo/client";
 import { networks } from "@/lib/networks";
 
 type ApiType = "flowState" | "flowSplitter" | "flowCouncil" | "superfluid";
 
-const apolloClient: ApolloClientOptions<NormalizedCacheObject> = {
-  cache: new InMemoryCache({
-    typePolicies: {
-      FlowCouncil: {
-        fields: {
-          voters: {
-            keyArgs: false,
-            merge(existing = [], incoming) {
-              return [...existing, ...incoming];
-            },
-          },
-        },
-      },
-    },
-  }),
-  defaultOptions: {
-    query: {
-      errorPolicy: "all",
-    },
-    watchQuery: {
-      errorPolicy: "all",
-    },
+const defaultOptions: DefaultOptions = {
+  query: {
+    errorPolicy: "all",
+  },
+  watchQuery: {
+    errorPolicy: "all",
   },
 };
 
-const flowStateClient = new ApolloClient(apolloClient);
+const flowCouncilTypePolicies: TypePolicies = {
+  FlowCouncil: {
+    fields: {
+      voters: {
+        keyArgs: false,
+        merge(existing = [], incoming: unknown[]) {
+          return [...existing, ...incoming];
+        },
+      },
+    },
+  },
+};
 
 const clientsByTypeAndChain = new Map<
   string,
   ApolloClient<NormalizedCacheObject>
 >();
 
-function getOrCreateClient(key: string, uri: string) {
+function getOrCreateClient(
+  key: string,
+  uri: string,
+  typePolicies?: TypePolicies,
+) {
   let client = clientsByTypeAndChain.get(key);
 
   if (!client) {
     client = new ApolloClient({
-      cache: new InMemoryCache(),
+      cache: new InMemoryCache({ typePolicies }),
       link: new HttpLink({ uri }),
-      defaultOptions: apolloClient.defaultOptions,
+      defaultOptions,
     });
     clientsByTypeAndChain.set(key, client);
   }
@@ -58,11 +58,10 @@ function getOrCreateClient(key: string, uri: string) {
 
 export const getApolloClient = (type: ApiType, chainId?: number) => {
   if (type === "flowState") {
-    flowStateClient.setLink(
-      new HttpLink({ uri: "https://api.flowstate.network/graphql" }),
+    return getOrCreateClient(
+      "flowState",
+      "https://api.flowstate.network/graphql",
     );
-
-    return flowStateClient;
   }
 
   const network = networks.find((network) => network.id === chainId);
@@ -83,5 +82,9 @@ export const getApolloClient = (type: ApiType, chainId?: number) => {
     throw new Error(`No subgraph URI for type "${type}" on chain ${chainId}`);
   }
 
-  return getOrCreateClient(`${type}-${chainId}`, uri);
+  return getOrCreateClient(
+    `${type}-${chainId}`,
+    uri,
+    type === "flowCouncil" ? flowCouncilTypePolicies : undefined,
+  );
 };

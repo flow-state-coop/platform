@@ -245,9 +245,7 @@ function StreamInputs({
             inputMode="decimal"
             placeholder="0.00"
             value={stream.wrapAmount}
-            onChange={(e) =>
-              stream.setWrapAmount(e.target.value.replace(/[^0-9.,]/g, ""))
-            }
+            onChange={(e) => stream.handleWrapAmountChange(e.target.value)}
             className="rounded-3"
             isInvalid={stream.wrapAmountExceedsBalance}
           />
