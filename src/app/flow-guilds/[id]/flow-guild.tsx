@@ -208,7 +208,7 @@ export default function FlowGuild(props: FlowGuildProps) {
     flowGuildConfig.flowSplitters[network.id]?.[selectedToken.symbol];
 
   const router = useRouter();
-  const currentSearchParams = useSearchParams();
+  const searchParams = useSearchParams();
 
   const { isMobile, isTablet } = useMediaQuery();
   const { openConnectModal } = useConnectModal();
@@ -377,10 +377,10 @@ export default function FlowGuild(props: FlowGuildProps) {
   }, [postHog, postHog.decideEndpointWasHit]);
 
   useEffect(() => {
-    if (!currentSearchParams.get("chainId")) {
+    if (!searchParams.get("chainId")) {
       router.replace(`?chainId=${chainId}`, { scroll: false });
     }
-  }, [chainId, currentSearchParams, router]);
+  }, [chainId, searchParams, router]);
 
   return (
     <>

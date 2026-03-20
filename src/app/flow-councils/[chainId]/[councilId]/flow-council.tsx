@@ -59,7 +59,8 @@ export default function FlowCouncil({
   const hasNextGrantee = useRef(true);
 
   const network =
-    networks.find((network) => network.id === Number(chainId)) ?? networks[0];
+    networks.find((network) => network.id === Number(chainId)) ??
+    networks.find((network) => network.label === "celo")!;
   useMediaQuery();
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
