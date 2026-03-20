@@ -5,6 +5,7 @@ import { getApolloClient } from "@/lib/apollo";
 const BALLOT_QUERY = gql`
   query BallotQuery($voter: String) {
     voter(id: $voter) {
+      id
       votingPower
       ballot {
         votes {
@@ -24,16 +25,20 @@ export default function useBallotQuery(
   address: string,
   enabled = true,
 ) {
+  const voterId = `${councilId?.toLowerCase()}-${address?.toLowerCase()}`;
+
   const { data: ballotQueryRes } = useQuery(BALLOT_QUERY, {
     client: getApolloClient("flowCouncil", network.id),
-    variables: {
-      voter: `${councilId?.toLowerCase()}-${address?.toLowerCase()}`,
-    },
-    fetchPolicy: "no-cache",
+    variables: { voter: voterId },
     skip: !address || !councilId || !enabled,
     pollInterval: 10000,
   });
+
   const voter = ballotQueryRes?.voter;
+
+  if (voter && voter.id !== voterId) {
+    return { votes: undefined, votingPower: undefined };
+  }
   const votes = voter?.ballot?.votes
     ?.filter(
       (v: { recipient: { account: string } | null; amount: string }) =>
