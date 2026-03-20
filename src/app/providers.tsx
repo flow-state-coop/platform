@@ -108,9 +108,21 @@ function useInitialChain() {
   }, [pathname, searchParams]);
 }
 
-export default function Providers({ children }: { children: React.ReactNode }) {
+function RainbowKitWithInitialChain({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const initialChain = useInitialChain();
 
+  return (
+    <RainbowKitProvider modalSize="compact" initialChain={initialChain}>
+      {children}
+    </RainbowKitProvider>
+  );
+}
+
+export default function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
       api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -130,7 +142,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <WagmiProvider config={config}>
         <QueryClientProvider client={queryClient}>
           <SessionProvider>
-            <RainbowKitProvider modalSize="compact" initialChain={initialChain}>
+            <RainbowKitWithInitialChain>
               <PostHogProvider client={posthog}>
                 <DonorParamsContextProvider>
                   <FlowCouncilContextProvider>
@@ -138,7 +150,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                   </FlowCouncilContextProvider>
                 </DonorParamsContextProvider>
               </PostHogProvider>
-            </RainbowKitProvider>
+            </RainbowKitWithInitialChain>
           </SessionProvider>
         </QueryClientProvider>
       </WagmiProvider>
