@@ -84,6 +84,7 @@ export default function Membership(props: MembershipProps) {
   const {
     data: flowCouncilQueryRes,
     loading: flowCouncilQueryResLoading,
+    refetch,
     fetchMore,
   } = useQuery(FLOW_COUNCIL_QUERY, {
     client: getApolloClient("flowCouncil", chainId),
@@ -91,7 +92,6 @@ export default function Membership(props: MembershipProps) {
       chainId,
       councilId: councilId?.toLowerCase(),
     },
-    pollInterval: 4000,
     skip: !councilId,
   });
 
@@ -350,8 +350,11 @@ export default function Membership(props: MembershipProps) {
 
       await waitForReceipt(publicClient, hash);
 
+      setMembersToRemove([]);
       setTransactionSuccess(true);
       setIsTransactionLoading(false);
+
+      await refetch();
     } catch (err) {
       console.error(err);
 
