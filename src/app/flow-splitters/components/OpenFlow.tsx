@@ -406,6 +406,8 @@ export default function OpenFlow(props: OpenFlowProps) {
   }, [address, network, ethersProvider, token, isSuperTokenNative]);
 
   useEffect(() => {
+    let stale = false;
+
     (async () => {
       if (
         !address ||
@@ -415,7 +417,7 @@ export default function OpenFlow(props: OpenFlowProps) {
         !sfFramework ||
         !ethersProvider
       ) {
-        return [];
+        return;
       }
 
       const wrapAmountWei = parseEther(wrapAmountPerTimeInterval);
@@ -470,8 +472,12 @@ export default function OpenFlow(props: OpenFlowProps) {
 
       newCalls.push(await batchOperationsToCall(sfFramework, operations));
 
-      setCalls(newCalls);
+      if (!stale) setCalls(newCalls);
     })();
+
+    return () => {
+      stale = true;
+    };
   }, [
     address,
     wrapAmountPerTimeInterval,

@@ -28,7 +28,7 @@ export default function useTransactionsQueue() {
   const { data: capabilities } = useCapabilities();
   const { sendCallsSyncAsync } = useSendCallsSync();
 
-  const isBatchSupported = !!capabilities?.[chainId];
+  const isBatchSupported = !!capabilities?.[chainId]?.atomicBatch?.supported;
 
   const executeTransactions = async (
     calls: TransactionCall[],
@@ -51,17 +51,21 @@ export default function useTransactionsQueue() {
 
         receipts = (result.receipts ?? []) as TransactionReceipt[];
       } else {
+        if (!walletClient || !publicClient) {
+          throw new Error("Wallet not connected");
+        }
+
         receipts = [];
 
         for (const call of calls) {
-          const hash = await walletClient!.sendTransaction({
+          const hash = await walletClient.sendTransaction({
             to: call.to,
             data: call.data,
             value: call.value,
-            chain: walletClient!.chain,
+            chain: walletClient.chain,
           });
 
-          const receipt = await publicClient!.waitForTransactionReceipt({
+          const receipt = await publicClient.waitForTransactionReceipt({
             hash,
           });
 
@@ -86,7 +90,7 @@ export default function useTransactionsQueue() {
       setCompletedTransactions(0);
       setAreTransactionsLoading(false);
 
-      throw Error(err);
+      throw err;
     }
   };
 
@@ -117,7 +121,7 @@ export default function useTransactionsQueue() {
       setCompletedTransactions(0);
       setAreTransactionsLoading(false);
 
-      throw Error(err);
+      throw err;
     }
   };
 

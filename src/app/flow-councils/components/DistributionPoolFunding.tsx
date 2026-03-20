@@ -317,6 +317,8 @@ export default function DistributionPoolFunding(props: {
   const [calls, setCalls] = useState<TransactionCall[]>([]);
 
   useEffect(() => {
+    let stale = false;
+
     (async () => {
       if (
         !address ||
@@ -398,8 +400,12 @@ export default function DistributionPoolFunding(props: {
 
       newCalls.push(await batchOperationsToCall(sfFramework, operations));
 
-      setCalls(newCalls);
+      if (!stale) setCalls(newCalls);
     })();
+
+    return () => {
+      stale = true;
+    };
   }, [
     address,
     sfFramework,

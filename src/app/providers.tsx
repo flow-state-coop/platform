@@ -66,8 +66,6 @@ const config = createConfig({
 
 const queryClient = new QueryClient();
 
-const CELO_CHAIN_ID = 42220;
-
 function useInitialChain() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -79,7 +77,8 @@ function useInitialChain() {
     if (
       (segments[0] === "flow-councils" || segments[0] === "flow-splitters") &&
       segments[1] === "launch" &&
-      segments[2]
+      segments[2] &&
+      !isNaN(Number(segments[2]))
     ) {
       return Number(segments[2]);
     }
@@ -93,15 +92,12 @@ function useInitialChain() {
       return Number(segments[1]);
     }
 
-    if (searchChainId) {
+    if (searchChainId && !isNaN(Number(searchChainId))) {
       return Number(searchChainId);
     }
 
-    if (
-      segments[0] === "flow-councils" ||
-      (segments[0] === "flow-councils" && segments[1] === "launch")
-    ) {
-      return CELO_CHAIN_ID;
+    if (segments[0] === "flow-councils") {
+      return celo.id;
     }
 
     return DEFAULT_CHAIN_ID;

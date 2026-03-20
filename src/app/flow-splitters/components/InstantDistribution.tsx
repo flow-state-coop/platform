@@ -189,6 +189,8 @@ export default function InstantDistribution(props: InstantDistributionProps) {
   }, [address, network, ethersProvider, token, isSuperTokenNative]);
 
   useEffect(() => {
+    let stale = false;
+
     (async () => {
       if (
         !address ||
@@ -198,7 +200,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
         !sfFramework ||
         !ethersProvider
       ) {
-        return [];
+        return;
       }
 
       const wrapAmountWei = parseEther(wrapAmount);
@@ -253,8 +255,12 @@ export default function InstantDistribution(props: InstantDistributionProps) {
 
       newCalls.push(await batchOperationsToCall(sfFramework, operations));
 
-      setCalls(newCalls);
+      if (!stale) setCalls(newCalls);
     })();
+
+    return () => {
+      stale = true;
+    };
   }, [
     address,
     wrapAmount,

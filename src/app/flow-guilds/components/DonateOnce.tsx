@@ -187,6 +187,8 @@ export default function DonateOnce(props: DonateOnceProps) {
   }, [address, network, ethersProvider, token, isSuperTokenNative]);
 
   useEffect(() => {
+    let stale = false;
+
     (async () => {
       if (
         !address ||
@@ -195,7 +197,7 @@ export default function DonateOnce(props: DonateOnceProps) {
         !sfFramework ||
         !ethersProvider
       ) {
-        return [];
+        return;
       }
 
       const wrapAmountWei = parseEther(wrapAmount);
@@ -250,8 +252,12 @@ export default function DonateOnce(props: DonateOnceProps) {
         ),
       );
 
-      setCalls(newCalls);
+      if (!stale) setCalls(newCalls);
     })();
+
+    return () => {
+      stale = true;
+    };
   }, [
     address,
     wrapAmount,
