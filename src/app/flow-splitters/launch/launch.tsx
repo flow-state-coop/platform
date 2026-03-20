@@ -329,6 +329,10 @@ export default function Launch(props: LaunchProps) {
                     onClick={() => {
                       setSelectedNetwork(network);
                       setSelectedToken(network.tokens[0]);
+                      router.replace(
+                        `/flow-splitters/launch?chainId=${network.id}`,
+                        { scroll: false },
+                      );
                     }}
                   >
                     <Stack direction="horizontal" gap={1}>

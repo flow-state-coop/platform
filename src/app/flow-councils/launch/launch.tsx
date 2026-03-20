@@ -254,7 +254,10 @@ export default function Launch(props: LaunchProps) {
                     className="fw-semi-bold"
                     onClick={() => {
                       setSelectedNetwork(network);
-                      router.push("/flow-councils/launch");
+                      router.replace(
+                        `/flow-councils/launch?chainId=${network.id}`,
+                        { scroll: false },
+                      );
                     }}
                   >
                     <Stack direction="horizontal" gap={1}>

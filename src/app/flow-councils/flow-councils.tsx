@@ -408,6 +408,9 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
                       }
 
                       setSelectedNetwork(network);
+                      router.replace(`/flow-councils?chainId=${network.id}`, {
+                        scroll: false,
+                      });
                     }}
                   >
                     {network.name}

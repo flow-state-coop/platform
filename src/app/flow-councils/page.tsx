@@ -1,8 +1,17 @@
+import { SearchParams } from "@/types/searchParams";
 import FlowCouncils from "./flow-councils";
 import { networks } from "@/lib/networks";
 
-const network = networks.find((network) => network.label === "celo")!;
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const { chainId } = await searchParams;
 
-export default async function Page() {
+  const network =
+    networks.find((network) => network.id === Number(chainId)) ??
+    networks.find((network) => network.label === "celo")!;
+
   return <FlowCouncils defaultNetwork={network} />;
 }
