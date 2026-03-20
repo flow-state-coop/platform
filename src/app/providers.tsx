@@ -11,7 +11,7 @@ import {
   walletConnectWallet,
   injectedWallet,
   baseAccount,
-  rainbowWallet,
+  safeWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 import { createConfig, WagmiProvider } from "wagmi";
 import {
@@ -41,7 +41,7 @@ const connectors = connectorsForWallets(
         walletConnectWallet,
         injectedWallet,
         baseAccount,
-        rainbowWallet,
+        safeWallet,
       ],
     },
   ],
