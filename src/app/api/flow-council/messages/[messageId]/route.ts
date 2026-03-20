@@ -207,6 +207,9 @@ export async function DELETE(
         .where("content", "=", message.content)
         .where("createdAt", "=", message.createdAt)
         .where("id", "!=", messageIdNum)
+        .$if(message.projectId !== null, (qb) =>
+          qb.where("projectId", "=", message.projectId!),
+        )
         .execute();
     } else if (message.channelType === "PUBLIC_PROJECT" && message.projectId) {
       await db

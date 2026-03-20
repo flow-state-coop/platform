@@ -384,7 +384,7 @@ export async function POST(request: Request) {
           .catch((err) =>
             console.error("Failed to send internal comment email:", err),
           );
-      } else if (messageProjectId) {
+      } else if (messageProjectId && channelType !== "PUBLIC_PROJECT") {
         Promise.all([
           getProjectAndRoundDetails(messageProjectId, effectiveRoundId),
           getRoundAdminEmailsExcludingAddress(

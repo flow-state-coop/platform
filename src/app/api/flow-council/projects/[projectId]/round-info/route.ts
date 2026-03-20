@@ -21,6 +21,8 @@ export async function GET(
       .innerJoin("rounds", "applications.roundId", "rounds.id")
       .select(["rounds.chainId", "rounds.flowCouncilAddress as councilId"])
       .where("applications.projectId", "=", Number(projectId))
+      .where("applications.status", "=", "ACCEPTED")
+      .orderBy("applications.createdAt", "desc")
       .executeTakeFirst();
 
     return Response.json({
