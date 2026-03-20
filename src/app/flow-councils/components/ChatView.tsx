@@ -15,8 +15,8 @@ import type { ProjectMetadata } from "@/app/api/flow-council/utils";
 type ChatViewProps = {
   // Required identifiers
   channelType: ChannelType;
-  chainId: number;
-  councilId: string;
+  chainId?: number;
+  councilId?: string;
 
   // Context identifiers (varies by channel type)
   roundId?: number;
@@ -89,12 +89,10 @@ export default function ChatView(props: ChatViewProps) {
   );
 
   const buildQueryParams = useCallback(() => {
-    const params = new URLSearchParams({
-      channelType,
-      chainId: chainId.toString(),
-      councilId,
-    });
+    const params = new URLSearchParams({ channelType });
 
+    if (chainId) params.set("chainId", chainId.toString());
+    if (councilId) params.set("councilId", councilId);
     if (roundId) params.set("roundId", roundId.toString());
     if (applicationId) params.set("applicationId", applicationId.toString());
     if (projectId) params.set("projectId", projectId.toString());
