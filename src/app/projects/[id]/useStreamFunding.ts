@@ -402,7 +402,7 @@ export default function useStreamFunding(
   ]);
 
   const handleWrapAmountChange = useCallback((value: string) => {
-    const stripped = value.replace(/[^0-9.,]/g, "");
+    const stripped = value.replace(/[^0-9.]/g, "");
     const dotIndex = stripped.indexOf(".");
     const cleaned =
       dotIndex === -1
