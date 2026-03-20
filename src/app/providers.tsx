@@ -15,7 +15,6 @@ import {
 } from "@rainbow-me/rainbowkit/wallets";
 import { createConfig, WagmiProvider } from "wagmi";
 import {
-  mainnet,
   arbitrum,
   base,
   celo,
@@ -32,14 +31,7 @@ import { WALLET_CONNECT_PROJECT_ID } from "@/lib/constants";
 import "@rainbow-me/rainbowkit/styles.css";
 import "@/styles.scss";
 
-const chains = [
-  mainnet,
-  arbitrum,
-  base,
-  celo,
-  optimism,
-  optimismSepolia,
-] as const;
+const chains = [arbitrum, base, celo, optimism, optimismSepolia] as const;
 
 const connectors = connectorsForWallets(
   [
@@ -65,7 +57,6 @@ const config = createConfig({
       networks.find((network) => network.id === arbitrum.id)!.rpcUrl,
     ),
     [base.id]: http(networks.find((network) => network.id === base.id)!.rpcUrl),
-    [mainnet.id]: http(),
     [celo.id]: http(networks.find((network) => network.id === celo.id)!.rpcUrl),
     [optimism.id]: http(
       networks.find((network) => network.id === optimism.id)!.rpcUrl,
