@@ -12,14 +12,19 @@ import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import Nav from "react-bootstrap/Nav";
 import Tab from "react-bootstrap/Tab";
+import Row from "react-bootstrap/Row";
+import Col from "react-bootstrap/Col";
 import Markdown from "@/components/Markdown";
 import ProjectModal from "@/app/flow-councils/components/ProjectModal";
 import ProjectFeedTab from "@/app/projects/[id]/ProjectFeedTab";
 import ProjectMilestonesTab from "@/app/projects/[id]/milestones/ProjectMilestonesTab";
+import GardensPoolFunding from "@/app/projects/[id]/GardensPoolFunding";
+import DirectFunding from "@/app/projects/[id]/DirectFunding";
 import { ProjectDetails } from "@/types/project";
 import useRequireAuth from "@/hooks/requireAuth";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getPlaceholderImageSrc } from "@/lib/utils";
+import { getGardensPoolNetwork } from "@/lib/gardensPool";
 
 type ProjectProps = {
   projectId: string;
@@ -151,31 +156,44 @@ export default function Project(props: ProjectProps) {
 
   const details = project.details;
 
+  const gardensPoolNetwork = details?.gardensPool
+    ? getGardensPoolNetwork(details.gardensPool)
+    : null;
+
+  const hasFundingWidgets =
+    !!(gardensPoolNetwork && details?.gardensPool) ||
+    !!details?.defaultFundingAddress;
+
   return (
     <>
       <Stack
         direction="vertical"
-        className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
+        className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52 overflow-hidden"
       >
         <Card
           className="position-relative border-0"
-          style={{ height: isMobile ? 180 : isTablet ? 340 : 550 }}
+          style={{ aspectRatio: "3/1" }}
         >
-          <Card.Img
-            variant="top"
-            src={details?.bannerUrl || placeholderBanner}
-            height={isMobile ? 200 : isTablet ? 300 : 500}
-            className="bg-light rounded-0 rounded-4"
-          />
+          <div
+            className="rounded-4"
+            style={{ overflow: "hidden", width: "100%", height: "100%" }}
+          >
+            <Card.Img
+              variant="top"
+              src={details?.bannerUrl || placeholderBanner}
+              className="bg-light rounded-0"
+              style={{ objectFit: "cover", width: "100%", height: "100%" }}
+            />
+          </div>
           <Image
             src={details?.logoUrl || placeholderLogo}
             alt=""
-            width={isMobile || isTablet ? 100 : 200}
-            height={isMobile || isTablet ? 100 : 200}
+            width={isMobile ? 80 : isTablet ? 100 : 150}
+            height={isMobile ? 80 : isTablet ? 100 : 150}
             className="rounded-4 position-absolute border border-2 border-light bg-white"
             style={{
-              bottom: isTablet ? -10 : -50,
-              left: isMobile ? 30 : 50,
+              bottom: isMobile ? -30 : isTablet ? -30 : -50,
+              left: isMobile ? 20 : isTablet ? 40 : 50,
             }}
           />
         </Card>
@@ -189,7 +207,7 @@ export default function Project(props: ProjectProps) {
           {isManager && (
             <Button
               variant="secondary"
-              className="w-20 px-10 py-4 rounded-4 fw-semi-bold"
+              className="px-6 py-2 rounded-4 fw-semi-bold"
               onClick={handleEditClick}
             >
               Edit
@@ -201,7 +219,7 @@ export default function Project(props: ProjectProps) {
         </Card.Text>
         <Stack
           direction="horizontal"
-          className="flex-wrap my-2 px-3 sm:px-0"
+          className="flex-wrap my-2 px-3 sm:px-0 overflow-hidden"
           style={{ rowGap: 8 }}
         >
           {!!details?.website && (
@@ -209,11 +227,11 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={`https://${details.website.replace(/^https?:\/\//, "")}`}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/web.svg" alt="Website" width={18} height={18} />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {details.website.replace(/^https?:\/\//, "")}
               </Card.Text>
             </Button>
@@ -223,11 +241,11 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={details.demoUrl}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/link.svg" alt="Demo" width={18} height={18} />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {details.demoUrl.replace(/^https?:\/\//, "")}
               </Card.Text>
             </Button>
@@ -237,11 +255,11 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={`https://github.com/${details.github}`}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/github.svg" alt="github" width={18} height={18} />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {`github.com/${details.github}`}
               </Card.Text>
             </Button>
@@ -251,11 +269,11 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={`https://x.com/${details.twitter}`}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/x-logo.svg" alt="x" width={14} height={14} />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {`x.com/${details.twitter}`}
               </Card.Text>
             </Button>
@@ -265,8 +283,8 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={`https://farcaster.xyz/${details.farcaster}`}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image
                 src="/farcaster.svg"
@@ -274,7 +292,7 @@ export default function Project(props: ProjectProps) {
                 width={16}
                 height={16}
               />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {`farcaster.xyz/${details.farcaster}`}
               </Card.Text>
             </Button>
@@ -284,8 +302,8 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={details.telegram}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image
                 src="/telegram.svg"
@@ -293,7 +311,7 @@ export default function Project(props: ProjectProps) {
                 width={16}
                 height={16}
               />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {details.telegram.replace(/^https?:\/\//, "")}
               </Card.Text>
             </Button>
@@ -303,11 +321,11 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={details.discord}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/discord.svg" alt="discord" width={16} height={16} />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {details.discord.replace(/^https?:\/\//, "")}
               </Card.Text>
             </Button>
@@ -317,8 +335,8 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={details.karmaProfile}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image
                 src="/karma-gap.svg"
@@ -326,7 +344,7 @@ export default function Project(props: ProjectProps) {
                 width={18}
                 height={18}
               />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {details.karmaProfile.replace(/^https?:\/\//, "")}
               </Card.Text>
             </Button>
@@ -336,11 +354,11 @@ export default function Project(props: ProjectProps) {
               variant="link"
               href={`https://${details.gardensPool.replace(/^https?:\/\//, "")}`}
               target="_blank"
-              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none"
-              style={{ width: !isMobile ? "33%" : "" }}
+              className="d-flex gap-1 align-items-center p-0 text-info text-decoration-none overflow-hidden"
+              style={{ width: !isMobile ? "33%" : "100%", minWidth: 0 }}
             >
               <Image src="/gardens.svg" alt="Gardens" width={18} height={18} />
-              <Card.Text className="text-truncate">
+              <Card.Text className="text-truncate" style={{ minWidth: 0 }}>
                 {details.gardensPool.replace(/^https?:\/\//, "")}
               </Card.Text>
             </Button>
@@ -387,9 +405,30 @@ export default function Project(props: ProjectProps) {
           </Nav>
           <Tab.Content>
             <Tab.Pane eventKey="details">
-              <Markdown className="px-3 sm:px-0">
-                {details?.description}
-              </Markdown>
+              <Row>
+                <Col lg={hasFundingWidgets ? 8 : 12}>
+                  <Markdown className="px-3 sm:px-0">
+                    {details?.description}
+                  </Markdown>
+                </Col>
+                {hasFundingWidgets && (
+                  <Col lg={4} className="mt-6 mt-lg-0">
+                    <Stack direction="vertical" gap={4}>
+                      {gardensPoolNetwork && details?.gardensPool && (
+                        <GardensPoolFunding
+                          gardensPoolUrl={details.gardensPool}
+                          network={gardensPoolNetwork}
+                        />
+                      )}
+                      {details?.defaultFundingAddress && (
+                        <DirectFunding
+                          receiverAddress={details.defaultFundingAddress}
+                        />
+                      )}
+                    </Stack>
+                  </Col>
+                )}
+              </Row>
             </Tab.Pane>
             <Tab.Pane eventKey="feed">
               <ProjectFeedTab

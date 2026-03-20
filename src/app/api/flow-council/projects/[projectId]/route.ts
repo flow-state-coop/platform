@@ -18,7 +18,6 @@ export async function GET(
       );
     }
 
-    // Fetch project with managers
     const project = await db
       .selectFrom("projects")
       .select(["id", "details", "createdAt", "updatedAt"])
@@ -45,7 +44,6 @@ export async function GET(
         (m) => m.toLowerCase() === managerAddress.toLowerCase(),
       );
 
-    // Only include emails for managers
     let managerEmails: string[] = [];
     if (isManager) {
       const emails = await db

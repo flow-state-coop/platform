@@ -1,80 +1,90 @@
 import {
   ApolloClient,
-  ApolloClientOptions,
+  DefaultOptions,
   HttpLink,
   InMemoryCache,
   NormalizedCacheObject,
+  TypePolicies,
 } from "@apollo/client";
 import { networks } from "@/lib/networks";
 
 type ApiType = "flowState" | "flowSplitter" | "flowCouncil" | "superfluid";
 
-const apolloClient: ApolloClientOptions<NormalizedCacheObject> = {
-  cache: new InMemoryCache({
-    typePolicies: {
-      FlowCouncil: {
-        fields: {
-          voters: {
-            keyArgs: false,
-            merge(existing = [], incoming) {
-              return [...existing, ...incoming];
-            },
-          },
+const defaultOptions: DefaultOptions = {
+  query: {
+    errorPolicy: "all",
+  },
+  watchQuery: {
+    errorPolicy: "all",
+  },
+};
+
+const flowCouncilTypePolicies: TypePolicies = {
+  FlowCouncil: {
+    fields: {
+      voters: {
+        keyArgs: false,
+        merge(existing = [], incoming: unknown[]) {
+          return [...existing, ...incoming];
         },
       },
-    },
-  }),
-  defaultOptions: {
-    query: {
-      errorPolicy: "all",
-    },
-    watchQuery: {
-      errorPolicy: "all",
     },
   },
 };
 
-const flowStateClient = new ApolloClient(apolloClient);
-const flowSplitterClient = new ApolloClient(apolloClient);
-const flowCouncilClient = new ApolloClient(apolloClient);
-const superfluidClient = new ApolloClient(apolloClient);
+const clientsByTypeAndChain = new Map<
+  string,
+  ApolloClient<NormalizedCacheObject>
+>();
+
+function getOrCreateClient(
+  key: string,
+  uri: string,
+  typePolicies?: TypePolicies,
+) {
+  let client = clientsByTypeAndChain.get(key);
+
+  if (!client) {
+    client = new ApolloClient({
+      cache: new InMemoryCache({ typePolicies }),
+      link: new HttpLink({ uri }),
+      defaultOptions,
+    });
+    clientsByTypeAndChain.set(key, client);
+  }
+
+  return client;
+}
 
 export const getApolloClient = (type: ApiType, chainId?: number) => {
   if (type === "flowState") {
-    flowStateClient.setLink(
-      new HttpLink({ uri: "https://api.flowstate.network/graphql" }),
+    return getOrCreateClient(
+      "flowState",
+      "https://api.flowstate.network/graphql",
     );
-
-    return flowStateClient;
-  } else if (type === "flowSplitter") {
-    const network = networks.find((network) => network.id === chainId);
-
-    if (network) {
-      flowSplitterClient.setLink(
-        new HttpLink({ uri: network.flowSplitterSubgraph }),
-      );
-    }
-
-    return flowSplitterClient;
-  } else if (type === "flowCouncil") {
-    const network = networks.find((network) => network.id === chainId);
-
-    if (network) {
-      flowCouncilClient.setLink(
-        new HttpLink({ uri: network.flowCouncilSubgraph }),
-      );
-    }
-
-    return flowCouncilClient;
-  } else if (type === "superfluid") {
-    const network = networks.find((network) => network.id === chainId);
-
-    if (network) {
-      superfluidClient.setLink(
-        new HttpLink({ uri: network.superfluidSubgraph }),
-      );
-    }
-
-    return superfluidClient;
   }
+
+  const network = networks.find((network) => network.id === chainId);
+
+  if (!network) {
+    throw new Error(`No network configured for chainId ${chainId}`);
+  }
+
+  const subgraphMap: Record<string, string | undefined> = {
+    flowSplitter: network.flowSplitterSubgraph,
+    flowCouncil: network.flowCouncilSubgraph,
+    superfluid: network.superfluidSubgraph,
+  };
+
+  const uri = subgraphMap[type];
+
+  if (!uri) {
+    throw new Error(`No subgraph URI for type "${type}" on chain ${chainId}`);
+  }
+
+  return getOrCreateClient(
+    `${type}-${chainId}`,
+    uri,
+    type === "flowCouncil" ? flowCouncilTypePolicies : undefined,
+  );
 };
