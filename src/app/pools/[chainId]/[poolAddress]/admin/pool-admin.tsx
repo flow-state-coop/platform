@@ -40,6 +40,7 @@ import { superfluidHostAbi } from "@/lib/abi/superfluidHost";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { isNumber, truncateStr } from "@/lib/utils";
+import { SUPERFLUID_CALL_AGREEMENT_OPERATION } from "@/lib/constants";
 
 type PoolAdminProps = {
   chainId: number;
@@ -352,7 +353,7 @@ export default function PoolAdmin(props: PoolAdminProps) {
         );
 
       const operations = changedMembers.map((member) => ({
-        operationType: 201,
+        operationType: SUPERFLUID_CALL_AGREEMENT_OPERATION,
         target: network.gda,
         data: encodeAbiParameters(
           [{ type: "bytes" }, { type: "bytes" }],

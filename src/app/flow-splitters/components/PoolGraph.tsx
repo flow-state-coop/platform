@@ -37,12 +37,67 @@ import { Network } from "@/types/network";
 import { GDAPool } from "@/types/gdaPool";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import { truncateStr, formatNumber } from "@/lib/utils";
-import { SECONDS_IN_MONTH } from "@/lib/constants";
+import {
+  SECONDS_IN_MONTH,
+  SUPERFLUID_CALL_AGREEMENT_OPERATION,
+} from "@/lib/constants";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { superfluidHostAbi } from "@/lib/abi/superfluidHost";
 import { gdaAbi } from "@/lib/abi/gda";
 import { gdaForwarderAbi } from "@/lib/abi/gdaForwarder";
 import "@xyflow/react/dist/style.css";
+
+function useStatusTimeout(
+  status: ConnectStatus,
+  setStatus: (s: ConnectStatus) => void,
+) {
+  useEffect(() => {
+    if (status === "success" || status === "error") {
+      const timeout = setTimeout(() => setStatus("idle"), 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [status, setStatus]);
+}
+
+function StatusOverlay({
+  status,
+  rounded,
+}: {
+  status: ConnectStatus;
+  rounded: "circle" | "4";
+}) {
+  if (status === "idle" || status === "slots-full") return null;
+
+  const isCircle = rounded === "circle";
+  const sizeProps = isCircle
+    ? { width: 42, height: 42 }
+    : { width: undefined, height: undefined };
+  const roundedClass = isCircle ? "rounded-circle" : "rounded-4";
+  const dimensionClass = isCircle ? "" : " w-100 h-100";
+
+  return (
+    <div
+      className={`position-absolute top-0 start-0 d-flex align-items-center justify-content-center ${roundedClass}${dimensionClass}`}
+      style={{
+        ...sizeProps,
+        backgroundColor: "rgba(255,255,255,0.7)",
+        ...(status !== "pending" && {
+          color: status === "success" ? "green" : "red",
+          fontSize: "1.2rem",
+          fontWeight: "bold",
+        }),
+      }}
+    >
+      {status === "pending" ? (
+        <Spinner size="sm" />
+      ) : status === "success" ? (
+        <>&#10003;</>
+      ) : (
+        <>&#10007;</>
+      )}
+    </div>
+  );
+}
 
 type PoolGraphProps = {
   pool: GDAPool;
@@ -122,19 +177,8 @@ function CustomNode(props: NodeProps<Node>) {
     BigInt((data?.flowRate as string) ?? 0),
   );
 
-  useEffect(() => {
-    if (connectStatus === "success" || connectStatus === "error") {
-      const timeout = setTimeout(() => setConnectStatus("idle"), 2000);
-      return () => clearTimeout(timeout);
-    }
-  }, [connectStatus]);
-
-  useEffect(() => {
-    if (connectAllStatus === "success" || connectAllStatus === "error") {
-      const timeout = setTimeout(() => setConnectAllStatus("idle"), 2000);
-      return () => clearTimeout(timeout);
-    }
-  }, [connectAllStatus]);
+  useStatusTimeout(connectStatus, setConnectStatus);
+  useStatusTimeout(connectAllStatus, setConnectAllStatus);
 
   const network = data.network as Network | undefined;
 
@@ -222,7 +266,7 @@ function CustomNode(props: NodeProps<Node>) {
       }
 
       const operations = disconnectedMembers.map((member) => ({
-        operationType: 201,
+        operationType: SUPERFLUID_CALL_AGREEMENT_OPERATION,
         target: network.gda,
         data: encodeAbiParameters(
           [{ type: "bytes" }, { type: "bytes" }],
@@ -264,48 +308,6 @@ function CustomNode(props: NodeProps<Node>) {
     data.poolAddress,
   ]);
 
-  const statusOverlay =
-    connectStatus === "pending" ? (
-      <div
-        className="position-absolute top-0 start-0 d-flex align-items-center justify-content-center rounded-circle"
-        style={{
-          width: 42,
-          height: 42,
-          backgroundColor: "rgba(255,255,255,0.7)",
-        }}
-      >
-        <Spinner size="sm" />
-      </div>
-    ) : connectStatus === "success" ? (
-      <div
-        className="position-absolute top-0 start-0 d-flex align-items-center justify-content-center rounded-circle"
-        style={{
-          width: 42,
-          height: 42,
-          backgroundColor: "rgba(255,255,255,0.7)",
-          color: "green",
-          fontSize: "1.2rem",
-          fontWeight: "bold",
-        }}
-      >
-        &#10003;
-      </div>
-    ) : connectStatus === "error" ? (
-      <div
-        className="position-absolute top-0 start-0 d-flex align-items-center justify-content-center rounded-circle"
-        style={{
-          width: 42,
-          height: 42,
-          backgroundColor: "rgba(255,255,255,0.7)",
-          color: "red",
-          fontSize: "1.2rem",
-          fontWeight: "bold",
-        }}
-      >
-        &#10007;
-      </div>
-    ) : null;
-
   if (data.isPool) {
     return (
       <div
@@ -328,40 +330,7 @@ function CustomNode(props: NodeProps<Node>) {
               )} ${(data.token as { symbol: string }).symbol}`}
             </span>
           </Stack>
-          {connectAllStatus === "pending" && (
-            <div
-              className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4"
-              style={{ backgroundColor: "rgba(255,255,255,0.7)" }}
-            >
-              <Spinner size="sm" />
-            </div>
-          )}
-          {connectAllStatus === "success" && (
-            <div
-              className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4"
-              style={{
-                backgroundColor: "rgba(255,255,255,0.7)",
-                color: "green",
-                fontSize: "1.2rem",
-                fontWeight: "bold",
-              }}
-            >
-              &#10003;
-            </div>
-          )}
-          {connectAllStatus === "error" && (
-            <div
-              className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4"
-              style={{
-                backgroundColor: "rgba(255,255,255,0.7)",
-                color: "red",
-                fontSize: "1.2rem",
-                fontWeight: "bold",
-              }}
-            >
-              &#10007;
-            </div>
-          )}
+          <StatusOverlay status={connectAllStatus} rounded="4" />
         </div>
         <Handle className="invisible" type="target" position={Position.Top} />
         <Handle
@@ -490,7 +459,7 @@ function CustomNode(props: NodeProps<Node>) {
               seed={jsNumberForAddress(data.address as `0x${string}`)}
             />
           )}
-          {statusOverlay}
+          <StatusOverlay status={connectStatus} rounded="circle" />
         </div>
         <span className="fw-semi-bold" style={{ fontSize: "0.7rem" }}>
           {data?.label?.toString() ?? ""}
