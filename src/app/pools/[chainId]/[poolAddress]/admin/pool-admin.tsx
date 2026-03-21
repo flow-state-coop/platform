@@ -285,16 +285,12 @@ export default function PoolAdmin(props: PoolAdminProps) {
           });
         }
 
-        const membersToRemove = [];
-
-        for (const i in membersEntry) {
-          if (membersEntry[i].units === "0") {
-            if (!membersEntry[i].validationError) {
-              membersToRemove.push(membersEntry[i]);
-              membersEntry.splice(Number(i), 1);
-            }
-          }
-        }
+        const zeroUnitMembers = membersEntry.filter(
+          (e) => e.units === "0" && !e.validationError,
+        );
+        const filteredMembers = membersEntry.filter(
+          (e) => !(e.units === "0" && !e.validationError),
+        );
 
         const csvAddresses = data.map((row) => row[0].toLowerCase());
         const existingMembers = superfluidQueryRes?.pool.poolMembers;
@@ -305,15 +301,18 @@ export default function PoolAdmin(props: PoolAdminProps) {
             ),
         );
 
-        for (const excludedMember of excludedMembers) {
-          membersToRemove.push({
-            address: excludedMember.account.id,
-            units: excludedMember.units,
-            validationError: "",
-          });
-        }
+        const membersToRemove = [
+          ...zeroUnitMembers,
+          ...excludedMembers.map(
+            (excludedMember: { account: { id: string }; units: string }) => ({
+              address: excludedMember.account.id,
+              units: excludedMember.units,
+              validationError: "",
+            }),
+          ),
+        ];
 
-        setMembersEntry(membersEntry);
+        setMembersEntry(filteredMembers);
         setMembersToRemove(membersToRemove);
       },
     });
@@ -662,28 +661,34 @@ export default function PoolAdmin(props: PoolAdminProps) {
                           className="bg-white border-0 fw-semi-bold"
                           style={{ paddingTop: 12, paddingBottom: 12 }}
                           onChange={(e) => {
-                            const prevMembersEntry = [...membersEntry];
                             const value = e.target.value;
 
-                            if (!isAddress(value)) {
-                              prevMembersEntry[i].validationError =
-                                "Invalid Address";
-                            } else if (
-                              prevMembersEntry
-                                .map((prevMember) =>
-                                  prevMember.address.toLowerCase(),
-                                )
-                                .includes(value.toLowerCase())
-                            ) {
-                              prevMembersEntry[i].validationError =
-                                "Address already added";
-                            } else {
-                              prevMembersEntry[i].validationError = "";
-                            }
+                            setMembersEntry(
+                              membersEntry.map((entry, index) => {
+                                if (index !== i) return entry;
 
-                            prevMembersEntry[i].address = value;
+                                let validationError = "";
 
-                            setMembersEntry(prevMembersEntry);
+                                if (!isAddress(value)) {
+                                  validationError = "Invalid Address";
+                                } else if (
+                                  membersEntry.some(
+                                    (other, j) =>
+                                      j !== i &&
+                                      other.address.toLowerCase() ===
+                                        value.toLowerCase(),
+                                  )
+                                ) {
+                                  validationError = "Address already added";
+                                }
+
+                                return {
+                                  ...entry,
+                                  address: value,
+                                  validationError,
+                                };
+                              }),
+                            );
                           }}
                         />
                         {memberEntry.validationError ? (
@@ -706,24 +711,24 @@ export default function PoolAdmin(props: PoolAdminProps) {
                         className="bg-white border-0 fw-semi-bold text-center"
                         style={{ paddingTop: 12, paddingBottom: 12 }}
                         onChange={(e) => {
-                          const prevMembersEntry = [...membersEntry];
                           const value = e.target.value;
 
-                          if (!value) {
-                            prevMembersEntry[i].units = "";
-                          } else if (value.includes(".")) {
-                            return;
-                          } else if (isNumber(value)) {
-                            if (value === "0") {
-                              removeMemberEntry(prevMembersEntry[i], i);
+                          if (value && value.includes(".")) return;
 
-                              return;
-                            } else {
-                              prevMembersEntry[i].units = value;
-                            }
+                          if (value === "0") {
+                            removeMemberEntry(membersEntry[i], i);
+                            return;
                           }
 
-                          setMembersEntry(prevMembersEntry);
+                          if (!value || isNumber(value)) {
+                            setMembersEntry(
+                              membersEntry.map((entry, index) =>
+                                index === i
+                                  ? { ...entry, units: value || "" }
+                                  : entry,
+                              ),
+                            );
+                          }
                         }}
                       />
                     </Stack>

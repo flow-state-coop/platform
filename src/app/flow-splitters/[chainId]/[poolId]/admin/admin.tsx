@@ -862,28 +862,34 @@ export default function Admin(props: AdminProps) {
                           className="bg-white border-0 fw-semi-bold"
                           style={{ paddingTop: 12, paddingBottom: 12 }}
                           onChange={(e) => {
-                            const prevMembersEntry = [...membersEntry];
                             const value = e.target.value;
 
-                            if (!isAddress(value)) {
-                              prevMembersEntry[i].validationError =
-                                "Invalid Address";
-                            } else if (
-                              prevMembersEntry
-                                .map((prevMember) =>
-                                  prevMember.address.toLowerCase(),
-                                )
-                                .includes(value.toLowerCase())
-                            ) {
-                              prevMembersEntry[i].validationError =
-                                "Address already added";
-                            } else {
-                              prevMembersEntry[i].validationError = "";
-                            }
+                            setMembersEntry(
+                              membersEntry.map((entry, index) => {
+                                if (index !== i) return entry;
 
-                            prevMembersEntry[i].address = value;
+                                let validationError = "";
 
-                            setMembersEntry(prevMembersEntry);
+                                if (!isAddress(value)) {
+                                  validationError = "Invalid Address";
+                                } else if (
+                                  membersEntry.some(
+                                    (other, j) =>
+                                      j !== i &&
+                                      other.address.toLowerCase() ===
+                                        value.toLowerCase(),
+                                  )
+                                ) {
+                                  validationError = "Address already added";
+                                }
+
+                                return {
+                                  ...entry,
+                                  address: value,
+                                  validationError,
+                                };
+                              }),
+                            );
                           }}
                         />
                         {memberEntry.validationError ? (
@@ -906,24 +912,24 @@ export default function Admin(props: AdminProps) {
                         className="bg-white border-0 fw-semi-bold text-center"
                         style={{ paddingTop: 12, paddingBottom: 12 }}
                         onChange={(e) => {
-                          const prevMembersEntry = [...membersEntry];
                           const value = e.target.value;
 
-                          if (!value) {
-                            prevMembersEntry[i].units = "";
-                          } else if (value.includes(".")) {
-                            return;
-                          } else if (isNumber(value)) {
-                            if (value === "0") {
-                              removeMemberEntry(prevMembersEntry[i], i);
+                          if (value && value.includes(".")) return;
 
-                              return;
-                            } else {
-                              prevMembersEntry[i].units = value;
-                            }
+                          if (value === "0") {
+                            removeMemberEntry(membersEntry[i], i);
+                            return;
                           }
 
-                          setMembersEntry(prevMembersEntry);
+                          if (!value || isNumber(value)) {
+                            setMembersEntry(
+                              membersEntry.map((entry, index) =>
+                                index === i
+                                  ? { ...entry, units: value || "" }
+                                  : entry,
+                              ),
+                            );
+                          }
                         }}
                       />
                     </Stack>
