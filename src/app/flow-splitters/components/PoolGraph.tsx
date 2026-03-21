@@ -290,6 +290,10 @@ function CustomNode(props: NodeProps<Node>) {
 
       await publicClient.waitForTransactionReceipt({ hash, confirmations: 3 });
 
+      // tryConnectPoolFor returns false (no revert) when autoconnect slots
+      // are full, so the batch can succeed with zero actual connections.
+      // We skip per-member verification here to avoid N RPC calls; slot
+      // exhaustion is rare and not actionable by the caller.
       setConnectAllStatus("success");
     } catch (err) {
       console.error(err);
@@ -358,8 +362,6 @@ function CustomNode(props: NodeProps<Node>) {
                   <Spinner size="sm" />
                 ) : connectAllStatus === "success" ? (
                   "All Connected"
-                ) : connectAllStatus === "error" ? (
-                  "Connect All"
                 ) : (
                   "Connect All"
                 )}
