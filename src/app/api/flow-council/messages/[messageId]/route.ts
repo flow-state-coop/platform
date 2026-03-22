@@ -128,21 +128,6 @@ export async function DELETE(
       );
     }
 
-    if (!chainId || !councilId) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Missing chainId or councilId",
-        }),
-      );
-    }
-
-    if (!isAddress(councilId)) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid council ID" }),
-      );
-    }
-
     const message = await db
       .selectFrom("messages")
       .select([
@@ -164,19 +149,43 @@ export async function DELETE(
       );
     }
 
+    const isPublicProject = message.channelType === "PUBLIC_PROJECT";
+
+    if (!isPublicProject) {
+      if (!chainId || !councilId) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Missing chainId or councilId",
+          }),
+        );
+      }
+
+      if (!isAddress(councilId)) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid council ID" }),
+        );
+      }
+    }
+
     const isAuthor =
       message.authorAddress.toLowerCase() === session.address.toLowerCase();
 
-    const isModerator = await canModerateChannel(
-      {
-        channelType: message.channelType,
-        chainId,
-        councilId,
-        roundId: message.roundId ?? undefined,
-        projectId: message.projectId ?? undefined,
-      },
-      session.address,
-    );
+    let isModerator = false;
+    if (isPublicProject && message.projectId) {
+      isModerator = await isProjectManager(message.projectId, session.address);
+    } else if (!isPublicProject) {
+      isModerator = await canModerateChannel(
+        {
+          channelType: message.channelType,
+          chainId,
+          councilId,
+          roundId: message.roundId ?? undefined,
+          projectId: message.projectId ?? undefined,
+        },
+        session.address,
+      );
+    }
 
     let isManager = false;
     if (
@@ -207,6 +216,9 @@ export async function DELETE(
         .where("content", "=", message.content)
         .where("createdAt", "=", message.createdAt)
         .where("id", "!=", messageIdNum)
+        .$if(message.projectId !== null, (qb) =>
+          qb.where("projectId", "=", message.projectId!),
+        )
         .execute();
     } else if (message.channelType === "PUBLIC_PROJECT" && message.projectId) {
       await db

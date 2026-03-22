@@ -19,6 +19,7 @@ import {
   findRoundByCouncil,
   canReadChannel,
   canWriteChannel,
+  isProjectManager,
 } from "../auth";
 import { getAuthorAffiliations } from "../affiliations";
 import { parseDetails, type ProjectMetadata } from "../utils";
@@ -46,7 +47,9 @@ export async function GET(request: Request) {
       );
     }
 
-    if (!chainId || !councilId) {
+    const isPublicProject = effectiveChannelType === "PUBLIC_PROJECT";
+
+    if (!isPublicProject && (!chainId || !councilId)) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -55,41 +58,47 @@ export async function GET(request: Request) {
       );
     }
 
-    const chainIdNum = parseInt(chainId, 10);
-    if (isNaN(chainIdNum)) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid chain ID" }),
-      );
+    let chainIdNum: number | undefined;
+    if (chainId) {
+      chainIdNum = parseInt(chainId, 10);
+      if (isNaN(chainIdNum)) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid chain ID" }),
+        );
+      }
     }
 
-    if (!isAddress(councilId)) {
+    if (councilId && !isAddress(councilId)) {
       return new Response(
         JSON.stringify({ success: false, error: "Invalid council ID" }),
       );
     }
 
-    // Get session (may be null for public channels)
     const session = await getServerSession(authOptions);
 
-    const round = await findRoundByCouncil(chainIdNum, councilId);
+    let roundIdNum: number | undefined;
+    if (chainIdNum && councilId) {
+      const round = await findRoundByCouncil(chainIdNum, councilId);
+      roundIdNum = roundId ? parseInt(roundId, 10) : round?.id;
+    }
 
-    const roundIdNum = roundId ? parseInt(roundId, 10) : round?.id;
+    if (!isPublicProject) {
+      const ctx: ChannelContext = {
+        channelType: effectiveChannelType,
+        chainId: chainIdNum!,
+        councilId: councilId!,
+        roundId: roundIdNum,
+        projectId: projectId ? parseInt(projectId, 10) : undefined,
+        applicationId: applicationId ? parseInt(applicationId, 10) : undefined,
+      };
 
-    const ctx: ChannelContext = {
-      channelType: effectiveChannelType,
-      chainId: chainIdNum,
-      councilId,
-      roundId: roundIdNum,
-      projectId: projectId ? parseInt(projectId, 10) : undefined,
-      applicationId: applicationId ? parseInt(applicationId, 10) : undefined,
-    };
+      const canRead = await canReadChannel(ctx, session?.address || null);
 
-    const canRead = await canReadChannel(ctx, session?.address || null);
-
-    if (!canRead) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Not authorized" }),
-      );
+      if (!canRead) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Not authorized" }),
+        );
+      }
     }
 
     let query = db
@@ -124,7 +133,7 @@ export async function GET(request: Request) {
 
     // Fetch affiliations for all message authors
     let affiliations: Record<string, AuthorAffiliation> = {};
-    if (roundIdNum && messages.length > 0) {
+    if (roundIdNum && chainIdNum && councilId && messages.length > 0) {
       const authorAddresses = messages.map((m) => m.authorAddress);
       affiliations = await getAuthorAffiliations(
         authorAddresses,
@@ -223,7 +232,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!chainId || !councilId) {
+    const isPublicProject = channelType === "PUBLIC_PROJECT";
+
+    if (!isPublicProject && (!chainId || !councilId)) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -232,31 +243,49 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isAddress(councilId)) {
+    if (councilId && !isAddress(councilId)) {
       return new Response(
         JSON.stringify({ success: false, error: "Invalid council ID" }),
       );
     }
 
-    const round = await findRoundByCouncil(chainId, councilId);
+    let effectiveRoundId: number | undefined;
 
-    const effectiveRoundId = roundId || round?.id;
+    if (isPublicProject) {
+      if (!projectId) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Missing projectId" }),
+        );
+      }
 
-    const ctx: ChannelContext = {
-      channelType,
-      chainId,
-      councilId,
-      roundId: effectiveRoundId,
-      projectId,
-      applicationId,
-    };
+      const canWrite = await isProjectManager(projectId, session.address);
 
-    const canWrite = await canWriteChannel(ctx, session.address);
+      if (!canWrite) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Not authorized" }),
+        );
+      }
+    } else {
+      const round = await findRoundByCouncil(chainId, councilId);
 
-    if (!canWrite) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Not authorized" }),
-      );
+      effectiveRoundId = roundId || round?.id;
+
+      const ctx: ChannelContext = {
+        channelType,
+        chainId,
+        councilId,
+        roundId: effectiveRoundId,
+        projectId,
+        applicationId,
+      };
+
+      const canWrite = await canWriteChannel(ctx, session.address);
+
+      if (!canWrite) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Not authorized" }),
+        );
+      }
     }
 
     // Get project ID for INTERNAL_APPLICATION if needed
@@ -384,7 +413,7 @@ export async function POST(request: Request) {
           .catch((err) =>
             console.error("Failed to send internal comment email:", err),
           );
-      } else if (messageProjectId) {
+      } else if (messageProjectId && channelType !== "PUBLIC_PROJECT") {
         Promise.all([
           getProjectAndRoundDetails(messageProjectId, effectiveRoundId),
           getRoundAdminEmailsExcludingAddress(
