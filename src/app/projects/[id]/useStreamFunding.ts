@@ -90,7 +90,7 @@ export default function useStreamFunding(
     areTransactionsLoading,
     completedTransactions,
     transactionError,
-    executeTransactions,
+    executeLegacyTransactions: executeTransactions,
   } = useTransactionsQueue();
 
   const isCorrectChain = walletChainId === network.id;
