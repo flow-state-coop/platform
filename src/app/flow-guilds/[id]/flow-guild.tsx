@@ -5,6 +5,7 @@ import { Address, createPublicClient, http } from "viem";
 import { mainnet } from "viem/chains";
 import { normalize } from "viem/ens";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, useSwitchChain } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import { usePostHog } from "posthog-js/react";
@@ -206,6 +207,9 @@ export default function FlowGuild(props: FlowGuildProps) {
   const flowSplitter =
     flowGuildConfig.flowSplitters[network.id]?.[selectedToken.symbol];
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const { isMobile, isTablet } = useMediaQuery();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
@@ -371,6 +375,12 @@ export default function FlowGuild(props: FlowGuildProps) {
       postHog.startSessionRecording();
     }
   }, [postHog, postHog.decideEndpointWasHit]);
+
+  useEffect(() => {
+    if (!searchParams.get("chainId")) {
+      router.replace(`?chainId=${chainId}`, { scroll: false });
+    }
+  }, [chainId, searchParams, router]);
 
   return (
     <>

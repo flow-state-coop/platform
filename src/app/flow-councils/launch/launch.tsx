@@ -66,7 +66,7 @@ export default function Launch(props: LaunchProps) {
     areTransactionsLoading,
     completedTransactions,
     transactionError,
-    executeTransactions,
+    executeLegacyTransactions,
   } = useTransactionsQueue();
   const { data: flowCouncilQueryRes, loading: flowCouncilQueryLoading } =
     useQuery(FLOW_COUNCIL_QUERY, {
@@ -173,7 +173,7 @@ export default function Launch(props: LaunchProps) {
     }
 
     try {
-      await executeTransactions(transactions);
+      await executeLegacyTransactions(transactions);
 
       await fetch("/api/flow-council/launch", {
         method: "POST",
@@ -252,7 +252,10 @@ export default function Launch(props: LaunchProps) {
                     className="fw-semi-bold"
                     onClick={() => {
                       setSelectedNetwork(network);
-                      router.push("/flow-councils/launch");
+                      router.replace(
+                        `/flow-councils/launch?chainId=${network.id}`,
+                        { scroll: false },
+                      );
                     }}
                   >
                     <Stack direction="horizontal" gap={1}>

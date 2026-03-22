@@ -507,6 +507,9 @@ export default function FlowSplitters(props: FlowSplittersProps) {
                     }
 
                     setSelectedNetwork(network);
+                    router.replace(`/flow-splitters?chainId=${network.id}`, {
+                      scroll: false,
+                    });
                   }}
                 >
                   {network.name}

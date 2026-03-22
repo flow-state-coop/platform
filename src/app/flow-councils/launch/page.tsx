@@ -1,11 +1,19 @@
 import { cookies as nextCookies } from "next/headers";
+import type { SearchParams } from "@/types/searchParams";
 import Launch from "./launch";
 import { networks } from "@/lib/networks";
 
-const network = networks.find((network) => network.label === "celo")!;
-
-export default async function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const { chainId } = await searchParams;
   const cookies = await nextCookies();
+
+  const network =
+    networks.find((network) => network.id === Number(chainId)) ??
+    networks.find((network) => network.label === "celo")!;
 
   return (
     <Launch

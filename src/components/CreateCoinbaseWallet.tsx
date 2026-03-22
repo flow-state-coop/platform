@@ -6,12 +6,12 @@ export default function CreateCoinbaseWallet() {
   const { connectors, connect } = useConnect();
 
   const createWallet = useCallback(() => {
-    const coinbaseWalletConnector = connectors.find(
-      (connector) => connector.id === "coinbaseWalletSDK",
+    const baseAccountConnector = connectors.find(
+      (connector) => connector.id === "baseAccount",
     );
 
-    if (coinbaseWalletConnector) {
-      connect({ connector: coinbaseWalletConnector });
+    if (baseAccountConnector) {
+      connect({ connector: baseAccountConnector });
     }
   }, [connectors, connect]);
 

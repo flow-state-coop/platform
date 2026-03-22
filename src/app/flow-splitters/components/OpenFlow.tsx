@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { Address, parseEther, parseUnits, formatEther } from "viem";
-import { useAccount, useBalance } from "wagmi";
+import { useAccount, useBalance, usePublicClient } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import {
   SuperToken,
@@ -44,6 +44,11 @@ import {
   formatNumber,
 } from "@/lib/utils";
 import { ZERO_ADDRESS, MAX_FLOW_RATE } from "@/lib/constants";
+import {
+  TransactionCall,
+  operationToCall,
+  batchOperationsToCall,
+} from "@/lib/transactionCalls";
 
 dayjs().format();
 dayjs.extend(duration);
@@ -104,7 +109,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   >();
   const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("");
   const [isDeletingFlow, setIsDeletingFlow] = useState(false);
-  const [transactions, setTransactions] = useState<(() => Promise<void>)[]>([]);
+  const [calls, setCalls] = useState<TransactionCall[]>([]);
   const [
     hasAcceptedCloseLiquidationWarning,
     setHasAcceptedCloseLiquidationWarning,
@@ -114,10 +119,12 @@ export default function OpenFlow(props: OpenFlowProps) {
   const { address } = useAccount();
   const ethersProvider = useEthersProvider({ chainId: network.id });
   const ethersSigner = useEthersSigner({ chainId: network.id });
+  const publicClient = usePublicClient({ chainId: network.id });
   const {
     areTransactionsLoading,
     completedTransactions,
     transactionError,
+    isBatchSupported,
     executeTransactions,
   } = useTransactionsQueue();
   const { data: superfluidQueryRes } = useQuery(ACCOUNT_TOKEN_SNAPSHOT_QUERY, {
@@ -400,6 +407,8 @@ export default function OpenFlow(props: OpenFlowProps) {
   }, [address, network, ethersProvider, token, isSuperTokenNative]);
 
   useEffect(() => {
+    let stale = false;
+
     (async () => {
       if (
         !address ||
@@ -407,10 +416,9 @@ export default function OpenFlow(props: OpenFlowProps) {
         !underlyingTokenAllowance ||
         !distributionSuperToken ||
         !sfFramework ||
-        !ethersProvider ||
-        !ethersSigner
+        !ethersProvider
       ) {
-        return [];
+        return;
       }
 
       const wrapAmountWei = parseEther(wrapAmountPerTimeInterval);
@@ -420,24 +428,22 @@ export default function OpenFlow(props: OpenFlowProps) {
         wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0)
           ? 1
           : 0;
-      const transactions: (() => Promise<void>)[] = [];
+      const newCalls: TransactionCall[] = [];
       const operations: Operation[] = [];
 
       if (!isSuperTokenPure && wrapAmountWei > 0) {
         if (underlyingToken && approvalTransactionsCount > 0) {
-          transactions.push(async () => {
-            const tx = await underlyingToken
-              .approve({
+          newCalls.push(
+            await operationToCall(
+              underlyingToken.approve({
                 receiver: distributionSuperToken.address,
                 amount: parseUnits(
                   wrapAmountPerTimeInterval,
                   underlyingTokenBalance?.decimals ?? 18,
                 ).toString(),
-              })
-              .exec(ethersSigner);
-
-            await tx.wait();
-          });
+              }),
+            ),
+          );
         }
 
         if (isSuperTokenWrapper) {
@@ -447,15 +453,13 @@ export default function OpenFlow(props: OpenFlowProps) {
             }),
           );
         } else {
-          transactions.push(async () => {
-            const tx = await (distributionSuperToken as NativeAssetSuperToken)
-              .upgrade({
+          newCalls.push(
+            await operationToCall(
+              (distributionSuperToken as NativeAssetSuperToken).upgrade({
                 amount: wrapAmountWei.toString(),
-              })
-              .exec(ethersSigner);
-
-            await tx.wait();
-          });
+              }),
+            ),
+          );
         }
       }
 
@@ -467,14 +471,14 @@ export default function OpenFlow(props: OpenFlowProps) {
         }),
       );
 
-      transactions.push(async () => {
-        const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
+      newCalls.push(await batchOperationsToCall(sfFramework, operations));
 
-        await tx.wait();
-      });
-
-      setTransactions(transactions);
+      if (!stale) setCalls(newCalls);
     })();
+
+    return () => {
+      stale = true;
+    };
   }, [
     address,
     wrapAmountPerTimeInterval,
@@ -484,7 +488,6 @@ export default function OpenFlow(props: OpenFlowProps) {
     underlyingTokenAllowance,
     sfFramework,
     ethersProvider,
-    ethersSigner,
     distributionSuperToken,
     isSuperTokenPure,
     isSuperTokenWrapper,
@@ -589,7 +592,9 @@ export default function OpenFlow(props: OpenFlowProps) {
         })
         .exec(ethersSigner);
 
-      await tx.wait();
+      await publicClient!.waitForTransactionReceipt({
+        hash: tx.hash as `0x${string}`,
+      });
 
       setSuccess(true);
     } catch (err) {
@@ -601,7 +606,7 @@ export default function OpenFlow(props: OpenFlowProps) {
 
   const handleSubmit = async () => {
     try {
-      await executeTransactions(transactions);
+      await executeTransactions(calls);
 
       setSuccess(true);
       setWrapAmountPerTimeInterval("");
@@ -882,14 +887,14 @@ export default function OpenFlow(props: OpenFlowProps) {
               {areTransactionsLoading || isDeletingFlow ? (
                 <>
                   <Spinner size="sm" />{" "}
-                  {transactions.length > 1 && (
+                  {!isBatchSupported && calls.length > 1 && (
                     <>
-                      ({completedTransactions + 1}/{transactions.length})
+                      ({completedTransactions + 1}/{calls.length})
                     </>
                   )}
                 </>
-              ) : canSubmit && transactions.length > 1 ? (
-                <>Submit ({transactions.length})</>
+              ) : canSubmit && !isBatchSupported && calls.length > 1 ? (
+                <>Submit ({calls.length})</>
               ) : (
                 <>Submit</>
               )}

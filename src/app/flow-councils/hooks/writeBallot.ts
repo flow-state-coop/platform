@@ -44,7 +44,11 @@ export default function useWriteBallot(council: `0x${string}`) {
     } catch (err: any) {
       let errorMessage = "An error occured executing the transaction";
 
-      if (err.message?.includes("User rejected the request")) {
+      if (
+        err.message?.includes("User rejected the request") ||
+        err.name === "UserRejectedRequestError" ||
+        err.code === 4001
+      ) {
         errorMessage = "Transaction rejected";
       }
 
