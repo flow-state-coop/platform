@@ -6,7 +6,12 @@ import { mainnet } from "viem/chains";
 import { normalize } from "viem/ens";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
+import {
+  useAccount,
+  useWalletClient,
+  useSwitchChain,
+  useReadContract,
+} from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import { usePostHog } from "posthog-js/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -17,40 +22,20 @@ import Spinner from "react-bootstrap/Spinner";
 import Modal from "react-bootstrap/Modal";
 import InfoTooltip from "@/components/InfoTooltip";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
-import ActivityFeed from "../../components/ActivityFeed";
-import PoolGraph from "../../components/PoolGraph";
+import ActivityFeed from "@/app/flow-splitters/components/ActivityFeed";
+import PoolGraph from "@/app/flow-splitters/components/PoolGraph";
 import OpenFlow from "@/app/flow-splitters/components/OpenFlow";
 import InstantDistribution from "@/app/flow-splitters/components/InstantDistribution";
 import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";
 import { truncateStr } from "@/lib/utils";
+import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
 import { IPFS_GATEWAYS } from "@/lib/constants";
 
-type FlowSplitterProps = {
+type PoolDetailProps = {
   chainId: number;
-  poolId: string;
+  poolAddress: string;
 };
-
-const FLOW_SPLITTER_POOL_QUERY = gql`
-  query FlowSplitterPoolQuery($poolId: String!) {
-    pools(where: { id: $poolId }) {
-      poolAddress
-      name
-      symbol
-      token
-      poolAdminRemovedEvents(orderBy: timestamp, orderDirection: asc) {
-        address
-        timestamp
-        transactionHash
-      }
-      poolAdminAddedEvents(orderBy: timestamp, orderDirection: asc) {
-        address
-        timestamp
-        transactionHash
-      }
-    }
-  }
-`;
 
 const SUPERFLUID_QUERY = gql`
   query SuperfluidQuery($token: String!, $gdaPool: String!) {
@@ -135,8 +120,8 @@ const SUPERFLUID_QUERY = gql`
   }
 `;
 
-export default function FlowSplitter(props: FlowSplitterProps) {
-  const { poolId, chainId } = props;
+export default function PoolDetail(props: PoolDetailProps) {
+  const { poolAddress, chainId } = props;
 
   const [showOpenFlow, setShowOpenFlow] = useState(false);
   const [showInstantDistribution, setShowInstantDistribution] = useState(false);
@@ -150,33 +135,42 @@ export default function FlowSplitter(props: FlowSplitterProps) {
   const { switchChain } = useSwitchChain();
   const { data: walletClient } = useWalletClient();
   const { address, chain: connectedChain } = useAccount();
-  const {
-    data: flowSplitterPoolQueryRes,
-    loading: flowSplitterPoolQueryLoading,
-  } = useQuery(FLOW_SPLITTER_POOL_QUERY, {
-    client: getApolloClient("flowSplitter", chainId),
-    variables: {
-      poolId: `0x${Number(poolId).toString(16)}`,
-      address: address?.toLowerCase() ?? "",
-    },
-    pollInterval: 10000,
-  });
-  const pool = flowSplitterPoolQueryRes?.pools[0];
-  const { data: superfluidQueryRes, loading: superfluidQueryLoading } =
-    useQuery(SUPERFLUID_QUERY, {
-      client: getApolloClient("superfluid", chainId),
-      variables: { token: pool?.token, gdaPool: pool?.poolAddress },
-      pollInterval: 10000,
-      skip: !pool,
-    });
   const postHog = usePostHog();
 
   const network = networks.find((network) => network.id === chainId);
+
+  const { data: superToken, isLoading: superTokenLoading } = useReadContract({
+    address: poolAddress as Address,
+    abi: superfluidPoolAbi,
+    functionName: "superToken",
+    chainId,
+  });
+
+  const tokenAddress = superToken
+    ? (superToken as Address).toLowerCase()
+    : undefined;
+
+  const { data: superfluidQueryRes, loading: superfluidQueryLoading } =
+    useQuery(SUPERFLUID_QUERY, {
+      client: getApolloClient("superfluid", chainId),
+      variables: {
+        token: tokenAddress,
+        gdaPool: poolAddress.toLowerCase(),
+      },
+      pollInterval: 10000,
+      skip: !tokenAddress,
+    });
+
+  const poolName =
+    superfluidQueryRes?.pool?.poolCreatedEvent?.name &&
+    superfluidQueryRes.pool.poolCreatedEvent.name !== "Superfluid Pool"
+      ? superfluidQueryRes.pool.poolCreatedEvent.name
+      : "Distribution Pool";
   const poolToken = network?.tokens.find(
-    (token) => token.address.toLowerCase() === pool?.token,
+    (token) => token.address.toLowerCase() === tokenAddress,
   ) ?? {
-    address: pool?.token ?? "",
-    symbol: superfluidQueryRes?.token.symbol ?? "N/A",
+    address: (tokenAddress ?? "") as Address,
+    symbol: superfluidQueryRes?.token?.symbol ?? "N/A",
     icon: "",
   };
   const poolMember = superfluidQueryRes?.pool?.poolMembers.find(
@@ -192,7 +186,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
       [key: Address]: { name: string | null; avatar: string | null };
     } = {};
     (async () => {
-      if (!pool || !superfluidQueryRes) {
+      if (!superfluidQueryRes?.pool) {
         return;
       }
 
@@ -201,14 +195,6 @@ export default function FlowSplitter(props: FlowSplitterProps) {
       for (const memberUnitsUpdatedEvent of superfluidQueryRes.pool
         .memberUnitsUpdatedEvents) {
         addresses.push(memberUnitsUpdatedEvent.poolMember.account.id);
-      }
-
-      for (const poolAdminAddedEvent of pool.poolAdminAddedEvents) {
-        addresses.push(poolAdminAddedEvent.address);
-      }
-
-      for (const poolAdminRemovedEvent of pool.poolAdminRemovedEvents) {
-        addresses.push(poolAdminRemovedEvent.address);
       }
 
       for (const flowDistributionUpdatedEvent of superfluidQueryRes.pool
@@ -266,7 +252,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
 
       setEnsByAddress(ensByAddress);
     })();
-  }, [pool, superfluidQueryRes]);
+  }, [superfluidQueryRes]);
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") {
@@ -302,56 +288,31 @@ export default function FlowSplitter(props: FlowSplitterProps) {
         direction="vertical"
         className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
       >
-        {flowSplitterPoolQueryLoading || superfluidQueryLoading ? (
+        {superTokenLoading || superfluidQueryLoading ? (
           <span className="position-absolute top-50 start-50 translate-middle">
             <Spinner />
           </span>
-        ) : !network || !pool ? (
-          <p className="w-100 fs-4 text-center">Flow Splitter Not Found</p>
+        ) : !network || !superfluidQueryRes?.pool ? (
+          <p className="w-100 fs-4 text-center">Distribution Pool Not Found</p>
         ) : (
           <>
             <h1 className="d-flex flex-column flex-sm-row align-items-sm-center overflow-hidden gap-sm-1 fs-3">
               <span className="text-truncate">
-                {pool && pool.name !== "Superfluid Pool"
-                  ? pool.name
-                  : "Flow Splitter"}{" "}
-                <span className="d-none d-sm-inline-block">(</span>
+                {poolName} <span className="d-none d-sm-inline-block">(</span>
               </span>
               <Stack direction="horizontal" gap={1}>
                 <Link
-                  href={`${network.superfluidExplorer}/pools/${pool.poolAddress}`}
+                  href={`${network.superfluidExplorer}/pools/${poolAddress}`}
                   target="_blank"
                 >
-                  {truncateStr(pool.poolAddress, 14)}
+                  {truncateStr(poolAddress, 14)}
                 </Link>
                 <span className="d-none d-sm-inline-block me-1">)</span>
                 <Button
                   variant="transparent"
                   className="d-flex align-items-center mt-2 p-0 border-0"
-                  onClick={() => {
-                    !address && openConnectModal
-                      ? openConnectModal()
-                      : connectedChain?.id !== chainId
-                        ? switchChain({ chainId })
-                        : addToWallet({
-                            address: pool.poolAddress,
-                            symbol: pool.symbol,
-                            decimals: 0,
-                            image: "",
-                          });
-                  }}
-                >
-                  <InfoTooltip
-                    position={{ top: true }}
-                    target={<Image width={48} src="/wallet.svg" alt="wallet" />}
-                    content={<p className="m-0 p-2">Add to Wallet</p>}
-                  />
-                </Button>
-                <Button
-                  variant="transparent"
-                  className="mt-2 p-0 border-0"
                   onClick={() =>
-                    router.push(`/flow-splitters/${chainId}/${poolId}/admin`)
+                    router.push(`/pools/${chainId}/${poolAddress}/admin`)
                   }
                 >
                   <InfoTooltip
@@ -381,7 +342,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
                     : connectedChain?.id !== chainId
                       ? switchChain({ chainId })
                       : addToWallet({
-                          address: pool.token,
+                          address: (tokenAddress ?? "") as Address,
                           symbol: superfluidQueryRes?.token.symbol,
                           decimals: 18,
                           image: poolToken?.icon ?? "",
@@ -426,15 +387,15 @@ export default function FlowSplitter(props: FlowSplitterProps) {
             >
               Send Distribution
             </Button>
-            {superfluidQueryRes?.pool && pool && (
+            {superfluidQueryRes?.pool && (
               <ActivityFeed
-                poolSymbol={pool.symbol}
-                poolAddress={pool.poolAddress}
+                poolSymbol={superfluidQueryRes?.pool?.token?.symbol ?? "POOL"}
+                poolAddress={poolAddress}
                 network={network}
                 token={poolToken}
                 poolCreatedEvent={superfluidQueryRes?.pool.poolCreatedEvent}
-                poolAdminAddedEvents={pool.poolAdminAddedEvents}
-                poolAdminRemovedEvents={pool.poolAdminRemovedEvents}
+                poolAdminAddedEvents={[]}
+                poolAdminRemovedEvents={[]}
                 flowDistributionUpdatedEvents={
                   superfluidQueryRes?.pool.flowDistributionUpdatedEvents
                 }
@@ -445,6 +406,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
                   superfluidQueryRes?.pool.memberUnitsUpdatedEvents
                 }
                 ensByAddress={ensByAddress}
+                poolLabel="Pool"
               />
             )}
           </>
@@ -475,8 +437,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
       >
         <Modal.Header closeButton className="align-items-start border-0 p-4">
           <Modal.Title className="fs-6 fw-bold">
-            You're a recipient in this Flow Splitter but haven't connected your
-            shares.
+            You're a recipient in this pool but haven't connected your shares.
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="fs-6 p-4">
@@ -489,7 +450,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
         <Modal.Footer className="border-0 p-4">
           <PoolConnectionButton
             network={network}
-            poolAddress={pool?.poolAddress}
+            poolAddress={poolAddress}
             isConnected={!shouldConnect}
           />
         </Modal.Footer>

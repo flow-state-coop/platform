@@ -2,7 +2,13 @@
 
 import { useMemo, useCallback, useState, useEffect } from "react";
 import Link from "next/link";
-import { Address, parseAbi, isAddress } from "viem";
+import {
+  Address,
+  parseAbi,
+  isAddress,
+  encodeAbiParameters,
+  encodeFunctionData,
+} from "viem";
 import {
   useConfig,
   useAccount,
@@ -13,7 +19,6 @@ import {
 } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Papa from "papaparse";
-import { waitForReceipt } from "@/lib/utils";
 import { writeContract } from "@wagmi/core";
 import { useQuery, gql } from "@apollo/client";
 import { usePostHog } from "posthog-js/react";
@@ -29,37 +34,20 @@ import FormCheck from "react-bootstrap/FormCheck";
 import Form from "react-bootstrap/Form";
 import InfoTooltip from "@/components/InfoTooltip";
 import { getApolloClient } from "@/lib/apollo";
-import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
+import { gdaAbi } from "@/lib/abi/gda";
+import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
+import { superfluidHostAbi } from "@/lib/abi/superfluidHost";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { isNumber, truncateStr } from "@/lib/utils";
+import { SUPERFLUID_CALL_AGREEMENT_OPERATION } from "@/lib/constants";
 
-type AdminProps = {
+type PoolAdminProps = {
   chainId: number;
-  poolId: string;
+  poolAddress: string;
 };
 
-type PoolConfig = {
-  transferableUnits: boolean;
-  immutable: boolean;
-};
-
-type AdminEntry = { address: string; validationError: string };
 type MemberEntry = { address: string; units: string; validationError: string };
-
-const FLOW_SPLITTER_POOL_QUERY = gql`
-  query FlowSplitterPoolQuery($poolId: String!) {
-    pools(where: { id: $poolId }) {
-      poolAddress
-      name
-      symbol
-      token
-      poolAdmins {
-        address
-      }
-    }
-  }
-`;
 
 const SUPERFLUID_QUERY = gql`
   query SuperfluidQuery($token: String!, $gdaPool: String!) {
@@ -85,16 +73,9 @@ const SUPERFLUID_QUERY = gql`
   }
 `;
 
-export default function Admin(props: AdminProps) {
-  const { poolId, chainId } = props;
+export default function PoolAdmin(props: PoolAdminProps) {
+  const { poolAddress, chainId } = props;
 
-  const [poolConfig, setPoolConfig] = useState<PoolConfig>({
-    transferableUnits: false,
-    immutable: false,
-  });
-  const [adminsEntry, setAdminsEntry] = useState<AdminEntry[]>([
-    { address: "", validationError: "" },
-  ]);
   const [membersEntry, setMembersEntry] = useState<MemberEntry[]>([
     { address: "", units: "", validationError: "" },
   ]);
@@ -108,55 +89,61 @@ export default function Admin(props: AdminProps) {
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
-  const {
-    data: flowSplitterPoolQueryRes,
-    loading: flowSplitterPoolQueryLoading,
-  } = useQuery(FLOW_SPLITTER_POOL_QUERY, {
-    client: getApolloClient("flowSplitter", chainId),
-    variables: {
-      poolId: `0x${Number(poolId).toString(16)}`,
-      address: address?.toLowerCase() ?? "",
-    },
-    pollInterval: 10000,
+
+  const { data: poolAdmin } = useReadContract({
+    address: poolAddress as Address,
+    abi: superfluidPoolAbi,
+    functionName: "admin",
+    chainId,
   });
-  const poolAdmins = flowSplitterPoolQueryRes?.pools[0]?.poolAdmins;
-  const pool = flowSplitterPoolQueryRes?.pools[0];
+
+  const { data: superToken, isLoading: superTokenLoading } = useReadContract({
+    address: poolAddress as Address,
+    abi: superfluidPoolAbi,
+    functionName: "superToken",
+    chainId,
+  });
+
+  const tokenAddress = superToken
+    ? (superToken as Address).toLowerCase()
+    : undefined;
+
   const { data: superfluidQueryRes, loading: superfluidQueryLoading } =
     useQuery(SUPERFLUID_QUERY, {
       client: getApolloClient("superfluid", chainId),
-      variables: { token: pool?.token, gdaPool: pool?.poolAddress },
+      variables: {
+        token: tokenAddress,
+        gdaPool: poolAddress.toLowerCase(),
+      },
       pollInterval: 10000,
-      skip: !pool,
+      skip: !tokenAddress,
     });
+
   const { data: unitsTrasnferability } = useReadContract({
-    address: pool?.poolAddress,
+    address: poolAddress as Address,
     abi: parseAbi([
       "function transferabilityForUnitsOwner() view returns (bool)",
     ]),
     functionName: "transferabilityForUnitsOwner",
-    query: { enabled: !!pool },
+    chainId,
+    query: { enabled: !!tokenAddress },
   });
+
   const wagmiConfig = useConfig();
   const publicClient = usePublicClient();
   const postHog = usePostHog();
 
   const network = networks.find((network) => network.id === chainId);
   const poolToken = network?.tokens.find(
-    (token) => token.address.toLowerCase() === pool?.token,
+    (token) => token.address.toLowerCase() === tokenAddress,
   );
-  const isValidAdminsEntry = adminsEntry.every(
-    (adminEntry) =>
-      adminEntry.validationError === "" && adminEntry.address !== "",
-  );
+  const isAdmin =
+    address?.toLowerCase() === (poolAdmin as Address)?.toLowerCase();
   const isValidMembersEntry = membersEntry.every(
     (memberEntry) =>
       memberEntry.validationError === "" &&
       memberEntry.address !== "" &&
       memberEntry.units !== "",
-  );
-  const isAdmin = !!poolAdmins?.find(
-    (poolAdmin: { address: string }) =>
-      poolAdmin.address === address?.toLowerCase(),
   );
 
   const totalUnits = useMemo(
@@ -173,23 +160,6 @@ export default function Admin(props: AdminProps) {
     const compareArrays = (a: string[], b: string[]) =>
       a.length === b.length && a.every((elem, i) => elem === b[i]);
 
-    const sortedPoolAdmins = poolAdmins
-      ? [...poolAdmins]
-          ?.sort((a: { address: string }, b: { address: string }) =>
-            a.address > b.address ? -1 : 1,
-          )
-          .map((admin: { address: string }) => admin.address)
-      : [];
-    const sortedAdminsEntry = adminsEntry
-      ? [...adminsEntry]
-          .sort((a, b) =>
-            a.address.toLowerCase() > b.address.toLowerCase() ? -1 : 1,
-          )
-          .map((admin) => admin.address.toLowerCase())
-      : [];
-    const hasChangesAdmins =
-      poolConfig.immutable ||
-      (sortedPoolAdmins && !compareArrays(sortedPoolAdmins, sortedAdminsEntry));
     const sortedPoolMembers = superfluidQueryRes?.pool?.poolMembers
       ? [...superfluidQueryRes.pool.poolMembers].sort(
           (a: { account: { id: string } }, b: { account: { id: string } }) =>
@@ -216,43 +186,23 @@ export default function Admin(props: AdminProps) {
           sortedMembersEntry.map((member) => member.units),
         ));
 
-    return hasChangesAdmins || hasChangesMembers ? true : false;
-  }, [poolConfig, poolAdmins, adminsEntry, superfluidQueryRes, membersEntry]);
+    return hasChangesMembers || membersToRemove.length > 0;
+  }, [superfluidQueryRes, membersEntry, membersToRemove]);
 
   const addPoolToWallet = useCallback(() => {
-    if (!pool) {
-      return;
-    }
-
     walletClient?.request({
       method: "wallet_watchAsset",
       params: {
         type: "ERC20",
         options: {
-          address: pool.poolAddress,
-          symbol: pool.symbol,
+          address: poolAddress,
+          symbol: superfluidQueryRes?.pool?.token?.symbol ?? "POOL",
           decimals: 0,
           image: "",
         },
       },
     });
-  }, [pool, walletClient]);
-
-  useEffect(() => {
-    (async () => {
-      if (flowSplitterPoolQueryLoading) {
-        return;
-      }
-
-      if (poolAdmins) {
-        setAdminsEntry(
-          poolAdmins.map((poolAdmin: { address: string }) => {
-            return { address: poolAdmin.address, validationError: "" };
-          }),
-        );
-      }
-    })();
-  }, [flowSplitterPoolQueryLoading, pool, poolAdmins]);
+  }, [poolAddress, superfluidQueryRes, walletClient]);
 
   useEffect(() => {
     (async () => {
@@ -335,36 +285,34 @@ export default function Admin(props: AdminProps) {
           });
         }
 
-        const membersToRemove = [];
-
-        for (const i in membersEntry) {
-          if (membersEntry[i].units === "0") {
-            if (!membersEntry[i].validationError) {
-              membersToRemove.push(membersEntry[i]);
-              membersEntry.splice(Number(i), 1);
-            }
-          }
-        }
+        const zeroUnitMembers = membersEntry.filter(
+          (e) => e.units === "0" && !e.validationError,
+        );
+        const filteredMembers = membersEntry.filter(
+          (e) => !(e.units === "0" && !e.validationError),
+        );
 
         const csvAddresses = data.map((row) => row[0].toLowerCase());
         const existingMembers = superfluidQueryRes?.pool.poolMembers;
         const excludedMembers = existingMembers.filter(
-          (existingMember: { account: { id: string }; units: string }) =>
-            existingMember.units !== "0" &&
+          (existingMember: { account: { id: string } }) =>
             !csvAddresses.some(
               (address) => existingMember.account.id === address,
             ),
         );
 
-        for (const excludedMember of excludedMembers) {
-          membersToRemove.push({
-            address: excludedMember.account.id,
-            units: excludedMember.units,
-            validationError: "",
-          });
-        }
+        const membersToRemove = [
+          ...zeroUnitMembers,
+          ...excludedMembers.map(
+            (excludedMember: { account: { id: string }; units: string }) => ({
+              address: excludedMember.account.id,
+              units: excludedMember.units,
+              validationError: "",
+            }),
+          ),
+        ];
 
-        setMembersEntry(membersEntry);
+        setMembersEntry(filteredMembers);
         setMembersToRemove(membersToRemove);
       },
     });
@@ -380,10 +328,6 @@ export default function Admin(props: AdminProps) {
       setTransactionError("");
       setIsTransactionLoading(true);
 
-      const validAdmins = adminsEntry.filter(
-        (adminEntry) =>
-          adminEntry.validationError === "" && adminEntry.address !== "",
-      );
       const validMembers = membersEntry.filter(
         (memberEntry) =>
           memberEntry.validationError === "" &&
@@ -395,57 +339,53 @@ export default function Admin(props: AdminProps) {
           ),
       );
 
-      const adminsToRemove = poolAdmins
-        .map((admin: { address: string }) => admin.address)
-        .filter(
-          (x: string) =>
-            !validAdmins
-              .map((admin: { address: string }) => admin.address)
-              .includes(x),
+      const changedMembers = validMembers
+        .map((member) => ({
+          address: member.address as Address,
+          units: BigInt(member.units),
+        }))
+        .concat(
+          membersToRemove.map((member) => ({
+            address: member.address as Address,
+            units: BigInt(0),
+          })),
         );
 
+      const operations = changedMembers.map((member) => ({
+        operationType: SUPERFLUID_CALL_AGREEMENT_OPERATION,
+        target: network.gda,
+        data: encodeAbiParameters(
+          [{ type: "bytes" }, { type: "bytes" }],
+          [
+            encodeFunctionData({
+              abi: gdaAbi,
+              functionName: "updateMemberUnits",
+              args: [
+                poolAddress as Address,
+                member.address,
+                member.units,
+                "0x" as `0x${string}`,
+              ],
+            }),
+            "0x" as `0x${string}`,
+          ],
+        ),
+      }));
+
       const hash = await writeContract(wagmiConfig, {
-        address: network.flowSplitter,
-        abi: flowSplitterAbi,
-        functionName: "updatePool",
-        args: [
-          BigInt(poolId),
-          validMembers
-            .map((member) => {
-              return {
-                account: member.address as Address,
-                units: BigInt(member.units),
-              };
-            })
-            .concat(
-              membersToRemove.map((member) => {
-                return { account: member.address as Address, units: BigInt(0) };
-              }),
-            ),
-          poolConfig.immutable
-            ? poolAdmins.map((admin: { address: Address }) => {
-                return { account: admin.address, status: BigInt(1) };
-              })
-            : validAdmins
-                .map((admin) => {
-                  return {
-                    account: admin.address as Address,
-                    status: BigInt(0),
-                  };
-                })
-                .concat(
-                  adminsToRemove.map((adminAddress: string) => {
-                    return { account: adminAddress, status: BigInt(1) };
-                  }),
-                ),
-          "",
-        ],
+        address: network.superfluidHost,
+        abi: superfluidHostAbi,
+        functionName: "batchCall",
+        args: [operations],
       });
 
-      await waitForReceipt(publicClient, hash);
+      await publicClient.waitForTransactionReceipt({
+        hash,
+        confirmations: 3,
+      });
 
       setIsTransactionLoading(false);
-      setTransactionSuccess("Flow Splitter Updated Successfully");
+      setTransactionSuccess("Pool Updated Successfully");
       setMembersToRemove([]);
     } catch (err) {
       console.error(err);
@@ -461,7 +401,7 @@ export default function Admin(props: AdminProps) {
         direction="vertical"
         className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
       >
-        {flowSplitterPoolQueryLoading || superfluidQueryLoading ? (
+        {superTokenLoading || superfluidQueryLoading ? (
           <span className="position-absolute top-50 start-50 translate-middle">
             <Spinner />
           </span>
@@ -471,17 +411,15 @@ export default function Admin(props: AdminProps) {
           <>
             <h1 className="d-flex flex-column flex-sm-row align-items-sm-center overflow-hidden gap-sm-1 fs-3">
               <span className="text-truncate">
-                {pool && pool.name !== "Superfluid Pool"
-                  ? pool.name
-                  : "Flow Splitter"}{" "}
+                Distribution Pool{" "}
                 <span className="d-none d-sm-inline-block">(</span>
               </span>
               <Stack direction="horizontal" gap={1}>
                 <Link
-                  href={`${network.superfluidExplorer}/pools/${pool.poolAddress}`}
+                  href={`${network.superfluidExplorer}/pools/${poolAddress}`}
                   target="_blank"
                 >
-                  {truncateStr(pool.poolAddress, 14)}
+                  {truncateStr(poolAddress, 14)}
                 </Link>
                 <span className="d-none d-sm-inline-block">)</span>
                 <Button
@@ -603,12 +541,6 @@ export default function Admin(props: AdminProps) {
                         <p className="m-0 p-2">
                           Should recipients be able to transfer (or trade) their
                           shares?
-                          <br />
-                          <br />
-                          Carefully consider the implications with your Contract
-                          Admin selection below and your particular use case
-                          before choosing to enable transferability. This is not
-                          editable after launch.
                         </p>
                       }
                     />
@@ -640,7 +572,7 @@ export default function Admin(props: AdminProps) {
             </Card>
             <Card className="bg-lace-100 rounded-4 border-0 mt-8 px-10 py-8">
               <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-6 text-secondary fw-semi-bold">
-                Contract Admin
+                Pool Admin
                 <InfoTooltip
                   position={{ top: true }}
                   target={
@@ -654,159 +586,28 @@ export default function Admin(props: AdminProps) {
                   }
                   content={
                     <p className="m-0 p-2">
-                      Set the address(es), including multisigs, that should be
-                      able to update the shares of your Flow Splitter for your
-                      use case.
-                      <br />
-                      <br />
-                      Admins can relinquish, transfer, or add others to the
-                      admin role. If there are no admins, your Flow Splitter
-                      contract is immutable.
+                      Distribution pool admins are fixed at deployment.
                     </p>
                   }
                 />
               </Card.Header>
               <Card.Body className="p-0">
-                <Form.Group>
-                  <Stack direction="horizontal" gap={5}>
-                    <FormCheck type="radio">
-                      <FormCheck.Input
-                        type="radio"
-                        checked={!poolConfig.immutable}
-                        disabled={!isAdmin}
-                        onChange={() =>
-                          setPoolConfig({
-                            ...poolConfig,
-                            immutable: false,
-                          })
-                        }
-                      />
-                      <FormCheck.Label className="fw-semi-bold">
-                        Admin
-                      </FormCheck.Label>
-                    </FormCheck>
-                    <FormCheck type="radio">
-                      <FormCheck.Input
-                        type="radio"
-                        checked={!!poolConfig.immutable}
-                        disabled={!isAdmin}
-                        onChange={() =>
-                          setPoolConfig({
-                            ...poolConfig,
-                            immutable: true,
-                          })
-                        }
-                      />
-                      <FormCheck.Label className="fw-semi-bold">
-                        No Admin
-                      </FormCheck.Label>
-                    </FormCheck>
-                  </Stack>
-                  {!poolConfig.immutable && (
-                    <div className="mt-4">
-                      {adminsEntry.map((adminEntry, i) => (
-                        <Stack
-                          direction="vertical"
-                          className="position-relative mb-3"
-                          key={i}
-                        >
-                          <Stack
-                            direction="horizontal"
-                            gap={2}
-                            className="align-items-center"
-                          >
-                            <Form.Control
-                              key={i}
-                              type="text"
-                              value={adminEntry.address}
-                              disabled={!isAdmin}
-                              className="border-0 fw-semi-bold"
-                              style={{
-                                width: !isMobile ? "50%" : "",
-                                paddingTop: 12,
-                                paddingBottom: 12,
-                              }}
-                              onChange={(e) => {
-                                const prevAdminsEntry = [...adminsEntry];
-                                const value = e.target.value;
-
-                                if (!isAddress(value)) {
-                                  prevAdminsEntry[i].validationError =
-                                    "Invalid Address";
-                                } else if (
-                                  prevAdminsEntry
-                                    .map((prevAdmin) =>
-                                      prevAdmin.address.toLowerCase(),
-                                    )
-                                    .includes(value.toLowerCase())
-                                ) {
-                                  prevAdminsEntry[i].validationError =
-                                    "Address already added";
-                                } else {
-                                  prevAdminsEntry[i].validationError = "";
-                                }
-
-                                prevAdminsEntry[i].address = value;
-
-                                setAdminsEntry(prevAdminsEntry);
-                              }}
-                            />
-                            <Button
-                              variant="transparent"
-                              className="p-0 border-0"
-                              disabled={!isAdmin}
-                              onClick={() => {
-                                setAdminsEntry((prev) =>
-                                  prev.filter(
-                                    (_, prevAdminEntryIndex) =>
-                                      prevAdminEntryIndex !== i,
-                                  ),
-                                );
-                              }}
-                            >
-                              <Image
-                                src="/close.svg"
-                                alt="Remove"
-                                width={28}
-                                height={28}
-                              />
-                            </Button>
-                          </Stack>
-                          {adminEntry.validationError ? (
-                            <Card.Text
-                              className="position-absolute mb-0 ms-2 ps-1 text-danger"
-                              style={{ bottom: 1, fontSize: "0.7rem" }}
-                            >
-                              {adminEntry.validationError}
-                            </Card.Text>
-                          ) : null}
-                        </Stack>
-                      ))}
-                      <Button
-                        variant="transparent"
-                        disabled={!isAdmin}
-                        className="p-0 text-primary text-decoration-underline border-0"
-                        onClick={() =>
-                          setAdminsEntry((prev) =>
-                            prev.concat({
-                              address: "",
-                              validationError: "",
-                            }),
-                          )
-                        }
-                      >
-                        <Card.Text className="mb-0 ms-sm-2 ps-sm-1 fw-semi-bold">
-                          Add another admin
-                        </Card.Text>
-                      </Button>
-                    </div>
-                  )}
-                </Form.Group>
+                <Form.Control
+                  type="text"
+                  disabled
+                  value={(poolAdmin as Address) ?? ""}
+                  className="bg-white border-0 fw-semi-bold"
+                  style={{
+                    width: !isMobile ? "50%" : "",
+                    paddingTop: 12,
+                    paddingBottom: 12,
+                  }}
+                />
               </Card.Body>
             </Card>
             <Card className="bg-lace-100 rounded-4 border-0 mt-8 px-10 py-8">
               <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-6 text-secondary fw-semi-bold">
-                Share Register ({pool?.symbol ? pool.symbol : "POOL"})
+                Share Register (POOL)
                 <InfoTooltip
                   position={{ top: true }}
                   target={
@@ -820,10 +621,9 @@ export default function Admin(props: AdminProps) {
                   }
                   content={
                     <p className="m-0 p-2">
-                      As tokens are streamed to the Flow Splitter, they're
-                      proportionally distributed in real time to recipients
-                      according to their percentage of the total outstanding
-                      shares.
+                      As tokens are streamed to the pool, they're proportionally
+                      distributed in real time to recipients according to their
+                      percentage of the total outstanding shares.
                       <br />
                       <br />
                       Any changes to the total number of outstanding or a
@@ -1110,7 +910,7 @@ export default function Admin(props: AdminProps) {
                       ]),
                     )}
                     target="_blank"
-                    download="Flow_Splitter.csv"
+                    download="Pool_Members.csv"
                     className="m-0 bg-secondary px-10 py-4 rounded-4 text-light fw-semi-bold text-decoration-none"
                   >
                     Export Current
@@ -1142,18 +942,8 @@ export default function Admin(props: AdminProps) {
               </Card.Body>
             </Card>
             <Stack direction="vertical" className="mt-8">
-              {poolConfig.immutable && (
-                <Card.Text className="mb-2 text-danger">
-                  Warning: You are changing your contract to "No Admin." You
-                  won't be able to make changes after this transaction.
-                </Card.Text>
-              )}
               <Button
-                disabled={
-                  !hasChanges ||
-                  (!poolConfig.immutable && !isValidAdminsEntry) ||
-                  !isValidMembersEntry
-                }
+                disabled={!hasChanges || !isValidMembersEntry}
                 className="w-100 py-4 rounded-4 fs-6 fw-semi-bold"
                 onClick={() =>
                   !address && openConnectModal
@@ -1166,7 +956,7 @@ export default function Admin(props: AdminProps) {
                 {isTransactionLoading ? (
                   <Spinner size="sm" className="ms-2" />
                 ) : (
-                  "Update Flow Splitter"
+                  "Update Pool"
                 )}
               </Button>
             </Stack>
@@ -1182,7 +972,7 @@ export default function Admin(props: AdminProps) {
                 borderColor: "rgb(163, 207, 186.6)",
               }}
             >
-              Flow Splitter Updated Successfully!
+              Pool Updated Successfully!
             </Toast>
             {transactionError ? (
               <Alert variant="danger" className="w-100 mt-4 p-4 fw-semi-bold">
