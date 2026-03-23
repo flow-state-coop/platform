@@ -3,6 +3,7 @@ import { Address } from "viem";
 export const DEFAULT_CHAIN_ID = 8453;
 export const DEFAULT_POOL_ID = "63";
 export const SECONDS_IN_MONTH = 2628000;
+export const SUPERFLUID_CALL_AGREEMENT_OPERATION = 201;
 export const MAX_FLOW_RATE = BigInt("0x7fffffffffffffffffffffff"); //  96bit signed int max
 export const UINT256_MAX = BigInt(
   "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
