@@ -119,7 +119,7 @@ export default function PoolAdmin(props: PoolAdminProps) {
       skip: !tokenAddress,
     });
 
-  const { data: unitsTrasnferability } = useReadContract({
+  const { data: unitsTransferability } = useReadContract({
     address: poolAddress as Address,
     abi: parseAbi([
       "function transferabilityForUnitsOwner() view returns (bool)",
@@ -205,25 +205,23 @@ export default function PoolAdmin(props: PoolAdminProps) {
   }, [poolAddress, superfluidQueryRes, walletClient]);
 
   useEffect(() => {
-    (async () => {
-      if (!superfluidQueryRes?.pool?.poolMembers) {
-        return;
-      }
+    if (!superfluidQueryRes?.pool?.poolMembers) {
+      return;
+    }
 
-      const membersEntry = superfluidQueryRes.pool.poolMembers
-        .filter((member: { units: string }) => member.units !== "0")
-        .map((member: { account: { id: string }; units: string }) => {
-          return {
-            address: member.account.id,
-            units: member.units,
-            validationError: "",
-          };
-        });
+    const membersEntry = superfluidQueryRes.pool.poolMembers
+      .filter((member: { units: string }) => member.units !== "0")
+      .map((member: { account: { id: string }; units: string }) => {
+        return {
+          address: member.account.id,
+          units: member.units,
+          validationError: "",
+        };
+      });
 
-      if (membersEntry.length > 0) {
-        setMembersEntry(membersEntry);
-      }
-    })();
+    if (membersEntry.length > 0) {
+      setMembersEntry(membersEntry);
+    }
   }, [superfluidQueryRes]);
 
   useEffect(() => {
@@ -550,7 +548,7 @@ export default function PoolAdmin(props: PoolAdminProps) {
                       <FormCheck.Input
                         type="radio"
                         disabled
-                        checked={!unitsTrasnferability}
+                        checked={!unitsTransferability}
                       />
                       <FormCheck.Label className="fw-semi-bold">
                         Non-Transferable (Admin Only)
@@ -560,7 +558,7 @@ export default function PoolAdmin(props: PoolAdminProps) {
                       <FormCheck.Input
                         type="radio"
                         disabled
-                        checked={!!unitsTrasnferability}
+                        checked={!!unitsTransferability}
                       />
                       <FormCheck.Label className="fw-semi-bold">
                         Transferable by Recipients
