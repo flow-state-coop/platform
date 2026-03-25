@@ -310,7 +310,7 @@ export default function Review(props: ReviewProps) {
     } catch (err) {
       console.error(err);
     }
-  }, [flowCouncil, chainId]);
+  }, [flowCouncil, chainId, session]);
 
   const isManager = useMemo(() => {
     const flowCouncilManager = flowCouncil?.flowCouncilManagers.find(
@@ -659,12 +659,18 @@ export default function Review(props: ReviewProps) {
               }}
             >
               <Table striped hover>
-                <thead>
+                <thead
+                  style={{
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 1,
+                  }}
+                >
                   <tr>
-                    <th>Address</th>
-                    <th>Name</th>
-                    <th className="text-center">Status</th>
-                    <th className="text-end">
+                    <th className="bg-white">Address</th>
+                    <th className="bg-white">Name</th>
+                    <th className="bg-white text-center">Status</th>
+                    <th className="bg-white text-end">
                       {applications.length > 0 && (
                         <Button
                           variant="link"
