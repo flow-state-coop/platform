@@ -125,6 +125,9 @@ export async function GET(request: Request) {
       if (projectId) {
         query = query.where("projectId", "=", parseInt(projectId, 10));
       }
+      if (effectiveChannelType === "GROUP_PROJECT" && roundIdNum) {
+        query = query.where("roundId", "=", roundIdNum);
+      }
     } else if (roundIdNum) {
       query = query.where("roundId", "=", roundIdNum);
     }
