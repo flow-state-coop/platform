@@ -3,6 +3,10 @@
     {
       "path": "/api/flow-caster/sup/distribution",
       "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/goodbuilders/milestone-reminder",
+      "schedule": "0 12 * * 2"
     }
   ]
 }
