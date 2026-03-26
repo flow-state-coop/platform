@@ -54,7 +54,7 @@ type ProjectTabProps = {
   csrfToken: string;
   project: Project | null;
   isLoading: boolean;
-  onSave: (projectId: number, defaultFundingAddress?: string) => void;
+  onSave: (project: Project) => void;
   onCancel: () => void;
 };
 
@@ -328,7 +328,31 @@ export default function ProjectTab(props: ProjectTabProps) {
       }
 
       setIsSubmitting(false);
-      onSave(json.project.id, form.defaultFundingAddress);
+      onSave({
+        id: json.project.id,
+        details: {
+          name: form.name,
+          description: form.description,
+          logoUrl: logoUrl,
+          bannerUrl: bannerUrl,
+          website: form.website,
+          twitter: form.twitter,
+          defaultFundingAddress: form.defaultFundingAddress,
+          demoUrl: form.demoUrl,
+          farcaster: form.farcaster,
+          telegram: form.telegram,
+          discord: form.discord,
+          karmaProfile: form.karmaProfile,
+          gardensPool: form.gardensPool,
+          githubRepos: form.githubRepos.filter((r) => r && isValidGithubRepo(r)),
+          smartContracts: form.smartContracts.filter((c) => c.address),
+          otherLinks: form.otherLinks.filter((l) => l.url && l.description),
+        },
+        managerAddresses: form.managerAddresses.filter(
+          (a) => a && isAddress(a),
+        ),
+        managerEmails: form.managerEmails.filter((e) => e && isValidEmail(e)),
+      });
     } catch (err) {
       console.error(err);
       setError("Failed to save project");
