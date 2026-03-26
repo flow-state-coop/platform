@@ -21,7 +21,7 @@ export default function Header() {
   const { isMobile, isTablet, isSmallScreen } = useMediaQuery();
 
   return (
-    <header className="w-100" style={{ overflow: "hidden" }}>
+    <header className="w-100">
       <Nav>
         <Stack
           direction="horizontal"
