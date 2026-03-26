@@ -54,7 +54,7 @@ type ProjectTabProps = {
   csrfToken: string;
   project: Project | null;
   isLoading: boolean;
-  onSave: (projectId: number) => void;
+  onSave: (projectId: number, defaultFundingAddress?: string) => void;
   onCancel: () => void;
 };
 
@@ -328,7 +328,7 @@ export default function ProjectTab(props: ProjectTabProps) {
       }
 
       setIsSubmitting(false);
-      onSave(json.project.id);
+      onSave(json.project.id, form.defaultFundingAddress);
     } catch (err) {
       console.error(err);
       setError("Failed to save project");

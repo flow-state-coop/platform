@@ -145,8 +145,23 @@ export default function Application(props: ApplicationProps) {
     router.push(`/flow-councils/application/${chainId}/${councilId}`);
   };
 
-  const handleProjectSaved = (projectId: number) => {
+  const handleProjectSaved = (
+    projectId: number,
+    defaultFundingAddress?: string,
+  ) => {
     setSavedProjectId(projectId);
+    if (defaultFundingAddress) {
+      setProject((prev) =>
+        prev
+          ? { ...prev, details: { ...prev.details, defaultFundingAddress } }
+          : {
+              id: projectId,
+              details: { defaultFundingAddress },
+              managerAddresses: [],
+              managerEmails: [],
+            },
+      );
+    }
     setProjectComplete(true);
     setActiveTab("round");
     window.scrollTo(0, 0);
