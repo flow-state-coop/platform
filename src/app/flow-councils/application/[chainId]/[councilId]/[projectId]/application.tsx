@@ -145,8 +145,9 @@ export default function Application(props: ApplicationProps) {
     router.push(`/flow-councils/application/${chainId}/${councilId}`);
   };
 
-  const handleProjectSaved = (projectId: number) => {
-    setSavedProjectId(projectId);
+  const handleProjectSaved = (savedProject: Project) => {
+    setSavedProjectId(savedProject.id);
+    setProject(savedProject);
     setProjectComplete(true);
     setActiveTab("round");
     window.scrollTo(0, 0);
