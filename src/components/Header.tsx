@@ -2,11 +2,9 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useAccount } from "wagmi";
 import { useRouter, usePathname, useParams } from "next/navigation";
 import ConnectWallet from "@/components/ConnectWallet";
 import FlowCouncilWallet from "@/app/flow-councils/components/FlowCouncilWallet";
-import CreateCoinbaseWallet from "@/components/CreateCoinbaseWallet";
 import Nav from "react-bootstrap/Nav";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
@@ -20,15 +18,15 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
-  const { address } = useAccount();
-  const { isMobile, isTablet } = useMediaQuery();
+  const { isMobile, isTablet, isSmallScreen } = useMediaQuery();
 
   return (
-    <header className="w-100">
+    <header className="w-100" style={{ overflow: "hidden" }}>
       <Nav>
         <Stack
           direction="horizontal"
           className="justify-content-between w-100 px-3 py-5 px-sm-12 px-xxl-16 py-sm-8"
+          style={{ flexWrap: "nowrap" }}
         >
           <Stack direction="horizontal" gap={4} className="cursor-pointer">
             <Image
@@ -38,7 +36,9 @@ export default function Header() {
               height={isMobile || isTablet ? 48 : 64}
               onClick={() => router.push("/")}
             />
-            <Image src="/wordmark.svg" alt="Flow State" />
+            {!isSmallScreen && (
+              <Image src="/wordmark.svg" alt="Flow State" />
+            )}
           </Stack>
           {(isMobile || isTablet) && (
             <Button
@@ -55,21 +55,24 @@ export default function Header() {
                 <Stack direction="horizontal" gap={2}>
                   <Button
                     variant="transparent"
-                    className="px-10 py-4 fs-lg fw-bold"
+                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold`}
+                    style={{ whiteSpace: "nowrap" }}
                     onClick={() => router.push("/?for-funders=true")}
                   >
                     For funders
                   </Button>
                   <Button
                     variant="transparent"
-                    className="px-10 py-4 fs-lg fw-bold"
+                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold`}
+                    style={{ whiteSpace: "nowrap" }}
                     onClick={() => router.push("/?for-builders=true")}
                   >
                     For builders
                   </Button>
                   <Button
                     variant="transparent"
-                    className="px-10 py-4 fs-lg fw-bold"
+                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold`}
+                    style={{ whiteSpace: "nowrap" }}
                     onClick={() => router.push("/?for-everyone=true")}
                   >
                     For everyone
@@ -79,14 +82,16 @@ export default function Header() {
                 <Stack direction="horizontal" gap={2}>
                   <Button
                     variant="transparent"
-                    className="px-10 py-4 fs-lg fw-bold border-0"
+                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold border-0`}
+                    style={{ whiteSpace: "nowrap" }}
                     onClick={() => router.push("/flow-councils")}
                   >
                     Flow Council
                   </Button>
                   <Button
                     variant="transparent"
-                    className="px-10 py-4 fs-lg fw-bold border-0"
+                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold border-0`}
+                    style={{ whiteSpace: "nowrap" }}
                     onClick={() => router.push("/flow-splitters")}
                   >
                     Flow Splitter
@@ -95,14 +100,15 @@ export default function Header() {
                     variant="link"
                     href="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
                     target="_blank"
-                    className="px-10 py-4 fs-lg fw-bold border-0 text-decoration-none"
+                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold border-0 text-decoration-none`}
+                    style={{ whiteSpace: "nowrap" }}
                   >
                     Flow Caster
                   </Button>
                 </Stack>
               )}
-              <Stack direction="horizontal" gap={6}>
-                {pathname === "/" && (
+              <Stack direction="horizontal" gap={isSmallScreen ? 4 : 6}>
+                {pathname === "/" && !isSmallScreen && (
                   <Stack
                     direction="horizontal"
                     gap={6}
@@ -150,12 +156,12 @@ export default function Header() {
                   </Stack>
                 )}
                 <Suspense>
-                  {pathname !== "/" && !address && !isMobile && !isTablet && (
-                    <CreateCoinbaseWallet />
-                  )}
                   {pathname === "/" ? (
                     <Link href="/explore">
-                      <Button className="px-10 py-4 rounded-3 text-white fs-lg fw-bold">
+                      <Button
+                        className={`${isSmallScreen ? "px-6" : "px-10"} py-4 rounded-3 text-white fs-lg fw-bold`}
+                        style={{ whiteSpace: "nowrap" }}
+                      >
                         Explore flows
                       </Button>
                     </Link>

@@ -24,7 +24,7 @@ function useMediaQuery() {
         "(min-width: 576px) and (max-width: 992px)",
       );
       const smallScreenQuery = window.matchMedia(
-        "(min-width: 1000px) and (max-width: 1440px)",
+        "(min-width: 992px) and (max-width: 1400px)",
       );
       const mediumScreenQuery = window.matchMedia(
         "(min-width: 1400px) and (max-width: 1920px)",
@@ -61,7 +61,13 @@ function useMediaQuery() {
     };
   }, []);
 
-  return { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen };
+  return {
+    isMobile,
+    isTablet,
+    isSmallScreen,
+    isMediumScreen,
+    isBigScreen,
+  };
 }
 
 export { useMediaQuery };

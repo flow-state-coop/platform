@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useDisconnect } from "wagmi";
 import { networks } from "@/lib/networks";
+import { useMediaQuery } from "@/hooks/mediaQuery";
 import Stack from "react-bootstrap/Stack";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
@@ -12,6 +13,7 @@ export default function ConnectWallet({
 }: {
   onConnect?: () => void;
 }) {
+  const { isSmallScreen } = useMediaQuery();
   const { disconnect } = useDisconnect();
 
   return (
@@ -39,8 +41,9 @@ export default function ConnectWallet({
                       openConnectModal();
                     }}
                     className="border-4 rounded-4 px-10 py-4 fs-lg fw-semi-bold"
+                    style={{ whiteSpace: "nowrap" }}
                   >
-                    Connect Wallet
+                    {isSmallScreen ? "Connect" : "Connect Wallet"}
                   </Button>
                 );
               }
@@ -84,6 +87,7 @@ export default function ConnectWallet({
                       bsPrefix="dropdown"
                       variant="outline-dark"
                       className="px-10 py-4 border-4 rounded-4"
+                      style={{ whiteSpace: "nowrap" }}
                     >
                       <span className="fw-semi-bold sensitive">
                         {account.displayName}

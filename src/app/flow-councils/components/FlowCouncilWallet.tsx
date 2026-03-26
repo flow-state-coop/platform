@@ -15,7 +15,7 @@ export default function FlowCouncilWallet({
 }) {
   const { councilMember, currentBallot, newBallot, dispatchShowBallot } =
     useFlowCouncil();
-  const { isMobile } = useMediaQuery();
+  const { isMobile, isSmallScreen } = useMediaQuery();
 
   const currentVotes =
     newBallot?.votes?.map((a) => a.amount)?.reduce((a, b) => a + b, 0) ?? 0;
@@ -54,8 +54,9 @@ export default function FlowCouncilWallet({
                           openConnectModal();
                         }}
                         className="px-10 py-4 rounded-4 fw-semi-bold text-light shadow"
+                        style={{ whiteSpace: "nowrap" }}
                       >
-                        Connect Wallet
+                        {isSmallScreen ? "Connect" : "Connect Wallet"}
                       </Button>
                     );
                   }
@@ -91,6 +92,7 @@ export default function FlowCouncilWallet({
                       <Button
                         variant="transparent"
                         className="d-flex align-items-center gap-1 py-4 border border-4 border-dark rounded-4 fw-semi-bold shadow"
+                        style={{ whiteSpace: "nowrap" }}
                         onClick={() => dispatchShowBallot({ type: "show" })}
                       >
                         {newBallot?.votes &&
@@ -138,6 +140,7 @@ export default function FlowCouncilWallet({
                       <Button
                         variant="transparent"
                         className="d-flex align-items-center gap-1 py-4 border border-4 border-dark fw-semi-bold rounded-4 shadow"
+                        style={{ whiteSpace: "nowrap" }}
                         onClick={openAccountModal}
                       >
                         <Image
