@@ -13,7 +13,7 @@ export default function ConnectWallet({
 }: {
   onConnect?: () => void;
 }) {
-  const { isCompactDesktop } = useMediaQuery();
+  const { isSmallScreen } = useMediaQuery();
   const { disconnect } = useDisconnect();
 
   return (
@@ -43,7 +43,7 @@ export default function ConnectWallet({
                     className="border-4 rounded-4 px-10 py-4 fs-lg fw-semi-bold"
                     style={{ whiteSpace: "nowrap" }}
                   >
-                    {isCompactDesktop ? "Connect" : "Connect Wallet"}
+                    {isSmallScreen ? "Connect" : "Connect Wallet"}
                   </Button>
                 );
               }

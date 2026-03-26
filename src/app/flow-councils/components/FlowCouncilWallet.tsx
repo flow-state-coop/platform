@@ -15,7 +15,7 @@ export default function FlowCouncilWallet({
 }) {
   const { councilMember, currentBallot, newBallot, dispatchShowBallot } =
     useFlowCouncil();
-  const { isMobile, isCompactDesktop } = useMediaQuery();
+  const { isMobile, isSmallScreen } = useMediaQuery();
 
   const currentVotes =
     newBallot?.votes?.map((a) => a.amount)?.reduce((a, b) => a + b, 0) ?? 0;
@@ -56,7 +56,7 @@ export default function FlowCouncilWallet({
                         className="px-10 py-4 rounded-4 fw-semi-bold text-light shadow"
                         style={{ whiteSpace: "nowrap" }}
                       >
-                        {isCompactDesktop ? "Connect" : "Connect Wallet"}
+                        {isSmallScreen ? "Connect" : "Connect Wallet"}
                       </Button>
                     );
                   }

@@ -7,7 +7,6 @@ if (!process.browser) {
 function useMediaQuery() {
   const [isMobile, setIsMobile] = React.useState(false);
   const [isTablet, setIsTablet] = React.useState(false);
-  const [isCompactDesktop, setIsCompactDesktop] = React.useState(false);
   const [isSmallScreen, setIsSmallScreen] = React.useState(false);
   const [isMediumScreen, setIsMediumScreen] = React.useState(true);
   const [isBigScreen, setIsBigScreen] = React.useState(false);
@@ -24,11 +23,8 @@ function useMediaQuery() {
       const tabletQuery = window.matchMedia(
         "(min-width: 576px) and (max-width: 992px)",
       );
-      const compactDesktopQuery = window.matchMedia(
-        "(min-width: 992px) and (max-width: 1400px)",
-      );
       const smallScreenQuery = window.matchMedia(
-        "(min-width: 1000px) and (max-width: 1440px)",
+        "(min-width: 992px) and (max-width: 1400px)",
       );
       const mediumScreenQuery = window.matchMedia(
         "(min-width: 1400px) and (max-width: 1920px)",
@@ -37,14 +33,12 @@ function useMediaQuery() {
 
       setIsMobile(mobileQuery.matches);
       setIsTablet(tabletQuery.matches);
-      setIsCompactDesktop(compactDesktopQuery.matches);
       setIsSmallScreen(smallScreenQuery.matches);
       setIsMediumScreen(mediumScreenQuery.matches);
       setIsBigScreen(bigScreenQuery.matches);
 
       mobileQuery.addEventListener("change", updateMediaScreen);
       tabletQuery.addEventListener("change", updateMediaScreen);
-      compactDesktopQuery.addEventListener("change", updateMediaScreen);
       smallScreenQuery.addEventListener("change", updateMediaScreen);
       mediumScreenQuery.addEventListener("change", updateMediaScreen);
       bigScreenQuery.addEventListener("change", updateMediaScreen);
@@ -52,7 +46,6 @@ function useMediaQuery() {
       remove = () => {
         mobileQuery.removeEventListener("change", updateMediaScreen);
         tabletQuery.removeEventListener("change", updateMediaScreen);
-        compactDesktopQuery.removeEventListener("change", updateMediaScreen);
         smallScreenQuery.removeEventListener("change", updateMediaScreen);
         mediumScreenQuery.removeEventListener("change", updateMediaScreen);
         bigScreenQuery.removeEventListener("change", updateMediaScreen);
@@ -71,7 +64,6 @@ function useMediaQuery() {
   return {
     isMobile,
     isTablet,
-    isCompactDesktop,
     isSmallScreen,
     isMediumScreen,
     isBigScreen,

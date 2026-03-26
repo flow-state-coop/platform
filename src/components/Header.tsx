@@ -18,7 +18,7 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
-  const { isMobile, isTablet, isCompactDesktop } = useMediaQuery();
+  const { isMobile, isTablet, isSmallScreen } = useMediaQuery();
 
   return (
     <header className="w-100" style={{ overflow: "hidden" }}>
@@ -36,7 +36,7 @@ export default function Header() {
               height={isMobile || isTablet ? 48 : 64}
               onClick={() => router.push("/")}
             />
-            {!isCompactDesktop && (
+            {!isSmallScreen && (
               <Image src="/wordmark.svg" alt="Flow State" />
             )}
           </Stack>
@@ -55,7 +55,7 @@ export default function Header() {
                 <Stack direction="horizontal" gap={2}>
                   <Button
                     variant="transparent"
-                    className={`${isCompactDesktop ? "px-6" : "px-10"} py-4 fs-lg fw-bold`}
+                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold`}
                     style={{ whiteSpace: "nowrap" }}
                     onClick={() => router.push("/?for-funders=true")}
                   >
@@ -63,7 +63,7 @@ export default function Header() {
                   </Button>
                   <Button
                     variant="transparent"
-                    className={`${isCompactDesktop ? "px-6" : "px-10"} py-4 fs-lg fw-bold`}
+                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold`}
                     style={{ whiteSpace: "nowrap" }}
                     onClick={() => router.push("/?for-builders=true")}
                   >
@@ -71,7 +71,7 @@ export default function Header() {
                   </Button>
                   <Button
                     variant="transparent"
-                    className={`${isCompactDesktop ? "px-6" : "px-10"} py-4 fs-lg fw-bold`}
+                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold`}
                     style={{ whiteSpace: "nowrap" }}
                     onClick={() => router.push("/?for-everyone=true")}
                   >
@@ -82,7 +82,7 @@ export default function Header() {
                 <Stack direction="horizontal" gap={2}>
                   <Button
                     variant="transparent"
-                    className={`${isCompactDesktop ? "px-6" : "px-10"} py-4 fs-lg fw-bold border-0`}
+                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold border-0`}
                     style={{ whiteSpace: "nowrap" }}
                     onClick={() => router.push("/flow-councils")}
                   >
@@ -90,7 +90,7 @@ export default function Header() {
                   </Button>
                   <Button
                     variant="transparent"
-                    className={`${isCompactDesktop ? "px-6" : "px-10"} py-4 fs-lg fw-bold border-0`}
+                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold border-0`}
                     style={{ whiteSpace: "nowrap" }}
                     onClick={() => router.push("/flow-splitters")}
                   >
@@ -100,15 +100,15 @@ export default function Header() {
                     variant="link"
                     href="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
                     target="_blank"
-                    className={`${isCompactDesktop ? "px-6" : "px-10"} py-4 fs-lg fw-bold border-0 text-decoration-none`}
+                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold border-0 text-decoration-none`}
                     style={{ whiteSpace: "nowrap" }}
                   >
                     Flow Caster
                   </Button>
                 </Stack>
               )}
-              <Stack direction="horizontal" gap={isCompactDesktop ? 4 : 6}>
-                {pathname === "/" && !isCompactDesktop && (
+              <Stack direction="horizontal" gap={isSmallScreen ? 4 : 6}>
+                {pathname === "/" && !isSmallScreen && (
                   <Stack
                     direction="horizontal"
                     gap={6}
@@ -159,7 +159,7 @@ export default function Header() {
                   {pathname === "/" ? (
                     <Link href="/explore">
                       <Button
-                        className={`${isCompactDesktop ? "px-6" : "px-10"} py-4 rounded-3 text-white fs-lg fw-bold`}
+                        className={`${isSmallScreen ? "px-6" : "px-10"} py-4 rounded-3 text-white fs-lg fw-bold`}
                         style={{ whiteSpace: "nowrap" }}
                       >
                         Explore flows
