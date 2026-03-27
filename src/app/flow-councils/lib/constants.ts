@@ -18,3 +18,12 @@ export const GOODBUILDERS_S2_POOL_ADDRESS: `0x${string}` =
 
 export const GOODBUILDERS_S2_FEE_ADDRESS: `0x${string}` =
   "0x0d9d26375b882e0ddb38a781a40e80945e3d0b9b";
+
+export const ALLOWED_REACTIONS = [
+  "\u{1F44D}",
+  "\u{2764}\u{FE0F}",
+  "\u{1F389}",
+  "\u{1F64C}",
+  "\u{1F30A}",
+  "\u{1F9AB}",
+] as const;

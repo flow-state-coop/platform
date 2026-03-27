@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { isAddress } from "viem";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
+import { fetchDisplayNames, fetchReactions } from "../enrichment";
 import { ChannelType } from "@/generated/kysely";
 import {
   sendChatMessageEmail,
@@ -109,6 +110,8 @@ export async function GET(request: Request) {
         "content",
         "messageType",
         "projectId",
+        "pinnedAt",
+        "pinnedBy",
         "createdAt",
         "updatedAt",
       ])
@@ -182,6 +185,15 @@ export async function GET(request: Request) {
       managedProjectIds = managed.map((m) => m.projectId);
     }
 
+    const authorAddressesForNames = messages.map((m) => m.authorAddress);
+    const [displayNames, reactions] = await Promise.all([
+      fetchDisplayNames(authorAddressesForNames),
+      fetchReactions(
+        messages.map((m) => m.id),
+        session?.address,
+      ),
+    ]);
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -189,6 +201,8 @@ export async function GET(request: Request) {
         affiliations,
         projectMetadata,
         managedProjectIds,
+        displayNames,
+        reactions,
       }),
     );
   } catch (err) {
