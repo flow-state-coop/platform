@@ -32,9 +32,9 @@ export default function ReactionBar({
       {reactions.map((r) => (
         <Badge
           key={r.emoji}
-          bg={r.hasReacted ? "primary" : "light"}
-          text={r.hasReacted ? "white" : "dark"}
-          className="d-inline-flex align-items-center gap-1 fw-normal border"
+          bg=""
+          text="dark"
+          className={`d-inline-flex align-items-center gap-1 fw-normal border ${r.hasReacted ? "border-primary" : ""}`}
           role={disabled ? undefined : "button"}
           onClick={disabled ? undefined : () => onToggle(r.emoji)}
           style={{

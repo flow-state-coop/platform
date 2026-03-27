@@ -138,6 +138,18 @@ export default function MessageItem(props: MessageItemProps) {
           />
         </div>
       )}
+      {isPinned && (
+        <div className="d-flex align-items-center gap-1 mb-1 ms-1 text-muted small">
+          <Image
+            src="/pin.svg"
+            alt="Pinned"
+            width={12}
+            height={12}
+            className="opacity-50"
+          />
+          Pinned
+        </div>
+      )}
       <Stack direction="horizontal" gap={2} className="mb-2">
         <ProfilePic
           address={message.authorAddress}
@@ -151,7 +163,11 @@ export default function MessageItem(props: MessageItemProps) {
               {showAddressTooltip ? (
                 <OverlayTrigger
                   placement="top"
-                  overlay={<Tooltip>{message.authorAddress}</Tooltip>}
+                  overlay={
+                    <Tooltip style={{ whiteSpace: "nowrap" }}>
+                      {message.authorAddress}
+                    </Tooltip>
+                  }
                 >
                   <span className="fw-semi-bold text-truncate">
                     {displayName}
@@ -168,15 +184,6 @@ export default function MessageItem(props: MessageItemProps) {
                 <span className="text-muted text-nowrap">{affiliationTag}</span>
               )}
             </span>
-            {isPinned && (
-              <Image
-                src="/pin.svg"
-                alt="Pinned"
-                width={14}
-                height={14}
-                className="opacity-50"
-              />
-            )}
             <span className="text-muted small text-nowrap">
               {formatTimestamp(message.createdAt)}
               {edited && " (edited)"}

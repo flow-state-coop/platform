@@ -51,7 +51,9 @@ export function useChatActions<T extends PinnableMessage>({
       );
     const unpinned = messages.filter((m) => !m.pinnedAt);
     const orderedUnpinned = newestFirst ? [...unpinned].reverse() : unpinned;
-    return [...pinned, ...orderedUnpinned];
+    return newestFirst
+      ? [...pinned, ...orderedUnpinned]
+      : [...orderedUnpinned, ...pinned];
   }, [messages, newestFirst]);
 
   const handlePin = useCallback(
