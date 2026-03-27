@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useSession } from "next-auth/react";
 import { useAccount } from "wagmi";
+import { getCsrfToken, useSession } from "next-auth/react";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
@@ -10,10 +11,14 @@ import Alert from "react-bootstrap/Alert";
 import Spinner from "react-bootstrap/Spinner";
 import Stack from "react-bootstrap/Stack";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
+import useSiwe from "@/hooks/siwe";
 
 export default function Profile() {
-  const { data: session } = useSession();
   const { address } = useAccount();
+  const { data: session } = useSession();
+  const { openConnectModal } = useConnectModal();
+  const { handleSignIn } = useSiwe();
+  const hasSession = !!session && session.address === address;
   const [displayName, setDisplayName] = useState("");
   const [savedName, setSavedName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -103,13 +108,42 @@ export default function Profile() {
     }
   };
 
-  if (!address || !session?.address) {
+  if (!hasSession) {
     return (
       <Container className="py-5" style={{ maxWidth: 600 }}>
         <h2 className="mb-4">Profile</h2>
-        <p className="text-muted">
-          Connect your wallet to manage your profile.
+        <p className="text-muted mb-3">
+          Connect your wallet and sign in to manage your profile.
         </p>
+        <Stack gap={3}>
+          {!address ? (
+            <Button
+              variant="primary"
+              onClick={() => openConnectModal?.()}
+              className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
+            >
+              Connect Wallet
+            </Button>
+          ) : (
+            <Button variant="primary" disabled className="fs-lg fw-semi-bold rounded-4 px-10 py-4 opacity-25">
+              Connect Wallet
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            disabled={!address}
+            onClick={() =>
+              getCsrfToken()
+                .then((token) => {
+                  if (token) handleSignIn(token);
+                })
+                .catch(console.error)
+            }
+            className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
+          >
+            Sign In With Ethereum
+          </Button>
+        </Stack>
       </Container>
     );
   }
