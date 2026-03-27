@@ -96,6 +96,7 @@ export default function ProjectMilestonesTab({
                     applicationId={app.applicationId}
                     projectId={projectId}
                     isManager={isManager}
+                    editsUnlocked={app.editsUnlocked}
                     onSaved={fetchMilestones}
                   />
                 ))}

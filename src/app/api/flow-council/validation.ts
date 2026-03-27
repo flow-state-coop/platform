@@ -166,6 +166,22 @@ export const milestoneProgressSchema = z.object({
   items: z.array(deliverableProgressSchema),
 });
 
+export const milestoneDefinitionSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z
+    .string()
+    .min(
+      CHARACTER_LIMITS.milestoneDescription.min,
+      `Description must be at least ${CHARACTER_LIMITS.milestoneDescription.min} characters`,
+    )
+    .max(CHARACTER_LIMITS.milestoneDescription.max),
+  items: z
+    .array(z.string())
+    .refine((items) => items.some((item) => item.trim() !== ""), {
+      message: "At least one item is required",
+    }),
+});
+
 type ValidationSuccess<T> = { success: true; data: T };
 type ValidationError = { success: false; error: string };
 type ValidationResult<T> = ValidationSuccess<T> | ValidationError;
