@@ -3,7 +3,10 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { db } from "@/app/api/flow-council/db";
 import { isProjectManager } from "@/app/api/flow-council/auth";
 import { parseDetails } from "@/app/api/flow-council/utils";
-import { milestoneProgressSchema } from "@/app/api/flow-council/validation";
+import {
+  milestoneProgressSchema,
+  milestoneDefinitionSchema,
+} from "@/app/api/flow-council/validation";
 import type { RoundForm } from "@/app/flow-councils/types/round";
 import type {
   ApplicationMilestones,
@@ -42,6 +45,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
       .select([
         "applications.id as applicationId",
         "applications.details as appDetails",
+        "applications.editsUnlocked",
         "rounds.details as roundDetails",
         "rounds.chainId",
         "rounds.flowCouncilAddress as councilId",
@@ -109,6 +113,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
         roundName: roundDetails?.name ?? "Round",
         chainId: app.chainId,
         councilId: app.councilId,
+        editsUnlocked: app.editsUnlocked ?? false,
         milestones,
       };
     });
@@ -193,7 +198,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     const body = await request.json();
-    const { applicationId, milestoneType, milestoneIndex, progress } = body;
+    const {
+      applicationId,
+      milestoneType,
+      milestoneIndex,
+      progress,
+      definition,
+    } = body;
 
     if (
       typeof applicationId !== "number" ||
@@ -205,7 +216,14 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     const application = await db
       .selectFrom("applications")
-      .select(["id", "projectId", "roundId", "status"])
+      .select([
+        "id",
+        "projectId",
+        "roundId",
+        "status",
+        "details",
+        "editsUnlocked",
+      ])
       .where("id", "=", applicationId)
       .where("projectId", "=", pid)
       .where("status", "=", "ACCEPTED")
@@ -216,6 +234,71 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         success: false,
         error: "Application not found or not accepted",
       });
+    }
+
+    if (definition) {
+      if (!application.editsUnlocked) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Edits are not unlocked for this application",
+          }),
+          { status: 403 },
+        );
+      }
+
+      const parsedDef = milestoneDefinitionSchema.safeParse(definition);
+      if (!parsedDef.success) {
+        return Response.json({
+          success: false,
+          error: parsedDef.error.issues[0].message,
+        });
+      }
+
+      const appDetails = parseDetails<RoundForm>(application.details);
+      if (!appDetails) {
+        return Response.json({
+          success: false,
+          error: "Failed to parse application details",
+        });
+      }
+
+      const milestonesArray =
+        milestoneType === "build"
+          ? appDetails.buildGoals?.milestones
+          : appDetails.growthGoals?.milestones;
+
+      if (!milestonesArray || milestoneIndex >= milestonesArray.length) {
+        return Response.json({
+          success: false,
+          error: "Milestone index out of range",
+        });
+      }
+
+      if (milestoneType === "build") {
+        appDetails.buildGoals.milestones[milestoneIndex] = {
+          title: parsedDef.data.title,
+          description: parsedDef.data.description,
+          deliverables: parsedDef.data.items,
+        };
+      } else {
+        appDetails.growthGoals.milestones[milestoneIndex] = {
+          title: parsedDef.data.title,
+          description: parsedDef.data.description,
+          activations: parsedDef.data.items,
+        };
+      }
+
+      await db
+        .updateTable("applications")
+        .set({
+          details: JSON.stringify(appDetails),
+          updatedAt: new Date(),
+        })
+        .where("id", "=", applicationId)
+        .execute();
+
+      return Response.json({ success: true });
     }
 
     const parsed = milestoneProgressSchema.safeParse(progress);
