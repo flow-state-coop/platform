@@ -1,13 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
-import { base } from "viem/chains";
-import { useQuery, gql } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
 import RoundCard from "./components/RoundCard";
 import { Inflow } from "@/types/inflow";
 import { GDAPool } from "@/types/gdaPool";
-import { getApolloClient } from "@/lib/apollo";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
 type ExploreProps = {
@@ -23,21 +19,13 @@ type ExploreProps = {
     updatedAt: number;
     donors: number;
   };
+  flowCasterFlowInfo: {
+    totalDistributed: bigint;
+    flowRate: bigint;
+    updatedAt: number;
+    donors: number;
+  };
 };
-
-const GDA_POOL_QUERY = gql`
-  query GDAPoolQuery($gdaPool: String) {
-    pool(id: $gdaPool) {
-      id
-      flowRate
-      totalAmountFlowedDistributedUntilUpdatedAt
-      updatedAtTimestamp
-      poolDistributors(first: 1000, where: { flowRate_not: "0" }) {
-        id
-      }
-    }
-  }
-`;
 
 // Octant round snapshot (round concluded)
 const OCTANT_SNAPSHOT = {
@@ -45,11 +33,6 @@ const OCTANT_SNAPSHOT = {
   flowRate: "0",
   activeStreams: 266,
 };
-
-const FLOW_CASTER_POOLS = [
-  "0x9ef9fe8bf503b10698322e3a135c0fa6decc5b5b",
-  "0x6719cbb70d0faa041f1056542af66066e3cc7a24",
-];
 
 export default function Explore(props: ExploreProps) {
   const {
@@ -60,51 +43,11 @@ export default function Explore(props: ExploreProps) {
     goodDollarPool,
     goodBuildersS3Inflow,
     flowCasterArbFlowInfo,
+    flowCasterFlowInfo,
   } = props;
 
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
-
-  const { data: flowCasterCrackedDevsQueryRes } = useQuery(GDA_POOL_QUERY, {
-    client: getApolloClient("superfluid", base.id),
-    variables: {
-      gdaPool: FLOW_CASTER_POOLS[0],
-    },
-    pollInterval: 10000,
-  });
-  const { data: flowCasterTeamQueryRes } = useQuery(GDA_POOL_QUERY, {
-    client: getApolloClient("superfluid", base.id),
-    variables: {
-      gdaPool: FLOW_CASTER_POOLS[1],
-    },
-    pollInterval: 10000,
-  });
-  const flowCasterCrackedDevsPool = flowCasterCrackedDevsQueryRes?.pool;
-  const flowCasterTeamPool = flowCasterTeamQueryRes?.pool;
-
-  const flowCasterFlowInfo = useMemo(() => {
-    const now = (Date.now() / 1000) | 0;
-    const totalCrackedDevs = flowCasterCrackedDevsPool
-      ? BigInt(
-          flowCasterCrackedDevsPool.totalAmountFlowedDistributedUntilUpdatedAt,
-        ) +
-        BigInt(flowCasterCrackedDevsPool.flowRate) *
-          BigInt(now - flowCasterCrackedDevsPool.updatedAtTimestamp)
-      : BigInt(0);
-    const totalTeam = flowCasterTeamPool
-      ? BigInt(flowCasterTeamPool.totalAmountFlowedDistributedUntilUpdatedAt) +
-        BigInt(flowCasterTeamPool.flowRate) *
-          BigInt(now - flowCasterTeamPool.updatedAtTimestamp)
-      : BigInt(0);
-
-    return {
-      totalDistributed: totalCrackedDevs + totalTeam,
-      flowRate:
-        BigInt(flowCasterCrackedDevsPool?.flowRate ?? 0) +
-        BigInt(flowCasterTeamPool?.flowRate ?? 0),
-      updatedAt: now,
-    };
-  }, [flowCasterCrackedDevsPool, flowCasterTeamPool]);
 
   return (
     <Stack direction="vertical" className="explore-background pb-30">
@@ -189,9 +132,7 @@ export default function Explore(props: ExploreProps) {
             totalStreamedUntilUpdatedAt={flowCasterFlowInfo.totalDistributed.toString()}
             flowRate={flowCasterFlowInfo.flowRate.toString()}
             updatedAt={flowCasterFlowInfo.updatedAt}
-            activeStreamCount={
-              flowCasterCrackedDevsPool?.poolDistributors.length
-            }
+            activeStreamCount={flowCasterFlowInfo.donors}
             tokenSymbol="USDCx"
             link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
           />

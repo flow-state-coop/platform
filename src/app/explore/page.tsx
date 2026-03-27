@@ -65,6 +65,11 @@ const FLOW_CASTER_ARB_POOLS = [
   "0xed480a635c5dffe1640a895bc39d8491a79c9aa9",
 ];
 
+const FLOW_CASTER_BASE_POOLS = [
+  "0x9ef9fe8bf503b10698322e3a135c0fa6decc5b5b",
+  "0x6719cbb70d0faa041f1056542af66066e3cc7a24",
+];
+
 export default async function Page() {
   const [
     coreQueryRes,
@@ -75,6 +80,8 @@ export default async function Page() {
     goodBuildersS3QueryRes,
     flowCasterArbQueryRes,
     flowCasterArbTeamQueryRes,
+    flowCasterBaseCrackedDevsQueryRes,
+    flowCasterBaseTeamQueryRes,
   ] = await Promise.all([
     request<{ account: Account }>(
       networks.find((network) => network.id === base.id)!.superfluidSubgraph,
@@ -142,6 +149,20 @@ export default async function Page() {
         gdaPool: FLOW_CASTER_ARB_POOLS[1],
       },
     ),
+    request<{ pool: GDAPool }>(
+      networks.find((network) => network.id === base.id)!.superfluidSubgraph,
+      GDA_POOL_QUERY,
+      {
+        gdaPool: FLOW_CASTER_BASE_POOLS[0],
+      },
+    ),
+    request<{ pool: GDAPool }>(
+      networks.find((network) => network.id === base.id)!.superfluidSubgraph,
+      GDA_POOL_QUERY,
+      {
+        gdaPool: FLOW_CASTER_BASE_POOLS[1],
+      },
+    ),
   ]);
 
   const flowCasterArbMain: GDAPool = flowCasterArbQueryRes.pool;
@@ -167,6 +188,31 @@ export default async function Page() {
     donors: flowCasterArbMain?.poolDistributors?.length ?? 0,
   };
 
+  const flowCasterBaseCrackedDevs: GDAPool =
+    flowCasterBaseCrackedDevsQueryRes.pool;
+  const flowCasterBaseTeam: GDAPool = flowCasterBaseTeamQueryRes.pool;
+  const totalBaseCrackedDevs = flowCasterBaseCrackedDevs
+    ? BigInt(
+        flowCasterBaseCrackedDevs.totalAmountFlowedDistributedUntilUpdatedAt,
+      ) +
+      BigInt(flowCasterBaseCrackedDevs.flowRate) *
+        BigInt(now - flowCasterBaseCrackedDevs.updatedAtTimestamp)
+    : BigInt(0);
+  const totalBaseTeam = flowCasterBaseTeam
+    ? BigInt(flowCasterBaseTeam.totalAmountFlowedDistributedUntilUpdatedAt) +
+      BigInt(flowCasterBaseTeam.flowRate) *
+        BigInt(now - flowCasterBaseTeam.updatedAtTimestamp)
+    : BigInt(0);
+
+  const flowCasterFlowInfo = {
+    totalDistributed: totalBaseCrackedDevs + totalBaseTeam,
+    flowRate:
+      BigInt(flowCasterBaseCrackedDevs?.flowRate ?? 0) +
+      BigInt(flowCasterBaseTeam?.flowRate ?? 0),
+    updatedAt: now,
+    donors: flowCasterBaseCrackedDevs?.poolDistributors?.length ?? 0,
+  };
+
   return (
     <Explore
       coreInflow={coreQueryRes.account.accountTokenSnapshots[0]}
@@ -178,6 +224,7 @@ export default async function Page() {
         goodBuildersS3QueryRes.account.accountTokenSnapshots[0]
       }
       flowCasterArbFlowInfo={flowCasterArbFlowInfo}
+      flowCasterFlowInfo={flowCasterFlowInfo}
     />
   );
 }
