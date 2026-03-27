@@ -70,7 +70,39 @@ const FLOW_CASTER_BASE_POOLS = [
   "0x6719cbb70d0faa041f1056542af66066e3cc7a24",
 ];
 
+function computePoolPairFlowInfo(
+  mainPool: GDAPool | undefined,
+  teamPool: GDAPool | undefined,
+  now: number,
+) {
+  const computeTotal = (pool: GDAPool | undefined) =>
+    pool
+      ? BigInt(pool.totalAmountFlowedDistributedUntilUpdatedAt) +
+        BigInt(pool.flowRate) * BigInt(now - pool.updatedAtTimestamp)
+      : BigInt(0);
+
+  return {
+    totalDistributed: computeTotal(mainPool) + computeTotal(teamPool),
+    flowRate: BigInt(mainPool?.flowRate ?? 0) + BigInt(teamPool?.flowRate ?? 0),
+    updatedAt: now,
+    donors: mainPool?.poolDistributors?.length ?? 0,
+  };
+}
+
 export default async function Page() {
+  const arbSubgraph = networks.find(
+    (n) => n.id === arbitrum.id,
+  )!.superfluidSubgraph;
+  const baseSubgraph = networks.find(
+    (n) => n.id === base.id,
+  )!.superfluidSubgraph;
+  const celoSubgraph = networks.find(
+    (n) => n.id === celo.id,
+  )!.superfluidSubgraph;
+  const optimismSubgraph = networks.find(
+    (n) => n.id === optimism.id,
+  )!.superfluidSubgraph;
+
   const [
     coreQueryRes,
     greenpillQueryRes,
@@ -83,135 +115,54 @@ export default async function Page() {
     flowCasterBaseCrackedDevsQueryRes,
     flowCasterBaseTeamQueryRes,
   ] = await Promise.all([
-    request<{ account: Account }>(
-      networks.find((network) => network.id === base.id)!.superfluidSubgraph,
-      FLOW_GUILD_QUERY,
-      {
-        safeAddress: FLOW_GUILD_ADDRESSES["core"].safeAddress,
-        token: FLOW_GUILD_ADDRESSES["core"].token,
-      },
-    ),
-    request<{ account: Account }>(
-      networks.find((network) => network.id === optimism.id)!
-        .superfluidSubgraph,
-      FLOW_GUILD_QUERY,
-      {
-        safeAddress: FLOW_GUILD_ADDRESSES["greenpill"].safeAddress,
-        token: FLOW_GUILD_ADDRESSES["greenpill"].token,
-      },
-    ),
-    request<{ account: Account }>(
-      networks.find((network) => network.id === arbitrum.id)!
-        .superfluidSubgraph,
-      FLOW_GUILD_QUERY,
-      {
-        safeAddress: FLOW_GUILD_ADDRESSES["guild-guild"].safeAddress,
-        token: FLOW_GUILD_ADDRESSES["guild-guild"].token,
-      },
-    ),
-    request<{ account: Account }>(
-      networks.find((network) => network.id === arbitrum.id)!
-        .superfluidSubgraph,
-      FLOW_GUILD_QUERY,
-      {
-        safeAddress: FLOW_GUILD_ADDRESSES["chonesguild"].safeAddress,
-        token: FLOW_GUILD_ADDRESSES["chonesguild"].token,
-      },
-    ),
-    request<{ pool: GDAPool }>(
-      networks.find((network) => network.id === celo.id)!.superfluidSubgraph,
-      GDA_POOL_QUERY,
-      {
-        gdaPool: "0xafcab1ab378354b8ce0dbd0ae2e2c0dea01dcf0b",
-      },
-    ),
-    request<{ account: Account }>(
-      networks.find((network) => network.id === celo.id)!.superfluidSubgraph,
-      FLOW_GUILD_QUERY,
-      {
-        safeAddress: "0x496e247cc0dc5e707cc2684ae04e8e337637f3fa",
-        token: "0x62b8b11039fcfe5ab0c56e502b1c372a3d2a9c7a",
-      },
-    ),
-    request<{ pool: GDAPool }>(
-      networks.find((network) => network.id === arbitrum.id)!
-        .superfluidSubgraph,
-      GDA_POOL_QUERY,
-      {
-        gdaPool: FLOW_CASTER_ARB_POOLS[0],
-      },
-    ),
-    request<{ pool: GDAPool }>(
-      networks.find((network) => network.id === arbitrum.id)!
-        .superfluidSubgraph,
-      GDA_POOL_QUERY,
-      {
-        gdaPool: FLOW_CASTER_ARB_POOLS[1],
-      },
-    ),
-    request<{ pool: GDAPool }>(
-      networks.find((network) => network.id === base.id)!.superfluidSubgraph,
-      GDA_POOL_QUERY,
-      {
-        gdaPool: FLOW_CASTER_BASE_POOLS[0],
-      },
-    ),
-    request<{ pool: GDAPool }>(
-      networks.find((network) => network.id === base.id)!.superfluidSubgraph,
-      GDA_POOL_QUERY,
-      {
-        gdaPool: FLOW_CASTER_BASE_POOLS[1],
-      },
-    ),
+    request<{ account: Account }>(baseSubgraph, FLOW_GUILD_QUERY, {
+      safeAddress: FLOW_GUILD_ADDRESSES["core"].safeAddress,
+      token: FLOW_GUILD_ADDRESSES["core"].token,
+    }),
+    request<{ account: Account }>(optimismSubgraph, FLOW_GUILD_QUERY, {
+      safeAddress: FLOW_GUILD_ADDRESSES["greenpill"].safeAddress,
+      token: FLOW_GUILD_ADDRESSES["greenpill"].token,
+    }),
+    request<{ account: Account }>(arbSubgraph, FLOW_GUILD_QUERY, {
+      safeAddress: FLOW_GUILD_ADDRESSES["guild-guild"].safeAddress,
+      token: FLOW_GUILD_ADDRESSES["guild-guild"].token,
+    }),
+    request<{ account: Account }>(arbSubgraph, FLOW_GUILD_QUERY, {
+      safeAddress: FLOW_GUILD_ADDRESSES["chonesguild"].safeAddress,
+      token: FLOW_GUILD_ADDRESSES["chonesguild"].token,
+    }),
+    request<{ pool: GDAPool }>(celoSubgraph, GDA_POOL_QUERY, {
+      gdaPool: "0xafcab1ab378354b8ce0dbd0ae2e2c0dea01dcf0b",
+    }),
+    request<{ account: Account }>(celoSubgraph, FLOW_GUILD_QUERY, {
+      safeAddress: "0x496e247cc0dc5e707cc2684ae04e8e337637f3fa",
+      token: "0x62b8b11039fcfe5ab0c56e502b1c372a3d2a9c7a",
+    }),
+    request<{ pool: GDAPool }>(arbSubgraph, GDA_POOL_QUERY, {
+      gdaPool: FLOW_CASTER_ARB_POOLS[0],
+    }),
+    request<{ pool: GDAPool }>(arbSubgraph, GDA_POOL_QUERY, {
+      gdaPool: FLOW_CASTER_ARB_POOLS[1],
+    }),
+    request<{ pool: GDAPool }>(baseSubgraph, GDA_POOL_QUERY, {
+      gdaPool: FLOW_CASTER_BASE_POOLS[0],
+    }),
+    request<{ pool: GDAPool }>(baseSubgraph, GDA_POOL_QUERY, {
+      gdaPool: FLOW_CASTER_BASE_POOLS[1],
+    }),
   ]);
 
-  const flowCasterArbMain: GDAPool = flowCasterArbQueryRes.pool;
-  const flowCasterArbTeam: GDAPool = flowCasterArbTeamQueryRes.pool;
   const now = (Date.now() / 1000) | 0;
-  const totalMain = flowCasterArbMain
-    ? BigInt(flowCasterArbMain.totalAmountFlowedDistributedUntilUpdatedAt) +
-      BigInt(flowCasterArbMain.flowRate) *
-        BigInt(now - flowCasterArbMain.updatedAtTimestamp)
-    : BigInt(0);
-  const totalTeam = flowCasterArbTeam
-    ? BigInt(flowCasterArbTeam.totalAmountFlowedDistributedUntilUpdatedAt) +
-      BigInt(flowCasterArbTeam.flowRate) *
-        BigInt(now - flowCasterArbTeam.updatedAtTimestamp)
-    : BigInt(0);
-
-  const flowCasterArbFlowInfo = {
-    totalDistributed: totalMain + totalTeam,
-    flowRate:
-      BigInt(flowCasterArbTeam?.flowRate ?? 0) +
-      BigInt(flowCasterArbTeam?.flowRate ?? 0),
-    updatedAt: now,
-    donors: flowCasterArbMain?.poolDistributors?.length ?? 0,
-  };
-
-  const flowCasterBaseCrackedDevs: GDAPool =
-    flowCasterBaseCrackedDevsQueryRes.pool;
-  const flowCasterBaseTeam: GDAPool = flowCasterBaseTeamQueryRes.pool;
-  const totalBaseCrackedDevs = flowCasterBaseCrackedDevs
-    ? BigInt(
-        flowCasterBaseCrackedDevs.totalAmountFlowedDistributedUntilUpdatedAt,
-      ) +
-      BigInt(flowCasterBaseCrackedDevs.flowRate) *
-        BigInt(now - flowCasterBaseCrackedDevs.updatedAtTimestamp)
-    : BigInt(0);
-  const totalBaseTeam = flowCasterBaseTeam
-    ? BigInt(flowCasterBaseTeam.totalAmountFlowedDistributedUntilUpdatedAt) +
-      BigInt(flowCasterBaseTeam.flowRate) *
-        BigInt(now - flowCasterBaseTeam.updatedAtTimestamp)
-    : BigInt(0);
-
-  const flowCasterFlowInfo = {
-    totalDistributed: totalBaseCrackedDevs + totalBaseTeam,
-    flowRate:
-      BigInt(flowCasterBaseCrackedDevs?.flowRate ?? 0) +
-      BigInt(flowCasterBaseTeam?.flowRate ?? 0),
-    updatedAt: now,
-    donors: flowCasterBaseCrackedDevs?.poolDistributors?.length ?? 0,
-  };
+  const flowCasterArbFlowInfo = computePoolPairFlowInfo(
+    flowCasterArbQueryRes.pool,
+    flowCasterArbTeamQueryRes.pool,
+    now,
+  );
+  const flowCasterFlowInfo = computePoolPairFlowInfo(
+    flowCasterBaseCrackedDevsQueryRes.pool,
+    flowCasterBaseTeamQueryRes.pool,
+    now,
+  );
 
   return (
     <Explore

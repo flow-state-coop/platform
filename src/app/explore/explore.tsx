@@ -6,6 +6,13 @@ import { Inflow } from "@/types/inflow";
 import { GDAPool } from "@/types/gdaPool";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
+type PoolPairFlowInfo = {
+  totalDistributed: bigint;
+  flowRate: bigint;
+  updatedAt: number;
+  donors: number;
+};
+
 type ExploreProps = {
   coreInflow: Inflow;
   greenpillInflow: Inflow;
@@ -13,18 +20,8 @@ type ExploreProps = {
   chonesGuildInflow: Inflow;
   goodDollarPool: GDAPool;
   goodBuildersS3Inflow: Inflow;
-  flowCasterArbFlowInfo: {
-    totalDistributed: bigint;
-    flowRate: bigint;
-    updatedAt: number;
-    donors: number;
-  };
-  flowCasterFlowInfo: {
-    totalDistributed: bigint;
-    flowRate: bigint;
-    updatedAt: number;
-    donors: number;
-  };
+  flowCasterArbFlowInfo: PoolPairFlowInfo;
+  flowCasterFlowInfo: PoolPairFlowInfo;
 };
 
 // Octant round snapshot (round concluded)
