@@ -108,9 +108,17 @@ export default function ConnectWallet({
                       >
                         <Dropdown.Item
                           as="span"
-                          className="p-3 rounded-bottom-2 fw-semi-bold text-dark"
+                          className="p-3 fw-semi-bold text-dark"
                         >
                           Flow Splitters
+                        </Dropdown.Item>
+                      </Link>
+                      <Link href="/profile" className="text-decoration-none">
+                        <Dropdown.Item
+                          as="span"
+                          className="p-3 fw-semi-bold text-dark"
+                        >
+                          Profile
                         </Dropdown.Item>
                       </Link>
                       <Dropdown.Item

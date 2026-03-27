@@ -1,9 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import Stack from "react-bootstrap/Stack";
+import OverlayTrigger from "react-bootstrap/OverlayTrigger";
+import Tooltip from "react-bootstrap/Tooltip";
 import Markdown from "@/components/Markdown";
 import ProfilePic from "./ProfilePic";
 import MessageActions from "./MessageActions";
+import ReactionBar, { type ReactionSummary } from "./ReactionBar";
 import type { EnsData } from "@/hooks/useEnsResolution";
 
 export type Message = {
@@ -12,6 +16,8 @@ export type Message = {
   content: string;
   messageType?: string;
   projectId?: number;
+  pinnedAt?: string | null;
+  pinnedBy?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -23,11 +29,19 @@ export type AuthorAffiliation = {
 
 type MessageItemProps = {
   message: Message;
+  displayName?: string | null;
   ensData?: EnsData | null;
   affiliation?: AuthorAffiliation | null;
   projectLogoUrl?: string;
   projectSource?: string;
   hideAdminTag?: boolean;
+  reactions?: ReactionSummary[];
+  onReactionToggle?: (emoji: string) => void;
+  reactionsDisabled?: boolean;
+  isPinned?: boolean;
+  canPin?: boolean;
+  onPin?: () => void;
+  onUnpin?: () => void;
   canEdit: boolean;
   canDelete: boolean;
   onEdit: () => void;
@@ -62,11 +76,19 @@ function isEdited(createdAt: string, updatedAt: string): boolean {
 export default function MessageItem(props: MessageItemProps) {
   const {
     message,
+    displayName: customDisplayName,
     ensData,
     affiliation,
     projectLogoUrl,
     projectSource,
     hideAdminTag,
+    reactions,
+    onReactionToggle,
+    reactionsDisabled,
+    isPinned,
+    canPin,
+    onPin,
+    onUnpin,
     canEdit,
     canDelete,
     onEdit,
@@ -80,7 +102,10 @@ export default function MessageItem(props: MessageItemProps) {
     ? (projectSource ?? "Milestone Update")
     : isSystemMessage
       ? "System"
-      : ensData?.name || shortenAddress(message.authorAddress);
+      : customDisplayName ||
+        ensData?.name ||
+        shortenAddress(message.authorAddress);
+  const showAddressTooltip = !isMilestoneUpdate && !isSystemMessage;
   const edited = isEdited(message.createdAt, message.updatedAt);
 
   const affiliationTag =
@@ -93,7 +118,7 @@ export default function MessageItem(props: MessageItemProps) {
       : null;
 
   const effectiveCanEdit = isMilestoneUpdate ? false : canEdit;
-  const showActions = !isSystemMessage && (canEdit || canDelete);
+  const showActions = !isSystemMessage && (canEdit || canDelete || canPin);
 
   return (
     <div
@@ -104,8 +129,12 @@ export default function MessageItem(props: MessageItemProps) {
           <MessageActions
             canEdit={effectiveCanEdit}
             canDelete={canDelete}
+            canPin={canPin}
+            isPinned={isPinned}
             onEdit={onEdit}
             onDelete={onDelete}
+            onPin={onPin}
+            onUnpin={onUnpin}
           />
         </div>
       )}
@@ -119,15 +148,35 @@ export default function MessageItem(props: MessageItemProps) {
         <div className="flex-grow-1 overflow-hidden pe-4">
           <div className="d-flex flex-wrap gap-1 align-items-center">
             <span className="d-flex gap-1 text-truncate">
-              <span
-                className={`fw-semi-bold text-truncate ${isSystemMessage ? "fst-italic text-muted" : ""}`}
-              >
-                {displayName}
-              </span>
+              {showAddressTooltip ? (
+                <OverlayTrigger
+                  placement="top"
+                  overlay={<Tooltip>{message.authorAddress}</Tooltip>}
+                >
+                  <span className="fw-semi-bold text-truncate">
+                    {displayName}
+                  </span>
+                </OverlayTrigger>
+              ) : (
+                <span
+                  className={`fw-semi-bold text-truncate ${isSystemMessage ? "fst-italic text-muted" : ""}`}
+                >
+                  {displayName}
+                </span>
+              )}
               {affiliationTag && (
                 <span className="text-muted text-nowrap">{affiliationTag}</span>
               )}
             </span>
+            {isPinned && (
+              <Image
+                src="/pin.svg"
+                alt="Pinned"
+                width={14}
+                height={14}
+                className="opacity-50"
+              />
+            )}
             <span className="text-muted small text-nowrap">
               {formatTimestamp(message.createdAt)}
               {edited && " (edited)"}
@@ -138,6 +187,16 @@ export default function MessageItem(props: MessageItemProps) {
       <Markdown className={`mb-0 ms-5 ${isSystemMessage ? "fst-italic" : ""}`}>
         {message.content}
       </Markdown>
+      {onReactionToggle &&
+        (!reactionsDisabled || (reactions && reactions.length > 0)) && (
+          <div className="ms-5">
+            <ReactionBar
+              reactions={reactions || []}
+              onToggle={onReactionToggle}
+              disabled={reactionsDisabled}
+            />
+          </div>
+        )}
     </div>
   );
 }

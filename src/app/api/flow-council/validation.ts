@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
+import { ALLOWED_REACTIONS } from "@/app/flow-councils/lib/constants";
 import type {
   TeamMember,
   BuildMilestone,
@@ -182,6 +183,19 @@ export const milestoneDefinitionSchema = z.object({
     }),
 });
 
+export const reactionEmojiSchema = z.enum(ALLOWED_REACTIONS);
+
+export const displayNameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(50)
+  .regex(
+    /^[\p{L}\p{N}\s\-_]+$/u,
+    "Only letters, numbers, spaces, hyphens, and underscores",
+  );
+>>>>>>> d079664 (feat: add display names, reactions, and message pinning to chat)
+
 type ValidationSuccess<T> = { success: true; data: T };
 type ValidationError = { success: false; error: string };
 type ValidationResult<T> = ValidationSuccess<T> | ValidationError;
@@ -253,4 +267,23 @@ export function validateRoundDetails(
   }
 
   return { success: true, data: details };
+}
+
+export function validateDisplayName(data: unknown): ValidationResult<string> {
+  const result = displayNameSchema.safeParse(data);
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    return { success: false, error: issue.message };
+  }
+  return { success: true, data: result.data };
+}
+
+export function validateReactionEmoji(
+  data: unknown,
+): ValidationResult<(typeof ALLOWED_REACTIONS)[number]> {
+  const result = reactionEmojiSchema.safeParse(data);
+  if (!result.success) {
+    return { success: false, error: "Invalid reaction emoji" };
+  }
+  return { success: true, data: result.data };
 }
