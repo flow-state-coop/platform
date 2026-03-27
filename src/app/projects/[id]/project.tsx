@@ -172,7 +172,7 @@ export default function Project(props: ProjectProps) {
       >
         <Card
           className="position-relative border-0"
-          style={{ aspectRatio: "3/1" }}
+          style={{ aspectRatio: "3/1", maxHeight: 280 }}
         >
           <div
             className="rounded-4"
