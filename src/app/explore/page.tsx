@@ -66,67 +66,83 @@ const FLOW_CASTER_ARB_POOLS = [
 ];
 
 export default async function Page() {
-  const coreQueryRes = await request<{ account: Account }>(
-    networks.find((network) => network.id === base.id)!.superfluidSubgraph,
-    FLOW_GUILD_QUERY,
-    {
-      safeAddress: FLOW_GUILD_ADDRESSES["core"].safeAddress,
-      token: FLOW_GUILD_ADDRESSES["core"].token,
-    },
-  );
-  const greenpillQueryRes = await request<{ account: Account }>(
-    networks.find((network) => network.id === optimism.id)!.superfluidSubgraph,
-    FLOW_GUILD_QUERY,
-    {
-      safeAddress: FLOW_GUILD_ADDRESSES["greenpill"].safeAddress,
-      token: FLOW_GUILD_ADDRESSES["greenpill"].token,
-    },
-  );
-  const guildGuildQueryRes = await request<{ account: Account }>(
-    networks.find((network) => network.id === arbitrum.id)!.superfluidSubgraph,
-    FLOW_GUILD_QUERY,
-    {
-      safeAddress: FLOW_GUILD_ADDRESSES["guild-guild"].safeAddress,
-      token: FLOW_GUILD_ADDRESSES["guild-guild"].token,
-    },
-  );
-  const chonesGuildQueryRes = await request<{ account: Account }>(
-    networks.find((network) => network.id === arbitrum.id)!.superfluidSubgraph,
-    FLOW_GUILD_QUERY,
-    {
-      safeAddress: FLOW_GUILD_ADDRESSES["chonesguild"].safeAddress,
-      token: FLOW_GUILD_ADDRESSES["chonesguild"].token,
-    },
-  );
-  const goodDollarQueryRes = await request<{ pool: GDAPool }>(
-    networks.find((network) => network.id === celo.id)!.superfluidSubgraph,
-    GDA_POOL_QUERY,
-    {
-      gdaPool: "0xafcab1ab378354b8ce0dbd0ae2e2c0dea01dcf0b",
-    },
-  );
-  const goodBuildersS3QueryRes = await request<{ account: Account }>(
-    networks.find((network) => network.id === celo.id)!.superfluidSubgraph,
-    FLOW_GUILD_QUERY,
-    {
-      safeAddress: "0x496e247cc0dc5e707cc2684ae04e8e337637f3fa",
-      token: "0x62b8b11039fcfe5ab0c56e502b1c372a3d2a9c7a",
-    },
-  );
-  const flowCasterArbQueryRes = await request<{ pool: GDAPool }>(
-    networks.find((network) => network.id === arbitrum.id)!.superfluidSubgraph,
-    GDA_POOL_QUERY,
-    {
-      gdaPool: FLOW_CASTER_ARB_POOLS[0],
-    },
-  );
-  const flowCasterArbTeamQueryRes = await request<{ pool: GDAPool }>(
-    networks.find((network) => network.id === arbitrum.id)!.superfluidSubgraph,
-    GDA_POOL_QUERY,
-    {
-      gdaPool: FLOW_CASTER_ARB_POOLS[1],
-    },
-  );
+  const [
+    coreQueryRes,
+    greenpillQueryRes,
+    guildGuildQueryRes,
+    chonesGuildQueryRes,
+    goodDollarQueryRes,
+    goodBuildersS3QueryRes,
+    flowCasterArbQueryRes,
+    flowCasterArbTeamQueryRes,
+  ] = await Promise.all([
+    request<{ account: Account }>(
+      networks.find((network) => network.id === base.id)!.superfluidSubgraph,
+      FLOW_GUILD_QUERY,
+      {
+        safeAddress: FLOW_GUILD_ADDRESSES["core"].safeAddress,
+        token: FLOW_GUILD_ADDRESSES["core"].token,
+      },
+    ),
+    request<{ account: Account }>(
+      networks.find((network) => network.id === optimism.id)!
+        .superfluidSubgraph,
+      FLOW_GUILD_QUERY,
+      {
+        safeAddress: FLOW_GUILD_ADDRESSES["greenpill"].safeAddress,
+        token: FLOW_GUILD_ADDRESSES["greenpill"].token,
+      },
+    ),
+    request<{ account: Account }>(
+      networks.find((network) => network.id === arbitrum.id)!
+        .superfluidSubgraph,
+      FLOW_GUILD_QUERY,
+      {
+        safeAddress: FLOW_GUILD_ADDRESSES["guild-guild"].safeAddress,
+        token: FLOW_GUILD_ADDRESSES["guild-guild"].token,
+      },
+    ),
+    request<{ account: Account }>(
+      networks.find((network) => network.id === arbitrum.id)!
+        .superfluidSubgraph,
+      FLOW_GUILD_QUERY,
+      {
+        safeAddress: FLOW_GUILD_ADDRESSES["chonesguild"].safeAddress,
+        token: FLOW_GUILD_ADDRESSES["chonesguild"].token,
+      },
+    ),
+    request<{ pool: GDAPool }>(
+      networks.find((network) => network.id === celo.id)!.superfluidSubgraph,
+      GDA_POOL_QUERY,
+      {
+        gdaPool: "0xafcab1ab378354b8ce0dbd0ae2e2c0dea01dcf0b",
+      },
+    ),
+    request<{ account: Account }>(
+      networks.find((network) => network.id === celo.id)!.superfluidSubgraph,
+      FLOW_GUILD_QUERY,
+      {
+        safeAddress: "0x496e247cc0dc5e707cc2684ae04e8e337637f3fa",
+        token: "0x62b8b11039fcfe5ab0c56e502b1c372a3d2a9c7a",
+      },
+    ),
+    request<{ pool: GDAPool }>(
+      networks.find((network) => network.id === arbitrum.id)!
+        .superfluidSubgraph,
+      GDA_POOL_QUERY,
+      {
+        gdaPool: FLOW_CASTER_ARB_POOLS[0],
+      },
+    ),
+    request<{ pool: GDAPool }>(
+      networks.find((network) => network.id === arbitrum.id)!
+        .superfluidSubgraph,
+      GDA_POOL_QUERY,
+      {
+        gdaPool: FLOW_CASTER_ARB_POOLS[1],
+      },
+    ),
+  ]);
 
   const flowCasterArbMain: GDAPool = flowCasterArbQueryRes.pool;
   const flowCasterArbTeam: GDAPool = flowCasterArbTeamQueryRes.pool;
