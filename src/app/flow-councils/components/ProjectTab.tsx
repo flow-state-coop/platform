@@ -344,7 +344,9 @@ export default function ProjectTab(props: ProjectTabProps) {
           discord: form.discord,
           karmaProfile: form.karmaProfile,
           gardensPool: form.gardensPool,
-          githubRepos: form.githubRepos.filter((r) => r && isValidGithubRepo(r)),
+          githubRepos: form.githubRepos.filter(
+            (r) => r && isValidGithubRepo(r),
+          ),
           smartContracts: form.smartContracts.filter((c) => c.address),
           otherLinks: form.otherLinks.filter((l) => l.url && l.description),
         },

@@ -1,7 +1,10 @@
+import { getServerSession } from "next-auth/next";
 import { isAddress } from "viem";
 import { db } from "../db";
+import { authOptions } from "../../auth/[...nextauth]/route";
 import { findRoundByCouncil } from "../auth";
 import { getAuthorAffiliations } from "../affiliations";
+import { fetchDisplayNames, fetchReactions } from "../enrichment";
 import { parseDetails, type ProjectMetadata } from "../utils";
 import type { ProjectDetails } from "@/types/project";
 
@@ -51,6 +54,8 @@ export async function GET(request: Request) {
         "messages.content",
         "messages.messageType",
         "messages.projectId",
+        "messages.pinnedAt",
+        "messages.pinnedBy",
         "messages.createdAt",
         "messages.updatedAt",
       ])
@@ -86,6 +91,8 @@ export async function GET(request: Request) {
       }
     }
 
+    const session = await getServerSession(authOptions);
+
     const authorAddresses = messages.map((m) => m.authorAddress);
     const affiliations = await getAuthorAffiliations(
       authorAddresses,
@@ -94,12 +101,22 @@ export async function GET(request: Request) {
       councilId,
     );
 
+    const [displayNames, reactions] = await Promise.all([
+      fetchDisplayNames(authorAddresses),
+      fetchReactions(
+        messages.map((m) => m.id),
+        session?.address,
+      ),
+    ]);
+
     return new Response(
       JSON.stringify({
         success: true,
         messages,
         affiliations,
         projectMetadata,
+        displayNames,
+        reactions,
       }),
     );
   } catch (err) {
