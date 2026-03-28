@@ -1,9 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Address, createPublicClient, http } from "viem";
-import { mainnet } from "viem/chains";
-import { normalize } from "viem/ens";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, useSwitchChain } from "wagmi";
@@ -26,7 +23,7 @@ import { getApolloClient } from "@/lib/apollo";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { FlowGuildConfig } from "../lib/flowGuildConfig";
 import { networks } from "@/lib/networks";
-import { IPFS_GATEWAYS } from "@/lib/constants";
+import { useEnsResolution } from "@/hooks/useEnsResolution";
 
 type FlowGuildProps = {
   flowGuildConfig: FlowGuildConfig;
@@ -200,10 +197,6 @@ export default function FlowGuild(props: FlowGuildProps) {
       (token) => token.symbol === flowGuildConfig.defaultToken,
     ) ?? network.tokens[0],
   );
-  const [ensByAddress, setEnsByAddress] = useState<{
-    [key: Address]: { name: string | null; avatar: string | null };
-  } | null>(null);
-
   const flowSplitter =
     flowGuildConfig.flowSplitters[network.id]?.[selectedToken.symbol];
 
@@ -266,103 +259,32 @@ export default function FlowGuild(props: FlowGuildProps) {
     [network, flowGuildConfig],
   );
 
-  useEffect(() => {
-    const ensByAddress: {
-      [key: Address]: { name: string | null; avatar: string | null };
-    } = {};
-    (async () => {
-      if (!safeQueryRes || (flowSplitter && !gdaPoolQueryRes)) {
-        return;
-      }
+  const ensAddresses = useMemo(() => {
+    if (!safeQueryRes || (flowSplitter && !gdaPoolQueryRes)) return [];
 
-      const addresses = [];
+    const addrs: string[] = [];
 
-      for (const flowUpdatedEvent of safeQueryRes.flowUpdatedEvents) {
-        addresses.push(flowUpdatedEvent.sender);
-      }
+    for (const e of safeQueryRes.flowUpdatedEvents) addrs.push(e.sender);
+    if (safeQueryRes.account)
+      for (const e of safeQueryRes.account.receivedTransferEvents)
+        addrs.push(e.from.id);
+    if (pool) {
+      for (const e of pool.poolAdminAddedEvents) addrs.push(e.address);
+      for (const e of pool.poolAdminRemovedEvents) addrs.push(e.address);
+    }
+    if (gdaPoolQueryRes) {
+      for (const e of gdaPoolQueryRes.pool.memberUnitsUpdatedEvents)
+        addrs.push(e.poolMember.account.id);
+      for (const e of gdaPoolQueryRes.pool.flowDistributionUpdatedEvents)
+        addrs.push(e.poolDistributor.account.id);
+      for (const e of gdaPoolQueryRes.pool.instantDistributionUpdatedEvents)
+        addrs.push(e.poolDistributor.account.id);
+    }
 
-      if (safeQueryRes.account) {
-        for (const receivedTransferEvent of safeQueryRes.account
-          .receivedTransferEvents) {
-          addresses.push(receivedTransferEvent.from.id);
-        }
-      }
-
-      if (pool) {
-        for (const poolAdminAddedEvent of pool.poolAdminAddedEvents) {
-          addresses.push(poolAdminAddedEvent.address);
-        }
-
-        for (const poolAdminRemovedEvent of pool.poolAdminRemovedEvents) {
-          addresses.push(poolAdminRemovedEvent.address);
-        }
-      }
-
-      if (gdaPoolQueryRes) {
-        for (const memberUnitsUpdatedEvent of gdaPoolQueryRes.pool
-          .memberUnitsUpdatedEvents) {
-          addresses.push(memberUnitsUpdatedEvent.poolMember.account.id);
-        }
-
-        for (const flowDistributionUpdatedEvent of gdaPoolQueryRes.pool
-          .flowDistributionUpdatedEvents) {
-          addresses.push(
-            flowDistributionUpdatedEvent.poolDistributor.account.id,
-          );
-        }
-
-        for (const instantDistributionUpdatedEvent of gdaPoolQueryRes.pool
-          .instantDistributionUpdatedEvents) {
-          addresses.push(
-            instantDistributionUpdatedEvent.poolDistributor.account.id,
-          );
-        }
-      }
-
-      const publicClient = createPublicClient({
-        chain: mainnet,
-        transport: http("https://ethereum-rpc.publicnode.com", {
-          batch: {
-            batchSize: 100,
-            wait: 10,
-          },
-        }),
-      });
-
-      try {
-        const ensNames = await Promise.all(
-          addresses.map((address) =>
-            publicClient.getEnsName({
-              address: address as Address,
-            }),
-          ),
-        );
-
-        const ensAvatars = await Promise.all(
-          ensNames.map((ensName) =>
-            publicClient.getEnsAvatar({
-              name: normalize(ensName ?? ""),
-              gatewayUrls: ["https://ccip.ens.xyz"],
-              assetGatewayUrls: {
-                ipfs: IPFS_GATEWAYS[0],
-              },
-            }),
-          ),
-        );
-
-        for (const i in addresses) {
-          ensByAddress[addresses[i] as Address] = {
-            name: ensNames[i] ?? null,
-            avatar: ensAvatars[i] ?? null,
-          };
-        }
-      } catch (err) {
-        console.error(err);
-      }
-
-      setEnsByAddress(ensByAddress);
-    })();
+    return addrs;
   }, [flowSplitter, pool, gdaPoolQueryRes, safeQueryRes]);
+
+  const { ensByAddress } = useEnsResolution(ensAddresses);
 
   useEffect(() => {
     if (connectedChain && connectedChain.id !== chainId) {

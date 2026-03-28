@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Address, createPublicClient, http } from "viem";
-import { mainnet } from "viem/chains";
-import { normalize } from "viem/ens";
+import { useState, useEffect, useMemo } from "react";
+import { Address } from "viem";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -30,7 +28,7 @@ import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";
 import { truncateStr } from "@/lib/utils";
 import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
-import { IPFS_GATEWAYS } from "@/lib/constants";
+import { useEnsResolution } from "@/hooks/useEnsResolution";
 
 type PoolDetailProps = {
   chainId: number;
@@ -126,9 +124,6 @@ export default function PoolDetail(props: PoolDetailProps) {
   const [showOpenFlow, setShowOpenFlow] = useState(false);
   const [showInstantDistribution, setShowInstantDistribution] = useState(false);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
-  const [ensByAddress, setEnsByAddress] = useState<{
-    [key: Address]: { name: string | null; avatar: string | null };
-  } | null>(null);
 
   const router = useRouter();
   const { openConnectModal } = useConnectModal();
@@ -181,78 +176,22 @@ export default function PoolDetail(props: PoolDetailProps) {
 
   useEffect(() => setShowConnectionModal(shouldConnect), [shouldConnect]);
 
-  useEffect(() => {
-    const ensByAddress: {
-      [key: Address]: { name: string | null; avatar: string | null };
-    } = {};
-    (async () => {
-      if (!superfluidQueryRes?.pool) {
-        return;
-      }
+  const ensAddresses = useMemo(() => {
+    if (!superfluidQueryRes?.pool) return [];
 
-      const addresses = [];
+    const addrs: string[] = [];
 
-      for (const memberUnitsUpdatedEvent of superfluidQueryRes.pool
-        .memberUnitsUpdatedEvents) {
-        addresses.push(memberUnitsUpdatedEvent.poolMember.account.id);
-      }
+    for (const e of superfluidQueryRes.pool.memberUnitsUpdatedEvents)
+      addrs.push(e.poolMember.account.id);
+    for (const e of superfluidQueryRes.pool.flowDistributionUpdatedEvents)
+      addrs.push(e.poolDistributor.account.id);
+    for (const e of superfluidQueryRes.pool.instantDistributionUpdatedEvents)
+      addrs.push(e.poolDistributor.account.id);
 
-      for (const flowDistributionUpdatedEvent of superfluidQueryRes.pool
-        .flowDistributionUpdatedEvents) {
-        addresses.push(flowDistributionUpdatedEvent.poolDistributor.account.id);
-      }
-
-      for (const instantDistributionUpdatedEvent of superfluidQueryRes.pool
-        .instantDistributionUpdatedEvents) {
-        addresses.push(
-          instantDistributionUpdatedEvent.poolDistributor.account.id,
-        );
-      }
-
-      const publicClient = createPublicClient({
-        chain: mainnet,
-        transport: http("https://ethereum-rpc.publicnode.com", {
-          batch: {
-            batchSize: 100,
-            wait: 10,
-          },
-        }),
-      });
-
-      try {
-        const ensNames = await Promise.all(
-          addresses.map((address) =>
-            publicClient.getEnsName({
-              address: address as Address,
-            }),
-          ),
-        );
-
-        const ensAvatars = await Promise.all(
-          ensNames.map((ensName) =>
-            publicClient.getEnsAvatar({
-              name: normalize(ensName ?? ""),
-              gatewayUrls: ["https://ccip.ens.xyz"],
-              assetGatewayUrls: {
-                ipfs: IPFS_GATEWAYS[0],
-              },
-            }),
-          ),
-        );
-
-        for (const i in addresses) {
-          ensByAddress[addresses[i] as Address] = {
-            name: ensNames[i] ?? null,
-            avatar: ensAvatars[i] ?? null,
-          };
-        }
-      } catch (err) {
-        console.error(err);
-      }
-
-      setEnsByAddress(ensByAddress);
-    })();
+    return addrs;
   }, [superfluidQueryRes]);
+
+  const { ensByAddress } = useEnsResolution(ensAddresses);
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") {
