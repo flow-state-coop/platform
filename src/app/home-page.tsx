@@ -66,8 +66,8 @@ export default function HomePage() {
           <span className="text-primary"> solutions</span>
         </p>
         <p className="m-0 text-center fs-6">
-          We build continuous funding apps, incentive systems & governance
-          mechanisms so your capital flows to results.
+          We build continuous funding apps, payment tools, & incentive
+          systems so your capital flows to results.
         </p>
         <Stack
           direction={isMobile ? "vertical" : "horizontal"}
