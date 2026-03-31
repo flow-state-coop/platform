@@ -194,7 +194,6 @@ export const displayNameSchema = z
     /^[\p{L}\p{N}\s\-_]+$/u,
     "Only letters, numbers, spaces, hyphens, and underscores",
   );
->>>>>>> d079664 (feat: add display names, reactions, and message pinning to chat)
 
 type ValidationSuccess<T> = { success: true; data: T };
 type ValidationError = { success: false; error: string };

@@ -54,26 +54,30 @@ export function useChatActions<T extends PinnableMessage>({
     return [...pinned, ...orderedUnpinned];
   }, [messages, newestFirst]);
 
-  const handlePin = useCallback(
+  const handlePinToggle = useCallback(
     async (
       messageId: number,
+      pin: boolean,
       fetchMessages: () => void,
       setError: (e: string) => void,
     ) => {
-      const pinnedCount = messages.filter((m) => m.pinnedAt).length;
-      if (
-        pinnedCount >= 3 &&
-        !window.confirm(
-          "There are already 3 pinned messages. The oldest pin will be replaced. Continue?",
-        )
-      ) {
-        return;
+      if (pin) {
+        const pinnedCount = messages.filter((m) => m.pinnedAt).length;
+        if (
+          pinnedCount >= 3 &&
+          !window.confirm(
+            "There are already 3 pinned messages. The oldest pin will be replaced. Continue?",
+          )
+        ) {
+          return;
+        }
       }
 
+      const action = pin ? "pin" : "unpin";
       try {
         setError("");
         const res = await fetch(`/api/flow-council/messages/${messageId}/pin`, {
-          method: "POST",
+          method: pin ? "POST" : "DELETE",
           body: JSON.stringify({ chainId, councilId }),
         });
         const data = await res.json();
@@ -81,66 +85,42 @@ export function useChatActions<T extends PinnableMessage>({
         if (data.success) {
           fetchMessages();
         } else {
-          setError(data.error || "Failed to pin message");
+          setError(data.error || `Failed to ${action} message`);
         }
       } catch (err) {
         console.error(err);
-        setError("Failed to pin message");
+        setError(`Failed to ${action} message`);
       }
     },
     [messages, chainId, councilId],
-  );
-
-  const handleUnpin = useCallback(
-    async (
-      messageId: number,
-      fetchMessages: () => void,
-      setError: (e: string) => void,
-    ) => {
-      try {
-        setError("");
-        const res = await fetch(`/api/flow-council/messages/${messageId}/pin`, {
-          method: "DELETE",
-          body: JSON.stringify({ chainId, councilId }),
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          fetchMessages();
-        } else {
-          setError(data.error || "Failed to unpin message");
-        }
-      } catch (err) {
-        console.error(err);
-        setError("Failed to unpin message");
-      }
-    },
-    [chainId, councilId],
   );
 
   const handleReactionToggle = useCallback(
     async (messageId: number, emoji: string) => {
       if (!sessionAddress) return;
 
-      const prev = reactions[messageId] || [];
-      const existing = prev.find((r) => r.emoji === emoji);
-      const optimistic = existing?.hasReacted
-        ? prev
-            .map((r) =>
-              r.emoji === emoji
-                ? { ...r, count: r.count - 1, hasReacted: false }
-                : r,
-            )
-            .filter((r) => r.count > 0)
-        : existing
-          ? prev.map((r) =>
-              r.emoji === emoji
-                ? { ...r, count: r.count + 1, hasReacted: true }
-                : r,
-            )
-          : [...prev, { emoji, count: 1, hasReacted: true }];
+      let rollback: ReactionSummary[] | undefined;
 
-      setReactions((r) => ({ ...r, [messageId]: optimistic }));
+      setReactions((current) => {
+        rollback = current[messageId] || [];
+        const existing = rollback.find((r) => r.emoji === emoji);
+        const optimistic = existing?.hasReacted
+          ? rollback
+              .map((r) =>
+                r.emoji === emoji
+                  ? { ...r, count: r.count - 1, hasReacted: false }
+                  : r,
+              )
+              .filter((r) => r.count > 0)
+          : existing
+            ? rollback.map((r) =>
+                r.emoji === emoji
+                  ? { ...r, count: r.count + 1, hasReacted: true }
+                  : r,
+              )
+            : [...rollback, { emoji, count: 1, hasReacted: true }];
+        return { ...current, [messageId]: optimistic };
+      });
 
       try {
         const res = await fetch(
@@ -153,13 +133,13 @@ export function useChatActions<T extends PinnableMessage>({
         const data = await res.json();
 
         if (!data.success) {
-          setReactions((r) => ({ ...r, [messageId]: prev }));
+          setReactions((r) => ({ ...r, [messageId]: rollback! }));
         }
       } catch {
-        setReactions((r) => ({ ...r, [messageId]: prev }));
+        setReactions((r) => ({ ...r, [messageId]: rollback! }));
       }
     },
-    [sessionAddress, reactions, chainId, councilId],
+    [sessionAddress, chainId, councilId],
   );
 
   return {
@@ -168,8 +148,7 @@ export function useChatActions<T extends PinnableMessage>({
     displayMessages,
     setFetchedData,
     clearData,
-    handlePin,
-    handleUnpin,
+    handlePinToggle,
     handleReactionToggle,
   };
 }
