@@ -36,9 +36,7 @@ export default function Header() {
               height={isMobile || isTablet ? 48 : 64}
               onClick={() => router.push("/")}
             />
-            {!isSmallScreen && (
-              <Image src="/wordmark.svg" alt="Flow State" />
-            )}
+            {!isSmallScreen && <Image src="/wordmark.svg" alt="Flow State" />}
           </Stack>
           {(isMobile || isTablet) && (
             <Button

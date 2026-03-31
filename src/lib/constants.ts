@@ -14,8 +14,7 @@ export const ZERO_ADDRESS =
   "0x0000000000000000000000000000000000000000" as Address;
 export const PINATA_JWT_KEY = process.env.NEXT_PUBLIC_PINATA_JWT_KEY;
 export const SUPERVISUAL_BASE_URL = "https://graph.flowstate.network";
-export const OG_DEFAULT_IMAGE_URL =
-  "https://opengraph.b-cdn.net/production/images/46f99288-6ea8-4768-af0c-4b716bc1bf02.png?token=_GzabZBVzFhqh2_MDikORxOyaHHx9NygbVgatN7KFHY&height=630&width=1200&expires=33264419569";
+export const OG_DEFAULT_IMAGE_URL = "https://flowstate.network/og.png";
 export const IPFS_GATEWAYS = [
   "https://ipfs.fleek.co",
   "https://silver-definite-penguin-424.mypinata.cloud",

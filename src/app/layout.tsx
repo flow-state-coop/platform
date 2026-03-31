@@ -11,13 +11,16 @@ export const metadata = {
     process.env.NODE_ENV === "development"
       ? new URL(`http://localhost:${process.env.PORT || 3000}`)
       : void 0,
-  title: "Flow State",
+  title:
+    "Flow State - Streaming funding solutions where capital flows to impact",
   openGraph: {
-    title: "Flow State - Making Impact Common",
+    title:
+      "Flow State - Streaming funding solutions where capital flows to impact",
     description:
-      "A streaming funding platform & digital cooperative for funding, sustaining, & rewarding impact work. Streaming quadratic funding, streaming quadratic voting, council voting, & more.",
-    url: "https://flowstate.network",
+      "We build continuous funding apps, payment tools, & incentive systems with Superfluid's programmable money streams: Flow Councils, Flow Splitters, Flow QF, & more.",
+    url: "https://flowstate.network/",
     siteName: "Flow State",
+    type: "website",
     images: [
       {
         url: OG_DEFAULT_IMAGE_URL,
@@ -28,9 +31,10 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Flow State - Making Impact Common",
+    title:
+      "Flow State - Streaming funding solutions where capital flows to impact",
     description:
-      "A streaming funding platform & digital cooperative for funding, sustaining, & rewarding impact work. Streaming quadratic funding, streaming quadratic voting, council voting, & more.",
+      "We build continuous funding apps, payment tools, & incentive systems with Superfluid's programmable money streams: Flow Councils, Flow Splitters, Flow QF, & more.",
     images: [
       {
         url: OG_DEFAULT_IMAGE_URL,
