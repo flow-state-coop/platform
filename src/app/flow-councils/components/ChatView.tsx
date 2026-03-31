@@ -82,8 +82,7 @@ export default function ChatView(props: ChatViewProps) {
     displayMessages,
     setFetchedData,
     clearData,
-    handlePin,
-    handleUnpin,
+    handlePinToggle,
     handleReactionToggle,
   } = useChatActions({
     messages,
@@ -345,8 +344,8 @@ export default function ChatView(props: ChatViewProps) {
                 reactionsDisabled={!session?.address}
                 isPinned={!!message.pinnedAt}
                 canPin={canModerate}
-                onPin={() => handlePin(message.id, fetchMessages, setError)}
-                onUnpin={() => handleUnpin(message.id, fetchMessages, setError)}
+                onPin={() => handlePinToggle(message.id, true, fetchMessages, setError)}
+                onUnpin={() => handlePinToggle(message.id, false, fetchMessages, setError)}
                 hideAdminTag={channelType === "PUBLIC_PROJECT"}
                 canEdit={canEditMessage(message)}
                 canDelete={canDeleteMessage(message)}

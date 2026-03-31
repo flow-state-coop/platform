@@ -59,8 +59,7 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
     displayMessages,
     setFetchedData,
     clearData,
-    handlePin,
-    handleUnpin,
+    handlePinToggle,
     handleReactionToggle,
   } = useChatActions({
     messages,
@@ -262,8 +261,8 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
                 reactionsDisabled={!session?.address}
                 isPinned={!!message.pinnedAt}
                 canPin={isAdmin}
-                onPin={() => handlePin(message.id, fetchMessages, setError)}
-                onUnpin={() => handleUnpin(message.id, fetchMessages, setError)}
+                onPin={() => handlePinToggle(message.id, true, fetchMessages, setError)}
+                onUnpin={() => handlePinToggle(message.id, false, fetchMessages, setError)}
                 projectSource={
                   message.messageType === "milestone_update" &&
                   message.projectId
