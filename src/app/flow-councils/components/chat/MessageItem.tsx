@@ -163,11 +163,7 @@ export default function MessageItem(props: MessageItemProps) {
               {showAddressTooltip ? (
                 <OverlayTrigger
                   placement="top"
-                  overlay={
-                    <Tooltip style={{ whiteSpace: "nowrap" }}>
-                      {message.authorAddress}
-                    </Tooltip>
-                  }
+                  overlay={<Tooltip>{message.authorAddress}</Tooltip>}
                 >
                   <span className="fw-semi-bold text-truncate">
                     {displayName}

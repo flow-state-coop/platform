@@ -47,12 +47,12 @@ export function useChatActions<T extends PinnableMessage>({
       .filter((m) => m.pinnedAt)
       .sort(
         (a, b) =>
-          new Date(b.pinnedAt!).getTime() - new Date(a.pinnedAt!).getTime(),
+          new Date(a.pinnedAt!).getTime() - new Date(b.pinnedAt!).getTime(),
       );
     const unpinned = messages.filter((m) => !m.pinnedAt);
     const orderedUnpinned = newestFirst ? [...unpinned].reverse() : unpinned;
     return newestFirst
-      ? [...pinned, ...orderedUnpinned]
+      ? [...pinned.reverse(), ...orderedUnpinned]
       : [...orderedUnpinned, ...pinned];
   }, [messages, newestFirst]);
 
