@@ -130,10 +130,12 @@ export async function POST(
     } else {
       pinnedQuery = pinnedQuery.where("roundId", "is", null);
     }
-    if (message.projectId) {
-      pinnedQuery = pinnedQuery.where("projectId", "=", message.projectId);
-    } else {
-      pinnedQuery = pinnedQuery.where("projectId", "is", null);
+    if (message.channelType !== "PUBLIC_ROUND") {
+      if (message.projectId) {
+        pinnedQuery = pinnedQuery.where("projectId", "=", message.projectId);
+      } else {
+        pinnedQuery = pinnedQuery.where("projectId", "is", null);
+      }
     }
     if (message.applicationId) {
       pinnedQuery = pinnedQuery.where(
