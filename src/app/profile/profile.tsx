@@ -125,7 +125,11 @@ export default function Profile() {
               Connect Wallet
             </Button>
           ) : (
-            <Button variant="primary" disabled className="fs-lg fw-semi-bold rounded-4 px-10 py-4 opacity-25">
+            <Button
+              variant="primary"
+              disabled
+              className="fs-lg fw-semi-bold rounded-4 px-10 py-4 opacity-25"
+            >
               Connect Wallet
             </Button>
           )}
