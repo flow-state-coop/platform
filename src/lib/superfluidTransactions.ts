@@ -83,6 +83,10 @@ export function buildFlowBatchOps({
   flowRateToReceiver: string;
   chainId: keyof typeof cfaAddress;
 }): BatchOp[] {
+  if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToReceiver) === BigInt(0)) {
+    return [];
+  }
+
   if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToReceiver) > 0) {
     return [
       prepareOperation({
