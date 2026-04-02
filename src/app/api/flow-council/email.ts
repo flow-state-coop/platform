@@ -305,6 +305,14 @@ export async function sendInternalCommentEmail(
   });
 }
 
+export function formatSender(
+  address: string,
+  displayName: string | undefined,
+): string {
+  const short = `${address.slice(0, 6)}...${address.slice(-4)}`;
+  return displayName ? `${displayName} (${short})` : short;
+}
+
 // Helper to get project and round details for email
 export async function getProjectAndRoundDetails(
   projectId: number,
