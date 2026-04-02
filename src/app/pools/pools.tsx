@@ -14,7 +14,7 @@ import Alert from "react-bootstrap/Alert";
 import { Network } from "@/types/network";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
-import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
+import { gdaPoolAbi } from "@sfpro/sdk/abi";
 
 type PoolsProps = {
   defaultNetwork: Network;
@@ -44,7 +44,7 @@ export default function Pools(props: PoolsProps) {
     isLoading: superTokenLoading,
   } = useReadContract({
     address: poolAddress as Address,
-    abi: superfluidPoolAbi,
+    abi: gdaPoolAbi,
     functionName: "superToken",
     chainId: selectedNetwork.id,
     query: { enabled: isValidAddress },
