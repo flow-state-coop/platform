@@ -389,3 +389,12 @@ input[type="email"].mailing-list-input::placeholder {
     transform: scale(0.98);
   }
 }
+
+.icon-currentcolor {
+  display: inline-block;
+  background-color: currentColor;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}

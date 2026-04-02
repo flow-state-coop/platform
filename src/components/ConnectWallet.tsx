@@ -4,6 +4,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useDisconnect } from "wagmi";
 import { networks } from "@/lib/networks";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import { useProfileDisplayName } from "@/hooks/useProfileDisplayName";
 import Stack from "react-bootstrap/Stack";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
@@ -15,6 +16,7 @@ export default function ConnectWallet({
 }) {
   const { isSmallScreen } = useMediaQuery();
   const { disconnect } = useDisconnect();
+  const { displayName: profileDisplayName } = useProfileDisplayName();
 
   return (
     <ConnectButton.Custom>
@@ -86,11 +88,22 @@ export default function ConnectWallet({
                     <Dropdown.Toggle
                       bsPrefix="dropdown"
                       variant="outline-dark"
-                      className="px-10 py-4 border-4 rounded-4"
+                      className="d-flex align-items-center gap-1 px-10 py-4 border-4 rounded-4"
                       style={{ whiteSpace: "nowrap" }}
                     >
+                      <span
+                        className="icon-currentcolor"
+                        role="img"
+                        aria-label="account"
+                        style={{
+                          width: 18,
+                          height: 18,
+                          WebkitMaskImage: "url(/account-circle.svg)",
+                          maskImage: "url(/account-circle.svg)",
+                        }}
+                      />
                       <span className="fw-semi-bold sensitive">
-                        {account.displayName}
+                        {profileDisplayName ?? account.displayName}
                       </span>
                     </Dropdown.Toggle>
                     <Dropdown.Menu className="py-0 border-4 border-dark overflow-hidden">
