@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAccount } from "wagmi";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
 
@@ -8,42 +8,46 @@ export function useProfileDisplayName(): {
 } {
   const { address } = useAccount();
   const [profileName, setProfileName] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
-  const addresses = address ? [address] : [];
+  const addresses = useMemo(() => (address ? [address] : []), [address]);
   const { ensByAddress, isLoading: ensLoading } = useEnsResolution(addresses);
   const ensName = address
     ? (ensByAddress?.[address.toLowerCase()]?.name ?? null)
     : null;
 
-  const fetchDisplayName = useCallback(async () => {
+  useEffect(() => {
     if (!address) {
       setProfileName(null);
+      setProfileLoaded(true);
       return;
     }
 
-    setIsLoading(true);
+    setProfileLoaded(false);
+    const controller = new AbortController();
 
-    try {
-      const res = await fetch(`/api/flow-council/profile?address=${address}`);
-      const data = await res.json();
+    fetch(`/api/flow-council/profile?address=${address}`, {
+      signal: controller.signal,
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setProfileName(
+          data.success && data.profile ? data.profile.displayName : null,
+        );
+        setProfileLoaded(true);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setProfileName(null);
+          setProfileLoaded(true);
+        }
+      });
 
-      setProfileName(
-        data.success && data.profile ? data.profile.displayName : null,
-      );
-    } catch {
-      setProfileName(null);
-    } finally {
-      setIsLoading(false);
-    }
+    return () => controller.abort();
   }, [address]);
 
-  useEffect(() => {
-    fetchDisplayName();
-  }, [fetchDisplayName]);
-
   return {
-    displayName: profileName ?? ensName,
-    isLoading: isLoading || ensLoading,
+    displayName: profileName ?? (profileLoaded ? ensName : null),
+    isLoading: !profileLoaded || ensLoading,
   };
 }
