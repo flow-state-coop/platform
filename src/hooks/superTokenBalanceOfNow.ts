@@ -2,7 +2,7 @@ import { Address, parseAbi } from "viem";
 import { useReadContract } from "wagmi";
 
 const realtimeBalanceOfNowAbi = parseAbi([
-  "function realtimeBalanceOfNow(address) returns (int256,uint256,uint256,uint256)",
+  "function realtimeBalanceOfNow(address) view returns (int256,uint256,uint256,uint256)",
 ]);
 
 export default function useSuperTokenBalanceOfNow({

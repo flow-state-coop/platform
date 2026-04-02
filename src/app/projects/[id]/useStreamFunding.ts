@@ -1,23 +1,19 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import {
-  Address,
-  parseEther,
-  parseUnits,
-  formatUnits,
-  encodeFunctionData,
-  erc20Abi,
-} from "viem";
+import { Address, parseEther, parseUnits, formatUnits, erc20Abi } from "viem";
 import { useAccount, useBalance, useReadContract, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useQuery, gql } from "@apollo/client";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
-import { superTokenAbi } from "@sfpro/sdk/abi";
-import { hostAbi, hostAddress, cfaAbi, cfaAddress } from "@sfpro/sdk/abi/core";
-import { prepareOperation, OPERATION_TYPE } from "@sfpro/sdk/constant";
+import { hostAddress, cfaAddress } from "@sfpro/sdk/abi/core";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
 import { TransactionCall } from "@/types/transactionCall";
+import {
+  buildWrapCalls,
+  buildFlowBatchOps,
+  buildBatchCall,
+} from "@/lib/superfluidTransactions";
 import { getApolloClient } from "@/lib/apollo";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useFlowingAmount from "@/hooks/flowingAmount";
@@ -224,109 +220,39 @@ export default function useStreamFunding(
       isSuperTokenWrapper &&
       wrapAmountUnits > BigInt(underlyingTokenAllowance ?? 0);
     const newCalls: TransactionCall[] = [];
-    const batchOps: {
-      operationType: number;
-      target: Address;
-      data: `0x${string}`;
-    }[] = [];
+    const batchOps = [];
 
     if (wrapAmount && Number(wrapAmount.replace(/,/g, "")) > 0) {
-      if (isSuperTokenWrapper && tokenUnderlyingAddress && needsApproval) {
-        newCalls.push({
-          to: tokenUnderlyingAddress as Address,
-          data: encodeFunctionData({
-            abi: erc20Abi,
-            functionName: "approve",
-            args: [selectedToken.address, wrapAmountUnits],
-          }),
-        });
-      }
-      if (isSuperTokenWrapper) {
-        batchOps.push(
-          prepareOperation({
-            operationType: OPERATION_TYPE.SUPERTOKEN_UPGRADE,
-            target: selectedToken.address,
-            data: encodeFunctionData({
-              abi: superTokenAbi,
-              functionName: "upgrade",
-              args: [wrapAmountWei],
-            }),
-          }),
-        );
-      } else if (isSuperTokenNative) {
-        newCalls.push({
-          to: selectedToken.address,
-          data: encodeFunctionData({
-            abi: superTokenAbi,
-            functionName: "upgradeByETH",
-            args: [],
-          }),
-          value: wrapAmountWei,
-        });
-      }
+      const wrap = buildWrapCalls({
+        tokenAddress: selectedToken.address,
+        wrapAmountWei,
+        wrapAmountUnits,
+        isSuperTokenWrapper,
+        isSuperTokenNative: isSuperTokenNative ?? false,
+        tokenUnderlyingAddress,
+        needsApproval,
+      });
+
+      newCalls.push(...wrap.calls);
+      batchOps.push(...wrap.batchOps);
     }
 
-    if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToReceiver) > 0) {
-      batchOps.push(
-        prepareOperation({
-          operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
-          target: cfaAddress[chainId],
-          data: encodeFunctionData({
-            abi: cfaAbi,
-            functionName: "deleteFlow",
-            args: [
-              selectedToken.address,
-              address,
-              receiverAddress as Address,
-              "0x",
-            ],
-          }),
-        }),
-      );
-    } else if (BigInt(flowRateToReceiver) > 0) {
-      batchOps.push(
-        prepareOperation({
-          operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
-          target: cfaAddress[chainId],
-          data: encodeFunctionData({
-            abi: cfaAbi,
-            functionName: "updateFlow",
-            args: [
-              selectedToken.address,
-              receiverAddress as Address,
-              BigInt(newFlowRate),
-              "0x",
-            ],
-          }),
-        }),
-      );
-    } else {
-      batchOps.push(
-        prepareOperation({
-          operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
-          target: cfaAddress[chainId],
-          data: encodeFunctionData({
-            abi: cfaAbi,
-            functionName: "createFlow",
-            args: [
-              selectedToken.address,
-              receiverAddress as Address,
-              BigInt(newFlowRate),
-              "0x",
-            ],
-          }),
-        }),
-      );
-    }
-
-    newCalls.push({
-      to: hostAddress[chainId],
-      data: encodeFunctionData({
-        abi: hostAbi,
-        functionName: "batchCall",
-        args: [batchOps],
+    batchOps.push(
+      ...buildFlowBatchOps({
+        tokenAddress: selectedToken.address,
+        senderAddress: address,
+        receiverAddress: receiverAddress as Address,
+        newFlowRate,
+        flowRateToReceiver,
+        chainId,
       }),
-    });
+    );
+
+    const batchCall = buildBatchCall(batchOps, chainId);
+
+    if (batchCall) {
+      newCalls.push(batchCall);
+    }
 
     return newCalls;
   }, [
@@ -366,33 +292,15 @@ export default function useStreamFunding(
     const chainId = network.id as keyof typeof cfaAddress;
     setIsSuccess(false);
 
-    const cancelCalls: TransactionCall[] = [
-      {
-        to: hostAddress[chainId],
-        data: encodeFunctionData({
-          abi: hostAbi,
-          functionName: "batchCall",
-          args: [
-            [
-              prepareOperation({
-                operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
-                target: cfaAddress[chainId],
-                data: encodeFunctionData({
-                  abi: cfaAbi,
-                  functionName: "deleteFlow",
-                  args: [
-                    selectedToken.address,
-                    address,
-                    receiverAddress as Address,
-                    "0x",
-                  ],
-                }),
-              }),
-            ],
-          ],
-        }),
-      },
-    ];
+    const deleteOps = buildFlowBatchOps({
+      tokenAddress: selectedToken.address,
+      senderAddress: address,
+      receiverAddress: receiverAddress as Address,
+      newFlowRate: "0",
+      flowRateToReceiver: "1",
+      chainId,
+    });
+    const cancelCalls: TransactionCall[] = [buildBatchCall(deleteOps, chainId)!];
 
     try {
       await executeTransactions(cancelCalls);

@@ -66,7 +66,7 @@ export default function Launch(props: LaunchProps) {
     areTransactionsLoading,
     completedTransactions,
     transactionError,
-    executeLegacyTransactions,
+    executeWithProgress,
   } = useTransactionsQueue();
   const { data: flowCouncilQueryRes, loading: flowCouncilQueryLoading } =
     useQuery(FLOW_COUNCIL_QUERY, {
@@ -103,12 +103,12 @@ export default function Launch(props: LaunchProps) {
     }
 
     const token = defaultToken.address;
-    let flowCouncilAddress: Address = "" as Address;
-    let distributionPool: Address = "" as Address;
-    let splitterAddress = "";
 
-    const transactions: (() => Promise<void>)[] = [
-      async () => {
+    try {
+      let flowCouncilAddress: Address = "" as Address;
+      let splitterAddress = "";
+
+      await executeWithProgress(async (onProgress) => {
         const hash = await writeContract(wagmiConfig, {
           address: selectedNetwork.flowCouncilFactory as Address,
           abi: flowCouncilFactoryAbi,
@@ -125,55 +125,50 @@ export default function Launch(props: LaunchProps) {
         })[0].args;
 
         flowCouncilAddress = eventArgs.flowCouncil;
-        distributionPool = eventArgs.distributionPool;
-      },
-    ];
+        onProgress();
 
-    if (selectedNetwork.superAppSplitterFactory) {
-      transactions.push(async () => {
-        const splitterHash = await writeContract(wagmiConfig, {
-          address: selectedNetwork.superAppSplitterFactory as Address,
-          abi: superAppSplitterFactoryAbi,
-          functionName: "createSuperAppSplitter",
-          args: [
-            selectedNetwork.superfluidHost,
-            token,
-            address,
-            distributionPool,
-            selectedNetwork.feeRecipientPool,
-            SUPERAPP_SPLITTER_SIDE_PORTION,
-          ],
-        });
+        if (selectedNetwork.superAppSplitterFactory) {
+          const splitterHash = await writeContract(wagmiConfig, {
+            address: selectedNetwork.superAppSplitterFactory as Address,
+            abi: superAppSplitterFactoryAbi,
+            functionName: "createSuperAppSplitter",
+            args: [
+              selectedNetwork.superfluidHost,
+              token,
+              address,
+              eventArgs.distributionPool,
+              selectedNetwork.feeRecipientPool,
+              SUPERAPP_SPLITTER_SIDE_PORTION,
+            ],
+          });
 
-        const splitterReceipt = await waitForReceipt(
-          publicClient,
-          splitterHash,
-        );
-
-        const appRegisteredLogs = parseEventLogs({
-          abi: [
-            {
-              type: "event",
-              name: "AppRegistered",
-              inputs: [{ name: "app", type: "address", indexed: true }],
-            },
-          ] as const,
-          eventName: ["AppRegistered"],
-          logs: splitterReceipt.logs,
-        });
-
-        if (!appRegisteredLogs.length) {
-          throw new Error(
-            "SuperApp Splitter deployment failed: AppRegistered event not found",
+          const splitterReceipt = await waitForReceipt(
+            publicClient,
+            splitterHash,
           );
+
+          const appRegisteredLogs = parseEventLogs({
+            abi: [
+              {
+                type: "event",
+                name: "AppRegistered",
+                inputs: [{ name: "app", type: "address", indexed: true }],
+              },
+            ] as const,
+            eventName: ["AppRegistered"],
+            logs: splitterReceipt.logs,
+          });
+
+          if (!appRegisteredLogs.length) {
+            throw new Error(
+              "SuperApp Splitter deployment failed: AppRegistered event not found",
+            );
+          }
+
+          splitterAddress = appRegisteredLogs[0].args.app;
+          onProgress();
         }
-
-        splitterAddress = appRegisteredLogs[0].args.app;
       });
-    }
-
-    try {
-      await executeLegacyTransactions(transactions);
 
       await fetch("/api/flow-council/launch", {
         method: "POST",

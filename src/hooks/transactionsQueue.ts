@@ -38,6 +38,24 @@ function getRevertSelector(err: unknown): string | null {
   return null;
 }
 
+function getTransactionErrorMessage(err: Record<string, unknown>): string {
+  if (isRejectionError(err)) {
+    return "Transaction rejected";
+  }
+
+  if (err.code === "INSUFFICIENT_FUNDS") {
+    return "Not enough funds to cover gas";
+  }
+
+  const selector = getRevertSelector(err);
+
+  if (selector && REVERT_ERROR_MESSAGES[selector]) {
+    return REVERT_ERROR_MESSAGES[selector];
+  }
+
+  return "An error occurred executing the transaction";
+}
+
 export default function useTransactionsQueue() {
   const [transactionError, setTransactionError] = useState("");
   const [areTransactionsLoading, setAreTransactionsLoading] = useState(false);
@@ -57,7 +75,6 @@ export default function useTransactionsQueue() {
     setCompletedTransactions(0);
 
     try {
-
       if (isBatchSupported && calls.length > 1) {
         await sendCallsSyncAsync({
           calls: calls.map((call) => ({
@@ -66,6 +83,8 @@ export default function useTransactionsQueue() {
             ...(call.value ? { value: call.value } : {}),
           })),
         });
+
+        setCompletedTransactions(calls.length);
       } else {
         if (!walletClient || !publicClient) {
           throw new Error("Wallet not connected");
@@ -99,13 +118,7 @@ export default function useTransactionsQueue() {
       setCompletedTransactions(0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-      let errorMessage = "An error occured executing the transaction";
-
-      if (isRejectionError(err)) {
-        errorMessage = "Transaction rejected";
-      }
-
-      setTransactionError(errorMessage);
+      setTransactionError(getTransactionErrorMessage(err));
       setCompletedTransactions(0);
       setAreTransactionsLoading(false);
 
@@ -113,40 +126,21 @@ export default function useTransactionsQueue() {
     }
   };
 
-  const executeLegacyTransactions = async (
-    transactions: (() => Promise<void>)[],
+  const executeWithProgress = async (
+    fn: (onProgress: () => void) => Promise<void>,
   ) => {
     setAreTransactionsLoading(true);
     setTransactionError("");
+    setCompletedTransactions(0);
 
     try {
-      for (const transaction of transactions) {
-        await transaction();
-
-        setCompletedTransactions((prev) => prev + 1);
-      }
+      await fn(() => setCompletedTransactions((prev) => prev + 1));
 
       setAreTransactionsLoading(false);
       setCompletedTransactions(0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-      console.error("Transaction failed:", err);
-
-      let errorMessage = "An error occured executing the transaction";
-
-      if (isRejectionError(err)) {
-        errorMessage = "Transaction rejected";
-      } else if (err.code === "INSUFFICIENT_FUNDS") {
-        errorMessage = "Not enough funds to cover gas";
-      } else {
-        const selector = getRevertSelector(err);
-
-        if (selector && REVERT_ERROR_MESSAGES[selector]) {
-          errorMessage = REVERT_ERROR_MESSAGES[selector];
-        }
-      }
-
-      setTransactionError(errorMessage);
+      setTransactionError(getTransactionErrorMessage(err));
       setCompletedTransactions(0);
       setAreTransactionsLoading(false);
 
@@ -160,6 +154,6 @@ export default function useTransactionsQueue() {
     transactionError,
     isBatchSupported,
     executeTransactions,
-    executeLegacyTransactions,
+    executeWithProgress,
   };
 }

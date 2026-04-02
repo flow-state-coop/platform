@@ -1,5 +1,5 @@
 import { useQuery, gql } from "@apollo/client";
-import { isAddress } from "viem";
+import { type Address, isAddress } from "viem";
 import { getApolloClient } from "@/lib/apollo";
 import { ZERO_ADDRESS } from "@/lib/constants";
 
@@ -18,7 +18,7 @@ export default function useSuperTokenType(
 ) {
   const { data, loading } = useQuery(SUPER_TOKEN_TYPE_QUERY, {
     client: getApolloClient("superfluid", chainId),
-    variables: { token: tokenAddress?.toLowerCase() },
+    variables: { token: tokenAddress.toLowerCase() },
     skip: !tokenAddress,
   });
 
@@ -28,7 +28,7 @@ export default function useSuperTokenType(
   const rawUnderlyingAddress: string | undefined = data?.token
     ? data.token.underlyingAddress
     : undefined;
-  const underlyingAddress: string | undefined =
+  const underlyingAddress: Address | undefined =
     rawUnderlyingAddress && isAddress(rawUnderlyingAddress)
       ? rawUnderlyingAddress
       : undefined;

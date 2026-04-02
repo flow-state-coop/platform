@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Address,
   isAddress,
-  encodeFunctionData,
   erc20Abi,
   parseEther,
   parseUnits,
@@ -11,9 +10,7 @@ import {
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import dayjs from "dayjs";
 import { useQuery, gql } from "@apollo/client";
-import { superTokenAbi } from "@sfpro/sdk/abi";
-import { hostAbi, hostAddress, cfaAbi, cfaAddress } from "@sfpro/sdk/abi/core";
-import { prepareOperation, OPERATION_TYPE } from "@sfpro/sdk/constant";
+import { hostAddress } from "@sfpro/sdk/abi/core";
 import duration from "dayjs/plugin/duration";
 import Offcanvas from "react-bootstrap/Offcanvas";
 import Accordion from "react-bootstrap/Accordion";
@@ -27,6 +24,11 @@ import Review from "@/components/checkout/Review";
 import Success from "@/components/checkout/Success";
 import { Network } from "@/types/network";
 import { TransactionCall } from "@/types/transactionCall";
+import {
+  buildWrapCalls,
+  buildFlowBatchOps,
+  buildBatchCall,
+} from "@/lib/superfluidTransactions";
 import DistributionPoolDetails from "./DistributionPoolDetails";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
@@ -146,14 +148,14 @@ export default function DistributionPoolFunding(props: {
   const { data: underlyingTokenBalance } = useBalance({
     address,
     chainId: network?.id,
-    token: isSuperTokenNative ? void 0 : (tokenUnderlyingAddress as Address),
+    token: isSuperTokenNative ? void 0 : tokenUnderlyingAddress,
     query: {
       refetchInterval: 10000,
       enabled: isSuperTokenWrapper === true,
     },
   });
   const { data: underlyingTokenAllowance } = useReadContract({
-    address: tokenUnderlyingAddress as Address,
+    address: tokenUnderlyingAddress,
     abi: erc20Abi,
     functionName: "allowance",
     args: [address!, distributionTokenAddress],
@@ -316,110 +318,39 @@ export default function DistributionPoolFunding(props: {
       isSuperTokenWrapper &&
       wrapAmountUnits > BigInt(underlyingTokenAllowance ?? 0);
     const newCalls: TransactionCall[] = [];
-    const batchOps: {
-      operationType: number;
-      target: Address;
-      data: `0x${string}`;
-    }[] = [];
+    const batchOps = [];
 
     if (wrapAmount && Number(wrapAmount?.replace(/,/g, "")) > 0) {
-      if (isSuperTokenWrapper && tokenUnderlyingAddress && needsApproval) {
-        newCalls.push({
-          to: tokenUnderlyingAddress as Address,
-          data: encodeFunctionData({
-            abi: erc20Abi,
-            functionName: "approve",
-            args: [distributionTokenAddress, wrapAmountUnits],
-          }),
-        });
-      }
+      const wrap = buildWrapCalls({
+        tokenAddress: distributionTokenAddress,
+        wrapAmountWei,
+        wrapAmountUnits,
+        isSuperTokenWrapper,
+        isSuperTokenNative: isSuperTokenNative ?? false,
+        tokenUnderlyingAddress,
+        needsApproval,
+      });
 
-      if (isSuperTokenWrapper) {
-        batchOps.push(
-          prepareOperation({
-            operationType: OPERATION_TYPE.SUPERTOKEN_UPGRADE,
-            target: distributionTokenAddress,
-            data: encodeFunctionData({
-              abi: superTokenAbi,
-              functionName: "upgrade",
-              args: [wrapAmountWei],
-            }),
-          }),
-        );
-      } else if (isSuperTokenNative) {
-        newCalls.push({
-          to: distributionTokenAddress,
-          data: encodeFunctionData({
-            abi: superTokenAbi,
-            functionName: "upgradeByETH",
-            args: [],
-          }),
-          value: wrapAmountWei,
-        });
-      }
+      newCalls.push(...wrap.calls);
+      batchOps.push(...wrap.batchOps);
     }
 
-    if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToReceiver) > 0) {
-      batchOps.push(
-        prepareOperation({
-          operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
-          target: cfaAddress[chainId],
-          data: encodeFunctionData({
-            abi: cfaAbi,
-            functionName: "deleteFlow",
-            args: [
-              distributionTokenAddress,
-              address,
-              splitterAddress as Address,
-              "0x",
-            ],
-          }),
-        }),
-      );
-    } else if (BigInt(flowRateToReceiver) > 0) {
-      batchOps.push(
-        prepareOperation({
-          operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
-          target: cfaAddress[chainId],
-          data: encodeFunctionData({
-            abi: cfaAbi,
-            functionName: "updateFlow",
-            args: [
-              distributionTokenAddress,
-              splitterAddress as Address,
-              BigInt(newFlowRate),
-              "0x",
-            ],
-          }),
-        }),
-      );
-    } else {
-      batchOps.push(
-        prepareOperation({
-          operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
-          target: cfaAddress[chainId],
-          data: encodeFunctionData({
-            abi: cfaAbi,
-            functionName: "createFlow",
-            args: [
-              distributionTokenAddress,
-              splitterAddress as Address,
-              BigInt(newFlowRate),
-              "0x",
-            ],
-          }),
-        }),
-      );
-    }
-
-    newCalls.push({
-      to: hostAddress[chainId],
-      data: encodeFunctionData({
-        abi: hostAbi,
-        functionName: "batchCall",
-        args: [batchOps],
+    batchOps.push(
+      ...buildFlowBatchOps({
+        tokenAddress: distributionTokenAddress,
+        senderAddress: address,
+        receiverAddress: splitterAddress as Address,
+        newFlowRate,
+        flowRateToReceiver,
+        chainId,
       }),
-    });
+    );
+
+    const batchCall = buildBatchCall(batchOps, chainId);
+
+    if (batchCall) {
+      newCalls.push(batchCall);
+    }
 
     return newCalls;
   }, [
