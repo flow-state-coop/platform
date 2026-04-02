@@ -1,5 +1,12 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { Address, parseEther, parseUnits, formatUnits, encodeFunctionData, erc20Abi } from "viem";
+import {
+  Address,
+  parseEther,
+  parseUnits,
+  formatUnits,
+  encodeFunctionData,
+  erc20Abi,
+} from "viem";
 import { useAccount, useBalance, useReadContract, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useQuery, gql } from "@apollo/client";
@@ -81,12 +88,16 @@ export default function useStreamFunding(
     completedTransactions,
     transactionError,
     executeTransactions,
-    isBatchSupported,
   } = useTransactionsQueue();
 
   const isCorrectChain = walletChainId === network.id;
 
-  const { isSuperTokenNative, isSuperTokenWrapper, isSuperTokenPure, underlyingAddress: tokenUnderlyingAddress } = useSuperTokenType(selectedToken.address, network.id);
+  const {
+    isSuperTokenNative,
+    isSuperTokenWrapper,
+    isSuperTokenPure,
+    underlyingAddress: tokenUnderlyingAddress,
+  } = useSuperTokenType(selectedToken.address, network.id);
 
   const nativeTokenSymbol = selectedToken.symbol === "CELOx" ? "CELO" : "ETH";
 
@@ -99,7 +110,9 @@ export default function useStreamFunding(
         : (tokenUnderlyingAddress as Address),
     query: {
       refetchInterval: 10000,
-      enabled: !!address && (isSuperTokenNative === true || isSuperTokenWrapper === true),
+      enabled:
+        !!address &&
+        (isSuperTokenNative === true || isSuperTokenWrapper === true),
     },
   });
 
@@ -109,7 +122,10 @@ export default function useStreamFunding(
     functionName: "allowance",
     args: [address!, selectedToken.address],
     chainId: network.id,
-    query: { enabled: isSuperTokenWrapper === true && !!address, refetchInterval: 10000 },
+    query: {
+      enabled: isSuperTokenWrapper === true && !!address,
+      refetchInterval: 10000,
+    },
   });
 
   const { data: userQueryRes, refetch: refetchUserAccount } = useQuery(
@@ -190,13 +206,29 @@ export default function useStreamFunding(
   }, [areTransactionsLoading, monthlyAmount]);
 
   const calls = useMemo(() => {
-    if (!address || !newFlowRate || !receiverAddress || isSuperTokenWrapper === undefined) return [];
+    if (
+      !address ||
+      !newFlowRate ||
+      !receiverAddress ||
+      isSuperTokenWrapper === undefined
+    )
+      return [];
 
     const chainId = network.id as keyof typeof hostAddress;
     const wrapAmountWei = parseEther(wrapAmount?.replace(/,/g, "") ?? "0");
-    const needsApproval = isSuperTokenWrapper && wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0);
+    const wrapAmountUnits = parseUnits(
+      wrapAmount?.replace(/,/g, "") ?? "0",
+      underlyingTokenBalance?.decimals ?? 18,
+    );
+    const needsApproval =
+      isSuperTokenWrapper &&
+      wrapAmountUnits > BigInt(underlyingTokenAllowance ?? 0);
     const newCalls: TransactionCall[] = [];
-    const batchOps: { operationType: number; target: Address; data: `0x${string}` }[] = [];
+    const batchOps: {
+      operationType: number;
+      target: Address;
+      data: `0x${string}`;
+    }[] = [];
 
     if (wrapAmount && Number(wrapAmount.replace(/,/g, "")) > 0) {
       if (isSuperTokenWrapper && tokenUnderlyingAddress && needsApproval) {
@@ -205,61 +237,112 @@ export default function useStreamFunding(
           data: encodeFunctionData({
             abi: erc20Abi,
             functionName: "approve",
-            args: [selectedToken.address, parseUnits(wrapAmount?.replace(/,/g, "") ?? "0", underlyingTokenBalance?.decimals ?? 18)],
+            args: [selectedToken.address, wrapAmountUnits],
           }),
         });
       }
       if (isSuperTokenWrapper) {
-        batchOps.push(prepareOperation({
-          operationType: OPERATION_TYPE.SUPERTOKEN_UPGRADE,
-          target: selectedToken.address,
-          data: encodeFunctionData({ abi: superTokenAbi, functionName: "upgrade", args: [wrapAmountWei] }),
-        }));
+        batchOps.push(
+          prepareOperation({
+            operationType: OPERATION_TYPE.SUPERTOKEN_UPGRADE,
+            target: selectedToken.address,
+            data: encodeFunctionData({
+              abi: superTokenAbi,
+              functionName: "upgrade",
+              args: [wrapAmountWei],
+            }),
+          }),
+        );
       } else if (isSuperTokenNative) {
         newCalls.push({
           to: selectedToken.address,
-          data: encodeFunctionData({ abi: superTokenAbi, functionName: "upgradeByETH", args: [] }),
+          data: encodeFunctionData({
+            abi: superTokenAbi,
+            functionName: "upgradeByETH",
+            args: [],
+          }),
           value: wrapAmountWei,
         });
       }
     }
 
     if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToReceiver) > 0) {
-      batchOps.push(prepareOperation({
-        operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
-        target: cfaAddress[chainId],
-        data: encodeFunctionData({
-          abi: cfaAbi, functionName: "deleteFlow",
-          args: [selectedToken.address, address, receiverAddress as Address, "0x"],
+      batchOps.push(
+        prepareOperation({
+          operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
+          target: cfaAddress[chainId],
+          data: encodeFunctionData({
+            abi: cfaAbi,
+            functionName: "deleteFlow",
+            args: [
+              selectedToken.address,
+              address,
+              receiverAddress as Address,
+              "0x",
+            ],
+          }),
         }),
-      }));
+      );
     } else if (BigInt(flowRateToReceiver) > 0) {
-      batchOps.push(prepareOperation({
-        operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
-        target: cfaAddress[chainId],
-        data: encodeFunctionData({
-          abi: cfaAbi, functionName: "updateFlow",
-          args: [selectedToken.address, receiverAddress as Address, BigInt(newFlowRate), "0x"],
+      batchOps.push(
+        prepareOperation({
+          operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
+          target: cfaAddress[chainId],
+          data: encodeFunctionData({
+            abi: cfaAbi,
+            functionName: "updateFlow",
+            args: [
+              selectedToken.address,
+              receiverAddress as Address,
+              BigInt(newFlowRate),
+              "0x",
+            ],
+          }),
         }),
-      }));
+      );
     } else {
-      batchOps.push(prepareOperation({
-        operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
-        target: cfaAddress[chainId],
-        data: encodeFunctionData({
-          abi: cfaAbi, functionName: "createFlow",
-          args: [selectedToken.address, receiverAddress as Address, BigInt(newFlowRate), "0x"],
+      batchOps.push(
+        prepareOperation({
+          operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
+          target: cfaAddress[chainId],
+          data: encodeFunctionData({
+            abi: cfaAbi,
+            functionName: "createFlow",
+            args: [
+              selectedToken.address,
+              receiverAddress as Address,
+              BigInt(newFlowRate),
+              "0x",
+            ],
+          }),
         }),
-      }));
+      );
     }
 
     newCalls.push({
       to: hostAddress[chainId],
-      data: encodeFunctionData({ abi: hostAbi, functionName: "batchCall", args: [batchOps] }),
+      data: encodeFunctionData({
+        abi: hostAbi,
+        functionName: "batchCall",
+        args: [batchOps],
+      }),
     });
 
     return newCalls;
-  }, [address, wrapAmount, newFlowRate, flowRateToReceiver, receiverAddress, selectedToken.address, underlyingTokenAllowance, isSuperTokenWrapper, isSuperTokenNative, tokenUnderlyingAddress, network.id]);
+  }, [
+    address,
+    wrapAmount,
+    newFlowRate,
+    flowRateToReceiver,
+    receiverAddress,
+    selectedToken.address,
+    underlyingTokenAllowance,
+    isSuperTokenWrapper,
+    isSuperTokenNative,
+    tokenUnderlyingAddress,
+    underlyingTokenBalance?.decimals,
+    network.id,
+  ]);
 
   const handleExecute = useCallback(async () => {
     setIsSuccess(false);
@@ -275,12 +358,7 @@ export default function useStreamFunding(
     } catch {
       // transactionError state is set by the hook
     }
-  }, [
-    calls,
-    executeTransactions,
-    refetchUserAccount,
-    refetchReceiverInflow,
-  ]);
+  }, [calls, executeTransactions, refetchUserAccount, refetchReceiverInflow]);
 
   const handleCancel = useCallback(async () => {
     if (!address || !receiverAddress) return;
@@ -288,22 +366,33 @@ export default function useStreamFunding(
     const chainId = network.id as keyof typeof cfaAddress;
     setIsSuccess(false);
 
-    const cancelCalls: TransactionCall[] = [{
-      to: hostAddress[chainId],
-      data: encodeFunctionData({
-        abi: hostAbi,
-        functionName: "batchCall",
-        args: [[prepareOperation({
-          operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
-          target: cfaAddress[chainId],
-          data: encodeFunctionData({
-            abi: cfaAbi,
-            functionName: "deleteFlow",
-            args: [selectedToken.address, address, receiverAddress as Address, "0x"],
-          }),
-        })]],
-      }),
-    }];
+    const cancelCalls: TransactionCall[] = [
+      {
+        to: hostAddress[chainId],
+        data: encodeFunctionData({
+          abi: hostAbi,
+          functionName: "batchCall",
+          args: [
+            [
+              prepareOperation({
+                operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
+                target: cfaAddress[chainId],
+                data: encodeFunctionData({
+                  abi: cfaAbi,
+                  functionName: "deleteFlow",
+                  args: [
+                    selectedToken.address,
+                    address,
+                    receiverAddress as Address,
+                    "0x",
+                  ],
+                }),
+              }),
+            ],
+          ],
+        }),
+      },
+    ];
 
     try {
       await executeTransactions(cancelCalls);
@@ -317,7 +406,15 @@ export default function useStreamFunding(
     } catch {
       // transactionError state is set by the hook
     }
-  }, [address, receiverAddress, selectedToken.address, network.id, executeTransactions, refetchUserAccount, refetchReceiverInflow]);
+  }, [
+    address,
+    receiverAddress,
+    selectedToken.address,
+    network.id,
+    executeTransactions,
+    refetchUserAccount,
+    refetchReceiverInflow,
+  ]);
 
   const handleWrapAmountChange = useCallback((value: string) => {
     const stripped = value.replace(/[^0-9.]/g, "");
@@ -577,6 +674,5 @@ export default function useStreamFunding(
     isCorrectChain,
     switchChain,
     resetInputs,
-    isBatchSupported,
   };
 }

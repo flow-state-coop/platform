@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Address,
-  parseAbi,
+  isAddress,
   parseEther,
   parseUnits,
   formatEther,
@@ -35,10 +35,10 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useSuperTokenType from "@/hooks/superTokenType";
+import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import { getApolloClient } from "@/lib/apollo";
 import { formatNumber, isNumber } from "@/lib/utils";
 
-dayjs().format();
 dayjs.extend(duration);
 
 type InstantDistributionProps = {
@@ -91,21 +91,12 @@ export default function InstantDistribution(props: InstantDistributionProps) {
   });
   const accountTokenSnapshot =
     superfluidQueryRes?.account?.accountTokenSnapshots[0] ?? null;
-  const { data: realtimeBalanceOfNow } = useReadContract({
-    address: token?.address,
-    functionName: "realtimeBalanceOfNow",
-    abi: parseAbi([
-      "function realtimeBalanceOfNow(address) returns (int256,uint256,uint256,uint256)",
-    ]),
-    args: [address],
-    chainId: network.id,
-    query: { refetchInterval: 10000 },
-  });
-
-  const balanceUntilUpdatedAt = realtimeBalanceOfNow?.[0];
-  const updatedAtTimestamp = realtimeBalanceOfNow
-    ? Number(realtimeBalanceOfNow[3])
-    : null;
+  const { balanceUntilUpdatedAt, updatedAtTimestamp } =
+    useSuperTokenBalanceOfNow({
+      token: token?.address,
+      address,
+      chainId: network.id,
+    });
   const superTokenBalance = useFlowingAmount(
     BigInt(balanceUntilUpdatedAt ?? 0),
     updatedAtTimestamp ?? 0,
@@ -126,9 +117,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
   });
   const { data: underlyingTokenBalance } = useBalance({
     address,
-    token: isSuperTokenNative
-      ? void 0
-      : (tokenUnderlyingAddress as Address),
+    token: isSuperTokenNative ? void 0 : (tokenUnderlyingAddress as Address),
     chainId: network.id,
     query: {
       refetchInterval: 10000,
@@ -164,15 +153,24 @@ export default function InstantDistribution(props: InstantDistributionProps) {
     (hasSufficientSuperTokenBalance || hasSufficientWrappingBalance);
 
   const calls = useMemo(() => {
-    if (!address || !pool || isSuperTokenWrapper === undefined) {
+    if (
+      !address ||
+      !pool ||
+      !isAddress(pool.id) ||
+      isSuperTokenWrapper === undefined
+    ) {
       return [];
     }
 
     const chainId = network.id as keyof typeof hostAddress;
     const wrapAmountWei = parseEther(wrapAmount);
+    const wrapAmountUnits = parseUnits(
+      wrapAmount,
+      underlyingTokenBalance?.decimals ?? 18,
+    );
     const needsApproval =
       isSuperTokenWrapper &&
-      wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0);
+      wrapAmountUnits > BigInt(underlyingTokenAllowance ?? 0);
     const newCalls: TransactionCall[] = [];
     const batchOps: {
       operationType: number;
@@ -187,13 +185,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
           data: encodeFunctionData({
             abi: erc20Abi,
             functionName: "approve",
-            args: [
-              token.address,
-              parseUnits(
-                wrapAmount,
-                underlyingTokenBalance?.decimals ?? 18,
-              ),
-            ],
+            args: [token.address, wrapAmountUnits],
           }),
         });
       }
@@ -230,13 +222,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
         data: encodeFunctionData({
           abi: gdaAbi,
           functionName: "distribute",
-          args: [
-            token.address,
-            address,
-            pool.id as Address,
-            amountWei,
-            "0x",
-          ],
+          args: [token.address, address, pool.id as Address, amountWei, "0x"],
         }),
       }),
     );

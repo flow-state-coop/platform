@@ -1,4 +1,5 @@
 import { useQuery, gql } from "@apollo/client";
+import { isAddress } from "viem";
 import { getApolloClient } from "@/lib/apollo";
 import { ZERO_ADDRESS } from "@/lib/constants";
 
@@ -24,9 +25,13 @@ export default function useSuperTokenType(
   const isSuperTokenNative: boolean | undefined = data?.token
     ? data.token.isNativeAssetSuperToken
     : undefined;
-  const underlyingAddress: string | undefined = data?.token
+  const rawUnderlyingAddress: string | undefined = data?.token
     ? data.token.underlyingAddress
     : undefined;
+  const underlyingAddress: string | undefined =
+    rawUnderlyingAddress && isAddress(rawUnderlyingAddress)
+      ? rawUnderlyingAddress
+      : undefined;
   const isSuperTokenPure: boolean | undefined = data?.token
     ? !isSuperTokenNative &&
       (!underlyingAddress || underlyingAddress === ZERO_ADDRESS)

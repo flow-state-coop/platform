@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import {
   Address,
+  isAddress,
   parseEther,
   parseUnits,
   formatEther,
@@ -10,10 +11,7 @@ import {
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
 import { superTokenAbi } from "@sfpro/sdk/abi";
-import {
-  gdaForwarderAbi,
-  gdaForwarderAddress,
-} from "@sfpro/sdk/abi";
+import { gdaForwarderAbi, gdaForwarderAddress } from "@sfpro/sdk/abi";
 import { hostAbi, hostAddress, gdaAbi, gdaAddress } from "@sfpro/sdk/abi/core";
 import { prepareOperation, OPERATION_TYPE } from "@sfpro/sdk/constant";
 import dayjs from "dayjs";
@@ -53,7 +51,6 @@ import {
 } from "@/lib/utils";
 import { MAX_FLOW_RATE } from "@/lib/constants";
 
-dayjs().format();
 dayjs.extend(duration);
 
 type OpenFlowProps = {
@@ -131,8 +128,8 @@ export default function OpenFlow(props: OpenFlowProps) {
   const poolMemberships = superfluidQueryRes?.account?.poolMemberships ?? null;
   const { balanceUntilUpdatedAt, updatedAtTimestamp } =
     useSuperTokenBalanceOfNow({
-      token: token?.address ?? "",
-      address: address ?? "",
+      token: token?.address,
+      address,
       chainId: network.id,
     });
   const superTokenBalance = useFlowingAmount(
@@ -155,9 +152,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   });
   const { data: underlyingTokenBalance } = useBalance({
     address,
-    token: isSuperTokenNative
-      ? void 0
-      : (tokenUnderlyingAddress as Address),
+    token: isSuperTokenNative ? void 0 : (tokenUnderlyingAddress as Address),
     chainId: network.id,
     query: {
       refetchInterval: 10000,
@@ -383,15 +378,24 @@ export default function OpenFlow(props: OpenFlowProps) {
   }, [calcLiquidationEstimate, newFlowRate]);
 
   const calls = useMemo(() => {
-    if (!address || !pool || isSuperTokenWrapper === undefined) {
+    if (
+      !address ||
+      !pool ||
+      !isAddress(pool.id) ||
+      isSuperTokenWrapper === undefined
+    ) {
       return [];
     }
 
     const chainId = network.id as keyof typeof hostAddress;
     const wrapAmountWei = parseEther(wrapAmountPerTimeInterval);
+    const wrapAmountUnits = parseUnits(
+      wrapAmountPerTimeInterval,
+      underlyingTokenBalance?.decimals ?? 18,
+    );
     const needsApproval =
       isSuperTokenWrapper &&
-      wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0);
+      wrapAmountUnits > BigInt(underlyingTokenAllowance ?? 0);
     const newCalls: TransactionCall[] = [];
     const batchOps: {
       operationType: number;
@@ -406,13 +410,7 @@ export default function OpenFlow(props: OpenFlowProps) {
           data: encodeFunctionData({
             abi: erc20Abi,
             functionName: "approve",
-            args: [
-              token.address,
-              parseUnits(
-                wrapAmountPerTimeInterval,
-                underlyingTokenBalance?.decimals ?? 18,
-              ),
-            ],
+            args: [token.address, wrapAmountUnits],
           }),
         });
       }
@@ -449,13 +447,7 @@ export default function OpenFlow(props: OpenFlowProps) {
         data: encodeFunctionData({
           abi: gdaAbi,
           functionName: "distributeFlow",
-          args: [
-            token.address,
-            address,
-            pool.id as Address,
-            newFlowRate,
-            "0x",
-          ],
+          args: [token.address, address, pool.id as Address, newFlowRate, "0x"],
         }),
       }),
     );
@@ -569,7 +561,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   };
 
   const handleDeleteFlow = async () => {
-    if (!address || !pool) {
+    if (!address || !pool || !isAddress(pool.id)) {
       return;
     }
 
@@ -584,13 +576,7 @@ export default function OpenFlow(props: OpenFlowProps) {
           data: encodeFunctionData({
             abi: gdaForwarderAbi,
             functionName: "distributeFlow",
-            args: [
-              token.address,
-              address,
-              pool.id as Address,
-              BigInt(0),
-              "0x",
-            ],
+            args: [token.address, address, pool.id as Address, BigInt(0), "0x"],
           }),
         },
       ]);

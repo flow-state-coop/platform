@@ -4,7 +4,6 @@ import {
   isAddress,
   encodeFunctionData,
   erc20Abi,
-  parseAbi,
   parseEther,
   parseUnits,
   formatUnits,
@@ -32,6 +31,7 @@ import DistributionPoolDetails from "./DistributionPoolDetails";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useSuperTokenType from "@/hooks/superTokenType";
+import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useFlowCouncil from "../hooks/flowCouncil";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
@@ -84,7 +84,6 @@ const SF_ACCOUNT_QUERY = gql`
   }
 `;
 
-dayjs().format();
 dayjs.extend(duration);
 
 export default function DistributionPoolFunding(props: {
@@ -116,22 +115,12 @@ export default function DistributionPoolFunding(props: {
   } = useTransactionsQueue();
   const distributionTokenAddress = token.address;
   const splitterAddress = councilMetadata.superappSplitterAddress;
-  const { data: realtimeBalanceOfNow } = useReadContract({
-    address: distributionTokenAddress,
-    functionName: "realtimeBalanceOfNow",
-    abi: parseAbi([
-      "function realtimeBalanceOfNow(address) returns (int256,uint256,uint256,uint256)",
-    ]),
-    args: [address],
-    chainId: network.id,
-    query: {
-      refetchInterval: 10000,
-    },
-  });
-  const balanceUntilUpdatedAt = realtimeBalanceOfNow?.[0];
-  const updatedAtTimestamp = realtimeBalanceOfNow
-    ? Number(realtimeBalanceOfNow[3])
-    : null;
+  const { balanceUntilUpdatedAt, updatedAtTimestamp } =
+    useSuperTokenBalanceOfNow({
+      token: distributionTokenAddress,
+      address,
+      chainId: network.id,
+    });
   const { data: ethBalance } = useBalance({
     address,
     chainId: network.id,
@@ -157,9 +146,7 @@ export default function DistributionPoolFunding(props: {
   const { data: underlyingTokenBalance } = useBalance({
     address,
     chainId: network?.id,
-    token: isSuperTokenNative
-      ? void 0
-      : (tokenUnderlyingAddress as Address),
+    token: isSuperTokenNative ? void 0 : (tokenUnderlyingAddress as Address),
     query: {
       refetchInterval: 10000,
       enabled: isSuperTokenWrapper === true,
@@ -321,11 +308,19 @@ export default function DistributionPoolFunding(props: {
 
     const chainId = network.id as keyof typeof hostAddress;
     const wrapAmountWei = parseEther(wrapAmount?.replace(/,/g, "") ?? "0");
+    const wrapAmountUnits = parseUnits(
+      wrapAmount?.replace(/,/g, "") ?? "0",
+      underlyingTokenBalance?.decimals ?? 18,
+    );
     const needsApproval =
       isSuperTokenWrapper &&
-      wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0);
+      wrapAmountUnits > BigInt(underlyingTokenAllowance ?? 0);
     const newCalls: TransactionCall[] = [];
-    const batchOps: { operationType: number; target: Address; data: `0x${string}` }[] = [];
+    const batchOps: {
+      operationType: number;
+      target: Address;
+      data: `0x${string}`;
+    }[] = [];
 
     if (wrapAmount && Number(wrapAmount?.replace(/,/g, "")) > 0) {
       if (isSuperTokenWrapper && tokenUnderlyingAddress && needsApproval) {
@@ -334,7 +329,7 @@ export default function DistributionPoolFunding(props: {
           data: encodeFunctionData({
             abi: erc20Abi,
             functionName: "approve",
-            args: [distributionTokenAddress, parseUnits(wrapAmount?.replace(/,/g, "") ?? "0", underlyingTokenBalance?.decimals ?? 18)],
+            args: [distributionTokenAddress, wrapAmountUnits],
           }),
         });
       }
@@ -438,6 +433,7 @@ export default function DistributionPoolFunding(props: {
     isSuperTokenWrapper,
     isSuperTokenNative,
     tokenUnderlyingAddress,
+    underlyingTokenBalance?.decimals,
     network.id,
   ]);
 
@@ -463,7 +459,6 @@ export default function DistributionPoolFunding(props: {
       }
     }
   }, [areTransactionsLoading, amountPerTimeInterval]);
-
 
   const updateWrapAmount = (
     amountPerTimeInterval: string,

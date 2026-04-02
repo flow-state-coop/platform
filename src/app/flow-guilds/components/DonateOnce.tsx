@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Address,
-  parseAbi,
   parseEther,
   parseUnits,
   formatEther,
@@ -32,12 +31,12 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useSuperTokenType from "@/hooks/superTokenType";
+import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { truncateStr, formatNumber, isNumber } from "@/lib/utils";
 import { FlowGuildConfig } from "../lib/flowGuildConfig";
 
-dayjs().format();
 dayjs.extend(duration);
 
 type DonateOnceProps = {
@@ -92,21 +91,12 @@ export default function DonateOnce(props: DonateOnceProps) {
   });
   const accountTokenSnapshot =
     superfluidQueryRes?.account?.accountTokenSnapshots[0] ?? null;
-  const { data: realtimeBalanceOfNow } = useReadContract({
-    address: token?.address,
-    functionName: "realtimeBalanceOfNow",
-    abi: parseAbi([
-      "function realtimeBalanceOfNow(address) returns (int256,uint256,uint256,uint256)",
-    ]),
-    args: [address],
-    chainId: network.id,
-    query: { refetchInterval: 10000 },
-  });
-
-  const balanceUntilUpdatedAt = realtimeBalanceOfNow?.[0];
-  const updatedAtTimestamp = realtimeBalanceOfNow
-    ? Number(realtimeBalanceOfNow[3])
-    : null;
+  const { balanceUntilUpdatedAt, updatedAtTimestamp } =
+    useSuperTokenBalanceOfNow({
+      token: token?.address,
+      address,
+      chainId: network.id,
+    });
   const superTokenBalance = useFlowingAmount(
     BigInt(balanceUntilUpdatedAt ?? 0),
     updatedAtTimestamp ?? 0,
@@ -140,7 +130,10 @@ export default function DonateOnce(props: DonateOnceProps) {
     functionName: "allowance",
     args: [address!, token.address],
     chainId: network.id,
-    query: { enabled: isSuperTokenWrapper === true && !!address, refetchInterval: 10000 },
+    query: {
+      enabled: isSuperTokenWrapper === true && !!address,
+      refetchInterval: 10000,
+    },
   });
 
   const hasSufficientSuperTokenBalance =
@@ -163,8 +156,13 @@ export default function DonateOnce(props: DonateOnceProps) {
     if (!address || !amountWei || isSuperTokenWrapper === undefined) return [];
 
     const wrapAmountWei = parseEther(wrapAmount);
+    const wrapAmountUnits = parseUnits(
+      wrapAmount,
+      underlyingTokenBalance?.decimals ?? 18,
+    );
     const needsApproval =
-      isSuperTokenWrapper && wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0);
+      isSuperTokenWrapper &&
+      wrapAmountUnits > BigInt(underlyingTokenAllowance ?? 0);
     const newCalls: TransactionCall[] = [];
 
     if (!isSuperTokenPure && wrapAmountWei > 0) {
@@ -174,13 +172,7 @@ export default function DonateOnce(props: DonateOnceProps) {
           data: encodeFunctionData({
             abi: erc20Abi,
             functionName: "approve",
-            args: [
-              token.address,
-              parseUnits(
-                wrapAmount,
-                underlyingTokenBalance?.decimals ?? 18,
-              ),
-            ],
+            args: [token.address, wrapAmountUnits],
           }),
         });
       }

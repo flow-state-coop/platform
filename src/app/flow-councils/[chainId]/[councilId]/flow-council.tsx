@@ -25,11 +25,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowCouncil from "../../hooks/flowCouncil";
 import useAnimateVoteBubble from "../../hooks/animateVoteBubble";
 import { networks } from "@/lib/networks";
-import {
-  shuffle,
-  getPlaceholderImageSrc,
-  generateColor,
-} from "@/lib/utils";
+import { shuffle, getPlaceholderImageSrc, generateColor } from "@/lib/utils";
 
 export default function FlowCouncil({
   chainId,

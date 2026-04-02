@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { TransactionReceipt } from "viem";
 import {
   useChainId,
   usePublicClient,
@@ -52,34 +51,34 @@ export default function useTransactionsQueue() {
 
   const isBatchSupported = !!capabilities?.[chainId]?.atomicBatch?.supported;
 
-  const executeTransactions = async (
-    calls: TransactionCall[],
-  ): Promise<TransactionReceipt[]> => {
+  const executeTransactions = async (calls: TransactionCall[]) => {
     setAreTransactionsLoading(true);
     setTransactionError("");
     setCompletedTransactions(0);
 
     try {
-      let receipts: TransactionReceipt[];
 
       if (isBatchSupported && calls.length > 1) {
-        const result = await sendCallsSyncAsync({
+        await sendCallsSyncAsync({
           calls: calls.map((call) => ({
             to: call.to,
             data: call.data,
             ...(call.value ? { value: call.value } : {}),
           })),
         });
-
-        receipts = (result.receipts ?? []) as TransactionReceipt[];
       } else {
         if (!walletClient || !publicClient) {
           throw new Error("Wallet not connected");
         }
 
-        receipts = [];
-
         for (const call of calls) {
+          await publicClient.call({
+            to: call.to,
+            data: call.data,
+            value: call.value,
+            account: walletClient.account,
+          });
+
           const hash = await walletClient.sendTransaction({
             to: call.to,
             data: call.data,
@@ -87,19 +86,17 @@ export default function useTransactionsQueue() {
             chain: walletClient.chain,
           });
 
-          const receipt = await publicClient.waitForTransactionReceipt({
+          await publicClient.waitForTransactionReceipt({
             hash,
+            confirmations: 3,
           });
 
-          receipts.push(receipt);
           setCompletedTransactions((prev) => prev + 1);
         }
       }
 
       setAreTransactionsLoading(false);
       setCompletedTransactions(0);
-
-      return receipts;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       let errorMessage = "An error occured executing the transaction";

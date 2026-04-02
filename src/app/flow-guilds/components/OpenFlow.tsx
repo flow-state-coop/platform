@@ -4,23 +4,14 @@ import {
   Address,
   parseUnits,
   parseEther,
-  parseAbi,
   formatEther,
   encodeFunctionData,
   erc20Abi,
 } from "viem";
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import { superTokenAbi } from "@sfpro/sdk/abi";
-import {
-  hostAbi,
-  hostAddress,
-  cfaAbi,
-  cfaAddress,
-} from "@sfpro/sdk/abi/core";
-import {
-  cfaForwarderAbi,
-  cfaForwarderAddress,
-} from "@sfpro/sdk/abi";
+import { hostAbi, hostAddress, cfaAbi, cfaAddress } from "@sfpro/sdk/abi/core";
+import { cfaForwarderAbi, cfaForwarderAddress } from "@sfpro/sdk/abi";
 import { prepareOperation, OPERATION_TYPE } from "@sfpro/sdk/constant";
 import { TransactionCall } from "@/types/transactionCall";
 import { useQuery, gql } from "@apollo/client";
@@ -48,6 +39,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useSuperTokenType from "@/hooks/superTokenType";
+import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { getPoolFlowRateConfig } from "@/lib/poolFlowRateConfig";
@@ -63,7 +55,6 @@ import {
 import { FlowGuildConfig } from "../lib/flowGuildConfig";
 import { MAX_FLOW_RATE } from "@/lib/constants";
 
-dayjs().format();
 dayjs.extend(duration);
 
 type OpenFlowProps = {
@@ -153,24 +144,14 @@ export default function OpenFlow(props: OpenFlowProps) {
   const flowRateToReceiver =
     superfluidQueryRes?.account?.outflows[0]?.currentFlowRate ?? "0";
   const poolMemberships = superfluidQueryRes?.account?.poolMemberships ?? null;
-  const { data: realtimeBalanceOfNow } = useReadContract({
-    address: token?.address,
-    functionName: "realtimeBalanceOfNow",
-    abi: parseAbi([
-      "function realtimeBalanceOfNow(address) returns (int256,uint256,uint256,uint256)",
-    ]),
-    args: [address],
-    chainId: network.id,
-    query: {
-      refetchInterval: 10000,
-    },
-  });
+  const { balanceUntilUpdatedAt, updatedAtTimestamp } =
+    useSuperTokenBalanceOfNow({
+      token: token?.address,
+      address,
+      chainId: network.id,
+    });
 
   const guildId = urlParams.id;
-  const balanceUntilUpdatedAt = realtimeBalanceOfNow?.[0];
-  const updatedAtTimestamp = realtimeBalanceOfNow
-    ? Number(realtimeBalanceOfNow[3])
-    : null;
   const superTokenBalance = useFlowingAmount(
     BigInt(balanceUntilUpdatedAt ?? 0),
     updatedAtTimestamp ?? 0,
@@ -204,7 +185,10 @@ export default function OpenFlow(props: OpenFlowProps) {
     functionName: "allowance",
     args: [address!, token.address],
     chainId: network.id,
-    query: { enabled: isSuperTokenWrapper === true && !!address, refetchInterval: 10000 },
+    query: {
+      enabled: isSuperTokenWrapper === true && !!address,
+      refetchInterval: 10000,
+    },
   });
 
   const hasSufficientSuperTokenBalance =
@@ -414,14 +398,23 @@ export default function OpenFlow(props: OpenFlowProps) {
   }, [calcLiquidationEstimate, newFlowRate]);
 
   const calls = useMemo(() => {
-    if (!address || !newFlowRate || BigInt(flowRateToReceiver) === newFlowRate || isSuperTokenWrapper === undefined)
+    if (
+      !address ||
+      !newFlowRate ||
+      BigInt(flowRateToReceiver) === newFlowRate ||
+      isSuperTokenWrapper === undefined
+    )
       return [];
 
     const chainId = network.id as keyof typeof hostAddress;
     const wrapAmountWei = parseEther(wrapAmountPerTimeInterval);
+    const wrapAmountUnits = parseUnits(
+      wrapAmountPerTimeInterval,
+      underlyingTokenBalance?.decimals ?? 18,
+    );
     const needsApproval =
       isSuperTokenWrapper &&
-      wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0);
+      wrapAmountUnits > BigInt(underlyingTokenAllowance ?? 0);
     const newCalls: TransactionCall[] = [];
     const batchOps: {
       operationType: number;
@@ -436,13 +429,7 @@ export default function OpenFlow(props: OpenFlowProps) {
           data: encodeFunctionData({
             abi: erc20Abi,
             functionName: "approve",
-            args: [
-              token.address,
-              parseUnits(
-                wrapAmountPerTimeInterval,
-                underlyingTokenBalance?.decimals ?? 18,
-              ),
-            ],
+            args: [token.address, wrapAmountUnits],
           }),
         });
       }
