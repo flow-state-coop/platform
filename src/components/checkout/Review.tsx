@@ -16,7 +16,7 @@ import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Tooltip from "react-bootstrap/Tooltip";
 import { TransactionReceipt } from "viem";
 import CopyTooltip from "@/components/CopyTooltip";
-import { TransactionCall } from "@/lib/transactionCalls";
+import { TransactionCall } from "@/types/transactionCall";
 import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
 import { Network } from "@/types/network";

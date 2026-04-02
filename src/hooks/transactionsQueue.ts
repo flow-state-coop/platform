@@ -7,7 +7,7 @@ import {
   useCapabilities,
   useSendCallsSync,
 } from "wagmi";
-import { TransactionCall } from "@/lib/transactionCalls";
+import { TransactionCall } from "@/types/transactionCall";
 
 function isRejectionError(err: Record<string, unknown>) {
   return (

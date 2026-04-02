@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Address,
   isAddress,
+  encodeFunctionData,
+  erc20Abi,
   parseAbi,
   parseEther,
   parseUnits,
@@ -10,13 +12,9 @@ import {
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import dayjs from "dayjs";
 import { useQuery, gql } from "@apollo/client";
-import {
-  NativeAssetSuperToken,
-  WrapperSuperToken,
-  SuperToken,
-  Operation,
-  Framework,
-} from "@superfluid-finance/sdk-core";
+import { superTokenAbi } from "@sfpro/sdk/abi";
+import { hostAbi, hostAddress, cfaAbi, cfaAddress } from "@sfpro/sdk/abi/core";
+import { prepareOperation, OPERATION_TYPE } from "@sfpro/sdk/constant";
 import duration from "dayjs/plugin/duration";
 import Offcanvas from "react-bootstrap/Offcanvas";
 import Accordion from "react-bootstrap/Accordion";
@@ -29,17 +27,12 @@ import Wrap from "@/components/checkout/Wrap";
 import Review from "@/components/checkout/Review";
 import Success from "@/components/checkout/Success";
 import { Network } from "@/types/network";
+import { TransactionCall } from "@/types/transactionCall";
 import DistributionPoolDetails from "./DistributionPoolDetails";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
-import {
-  TransactionCall,
-  operationToCall,
-  batchOperationsToCall,
-} from "@/lib/transactionCalls";
+import useSuperTokenType from "@/hooks/superTokenType";
 import useFlowCouncil from "../hooks/flowCouncil";
-
-import { useEthersProvider } from "@/hooks/ethersAdapters";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import {
@@ -49,7 +42,7 @@ import {
   formatNumberWithCommas,
   roundWeiAmount,
 } from "@/lib/utils";
-import { SECONDS_IN_MONTH, MAX_FLOW_RATE, ZERO_ADDRESS } from "@/lib/constants";
+import { SECONDS_IN_MONTH, MAX_FLOW_RATE } from "@/lib/constants";
 import { getSocialShare } from "../lib/socialShare";
 
 const SF_ACCOUNT_QUERY = gql`
@@ -88,10 +81,6 @@ const SF_ACCOUNT_QUERY = gql`
         currentFlowRate
       }
     }
-    token(id: $token) {
-      isNativeAssetSuperToken
-      underlyingAddress
-    }
   }
 `;
 
@@ -108,11 +97,6 @@ export default function DistributionPoolFunding(props: {
   const [amountPerTimeInterval, setAmountPerTimeInterval] = useState("");
   const [newFlowRate, setNewFlowRate] = useState("");
   const [wrapAmount, setWrapAmount] = useState("");
-  const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("0");
-  const [sfFramework, setSfFramework] = useState<Framework | null>(null);
-  const [superToken, setSuperToken] = useState<
-    NativeAssetSuperToken | WrapperSuperToken | SuperToken | null
-  >(null);
 
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
@@ -164,22 +148,34 @@ export default function DistributionPoolFunding(props: {
     skip: !council?.distributionPool,
     pollInterval: 10000,
   });
-  const isSuperTokenNative = superfluidQueryRes?.token?.isNativeAssetSuperToken;
-  const isSuperTokenPure =
-    !isSuperTokenNative &&
-    superfluidQueryRes?.token?.underlyingAddress === ZERO_ADDRESS;
+  const {
+    isSuperTokenNative,
+    isSuperTokenWrapper,
+    isSuperTokenPure,
+    underlyingAddress: tokenUnderlyingAddress,
+  } = useSuperTokenType(token.address, network.id);
   const { data: underlyingTokenBalance } = useBalance({
     address,
     chainId: network?.id,
     token: isSuperTokenNative
       ? void 0
-      : (superfluidQueryRes?.token?.underlyingAddress as Address),
+      : (tokenUnderlyingAddress as Address),
     query: {
       refetchInterval: 10000,
-      enabled: !!superfluidQueryRes?.token && !isSuperTokenPure,
+      enabled: isSuperTokenWrapper === true,
     },
   });
-  const ethersProvider = useEthersProvider({ chainId: network.id });
+  const { data: underlyingTokenAllowance } = useReadContract({
+    address: tokenUnderlyingAddress as Address,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: [address!, distributionTokenAddress],
+    chainId: network.id,
+    query: {
+      enabled: isSuperTokenWrapper === true && !!address,
+      refetchInterval: 10000,
+    },
+  });
 
   const poolMemberships = superfluidQueryRes?.account?.poolMemberships ?? null;
   const userAccountSnapshot =
@@ -312,109 +308,137 @@ export default function DistributionPoolFunding(props: {
     [calcLiquidationEstimate, amountPerTimeInterval],
   );
 
-  const [calls, setCalls] = useState<TransactionCall[]>([]);
+  const calls = useMemo(() => {
+    if (
+      !address ||
+      !isAddress(distributionTokenAddress) ||
+      !newFlowRate ||
+      !splitterAddress ||
+      isSuperTokenWrapper === undefined
+    ) {
+      return [];
+    }
 
-  useEffect(() => {
-    let stale = false;
+    const chainId = network.id as keyof typeof hostAddress;
+    const wrapAmountWei = parseEther(wrapAmount?.replace(/,/g, "") ?? "0");
+    const needsApproval =
+      isSuperTokenWrapper &&
+      wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0);
+    const newCalls: TransactionCall[] = [];
+    const batchOps: { operationType: number; target: Address; data: `0x${string}` }[] = [];
 
-    (async () => {
-      if (
-        !address ||
-        !isAddress(distributionTokenAddress) ||
-        !sfFramework ||
-        !superToken ||
-        !newFlowRate ||
-        !ethersProvider ||
-        !splitterAddress
-      ) {
-        setCalls([]);
-        return;
+    if (wrapAmount && Number(wrapAmount?.replace(/,/g, "")) > 0) {
+      if (isSuperTokenWrapper && tokenUnderlyingAddress && needsApproval) {
+        newCalls.push({
+          to: tokenUnderlyingAddress as Address,
+          data: encodeFunctionData({
+            abi: erc20Abi,
+            functionName: "approve",
+            args: [distributionTokenAddress, parseUnits(wrapAmount?.replace(/,/g, "") ?? "0", underlyingTokenBalance?.decimals ?? 18)],
+          }),
+        });
       }
 
-      const underlyingToken = superToken.underlyingToken;
-
-      const wrapAmountWei = parseEther(wrapAmount?.replace(/,/g, "") ?? "0");
-      const isWrapperSuperToken =
-        underlyingToken && underlyingToken.address !== ZERO_ADDRESS;
-      const needsApproval =
-        isWrapperSuperToken &&
-        wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0);
-      const newCalls: TransactionCall[] = [];
-      const operations: Operation[] = [];
-
-      if (wrapAmount && Number(wrapAmount?.replace(/,/g, "")) > 0) {
-        if (underlyingToken && needsApproval) {
-          newCalls.push(
-            await operationToCall(
-              underlyingToken.approve({
-                receiver: distributionTokenAddress,
-                amount: wrapAmountWei.toString(),
-              }),
-            ),
-          );
-        }
-
-        if (isWrapperSuperToken) {
-          operations.push(
-            (superToken as WrapperSuperToken).upgrade({
-              amount: wrapAmountWei.toString(),
+      if (isSuperTokenWrapper) {
+        batchOps.push(
+          prepareOperation({
+            operationType: OPERATION_TYPE.SUPERTOKEN_UPGRADE,
+            target: distributionTokenAddress,
+            data: encodeFunctionData({
+              abi: superTokenAbi,
+              functionName: "upgrade",
+              args: [wrapAmountWei],
             }),
-          );
-        } else {
-          newCalls.push(
-            await operationToCall(
-              (superToken as NativeAssetSuperToken).upgrade({
-                amount: wrapAmountWei.toString(),
-              }),
-            ),
-          );
-        }
+          }),
+        );
+      } else if (isSuperTokenNative) {
+        newCalls.push({
+          to: distributionTokenAddress,
+          data: encodeFunctionData({
+            abi: superTokenAbi,
+            functionName: "upgradeByETH",
+            args: [],
+          }),
+          value: wrapAmountWei,
+        });
       }
+    }
 
-      if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToReceiver) > 0) {
-        operations.push(
-          superToken.deleteFlow({
-            sender: address,
-            receiver: splitterAddress,
+    if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToReceiver) > 0) {
+      batchOps.push(
+        prepareOperation({
+          operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
+          target: cfaAddress[chainId],
+          data: encodeFunctionData({
+            abi: cfaAbi,
+            functionName: "deleteFlow",
+            args: [
+              distributionTokenAddress,
+              address,
+              splitterAddress as Address,
+              "0x",
+            ],
           }),
-        );
-      } else if (BigInt(flowRateToReceiver) > 0) {
-        operations.push(
-          superToken.updateFlow({
-            sender: address,
-            receiver: splitterAddress,
-            flowRate: newFlowRate,
+        }),
+      );
+    } else if (BigInt(flowRateToReceiver) > 0) {
+      batchOps.push(
+        prepareOperation({
+          operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
+          target: cfaAddress[chainId],
+          data: encodeFunctionData({
+            abi: cfaAbi,
+            functionName: "updateFlow",
+            args: [
+              distributionTokenAddress,
+              splitterAddress as Address,
+              BigInt(newFlowRate),
+              "0x",
+            ],
           }),
-        );
-      } else {
-        operations.push(
-          superToken.createFlow({
-            sender: address,
-            receiver: splitterAddress,
-            flowRate: newFlowRate,
+        }),
+      );
+    } else {
+      batchOps.push(
+        prepareOperation({
+          operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
+          target: cfaAddress[chainId],
+          data: encodeFunctionData({
+            abi: cfaAbi,
+            functionName: "createFlow",
+            args: [
+              distributionTokenAddress,
+              splitterAddress as Address,
+              BigInt(newFlowRate),
+              "0x",
+            ],
           }),
-        );
-      }
+        }),
+      );
+    }
 
-      newCalls.push(await batchOperationsToCall(sfFramework, operations));
+    newCalls.push({
+      to: hostAddress[chainId],
+      data: encodeFunctionData({
+        abi: hostAbi,
+        functionName: "batchCall",
+        args: [batchOps],
+      }),
+    });
 
-      if (!stale) setCalls(newCalls);
-    })();
-
-    return () => {
-      stale = true;
-    };
+    return newCalls;
   }, [
     address,
-    sfFramework,
-    superToken,
     wrapAmount,
     newFlowRate,
     flowRateToReceiver,
-    ethersProvider,
     splitterAddress,
     distributionTokenAddress,
     underlyingTokenAllowance,
+    isSuperTokenWrapper,
+    isSuperTokenNative,
+    tokenUnderlyingAddress,
+    network.id,
   ]);
 
   useEffect(() => {
@@ -440,30 +464,6 @@ export default function DistributionPoolFunding(props: {
     }
   }, [areTransactionsLoading, amountPerTimeInterval]);
 
-  useEffect(() => {
-    (async () => {
-      if (address && ethersProvider && isAddress(distributionTokenAddress)) {
-        const sfFramework = await Framework.create({
-          chainId: network.id,
-          resolverAddress: network.superfluidResolver,
-          provider: ethersProvider,
-        });
-        const superToken = await sfFramework.loadSuperToken(
-          distributionTokenAddress,
-        );
-        const underlyingToken = superToken.underlyingToken;
-        const underlyingTokenAllowance = await underlyingToken?.allowance({
-          owner: address,
-          spender: superToken.address,
-          providerOrSigner: ethersProvider,
-        });
-
-        setUnderlyingTokenAllowance(underlyingTokenAllowance ?? "0");
-        setSfFramework(sfFramework);
-        setSuperToken(superToken);
-      }
-    })();
-  }, [address, ethersProvider, distributionTokenAddress, network]);
 
   const updateWrapAmount = (
     amountPerTimeInterval: string,
@@ -580,7 +580,7 @@ export default function DistributionPoolFunding(props: {
                 newFlowRate={newFlowRate}
                 wrapAmount={wrapAmount}
                 superTokenBalance={superTokenBalance}
-                isSuperTokenPure={isSuperTokenPure}
+                isSuperTokenPure={isSuperTokenPure ?? false}
                 hasSufficientBalance={
                   !!hasSufficientEthBalance && !!hasSuggestedTokenBalance
                 }
@@ -592,7 +592,7 @@ export default function DistributionPoolFunding(props: {
                 setStep={(step) => setStep(step)}
                 newFlowRate={newFlowRate}
                 wrapAmount={wrapAmount}
-                isSuperTokenPure={isSuperTokenPure}
+                isSuperTokenPure={isSuperTokenPure ?? false}
                 superTokenBalance={superTokenBalance}
                 minEthBalance={minEthBalance}
                 suggestedTokenBalance={suggestedTokenBalance}
@@ -636,7 +636,7 @@ export default function DistributionPoolFunding(props: {
                 amountPerTimeInterval={amountPerTimeInterval}
                 newFlowRate={newFlowRate}
                 wrapAmount={wrapAmount}
-                isSuperTokenPure={isSuperTokenPure}
+                isSuperTokenPure={isSuperTokenPure ?? false}
                 superTokenBalance={superTokenBalance}
                 underlyingTokenBalance={underlyingTokenBalance}
               />

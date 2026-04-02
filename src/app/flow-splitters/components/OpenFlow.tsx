@@ -1,14 +1,21 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
-import { Address, parseEther, parseUnits, formatEther } from "viem";
-import { useAccount, useBalance, usePublicClient } from "wagmi";
-import { useQuery, gql } from "@apollo/client";
 import {
-  SuperToken,
-  NativeAssetSuperToken,
-  WrapperSuperToken,
-  Operation,
-  Framework,
-} from "@superfluid-finance/sdk-core";
+  Address,
+  parseEther,
+  parseUnits,
+  formatEther,
+  encodeFunctionData,
+  erc20Abi,
+} from "viem";
+import { useAccount, useBalance, useReadContract } from "wagmi";
+import { useQuery, gql } from "@apollo/client";
+import { superTokenAbi } from "@sfpro/sdk/abi";
+import {
+  gdaForwarderAbi,
+  gdaForwarderAddress,
+} from "@sfpro/sdk/abi";
+import { hostAbi, hostAddress, gdaAbi, gdaAddress } from "@sfpro/sdk/abi/core";
+import { prepareOperation, OPERATION_TYPE } from "@sfpro/sdk/constant";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import Offcanvas from "react-bootstrap/Offcanvas";
@@ -28,12 +35,13 @@ import Spinner from "react-bootstrap/Spinner";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
 import { GDAPool } from "@/types/gdaPool";
+import { TransactionCall } from "@/types/transactionCall";
 import BalancePlot, { BalancePlotFlowInfo } from "./BalancePlot";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
-import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
+import useSuperTokenType from "@/hooks/superTokenType";
 import { getApolloClient } from "@/lib/apollo";
 import {
   TimeInterval,
@@ -43,12 +51,7 @@ import {
   isNumber,
   formatNumber,
 } from "@/lib/utils";
-import { ZERO_ADDRESS, MAX_FLOW_RATE } from "@/lib/constants";
-import {
-  TransactionCall,
-  operationToCall,
-  batchOperationsToCall,
-} from "@/lib/transactionCalls";
+import { MAX_FLOW_RATE } from "@/lib/constants";
 
 dayjs().format();
 dayjs.extend(duration);
@@ -81,10 +84,6 @@ const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
         }
       }
     }
-    token(id: $token) {
-      isNativeAssetSuperToken
-      underlyingAddress
-    }
   }
 `;
 
@@ -103,13 +102,7 @@ export default function OpenFlow(props: OpenFlowProps) {
   const [newFlowRate, setNewFlowRate] = useState(BigInt(0));
   const [showWrappingStep, setShowWrappingStep] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [sfFramework, setSfFramework] = useState<Framework>();
-  const [distributionSuperToken, setDistributionSuperToken] = useState<
-    NativeAssetSuperToken | WrapperSuperToken | SuperToken
-  >();
-  const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("");
   const [isDeletingFlow, setIsDeletingFlow] = useState(false);
-  const [calls, setCalls] = useState<TransactionCall[]>([]);
   const [
     hasAcceptedCloseLiquidationWarning,
     setHasAcceptedCloseLiquidationWarning,
@@ -117,9 +110,6 @@ export default function OpenFlow(props: OpenFlowProps) {
 
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
-  const ethersProvider = useEthersProvider({ chainId: network.id });
-  const ethersSigner = useEthersSigner({ chainId: network.id });
-  const publicClient = usePublicClient({ chainId: network.id });
   const {
     areTransactionsLoading,
     completedTransactions,
@@ -150,12 +140,12 @@ export default function OpenFlow(props: OpenFlowProps) {
     updatedAtTimestamp ?? 0,
     BigInt((updatedAtTimestamp && accountTokenSnapshot?.totalNetFlowRate) ?? 0),
   );
-  const isSuperTokenNative = superfluidQueryRes?.token?.isNativeAssetSuperToken;
-  const isSuperTokenPure =
-    !isSuperTokenNative &&
-    superfluidQueryRes?.token?.underlyingAddress === ZERO_ADDRESS;
-  const isSuperTokenWrapper =
-    !!superfluidQueryRes?.token && !isSuperTokenNative && !isSuperTokenPure;
+  const {
+    isSuperTokenNative,
+    isSuperTokenWrapper,
+    isSuperTokenPure,
+    underlyingAddress: tokenUnderlyingAddress,
+  } = useSuperTokenType(token.address, network.id);
   const { data: ethBalance } = useBalance({
     address,
     chainId: network?.id,
@@ -165,11 +155,24 @@ export default function OpenFlow(props: OpenFlowProps) {
   });
   const { data: underlyingTokenBalance } = useBalance({
     address,
-    token: superfluidQueryRes?.token?.underlyingAddress as Address,
+    token: isSuperTokenNative
+      ? void 0
+      : (tokenUnderlyingAddress as Address),
     chainId: network.id,
     query: {
       refetchInterval: 10000,
-      enabled: isSuperTokenWrapper,
+      enabled: isSuperTokenWrapper === true,
+    },
+  });
+  const { data: underlyingTokenAllowance } = useReadContract({
+    address: tokenUnderlyingAddress as Address,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: [address!, token.address],
+    chainId: network.id,
+    query: {
+      enabled: isSuperTokenWrapper === true && !!address,
+      refetchInterval: 10000,
     },
   });
 
@@ -379,106 +382,94 @@ export default function OpenFlow(props: OpenFlowProps) {
     }
   }, [calcLiquidationEstimate, newFlowRate]);
 
-  useEffect(() => {
-    (async () => {
-      if (!token || !ethersProvider || !address) {
-        return;
+  const calls = useMemo(() => {
+    if (!address || !pool || isSuperTokenWrapper === undefined) {
+      return [];
+    }
+
+    const chainId = network.id as keyof typeof hostAddress;
+    const wrapAmountWei = parseEther(wrapAmountPerTimeInterval);
+    const needsApproval =
+      isSuperTokenWrapper &&
+      wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0);
+    const newCalls: TransactionCall[] = [];
+    const batchOps: {
+      operationType: number;
+      target: Address;
+      data: `0x${string}`;
+    }[] = [];
+
+    if (!isSuperTokenPure && wrapAmountWei > 0) {
+      if (isSuperTokenWrapper && tokenUnderlyingAddress && needsApproval) {
+        newCalls.push({
+          to: tokenUnderlyingAddress as Address,
+          data: encodeFunctionData({
+            abi: erc20Abi,
+            functionName: "approve",
+            args: [
+              token.address,
+              parseUnits(
+                wrapAmountPerTimeInterval,
+                underlyingTokenBalance?.decimals ?? 18,
+              ),
+            ],
+          }),
+        });
       }
 
-      const sfFramework = await Framework.create({
-        chainId: network.id,
-        resolverAddress: network.superfluidResolver,
-        provider: ethersProvider,
-      });
-      const distributionSuperToken = await sfFramework.loadSuperToken(
-        isSuperTokenNative ? "ETHx" : token.address,
-      );
-      const underlyingToken = distributionSuperToken.underlyingToken;
-      const underlyingTokenAllowance = await underlyingToken?.allowance({
-        owner: address,
-        spender: distributionSuperToken.address,
-        providerOrSigner: ethersProvider,
-      });
-
-      setUnderlyingTokenAllowance(underlyingTokenAllowance ?? "0");
-      setSfFramework(sfFramework);
-      setDistributionSuperToken(distributionSuperToken);
-    })();
-  }, [address, network, ethersProvider, token, isSuperTokenNative]);
-
-  useEffect(() => {
-    let stale = false;
-
-    (async () => {
-      if (
-        !address ||
-        !pool ||
-        !underlyingTokenAllowance ||
-        !distributionSuperToken ||
-        !sfFramework ||
-        !ethersProvider
-      ) {
-        return;
-      }
-
-      const wrapAmountWei = parseEther(wrapAmountPerTimeInterval);
-      const underlyingToken = distributionSuperToken.underlyingToken;
-      const approvalTransactionsCount =
-        isSuperTokenWrapper &&
-        wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0)
-          ? 1
-          : 0;
-      const newCalls: TransactionCall[] = [];
-      const operations: Operation[] = [];
-
-      if (!isSuperTokenPure && wrapAmountWei > 0) {
-        if (underlyingToken && approvalTransactionsCount > 0) {
-          newCalls.push(
-            await operationToCall(
-              underlyingToken.approve({
-                receiver: distributionSuperToken.address,
-                amount: parseUnits(
-                  wrapAmountPerTimeInterval,
-                  underlyingTokenBalance?.decimals ?? 18,
-                ).toString(),
-              }),
-            ),
-          );
-        }
-
-        if (isSuperTokenWrapper) {
-          operations.push(
-            (distributionSuperToken as WrapperSuperToken).upgrade({
-              amount: wrapAmountWei.toString(),
+      if (isSuperTokenWrapper) {
+        batchOps.push(
+          prepareOperation({
+            operationType: OPERATION_TYPE.SUPERTOKEN_UPGRADE,
+            target: token.address,
+            data: encodeFunctionData({
+              abi: superTokenAbi,
+              functionName: "upgrade",
+              args: [wrapAmountWei],
             }),
-          );
-        } else {
-          newCalls.push(
-            await operationToCall(
-              (distributionSuperToken as NativeAssetSuperToken).upgrade({
-                amount: wrapAmountWei.toString(),
-              }),
-            ),
-          );
-        }
+          }),
+        );
+      } else if (isSuperTokenNative) {
+        newCalls.push({
+          to: token.address,
+          data: encodeFunctionData({
+            abi: superTokenAbi,
+            functionName: "upgradeByETH",
+            args: [],
+          }),
+          value: wrapAmountWei,
+        });
       }
+    }
 
-      operations.push(
-        distributionSuperToken.distributeFlow({
-          from: address,
-          pool: pool.id,
-          requestedFlowRate: newFlowRate.toString(),
+    batchOps.push(
+      prepareOperation({
+        operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
+        target: gdaAddress[chainId],
+        data: encodeFunctionData({
+          abi: gdaAbi,
+          functionName: "distributeFlow",
+          args: [
+            token.address,
+            address,
+            pool.id as Address,
+            newFlowRate,
+            "0x",
+          ],
         }),
-      );
+      }),
+    );
 
-      newCalls.push(await batchOperationsToCall(sfFramework, operations));
+    newCalls.push({
+      to: hostAddress[chainId],
+      data: encodeFunctionData({
+        abi: hostAbi,
+        functionName: "batchCall",
+        args: [batchOps],
+      }),
+    });
 
-      if (!stale) setCalls(newCalls);
-    })();
-
-    return () => {
-      stale = true;
-    };
+    return newCalls;
   }, [
     address,
     wrapAmountPerTimeInterval,
@@ -486,11 +477,12 @@ export default function OpenFlow(props: OpenFlowProps) {
     newFlowRate,
     underlyingTokenBalance,
     underlyingTokenAllowance,
-    sfFramework,
-    ethersProvider,
-    distributionSuperToken,
     isSuperTokenPure,
     isSuperTokenWrapper,
+    isSuperTokenNative,
+    tokenUnderlyingAddress,
+    network.id,
+    token.address,
   ]);
 
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -577,24 +569,31 @@ export default function OpenFlow(props: OpenFlowProps) {
   };
 
   const handleDeleteFlow = async () => {
-    if (!distributionSuperToken || !ethersSigner || !address || !pool) {
+    if (!address || !pool) {
       return;
     }
+
+    const chainId = network.id as keyof typeof gdaForwarderAddress;
 
     setIsDeletingFlow(true);
 
     try {
-      const tx = await distributionSuperToken
-        .distributeFlow({
-          from: address,
-          pool: pool.id,
-          requestedFlowRate: "0",
-        })
-        .exec(ethersSigner);
-
-      await publicClient!.waitForTransactionReceipt({
-        hash: tx.hash as `0x${string}`,
-      });
+      await executeTransactions([
+        {
+          to: gdaForwarderAddress[chainId],
+          data: encodeFunctionData({
+            abi: gdaForwarderAbi,
+            functionName: "distributeFlow",
+            args: [
+              token.address,
+              address,
+              pool.id as Address,
+              BigInt(0),
+              "0x",
+            ],
+          }),
+        },
+      ]);
 
       setSuccess(true);
     } catch (err) {
