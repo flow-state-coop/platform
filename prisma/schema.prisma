@@ -151,22 +151,47 @@ model ProjectManager {
 }
 
 model Message {
-  id            Int          @id @default(autoincrement())
-  channelType   ChannelType  @map("channel_type")
-  roundId       Int?         @map("round_id")
-  projectId     Int?         @map("project_id")
-  applicationId Int?         @map("application_id")
-  authorAddress String       @map("author_address") @db.VarChar(42)
+  id            Int                @id @default(autoincrement())
+  channelType   ChannelType        @map("channel_type")
+  roundId       Int?               @map("round_id")
+  projectId     Int?               @map("project_id")
+  applicationId Int?               @map("application_id")
+  authorAddress String             @map("author_address") @db.VarChar(42)
   content       String
-  messageType   String       @default("user") @map("message_type") @db.VarChar(20)
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @default(now()) @updatedAt @map("updated_at")
-  round         Round?       @relation(fields: [roundId], references: [id])
-  project       Project?     @relation(fields: [projectId], references: [id])
-  application   Application? @relation(fields: [applicationId], references: [id])
+  messageType   String             @default("user") @map("message_type") @db.VarChar(20)
+  pinnedAt      DateTime?          @map("pinned_at")
+  pinnedBy      String?            @map("pinned_by") @db.VarChar(42)
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @default(now()) @updatedAt @map("updated_at")
+  round         Round?             @relation(fields: [roundId], references: [id])
+  project       Project?           @relation(fields: [projectId], references: [id])
+  application   Application?       @relation(fields: [applicationId], references: [id])
+  reactions     MessageReaction[]
 
   @@index([channelType, roundId, createdAt], name: "idx_messages_round_feed")
   @@index([channelType, projectId, createdAt], name: "idx_messages_project_feed")
   @@index([channelType, applicationId, createdAt], name: "idx_messages_application_feed")
   @@map("messages")
+}
+
+model MessageReaction {
+  id            Int      @id @default(autoincrement())
+  messageId     Int      @map("message_id")
+  authorAddress String   @map("author_address") @db.VarChar(42)
+  emoji         String   @db.VarChar(8)
+  createdAt     DateTime @default(now()) @map("created_at")
+  message       Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, authorAddress, emoji])
+  @@map("message_reactions")
+}
+
+model UserProfile {
+  id          Int      @id @default(autoincrement())
+  address     String   @unique @db.VarChar(42)
+  displayName String   @map("display_name") @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("user_profiles")
 }

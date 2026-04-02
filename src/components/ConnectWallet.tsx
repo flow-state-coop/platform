@@ -93,28 +93,25 @@ export default function ConnectWallet({
                         {account.displayName}
                       </span>
                     </Dropdown.Toggle>
-                    <Dropdown.Menu className="py-0 border-4 border-dark">
+                    <Dropdown.Menu className="py-0 border-4 border-dark overflow-hidden">
+                      <Link href="/profile" className="text-decoration-none">
+                        <Dropdown.Item
+                          as="span"
+                          className="p-3 fw-semi-bold text-dark"
+                        >
+                          Profile
+                        </Dropdown.Item>
+                      </Link>
                       <Link href="/projects" className="text-decoration-none">
                         <Dropdown.Item
                           as="span"
-                          className="p-3 rounded-top-2 fw-semi-bold text-dark"
+                          className="p-3 fw-semi-bold text-dark"
                         >
                           Projects
                         </Dropdown.Item>
                       </Link>
-                      <Link
-                        href={`/flow-splitters/?chainId=${chain.id}`}
-                        className="text-decoration-none"
-                      >
-                        <Dropdown.Item
-                          as="span"
-                          className="p-3 rounded-bottom-2 fw-semi-bold text-dark"
-                        >
-                          Flow Splitters
-                        </Dropdown.Item>
-                      </Link>
                       <Dropdown.Item
-                        className="gap-2 p-3 rounded-bottom-2 fw-semi-bold text-dark"
+                        className="gap-2 p-3 fw-semi-bold text-dark"
                         onClick={() => disconnect()}
                       >
                         <Stack

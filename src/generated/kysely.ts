@@ -47,8 +47,17 @@ export type Message = {
   authorAddress: string;
   content: string;
   messageType: Generated<string>;
+  pinnedAt: Timestamp | null;
+  pinnedBy: string | null;
   createdAt: Generated<Timestamp>;
   updatedAt: Generated<Timestamp>;
+};
+export type MessageReaction = {
+  id: Generated<number>;
+  messageId: number;
+  authorAddress: string;
+  emoji: string;
+  createdAt: Generated<Timestamp>;
 };
 export type MilestoneProgress = {
   id: Generated<number>;
@@ -105,8 +114,16 @@ export type RoundAdminEmail = {
   email: string;
   createdAt: Generated<Timestamp>;
 };
+export type UserProfile = {
+  id: Generated<number>;
+  address: string;
+  displayName: string;
+  createdAt: Generated<Timestamp>;
+  updatedAt: Generated<Timestamp>;
+};
 export type DB = {
   applications: Application;
+  messageReactions: MessageReaction;
   messages: Message;
   milestoneProgress: MilestoneProgress;
   projectEmails: ProjectEmail;
@@ -116,4 +133,5 @@ export type DB = {
   roundAdminEmails: RoundAdminEmail;
   roundAdmins: RoundAdmin;
   rounds: Round;
+  userProfiles: UserProfile;
 };

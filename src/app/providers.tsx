@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { SessionProvider } from "next-auth/react";
+import { SessionProvider, signOut, useSession } from "next-auth/react";
 import { http } from "viem";
 import {
   connectorsForWallets,
@@ -15,7 +15,7 @@ import {
   safeWallet,
   rainbowWallet,
 } from "@rainbow-me/rainbowkit/wallets";
-import { createConfig, WagmiProvider } from "wagmi";
+import { createConfig, WagmiProvider, useAccount } from "wagmi";
 import { arbitrum, base, celo, optimism, optimismSepolia } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import posthog from "posthog-js";
@@ -118,6 +118,19 @@ function RainbowKitWithInitialChain({
   );
 }
 
+function AuthSync() {
+  const { isDisconnected } = useAccount();
+  const { data: session } = useSession();
+
+  useEffect(() => {
+    if (isDisconnected && session) {
+      signOut({ redirect: false });
+    }
+  }, [isDisconnected, session]);
+
+  return null;
+}
+
 export default function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
@@ -138,6 +151,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <WagmiProvider config={config}>
         <QueryClientProvider client={queryClient}>
           <SessionProvider>
+            <AuthSync />
             <RainbowKitWithInitialChain>
               <PostHogProvider client={posthog}>
                 <DonorParamsContextProvider>

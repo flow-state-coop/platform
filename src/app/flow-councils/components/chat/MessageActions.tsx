@@ -5,14 +5,27 @@ import Dropdown from "react-bootstrap/Dropdown";
 type MessageActionsProps = {
   canEdit: boolean;
   canDelete: boolean;
+  canPin?: boolean;
+  isPinned?: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onPin?: () => void;
+  onUnpin?: () => void;
 };
 
 export default function MessageActions(props: MessageActionsProps) {
-  const { canEdit, canDelete, onEdit, onDelete } = props;
+  const {
+    canEdit,
+    canDelete,
+    canPin,
+    isPinned,
+    onEdit,
+    onDelete,
+    onPin,
+    onUnpin,
+  } = props;
 
-  if (!canEdit && !canDelete) {
+  if (!canEdit && !canDelete && !canPin) {
     return null;
   }
 
@@ -44,6 +57,14 @@ export default function MessageActions(props: MessageActionsProps) {
         {canEdit && (
           <Dropdown.Item className="fw-semi-bold" onClick={onEdit}>
             Edit
+          </Dropdown.Item>
+        )}
+        {canPin && (
+          <Dropdown.Item
+            className="fw-semi-bold"
+            onClick={isPinned ? onUnpin : onPin}
+          >
+            {isPinned ? "Unpin" : "Pin"}
           </Dropdown.Item>
         )}
         {canDelete && (

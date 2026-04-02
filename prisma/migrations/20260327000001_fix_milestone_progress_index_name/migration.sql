@@ -1,0 +1,2 @@
+-- RenameIndex
+ALTER INDEX "milestone_progress_application_id_milestone_type_milestone_i_ke" RENAME TO "milestone_progress_application_id_milestone_type_milestone__key";

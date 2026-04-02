@@ -8,6 +8,7 @@ import Alert from "react-bootstrap/Alert";
 import MessageItem, { Message, AuthorAffiliation } from "./chat/MessageItem";
 import MessageInput from "./chat/MessageInput";
 import EditMessageModal from "./chat/EditMessageModal";
+import { useChatActions } from "../hooks/chatActions";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
 import { ChannelType } from "@/generated/kysely";
 import type { ProjectMetadata } from "@/app/api/flow-council/utils";
@@ -70,23 +71,32 @@ export default function ChatView(props: ChatViewProps) {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
 
-  // Edit modal state
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
 
   const { data: session } = useSession();
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Get unique author addresses for ENS resolution
+  const {
+    displayNames,
+    reactions,
+    displayMessages,
+    setFetchedData,
+    clearData,
+    handlePinToggle,
+    handleReactionToggle,
+  } = useChatActions({
+    messages,
+    chainId,
+    councilId,
+    sessionAddress: session?.address,
+    newestFirst,
+  });
+
   const authorAddresses = useMemo(() => {
     return messages.map((m) => m.authorAddress);
   }, [messages]);
 
   const { ensByAddress } = useEnsResolution(authorAddresses);
-
-  const displayMessages = useMemo(
-    () => (newestFirst ? [...messages].reverse() : messages),
-    [messages, newestFirst],
-  );
 
   const buildQueryParams = useCallback(() => {
     const params = new URLSearchParams({ channelType });
@@ -113,12 +123,14 @@ export default function ChatView(props: ChatViewProps) {
         setAffiliations(data.affiliations || {});
         setProjectMetadata(data.projectMetadata || {});
         setManagedProjectIds(data.managedProjectIds || []);
+        setFetchedData(data);
         setError("");
       } else {
         setMessages([]);
         setAffiliations({});
         setProjectMetadata({});
         setManagedProjectIds([]);
+        clearData();
         setError(data.error || "Failed to load messages");
       }
     } catch (err) {
@@ -128,7 +140,7 @@ export default function ChatView(props: ChatViewProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [buildQueryParams]);
+  }, [buildQueryParams, setFetchedData, clearData]);
 
   useEffect(() => {
     fetchMessages();
@@ -310,6 +322,7 @@ export default function ChatView(props: ChatViewProps) {
               <MessageItem
                 key={message.id}
                 message={message}
+                displayName={displayNames[message.authorAddress.toLowerCase()]}
                 ensData={ensByAddress?.[message.authorAddress.toLowerCase()]}
                 affiliation={affiliations[message.authorAddress.toLowerCase()]}
                 projectSource={
@@ -323,6 +336,19 @@ export default function ChatView(props: ChatViewProps) {
                   message.projectId
                     ? (projectMetadata[message.projectId]?.logoUrl ?? undefined)
                     : undefined
+                }
+                reactions={reactions[message.id]}
+                onReactionToggle={(emoji) =>
+                  handleReactionToggle(message.id, emoji)
+                }
+                reactionsDisabled={!session?.address}
+                isPinned={!!message.pinnedAt}
+                canPin={canModerate}
+                onPin={() =>
+                  handlePinToggle(message.id, true, fetchMessages, setError)
+                }
+                onUnpin={() =>
+                  handlePinToggle(message.id, false, fetchMessages, setError)
                 }
                 hideAdminTag={channelType === "PUBLIC_PROJECT"}
                 canEdit={canEditMessage(message)}

@@ -8,6 +8,7 @@ import Alert from "react-bootstrap/Alert";
 import MessageItem, { Message, AuthorAffiliation } from "./chat/MessageItem";
 import MessageInput from "./chat/MessageInput";
 import EditMessageModal from "./chat/EditMessageModal";
+import { useChatActions } from "../hooks/chatActions";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
 import type { ProjectMetadata } from "@/app/api/flow-council/utils";
 
@@ -52,13 +53,27 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
 
   const { data: session } = useSession();
 
+  const {
+    displayNames,
+    reactions,
+    displayMessages,
+    setFetchedData,
+    clearData,
+    handlePinToggle,
+    handleReactionToggle,
+  } = useChatActions({
+    messages,
+    chainId,
+    councilId,
+    sessionAddress: session?.address,
+    newestFirst: true,
+  });
+
   const authorAddresses = useMemo(() => {
     return messages.map((m) => m.authorAddress);
   }, [messages]);
 
   const { ensByAddress } = useEnsResolution(authorAddresses);
-
-  const displayMessages = useMemo(() => [...messages].reverse(), [messages]);
 
   const fetchMessages = useCallback(async () => {
     try {
@@ -74,11 +89,13 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
         setMessages(data.messages || []);
         setAffiliations(data.affiliations || {});
         setProjectMetadata(data.projectMetadata || {});
+        setFetchedData(data);
         setError("");
       } else {
         setMessages([]);
         setAffiliations({});
         setProjectMetadata({});
+        clearData();
         setError(data.error || "Failed to load messages");
       }
     } catch (err) {
@@ -88,7 +105,7 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [chainId, councilId]);
+  }, [chainId, councilId, setFetchedData, clearData]);
 
   useEffect(() => {
     fetchMessages();
@@ -234,8 +251,22 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
                   projectId: message.projectId ?? undefined,
                   messageType: message.messageType ?? undefined,
                 }}
+                displayName={displayNames[message.authorAddress.toLowerCase()]}
                 ensData={ensByAddress?.[message.authorAddress.toLowerCase()]}
                 affiliation={affiliations[message.authorAddress.toLowerCase()]}
+                reactions={reactions[message.id]}
+                onReactionToggle={(emoji) =>
+                  handleReactionToggle(message.id, emoji)
+                }
+                reactionsDisabled={!session?.address}
+                isPinned={!!message.pinnedAt}
+                canPin={isAdmin}
+                onPin={() =>
+                  handlePinToggle(message.id, true, fetchMessages, setError)
+                }
+                onUnpin={() =>
+                  handlePinToggle(message.id, false, fetchMessages, setError)
+                }
                 projectSource={
                   message.messageType === "milestone_update" &&
                   message.projectId

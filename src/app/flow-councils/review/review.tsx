@@ -310,7 +310,7 @@ export default function Review(props: ReviewProps) {
     } catch (err) {
       console.error(err);
     }
-  }, [flowCouncil, chainId, session]);
+  }, [flowCouncil, chainId]);
 
   const isManager = useMemo(() => {
     const flowCouncilManager = flowCouncil?.flowCouncilManagers.find(
