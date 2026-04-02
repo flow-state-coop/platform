@@ -1,17 +1,24 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAccount } from "wagmi";
+import { useEnsResolution } from "@/hooks/useEnsResolution";
 
 export function useProfileDisplayName(): {
   displayName: string | null;
   isLoading: boolean;
 } {
   const { address } = useAccount();
-  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const addresses = address ? [address] : [];
+  const { ensByAddress, isLoading: ensLoading } = useEnsResolution(addresses);
+  const ensName = address
+    ? (ensByAddress?.[address.toLowerCase()]?.name ?? null)
+    : null;
 
   const fetchDisplayName = useCallback(async () => {
     if (!address) {
-      setDisplayName(null);
+      setProfileName(null);
       return;
     }
 
@@ -21,11 +28,11 @@ export function useProfileDisplayName(): {
       const res = await fetch(`/api/flow-council/profile?address=${address}`);
       const data = await res.json();
 
-      setDisplayName(
+      setProfileName(
         data.success && data.profile ? data.profile.displayName : null,
       );
     } catch {
-      setDisplayName(null);
+      setProfileName(null);
     } finally {
       setIsLoading(false);
     }
@@ -35,5 +42,8 @@ export function useProfileDisplayName(): {
     fetchDisplayName();
   }, [fetchDisplayName]);
 
-  return { displayName, isLoading };
+  return {
+    displayName: profileName ?? ensName,
+    isLoading: isLoading || ensLoading,
+  };
 }
