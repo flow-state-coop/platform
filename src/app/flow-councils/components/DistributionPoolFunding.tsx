@@ -26,7 +26,9 @@ import { Network } from "@/types/network";
 import { TransactionCall } from "@/types/transactionCall";
 import {
   buildWrapCalls,
-  buildFlowBatchOps,
+  buildCreateFlowBatchOp,
+  buildUpdateFlowBatchOp,
+  buildDeleteFlowBatchOp,
   buildBatchCall,
 } from "@/lib/superfluidTransactions";
 import DistributionPoolDetails from "./DistributionPoolDetails";
@@ -335,16 +337,22 @@ export default function DistributionPoolFunding(props: {
       batchOps.push(...wrap.batchOps);
     }
 
-    batchOps.push(
-      ...buildFlowBatchOps({
-        tokenAddress: distributionTokenAddress,
-        senderAddress: address,
-        receiverAddress: splitterAddress as Address,
-        newFlowRate,
-        flowRateToReceiver,
-        chainId,
-      }),
-    );
+    const flowParams = {
+      tokenAddress: distributionTokenAddress,
+      receiverAddress: splitterAddress as Address,
+      flowRate: BigInt(newFlowRate),
+      chainId,
+    };
+
+    if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToReceiver) > 0) {
+      batchOps.push(
+        buildDeleteFlowBatchOp({ ...flowParams, senderAddress: address }),
+      );
+    } else if (BigInt(flowRateToReceiver) > 0) {
+      batchOps.push(buildUpdateFlowBatchOp(flowParams));
+    } else if (BigInt(newFlowRate) > 0) {
+      batchOps.push(buildCreateFlowBatchOp(flowParams));
+    }
 
     const batchCall = buildBatchCall(batchOps, chainId);
 

@@ -108,8 +108,6 @@ export default function Launch(props: LaunchProps) {
       let flowCouncilAddress: Address = "" as Address;
       let splitterAddress = "";
 
-      // Uses writeContract directly (no simulation) since these are
-      // factory deploys where the second tx depends on the first's receipt
       await executeWithProgress(async (onProgress) => {
         const hash = await writeContract(wagmiConfig, {
           address: selectedNetwork.flowCouncilFactory as Address,

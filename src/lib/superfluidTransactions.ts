@@ -68,88 +68,69 @@ export function buildWrapCalls({
   return { calls, batchOps };
 }
 
-export function buildFlowBatchOps({
-  tokenAddress,
-  senderAddress,
-  receiverAddress,
-  newFlowRate,
-  flowRateToReceiver,
-  chainId,
-}: {
+type FlowParams = {
+  tokenAddress: Address;
+  receiverAddress: Address;
+  flowRate: bigint;
+  chainId: keyof typeof cfaAddress;
+};
+
+type DeleteFlowParams = {
   tokenAddress: Address;
   senderAddress: Address;
   receiverAddress: Address;
-  newFlowRate: string;
-  flowRateToReceiver: string;
   chainId: keyof typeof cfaAddress;
-}): BatchOp[] {
-  if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToReceiver) === BigInt(0)) {
-    return [];
-  }
+};
 
-  if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToReceiver) > 0) {
-    return [
-      prepareOperation({
-        operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
-        target: cfaAddress[chainId],
-        data: encodeFunctionData({
-          abi: cfaAbi,
-          functionName: "deleteFlow",
-          args: [tokenAddress, senderAddress, receiverAddress, "0x"],
-        }),
-      }),
-    ];
-  }
-
-  if (BigInt(flowRateToReceiver) > 0) {
-    return [
-      prepareOperation({
-        operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
-        target: cfaAddress[chainId],
-        data: encodeFunctionData({
-          abi: cfaAbi,
-          functionName: "updateFlow",
-          args: [tokenAddress, receiverAddress, BigInt(newFlowRate), "0x"],
-        }),
-      }),
-    ];
-  }
-
-  return [
-    prepareOperation({
-      operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
-      target: cfaAddress[chainId],
-      data: encodeFunctionData({
-        abi: cfaAbi,
-        functionName: "createFlow",
-        args: [tokenAddress, receiverAddress, BigInt(newFlowRate), "0x"],
-      }),
+export function buildCreateFlowBatchOp({
+  tokenAddress,
+  receiverAddress,
+  flowRate,
+  chainId,
+}: FlowParams): BatchOp {
+  return prepareOperation({
+    operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
+    target: cfaAddress[chainId],
+    data: encodeFunctionData({
+      abi: cfaAbi,
+      functionName: "createFlow",
+      args: [tokenAddress, receiverAddress, flowRate, "0x"],
     }),
-  ];
+  });
 }
 
-export function buildDeleteFlowBatchOps({
+export function buildUpdateFlowBatchOp({
+  tokenAddress,
+  receiverAddress,
+  flowRate,
+  chainId,
+}: FlowParams): BatchOp {
+  return prepareOperation({
+    operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
+    target: cfaAddress[chainId],
+    data: encodeFunctionData({
+      abi: cfaAbi,
+      functionName: "updateFlow",
+      args: [tokenAddress, receiverAddress, flowRate, "0x"],
+    }),
+  });
+}
+
+export function buildDeleteFlowBatchOp({
   tokenAddress,
   senderAddress,
   receiverAddress,
   chainId,
-}: {
-  tokenAddress: Address;
-  senderAddress: Address;
-  receiverAddress: Address;
-  chainId: keyof typeof cfaAddress;
-}): BatchOp[] {
-  return [
-    prepareOperation({
-      operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
-      target: cfaAddress[chainId],
-      data: encodeFunctionData({
-        abi: cfaAbi,
-        functionName: "deleteFlow",
-        args: [tokenAddress, senderAddress, receiverAddress, "0x"],
-      }),
+}: DeleteFlowParams): BatchOp {
+  return prepareOperation({
+    operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
+    target: cfaAddress[chainId],
+    data: encodeFunctionData({
+      abi: cfaAbi,
+      functionName: "deleteFlow",
+      args: [tokenAddress, senderAddress, receiverAddress, "0x"],
     }),
-  ];
+  });
 }
 
 export function buildBatchCall(

@@ -11,8 +11,9 @@ import { Token } from "@/types/token";
 import { TransactionCall } from "@/types/transactionCall";
 import {
   buildWrapCalls,
-  buildFlowBatchOps,
-  buildDeleteFlowBatchOps,
+  buildCreateFlowBatchOp,
+  buildUpdateFlowBatchOp,
+  buildDeleteFlowBatchOp,
   buildBatchCall,
 } from "@/lib/superfluidTransactions";
 import { getApolloClient } from "@/lib/apollo";
@@ -238,16 +239,22 @@ export default function useStreamFunding(
       batchOps.push(...wrap.batchOps);
     }
 
-    batchOps.push(
-      ...buildFlowBatchOps({
-        tokenAddress: selectedToken.address,
-        senderAddress: address,
-        receiverAddress: receiverAddress as Address,
-        newFlowRate,
-        flowRateToReceiver,
-        chainId,
-      }),
-    );
+    const flowParams = {
+      tokenAddress: selectedToken.address,
+      receiverAddress: receiverAddress as Address,
+      flowRate: BigInt(newFlowRate),
+      chainId,
+    };
+
+    if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToReceiver) > 0) {
+      batchOps.push(
+        buildDeleteFlowBatchOp({ ...flowParams, senderAddress: address }),
+      );
+    } else if (BigInt(flowRateToReceiver) > 0) {
+      batchOps.push(buildUpdateFlowBatchOp(flowParams));
+    } else if (BigInt(newFlowRate) > 0) {
+      batchOps.push(buildCreateFlowBatchOp(flowParams));
+    }
 
     const batchCall = buildBatchCall(batchOps, chainId);
 
@@ -293,14 +300,14 @@ export default function useStreamFunding(
     const chainId = network.id as keyof typeof cfaAddress;
     setIsSuccess(false);
 
-    const deleteOps = buildDeleteFlowBatchOps({
+    const deleteOp = buildDeleteFlowBatchOp({
       tokenAddress: selectedToken.address,
       senderAddress: address,
       receiverAddress: receiverAddress as Address,
       chainId,
     });
     const cancelCalls: TransactionCall[] = [
-      buildBatchCall(deleteOps, chainId)!,
+      buildBatchCall([deleteOp], chainId)!,
     ];
 
     try {
