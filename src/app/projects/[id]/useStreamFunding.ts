@@ -12,6 +12,7 @@ import { TransactionCall } from "@/types/transactionCall";
 import {
   buildWrapCalls,
   buildFlowBatchOps,
+  buildDeleteFlowBatchOps,
   buildBatchCall,
 } from "@/lib/superfluidTransactions";
 import { getApolloClient } from "@/lib/apollo";
@@ -292,15 +293,15 @@ export default function useStreamFunding(
     const chainId = network.id as keyof typeof cfaAddress;
     setIsSuccess(false);
 
-    const deleteOps = buildFlowBatchOps({
+    const deleteOps = buildDeleteFlowBatchOps({
       tokenAddress: selectedToken.address,
       senderAddress: address,
       receiverAddress: receiverAddress as Address,
-      newFlowRate: "0",
-      flowRateToReceiver: "1",
       chainId,
     });
-    const cancelCalls: TransactionCall[] = [buildBatchCall(deleteOps, chainId)!];
+    const cancelCalls: TransactionCall[] = [
+      buildBatchCall(deleteOps, chainId)!,
+    ];
 
     try {
       await executeTransactions(cancelCalls);

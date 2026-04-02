@@ -1,11 +1,6 @@
 import { Address, encodeFunctionData, erc20Abi } from "viem";
 import { superTokenAbi } from "@sfpro/sdk/abi";
-import {
-  hostAbi,
-  hostAddress,
-  cfaAbi,
-  cfaAddress,
-} from "@sfpro/sdk/abi/core";
+import { hostAbi, hostAddress, cfaAbi, cfaAddress } from "@sfpro/sdk/abi/core";
 import { prepareOperation, OPERATION_TYPE } from "@sfpro/sdk/constant";
 import { TransactionCall } from "@/types/transactionCall";
 
@@ -124,6 +119,30 @@ export function buildFlowBatchOps({
         abi: cfaAbi,
         functionName: "createFlow",
         args: [tokenAddress, receiverAddress, BigInt(newFlowRate), "0x"],
+      }),
+    }),
+  ];
+}
+
+export function buildDeleteFlowBatchOps({
+  tokenAddress,
+  senderAddress,
+  receiverAddress,
+  chainId,
+}: {
+  tokenAddress: Address;
+  senderAddress: Address;
+  receiverAddress: Address;
+  chainId: keyof typeof cfaAddress;
+}): BatchOp[] {
+  return [
+    prepareOperation({
+      operationType: OPERATION_TYPE.SUPERFLUID_CALL_AGREEMENT,
+      target: cfaAddress[chainId],
+      data: encodeFunctionData({
+        abi: cfaAbi,
+        functionName: "deleteFlow",
+        args: [tokenAddress, senderAddress, receiverAddress, "0x"],
       }),
     }),
   ];
