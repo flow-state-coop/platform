@@ -7,7 +7,7 @@ const FLOW_COUNCIL_QUERY = gql`
     flowCouncil(id: $councilId) {
       id
       distributionPool
-      recipients {
+      recipients(where: { removed: false }) {
         account
       }
       superToken
