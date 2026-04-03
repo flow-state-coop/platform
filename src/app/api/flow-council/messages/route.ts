@@ -13,6 +13,7 @@ import {
   getRoundAdminEmailsExcludingAddress,
   getAcceptedGranteeEmails,
   getProjectEmails,
+  formatSender,
 } from "../email";
 import {
   type AuthorAffiliation,
@@ -369,6 +370,11 @@ export async function POST(request: Request) {
     if (effectiveRoundId) {
       const baseUrl = new URL(request.url).origin;
       const messageContent = content.trim();
+      const displayNames = await fetchDisplayNames([session.address]);
+      const sender = formatSender(
+        session.address,
+        displayNames[session.address.toLowerCase()],
+      );
 
       if (channelType === "GROUP_ANNOUNCEMENTS") {
         Promise.all([
@@ -383,7 +389,7 @@ export async function POST(request: Request) {
               const emailData = {
                 baseUrl,
                 roundName: details.roundName,
-                sender: session.address,
+                sender,
                 messageContent,
                 chainId: details.chainId,
                 councilId: details.councilId,
@@ -419,7 +425,7 @@ export async function POST(request: Request) {
                 baseUrl,
                 projectName: details.projectName,
                 roundName: details.roundName,
-                sender: session.address,
+                sender,
                 messageContent,
                 chainId: details.chainId,
                 councilId: details.councilId,
@@ -444,7 +450,7 @@ export async function POST(request: Request) {
                 baseUrl,
                 projectName: details.projectName,
                 roundName: details.roundName,
-                sender: session.address,
+                sender,
                 messageContent,
                 chainId: details.chainId,
                 councilId: details.councilId,
