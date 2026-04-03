@@ -217,7 +217,7 @@ function FlowCouncilContextProviderInner({
   const GOODDOLLAR_COUNCIL_ADDRESS =
     "0xfabef1abae4998146e8a8422813eb787caa26ec2";
   const isGoodDollarCouncil =
-    councilId.toLowerCase() === GOODDOLLAR_COUNCIL_ADDRESS;
+    councilId?.toLowerCase() === GOODDOLLAR_COUNCIL_ADDRESS;
   const staleVotesList = useMemo((): Vote[] => {
     if (!currentBallot?.votes || !council?.recipients) return [];
 
