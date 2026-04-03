@@ -25,6 +25,7 @@ import {
   type BallotAction,
   type ShowBallotAction,
 } from "@/app/flow-councils/types/flowCouncil";
+import { GOODBUILDERS_COUNCIL_ADDRESSES } from "@/app/flow-councils/lib/constants";
 
 export const FlowCouncilContext = createContext<{
   council?: FlowCouncilData;
@@ -214,10 +215,8 @@ function FlowCouncilContextProviderInner({
     address ?? "",
     isVotingPage,
   );
-  const GOODDOLLAR_COUNCIL_ADDRESS =
-    "0xfabef1abae4998146e8a8422813eb787caa26ec2";
   const isGoodDollarCouncil =
-    councilId?.toLowerCase() === GOODDOLLAR_COUNCIL_ADDRESS;
+    councilId?.toLowerCase() === GOODBUILDERS_COUNCIL_ADDRESSES[1];
   const staleVotesList = useMemo((): Vote[] => {
     if (!currentBallot?.votes || !council?.recipients) return [];
 
