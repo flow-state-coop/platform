@@ -5,6 +5,7 @@ import Stack from "react-bootstrap/Stack";
 import Badge from "react-bootstrap/Badge";
 import Image from "next/image";
 import ConnectWallet from "@/components/ConnectWallet";
+import AccountDropdown from "@/components/AccountDropdown";
 import useFlowCouncil from "../hooks/flowCouncil";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
@@ -24,14 +25,7 @@ export default function FlowCouncilWallet({
     <>
       {councilMember ? (
         <ConnectButton.Custom>
-          {({
-            account,
-            chain,
-            openChainModal,
-            openConnectModal,
-            openAccountModal,
-            mounted,
-          }) => {
+          {({ account, chain, openChainModal, openConnectModal, mounted }) => {
             const connected = mounted && account && chain;
 
             return (
@@ -76,9 +70,9 @@ export default function FlowCouncilWallet({
                   return (
                     <div style={{ display: "flex", gap: 12 }}>
                       <Button
-                        variant="transparent"
+                        variant="outline-dark"
                         onClick={openChainModal}
-                        className="d-flex align-items-center gap-1 border rounded-4 border border-4 border-dark p-4 shadow"
+                        className="d-flex align-items-center gap-1 px-5 py-2 border-4 rounded-4"
                       >
                         {chain.iconUrl && (
                           <Image
@@ -90,8 +84,8 @@ export default function FlowCouncilWallet({
                         )}
                       </Button>
                       <Button
-                        variant="transparent"
-                        className="d-flex align-items-center gap-1 py-4 border border-4 border-dark rounded-4 fw-semi-bold shadow"
+                        variant="outline-dark"
+                        className="d-flex align-items-center gap-1 px-10 py-4 border-4 rounded-4 fw-semi-bold"
                         style={{ whiteSpace: "nowrap" }}
                         onClick={() => dispatchShowBallot({ type: "show" })}
                       >
@@ -137,22 +131,10 @@ export default function FlowCouncilWallet({
                           </>
                         )}
                       </Button>
-                      <Button
-                        variant="transparent"
-                        className="d-flex align-items-center gap-1 py-4 border border-4 border-dark fw-semi-bold rounded-4 shadow"
-                        style={{ whiteSpace: "nowrap" }}
-                        onClick={openAccountModal}
-                      >
-                        <Image
-                          src="/account-circle.svg"
-                          alt="account"
-                          width={18}
-                          height={18}
-                        />
-                        {!isMobile && account.displayName
-                          ? account.displayName
-                          : ""}
-                      </Button>
+                      <AccountDropdown
+                        fallbackDisplayName={account.displayName}
+                        hideNameOnMobile
+                      />
                     </div>
                   );
                 })()}
