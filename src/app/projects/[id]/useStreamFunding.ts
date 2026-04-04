@@ -515,8 +515,8 @@ export default function useStreamFunding(
     const cleaned = wrapAmount.replace(/,/g, "");
     if (!cleaned || Number(cleaned) === 0) return false;
 
-    const wrapWei = parseEther(cleaned);
-    return wrapWei > underlyingTokenBalance.value;
+    const wrapUnits = parseUnits(cleaned, underlyingTokenBalance.decimals);
+    return wrapUnits > underlyingTokenBalance.value;
   }, [wrapAmount, underlyingTokenBalance]);
 
   const bufferExceedsBalance =
