@@ -50,7 +50,8 @@ export default function useTransactionsQueue() {
   const { data: capabilities } = useCapabilities();
   const { sendCallsSyncAsync } = useSendCallsSync();
 
-  const isBatchSupported = !!capabilities?.[chainId]?.atomicBatch?.supported;
+  const isBatchSupported =
+    !!capabilities?.[chainId]?.atomicBatch?.supported || !walletClient;
 
   const executeTransactions = async (
     calls: TransactionCall[],
@@ -62,7 +63,7 @@ export default function useTransactionsQueue() {
     try {
       let receipts: TransactionReceipt[];
 
-      if (isBatchSupported && calls.length > 1) {
+      if (isBatchSupported || !walletClient) {
         const result = await sendCallsSyncAsync({
           calls: calls.map((call) => ({
             to: call.to,
@@ -73,7 +74,7 @@ export default function useTransactionsQueue() {
 
         receipts = (result.receipts ?? []) as TransactionReceipt[];
       } else {
-        if (!walletClient || !publicClient) {
+        if (!publicClient) {
           throw new Error("Wallet not connected");
         }
 
