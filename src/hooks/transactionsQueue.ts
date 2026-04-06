@@ -50,7 +50,7 @@ export default function useTransactionsQueue() {
   const { data: capabilities } = useCapabilities();
   const { sendCallsSyncAsync } = useSendCallsSync();
 
-  const isBatchSupported =
+  const useSendCalls =
     !!capabilities?.[chainId]?.atomicBatch?.supported || !walletClient;
 
   const executeTransactions = async (
@@ -63,7 +63,7 @@ export default function useTransactionsQueue() {
     try {
       let receipts: TransactionReceipt[];
 
-      if (isBatchSupported || !walletClient) {
+      if (useSendCalls) {
         const result = await sendCallsSyncAsync({
           calls: calls.map((call) => ({
             to: call.to,
@@ -162,7 +162,7 @@ export default function useTransactionsQueue() {
     areTransactionsLoading,
     completedTransactions,
     transactionError,
-    isBatchSupported,
+    useSendCalls,
     executeTransactions,
     executeLegacyTransactions,
   };

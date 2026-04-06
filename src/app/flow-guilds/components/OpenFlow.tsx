@@ -144,7 +144,7 @@ export default function OpenFlow(props: OpenFlowProps) {
     areTransactionsLoading,
     completedTransactions,
     transactionError,
-    isBatchSupported,
+    useSendCalls,
     executeTransactions,
   } = useTransactionsQueue();
   const { data: superfluidQueryRes } = useQuery(ACCOUNT_TOKEN_SNAPSHOT_QUERY, {
@@ -970,13 +970,13 @@ export default function OpenFlow(props: OpenFlowProps) {
           ) : areTransactionsLoading ? (
             <>
               <Spinner size="sm" />{" "}
-              {calls.length > 1 && !isBatchSupported && (
+              {calls.length > 1 && !useSendCalls && (
                 <>
                   ({completedTransactions + 1}/{calls.length})
                 </>
               )}
             </>
-          ) : canSubmit && !isBatchSupported && calls.length > 1 ? (
+          ) : canSubmit && !useSendCalls && calls.length > 1 ? (
             <>Submit ({calls.length})</>
           ) : (
             <>Submit</>

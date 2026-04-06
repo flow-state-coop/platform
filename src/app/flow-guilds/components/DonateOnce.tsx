@@ -87,7 +87,7 @@ export default function DonateOnce(props: DonateOnceProps) {
     areTransactionsLoading,
     completedTransactions,
     transactionError,
-    isBatchSupported,
+    useSendCalls,
     executeTransactions,
   } = useTransactionsQueue();
   const { data: superfluidQueryRes } = useQuery(ACCOUNT_TOKEN_SNAPSHOT_QUERY, {
@@ -455,19 +455,19 @@ export default function DonateOnce(props: DonateOnceProps) {
         {areTransactionsLoading ? (
           <>
             <Spinner size="sm" />{" "}
-            {calls.length > 1 && !isBatchSupported && (
+            {calls.length > 1 && !useSendCalls && (
               <>
                 ({completedTransactions + 1}/{calls.length})
               </>
             )}
           </>
-        ) : canSubmit && calls.length > 1 && !isBatchSupported ? (
+        ) : canSubmit && calls.length > 1 && !useSendCalls ? (
           <>Submit ({calls.length})</>
         ) : (
           <>Submit</>
         )}
       </Button>
-      {canSubmit && calls.length > 1 && !isBatchSupported && (
+      {canSubmit && calls.length > 1 && !useSendCalls && (
         <Stack
           direction="horizontal"
           gap={2}
