@@ -765,23 +765,21 @@ export default function OpenFlow(props: OpenFlowProps) {
             >
               {token.symbol}:{" "}
               {formatNumber(Number(formatEther(superTokenBalance)))}{" "}
-              {!hasSufficientSuperTokenBalance && newFlowRate && (
-                <>(Wrap below)</>
-              )}
+              {!hasSufficientSuperTokenBalance && newFlowRate
+                ? "(Wrap below)"
+                : null}
             </Card.Text>
-            {!isSuperTokenPure &&
-              !showWrappingStep &&
-              hasSufficientSuperTokenBalance && (
-                <span
-                  className="position-absolute end-0 me-2 bg-primary p-1 rounded-1 text-white cursor-pointer"
-                  style={{
-                    fontSize: "0.7rem",
-                  }}
-                  onClick={() => setShowWrappingStep(true)}
-                >
-                  +
-                </span>
-              )}
+            {!isSuperTokenPure && !showWrappingStep && (
+              <span
+                className="position-absolute end-0 me-2 bg-primary p-1 rounded-1 text-white cursor-pointer"
+                style={{
+                  fontSize: "0.7rem",
+                }}
+                onClick={() => setShowWrappingStep(true)}
+              >
+                +
+              </span>
+            )}
           </Stack>
         </Stack>
         <Dropdown className="w-50">
