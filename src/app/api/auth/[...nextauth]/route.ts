@@ -8,10 +8,9 @@ import { networks } from "@/lib/networks";
 
 function getPublicClient(chainId: number) {
   const network = networks.find((n) => n.id === chainId);
-  if (!network) return null;
 
   return createPublicClient({
-    transport: http(network.rpcUrl),
+    transport: http(network?.rpcUrl),
   });
 }
 
@@ -43,10 +42,6 @@ const providers = [
         const nonce = cookies.get("next-auth.csrf-token")?.value.split("|")[0];
 
         const publicClient = getPublicClient(siwe.chainId);
-        if (!publicClient) {
-          console.error("SIWE: unsupported chainId", siwe.chainId);
-          return null;
-        }
 
         const isValid = await verifySiweMessage(publicClient, {
           message,
