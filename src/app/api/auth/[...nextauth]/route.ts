@@ -1,7 +1,19 @@
 import { headers, cookies as nextCookies } from "next/headers";
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { createPublicClient, http, type Hex } from "viem";
+import { verifySiweMessage } from "viem/siwe";
 import { SiweMessage } from "siwe";
+import { networks } from "@/lib/networks";
+
+function getPublicClient(chainId: number) {
+  const network = networks.find((n) => n.id === chainId);
+  if (!network) return null;
+
+  return createPublicClient({
+    transport: http(network.rpcUrl),
+  });
+}
 
 const providers = [
   CredentialsProvider({
@@ -22,24 +34,33 @@ const providers = [
       try {
         const headersList = await headers();
         const siwe = new SiweMessage(JSON.parse(credentials?.message || "{}"));
+        const message = siwe.prepareMessage();
+
         const nextAuthUrl = new URL(
           headersList.get("origin") ?? "https://flowstate.network",
         );
-
         const cookies = await nextCookies();
-        const result = await siwe.verify({
-          signature: credentials?.signature || "",
+        const nonce = cookies.get("next-auth.csrf-token")?.value.split("|")[0];
+
+        const publicClient = getPublicClient(siwe.chainId);
+        if (!publicClient) {
+          console.error("SIWE: unsupported chainId", siwe.chainId);
+          return null;
+        }
+
+        const isValid = await verifySiweMessage(publicClient, {
+          message,
+          signature: credentials?.signature as Hex,
           domain: nextAuthUrl.host,
-          nonce: cookies.get("next-auth.csrf-token")?.value.split("|")[0], // csfr
+          nonce,
         });
 
-        if (result.success) {
-          return {
-            id: siwe.address,
-          };
+        if (isValid) {
+          return { id: siwe.address };
         }
         return null;
       } catch (e) {
+        console.error("SIWE verification error:", e);
         return null;
       }
     },
