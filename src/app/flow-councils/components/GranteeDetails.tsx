@@ -8,7 +8,7 @@ import Image from "react-bootstrap/Image";
 import Badge from "react-bootstrap/Badge";
 import Markdown from "@/components/Markdown";
 import { Token } from "@/types/token";
-import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
+import { gdaPoolAbi } from "@sfpro/sdk/abi";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useFlowCouncil from "../hooks/flowCouncil";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -45,7 +45,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
   const { data: totalAmountReceivedByMember, dataUpdatedAt } = useReadContract({
     chainId,
     address: distributionPool?.id as Address,
-    abi: superfluidPoolAbi,
+    abi: gdaPoolAbi,
     functionName: "getTotalAmountReceivedByMember",
     args: [granteeAddress as Address],
     query: { enabled: !!distributionPool && !!granteeAddress },

@@ -14,15 +14,13 @@ import Alert from "react-bootstrap/Button";
 import Badge from "react-bootstrap/Badge";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Tooltip from "react-bootstrap/Tooltip";
-import { TransactionReceipt } from "viem";
 import CopyTooltip from "@/components/CopyTooltip";
-import { TransactionCall } from "@/lib/transactionCalls";
+import { TransactionCall } from "@/types/transactionCall";
 import { Step } from "@/types/checkout";
 import { Token } from "@/types/token";
 import { Network } from "@/types/network";
 import { formatNumber, fromTimeUnitsToSeconds, truncateStr } from "@/lib/utils";
 
-dayjs().format();
 dayjs.extend(duration);
 
 export type ReviewProps = {
@@ -31,9 +29,7 @@ export type ReviewProps = {
   network?: Network;
   receiver: string;
   calls: TransactionCall[];
-  executeTransactions: (
-    calls: TransactionCall[],
-  ) => Promise<TransactionReceipt[]>;
+  executeTransactions: (calls: TransactionCall[]) => Promise<void>;
   areTransactionsLoading: boolean;
   completedTransactions: number;
   transactionError: string;
@@ -68,8 +64,6 @@ type TransactionDetailsSnapshot = {
   newFlowRate: string;
   flowRateToReceiver: string;
 };
-
-dayjs().format();
 
 export default function Review(props: ReviewProps) {
   const {

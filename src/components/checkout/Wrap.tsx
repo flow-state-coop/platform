@@ -197,9 +197,13 @@ export default function Wrap(props: WrapProps) {
                   Remaining after wrapping{" "}
                   {formatNumber(
                     Number(
-                      formatEther(
+                      formatUnits(
                         underlyingTokenBalance?.value -
-                          parseEther(wrapAmount?.replace(/,/g, "")),
+                          parseUnits(
+                            wrapAmount?.replace(/,/g, ""),
+                            underlyingTokenBalance.decimals,
+                          ),
+                        underlyingTokenBalance.decimals,
                       ),
                     ),
                   )}

@@ -1,14 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Address, parseAbi, parseEther, parseUnits, formatEther } from "viem";
+import {
+  Address,
+  parseEther,
+  parseUnits,
+  formatEther,
+  encodeFunctionData,
+  erc20Abi,
+} from "viem";
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import { useQuery, gql } from "@apollo/client";
-import {
-  SuperToken,
-  NativeAssetSuperToken,
-  WrapperSuperToken,
-  Framework,
-} from "@superfluid-finance/sdk-core";
+import { superTokenAbi } from "@sfpro/sdk/abi";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import Stack from "react-bootstrap/Stack";
@@ -23,19 +25,18 @@ import InputGroup from "react-bootstrap/InputGroup";
 import Spinner from "react-bootstrap/Spinner";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
+import { TransactionCall } from "@/types/transactionCall";
 import CopyTooltip from "@/components/CopyTooltip";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
-import { useEthersProvider } from "@/hooks/ethersAdapters";
-import { TransactionCall, operationToCall } from "@/lib/transactionCalls";
+import useSuperTokenType from "@/hooks/superTokenType";
+import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { truncateStr, formatNumber, isNumber } from "@/lib/utils";
 import { FlowGuildConfig } from "../lib/flowGuildConfig";
-import { ZERO_ADDRESS } from "@/lib/constants";
 
-dayjs().format();
 dayjs.extend(duration);
 
 type DonateOnceProps = {
@@ -58,10 +59,6 @@ const ACCOUNT_TOKEN_SNAPSHOT_QUERY = gql`
         }
       }
     }
-    token(id: $token) {
-      isNativeAssetSuperToken
-      underlyingAddress
-    }
   }
 `;
 
@@ -72,17 +69,10 @@ export default function DonateOnce(props: DonateOnceProps) {
   const [wrapAmount, setWrapAmount] = useState("");
   const [amountWei, setAmountWei] = useState(BigInt(0));
   const [success, setSuccess] = useState(false);
-  const [sfFramework, setSfFramework] = useState<Framework>();
-  const [distributionSuperToken, setDistributionSuperToken] = useState<
-    NativeAssetSuperToken | WrapperSuperToken | SuperToken
-  >();
-  const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("");
-  const [calls, setCalls] = useState<TransactionCall[]>([]);
 
   const { isMobile, isTablet } = useMediaQuery();
   const { address } = useAccount();
   const router = useRouter();
-  const ethersProvider = useEthersProvider({ chainId: network.id });
   const {
     areTransactionsLoading,
     completedTransactions,
@@ -101,32 +91,23 @@ export default function DonateOnce(props: DonateOnceProps) {
   });
   const accountTokenSnapshot =
     superfluidQueryRes?.account?.accountTokenSnapshots[0] ?? null;
-  const { data: realtimeBalanceOfNow } = useReadContract({
-    address: token?.address,
-    functionName: "realtimeBalanceOfNow",
-    abi: parseAbi([
-      "function realtimeBalanceOfNow(address) returns (int256,uint256,uint256,uint256)",
-    ]),
-    args: [address],
-    chainId: network.id,
-    query: { refetchInterval: 10000 },
-  });
-
-  const balanceUntilUpdatedAt = realtimeBalanceOfNow?.[0];
-  const updatedAtTimestamp = realtimeBalanceOfNow
-    ? Number(realtimeBalanceOfNow[3])
-    : null;
+  const { balanceUntilUpdatedAt, updatedAtTimestamp } =
+    useSuperTokenBalanceOfNow({
+      token: token?.address,
+      address,
+      chainId: network.id,
+    });
   const superTokenBalance = useFlowingAmount(
     BigInt(balanceUntilUpdatedAt ?? 0),
     updatedAtTimestamp ?? 0,
     BigInt(accountTokenSnapshot?.totalNetFlowRate ?? 0),
   );
-  const isSuperTokenNative = superfluidQueryRes?.token?.isNativeAssetSuperToken;
-  const isSuperTokenPure =
-    !isSuperTokenNative &&
-    superfluidQueryRes?.token?.underlyingAddress === ZERO_ADDRESS;
-  const isSuperTokenWrapper =
-    !!superfluidQueryRes?.token && !isSuperTokenNative && !isSuperTokenPure;
+  const {
+    isSuperTokenNative,
+    isSuperTokenWrapper,
+    isSuperTokenPure,
+    underlyingAddress: tokenUnderlyingAddress,
+  } = useSuperTokenType(token.address, network.id);
   const { data: ethBalance } = useBalance({
     address,
     chainId: network?.id,
@@ -136,11 +117,22 @@ export default function DonateOnce(props: DonateOnceProps) {
   });
   const { data: underlyingTokenBalance } = useBalance({
     address,
-    token: superfluidQueryRes?.token?.underlyingAddress as Address,
+    token: tokenUnderlyingAddress as Address,
     chainId: network.id,
     query: {
       refetchInterval: 10000,
-      enabled: isSuperTokenWrapper,
+      enabled: isSuperTokenWrapper === true,
+    },
+  });
+  const { data: underlyingTokenAllowance } = useReadContract({
+    address: tokenUnderlyingAddress as Address,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: [address!, token.address],
+    chainId: network.id,
+    query: {
+      enabled: isSuperTokenWrapper === true && !!address,
+      refetchInterval: 10000,
     },
   });
 
@@ -160,105 +152,63 @@ export default function DonateOnce(props: DonateOnceProps) {
     amountWei > 0 &&
     (hasSufficientSuperTokenBalance || hasSufficientWrappingBalance);
 
-  useEffect(() => {
-    (async () => {
-      if (!token || !ethersProvider || !address) {
-        return;
-      }
+  const calls = useMemo(() => {
+    if (!address || !amountWei || isSuperTokenWrapper === undefined) return [];
 
-      const sfFramework = await Framework.create({
-        chainId: network.id,
-        resolverAddress: network.superfluidResolver,
-        provider: ethersProvider,
-      });
-      const distributionSuperToken = await sfFramework.loadSuperToken(
-        isSuperTokenNative ? "ETHx" : token.address,
-      );
-      const underlyingToken = distributionSuperToken.underlyingToken;
-      const underlyingTokenAllowance = await underlyingToken?.allowance({
-        owner: address,
-        spender: distributionSuperToken.address,
-        providerOrSigner: ethersProvider,
-      });
+    const wrapAmountWei = parseEther(wrapAmount);
+    const wrapAmountUnits = parseUnits(
+      wrapAmount,
+      underlyingTokenBalance?.decimals ?? 18,
+    );
+    const needsApproval =
+      isSuperTokenWrapper &&
+      wrapAmountUnits > BigInt(underlyingTokenAllowance ?? 0);
+    const newCalls: TransactionCall[] = [];
 
-      setUnderlyingTokenAllowance(underlyingTokenAllowance ?? "0");
-      setSfFramework(sfFramework);
-      setDistributionSuperToken(distributionSuperToken);
-    })();
-  }, [address, network, ethersProvider, token, isSuperTokenNative]);
-
-  useEffect(() => {
-    let stale = false;
-
-    (async () => {
-      if (
-        !address ||
-        !underlyingTokenAllowance ||
-        !distributionSuperToken ||
-        !sfFramework ||
-        !ethersProvider
-      ) {
-        return;
-      }
-
-      const wrapAmountWei = parseEther(wrapAmount);
-      const underlyingToken = distributionSuperToken.underlyingToken;
-      const approvalTransactionsCount =
-        isSuperTokenWrapper &&
-        wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0)
-          ? 1
-          : 0;
-      const newCalls: TransactionCall[] = [];
-
-      if (!isSuperTokenPure && wrapAmountWei > 0) {
-        if (underlyingToken && approvalTransactionsCount > 0) {
-          newCalls.push(
-            await operationToCall(
-              underlyingToken.approve({
-                receiver: distributionSuperToken.address,
-                amount: parseUnits(
-                  wrapAmount,
-                  underlyingTokenBalance?.decimals ?? 18,
-                ).toString(),
-              }),
-            ),
-          );
-        }
-
-        if (isSuperTokenWrapper) {
-          newCalls.push(
-            await operationToCall(
-              (distributionSuperToken as WrapperSuperToken).upgrade({
-                amount: wrapAmountWei.toString(),
-              }),
-            ),
-          );
-        } else {
-          newCalls.push(
-            await operationToCall(
-              (distributionSuperToken as NativeAssetSuperToken).upgrade({
-                amount: wrapAmountWei.toString(),
-              }),
-            ),
-          );
-        }
-      }
-
-      newCalls.push(
-        await operationToCall(
-          distributionSuperToken.transfer({
-            receiver: flowGuildConfig.safe,
-            amount: amountWei.toString(),
+    if (!isSuperTokenPure && wrapAmountWei > 0) {
+      if (isSuperTokenWrapper && tokenUnderlyingAddress && needsApproval) {
+        newCalls.push({
+          to: tokenUnderlyingAddress as Address,
+          data: encodeFunctionData({
+            abi: erc20Abi,
+            functionName: "approve",
+            args: [token.address, wrapAmountUnits],
           }),
-        ),
-      );
+        });
+      }
 
-      if (!stale) setCalls(newCalls);
-    })();
+      if (isSuperTokenWrapper) {
+        newCalls.push({
+          to: token.address,
+          data: encodeFunctionData({
+            abi: superTokenAbi,
+            functionName: "upgrade",
+            args: [wrapAmountWei],
+          }),
+        });
+      } else if (isSuperTokenNative) {
+        newCalls.push({
+          to: token.address,
+          data: encodeFunctionData({
+            abi: superTokenAbi,
+            functionName: "upgradeByETH",
+            args: [],
+          }),
+          value: wrapAmountWei,
+        });
+      }
+    }
 
-    return () => {
-      stale = true;
-    };
+    newCalls.push({
+      to: token.address,
+      data: encodeFunctionData({
+        abi: superTokenAbi,
+        functionName: "transfer",
+        args: [flowGuildConfig.safe as Address, amountWei],
+      }),
+    });
+
+    return newCalls;
   }, [
     address,
     wrapAmount,
@@ -266,11 +216,11 @@ export default function DonateOnce(props: DonateOnceProps) {
     flowGuildConfig,
     underlyingTokenBalance,
     underlyingTokenAllowance,
-    sfFramework,
-    ethersProvider,
-    distributionSuperToken,
     isSuperTokenPure,
     isSuperTokenWrapper,
+    isSuperTokenNative,
+    tokenUnderlyingAddress,
+    token.address,
   ]);
 
   const handleAmountSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
