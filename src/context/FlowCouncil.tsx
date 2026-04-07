@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useReducer } from "react";
+import { createContext, useContext, useReducer, useMemo } from "react";
 import { useParams, usePathname } from "next/navigation";
 import { useAccount } from "wagmi";
 import { GDAPool } from "@/types/gdaPool";
@@ -17,11 +17,13 @@ import useSuperAppFundersQuery, {
 } from "@/app/flow-councils/hooks/superAppFundersQuery";
 import { Token } from "@/types/token";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
+import { GOODBUILDERS_COUNCIL_ADDRESSES } from "@/app/flow-councils/lib/constants";
 import {
   type FlowCouncilData,
   type CouncilMember,
   type CurrentBallot,
   type NewBallot,
+  type Vote,
   type BallotAction,
   type ShowBallotAction,
 } from "@/app/flow-councils/types/flowCouncil";
@@ -214,23 +216,55 @@ function FlowCouncilContextProviderInner({
     address ?? "",
     isVotingPage,
   );
+  const isGoodDollarCouncil =
+    councilId?.toLowerCase() === GOODBUILDERS_COUNCIL_ADDRESSES[1];
   const { staleVotes, isLoading: isLoadingStaleVotes } = useStaleVotesQuery(
-    councilId,
-    address ?? "",
+    isGoodDollarCouncil ? councilId : "",
+    isGoodDollarCouncil ? address ?? "" : "",
   );
-  const councilMember = useMemo(
-    () =>
-      councilMemberRaw && !isLoadingStaleVotes
-        ? {
-            ...councilMemberRaw,
-            votingPower: Math.max(
-              0,
-              Number(councilMemberRaw.votingPower) - staleVotes,
-            ),
-          }
-        : undefined,
-    [councilMemberRaw, staleVotes, isLoadingStaleVotes],
-  );
+  const staleVotesList = useMemo((): Vote[] => {
+    if (!currentBallot?.votes || !council?.recipients) return [];
+
+    const activeRecipients = new Set(
+      council.recipients.map((r: { account: string }) =>
+        r.account.toLowerCase(),
+      ),
+    );
+
+    return currentBallot.votes.filter(
+      (v: Vote) => !activeRecipients.has(v.recipient.toLowerCase()),
+    );
+  }, [currentBallot?.votes, council?.recipients]);
+  const filteredCurrentBallot = useMemo(() => {
+    if (!currentBallot || staleVotesList.length === 0) return currentBallot;
+
+    const staleRecipients = new Set(
+      staleVotesList.map((v) => v.recipient.toLowerCase()),
+    );
+
+    return {
+      ...currentBallot,
+      votes: currentBallot.votes.filter(
+        (v: Vote) => !staleRecipients.has(v.recipient.toLowerCase()),
+      ),
+    };
+  }, [currentBallot, staleVotesList]);
+  const councilMember = useMemo(() => {
+    if (!councilMemberRaw || (isGoodDollarCouncil && isLoadingStaleVotes))
+      return undefined;
+
+    if (isGoodDollarCouncil && staleVotes > 0) {
+      return {
+        ...councilMemberRaw,
+        votingPower: Math.max(
+          0,
+          Number(councilMemberRaw.votingPower) - staleVotes,
+        ),
+      };
+    }
+
+    return councilMemberRaw;
+  }, [councilMemberRaw, isGoodDollarCouncil, staleVotes, isLoadingStaleVotes]);
   const token = network.tokens.find(
     (token) => token.address.toLowerCase() === council?.superToken,
   ) ?? {
@@ -260,7 +294,7 @@ function FlowCouncilContextProviderInner({
         token,
         projects,
         councilMember,
-        currentBallot,
+        currentBallot: filteredCurrentBallot,
         newBallot,
         showBallot,
       }}

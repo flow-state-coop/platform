@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery, gql } from "@apollo/client";
 import { Network } from "@/types/network";
 import { getApolloClient } from "@/lib/apollo";
@@ -36,29 +37,32 @@ export default function useBallotQuery(
 
   const voter = ballotQueryRes?.voter;
 
-  if (voter && voter.id !== voterId) {
-    return { votes: undefined, votingPower: undefined };
-  }
-  const votes = voter?.ballot?.votes
-    ?.filter(
-      (v: { recipient: { account: string } | null; amount: string }) =>
-        v.recipient !== null && Number(v.amount) > 0,
-    )
-    .map(
-      ({
-        recipient,
-        amount,
-      }: {
-        recipient: { account: string };
-        amount: string;
-      }) => ({
-        recipient: recipient.account,
-        amount: Number(amount),
-      }),
-    );
+  return useMemo(() => {
+    if (voter && voter.id !== voterId) {
+      return { votes: undefined, votingPower: undefined };
+    }
 
-  return {
-    votes,
-    votingPower: voter?.votingPower,
-  };
+    const votes = voter?.ballot?.votes
+      ?.filter(
+        (v: { recipient: { account: string } | null; amount: string }) =>
+          v.recipient !== null && Number(v.amount) > 0,
+      )
+      .map(
+        ({
+          recipient,
+          amount,
+        }: {
+          recipient: { account: string };
+          amount: string;
+        }) => ({
+          recipient: recipient.account,
+          amount: Number(amount),
+        }),
+      );
+
+    return {
+      votes,
+      votingPower: voter?.votingPower,
+    };
+  }, [voter, voterId]);
 }
