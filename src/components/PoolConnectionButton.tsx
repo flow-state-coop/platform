@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Address } from "viem";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { Network } from "@/types/network";
-import { gdaForwarderAbi } from "@/lib/abi/gdaForwarder";
+import { gdaForwarderAbi } from "@sfpro/sdk/abi";
 import { waitForReceipt } from "@/lib/utils";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";

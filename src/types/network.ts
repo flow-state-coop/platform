@@ -19,7 +19,6 @@ export type Network = {
   flowStateEligibilityNft: string;
   flowStateEligibilityMinScore: number;
   superfluidHost: Address;
-  superfluidResolver: Address;
   recipientSuperappFactory: Address;
   tokens: Token[];
   allo: Address;

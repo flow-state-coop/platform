@@ -42,9 +42,8 @@ import {
   SUPERFLUID_CALL_AGREEMENT_OPERATION,
 } from "@/lib/constants";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import { superfluidHostAbi } from "@/lib/abi/superfluidHost";
-import { gdaAbi } from "@/lib/abi/gda";
-import { gdaForwarderAbi } from "@/lib/abi/gdaForwarder";
+import { gdaForwarderAbi } from "@sfpro/sdk/abi";
+import { hostAbi, gdaAbi } from "@sfpro/sdk/abi/core";
 import "@xyflow/react/dist/style.css";
 
 function useStatusTimeout(
@@ -209,7 +208,7 @@ function CustomNode(props: NodeProps<Node>) {
 
       const hash = await writeContractAsync({
         address: network.superfluidHost,
-        abi: superfluidHostAbi,
+        abi: hostAbi,
         functionName: "callAgreement",
         args: [network.gda, callData, "0x"],
       });
@@ -283,7 +282,7 @@ function CustomNode(props: NodeProps<Node>) {
 
       const hash = await writeContractAsync({
         address: network.superfluidHost,
-        abi: superfluidHostAbi,
+        abi: hostAbi,
         functionName: "batchCall",
         args: [operations],
       });

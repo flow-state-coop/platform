@@ -27,7 +27,7 @@ import InstantDistribution from "@/app/flow-splitters/components/InstantDistribu
 import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";
 import { truncateStr } from "@/lib/utils";
-import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
+import { gdaPoolAbi } from "@sfpro/sdk/abi";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
 
 type PoolDetailProps = {
@@ -136,7 +136,7 @@ export default function PoolDetail(props: PoolDetailProps) {
 
   const { data: superToken, isLoading: superTokenLoading } = useReadContract({
     address: poolAddress as Address,
-    abi: superfluidPoolAbi,
+    abi: gdaPoolAbi,
     functionName: "superToken",
     chainId,
   });

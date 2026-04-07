@@ -1,23 +1,25 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { Address, isAddress, parseAbi, parseEther, formatUnits } from "viem";
+import { Address, parseEther, parseUnits, formatUnits, erc20Abi } from "viem";
 import { useAccount, useBalance, useReadContract, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useQuery, gql } from "@apollo/client";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
-import {
-  NativeAssetSuperToken,
-  WrapperSuperToken,
-  SuperToken,
-  Operation,
-  Framework,
-} from "@superfluid-finance/sdk-core";
+import { hostAddress, cfaAddress } from "@sfpro/sdk/abi/core";
 import { Network } from "@/types/network";
 import { Token } from "@/types/token";
+import { TransactionCall } from "@/types/transactionCall";
+import {
+  buildWrapCalls,
+  buildCreateFlowBatchOp,
+  buildUpdateFlowBatchOp,
+  buildDeleteFlowBatchOp,
+  buildBatchCall,
+} from "@/lib/superfluidTransactions";
 import { getApolloClient } from "@/lib/apollo";
-import { useEthersProvider, useEthersSigner } from "@/hooks/ethersAdapters";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useFlowingAmount from "@/hooks/flowingAmount";
+import useSuperTokenType from "@/hooks/superTokenType";
 import {
   TimeInterval,
   unitOfTime,
@@ -25,7 +27,7 @@ import {
   roundWeiAmount,
   formatNumber,
 } from "@/lib/utils";
-import { SECONDS_IN_MONTH, MAX_FLOW_RATE, ZERO_ADDRESS } from "@/lib/constants";
+import { SECONDS_IN_MONTH, MAX_FLOW_RATE } from "@/lib/constants";
 
 dayjs.extend(duration);
 
@@ -73,55 +75,54 @@ export default function useStreamFunding(
   const [monthlyAmount, setMonthlyAmount] = useState("");
   const [wrapAmount, setWrapAmount] = useState("");
   const [newFlowRate, setNewFlowRate] = useState("");
-  const [sfFramework, setSfFramework] = useState<Framework | null>(null);
-  const [superToken, setSuperToken] = useState<
-    NativeAssetSuperToken | WrapperSuperToken | SuperToken | null
-  >(null);
-  const [underlyingTokenAllowance, setUnderlyingTokenAllowance] = useState("0");
   const [isSuccess, setIsSuccess] = useState(false);
   const userEditedMonthlyAmount = useRef(false);
 
   const { address, chainId: walletChainId } = useAccount();
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
-  const ethersProvider = useEthersProvider({ chainId: network.id });
-  const ethersSigner = useEthersSigner({ chainId: network.id });
   const {
     areTransactionsLoading,
     completedTransactions,
     transactionError,
-    executeLegacyTransactions: executeTransactions,
+    executeTransactions,
   } = useTransactionsQueue();
 
   const isCorrectChain = walletChainId === network.id;
 
-  const isSuperTokenNative =
-    selectedToken.symbol === "ETHx" || selectedToken.symbol === "CELOx";
+  const {
+    isSuperTokenNative,
+    isSuperTokenWrapper,
+    isSuperTokenPure,
+    underlyingAddress: tokenUnderlyingAddress,
+  } = useSuperTokenType(selectedToken.address, network.id);
 
-  const { data: underlyingTokenAddress } = useReadContract({
-    address: selectedToken.address,
-    abi: parseAbi(["function getUnderlyingToken() view returns (address)"]),
-    functionName: "getUnderlyingToken",
-    chainId: network.id,
-    query: { enabled: !isSuperTokenNative },
-  });
-  const isSuperTokenWrapper =
-    !isSuperTokenNative &&
-    !!underlyingTokenAddress &&
-    underlyingTokenAddress !== ZERO_ADDRESS;
-  const isSuperTokenPure = !isSuperTokenNative && !isSuperTokenWrapper;
   const nativeTokenSymbol = selectedToken.symbol === "CELOx" ? "CELO" : "ETH";
 
   const { data: underlyingTokenBalance } = useBalance({
     address,
     chainId: network.id,
     token:
-      isSuperTokenNative || !underlyingTokenAddress
+      isSuperTokenNative || !tokenUnderlyingAddress
         ? void 0
-        : (underlyingTokenAddress as Address),
+        : (tokenUnderlyingAddress as Address),
     query: {
       refetchInterval: 10000,
-      enabled: !!address && (isSuperTokenNative || isSuperTokenWrapper),
+      enabled:
+        !!address &&
+        (isSuperTokenNative === true || isSuperTokenWrapper === true),
+    },
+  });
+
+  const { data: underlyingTokenAllowance } = useReadContract({
+    address: tokenUnderlyingAddress as Address,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: [address!, selectedToken.address],
+    chainId: network.id,
+    query: {
+      enabled: isSuperTokenWrapper === true && !!address,
+      refetchInterval: 10000,
     },
   });
 
@@ -202,139 +203,86 @@ export default function useStreamFunding(
     }
   }, [areTransactionsLoading, monthlyAmount]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      if (address && ethersProvider && isAddress(selectedToken.address)) {
-        const framework = await Framework.create({
-          chainId: network.id,
-          resolverAddress: network.superfluidResolver,
-          provider: ethersProvider,
-        });
-        const token = await framework.loadSuperToken(selectedToken.address);
-        const underlying = token.underlyingToken;
-        const allowance = await underlying?.allowance({
-          owner: address,
-          spender: token.address,
-          providerOrSigner: ethersProvider,
-        });
-
-        if (!cancelled) {
-          setUnderlyingTokenAllowance(allowance ?? "0");
-          setSfFramework(framework);
-          setSuperToken(token);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [address, ethersProvider, selectedToken.address, network]);
-
-  const transactions = useMemo(() => {
+  const calls = useMemo(() => {
     if (
       !address ||
-      !sfFramework ||
-      !superToken ||
       !newFlowRate ||
-      !ethersProvider ||
-      !ethersSigner ||
-      !receiverAddress
-    ) {
+      !receiverAddress ||
+      isSuperTokenWrapper === undefined
+    )
       return [];
-    }
 
-    const underlyingToken = superToken.underlyingToken;
+    const chainId = network.id as keyof typeof hostAddress;
     const wrapAmountWei = parseEther(wrapAmount?.replace(/,/g, "") ?? "0");
-    const isWrapperSuperToken =
-      underlyingToken && underlyingToken.address !== ZERO_ADDRESS;
+    const wrapAmountUnits = parseUnits(
+      wrapAmount?.replace(/,/g, "") ?? "0",
+      underlyingTokenBalance?.decimals ?? 18,
+    );
     const needsApproval =
-      isWrapperSuperToken &&
-      wrapAmountWei > BigInt(underlyingTokenAllowance ?? 0);
-    const txs: (() => Promise<void>)[] = [];
-    const operations: Operation[] = [];
+      isSuperTokenWrapper &&
+      wrapAmountUnits > BigInt(underlyingTokenAllowance ?? 0);
+    const newCalls: TransactionCall[] = [];
+    const batchOps = [];
 
     if (wrapAmount && Number(wrapAmount.replace(/,/g, "")) > 0) {
-      if (underlyingToken && needsApproval) {
-        txs.push(async () => {
-          const tx = await underlyingToken
-            .approve({
-              receiver: selectedToken.address,
-              amount: wrapAmountWei.toString(),
-            })
-            .exec(ethersSigner);
-          await tx.wait();
-        });
-      }
+      const wrap = buildWrapCalls({
+        tokenAddress: selectedToken.address,
+        wrapAmountWei,
+        wrapAmountUnits,
+        isSuperTokenWrapper,
+        isSuperTokenNative: isSuperTokenNative ?? false,
+        tokenUnderlyingAddress,
+        needsApproval,
+      });
 
-      if (isWrapperSuperToken) {
-        operations.push(
-          (superToken as WrapperSuperToken).upgrade({
-            amount: wrapAmountWei.toString(),
-          }),
-        );
-      } else {
-        txs.push(async () => {
-          const tx = await (superToken as NativeAssetSuperToken)
-            .upgrade({ amount: wrapAmountWei.toString() })
-            .exec(ethersSigner);
-          await tx.wait();
-        });
-      }
+      newCalls.push(...wrap.calls);
+      batchOps.push(...wrap.batchOps);
     }
+
+    const flowParams = {
+      tokenAddress: selectedToken.address,
+      receiverAddress: receiverAddress as Address,
+      flowRate: BigInt(newFlowRate),
+      chainId,
+    };
 
     if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToReceiver) > 0) {
-      operations.push(
-        superToken.deleteFlow({
-          sender: address,
-          receiver: receiverAddress,
-        }),
+      batchOps.push(
+        buildDeleteFlowBatchOp({ ...flowParams, senderAddress: address }),
       );
     } else if (BigInt(flowRateToReceiver) > 0) {
-      operations.push(
-        superToken.updateFlow({
-          sender: address,
-          receiver: receiverAddress,
-          flowRate: newFlowRate,
-        }),
-      );
-    } else {
-      operations.push(
-        superToken.createFlow({
-          sender: address,
-          receiver: receiverAddress,
-          flowRate: newFlowRate,
-        }),
-      );
+      batchOps.push(buildUpdateFlowBatchOp(flowParams));
+    } else if (BigInt(newFlowRate) > 0) {
+      batchOps.push(buildCreateFlowBatchOp(flowParams));
     }
 
-    txs.push(async () => {
-      const tx = await sfFramework.batchCall(operations).exec(ethersSigner);
-      await tx.wait();
-    });
+    const batchCall = buildBatchCall(batchOps, chainId);
 
-    return txs;
+    if (batchCall) {
+      newCalls.push(batchCall);
+    }
+
+    return newCalls;
   }, [
     address,
-    sfFramework,
-    superToken,
     wrapAmount,
     newFlowRate,
     flowRateToReceiver,
-    ethersProvider,
-    ethersSigner,
     receiverAddress,
     selectedToken.address,
     underlyingTokenAllowance,
+    isSuperTokenWrapper,
+    isSuperTokenNative,
+    tokenUnderlyingAddress,
+    underlyingTokenBalance?.decimals,
+    network.id,
   ]);
 
   const handleExecute = useCallback(async () => {
     setIsSuccess(false);
 
     try {
-      await executeTransactions(transactions);
+      await executeTransactions(calls);
       setWrapAmount("");
       userEditedMonthlyAmount.current = false;
       setIsSuccess(true);
@@ -344,42 +292,26 @@ export default function useStreamFunding(
     } catch {
       // transactionError state is set by the hook
     }
-  }, [
-    transactions,
-    executeTransactions,
-    refetchUserAccount,
-    refetchReceiverInflow,
-  ]);
+  }, [calls, executeTransactions, refetchUserAccount, refetchReceiverInflow]);
 
   const handleCancel = useCallback(async () => {
-    if (
-      !address ||
-      !sfFramework ||
-      !superToken ||
-      !ethersSigner ||
-      !receiverAddress
-    ) {
-      return;
-    }
+    if (!address || !receiverAddress) return;
 
+    const chainId = network.id as keyof typeof cfaAddress;
     setIsSuccess(false);
 
-    const cancelTxs = [
-      async () => {
-        const tx = await sfFramework
-          .batchCall([
-            superToken.deleteFlow({
-              sender: address,
-              receiver: receiverAddress,
-            }),
-          ])
-          .exec(ethersSigner);
-        await tx.wait();
-      },
+    const deleteOp = buildDeleteFlowBatchOp({
+      tokenAddress: selectedToken.address,
+      senderAddress: address,
+      receiverAddress: receiverAddress as Address,
+      chainId,
+    });
+    const cancelCalls: TransactionCall[] = [
+      buildBatchCall([deleteOp], chainId)!,
     ];
 
     try {
-      await executeTransactions(cancelTxs);
+      await executeTransactions(cancelCalls);
       userEditedMonthlyAmount.current = false;
       setMonthlyAmount("");
       setNewFlowRate("");
@@ -392,10 +324,9 @@ export default function useStreamFunding(
     }
   }, [
     address,
-    sfFramework,
-    superToken,
-    ethersSigner,
     receiverAddress,
+    selectedToken.address,
+    network.id,
     executeTransactions,
     refetchUserAccount,
     refetchReceiverInflow,
@@ -584,8 +515,8 @@ export default function useStreamFunding(
     const cleaned = wrapAmount.replace(/,/g, "");
     if (!cleaned || Number(cleaned) === 0) return false;
 
-    const wrapWei = parseEther(cleaned);
-    return wrapWei > underlyingTokenBalance.value;
+    const wrapUnits = parseUnits(cleaned, underlyingTokenBalance.decimals);
+    return wrapUnits > underlyingTokenBalance.value;
   }, [wrapAmount, underlyingTokenBalance]);
 
   const bufferExceedsBalance =
@@ -650,7 +581,7 @@ export default function useStreamFunding(
     hasExistingFlow,
     areTransactionsLoading,
     completedTransactions,
-    transactionCount: transactions.length,
+    transactionCount: calls.length,
     transactionError,
     isSuccess,
     canExecute,

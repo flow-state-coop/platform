@@ -1,24 +1,27 @@
 import { Address, parseAbi } from "viem";
 import { useReadContract } from "wagmi";
 
+const realtimeBalanceOfNowAbi = parseAbi([
+  "function realtimeBalanceOfNow(address) view returns (int256,uint256,uint256,uint256)",
+]);
+
 export default function useSuperTokenBalanceOfNow({
   token,
   address,
   chainId,
 }: {
-  token: string;
-  address: string;
+  token?: string;
+  address?: string;
   chainId: number;
 }) {
   const { data: realtimeBalanceOfNow } = useReadContract({
     address: token as Address,
     functionName: "realtimeBalanceOfNow",
-    abi: parseAbi([
-      "function realtimeBalanceOfNow(address) returns (int256,uint256,uint256,uint256)",
-    ]),
-    args: [address],
+    abi: realtimeBalanceOfNowAbi,
+    args: [address as Address],
     chainId,
     query: {
+      enabled: !!token && !!address,
       refetchInterval: 10000,
     },
   });

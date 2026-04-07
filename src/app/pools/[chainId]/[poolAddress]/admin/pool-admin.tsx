@@ -34,9 +34,8 @@ import FormCheck from "react-bootstrap/FormCheck";
 import Form from "react-bootstrap/Form";
 import InfoTooltip from "@/components/InfoTooltip";
 import { getApolloClient } from "@/lib/apollo";
-import { gdaAbi } from "@/lib/abi/gda";
-import { superfluidPoolAbi } from "@/lib/abi/superfluidPool";
-import { superfluidHostAbi } from "@/lib/abi/superfluidHost";
+import { gdaPoolAbi } from "@sfpro/sdk/abi";
+import { hostAbi, gdaAbi } from "@sfpro/sdk/abi/core";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { isNumber, truncateStr } from "@/lib/utils";
@@ -92,14 +91,14 @@ export default function PoolAdmin(props: PoolAdminProps) {
 
   const { data: poolAdmin } = useReadContract({
     address: poolAddress as Address,
-    abi: superfluidPoolAbi,
+    abi: gdaPoolAbi,
     functionName: "admin",
     chainId,
   });
 
   const { data: superToken, isLoading: superTokenLoading } = useReadContract({
     address: poolAddress as Address,
-    abi: superfluidPoolAbi,
+    abi: gdaPoolAbi,
     functionName: "superToken",
     chainId,
   });
@@ -372,7 +371,7 @@ export default function PoolAdmin(props: PoolAdminProps) {
 
       const hash = await writeContract(wagmiConfig, {
         address: network.superfluidHost,
-        abi: superfluidHostAbi,
+        abi: hostAbi,
         functionName: "batchCall",
         args: [operations],
       });

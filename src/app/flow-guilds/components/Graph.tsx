@@ -447,10 +447,10 @@ export default function Graph(props: GraphProps) {
     const totalDonations = BigInt(safeInflowRate);
 
     const nodesFromPoolDistributors = pool
-      ? pool.poolDistributors
-          .filter((distributor) => distributor.flowRate !== "0")
-          .map((x) => [
-            {
+      ? (() => {
+          const nodes = pool.poolDistributors
+            .filter((distributor) => distributor.flowRate !== "0")
+            .map((x) => ({
               id: `${x.account.id}-distributor`,
               position: { x: 0, y: 0 },
               type: "custom",
@@ -476,9 +476,35 @@ export default function Graph(props: GraphProps) {
                 isMobile: isMobile || isTablet,
                 showProjectDetails,
               },
-            },
-          ])
-          .flat()
+            }));
+
+          const hasSafeNode = nodes.some(
+            (n) => n.id === `${flowGuildConfig.safe}-distributor`,
+          );
+
+          if (!hasSafeNode) {
+            nodes.push({
+              id: `${flowGuildConfig.safe}-distributor`,
+              position: { x: 0, y: 0 },
+              type: "custom",
+              data: {
+                isSafe: true,
+                label: flowGuildConfig.name,
+                avatar: undefined,
+                logo: flowGuildConfig.logo,
+                address: flowGuildConfig.safe,
+                flowRate: BigInt(0),
+                percentage: 0,
+                isDistributor: true,
+                chainId,
+                isMobile: isMobile || isTablet,
+                showProjectDetails,
+              },
+            });
+          }
+
+          return nodes;
+        })()
       : [
           {
             id: `safe`,
@@ -542,19 +568,35 @@ export default function Graph(props: GraphProps) {
     ];
 
     const edgesFromPoolDistributors = pool
-      ? pool.poolDistributors
-          .map((x) => [
-            {
-              id: `${pool.token.id}-${x.account.id}-distributor-${pool.id}`,
-              source: `${x.account.id}-distributor`,
+      ? (() => {
+          const edges = pool.poolDistributors.map((x) => ({
+            id: `${pool.token.id}-${x.account.id}-distributor-${pool.id}`,
+            source: `${x.account.id}-distributor`,
+            target: pool.id,
+            type: "custom",
+            data: {
+              flowRate: BigInt(x.flowRate),
+            },
+          }));
+
+          const hasSafeEdge = edges.some(
+            (e) => e.source === `${flowGuildConfig.safe}-distributor`,
+          );
+
+          if (!hasSafeEdge) {
+            edges.push({
+              id: `${pool.token.id}-${flowGuildConfig.safe}-distributor-${pool.id}`,
+              source: `${flowGuildConfig.safe}-distributor`,
               target: pool.id,
               type: "custom",
               data: {
-                flowRate: BigInt(x.flowRate),
+                flowRate: BigInt(0),
               },
-            },
-          ])
-          .flat()
+            });
+          }
+
+          return edges;
+        })()
       : [];
 
     const edgesFromPoolMembers = pool
