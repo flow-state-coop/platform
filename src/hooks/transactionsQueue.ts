@@ -108,6 +108,7 @@ export default function useTransactionsQueue() {
 
           const receipt = await publicClient.waitForTransactionReceipt({
             hash,
+            confirmations: 3,
           });
 
           receipts.push(receipt);
