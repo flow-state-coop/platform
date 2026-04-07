@@ -27,7 +27,6 @@ import {
   type BallotAction,
   type ShowBallotAction,
 } from "@/app/flow-councils/types/flowCouncil";
-import { GOODBUILDERS_COUNCIL_ADDRESSES } from "@/app/flow-councils/lib/constants";
 
 export const FlowCouncilContext = createContext<{
   council?: FlowCouncilData;
