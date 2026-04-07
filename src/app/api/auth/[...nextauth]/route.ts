@@ -34,13 +34,15 @@ const providers = [
         const message = credentials?.message || "";
         const siweFields = parseSiweMessage(message);
 
+        if (!siweFields.chainId || !siweFields.address) return null;
+
         const nextAuthUrl = new URL(
           headersList.get("origin") ?? "https://flowstate.network",
         );
         const cookies = await nextCookies();
         const nonce = cookies.get("next-auth.csrf-token")?.value.split("|")[0];
 
-        const publicClient = getPublicClient(siweFields.chainId!);
+        const publicClient = getPublicClient(siweFields.chainId);
 
         const isValid = await verifySiweMessage(publicClient, {
           message,
@@ -50,7 +52,7 @@ const providers = [
         });
 
         if (isValid) {
-          return { id: siweFields.address! };
+          return { id: siweFields.address };
         }
         return null;
       } catch (e) {
