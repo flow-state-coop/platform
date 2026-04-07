@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Row from "react-bootstrap/Row";
-import Col from "react-bootstrap/Col";
 import Nav from "react-bootstrap/Nav";
 import Card from "react-bootstrap/Card";
 import Form from "react-bootstrap/Form";
@@ -12,8 +10,12 @@ import Alert from "react-bootstrap/Alert";
 import Spinner from "react-bootstrap/Spinner";
 import Dropdown from "react-bootstrap/Dropdown";
 import Stack from "react-bootstrap/Stack";
+import Collapse from "react-bootstrap/Collapse";
+import ButtonGroup from "react-bootstrap/ButtonGroup";
+import Image from "react-bootstrap/Image";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useRequireAuth from "@/hooks/requireAuth";
+import Sidebar from "@/app/flow-councils/components/Sidebar";
 import {
   type FormElement,
   type FormSchema,
@@ -26,7 +28,8 @@ type Props = {
   councilId: string;
 };
 
-type ActiveTab = "round" | "attestation";
+type ActiveTab = "project" | "round" | "attestation";
+type MobileView = "editor" | "preview";
 
 function generateId() {
   return crypto.randomUUID();
@@ -65,11 +68,76 @@ const QUESTION_TYPES: { value: FormElement["type"]; label: string }[] = [
   { value: "telegram", label: "Telegram" },
 ];
 
-const ELEMENT_TYPES: { value: FormElement["type"]; label: string }[] = [
+const STRUCTURE_TYPES: { value: FormElement["type"]; label: string }[] = [
   { value: "section", label: "Section Heading" },
   { value: "title", label: "Title" },
   { value: "description", label: "Description" },
 ];
+
+const TYPE_COLORS: Record<string, string> = {
+  section: "#3c655b",
+  title: "#056589",
+  description: "#888888",
+  text: "#056589",
+  textarea: "#49796b",
+  number: "#d95d39",
+  url: "#056589",
+  email: "#056589",
+  select: "#3c655b",
+  multiSelect: "#3c655b",
+  boolean: "#3c655b",
+  telegram: "#056589",
+};
+
+const PROJECT_FIELDS = [
+  {
+    section: "Basics",
+    fields: [
+      "Project Name",
+      "Description",
+      "Logo",
+      "Banner",
+      "Website",
+      "Demo URL",
+    ],
+  },
+  {
+    section: "Social",
+    fields: [
+      "X/Twitter",
+      "Farcaster",
+      "Telegram",
+      "Discord",
+      "Karma Profile",
+      "Gardens Pool",
+    ],
+  },
+  { section: "Technical", fields: ["GitHub Repos", "Smart Contracts"] },
+  {
+    section: "Funding",
+    fields: ["Manager Addresses", "Manager Emails", "Default Funding Address"],
+  },
+];
+
+const pillStyle = (isActive: boolean) => ({
+  backgroundColor: isActive ? "#3c655b" : "transparent",
+  color: isActive ? "#fff" : "#030303",
+  borderRadius: "0.5rem",
+  fontWeight: isActive ? 700 : 300,
+  padding: "0.4rem 1rem",
+  transition: "all 0.15s ease-in-out",
+});
+
+const subtleButtonStyle = {
+  backgroundColor: "rgba(60, 101, 91, 0.1)",
+  color: "#3c655b",
+  border: "1px solid rgba(60, 101, 91, 0.25)",
+  borderRadius: "0.5rem",
+  padding: "0.1rem 0.5rem",
+  fontSize: "0.75rem",
+  fontWeight: 700,
+  lineHeight: 1.5,
+};
 
 function ElementCard({
   element,
@@ -90,25 +158,38 @@ function ElementCard({
 }) {
   const [expanded, setExpanded] = useState(!element.label);
 
+  const typeColor = TYPE_COLORS[element.type] ?? "#888888";
+
   return (
-    <Card className="mb-2">
-      <Card.Header
-        className="d-flex align-items-center justify-content-between py-2 px-3"
+    <div
+      className="mb-3 bg-white p-3 position-relative overflow-hidden"
+      style={{ borderRadius: 4 }}
+    >
+      <div
+        className="position-absolute top-0 start-0 h-100"
+        style={{ width: 6, backgroundColor: typeColor }}
+      />
+      <div
+        className="d-flex align-items-center justify-content-between"
         style={{ cursor: "pointer" }}
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="d-flex align-items-center gap-2">
-          <Badge bg="info" className="text-capitalize">
+        <div className="d-flex align-items-center gap-2 overflow-hidden">
+          <Badge
+            pill
+            className="text-capitalize flex-shrink-0 fs-xxs"
+            style={{ backgroundColor: typeColor }}
+          >
             {element.type}
           </Badge>
-          <span className="text-truncate" style={{ maxWidth: 300 }}>
+          <span className="text-truncate fs-sm">
             {element.label || "(untitled)"}
           </span>
         </div>
-        <div className="d-flex gap-1">
-          <Button
-            size="sm"
-            variant="outline-secondary"
+        <div className="d-flex gap-1 flex-shrink-0 ms-2 align-items-center">
+          <button
+            type="button"
+            style={subtleButtonStyle}
             disabled={index === 0}
             onClick={(e) => {
               e.stopPropagation();
@@ -116,10 +197,10 @@ function ElementCard({
             }}
           >
             Up
-          </Button>
-          <Button
-            size="sm"
-            variant="outline-secondary"
+          </button>
+          <button
+            type="button"
+            style={subtleButtonStyle}
             disabled={index === total - 1}
             onClick={(e) => {
               e.stopPropagation();
@@ -127,25 +208,27 @@ function ElementCard({
             }}
           >
             Down
-          </Button>
+          </button>
           <Button
-            size="sm"
-            variant="outline-danger"
+            variant="link"
+            className="p-0 ms-1 flex-shrink-0"
             onClick={(e) => {
               e.stopPropagation();
               onRemove();
             }}
           >
-            Remove
+            <Image src="/close.svg" alt="Remove" width={24} height={24} />
           </Button>
         </div>
-      </Card.Header>
-      {expanded && (
-        <Card.Body>
+      </div>
+      <Collapse in={expanded}>
+        <div>
+          <hr className="my-2" style={{ opacity: 0.15 }} />
           <Form.Group className="mb-3">
-            <Form.Label className="small fw-bold">Label</Form.Label>
+            <Form.Label className="fs-sm fw-semi-bold">Label</Form.Label>
             <Form.Control
               type="text"
+              className="rounded-3"
               value={element.label}
               onChange={(e) => onUpdate({ ...element, label: e.target.value })}
               placeholder="Question or heading text"
@@ -154,10 +237,11 @@ function ElementCard({
 
           {element.type === "description" && (
             <Form.Group className="mb-3">
-              <Form.Label className="small fw-bold">Content</Form.Label>
+              <Form.Label className="fs-sm fw-semi-bold">Content</Form.Label>
               <Form.Control
                 as="textarea"
                 rows={3}
+                className="rounded-3"
                 value={element.content}
                 onChange={(e) =>
                   onUpdate({ ...element, content: e.target.value })
@@ -184,9 +268,12 @@ function ElementCard({
 
           {"placeholder" in element && (
             <Form.Group className="mb-3">
-              <Form.Label className="small fw-bold">Placeholder</Form.Label>
+              <Form.Label className="fs-sm fw-semi-bold">
+                Placeholder
+              </Form.Label>
               <Form.Control
                 type="text"
+                className="rounded-3"
                 value={(element as { placeholder?: string }).placeholder ?? ""}
                 onChange={(e) =>
                   onUpdate({
@@ -200,9 +287,12 @@ function ElementCard({
 
           {element.type === "textarea" && (
             <Form.Group className="mb-3">
-              <Form.Label className="small fw-bold">Character Limit</Form.Label>
+              <Form.Label className="fs-sm fw-semi-bold">
+                Character Limit
+              </Form.Label>
               <Form.Control
                 type="number"
+                className="rounded-3"
                 value={element.charLimit ?? ""}
                 onChange={(e) =>
                   onUpdate({
@@ -220,9 +310,10 @@ function ElementCard({
           {element.type === "number" && (
             <Stack direction="horizontal" gap={3} className="mb-3">
               <Form.Group>
-                <Form.Label className="small fw-bold">Min</Form.Label>
+                <Form.Label className="fs-sm fw-semi-bold">Min</Form.Label>
                 <Form.Control
                   type="number"
+                  className="rounded-3"
                   value={element.min ?? ""}
                   onChange={(e) =>
                     onUpdate({
@@ -233,9 +324,10 @@ function ElementCard({
                 />
               </Form.Group>
               <Form.Group>
-                <Form.Label className="small fw-bold">Max</Form.Label>
+                <Form.Label className="fs-sm fw-semi-bold">Max</Form.Label>
                 <Form.Control
                   type="number"
+                  className="rounded-3"
                   value={element.max ?? ""}
                   onChange={(e) =>
                     onUpdate({
@@ -250,11 +342,12 @@ function ElementCard({
 
           {(element.type === "select" || element.type === "multiSelect") && (
             <Form.Group className="mb-3">
-              <Form.Label className="small fw-bold">Options</Form.Label>
+              <Form.Label className="fs-sm fw-semi-bold">Options</Form.Label>
               {element.options.map((opt, i) => (
                 <Stack key={i} direction="horizontal" gap={2} className="mb-2">
                   <Form.Control
                     type="text"
+                    className="rounded-3"
                     value={opt}
                     onChange={(e) => {
                       const newOpts = [...element.options];
@@ -265,8 +358,8 @@ function ElementCard({
                   />
                   {element.options.length > 1 && (
                     <Button
-                      size="sm"
-                      variant="outline-danger"
+                      variant="link"
+                      className="p-0 flex-shrink-0"
                       onClick={() =>
                         onUpdate({
                           ...element,
@@ -274,15 +367,19 @@ function ElementCard({
                         })
                       }
                     >
-                      X
+                      <Image
+                        src="/close.svg"
+                        alt="Remove"
+                        width={24}
+                        height={24}
+                      />
                     </Button>
                   )}
                 </Stack>
               ))}
               <Button
-                size="sm"
                 variant="link"
-                className="p-0"
+                className="p-0 text-start text-decoration-underline fw-semi-bold text-primary"
                 onClick={() =>
                   onUpdate({
                     ...element,
@@ -294,9 +391,117 @@ function ElementCard({
               </Button>
             </Form.Group>
           )}
-        </Card.Body>
-      )}
-    </Card>
+        </div>
+      </Collapse>
+    </div>
+  );
+}
+
+function ProjectFieldsContent() {
+  return (
+    <>
+      <p className="text-info mb-4">
+        These fields are collected from every applicant automatically.
+      </p>
+      {PROJECT_FIELDS.map((group) => (
+        <div key={group.section} className="mb-3">
+          <span className="fw-semi-bold d-block mb-2">{group.section}</span>
+          <div className="d-flex flex-wrap gap-2">
+            {group.fields.map((field) => (
+              <span
+                key={field}
+                className="rounded-pill"
+                style={{
+                  backgroundColor: "rgba(60, 101, 91, 0.1)",
+                  color: "#3c655b",
+                  border: "1px solid rgba(60, 101, 91, 0.25)",
+                  padding: "0.3rem 0.75rem",
+                  fontSize: "0.875rem",
+                }}
+              >
+                {field}
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+function ProjectFieldsPreview() {
+  return (
+    <Form>
+      <Form.Group className="mb-3">
+        <Form.Label className="fs-sm fw-semi-bold">Project Name*</Form.Label>
+        <Form.Control type="text" disabled className="rounded-3" />
+      </Form.Group>
+      <Form.Group className="mb-3">
+        <Form.Label className="fs-sm fw-semi-bold">Description*</Form.Label>
+        <Form.Control
+          as="textarea"
+          rows={3}
+          disabled
+          className="rounded-3"
+          placeholder="1000–5000 characters"
+        />
+      </Form.Group>
+      <Form.Group className="mb-3">
+        <Form.Label className="fs-sm fw-semi-bold">Logo*</Form.Label>
+        <Form.Control
+          type="text"
+          disabled
+          className="rounded-3"
+          placeholder="1:1 image upload"
+        />
+      </Form.Group>
+      <Form.Group className="mb-3">
+        <Form.Label className="fs-sm fw-semi-bold">Banner*</Form.Label>
+        <Form.Control
+          type="text"
+          disabled
+          className="rounded-3"
+          placeholder="3:1 image upload"
+        />
+      </Form.Group>
+      <Form.Group className="mb-3">
+        <Form.Label className="fs-sm fw-semi-bold">Website*</Form.Label>
+        <Form.Control type="url" disabled className="rounded-3" />
+      </Form.Group>
+      <Form.Group className="mb-3">
+        <Form.Label className="fs-sm fw-semi-bold">Demo URL</Form.Label>
+        <Form.Control type="url" disabled className="rounded-3" />
+      </Form.Group>
+      <h6 className="fw-semi-bold mt-4 mb-2">Social</h6>
+      <Form.Group className="mb-3">
+        <Form.Label className="fs-sm fw-semi-bold">X/Twitter</Form.Label>
+        <Form.Control type="text" disabled className="rounded-3" />
+      </Form.Group>
+      <Form.Group className="mb-3">
+        <Form.Label className="fs-sm fw-semi-bold">Farcaster</Form.Label>
+        <Form.Control type="text" disabled className="rounded-3" />
+      </Form.Group>
+      <Form.Group className="mb-3">
+        <Form.Label className="fs-sm fw-semi-bold">Telegram</Form.Label>
+        <Form.Control type="text" disabled className="rounded-3" />
+      </Form.Group>
+      <Form.Group className="mb-3">
+        <Form.Label className="fs-sm fw-semi-bold">Discord</Form.Label>
+        <Form.Control type="text" disabled className="rounded-3" />
+      </Form.Group>
+      <h6 className="fw-semi-bold mt-4 mb-2">Technical</h6>
+      <Form.Group className="mb-3">
+        <Form.Label className="fs-sm fw-semi-bold">GitHub Repos*</Form.Label>
+        <Form.Control type="text" disabled className="rounded-3" />
+      </Form.Group>
+      <h6 className="fw-semi-bold mt-4 mb-2">Funding</h6>
+      <Form.Group className="mb-3">
+        <Form.Label className="fs-sm fw-semi-bold">
+          Default Funding Address*
+        </Form.Label>
+        <Form.Control type="text" disabled className="rounded-3" />
+      </Form.Group>
+    </Form>
   );
 }
 
@@ -311,7 +516,7 @@ export default function FormBuilder({ chainId, councilId }: Props) {
   const [hasApplications, setHasApplications] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [showPreview, setShowPreview] = useState(false);
+  const [mobileView, setMobileView] = useState<MobileView>("editor");
 
   const { isMobile } = useMediaQuery();
   const { requireAuth } = useRequireAuth();
@@ -337,9 +542,11 @@ export default function FormBuilder({ chainId, councilId }: Props) {
     fetchSchema();
   }, [fetchSchema]);
 
-  const elements = schema[activeTab];
+  const elements =
+    activeTab === "project" ? [] : schema[activeTab as "round" | "attestation"];
 
   const updateElements = (newElements: FormElement[]) => {
+    if (activeTab === "project") return;
     setSchema((prev) => ({ ...prev, [activeTab]: newElements }));
   };
 
@@ -417,159 +624,275 @@ export default function FormBuilder({ chainId, councilId }: Props) {
 
   if (isLoading) {
     return (
-      <div className="d-flex justify-content-center py-5">
-        <Spinner />
-      </div>
+      <>
+        <Sidebar />
+        <Stack
+          direction="vertical"
+          className={`justify-content-center align-items-center ${!isMobile ? "w-75 px-5" : "w-100 px-4"}`}
+        >
+          <Spinner />
+        </Stack>
+      </>
     );
   }
 
-  return (
-    <div className="py-4">
-      <Stack
-        direction="horizontal"
-        gap={3}
-        className="mb-4 justify-content-between"
-      >
-        <h3 className="fw-bold mb-0">Application Form</h3>
-        <Stack direction="horizontal" gap={2}>
-          <Dropdown>
-            <Dropdown.Toggle variant="outline-secondary" size="sm">
-              Start from Template
-            </Dropdown.Toggle>
-            <Dropdown.Menu>
-              <Dropdown.Item onClick={() => handleTemplate(MINIMAL_TEMPLATE)}>
-                Minimal
-              </Dropdown.Item>
-              <Dropdown.Item
-                onClick={() => handleTemplate(GOODBUILDERS_TEMPLATE)}
-              >
-                GoodBuilders
-              </Dropdown.Item>
-            </Dropdown.Menu>
-          </Dropdown>
-          <Button
-            onClick={() => requireAuth(handleSave)}
-            disabled={isSaving}
-            size="sm"
-          >
-            {isSaving ? <Spinner size="sm" /> : "Save"}
-          </Button>
-        </Stack>
-      </Stack>
-
-      {error && <Alert variant="danger">{error}</Alert>}
-      {success && (
-        <Alert variant="success" dismissible onClose={() => setSuccess("")}>
-          {success}
-        </Alert>
+  const editorContent = (
+    <>
+      {elements.length === 0 && (
+        <p className="text-info fs-sm">
+          No items yet. Add questions or use a template to get started.
+        </p>
       )}
 
-      {hasApplications && (
-        <Alert variant="warning">
-          Applications already exist. Adding required questions may require
-          applicants to update.
-        </Alert>
-      )}
+      {elements.map((element, index) => (
+        <ElementCard
+          key={element.id}
+          element={element}
+          index={index}
+          total={elements.length}
+          onUpdate={(el) => handleUpdate(index, el)}
+          onRemove={() => handleRemove(index)}
+          onMoveUp={() => handleMoveUp(index)}
+          onMoveDown={() => handleMoveDown(index)}
+        />
+      ))}
 
-      <Nav
-        variant="tabs"
-        activeKey={activeTab}
-        onSelect={(k) => setActiveTab(k as ActiveTab)}
-        className="mb-4"
-      >
-        <Nav.Item>
-          <Nav.Link eventKey="round">Round Questions</Nav.Link>
-        </Nav.Item>
-        <Nav.Item>
-          <Nav.Link eventKey="attestation">Attestation Questions</Nav.Link>
-        </Nav.Item>
-      </Nav>
-
-      <Row>
-        <Col md={isMobile ? 12 : 6}>
-          {elements.length === 0 && (
-            <p className="text-muted">
-              No items yet. Add questions or use a template to get started.
-            </p>
-          )}
-
-          {elements.map((element, index) => (
-            <ElementCard
-              key={element.id}
-              element={element}
-              index={index}
-              total={elements.length}
-              onUpdate={(el) => handleUpdate(index, el)}
-              onRemove={() => handleRemove(index)}
-              onMoveUp={() => handleMoveUp(index)}
-              onMoveDown={() => handleMoveDown(index)}
-            />
-          ))}
-
-          <Stack direction="horizontal" gap={2} className="mt-3">
-            <Dropdown>
-              <Dropdown.Toggle variant="outline-primary" size="sm">
-                Add Question
-              </Dropdown.Toggle>
-              <Dropdown.Menu>
-                {QUESTION_TYPES.map((qt) => (
-                  <Dropdown.Item
-                    key={qt.value}
-                    onClick={() => handleAdd(qt.value)}
-                  >
-                    {qt.label}
-                  </Dropdown.Item>
-                ))}
-              </Dropdown.Menu>
-            </Dropdown>
-            {ELEMENT_TYPES.map((et) => (
-              <Button
-                key={et.value}
-                variant="outline-secondary"
-                size="sm"
-                onClick={() => handleAdd(et.value)}
-              >
-                {et.label}
-              </Button>
+      <Stack direction="horizontal" gap={2} className="mt-3">
+        <Dropdown>
+          <Dropdown.Toggle variant="secondary" size="sm" className="rounded-3">
+            Add Question
+          </Dropdown.Toggle>
+          <Dropdown.Menu>
+            {QUESTION_TYPES.map((qt) => (
+              <Dropdown.Item key={qt.value} onClick={() => handleAdd(qt.value)}>
+                {qt.label}
+              </Dropdown.Item>
             ))}
-          </Stack>
-        </Col>
-
-        {!isMobile && (
-          <Col md={6}>
-            <div className="border rounded p-3 bg-light">
-              <h6 className="fw-bold mb-3">Preview</h6>
-              <FormPreview elements={elements} />
-            </div>
-          </Col>
-        )}
-      </Row>
-
-      {isMobile && (
-        <>
-          <Button
-            variant="outline-secondary"
+          </Dropdown.Menu>
+        </Dropdown>
+        <Dropdown>
+          <Dropdown.Toggle
+            variant="transparent"
             size="sm"
-            className="mt-3"
-            onClick={() => setShowPreview(!showPreview)}
+            className="rounded-3 text-info"
           >
-            {showPreview ? "Hide Preview" : "Show Preview"}
-          </Button>
-          {showPreview && (
-            <div className="border rounded p-3 bg-light mt-3">
-              <h6 className="fw-bold mb-3">Preview</h6>
-              <FormPreview elements={elements} />
-            </div>
+            Add Structure
+          </Dropdown.Toggle>
+          <Dropdown.Menu>
+            {STRUCTURE_TYPES.map((st) => (
+              <Dropdown.Item key={st.value} onClick={() => handleAdd(st.value)}>
+                {st.label}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown>
+      </Stack>
+    </>
+  );
+
+  const tabNav = (
+    <Nav
+      variant="pills"
+      activeKey={activeTab}
+      onSelect={(k) => k && setActiveTab(k as ActiveTab)}
+      className="mb-3 gap-1"
+    >
+      <Nav.Item>
+        <Nav.Link eventKey="project" style={pillStyle(activeTab === "project")}>
+          Project
+        </Nav.Link>
+      </Nav.Item>
+      <Nav.Item>
+        <Nav.Link eventKey="round" style={pillStyle(activeTab === "round")}>
+          Round
+        </Nav.Link>
+      </Nav.Item>
+      <Nav.Item>
+        <Nav.Link
+          eventKey="attestation"
+          style={pillStyle(activeTab === "attestation")}
+        >
+          Attestation
+        </Nav.Link>
+      </Nav.Item>
+    </Nav>
+  );
+
+  const previewPane = (
+    <Card className="bg-lace-100 rounded-4 border-0 p-4">
+      <span className="fw-semi-bold d-block mb-3">Preview</span>
+      <div className="bg-white rounded-3 p-3">
+        {activeTab === "project" ? (
+          <ProjectFieldsPreview />
+        ) : (
+          <FormPreview elements={elements} />
+        )}
+      </div>
+    </Card>
+  );
+
+  return (
+    <>
+      <Sidebar />
+      <Stack
+        direction="vertical"
+        className={`pb-5 ${!isMobile ? "w-75 px-5" : "w-100 px-4"}`}
+      >
+        <Card className="bg-lace-100 rounded-4 border-0 p-4 mb-4">
+          <Card.Header className="bg-transparent border-0 p-0">
+            <Stack
+              direction="horizontal"
+              gap={3}
+              className="justify-content-between flex-wrap"
+            >
+              <div>
+                <h5 className="fw-semi-bold mb-1">Application Form</h5>
+                <span className="text-info fs-sm">
+                  Configure the questions applicants answer when applying to
+                  your round
+                </span>
+              </div>
+              <Stack direction="horizontal" gap={2}>
+                <Dropdown>
+                  <Dropdown.Toggle
+                    variant="secondary"
+                    size="sm"
+                    className="rounded-3"
+                  >
+                    Start from Template
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu>
+                    <Dropdown.Item
+                      onClick={() => handleTemplate(MINIMAL_TEMPLATE)}
+                    >
+                      Minimal
+                    </Dropdown.Item>
+                    <Dropdown.Item
+                      onClick={() => handleTemplate(GOODBUILDERS_TEMPLATE)}
+                    >
+                      GoodBuilders
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown>
+                <Button
+                  onClick={() => requireAuth(handleSave)}
+                  disabled={isSaving}
+                  size="sm"
+                  className="rounded-3"
+                >
+                  {isSaving ? <Spinner size="sm" /> : "Save"}
+                </Button>
+              </Stack>
+            </Stack>
+          </Card.Header>
+
+          {(error || success || hasApplications) && (
+            <Card.Body className="p-0 mt-3">
+              {error && (
+                <Alert variant="danger" className="mb-0">
+                  {error}
+                </Alert>
+              )}
+              {success && (
+                <Alert
+                  variant="success"
+                  dismissible
+                  onClose={() => setSuccess("")}
+                  className="mb-0"
+                >
+                  {success}
+                </Alert>
+              )}
+              {hasApplications && (
+                <Alert variant="warning" className="mb-0 mt-2">
+                  Applications already exist. Adding required questions may
+                  require applicants to update.
+                </Alert>
+              )}
+            </Card.Body>
           )}
-        </>
-      )}
-    </div>
+        </Card>
+
+        {isMobile ? (
+          <Card className="bg-lace-100 rounded-4 border-0 p-4">
+            <span className="fw-semi-bold d-block mb-3">Form Builder</span>
+            {tabNav}
+            {activeTab === "project" ? (
+              <ProjectFieldsContent />
+            ) : (
+              <>
+                <ButtonGroup className="mb-3">
+                  <Button
+                    size="sm"
+                    className="border-0"
+                    style={{
+                      backgroundColor:
+                        mobileView === "editor"
+                          ? "rgba(60, 101, 91, 0.15)"
+                          : "transparent",
+                      color: mobileView === "editor" ? "#3c655b" : "#6c757d",
+                      borderRadius: "0.5rem 0 0 0.5rem",
+                      fontWeight: mobileView === "editor" ? 600 : 400,
+                    }}
+                    onClick={() => setMobileView("editor")}
+                  >
+                    Editor
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="border-0"
+                    style={{
+                      backgroundColor:
+                        mobileView === "preview"
+                          ? "rgba(60, 101, 91, 0.15)"
+                          : "transparent",
+                      color: mobileView === "preview" ? "#3c655b" : "#6c757d",
+                      borderRadius: "0 0.5rem 0.5rem 0",
+                      fontWeight: mobileView === "preview" ? 600 : 400,
+                    }}
+                    onClick={() => setMobileView("preview")}
+                  >
+                    Preview
+                  </Button>
+                </ButtonGroup>
+                {mobileView === "editor" ? (
+                  editorContent
+                ) : (
+                  <div className="bg-white rounded-3 p-3">
+                    <FormPreview elements={elements} />
+                  </div>
+                )}
+              </>
+            )}
+          </Card>
+        ) : (
+          <div className="d-flex gap-4 align-items-start">
+            <div className="flex-grow-1" style={{ minWidth: 0 }}>
+              <Card className="bg-lace-100 rounded-4 border-0 p-4">
+                <span className="fw-semi-bold d-block mb-3">Form Builder</span>
+                {tabNav}
+                {activeTab === "project" ? (
+                  <ProjectFieldsContent />
+                ) : (
+                  editorContent
+                )}
+              </Card>
+            </div>
+            <div style={{ width: "45%", flexShrink: 0 }}>
+              <div style={{ position: "sticky", top: "1rem" }}>
+                {previewPane}
+              </div>
+            </div>
+          </div>
+        )}
+      </Stack>
+    </>
   );
 }
 
 function FormPreview({ elements }: { elements: FormElement[] }) {
   if (elements.length === 0) {
-    return <p className="text-muted small">No items to preview.</p>;
+    return <p className="text-info fs-sm">No items to preview.</p>;
   }
 
   return (
@@ -578,19 +901,19 @@ function FormPreview({ elements }: { elements: FormElement[] }) {
         switch (el.type) {
           case "section":
             return (
-              <h5 key={el.id} className="fw-bold mt-3 mb-2">
+              <h5 key={el.id} className="fw-semi-bold mt-3 mb-2">
                 {el.label || "(Section)"}
               </h5>
             );
           case "title":
             return (
-              <h6 key={el.id} className="fw-bold mt-2 mb-1">
+              <h6 key={el.id} className="fw-semi-bold mt-2 mb-1">
                 {el.label || "(Title)"}
               </h6>
             );
           case "description":
             return (
-              <p key={el.id} className="text-muted small mb-2">
+              <p key={el.id} className="text-info fs-sm mb-2">
                 {el.content || el.label || "(Description)"}
               </p>
             );
@@ -600,13 +923,14 @@ function FormPreview({ elements }: { elements: FormElement[] }) {
           case "telegram":
             return (
               <Form.Group key={el.id} className="mb-3">
-                <Form.Label className="small fw-bold">
+                <Form.Label className="fs-sm fw-semi-bold">
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
                 </Form.Label>
                 <Form.Control
                   type={el.type === "telegram" ? "text" : el.type}
                   disabled
+                  className="rounded-3"
                   placeholder={
                     "placeholder" in el
                       ? (el.placeholder ?? undefined)
@@ -618,7 +942,7 @@ function FormPreview({ elements }: { elements: FormElement[] }) {
           case "textarea":
             return (
               <Form.Group key={el.id} className="mb-3">
-                <Form.Label className="small fw-bold">
+                <Form.Label className="fs-sm fw-semi-bold">
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
                 </Form.Label>
@@ -626,6 +950,7 @@ function FormPreview({ elements }: { elements: FormElement[] }) {
                   as="textarea"
                   rows={3}
                   disabled
+                  className="rounded-3"
                   placeholder={el.placeholder ?? undefined}
                 />
               </Form.Group>
@@ -633,13 +958,14 @@ function FormPreview({ elements }: { elements: FormElement[] }) {
           case "number":
             return (
               <Form.Group key={el.id} className="mb-3">
-                <Form.Label className="small fw-bold">
+                <Form.Label className="fs-sm fw-semi-bold">
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
                 </Form.Label>
                 <Form.Control
                   type="number"
                   disabled
+                  className="rounded-3"
                   min={el.min}
                   max={el.max}
                 />
@@ -648,7 +974,7 @@ function FormPreview({ elements }: { elements: FormElement[] }) {
           case "select":
             return (
               <Form.Group key={el.id} className="mb-3">
-                <Form.Label className="small fw-bold">
+                <Form.Label className="fs-sm fw-semi-bold">
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
                 </Form.Label>
@@ -665,7 +991,7 @@ function FormPreview({ elements }: { elements: FormElement[] }) {
           case "multiSelect":
             return (
               <Form.Group key={el.id} className="mb-3">
-                <Form.Label className="small fw-bold">
+                <Form.Label className="fs-sm fw-semi-bold">
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
                 </Form.Label>
@@ -682,7 +1008,7 @@ function FormPreview({ elements }: { elements: FormElement[] }) {
           case "boolean":
             return (
               <Form.Group key={el.id} className="mb-3">
-                <Form.Label className="small fw-bold">
+                <Form.Label className="fs-sm fw-semi-bold">
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
                 </Form.Label>
