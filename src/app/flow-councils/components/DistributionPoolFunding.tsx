@@ -127,7 +127,7 @@ export default function DistributionPoolFunding(props: {
     areTransactionsLoading,
     completedTransactions,
     transactionError,
-    useSendCalls,
+    shouldUseSendCalls,
     executeTransactions,
   } = useTransactionsQueue();
   const distributionTokenAddress = token.address;
@@ -627,7 +627,7 @@ export default function DistributionPoolFunding(props: {
                 completedTransactions={completedTransactions}
                 areTransactionsLoading={areTransactionsLoading}
                 transactionError={transactionError}
-                useSendCalls={useSendCalls}
+                shouldUseSendCalls={shouldUseSendCalls}
                 executeTransactions={executeTransactions}
                 liquidationEstimate={liquidationEstimate}
                 netImpact={BigInt(0)}

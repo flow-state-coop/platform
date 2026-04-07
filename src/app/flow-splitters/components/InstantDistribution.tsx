@@ -89,7 +89,7 @@ export default function InstantDistribution(props: InstantDistributionProps) {
     areTransactionsLoading,
     completedTransactions,
     transactionError,
-    useSendCalls,
+    shouldUseSendCalls,
     executeTransactions,
   } = useTransactionsQueue();
   const { data: superfluidQueryRes } = useQuery(ACCOUNT_TOKEN_SNAPSHOT_QUERY, {
@@ -440,19 +440,19 @@ export default function InstantDistribution(props: InstantDistributionProps) {
           {areTransactionsLoading ? (
             <>
               <Spinner size="sm" />{" "}
-              {!useSendCalls && calls.length > 1 && (
+              {!shouldUseSendCalls && calls.length > 1 && (
                 <>
                   ({completedTransactions + 1}/{calls.length})
                 </>
               )}
             </>
-          ) : canSubmit && !useSendCalls && calls.length > 1 ? (
+          ) : canSubmit && !shouldUseSendCalls && calls.length > 1 ? (
             <>Submit ({calls.length})</>
           ) : (
             <>Submit</>
           )}
         </Button>
-        {canSubmit && !useSendCalls && calls.length > 1 && (
+        {canSubmit && !shouldUseSendCalls && calls.length > 1 && (
           <Stack
             direction="horizontal"
             gap={2}
