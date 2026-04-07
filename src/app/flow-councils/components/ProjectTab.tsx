@@ -51,7 +51,6 @@ async function uploadToS3(file: Blob, fileName: string): Promise<string> {
 }
 
 type ProjectTabProps = {
-  csrfToken: string;
   project: Project | null;
   isLoading: boolean;
   onSave: (project: Project) => void;
@@ -93,7 +92,7 @@ const isValidGithubRepo = (url: string): boolean => {
 };
 
 export default function ProjectTab(props: ProjectTabProps) {
-  const { csrfToken, project, isLoading, onSave, onCancel } = props;
+  const { project, isLoading, onSave, onCancel } = props;
 
   const [form, setForm] = useState<ProjectForm>({
     name: "",
@@ -367,7 +366,7 @@ export default function ProjectTab(props: ProjectTabProps) {
     if (!address && openConnectModal) {
       openConnectModal();
     } else if (!session || session.address !== address) {
-      handleSignIn(csrfToken);
+      handleSignIn();
     } else if (isValid) {
       handleSaveProject();
     }

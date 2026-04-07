@@ -22,7 +22,6 @@ type CommunicationsProps = {
   chainId: number;
   councilId: string;
   hostname: string;
-  csfrToken: string;
 };
 
 type ProjectChannel = {
@@ -41,7 +40,7 @@ const FLOW_COUNCIL_QUERY = gql`
 `;
 
 export default function Communications(props: CommunicationsProps) {
-  const { chainId, councilId, csfrToken } = props;
+  const { chainId, councilId } = props;
 
   const [channels, setChannels] = useState<ProjectChannel[]>([]);
   const [isLoadingChannels, setIsLoadingChannels] = useState(true);
@@ -203,7 +202,7 @@ export default function Communications(props: CommunicationsProps) {
             } else if (connectedChain?.id !== chainId) {
               switchChain({ chainId });
             } else {
-              handleSignIn(csfrToken);
+              handleSignIn();
             }
           }}
         >

@@ -34,7 +34,6 @@ const SUPERAPP_SPLITTER_SIDE_PORTION = BigInt(50);
 type LaunchProps = {
   defaultNetwork: Network;
   councilId?: string;
-  csrfToken: string;
 };
 
 const FLOW_COUNCIL_QUERY = gql`
@@ -47,7 +46,7 @@ const FLOW_COUNCIL_QUERY = gql`
 `;
 
 export default function Launch(props: LaunchProps) {
-  const { defaultNetwork, councilId, csrfToken } = props;
+  const { defaultNetwork, councilId } = props;
 
   const [selectedNetwork, setSelectedNetwork] =
     useState<Network>(defaultNetwork);
@@ -310,7 +309,7 @@ export default function Launch(props: LaunchProps) {
                 : connectedChain?.id !== selectedNetwork.id
                   ? switchChain({ chainId: selectedNetwork.id })
                   : !session || session.address !== address
-                    ? handleSignIn(csrfToken)
+                    ? handleSignIn()
                     : handleSubmit()
             }
           >

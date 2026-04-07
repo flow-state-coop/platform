@@ -1,4 +1,4 @@
-import { headers, cookies as nextCookies } from "next/headers";
+import { headers } from "next/headers";
 import Communications from "./communications";
 
 export default async function Page({
@@ -8,7 +8,6 @@ export default async function Page({
 }) {
   const headersList = await headers();
   const hostname = headersList.get("host");
-  const cookies = await nextCookies();
   const { chainId, councilId } = await params;
 
   return (
@@ -16,7 +15,6 @@ export default async function Page({
       chainId={Number(chainId)}
       councilId={councilId}
       hostname={hostname ?? ""}
-      csfrToken={cookies.get("next-auth.csrf-token")?.value.split("|")[0] ?? ""}
     />
   );
 }
