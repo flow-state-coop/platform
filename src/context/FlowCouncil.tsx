@@ -11,11 +11,13 @@ import useCouncilMemberQuery from "@/app/flow-councils/hooks/councilMemberQuery"
 import useRecipientsQuery from "@/app/flow-councils/hooks/recipientsQuery";
 import useFlowCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 import useDistributionPoolQuery from "@/app/flow-councils/hooks/distributionPoolQuery";
+import useStaleVotesQuery from "@/app/flow-councils/hooks/staleVotesQuery";
 import useSuperAppFundersQuery, {
   type SuperAppFunderData,
 } from "@/app/flow-councils/hooks/superAppFundersQuery";
 import { Token } from "@/types/token";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
+import { GOODBUILDERS_COUNCIL_ADDRESSES } from "@/app/flow-councils/lib/constants";
 import {
   type FlowCouncilData,
   type CouncilMember,
@@ -217,6 +219,10 @@ function FlowCouncilContextProviderInner({
   );
   const isGoodDollarCouncil =
     councilId?.toLowerCase() === GOODBUILDERS_COUNCIL_ADDRESSES[1];
+  const { staleVotes, isLoading: isLoadingStaleVotes } = useStaleVotesQuery(
+    isGoodDollarCouncil ? councilId : "",
+    isGoodDollarCouncil ? address ?? "" : "",
+  );
   const staleVotesList = useMemo((): Vote[] => {
     if (!currentBallot?.votes || !council?.recipients) return [];
 
@@ -245,25 +251,21 @@ function FlowCouncilContextProviderInner({
     };
   }, [currentBallot, staleVotesList]);
   const councilMember = useMemo(() => {
-    if (!councilMemberRaw) return undefined;
+    if (!councilMemberRaw || (isGoodDollarCouncil && isLoadingStaleVotes))
+      return undefined;
 
-    if (isGoodDollarCouncil) {
-      const staleAmount = staleVotesList.reduce(
-        (sum: number, v: Vote) => sum + v.amount,
-        0,
-      );
-
+    if (isGoodDollarCouncil && staleVotes > 0) {
       return {
         ...councilMemberRaw,
         votingPower: Math.max(
           0,
-          Number(councilMemberRaw.votingPower) - staleAmount,
+          Number(councilMemberRaw.votingPower) - staleVotes,
         ),
       };
     }
 
     return councilMemberRaw;
-  }, [councilMemberRaw, isGoodDollarCouncil, staleVotesList]);
+  }, [councilMemberRaw, isGoodDollarCouncil, staleVotes, isLoadingStaleVotes]);
   const token = network.tokens.find(
     (token) => token.address.toLowerCase() === council?.superToken,
   ) ?? {
