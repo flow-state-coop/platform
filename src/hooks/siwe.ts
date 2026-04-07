@@ -1,6 +1,6 @@
 import { signIn } from "next-auth/react";
-import { SiweMessage } from "siwe";
 import { useAccount, useSignMessage } from "wagmi";
+import { createSiweMessage } from "viem/siwe";
 
 export default function useSiwe() {
   const { address, chain } = useAccount();
@@ -9,21 +9,19 @@ export default function useSiwe() {
   const handleSignIn = async (csfrToken: string) => {
     try {
       const callbackUrl = "/protected";
-      const message = new SiweMessage({
+      const message = createSiweMessage({
         domain: window.location.host,
-        address,
+        address: address!,
         statement: "Sign in with Ethereum to Flow State.",
         uri: window.location.origin,
-        version: "1",
-        chainId: chain?.id,
+        version: "1" as const,
+        chainId: chain!.id,
         nonce: csfrToken,
       });
-      const signature = await signMessageAsync({
-        message: message.prepareMessage(),
-      });
+      const signature = await signMessageAsync({ message });
 
       signIn("credentials", {
-        message: JSON.stringify(message),
+        message,
         redirect: false,
         signature,
         callbackUrl,

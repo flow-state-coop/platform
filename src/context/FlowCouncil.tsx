@@ -220,7 +220,7 @@ function FlowCouncilContextProviderInner({
     councilId?.toLowerCase() === GOODBUILDERS_COUNCIL_ADDRESSES[1];
   const { staleVotes, isLoading: isLoadingStaleVotes } = useStaleVotesQuery(
     isGoodDollarCouncil ? councilId : "",
-    isGoodDollarCouncil ? address ?? "" : "",
+    isGoodDollarCouncil ? (address ?? "") : "",
   );
   const staleVotesList = useMemo((): Vote[] => {
     if (!currentBallot?.votes || !council?.recipients) return [];
