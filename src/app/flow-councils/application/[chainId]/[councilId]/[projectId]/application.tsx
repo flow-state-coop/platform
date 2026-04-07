@@ -1,22 +1,30 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
+import Link from "next/link";
 import Stack from "react-bootstrap/Stack";
 import Nav from "react-bootstrap/Nav";
 import Tab from "react-bootstrap/Tab";
+import Alert from "react-bootstrap/Alert";
+import Button from "react-bootstrap/Button";
+import Spinner from "react-bootstrap/Spinner";
 import ProjectTab from "@/app/flow-councils/components/ProjectTab";
 import RoundTab from "@/app/flow-councils/components/RoundTab";
 import ViewRoundTab from "@/app/flow-councils/components/ViewRoundTab";
 import AttestationTab from "@/app/flow-councils/components/AttestationTab";
+import ViewAttestationTab from "@/app/flow-councils/components/ViewAttestationTab";
+import DynamicFormSection from "@/app/flow-councils/components/DynamicFormSection";
+import FundingAddressSection from "@/app/flow-councils/components/FundingAddressSection";
 import type {
   RoundForm,
   AttestationForm,
 } from "@/app/flow-councils/types/round";
-import ViewAttestationTab from "@/app/flow-councils/components/ViewAttestationTab";
+import type { FormSchema } from "@/app/flow-councils/types/formSchema";
 import { networks } from "@/lib/networks";
 import { Project } from "@/types/project";
+import useRequireAuth from "@/hooks/requireAuth";
 
 type ApplicationProps = {
   chainId: number;
@@ -30,6 +38,7 @@ export default function Application(props: ApplicationProps) {
 
   const router = useRouter();
   const { address } = useAccount();
+  const { hasSession, requireAuth } = useRequireAuth();
 
   const [activeTab, setActiveTab] = useState("project");
   const [project, setProject] = useState<Project | null>(null);
@@ -47,12 +56,66 @@ export default function Application(props: ApplicationProps) {
   const [projectComplete, setProjectComplete] = useState(false);
   const [roundComplete, setRoundComplete] = useState(false);
 
+  // Dynamic form schema
+  const [formSchema, setFormSchema] = useState<FormSchema | null>(null);
+  const [dynamicRoundValues, setDynamicRoundValues] = useState<
+    Record<string, unknown>
+  >({});
+  const [dynamicAttestationValues, setDynamicAttestationValues] = useState<
+    Record<string, unknown>
+  >({});
+  const [dynamicFundingAddress, setDynamicFundingAddress] = useState("");
+  const [dynamicValidated, setDynamicValidated] = useState(false);
+  const [dynamicSaving, setDynamicSaving] = useState(false);
+  const [dynamicError, setDynamicError] = useState("");
+
+  // Profile data for auto-fill
+  const [profileData, setProfileData] = useState<{
+    email?: string;
+    telegram?: string;
+  }>({});
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+
   const LOCKED_STATUSES = ["ACCEPTED", "REJECTED", "GRADUATED", "REMOVED"];
   const isInLockedStatus =
     applicationStatus !== null && LOCKED_STATUSES.includes(applicationStatus);
   const isApplicationLocked = isInLockedStatus && !editsUnlocked;
 
   const network = networks.find((n) => n.id === chainId);
+
+  // Fetch form schema
+  const fetchFormSchema = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `/api/flow-council/rounds/form-schema?chainId=${chainId}&flowCouncilAddress=${councilId}`,
+      );
+      const data = await res.json();
+      if (data.success && data.formSchema) {
+        setFormSchema(data.formSchema);
+      }
+    } catch (err) {
+      console.error("Failed to fetch form schema:", err);
+    }
+  }, [chainId, councilId]);
+
+  // Fetch user profile for auto-fill
+  const fetchProfile = useCallback(async () => {
+    if (!address) return;
+    try {
+      const res = await fetch(
+        `/api/flow-council/profile?address=${address}&includePrivate=true`,
+      );
+      const data = await res.json();
+      if (data.success && data.profile) {
+        setProfileData({
+          email: data.profile.email ?? undefined,
+          telegram: data.profile.telegram ?? undefined,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch profile:", err);
+    }
+  }, [address]);
 
   const fetchProject = useCallback(async () => {
     if (!projectId || !address) return;
@@ -107,9 +170,20 @@ export default function Application(props: ApplicationProps) {
               typeof app.details === "string"
                 ? JSON.parse(app.details)
                 : app.details;
-            setRoundData(details);
-            if (details.attestation || details.eligibility) {
-              setAttestationData(details.attestation || details.eligibility);
+
+            if (details._formVersion === 1) {
+              // Dynamic form data
+              setDynamicRoundValues(details.round ?? {});
+              setDynamicAttestationValues(details.attestation ?? {});
+              if (app.fundingAddress) {
+                setDynamicFundingAddress(app.fundingAddress);
+              }
+            } else {
+              // Legacy data
+              setRoundData(details);
+              if (details.attestation || details.eligibility) {
+                setAttestationData(details.attestation || details.eligibility);
+              }
             }
           }
         }
@@ -120,26 +194,43 @@ export default function Application(props: ApplicationProps) {
   }, [projectId, address, chainId, councilId]);
 
   useEffect(() => {
+    fetchFormSchema();
+    fetchProfile();
+  }, [fetchFormSchema, fetchProfile]);
+
+  useEffect(() => {
     if (projectId && address) {
       fetchProject();
       fetchApplication();
     }
   }, [fetchProject, fetchApplication, projectId, address]);
 
-  // Set completion status based on existing data
-  // If they have existing project data, project tab is complete
   useEffect(() => {
     if (project) {
       setProjectComplete(true);
     }
   }, [project]);
 
-  // If they have existing round data, round tab is complete
   useEffect(() => {
     if (roundData) {
       setRoundComplete(true);
     }
   }, [roundData]);
+
+  // Check if nudge should show
+  const showNudge = useMemo(() => {
+    if (!formSchema || nudgeDismissed) return false;
+    const hasEmail =
+      formSchema.round.some((el) => el.type === "email") ||
+      formSchema.attestation.some((el) => el.type === "email");
+    const hasTelegram =
+      formSchema.round.some((el) => el.type === "telegram") ||
+      formSchema.attestation.some((el) => el.type === "telegram");
+    return (
+      (hasEmail && !profileData.email) ||
+      (hasTelegram && !profileData.telegram)
+    );
+  }, [formSchema, nudgeDismissed, profileData.email, profileData.telegram]);
 
   const handleBack = () => {
     router.push(`/flow-councils/application/${chainId}/${councilId}`);
@@ -163,12 +254,107 @@ export default function Application(props: ApplicationProps) {
     window.scrollTo(0, 0);
   };
 
+  // Dynamic form: save round data
+  const handleDynamicRoundSave = async () => {
+    setDynamicValidated(true);
+    setDynamicError("");
+    setDynamicSaving(true);
+
+    try {
+      const res = await fetch("/api/flow-council/applications", {
+        method: "PUT",
+        body: JSON.stringify({
+          projectId: savedProjectId ?? project?.id,
+          chainId,
+          councilId,
+          details: {
+            _formVersion: 1,
+            round: dynamicRoundValues,
+            attestation: dynamicAttestationValues,
+          },
+          fundingAddress: dynamicFundingAddress,
+        }),
+      });
+      const json = await res.json();
+
+      if (!json.success) {
+        setDynamicError(json.error || "Failed to save");
+        setDynamicSaving(false);
+        return;
+      }
+
+      if (json.application?.id) {
+        setApplicationId(json.application.id);
+      }
+      setRoundComplete(true);
+      setDynamicSaving(false);
+      setActiveTab("eligibility");
+      window.scrollTo(0, 0);
+    } catch (err) {
+      console.error(err);
+      setDynamicError("Failed to save");
+      setDynamicSaving(false);
+    }
+  };
+
+  // Dynamic form: submit attestation
+  const handleDynamicAttestationSubmit = async () => {
+    if (!applicationId) return;
+    setDynamicValidated(true);
+    setDynamicError("");
+    setDynamicSaving(true);
+
+    try {
+      const res = await fetch(
+        `/api/flow-council/applications/${applicationId}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            details: {
+              _formVersion: 1,
+              round: dynamicRoundValues,
+              attestation: dynamicAttestationValues,
+            },
+            fundingAddress: dynamicFundingAddress,
+            submit: true,
+          }),
+        },
+      );
+      const json = await res.json();
+
+      if (!json.success) {
+        setDynamicError(json.error || "Failed to submit");
+        setDynamicSaving(false);
+        return;
+      }
+
+      setDynamicSaving(false);
+      router.push(`/flow-councils/application/${chainId}/${councilId}`);
+    } catch (err) {
+      console.error(err);
+      setDynamicError("Failed to submit");
+      setDynamicSaving(false);
+    }
+  };
+
   if (!chainId || !network || !councilId) {
     return <span className="m-auto fs-4 fw-bold">Invalid council</span>;
   }
 
   return (
     <Stack direction="vertical">
+      {showNudge && (
+        <Alert
+          variant="info"
+          dismissible
+          onClose={() => setNudgeDismissed(true)}
+          className="mb-3"
+        >
+          Complete your profile to auto-fill contact info across applications.{" "}
+          <Link href="/profile">Go to profile</Link>
+        </Alert>
+      )}
+
       <Tab.Container
         activeKey={activeTab}
         onSelect={(k) => k && setActiveTab(k)}
@@ -236,14 +422,81 @@ export default function Application(props: ApplicationProps) {
           </Tab.Pane>
           <Tab.Pane eventKey="round">
             {projectComplete && !isApplicationLocked ? (
-              <RoundTab
-                chainId={chainId}
-                councilId={councilId}
-                projectId={savedProjectId ?? project?.id ?? 0}
-                existingRoundData={roundData}
-                isLoading={isLoading}
-                onSave={handleRoundSaved}
-                onBack={() => setActiveTab("project")}
+              formSchema ? (
+                // Dynamic form mode
+                <>
+                  <FundingAddressSection
+                    value={dynamicFundingAddress}
+                    onChange={setDynamicFundingAddress}
+                    defaultFundingAddress={
+                      project?.details?.defaultFundingAddress || ""
+                    }
+                    locked={isInLockedStatus && editsUnlocked}
+                    validated={dynamicValidated}
+                  />
+                  <DynamicFormSection
+                    elements={formSchema.round}
+                    values={dynamicRoundValues}
+                    onChange={(id, value) =>
+                      setDynamicRoundValues((prev) => ({
+                        ...prev,
+                        [id]: value,
+                      }))
+                    }
+                    validated={dynamicValidated}
+                    profileData={profileData}
+                  />
+                  {dynamicError && (
+                    <p className="text-danger fw-semi-bold">{dynamicError}</p>
+                  )}
+                  <Stack direction="horizontal" gap={3} className="mb-30">
+                    <Button
+                      variant="secondary"
+                      className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
+                      style={{
+                        backgroundColor: "#45ad57",
+                        borderColor: "#45ad57",
+                      }}
+                      onClick={() => setActiveTab("project")}
+                    >
+                      Back
+                    </Button>
+                    {!hasSession ? (
+                      <Button
+                        className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
+                        onClick={() => requireAuth(handleDynamicRoundSave)}
+                      >
+                        Sign In With Ethereum
+                      </Button>
+                    ) : (
+                      <Button
+                        className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
+                        style={{ minWidth: 120 }}
+                        onClick={() => requireAuth(handleDynamicRoundSave)}
+                        disabled={dynamicSaving}
+                      >
+                        {dynamicSaving ? <Spinner size="sm" /> : "Next"}
+                      </Button>
+                    )}
+                  </Stack>
+                </>
+              ) : (
+                // Legacy mode
+                <RoundTab
+                  chainId={chainId}
+                  councilId={councilId}
+                  projectId={savedProjectId ?? project?.id ?? 0}
+                  existingRoundData={roundData}
+                  isLoading={isLoading}
+                  onSave={handleRoundSaved}
+                  onBack={() => setActiveTab("project")}
+                />
+              )
+            ) : formSchema ? (
+              <DynamicFormSection
+                elements={formSchema.round}
+                values={dynamicRoundValues}
+                readOnly
               />
             ) : (
               <ViewRoundTab roundData={roundData} />
@@ -251,20 +504,82 @@ export default function Application(props: ApplicationProps) {
           </Tab.Pane>
           <Tab.Pane eventKey="eligibility">
             {roundComplete && !isApplicationLocked ? (
-              <AttestationTab
-                chainId={chainId}
-                councilId={councilId}
-                projectId={savedProjectId ?? project?.id ?? 0}
-                applicationId={applicationId}
-                defaultFundingAddress={
-                  project?.details?.defaultFundingAddress || ""
-                }
-                existingAttestationData={attestationData}
-                existingRoundData={roundData}
-                isLoading={isLoading}
-                onBack={() => setActiveTab("round")}
-                fundingWalletLocked={isInLockedStatus && editsUnlocked}
-                saveOnly={isInLockedStatus && editsUnlocked}
+              formSchema ? (
+                // Dynamic form mode
+                <>
+                  <DynamicFormSection
+                    elements={formSchema.attestation}
+                    values={dynamicAttestationValues}
+                    onChange={(id, value) =>
+                      setDynamicAttestationValues((prev) => ({
+                        ...prev,
+                        [id]: value,
+                      }))
+                    }
+                    validated={dynamicValidated}
+                    profileData={profileData}
+                  />
+                  {dynamicError && (
+                    <p className="text-danger fw-semi-bold">{dynamicError}</p>
+                  )}
+                  <Stack direction="horizontal" gap={3} className="mb-30">
+                    <Button
+                      variant="secondary"
+                      className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
+                      style={{
+                        backgroundColor: "#45ad57",
+                        borderColor: "#45ad57",
+                      }}
+                      onClick={() => setActiveTab("round")}
+                    >
+                      Back
+                    </Button>
+                    {!hasSession ? (
+                      <Button
+                        className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
+                        onClick={() =>
+                          requireAuth(handleDynamicAttestationSubmit)
+                        }
+                      >
+                        Sign In With Ethereum
+                      </Button>
+                    ) : (
+                      <Button
+                        className="fs-lg fw-semi-bold rounded-4 py-4"
+                        style={{ width: 140 }}
+                        onClick={() =>
+                          requireAuth(handleDynamicAttestationSubmit)
+                        }
+                        disabled={dynamicSaving}
+                      >
+                        {dynamicSaving ? <Spinner size="sm" /> : "Submit"}
+                      </Button>
+                    )}
+                  </Stack>
+                </>
+              ) : (
+                // Legacy mode
+                <AttestationTab
+                  chainId={chainId}
+                  councilId={councilId}
+                  projectId={savedProjectId ?? project?.id ?? 0}
+                  applicationId={applicationId}
+                  defaultFundingAddress={
+                    project?.details?.defaultFundingAddress || ""
+                  }
+                  existingAttestationData={attestationData}
+                  existingRoundData={roundData}
+                  isLoading={isLoading}
+                  onBack={() => setActiveTab("round")}
+                  fundingWalletLocked={isInLockedStatus && editsUnlocked}
+                  saveOnly={isInLockedStatus && editsUnlocked}
+                />
+              )
+            ) : formSchema ? (
+              <DynamicFormSection
+                elements={formSchema.attestation}
+                values={dynamicAttestationValues}
+                readOnly
               />
             ) : (
               <ViewAttestationTab attestationData={attestationData} />

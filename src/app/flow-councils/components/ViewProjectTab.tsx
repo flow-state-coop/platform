@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Image from "react-bootstrap/Image";
@@ -43,13 +44,18 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
         <Stack direction="vertical" gap={2}>
           {managerAddresses.length > 0 ? (
             managerAddresses.map((address, index) => (
-              <Form.Control
+              <div
                 key={index}
-                type="text"
-                value={address}
-                disabled
-                className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-              />
+                className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold d-flex align-items-center gap-2"
+              >
+                <span className="font-monospace text-truncate">{address}</span>
+                <Link
+                  href={`/profile/${address}`}
+                  className="text-primary text-decoration-none flex-shrink-0"
+                >
+                  View Profile
+                </Link>
+              </div>
             ))
           ) : (
             <Form.Control

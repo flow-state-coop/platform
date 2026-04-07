@@ -2,14 +2,27 @@ import { getServerSession } from "next-auth/next";
 import { isAddress } from "viem";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { validateDisplayName } from "../validation";
+import { validateProfile, normalizeSocialHandle } from "../validation";
 
 export const dynamic = "force-dynamic";
+
+const PUBLIC_FIELDS = [
+  "address",
+  "displayName",
+  "bio",
+  "twitter",
+  "github",
+  "linkedin",
+  "farcaster",
+] as const;
+
+const ALL_FIELDS = [...PUBLIC_FIELDS, "email", "telegram"] as const;
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const address = searchParams.get("address");
+    const includePrivate = searchParams.get("includePrivate") === "true";
 
     if (!address || !isAddress(address)) {
       return new Response(
@@ -17,9 +30,14 @@ export async function GET(request: Request) {
       );
     }
 
+    const session = await getServerSession(authOptions);
+    const isOwner =
+      includePrivate &&
+      session?.address?.toLowerCase() === address.toLowerCase();
+
     const profile = await db
       .selectFrom("userProfiles")
-      .select(["address", "displayName"])
+      .select([...(isOwner ? ALL_FIELDS : PUBLIC_FIELDS)])
       .where("address", "=", address.toLowerCase())
       .executeTakeFirst();
 
@@ -45,7 +63,7 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const validation = validateDisplayName(body.displayName);
+    const validation = validateProfile(body);
 
     if (!validation.success) {
       return new Response(
@@ -53,19 +71,45 @@ export async function PUT(request: Request) {
       );
     }
 
+    const data = validation.data;
+
+    const values = {
+      address: session.address.toLowerCase(),
+      displayName: data.displayName,
+      bio: data.bio || null,
+      twitter: data.twitter
+        ? normalizeSocialHandle(data.twitter, "twitter")
+        : null,
+      github: data.github ? normalizeSocialHandle(data.github, "github") : null,
+      linkedin: data.linkedin
+        ? normalizeSocialHandle(data.linkedin, "linkedin")
+        : null,
+      farcaster: data.farcaster
+        ? normalizeSocialHandle(data.farcaster, "farcaster")
+        : null,
+      email: data.email || null,
+      telegram: data.telegram
+        ? normalizeSocialHandle(data.telegram, "telegram")
+        : null,
+    };
+
     const profile = await db
       .insertInto("userProfiles")
-      .values({
-        address: session.address.toLowerCase(),
-        displayName: validation.data,
-      })
+      .values(values)
       .onConflict((oc) =>
         oc.column("address").doUpdateSet({
-          displayName: validation.data,
+          displayName: values.displayName,
+          bio: values.bio,
+          twitter: values.twitter,
+          github: values.github,
+          linkedin: values.linkedin,
+          farcaster: values.farcaster,
+          email: values.email,
+          telegram: values.telegram,
           updatedAt: new Date(),
         }),
       )
-      .returning(["address", "displayName"])
+      .returning([...ALL_FIELDS])
       .executeTakeFirstOrThrow();
 
     return new Response(JSON.stringify({ success: true, profile }));

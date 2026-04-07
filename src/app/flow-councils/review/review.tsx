@@ -41,6 +41,7 @@ import type {
   RoundForm,
   AttestationForm,
 } from "@/app/flow-councils/types/round";
+import type { FormSchema } from "@/app/flow-councils/types/formSchema";
 import { ProjectDetails } from "@/types/project";
 
 type ReviewProps = {
@@ -117,6 +118,9 @@ export default function Review(props: ReviewProps) {
     useState<Application | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
+  const [roundFormSchema, setRoundFormSchema] = useState<FormSchema | null>(
+    null,
+  );
   const [selectedTab, setSelectedTab] = useState<string>("project");
   const [newStatus, setNewStatus] = useState<Status | null>(null);
   const [reviewComment, setReviewComment] = useState("");
@@ -172,6 +176,9 @@ export default function Review(props: ReviewProps) {
                 ? JSON.parse(data.round.details)
                 : data.round.details;
             setRoundName(details?.name ?? "Flow Council");
+            if (details?.formSchema) {
+              setRoundFormSchema(details.formSchema);
+            }
           }
         }
       } catch (err) {
@@ -213,20 +220,6 @@ export default function Review(props: ReviewProps) {
       return;
     }
 
-    const headers = [
-      "application_status",
-      "project_name",
-      "funding_address",
-      "manager_emails",
-      "contact_name",
-      "contact_telegram",
-      "project_addresses",
-      "goodcollective_pool_addresses",
-      "x_handle",
-      "farcaster_handle",
-      "github_repo",
-    ];
-
     const escCsv = (value: string) => {
       if (value.includes(",") || value.includes('"') || value.includes("\n")) {
         return `"${value.replace(/"/g, '""')}"`;
@@ -234,41 +227,111 @@ export default function Review(props: ReviewProps) {
       return value;
     };
 
-    const rows = fullApplications.map((app) => {
-      const projectDetails = app.projectDetails;
-      const smartContracts = projectDetails?.smartContracts ?? [];
+    // Check if any application uses dynamic form
+    const hasDynamic = fullApplications.some(
+      (app) => app.details && "_formVersion" in app.details,
+    );
 
-      const projectAddresses = smartContracts
-        .filter((sc) => sc.type === "projectAddress")
-        .map((sc) => sc.address)
-        .join("|");
+    let headers: string[];
+    let rows: string[][];
 
-      const goodCollectivePools = smartContracts
-        .filter((sc) => sc.type === "goodCollectivePool")
-        .map((sc) => sc.address)
-        .join("|");
+    if (hasDynamic && roundFormSchema) {
+      // Dynamic form: build columns from schema elements that are questions
+      const roundQuestions = roundFormSchema.round.filter(
+        (el) => !["section", "title", "description"].includes(el.type),
+      );
+      const attestationQuestions = roundFormSchema.attestation.filter(
+        (el) => !["section", "title", "description"].includes(el.type),
+      );
 
-      const githubRepos = [
-        projectDetails?.github,
-        ...(projectDetails?.githubRepos ?? []),
-      ]
-        .filter(Boolean)
-        .join("|");
+      headers = [
+        "application_status",
+        "project_name",
+        "funding_address",
+        ...roundQuestions.map((q) => q.label),
+        ...attestationQuestions.map((q) => q.label),
+      ];
 
-      return [
-        STATUS_LABELS[app.status] || app.status,
-        projectDetails?.name ?? "",
-        app.fundingAddress ?? "",
-        (app.managerEmails ?? []).join("|"),
-        app.details?.team?.primaryContact?.name ?? "",
-        app.details?.team?.primaryContact?.telegram ?? "",
-        projectAddresses,
-        goodCollectivePools,
-        projectDetails?.twitter ?? "",
-        projectDetails?.farcaster ?? "",
-        githubRepos,
-      ].map(escCsv);
-    });
+      rows = fullApplications.map((app) => {
+        const projectDetails = app.projectDetails;
+        const isDynamic = app.details && "_formVersion" in app.details;
+        const dynamicDetails = isDynamic
+          ? (app.details as unknown as {
+              round: Record<string, unknown>;
+              attestation: Record<string, unknown>;
+            })
+          : null;
+
+        return [
+          STATUS_LABELS[app.status] || app.status,
+          projectDetails?.name ?? "",
+          app.fundingAddress ?? "",
+          ...roundQuestions.map((q) => {
+            const val = dynamicDetails?.round?.[q.id];
+            if (Array.isArray(val)) return val.join("|");
+            if (typeof val === "boolean") return val ? "Yes" : "No";
+            return String(val ?? "");
+          }),
+          ...attestationQuestions.map((q) => {
+            const val = dynamicDetails?.attestation?.[q.id];
+            if (Array.isArray(val)) return val.join("|");
+            if (typeof val === "boolean") return val ? "Yes" : "No";
+            return String(val ?? "");
+          }),
+        ].map(escCsv);
+      });
+    } else {
+      // Legacy format
+      headers = [
+        "application_status",
+        "project_name",
+        "funding_address",
+        "manager_emails",
+        "contact_name",
+        "contact_telegram",
+        "project_addresses",
+        "goodcollective_pool_addresses",
+        "x_handle",
+        "farcaster_handle",
+        "github_repo",
+      ];
+
+      rows = fullApplications.map((app) => {
+        const projectDetails = app.projectDetails;
+        const smartContracts = projectDetails?.smartContracts ?? [];
+
+        const projectAddresses = smartContracts
+          .filter((sc) => sc.type === "projectAddress")
+          .map((sc) => sc.address)
+          .join("|");
+
+        const goodCollectivePools = smartContracts
+          .filter((sc) => sc.type === "goodCollectivePool")
+          .map((sc) => sc.address)
+          .join("|");
+
+        const githubRepos = [
+          projectDetails?.github,
+          ...(projectDetails?.githubRepos ?? []),
+        ]
+          .filter(Boolean)
+          .join("|");
+
+        return [
+          STATUS_LABELS[app.status] || app.status,
+          projectDetails?.name ?? "",
+          app.fundingAddress ?? "",
+          (app.managerEmails ?? []).join("|"),
+          app.details?.team?.primaryContact?.name ?? "",
+          app.details?.team?.primaryContact?.telegram ?? "",
+          projectAddresses,
+          goodCollectivePools,
+          projectDetails?.twitter ?? "",
+          projectDetails?.farcaster ?? "",
+          githubRepos,
+        ].map(escCsv);
+      });
+    }
 
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
 
@@ -285,7 +348,14 @@ export default function Review(props: ReviewProps) {
     link.click();
     URL.revokeObjectURL(url);
     setIsExportingCsv(false);
-  }, [applications, flowCouncil, chainId, isExportingCsv, roundName]);
+  }, [
+    applications,
+    flowCouncil,
+    chainId,
+    isExportingCsv,
+    roundName,
+    roundFormSchema,
+  ]);
 
   const fetchApplications = useCallback(async () => {
     if (!flowCouncil || !chainId) {
@@ -964,7 +1034,8 @@ export default function Review(props: ReviewProps) {
                       <Tab.Pane eventKey="round">
                         <ViewRoundTab
                           roundData={
-                            selectedApplication.details
+                            selectedApplication.details &&
+                            !("_formVersion" in selectedApplication.details)
                               ? {
                                   previousParticipation:
                                     selectedApplication.details
@@ -984,18 +1055,43 @@ export default function Review(props: ReviewProps) {
                                 }
                               : null
                           }
+                          formSchema={roundFormSchema}
+                          dynamicValues={
+                            selectedApplication.details &&
+                            "_formVersion" in selectedApplication.details
+                              ? ((
+                                  selectedApplication.details as unknown as {
+                                    round: Record<string, unknown>;
+                                  }
+                                ).round ?? {})
+                              : undefined
+                          }
                         />
                       </Tab.Pane>
                       <Tab.Pane eventKey="eligibility">
                         <ViewAttestationTab
                           attestationData={
-                            selectedApplication.details?.attestation ??
-                            (
-                              selectedApplication.details as ApplicationDetails & {
-                                eligibility?: AttestationForm;
-                              }
-                            )?.eligibility ??
-                            null
+                            selectedApplication.details &&
+                            !("_formVersion" in selectedApplication.details)
+                              ? (selectedApplication.details?.attestation ??
+                                (
+                                  selectedApplication.details as ApplicationDetails & {
+                                    eligibility?: AttestationForm;
+                                  }
+                                )?.eligibility ??
+                                null)
+                              : null
+                          }
+                          formSchema={roundFormSchema}
+                          dynamicValues={
+                            selectedApplication.details &&
+                            "_formVersion" in selectedApplication.details
+                              ? ((
+                                  selectedApplication.details as unknown as {
+                                    attestation: Record<string, unknown>;
+                                  }
+                                ).attestation ?? {})
+                              : undefined
                           }
                         />
                       </Tab.Pane>

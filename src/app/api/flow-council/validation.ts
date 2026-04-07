@@ -130,6 +130,25 @@ export const roundDetailsSchema = z.object({
   attestation: z.any().optional(),
 });
 
+const SOCIAL_BASE_URLS: Record<string, string> = {
+  twitter: "https://x.com",
+  github: "https://github.com",
+  linkedin: "https://linkedin.com/in",
+  farcaster: "https://warpcast.com",
+  telegram: "https://t.me",
+};
+
+export function normalizeSocialHandle(
+  raw: string,
+  platform: keyof typeof SOCIAL_BASE_URLS,
+): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  const handle = trimmed.replace(/^@/, "");
+  return `${SOCIAL_BASE_URLS[platform]}/${handle}`;
+}
+
 export function normalizeEvidenceUrl(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) return trimmed;
@@ -268,8 +287,74 @@ export function validateRoundDetails(
   return { success: true, data: details };
 }
 
-export function validateDisplayName(data: unknown): ValidationResult<string> {
-  const result = displayNameSchema.safeParse(data);
+export const formElementSchema = z.object({
+  id: z.string().min(1),
+  type: z.enum([
+    "section",
+    "title",
+    "description",
+    "text",
+    "textarea",
+    "number",
+    "url",
+    "email",
+    "select",
+    "multiSelect",
+    "boolean",
+    "telegram",
+  ]),
+  label: z.string().min(1).max(500),
+  content: z.string().max(5000).optional(),
+  required: z.boolean().optional(),
+  placeholder: z.string().max(500).optional(),
+  charLimit: z.number().int().positive().optional(),
+  min: z.number().optional(),
+  max: z.number().optional(),
+  options: z.array(z.string().max(200)).max(50).optional(),
+});
+
+export const formSchemaSchema = z.object({
+  round: z.array(formElementSchema).max(100),
+  attestation: z.array(formElementSchema).max(100),
+});
+
+type FormSchemaData = typeof formSchemaSchema._output;
+
+export function validateFormSchema(
+  data: unknown,
+): ValidationResult<FormSchemaData> {
+  const result = formSchemaSchema.safeParse(data);
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    return { success: false, error: issue.message };
+  }
+  return { success: true, data: result.data };
+}
+
+export const profileSchema = z.object({
+  displayName: displayNameSchema,
+  bio: z.string().trim().max(300).optional().or(z.literal("")),
+  twitter: z.string().trim().max(255).optional().or(z.literal("")),
+  github: z.string().trim().max(255).optional().or(z.literal("")),
+  linkedin: z.string().trim().max(255).optional().or(z.literal("")),
+  farcaster: z.string().trim().max(255).optional().or(z.literal("")),
+  email: z
+    .string()
+    .trim()
+    .max(255)
+    .optional()
+    .or(z.literal(""))
+    .refine(
+      (val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
+      "Invalid email",
+    ),
+  telegram: z.string().trim().max(255).optional().or(z.literal("")),
+});
+
+type ProfileData = typeof profileSchema._output;
+
+export function validateProfile(data: unknown): ValidationResult<ProfileData> {
+  const result = profileSchema.safeParse(data);
   if (!result.success) {
     const issue = result.error.issues[0];
     return { success: false, error: issue.message };

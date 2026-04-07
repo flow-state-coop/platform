@@ -122,10 +122,23 @@ export async function PATCH(request: Request) {
         ? superappSplitterAddress.toLowerCase()
         : undefined;
 
+    const existingRound = await db
+      .selectFrom("rounds")
+      .select("details")
+      .where("id", "=", round.id)
+      .executeTakeFirst();
+
+    const existingDetails =
+      typeof existingRound?.details === "string"
+        ? JSON.parse(existingRound.details)
+        : (existingRound?.details ?? {});
+
+    const mergedDetails = { ...existingDetails, name, description, logoUrl };
+
     const updatedRound = await db
       .updateTable("rounds")
       .set({
-        details: JSON.stringify({ name, description, logoUrl }),
+        details: JSON.stringify(mergedDetails),
         ...(validatedSplitterAddress
           ? { superappSplitterAddress: validatedSplitterAddress }
           : {}),

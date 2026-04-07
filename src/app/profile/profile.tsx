@@ -10,8 +10,31 @@ import Button from "react-bootstrap/Button";
 import Alert from "react-bootstrap/Alert";
 import Spinner from "react-bootstrap/Spinner";
 import Stack from "react-bootstrap/Stack";
+import Badge from "react-bootstrap/Badge";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
 import useSiwe from "@/hooks/siwe";
+
+type ProfileForm = {
+  displayName: string;
+  bio: string;
+  twitter: string;
+  github: string;
+  linkedin: string;
+  farcaster: string;
+  email: string;
+  telegram: string;
+};
+
+const INITIAL_PROFILE: ProfileForm = {
+  displayName: "",
+  bio: "",
+  twitter: "",
+  github: "",
+  linkedin: "",
+  farcaster: "",
+  email: "",
+  telegram: "",
+};
 
 export default function Profile() {
   const { address } = useAccount();
@@ -19,8 +42,8 @@ export default function Profile() {
   const { openConnectModal } = useConnectModal();
   const { handleSignIn } = useSiwe();
   const hasSession = !!session && session.address === address;
-  const [displayName, setDisplayName] = useState("");
-  const [savedName, setSavedName] = useState("");
+  const [form, setForm] = useState<ProfileForm>(INITIAL_PROFILE);
+  const [savedForm, setSavedForm] = useState<ProfileForm>(INITIAL_PROFILE);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -37,12 +60,25 @@ export default function Profile() {
     }
 
     try {
-      const res = await fetch(`/api/flow-council/profile?address=${address}`);
+      const res = await fetch(
+        `/api/flow-council/profile?address=${address}&includePrivate=true`,
+      );
       const data = await res.json();
 
       if (data.success && data.profile) {
-        setDisplayName(data.profile.displayName);
-        setSavedName(data.profile.displayName);
+        const p = data.profile;
+        const loaded: ProfileForm = {
+          displayName: p.displayName ?? "",
+          bio: p.bio ?? "",
+          twitter: p.twitter ?? "",
+          github: p.github ?? "",
+          linkedin: p.linkedin ?? "",
+          farcaster: p.farcaster ?? "",
+          email: p.email ?? "",
+          telegram: p.telegram ?? "",
+        };
+        setForm(loaded);
+        setSavedForm(loaded);
       }
     } catch (err) {
       console.error(err);
@@ -64,13 +100,25 @@ export default function Profile() {
     try {
       const res = await fetch("/api/flow-council/profile", {
         method: "PUT",
-        body: JSON.stringify({ displayName }),
+        body: JSON.stringify(form),
       });
       const data = await res.json();
 
       if (data.success) {
-        setSavedName(data.profile.displayName);
-        setSuccess("Display name saved");
+        const p = data.profile;
+        const saved: ProfileForm = {
+          displayName: p.displayName ?? "",
+          bio: p.bio ?? "",
+          twitter: p.twitter ?? "",
+          github: p.github ?? "",
+          linkedin: p.linkedin ?? "",
+          farcaster: p.farcaster ?? "",
+          email: p.email ?? "",
+          telegram: p.telegram ?? "",
+        };
+        setForm(saved);
+        setSavedForm(saved);
+        setSuccess("Profile saved");
       } else {
         setError(data.error || "Failed to save");
       }
@@ -94,9 +142,9 @@ export default function Profile() {
       const data = await res.json();
 
       if (data.success) {
-        setDisplayName("");
-        setSavedName("");
-        setSuccess("Display name cleared");
+        setForm(INITIAL_PROFILE);
+        setSavedForm(INITIAL_PROFILE);
+        setSuccess("Profile cleared");
       } else {
         setError(data.error || "Failed to clear");
       }
@@ -107,6 +155,8 @@ export default function Profile() {
       setIsSaving(false);
     }
   };
+
+  const hasChanges = JSON.stringify(form) !== JSON.stringify(savedForm);
 
   if (!hasSession) {
     return (
@@ -160,6 +210,10 @@ export default function Profile() {
     );
   }
 
+  const updateField = (field: keyof ProfileForm, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
   return (
     <Container className="py-5" style={{ maxWidth: 600 }}>
       <h2 className="mb-4">Profile</h2>
@@ -180,12 +234,14 @@ export default function Profile() {
       )}
 
       <Form onSubmit={handleSave}>
+        <h5 className="fw-bold mb-3">Public Information</h5>
+
         <Form.Group className="mb-4">
           <Form.Label>Display Name</Form.Label>
           <Form.Control
             type="text"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
+            value={form.displayName}
+            onChange={(e) => updateField("displayName", e.target.value)}
             placeholder="Enter a display name"
             maxLength={50}
             className="rounded-3"
@@ -196,17 +252,123 @@ export default function Profile() {
           </Form.Text>
         </Form.Group>
 
+        <Form.Group className="mb-4">
+          <Form.Label>Bio / Role</Form.Label>
+          <Form.Control
+            as="textarea"
+            rows={3}
+            value={form.bio}
+            onChange={(e) => updateField("bio", e.target.value)}
+            placeholder="Tell others about yourself"
+            maxLength={300}
+            className="rounded-3"
+          />
+          <Form.Text className="text-muted">Max 300 characters.</Form.Text>
+        </Form.Group>
+
+        <Form.Group className="mb-4">
+          <Form.Label>Twitter / X</Form.Label>
+          <Form.Control
+            type="text"
+            value={form.twitter}
+            onChange={(e) => updateField("twitter", e.target.value)}
+            placeholder="@handle or https://x.com/handle"
+            className="rounded-3"
+          />
+        </Form.Group>
+
+        <Form.Group className="mb-4">
+          <Form.Label>GitHub</Form.Label>
+          <Form.Control
+            type="text"
+            value={form.github}
+            onChange={(e) => updateField("github", e.target.value)}
+            placeholder="username or https://github.com/user"
+            className="rounded-3"
+          />
+        </Form.Group>
+
+        <Form.Group className="mb-4">
+          <Form.Label>LinkedIn</Form.Label>
+          <Form.Control
+            type="text"
+            value={form.linkedin}
+            onChange={(e) => updateField("linkedin", e.target.value)}
+            placeholder="username or https://linkedin.com/in/user"
+            className="rounded-3"
+          />
+        </Form.Group>
+
+        <Form.Group className="mb-4">
+          <Form.Label>Farcaster</Form.Label>
+          <Form.Control
+            type="text"
+            value={form.farcaster}
+            onChange={(e) => updateField("farcaster", e.target.value)}
+            placeholder="@handle or https://warpcast.com/handle"
+            className="rounded-3"
+          />
+        </Form.Group>
+
+        <hr className="my-4" />
+        <h5 className="fw-bold mb-3">
+          Private Information{" "}
+          <Badge bg="secondary" className="ms-2 fw-normal">
+            Private
+          </Badge>
+        </h5>
+        <p className="text-muted small mb-3">
+          Only shared when you include it in an application. Never visible on
+          your public profile.
+        </p>
+
+        <Form.Group className="mb-4">
+          <Form.Label>
+            Email{" "}
+            <Badge bg="light" text="dark" className="ms-1 fw-normal">
+              Private
+            </Badge>
+          </Form.Label>
+          <Form.Control
+            type="email"
+            value={form.email}
+            onChange={(e) => updateField("email", e.target.value)}
+            placeholder="your@email.com"
+            className="rounded-3"
+          />
+          <Form.Text className="text-muted">
+            Auto-fills into applications that ask for an email.
+          </Form.Text>
+        </Form.Group>
+
+        <Form.Group className="mb-4">
+          <Form.Label>
+            Telegram{" "}
+            <Badge bg="light" text="dark" className="ms-1 fw-normal">
+              Private
+            </Badge>
+          </Form.Label>
+          <Form.Control
+            type="text"
+            value={form.telegram}
+            onChange={(e) => updateField("telegram", e.target.value)}
+            placeholder="@handle or https://t.me/handle"
+            className="rounded-3"
+          />
+          <Form.Text className="text-muted">
+            Auto-fills into applications that ask for Telegram.
+          </Form.Text>
+        </Form.Group>
+
         <Stack direction="horizontal" gap={2}>
           <Button
             type="submit"
-            disabled={
-              isSaving || !displayName.trim() || displayName === savedName
-            }
+            disabled={isSaving || !form.displayName.trim() || !hasChanges}
             className="rounded-3"
           >
             {isSaving ? <Spinner size="sm" /> : "Save"}
           </Button>
-          {savedName && (
+          {savedForm.displayName && (
             <Button
               variant="outline-secondary"
               onClick={handleClear}

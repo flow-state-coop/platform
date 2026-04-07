@@ -166,6 +166,26 @@ function Sidebar() {
           Round Metadata
         </Link>
         <Link
+          href={`/flow-councils/form-builder/${chainId}/${selectedCouncil?.id}`}
+          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname?.startsWith("/flow-councils/form-builder") ? "fw-semi-bold" : ""}`}
+          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
+        >
+          <Image
+            src={`${pathname?.startsWith("/flow-councils/form-builder") && !!selectedCouncil ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
+            alt="Bullet Point"
+            width={24}
+            height={24}
+            style={{
+              filter:
+                !pathname?.startsWith("/flow-councils/form-builder") &&
+                !selectedCouncil
+                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
+                  : "",
+            }}
+          />
+          Application Form
+        </Link>
+        <Link
           href={`/flow-councils/permissions/${chainId}/${selectedCouncil?.id}`}
           className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname?.startsWith("/flow-councils/permissions") ? "fw-semi-bold" : ""}`}
           style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}

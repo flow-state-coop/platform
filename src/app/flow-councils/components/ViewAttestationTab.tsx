@@ -1,18 +1,34 @@
 "use client";
 
 import Form from "react-bootstrap/Form";
+import DynamicFormSection from "./DynamicFormSection";
 import {
   type AttestationForm,
   INITIAL_ATTESTATION_FORM,
   RECIPIENT_TYPE_LABELS,
 } from "@/app/flow-councils/types/round";
+import type { FormSchema } from "@/app/flow-councils/types/formSchema";
 
 type ViewAttestationTabProps = {
   attestationData: AttestationForm | null;
+  formSchema?: FormSchema | null;
+  dynamicValues?: Record<string, unknown>;
 };
 
 export default function ViewAttestationTab(props: ViewAttestationTabProps) {
-  const { attestationData } = props;
+  const { attestationData, formSchema, dynamicValues } = props;
+
+  if (formSchema && dynamicValues) {
+    return (
+      <div>
+        <DynamicFormSection
+          elements={formSchema.attestation}
+          values={dynamicValues}
+          readOnly
+        />
+      </div>
+    );
+  }
 
   const commitment =
     attestationData?.commitment || INITIAL_ATTESTATION_FORM.commitment;

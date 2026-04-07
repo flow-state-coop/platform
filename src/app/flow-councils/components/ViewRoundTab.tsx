@@ -3,6 +3,7 @@
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import ResizableTextarea from "@/components/ResizableTextarea";
+import DynamicFormSection from "./DynamicFormSection";
 import {
   type RoundForm,
   INITIAL_ROUND_FORM,
@@ -11,13 +12,28 @@ import {
   INTEGRATION_STATUS_LABELS,
   FREQUENCY_LABELS,
 } from "@/app/flow-councils/types/round";
+import type { FormSchema } from "@/app/flow-councils/types/formSchema";
 
 type ViewRoundTabProps = {
   roundData: RoundForm | null;
+  formSchema?: FormSchema | null;
+  dynamicValues?: Record<string, unknown>;
 };
 
 export default function ViewRoundTab(props: ViewRoundTabProps) {
-  const { roundData } = props;
+  const { roundData, formSchema, dynamicValues } = props;
+
+  if (formSchema && dynamicValues) {
+    return (
+      <div>
+        <DynamicFormSection
+          elements={formSchema.round}
+          values={dynamicValues}
+          readOnly
+        />
+      </div>
+    );
+  }
 
   const previousParticipation =
     roundData?.previousParticipation ||
