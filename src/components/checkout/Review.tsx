@@ -29,11 +29,11 @@ export type ReviewProps = {
   network?: Network;
   receiver: string;
   calls: TransactionCall[];
-  executeTransactions: (calls: TransactionCall[]) => Promise<void>;
+  executeTransactions: (calls: TransactionCall[]) => Promise<unknown>;
   areTransactionsLoading: boolean;
   completedTransactions: number;
   transactionError: string;
-  isBatchSupported: boolean;
+  shouldUseSendCalls: boolean;
   flowRateToReceiver: string;
   netImpact: bigint;
   newFlowRate: string;
@@ -76,7 +76,7 @@ export default function Review(props: ReviewProps) {
     areTransactionsLoading,
     executeTransactions,
     transactionError,
-    isBatchSupported,
+    shouldUseSendCalls,
     liquidationEstimate,
     flowRateToReceiver,
     newFlowRate,
@@ -613,7 +613,7 @@ export default function Review(props: ReviewProps) {
                   role="status"
                   className="p-2"
                 />
-                {!isBatchSupported && calls.length > 1 && (
+                {!shouldUseSendCalls && calls.length > 1 && (
                   <Card.Text className="m-0 fw-semi-bold">
                     {completedTransactions + 1}/{calls.length}
                   </Card.Text>
@@ -621,7 +621,7 @@ export default function Review(props: ReviewProps) {
               </Stack>
             ) : isDeletingStream ? (
               "Cancel Stream"
-            ) : !isBatchSupported && calls.length > 1 ? (
+            ) : !shouldUseSendCalls && calls.length > 1 ? (
               `Submit (${calls.length})`
             ) : (
               "Submit"
