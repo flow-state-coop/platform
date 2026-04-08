@@ -26,6 +26,14 @@ function truncateAddress(addr: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
+function isSafeHttpsUrl(url: string): boolean {
+  try {
+    return new URL(url).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export default function PublicProfile({ address }: { address: string }) {
   const [profile, setProfile] = useState<PublicProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,7 +42,7 @@ export default function PublicProfile({ address }: { address: string }) {
     (async () => {
       try {
         const res = await fetch(
-          `/api/flow-council/profile/public?address=${address}`,
+          `/api/flow-council/profile/public?address=${encodeURIComponent(address)}`,
         );
         const data = await res.json();
         if (data.success) {
@@ -79,7 +87,7 @@ export default function PublicProfile({ address }: { address: string }) {
           {(["twitter", "github", "linkedin", "farcaster"] as const).map(
             (field) => {
               const value = profile[field];
-              if (!value) return null;
+              if (!value || !isSafeHttpsUrl(value)) return null;
               return (
                 <div key={field}>
                   <span className="text-muted small">

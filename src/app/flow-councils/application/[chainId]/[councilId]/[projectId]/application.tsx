@@ -103,7 +103,7 @@ export default function Application(props: ApplicationProps) {
     if (!address) return;
     try {
       const res = await fetch(
-        `/api/flow-council/profile?address=${address}&includePrivate=true`,
+        `/api/flow-council/profile?address=${encodeURIComponent(address)}&includePrivate=true`,
       );
       const data = await res.json();
       if (data.success && data.profile) {
@@ -227,8 +227,7 @@ export default function Application(props: ApplicationProps) {
       formSchema.round.some((el) => el.type === "telegram") ||
       formSchema.attestation.some((el) => el.type === "telegram");
     return (
-      (hasEmail && !profileData.email) ||
-      (hasTelegram && !profileData.telegram)
+      (hasEmail && !profileData.email) || (hasTelegram && !profileData.telegram)
     );
   }, [formSchema, nudgeDismissed, profileData.email, profileData.telegram]);
 

@@ -18,6 +18,13 @@ const PUBLIC_FIELDS = [
 
 const ALL_FIELDS = [...PUBLIC_FIELDS, "email", "telegram"] as const;
 
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -25,9 +32,7 @@ export async function GET(request: Request) {
     const includePrivate = searchParams.get("includePrivate") === "true";
 
     if (!address || !isAddress(address)) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid address" }),
-      );
+      return jsonResponse({ success: false, error: "Invalid address" }, 400);
     }
 
     const session = await getServerSession(authOptions);
@@ -41,14 +46,10 @@ export async function GET(request: Request) {
       .where("address", "=", address.toLowerCase())
       .executeTakeFirst();
 
-    return new Response(
-      JSON.stringify({ success: true, profile: profile ?? null }),
-    );
+    return jsonResponse({ success: true, profile: profile ?? null });
   } catch (err) {
     console.error(err);
-    return new Response(
-      JSON.stringify({ success: false, error: "Server error" }),
-    );
+    return jsonResponse({ success: false, error: "Server error" }, 500);
   }
 }
 
@@ -57,18 +58,14 @@ export async function PUT(request: Request) {
     const session = await getServerSession(authOptions);
 
     if (!session?.address) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Unauthenticated" }),
-      );
+      return jsonResponse({ success: false, error: "Unauthenticated" }, 401);
     }
 
     const body = await request.json();
     const validation = validateProfile(body);
 
     if (!validation.success) {
-      return new Response(
-        JSON.stringify({ success: false, error: validation.error }),
-      );
+      return jsonResponse({ success: false, error: validation.error }, 400);
     }
 
     const data = validation.data;
@@ -112,12 +109,10 @@ export async function PUT(request: Request) {
       .returning([...ALL_FIELDS])
       .executeTakeFirstOrThrow();
 
-    return new Response(JSON.stringify({ success: true, profile }));
+    return jsonResponse({ success: true, profile });
   } catch (err) {
     console.error(err);
-    return new Response(
-      JSON.stringify({ success: false, error: "Server error" }),
-    );
+    return jsonResponse({ success: false, error: "Server error" }, 500);
   }
 }
 
@@ -126,9 +121,7 @@ export async function DELETE() {
     const session = await getServerSession(authOptions);
 
     if (!session?.address) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Unauthenticated" }),
-      );
+      return jsonResponse({ success: false, error: "Unauthenticated" }, 401);
     }
 
     await db
@@ -136,11 +129,9 @@ export async function DELETE() {
       .where("address", "=", session.address.toLowerCase())
       .execute();
 
-    return new Response(JSON.stringify({ success: true }));
+    return jsonResponse({ success: true });
   } catch (err) {
     console.error(err);
-    return new Response(
-      JSON.stringify({ success: false, error: "Server error" }),
-    );
+    return jsonResponse({ success: false, error: "Server error" }, 500);
   }
 }

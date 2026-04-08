@@ -193,7 +193,7 @@ export default function DynamicFormSection({
                   {el.required && "*"}
                 </Form.Label>
                 <Stack direction="vertical" gap={2}>
-                  {el.options.map((opt, i) => (
+                  {(el.options ?? []).map((opt, i) => (
                     <Form.Check
                       key={i}
                       type="radio"
@@ -218,7 +218,7 @@ export default function DynamicFormSection({
                   {el.required && "*"}
                 </Form.Label>
                 <Stack direction="vertical" gap={2}>
-                  {el.options.map((opt, i) => (
+                  {(el.options ?? []).map((opt, i) => (
                     <Form.Check
                       key={i}
                       type="checkbox"

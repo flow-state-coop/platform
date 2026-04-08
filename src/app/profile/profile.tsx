@@ -61,7 +61,7 @@ export default function Profile() {
 
     try {
       const res = await fetch(
-        `/api/flow-council/profile?address=${address}&includePrivate=true`,
+        `/api/flow-council/profile?address=${encodeURIComponent(address)}&includePrivate=true`,
       );
       const data = await res.json();
 

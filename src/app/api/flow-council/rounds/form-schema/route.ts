@@ -7,6 +7,13 @@ import { validateFormSchema } from "../../validation";
 
 export const dynamic = "force-dynamic";
 
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -14,9 +21,7 @@ export async function GET(request: Request) {
     const flowCouncilAddress = searchParams.get("flowCouncilAddress");
 
     if (!chainId || !flowCouncilAddress || !isAddress(flowCouncilAddress)) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid parameters" }),
-      );
+      return jsonResponse({ success: false, error: "Invalid parameters" }, 400);
     }
 
     const round = await db
@@ -27,9 +32,7 @@ export async function GET(request: Request) {
       .executeTakeFirst();
 
     if (!round) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Round not found" }),
-      );
+      return jsonResponse({ success: false, error: "Round not found" }, 404);
     }
 
     const details =
@@ -37,16 +40,15 @@ export async function GET(request: Request) {
         ? JSON.parse(round.details)
         : (round.details ?? {});
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        formSchema: details.formSchema ?? null,
-      }),
-    );
+    return jsonResponse({
+      success: true,
+      formSchema: details.formSchema ?? null,
+    });
   } catch (err) {
     console.error(err);
-    return new Response(
-      JSON.stringify({ success: false, error: "Failed to fetch form schema" }),
+    return jsonResponse(
+      { success: false, error: "Failed to fetch form schema" },
+      500,
     );
   }
 }
@@ -56,25 +58,19 @@ export async function PUT(request: Request) {
     const session = await getServerSession(authOptions);
 
     if (!session?.address) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Unauthenticated" }),
-      );
+      return jsonResponse({ success: false, error: "Unauthenticated" }, 401);
     }
 
     const { chainId, flowCouncilAddress, formSchema } = await request.json();
 
     if (!chainId || !flowCouncilAddress || !isAddress(flowCouncilAddress)) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid parameters" }),
-      );
+      return jsonResponse({ success: false, error: "Invalid parameters" }, 400);
     }
 
     const round = await findRoundByCouncil(chainId, flowCouncilAddress);
 
     if (!round) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Round not found" }),
-      );
+      return jsonResponse({ success: false, error: "Round not found" }, 404);
     }
 
     const authorized = await isAdmin(
@@ -85,17 +81,13 @@ export async function PUT(request: Request) {
     );
 
     if (!authorized) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Not authorized" }),
-      );
+      return jsonResponse({ success: false, error: "Not authorized" }, 403);
     }
 
     const validation = validateFormSchema(formSchema);
 
     if (!validation.success) {
-      return new Response(
-        JSON.stringify({ success: false, error: validation.error }),
-      );
+      return jsonResponse({ success: false, error: validation.error }, 400);
     }
 
     // Read-merge-write to preserve other details keys
@@ -130,17 +122,16 @@ export async function PUT(request: Request) {
 
     const hasApplications = Number(applicationCount?.count ?? 0) > 0;
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        formSchema: validation.data,
-        hasApplications,
-      }),
-    );
+    return jsonResponse({
+      success: true,
+      formSchema: validation.data,
+      hasApplications,
+    });
   } catch (err) {
     console.error(err);
-    return new Response(
-      JSON.stringify({ success: false, error: "Failed to save form schema" }),
+    return jsonResponse(
+      { success: false, error: "Failed to save form schema" },
+      500,
     );
   }
 }

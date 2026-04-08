@@ -138,15 +138,44 @@ const SOCIAL_BASE_URLS: Record<string, string> = {
   telegram: "https://t.me",
 };
 
+const SOCIAL_ALLOWED_HOSTS: Record<string, string[]> = {
+  twitter: ["x.com", "twitter.com"],
+  github: ["github.com"],
+  linkedin: ["linkedin.com"],
+  farcaster: ["warpcast.com", "farcaster.xyz"],
+  telegram: ["t.me"],
+};
+
 export function normalizeSocialHandle(
   raw: string,
   platform: keyof typeof SOCIAL_BASE_URLS,
 ): string {
   const trimmed = raw.trim();
   if (!trimmed) return "";
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const url = new URL(trimmed);
+      if (url.protocol !== "https:" && url.protocol !== "http:") {
+        return "";
+      }
+      const host = url.hostname.replace(/^www\./, "");
+      const allowed = SOCIAL_ALLOWED_HOSTS[platform] ?? [];
+      if (allowed.includes(host)) {
+        return `https://${host}${url.pathname}${url.search}`;
+      }
+      // Not an allowed host — fall through to treat the last path segment as a handle
+      const lastSegment = url.pathname.split("/").filter(Boolean).pop();
+      if (!lastSegment) return "";
+      const handle = lastSegment.replace(/^@/, "");
+      return `${SOCIAL_BASE_URLS[platform]}/${encodeURIComponent(handle)}`;
+    } catch {
+      return "";
+    }
+  }
+
   const handle = trimmed.replace(/^@/, "");
-  return `${SOCIAL_BASE_URLS[platform]}/${handle}`;
+  return `${SOCIAL_BASE_URLS[platform]}/${encodeURIComponent(handle)}`;
 }
 
 export function normalizeEvidenceUrl(raw: string): string {
@@ -287,31 +316,38 @@ export function validateRoundDetails(
   return { success: true, data: details };
 }
 
-export const formElementSchema = z.object({
-  id: z.string().min(1),
-  type: z.enum([
-    "section",
-    "title",
-    "description",
-    "text",
-    "textarea",
-    "number",
-    "url",
-    "email",
-    "select",
-    "multiSelect",
-    "boolean",
-    "telegram",
-  ]),
-  label: z.string().min(1).max(500),
-  content: z.string().max(5000).optional(),
-  required: z.boolean().optional(),
-  placeholder: z.string().max(500).optional(),
-  charLimit: z.number().int().positive().optional(),
-  min: z.number().optional(),
-  max: z.number().optional(),
-  options: z.array(z.string().max(200)).max(50).optional(),
-});
+export const formElementSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.enum([
+      "section",
+      "title",
+      "description",
+      "text",
+      "textarea",
+      "number",
+      "url",
+      "email",
+      "select",
+      "multiSelect",
+      "boolean",
+      "telegram",
+    ]),
+    label: z.string().min(1).max(500),
+    content: z.string().max(5000).optional(),
+    required: z.boolean().optional(),
+    placeholder: z.string().max(500).optional(),
+    charLimit: z.number().int().positive().optional(),
+    min: z.number().optional(),
+    max: z.number().optional(),
+    options: z.array(z.string().max(200)).max(50).optional(),
+  })
+  .refine(
+    (el) =>
+      (el.type !== "select" && el.type !== "multiSelect") ||
+      (Array.isArray(el.options) && el.options.length > 0),
+    { message: "select and multiSelect require at least one option" },
+  );
 
 export const formSchemaSchema = z.object({
   round: z.array(formElementSchema).max(100),
