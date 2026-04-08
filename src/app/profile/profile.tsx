@@ -11,6 +11,8 @@ import Alert from "react-bootstrap/Alert";
 import Spinner from "react-bootstrap/Spinner";
 import Stack from "react-bootstrap/Stack";
 import Badge from "react-bootstrap/Badge";
+import Card from "react-bootstrap/Card";
+import Link from "next/link";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
 import useSiwe from "@/hooks/siwe";
 
@@ -130,32 +132,6 @@ export default function Profile() {
     }
   };
 
-  const handleClear = async () => {
-    setError("");
-    setSuccess("");
-    setIsSaving(true);
-
-    try {
-      const res = await fetch("/api/flow-council/profile", {
-        method: "DELETE",
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        setForm(INITIAL_PROFILE);
-        setSavedForm(INITIAL_PROFILE);
-        setSuccess("Profile cleared");
-      } else {
-        setError(data.error || "Failed to clear");
-      }
-    } catch (err) {
-      console.error(err);
-      setError("Failed to clear");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const hasChanges = JSON.stringify(form) !== JSON.stringify(savedForm);
 
   if (!hasSession) {
@@ -221,164 +197,157 @@ export default function Profile() {
       {error && <Alert variant="danger">{error}</Alert>}
       {success && <Alert variant="success">{success}</Alert>}
 
-      <div className="mb-4">
-        <Form.Label className="text-muted small">Wallet Address</Form.Label>
-        <p className="font-monospace">{address}</p>
+      <div className="mb-3">
+        <Form.Label className="text-muted small mb-0">
+          Wallet Address
+        </Form.Label>
+        <p className="font-monospace mb-1">{address}</p>
+        {ensName && <p className="text-muted small mb-0">{ensName}</p>}
+        <Link
+          href={`/projects?owner=${address}`}
+          className="text-primary small"
+        >
+          View my projects
+        </Link>
       </div>
 
-      {ensName && (
-        <div className="mb-4">
-          <Form.Label className="text-muted small">ENS Name</Form.Label>
-          <p>{ensName}</p>
-        </div>
-      )}
-
       <Form onSubmit={handleSave}>
-        <h5 className="fw-bold mb-3">Public Information</h5>
+        <Card className="bg-white rounded-4 border-0 shadow-sm p-4 mb-4">
+          <h5 className="fw-bold mb-3">Public Information</h5>
 
-        <Form.Group className="mb-4">
-          <Form.Label>Display Name</Form.Label>
-          <Form.Control
-            type="text"
-            value={form.displayName}
-            onChange={(e) => updateField("displayName", e.target.value)}
-            placeholder="Enter a display name"
-            maxLength={50}
-            className="rounded-3"
-          />
-          <Form.Text className="text-muted">
-            Letters, numbers, spaces, hyphens, and underscores. Max 50
-            characters.
-          </Form.Text>
-        </Form.Group>
-
-        <Form.Group className="mb-4">
-          <Form.Label>Bio / Role</Form.Label>
-          <Form.Control
-            as="textarea"
-            rows={3}
-            value={form.bio}
-            onChange={(e) => updateField("bio", e.target.value)}
-            placeholder="Tell others about yourself"
-            maxLength={300}
-            className="rounded-3"
-          />
-          <Form.Text className="text-muted">Max 300 characters.</Form.Text>
-        </Form.Group>
-
-        <Form.Group className="mb-4">
-          <Form.Label>Twitter / X</Form.Label>
-          <Form.Control
-            type="text"
-            value={form.twitter}
-            onChange={(e) => updateField("twitter", e.target.value)}
-            placeholder="@handle or https://x.com/handle"
-            className="rounded-3"
-          />
-        </Form.Group>
-
-        <Form.Group className="mb-4">
-          <Form.Label>GitHub</Form.Label>
-          <Form.Control
-            type="text"
-            value={form.github}
-            onChange={(e) => updateField("github", e.target.value)}
-            placeholder="username or https://github.com/user"
-            className="rounded-3"
-          />
-        </Form.Group>
-
-        <Form.Group className="mb-4">
-          <Form.Label>LinkedIn</Form.Label>
-          <Form.Control
-            type="text"
-            value={form.linkedin}
-            onChange={(e) => updateField("linkedin", e.target.value)}
-            placeholder="username or https://linkedin.com/in/user"
-            className="rounded-3"
-          />
-        </Form.Group>
-
-        <Form.Group className="mb-4">
-          <Form.Label>Farcaster</Form.Label>
-          <Form.Control
-            type="text"
-            value={form.farcaster}
-            onChange={(e) => updateField("farcaster", e.target.value)}
-            placeholder="@handle or https://warpcast.com/handle"
-            className="rounded-3"
-          />
-        </Form.Group>
-
-        <hr className="my-4" />
-        <h5 className="fw-bold mb-3">
-          Private Information{" "}
-          <Badge bg="secondary" className="ms-2 fw-normal">
-            Private
-          </Badge>
-        </h5>
-        <p className="text-muted small mb-3">
-          Only shared when you include it in an application. Never visible on
-          your public profile.
-        </p>
-
-        <Form.Group className="mb-4">
-          <Form.Label>
-            Email{" "}
-            <Badge bg="light" text="dark" className="ms-1 fw-normal">
-              Private
-            </Badge>
-          </Form.Label>
-          <Form.Control
-            type="email"
-            value={form.email}
-            onChange={(e) => updateField("email", e.target.value)}
-            placeholder="your@email.com"
-            className="rounded-3"
-          />
-          <Form.Text className="text-muted">
-            Auto-fills into applications that ask for an email.
-          </Form.Text>
-        </Form.Group>
-
-        <Form.Group className="mb-4">
-          <Form.Label>
-            Telegram{" "}
-            <Badge bg="light" text="dark" className="ms-1 fw-normal">
-              Private
-            </Badge>
-          </Form.Label>
-          <Form.Control
-            type="text"
-            value={form.telegram}
-            onChange={(e) => updateField("telegram", e.target.value)}
-            placeholder="@handle or https://t.me/handle"
-            className="rounded-3"
-          />
-          <Form.Text className="text-muted">
-            Auto-fills into applications that ask for Telegram.
-          </Form.Text>
-        </Form.Group>
-
-        <Stack direction="horizontal" gap={2}>
-          <Button
-            type="submit"
-            disabled={isSaving || !form.displayName.trim() || !hasChanges}
-            className="rounded-3"
-          >
-            {isSaving ? <Spinner size="sm" /> : "Save"}
-          </Button>
-          {savedForm.displayName && (
-            <Button
-              variant="outline-secondary"
-              onClick={handleClear}
-              disabled={isSaving}
+          <Form.Group className="mb-4">
+            <Form.Label>Display Name</Form.Label>
+            <Form.Control
+              type="text"
+              value={form.displayName}
+              onChange={(e) => updateField("displayName", e.target.value)}
+              placeholder="Enter a display name"
+              maxLength={50}
               className="rounded-3"
-            >
-              Clear
-            </Button>
-          )}
-        </Stack>
+            />
+            <Form.Text className="text-muted">
+              Letters, numbers, spaces, hyphens, and underscores. Max 50
+              characters.
+            </Form.Text>
+          </Form.Group>
+
+          <Form.Group className="mb-4">
+            <Form.Label>Bio / Role</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              value={form.bio}
+              onChange={(e) => updateField("bio", e.target.value)}
+              placeholder="Tell others about yourself"
+              maxLength={300}
+              className="rounded-3"
+            />
+            <Form.Text className="text-muted">Max 300 characters.</Form.Text>
+          </Form.Group>
+
+          <Form.Group className="mb-4">
+            <Form.Label>Twitter / X</Form.Label>
+            <Form.Control
+              type="text"
+              value={form.twitter}
+              onChange={(e) => updateField("twitter", e.target.value)}
+              placeholder="@handle or https://x.com/handle"
+              className="rounded-3"
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-4">
+            <Form.Label>GitHub</Form.Label>
+            <Form.Control
+              type="text"
+              value={form.github}
+              onChange={(e) => updateField("github", e.target.value)}
+              placeholder="username or https://github.com/user"
+              className="rounded-3"
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-4">
+            <Form.Label>LinkedIn</Form.Label>
+            <Form.Control
+              type="text"
+              value={form.linkedin}
+              onChange={(e) => updateField("linkedin", e.target.value)}
+              placeholder="username or https://linkedin.com/in/user"
+              className="rounded-3"
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-0">
+            <Form.Label>Farcaster</Form.Label>
+            <Form.Control
+              type="text"
+              value={form.farcaster}
+              onChange={(e) => updateField("farcaster", e.target.value)}
+              placeholder="@handle or https://farcaster.xyz/handle"
+              className="rounded-3"
+            />
+          </Form.Group>
+        </Card>
+
+        <Card className="bg-white rounded-4 border-0 shadow-sm p-4 mb-4">
+          <h5 className="fw-bold mb-1">
+            Private Information{" "}
+            <Badge bg="secondary" className="ms-2 fw-normal">
+              Private
+            </Badge>
+          </h5>
+          <p className="text-muted small mb-3">
+            Only shared when you include it in an application. Never visible on
+            your public profile.
+          </p>
+
+          <Form.Group className="mb-4">
+            <Form.Label>
+              Email{" "}
+              <Badge bg="light" text="dark" className="ms-1 fw-normal">
+                Private
+              </Badge>
+            </Form.Label>
+            <Form.Control
+              type="email"
+              value={form.email}
+              onChange={(e) => updateField("email", e.target.value)}
+              placeholder="your@email.com"
+              className="rounded-3"
+            />
+            <Form.Text className="text-muted">
+              Auto-fills into applications that ask for an email.
+            </Form.Text>
+          </Form.Group>
+
+          <Form.Group className="mb-0">
+            <Form.Label>
+              Telegram{" "}
+              <Badge bg="light" text="dark" className="ms-1 fw-normal">
+                Private
+              </Badge>
+            </Form.Label>
+            <Form.Control
+              type="text"
+              value={form.telegram}
+              onChange={(e) => updateField("telegram", e.target.value)}
+              placeholder="@handle or https://t.me/handle"
+              className="rounded-3"
+            />
+            <Form.Text className="text-muted">
+              Auto-fills into applications that ask for Telegram.
+            </Form.Text>
+          </Form.Group>
+        </Card>
+
+        <Button
+          type="submit"
+          disabled={isSaving || !form.displayName.trim() || !hasChanges}
+          className="rounded-3 w-100"
+        >
+          {isSaving ? <Spinner size="sm" /> : "Save"}
+        </Button>
       </Form>
     </Container>
   );

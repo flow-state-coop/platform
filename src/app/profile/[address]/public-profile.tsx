@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Container from "react-bootstrap/Container";
 import Spinner from "react-bootstrap/Spinner";
 import Stack from "react-bootstrap/Stack";
+import Link from "next/link";
 
 type PublicProfileData = {
   address: string;
@@ -72,7 +73,13 @@ export default function PublicProfile({ address }: { address: string }) {
 
       <div className="mb-4">
         <p className="text-muted small mb-1">Wallet Address</p>
-        <p className="font-monospace">{address}</p>
+        <p className="font-monospace mb-1">{address}</p>
+        <Link
+          href={`/projects?owner=${address}`}
+          className="text-primary small"
+        >
+          View projects
+        </Link>
       </div>
 
       {profile?.bio && (
