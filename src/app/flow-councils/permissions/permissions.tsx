@@ -31,7 +31,6 @@ import {
 type PermissionsProps = {
   chainId?: number;
   councilId?: string;
-  csrfToken: string;
 };
 type ManagerEntry = {
   address: string;
@@ -59,7 +58,7 @@ const FLOW_COUNCIL_QUERY = gql`
 `;
 
 export default function Permissions(props: PermissionsProps) {
-  const { chainId, councilId, csrfToken } = props;
+  const { chainId, councilId } = props;
 
   const [transactionError, setTransactionError] = useState("");
   const [transactionSuccess, setTransactionSuccess] = useState(false);
@@ -578,7 +577,7 @@ export default function Permissions(props: PermissionsProps) {
                 } else if (connectedChain?.id !== chainId) {
                   switchChain({ chainId: chainId! });
                 } else {
-                  handleSignIn(csrfToken);
+                  handleSignIn();
                 }
               }}
             >

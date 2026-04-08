@@ -30,11 +30,9 @@ import { shuffle, getPlaceholderImageSrc, generateColor } from "@/lib/utils";
 export default function FlowCouncil({
   chainId,
   councilId,
-  csfrToken,
 }: {
   chainId: number;
   councilId: string;
-  csfrToken: string;
 }) {
   const [selectedTab, setSelectedTab] = useState("grantees");
   const [grantees, setGrantees] = useState<Grantee[]>([]);
@@ -429,11 +427,7 @@ export default function FlowCouncil({
               </Stack>
             </Tab.Pane>
             <Tab.Pane eventKey="feed">
-              <FeedTab
-                chainId={chainId}
-                councilId={councilId}
-                csfrToken={csfrToken}
-              />
+              <FeedTab chainId={chainId} councilId={councilId} />
             </Tab.Pane>
           </Tab.Content>
         </Tab.Container>

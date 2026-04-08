@@ -28,7 +28,6 @@ import { getGardensPoolNetwork } from "@/lib/gardensPool";
 
 type ProjectProps = {
   projectId: string;
-  csrfToken: string;
   editMode: boolean;
 };
 
@@ -44,7 +43,7 @@ type ProjectData = {
 const VALID_TABS = ["details", "feed", "milestones"];
 
 export default function Project(props: ProjectProps) {
-  const { projectId, csrfToken, editMode } = props;
+  const { projectId, editMode } = props;
 
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
@@ -450,7 +449,6 @@ export default function Project(props: ProjectProps) {
       {project && isManager && (
         <ProjectModal
           show={showEditModal}
-          csrfToken={csrfToken}
           handleClose={() => {
             setShowEditModal(false);
             router.replace(`/projects/${projectId}`);

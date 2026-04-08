@@ -22,7 +22,6 @@ import { Project, ProjectDetails } from "@/types/project";
 type ProjectSelectionProps = {
   chainId: number;
   councilId: string;
-  csrfToken: string;
 };
 
 type Application = {
@@ -62,7 +61,7 @@ const SUPERFLUID_QUERY = gql`
 `;
 
 export default function ProjectSelection(props: ProjectSelectionProps) {
-  const { chainId, councilId, csrfToken } = props;
+  const { chainId, councilId } = props;
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
@@ -337,7 +336,7 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
               } else if (connectedChain?.id !== chainId) {
                 switchChain({ chainId });
               } else {
-                handleSignIn(csrfToken);
+                handleSignIn();
               }
             }}
           >
