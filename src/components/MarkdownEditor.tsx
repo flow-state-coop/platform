@@ -29,7 +29,7 @@ type MarkdownEditorProps = {
   onBlur?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
   minHeight?: number;
   resizable?: boolean;
-  characterCounter?: { value: string; min?: number; max: number };
+  characterCounter?: { value: string; min?: number; max?: number };
 };
 
 const TOOLBAR_ACTIONS: { action: MarkdownAction; icon: React.ReactNode }[] = [

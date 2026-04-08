@@ -3,7 +3,7 @@
 type CharacterCounterProps = {
   value: string;
   min?: number;
-  max: number;
+  max?: number;
 };
 
 export default function CharacterCounter(props: CharacterCounterProps) {
@@ -11,20 +11,22 @@ export default function CharacterCounter(props: CharacterCounterProps) {
   const count = value.length;
 
   const isTooFew = min !== undefined && count > 0 && count < min;
-  const isTooMany = count > max;
+  const isTooMany = max !== undefined && count > max;
   const isError = isTooFew || isTooMany;
 
-  // Determine what to display
   let displayText: string;
-  if (count === 0 && min !== undefined) {
-    // Starting state with minimum
+  if (count === 0 && min !== undefined && max !== undefined) {
     displayText = `${count}/${max} characters (${min} min.)`;
+  } else if (count === 0 && min !== undefined) {
+    displayText = `0 characters (${min} min.)`;
   } else if (isTooFew) {
-    // Below minimum
     displayText = `${count}/${min} min. characters`;
-  } else {
-    // Valid or above maximum
+  } else if (max !== undefined) {
     displayText = `${count}/${max} characters`;
+  } else if (min !== undefined) {
+    displayText = `${count} characters (${min} min.)`;
+  } else {
+    displayText = `${count} characters`;
   }
 
   return (

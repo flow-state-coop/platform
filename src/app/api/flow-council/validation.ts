@@ -134,7 +134,7 @@ const SOCIAL_BASE_URLS: Record<string, string> = {
   twitter: "https://x.com",
   github: "https://github.com",
   linkedin: "https://linkedin.com/in",
-  farcaster: "https://warpcast.com",
+  farcaster: "https://farcaster.xyz",
   telegram: "https://t.me",
 };
 
@@ -321,7 +321,6 @@ export const formElementSchema = z
     id: z.string().min(1),
     type: z.enum([
       "section",
-      "title",
       "description",
       "text",
       "textarea",
@@ -333,14 +332,20 @@ export const formElementSchema = z
       "boolean",
       "telegram",
     ]),
-    label: z.string().min(1).max(500),
+    label: z.string().max(500),
     content: z.string().max(5000).optional(),
     required: z.boolean().optional(),
     placeholder: z.string().max(500).optional(),
     charLimit: z.number().int().positive().optional(),
+    minCharLimit: z.number().int().nonnegative().optional(),
+    markdown: z.boolean().optional(),
+    baseUrl: z.string().max(500).optional(),
     min: z.number().optional(),
     max: z.number().optional(),
     options: z.array(z.string().max(200)).max(50).optional(),
+  })
+  .refine((el) => el.type === "description" || el.label.length >= 1, {
+    message: "label is required for non-description elements",
   })
   .refine(
     (el) =>

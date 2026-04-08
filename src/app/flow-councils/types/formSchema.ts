@@ -1,4 +1,4 @@
-export type ElementType = "section" | "title" | "description";
+export type ElementType = "section" | "description";
 
 export type QuestionType =
   | "text"
@@ -20,10 +20,6 @@ export type SectionElement = FormElementBase & {
   type: "section";
 };
 
-export type TitleElement = FormElementBase & {
-  type: "title";
-};
-
 export type DescriptionElement = FormElementBase & {
   type: "description";
   content: string;
@@ -40,6 +36,8 @@ export type TextareaQuestion = FormElementBase & {
   required?: boolean;
   placeholder?: string;
   charLimit?: number;
+  minCharLimit?: number;
+  markdown?: boolean;
 };
 
 export type NumberQuestion = FormElementBase & {
@@ -53,6 +51,7 @@ export type UrlQuestion = FormElementBase & {
   type: "url";
   required?: boolean;
   placeholder?: string;
+  baseUrl?: string;
 };
 
 export type EmailQuestion = FormElementBase & {
@@ -84,7 +83,6 @@ export type TelegramQuestion = FormElementBase & {
 
 export type FormElement =
   | SectionElement
-  | TitleElement
   | DescriptionElement
   | TextQuestion
   | TextareaQuestion
