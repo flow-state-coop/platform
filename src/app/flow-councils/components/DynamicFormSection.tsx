@@ -2,6 +2,9 @@
 
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
+import MarkdownEditor from "@/components/MarkdownEditor";
+import CharacterCounter from "@/app/flow-councils/components/CharacterCounter";
+import { normalizeEvidenceUrl } from "@/app/api/flow-council/validation";
 import type { FormElement } from "@/app/flow-councils/types/formSchema";
 
 type Props = {
@@ -36,12 +39,6 @@ export default function DynamicFormSection({
                 {el.label}
               </h4>
             );
-          case "title":
-            return (
-              <h5 key={el.id} className="fw-bold mt-3 mb-2">
-                {el.label}
-              </h5>
-            );
           case "description":
             return (
               <p key={el.id} className="text-muted mb-3">
@@ -49,7 +46,6 @@ export default function DynamicFormSection({
               </p>
             );
           case "text":
-          case "url":
             return (
               <Form.Group key={el.id} className="mb-4">
                 <Form.Label className="fs-lg fw-bold">
@@ -57,7 +53,7 @@ export default function DynamicFormSection({
                   {el.required && "*"}
                 </Form.Label>
                 <Form.Control
-                  type={el.type}
+                  type="text"
                   value={String(getValue(el.id))}
                   disabled={readOnly}
                   placeholder={el.placeholder}
@@ -71,6 +67,46 @@ export default function DynamicFormSection({
                 />
               </Form.Group>
             );
+          case "url": {
+            const urlVal = String(getValue(el.id));
+            const baseUrlInvalid =
+              el.baseUrl && urlVal.trim() && !urlVal.startsWith(el.baseUrl);
+            return (
+              <Form.Group key={el.id} className="mb-4">
+                <Form.Label className="fs-lg fw-bold">
+                  {el.label}
+                  {el.required && "*"}
+                </Form.Label>
+                {el.baseUrl && (
+                  <Form.Text className="text-muted d-block mb-1">
+                    Must start with {el.baseUrl}
+                  </Form.Text>
+                )}
+                <Form.Control
+                  type="url"
+                  value={urlVal}
+                  disabled={readOnly}
+                  placeholder={el.placeholder ?? el.baseUrl}
+                  className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+                  isInvalid={
+                    (validated && !!el.required && !urlVal.trim()) ||
+                    !!baseUrlInvalid
+                  }
+                  onChange={(e) => handleChange(el.id, e.target.value)}
+                  onBlur={() => {
+                    if (urlVal.trim()) {
+                      handleChange(el.id, normalizeEvidenceUrl(urlVal));
+                    }
+                  }}
+                />
+                {baseUrlInvalid && (
+                  <Form.Text className="text-danger">
+                    URL must start with {el.baseUrl}
+                  </Form.Text>
+                )}
+              </Form.Group>
+            );
+          }
           case "email": {
             const val = String(getValue(el.id));
             return (
@@ -131,36 +167,61 @@ export default function DynamicFormSection({
               </Form.Group>
             );
           }
-          case "textarea":
+          case "textarea": {
+            const val = String(getValue(el.id));
+            const useMarkdown = el.markdown !== false;
+            const hasLimits = el.charLimit || el.minCharLimit;
             return (
               <Form.Group key={el.id} className="mb-4">
                 <Form.Label className="fs-lg fw-bold">
                   {el.label}
                   {el.required && "*"}
                 </Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={4}
-                  value={String(getValue(el.id))}
-                  disabled={readOnly}
-                  placeholder={el.placeholder}
-                  maxLength={el.charLimit}
-                  className="bg-white border border-2 border-dark rounded-2 py-3 px-3"
-                  style={{ resize: "vertical" }}
-                  isInvalid={
-                    validated &&
-                    !!el.required &&
-                    !String(getValue(el.id)).trim()
-                  }
-                  onChange={(e) => handleChange(el.id, e.target.value)}
-                />
-                {el.charLimit && (
-                  <Form.Text className="text-muted">
-                    {String(getValue(el.id)).length} / {el.charLimit}
-                  </Form.Text>
+                {useMarkdown ? (
+                  <MarkdownEditor
+                    value={val}
+                    onChange={(e) => handleChange(el.id, e.target.value)}
+                    disabled={readOnly}
+                    placeholder={el.placeholder}
+                    rows={4}
+                    resizable
+                    isInvalid={validated && !!el.required && !val.trim()}
+                    characterCounter={
+                      hasLimits
+                        ? {
+                            value: val,
+                            min: el.minCharLimit,
+                            max: el.charLimit,
+                          }
+                        : undefined
+                    }
+                  />
+                ) : (
+                  <>
+                    <Form.Control
+                      as="textarea"
+                      rows={4}
+                      value={val}
+                      disabled={readOnly}
+                      placeholder={el.placeholder}
+                      maxLength={el.charLimit}
+                      className="bg-white border border-2 border-dark rounded-2 py-3 px-3"
+                      style={{ resize: "vertical" }}
+                      isInvalid={validated && !!el.required && !val.trim()}
+                      onChange={(e) => handleChange(el.id, e.target.value)}
+                    />
+                    {hasLimits && (
+                      <CharacterCounter
+                        value={val}
+                        min={el.minCharLimit}
+                        max={el.charLimit}
+                      />
+                    )}
+                  </>
                 )}
               </Form.Group>
             );
+          }
           case "number":
             return (
               <Form.Group key={el.id} className="mb-4">

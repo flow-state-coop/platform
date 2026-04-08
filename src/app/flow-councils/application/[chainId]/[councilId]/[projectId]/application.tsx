@@ -71,6 +71,7 @@ export default function Application(props: ApplicationProps) {
 
   // Profile data for auto-fill
   const [profileData, setProfileData] = useState<{
+    displayName?: string;
     email?: string;
     telegram?: string;
   }>({});
@@ -108,6 +109,7 @@ export default function Application(props: ApplicationProps) {
       const data = await res.json();
       if (data.success && data.profile) {
         setProfileData({
+          displayName: data.profile.displayName ?? undefined,
           email: data.profile.email ?? undefined,
           telegram: data.profile.telegram ?? undefined,
         });
@@ -217,19 +219,10 @@ export default function Application(props: ApplicationProps) {
     }
   }, [roundData]);
 
-  // Check if nudge should show
   const showNudge = useMemo(() => {
-    if (!formSchema || nudgeDismissed) return false;
-    const hasEmail =
-      formSchema.round.some((el) => el.type === "email") ||
-      formSchema.attestation.some((el) => el.type === "email");
-    const hasTelegram =
-      formSchema.round.some((el) => el.type === "telegram") ||
-      formSchema.attestation.some((el) => el.type === "telegram");
-    return (
-      (hasEmail && !profileData.email) || (hasTelegram && !profileData.telegram)
-    );
-  }, [formSchema, nudgeDismissed, profileData.email, profileData.telegram]);
+    if (nudgeDismissed) return false;
+    return !profileData.displayName || !profileData.email;
+  }, [nudgeDismissed, profileData.displayName, profileData.email]);
 
   const handleBack = () => {
     router.push(`/flow-councils/application/${chainId}/${councilId}`);
@@ -344,13 +337,18 @@ export default function Application(props: ApplicationProps) {
     <Stack direction="vertical">
       {showNudge && (
         <Alert
-          variant="info"
+          variant="warning"
           dismissible
           onClose={() => setNudgeDismissed(true)}
-          className="mb-3"
+          className="mb-3 border border-2 border-warning d-flex align-items-center"
         >
-          Complete your profile to auto-fill contact info across applications.{" "}
-          <Link href="/profile">Go to profile</Link>
+          <div>
+            Complete your profile (display name &amp; email) to auto-fill
+            contact info across applications.{" "}
+            <Link href="/profile" target="_blank">
+              Go to profile
+            </Link>
+          </div>
         </Alert>
       )}
 
@@ -400,14 +398,80 @@ export default function Application(props: ApplicationProps) {
           </Nav.Item>
         </Nav>
 
-        <a
-          href="https://docs.google.com/document/d/1AnyrCNnXMJ9LYC_wXTK_Xu6il2duswp_QiM8oeU9iFA/edit?tab=t.0"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary mb-4"
-        >
-          Application Template
-        </a>
+        {formSchema && (
+          <Button
+            variant="link"
+            className="text-primary mb-4 p-0 text-decoration-underline"
+            onClick={() => {
+              const lines: string[] = ["# Application Template\n"];
+              lines.push("## Project Information\n");
+              lines.push("- **Project Name*** — text");
+              lines.push("- **Manager Addresses*** — ETH addresses");
+              lines.push("- **Description*** — 200–5000 characters, markdown");
+              lines.push("- **Logo*** — 1:1 image upload");
+              lines.push("- **Banner*** — 3:1 image upload");
+              lines.push("- **Website*** — URL");
+              lines.push("- **Demo URL** — URL");
+              lines.push("- **X/Twitter** — handle or URL");
+              lines.push("- **Farcaster** — handle or URL");
+              lines.push("- **Telegram** — group URL");
+              lines.push("- **Discord** — channel URL");
+              lines.push("- **GitHub Repos*** — repository URLs");
+              lines.push("- **Smart Contracts** — addresses + chain");
+              lines.push("- **Other Links** — label + URL\n");
+              lines.push("- **Wallet to receive funding*** — ETH address\n");
+              if (formSchema.round.length > 0) {
+                lines.push("## Round Questions\n");
+                for (const el of formSchema.round) {
+                  if (el.type === "section") lines.push(`### ${el.label}\n`);
+                  else if (el.type === "description")
+                    lines.push(`${el.content || ""}\n`);
+                  else {
+                    const req = "required" in el && el.required ? "*" : "";
+                    const typeName =
+                      el.type === "textarea"
+                        ? "long text"
+                        : el.type === "multiSelect"
+                          ? "multi select"
+                          : el.type;
+                    lines.push(`- **${el.label}**${req} — ${typeName}`);
+                  }
+                }
+                lines.push("");
+              }
+              if (formSchema.attestation.length > 0) {
+                lines.push("## Attestation\n");
+                for (const el of formSchema.attestation) {
+                  if (el.type === "section") lines.push(`### ${el.label}\n`);
+                  else if (el.type === "description")
+                    lines.push(`${el.content || ""}\n`);
+                  else {
+                    const req = "required" in el && el.required ? "*" : "";
+                    const typeName =
+                      el.type === "textarea"
+                        ? "long text"
+                        : el.type === "multiSelect"
+                          ? "multi select"
+                          : el.type;
+                    lines.push(`- **${el.label}**${req} — ${typeName}`);
+                  }
+                }
+                lines.push("");
+              }
+              const blob = new Blob([lines.join("\n")], {
+                type: "text/markdown",
+              });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "application-template.md";
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Download Application Template
+          </Button>
+        )}
 
         <Tab.Content>
           <Tab.Pane eventKey="project">
