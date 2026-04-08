@@ -183,7 +183,7 @@ function Sidebar() {
                   : "",
             }}
           />
-          Application Form
+          Application
         </Link>
         <Link
           href={`/flow-councils/permissions/${chainId}/${selectedCouncil?.id}`}

@@ -16,6 +16,7 @@ import Image from "react-bootstrap/Image";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useRequireAuth from "@/hooks/requireAuth";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
+import MarkdownEditor from "@/components/MarkdownEditor";
 import {
   type FormElement,
   type FormSchema,
@@ -40,7 +41,6 @@ function newQuestion(type: FormElement["type"]): FormElement {
 
   switch (type) {
     case "section":
-    case "title":
       return { ...base, type };
     case "description":
       return { ...base, type, content: "" };
@@ -48,7 +48,7 @@ function newQuestion(type: FormElement["type"]): FormElement {
     case "multiSelect":
       return { ...base, type, required: false, options: [""] };
     case "textarea":
-      return { ...base, type, required: false };
+      return { ...base, type, required: false, markdown: true };
     case "number":
       return { ...base, type, required: false };
     default:
@@ -69,14 +69,12 @@ const QUESTION_TYPES: { value: FormElement["type"]; label: string }[] = [
 ];
 
 const STRUCTURE_TYPES: { value: FormElement["type"]; label: string }[] = [
-  { value: "section", label: "Section Heading" },
-  { value: "title", label: "Title" },
-  { value: "description", label: "Description" },
+  { value: "section", label: "Heading" },
+  { value: "description", label: "Text Section" },
 ];
 
 const TYPE_COLORS: Record<string, string> = {
   section: "#3c655b",
-  title: "#056589",
   description: "#888888",
   text: "#056589",
   textarea: "#49796b",
@@ -89,17 +87,25 @@ const TYPE_COLORS: Record<string, string> = {
   telegram: "#056589",
 };
 
+const TYPE_DISPLAY_NAMES: Record<string, string> = {
+  section: "Heading",
+  description: "Text Section",
+  text: "Text",
+  textarea: "Text Area",
+  number: "Number",
+  url: "URL",
+  email: "Email",
+  select: "Select",
+  multiSelect: "Multi Select",
+  boolean: "Yes/No",
+  telegram: "Telegram",
+};
+
 const PROJECT_FIELDS = [
+  { section: "Admin", fields: ["Project Name", "Manager Addresses"] },
   {
     section: "Basics",
-    fields: [
-      "Project Name",
-      "Description",
-      "Logo",
-      "Banner",
-      "Website",
-      "Demo URL",
-    ],
+    fields: ["Description", "Logo", "Banner", "Website", "Demo URL"],
   },
   {
     section: "Social",
@@ -113,10 +119,7 @@ const PROJECT_FIELDS = [
     ],
   },
   { section: "Technical", fields: ["GitHub Repos", "Smart Contracts"] },
-  {
-    section: "Funding",
-    fields: ["Manager Addresses", "Manager Emails", "Default Funding Address"],
-  },
+  { section: "Additional", fields: ["Other Links"] },
 ];
 
 const pillStyle = (isActive: boolean) => ({
@@ -143,6 +146,7 @@ function ElementCard({
   element,
   index,
   total,
+  error,
   onUpdate,
   onRemove,
   onMoveUp,
@@ -151,14 +155,19 @@ function ElementCard({
   element: FormElement;
   index: number;
   total: number;
+  error?: string;
   onUpdate: (el: FormElement) => void;
   onRemove: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
-  const [expanded, setExpanded] = useState(!element.label);
+  const [expanded, setExpanded] = useState(
+    !element.label && element.type !== "description",
+  );
 
-  const typeColor = TYPE_COLORS[element.type] ?? "#888888";
+  const typeColor = error
+    ? "#dc3545"
+    : (TYPE_COLORS[element.type] ?? "#888888");
 
   return (
     <div
@@ -177,10 +186,10 @@ function ElementCard({
         <div className="d-flex align-items-center gap-2 overflow-hidden">
           <Badge
             pill
-            className="text-capitalize flex-shrink-0 fs-xxs"
+            className="flex-shrink-0 fs-xxs"
             style={{ backgroundColor: typeColor }}
           >
-            {element.type}
+            {TYPE_DISPLAY_NAMES[element.type] ?? element.type}
           </Badge>
           <span className="text-truncate fs-sm">
             {element.label || "(untitled)"}
@@ -221,32 +230,37 @@ function ElementCard({
           </Button>
         </div>
       </div>
+      {error && !expanded && (
+        <span className="text-danger fs-xxs d-block mt-1">{error}</span>
+      )}
       <Collapse in={expanded}>
         <div>
           <hr className="my-2" style={{ opacity: 0.15 }} />
-          <Form.Group className="mb-3">
-            <Form.Label className="fs-sm fw-semi-bold">Label</Form.Label>
-            <Form.Control
-              type="text"
-              className="rounded-3"
-              value={element.label}
-              onChange={(e) => onUpdate({ ...element, label: e.target.value })}
-              placeholder="Question or heading text"
-            />
-          </Form.Group>
+          {element.type !== "description" && (
+            <Form.Group className="mb-3">
+              <Form.Label className="fs-sm fw-semi-bold">Label</Form.Label>
+              <Form.Control
+                type="text"
+                className="rounded-3"
+                value={element.label}
+                onChange={(e) =>
+                  onUpdate({ ...element, label: e.target.value })
+                }
+                placeholder="Question or heading text"
+              />
+            </Form.Group>
+          )}
 
           {element.type === "description" && (
             <Form.Group className="mb-3">
               <Form.Label className="fs-sm fw-semi-bold">Content</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                className="rounded-3"
+              <MarkdownEditor
                 value={element.content}
                 onChange={(e) =>
                   onUpdate({ ...element, content: e.target.value })
                 }
-                placeholder="Description text (supports markdown)"
+                placeholder="Descriptive text (supports markdown)"
+                rows={3}
               />
             </Form.Group>
           )}
@@ -266,7 +280,7 @@ function ElementCard({
             />
           )}
 
-          {"placeholder" in element && (
+          {"placeholder" in element && element.type !== "textarea" && (
             <Form.Group className="mb-3">
               <Form.Label className="fs-sm fw-semi-bold">
                 Placeholder
@@ -286,24 +300,92 @@ function ElementCard({
           )}
 
           {element.type === "textarea" && (
+            <>
+              <Form.Group className="mb-3">
+                <Form.Label className="fs-sm fw-semi-bold">
+                  Placeholder
+                </Form.Label>
+                <Form.Control
+                  type="text"
+                  className="rounded-3"
+                  value={element.placeholder ?? ""}
+                  onChange={(e) =>
+                    onUpdate({ ...element, placeholder: e.target.value })
+                  }
+                />
+              </Form.Group>
+              <Stack direction="horizontal" gap={3} className="mb-3">
+                <Form.Group className="flex-grow-1">
+                  <Form.Label className="fs-sm fw-semi-bold">
+                    Min Characters
+                  </Form.Label>
+                  <Form.Control
+                    type="number"
+                    className="rounded-3"
+                    value={element.minCharLimit ?? ""}
+                    onChange={(e) =>
+                      onUpdate({
+                        ...element,
+                        minCharLimit: e.target.value
+                          ? Number(e.target.value)
+                          : undefined,
+                      })
+                    }
+                    placeholder="None"
+                  />
+                </Form.Group>
+                <Form.Group className="flex-grow-1">
+                  <Form.Label className="fs-sm fw-semi-bold">
+                    Max Characters
+                  </Form.Label>
+                  <Form.Control
+                    type="number"
+                    className="rounded-3"
+                    value={element.charLimit ?? ""}
+                    onChange={(e) =>
+                      onUpdate({
+                        ...element,
+                        charLimit: e.target.value
+                          ? Number(e.target.value)
+                          : undefined,
+                      })
+                    }
+                    placeholder="None"
+                  />
+                </Form.Group>
+              </Stack>
+              <Form.Check
+                type="checkbox"
+                label="Enable Markdown Editor"
+                checked={element.markdown !== false}
+                onChange={(e) =>
+                  onUpdate({ ...element, markdown: e.target.checked })
+                }
+                className="mb-3"
+              />
+            </>
+          )}
+
+          {element.type === "url" && (
             <Form.Group className="mb-3">
               <Form.Label className="fs-sm fw-semi-bold">
-                Character Limit
+                Base URL (optional)
               </Form.Label>
               <Form.Control
-                type="number"
+                type="text"
                 className="rounded-3"
-                value={element.charLimit ?? ""}
+                value={element.baseUrl ?? ""}
                 onChange={(e) =>
                   onUpdate({
                     ...element,
-                    charLimit: e.target.value
-                      ? Number(e.target.value)
-                      : undefined,
+                    baseUrl: e.target.value || undefined,
                   })
                 }
-                placeholder="No limit"
+                placeholder="e.g. https://github.com/"
               />
+              <Form.Text className="text-muted">
+                Responses must start with this URL
+              </Form.Text>
             </Form.Group>
           )}
 
@@ -432,10 +514,18 @@ function ProjectFieldsContent() {
 function ProjectFieldsPreview() {
   return (
     <Form>
+      <h6 className="fw-semi-bold mb-2">Admin</h6>
       <Form.Group className="mb-3">
         <Form.Label className="fs-sm fw-semi-bold">Project Name*</Form.Label>
         <Form.Control type="text" disabled className="rounded-3" />
       </Form.Group>
+      <Form.Group className="mb-3">
+        <Form.Label className="fs-sm fw-semi-bold">
+          Manager Addresses*
+        </Form.Label>
+        <Form.Control type="text" disabled className="rounded-3" />
+      </Form.Group>
+      <h6 className="fw-semi-bold mt-4 mb-2">Basics</h6>
       <Form.Group className="mb-3">
         <Form.Label className="fs-sm fw-semi-bold">Description*</Form.Label>
         <Form.Control
@@ -443,7 +533,7 @@ function ProjectFieldsPreview() {
           rows={3}
           disabled
           className="rounded-3"
-          placeholder="1000–5000 characters"
+          placeholder="200–5000 characters"
         />
       </Form.Group>
       <Form.Group className="mb-3">
@@ -494,11 +584,9 @@ function ProjectFieldsPreview() {
         <Form.Label className="fs-sm fw-semi-bold">GitHub Repos*</Form.Label>
         <Form.Control type="text" disabled className="rounded-3" />
       </Form.Group>
-      <h6 className="fw-semi-bold mt-4 mb-2">Funding</h6>
+      <h6 className="fw-semi-bold mt-4 mb-2">Additional</h6>
       <Form.Group className="mb-3">
-        <Form.Label className="fs-sm fw-semi-bold">
-          Default Funding Address*
-        </Form.Label>
+        <Form.Label className="fs-sm fw-semi-bold">Other Links</Form.Label>
         <Form.Control type="text" disabled className="rounded-3" />
       </Form.Group>
     </Form>
@@ -517,6 +605,9 @@ export default function FormBuilder({ chainId, councilId }: Props) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [mobileView, setMobileView] = useState<MobileView>("editor");
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
 
   const { isMobile } = useMediaQuery();
   const { requireAuth } = useRequireAuth();
@@ -592,9 +683,43 @@ export default function FormBuilder({ chainId, councilId }: Props) {
     setSchema(template);
   };
 
+  const validateElements = (): Record<string, string> => {
+    const errors: Record<string, string> = {};
+    const allElements = [...schema.round, ...schema.attestation];
+    for (const el of allElements) {
+      if (el.type === "description") {
+        if (!el.content?.trim()) {
+          errors[el.id] = "Text Section requires content";
+        }
+      } else if (el.type === "select" || el.type === "multiSelect") {
+        if (!el.label.trim()) {
+          errors[el.id] = "Label is required";
+        } else if (!el.options.some((o) => o.trim())) {
+          errors[el.id] = "At least one non-empty option is required";
+        }
+      } else {
+        if (!el.label.trim()) {
+          errors[el.id] = "Label is required";
+        }
+      }
+    }
+    return errors;
+  };
+
   const handleSave = async () => {
     setError("");
     setSuccess("");
+
+    const errors = validateElements();
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      const count = Object.keys(errors).length;
+      setError(
+        `Please fix ${count} issue${count > 1 ? "s" : ""} before saving`,
+      );
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -650,6 +775,7 @@ export default function FormBuilder({ chainId, councilId }: Props) {
           element={element}
           index={index}
           total={elements.length}
+          error={validationErrors[element.id]}
           onUpdate={(el) => handleUpdate(index, el)}
           onRemove={() => handleRemove(index)}
           onMoveUp={() => handleMoveUp(index)}
@@ -725,7 +851,25 @@ export default function FormBuilder({ chainId, councilId }: Props) {
         {activeTab === "project" ? (
           <ProjectFieldsPreview />
         ) : (
-          <FormPreview elements={elements} />
+          <>
+            {activeTab === "round" && (
+              <Form.Group className="mb-3">
+                <Form.Label className="fs-sm fw-semi-bold">
+                  Wallet to receive funding*
+                </Form.Label>
+                <Form.Control
+                  type="text"
+                  disabled
+                  className="rounded-3"
+                  placeholder="0x..."
+                />
+              </Form.Group>
+            )}
+            <FormPreview
+              elements={elements}
+              validationErrors={validationErrors}
+            />
+          </>
         )}
       </div>
     </Card>
@@ -746,7 +890,7 @@ export default function FormBuilder({ chainId, councilId }: Props) {
               className="justify-content-between flex-wrap"
             >
               <div>
-                <h5 className="fw-semi-bold mb-1">Application Form</h5>
+                <h5 className="fw-semi-bold mb-1">Application</h5>
                 <span className="text-info fs-sm">
                   Configure the questions applicants answer when applying to
                   your round
@@ -859,7 +1003,10 @@ export default function FormBuilder({ chainId, councilId }: Props) {
                   editorContent
                 ) : (
                   <div className="bg-white rounded-3 p-3">
-                    <FormPreview elements={elements} />
+                    <FormPreview
+                      elements={elements}
+                      validationErrors={validationErrors}
+                    />
                   </div>
                 )}
               </>
@@ -890,10 +1037,21 @@ export default function FormBuilder({ chainId, councilId }: Props) {
   );
 }
 
-function FormPreview({ elements }: { elements: FormElement[] }) {
+function FormPreview({
+  elements,
+  validationErrors = {},
+}: {
+  elements: FormElement[];
+  validationErrors?: Record<string, string>;
+}) {
   if (elements.length === 0) {
     return <p className="text-info fs-sm">No items to preview.</p>;
   }
+
+  const errorStyle = (id: string) =>
+    validationErrors[id]
+      ? { borderLeft: "4px solid #dc3545", paddingLeft: 8 }
+      : {};
 
   return (
     <Form>
@@ -901,28 +1059,33 @@ function FormPreview({ elements }: { elements: FormElement[] }) {
         switch (el.type) {
           case "section":
             return (
-              <h5 key={el.id} className="fw-semi-bold mt-3 mb-2">
-                {el.label || "(Section)"}
+              <h5
+                key={el.id}
+                className="fw-semi-bold mt-3 mb-2"
+                style={errorStyle(el.id)}
+              >
+                {el.label || "(Heading)"}
               </h5>
-            );
-          case "title":
-            return (
-              <h6 key={el.id} className="fw-semi-bold mt-2 mb-1">
-                {el.label || "(Title)"}
-              </h6>
             );
           case "description":
             return (
-              <p key={el.id} className="text-info fs-sm mb-2">
-                {el.content || el.label || "(Description)"}
+              <p
+                key={el.id}
+                className="text-info fs-sm mb-2"
+                style={errorStyle(el.id)}
+              >
+                {el.content || el.label || "(Text Section)"}
               </p>
             );
           case "text":
-          case "url":
           case "email":
           case "telegram":
             return (
-              <Form.Group key={el.id} className="mb-3">
+              <Form.Group
+                key={el.id}
+                className="mb-3"
+                style={errorStyle(el.id)}
+              >
                 <Form.Label className="fs-sm fw-semi-bold">
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
@@ -939,12 +1102,52 @@ function FormPreview({ elements }: { elements: FormElement[] }) {
                 />
               </Form.Group>
             );
-          case "textarea":
+          case "url":
             return (
-              <Form.Group key={el.id} className="mb-3">
+              <Form.Group
+                key={el.id}
+                className="mb-3"
+                style={errorStyle(el.id)}
+              >
                 <Form.Label className="fs-sm fw-semi-bold">
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
+                </Form.Label>
+                {el.baseUrl && (
+                  <Form.Text className="text-muted d-block mb-1">
+                    Must start with {el.baseUrl}
+                  </Form.Text>
+                )}
+                <Form.Control
+                  type="url"
+                  disabled
+                  className="rounded-3"
+                  placeholder={el.placeholder ?? el.baseUrl ?? undefined}
+                />
+              </Form.Group>
+            );
+          case "textarea": {
+            const limits: string[] = [];
+            if (el.minCharLimit) limits.push(`Min ${el.minCharLimit}`);
+            if (el.charLimit) limits.push(`Max ${el.charLimit}`);
+            return (
+              <Form.Group
+                key={el.id}
+                className="mb-3"
+                style={errorStyle(el.id)}
+              >
+                <Form.Label className="fs-sm fw-semi-bold">
+                  {el.label || "(Untitled)"}
+                  {el.required && "*"}
+                  {el.markdown !== false && (
+                    <Badge
+                      bg="light"
+                      text="dark"
+                      className="ms-2 fw-normal fs-xxs"
+                    >
+                      Markdown
+                    </Badge>
+                  )}
                 </Form.Label>
                 <Form.Control
                   as="textarea"
@@ -953,11 +1156,21 @@ function FormPreview({ elements }: { elements: FormElement[] }) {
                   className="rounded-3"
                   placeholder={el.placeholder ?? undefined}
                 />
+                {limits.length > 0 && (
+                  <Form.Text className="text-muted">
+                    {limits.join(" / ")} characters
+                  </Form.Text>
+                )}
               </Form.Group>
             );
+          }
           case "number":
             return (
-              <Form.Group key={el.id} className="mb-3">
+              <Form.Group
+                key={el.id}
+                className="mb-3"
+                style={errorStyle(el.id)}
+              >
                 <Form.Label className="fs-sm fw-semi-bold">
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
@@ -973,7 +1186,11 @@ function FormPreview({ elements }: { elements: FormElement[] }) {
             );
           case "select":
             return (
-              <Form.Group key={el.id} className="mb-3">
+              <Form.Group
+                key={el.id}
+                className="mb-3"
+                style={errorStyle(el.id)}
+              >
                 <Form.Label className="fs-sm fw-semi-bold">
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
@@ -990,7 +1207,11 @@ function FormPreview({ elements }: { elements: FormElement[] }) {
             );
           case "multiSelect":
             return (
-              <Form.Group key={el.id} className="mb-3">
+              <Form.Group
+                key={el.id}
+                className="mb-3"
+                style={errorStyle(el.id)}
+              >
                 <Form.Label className="fs-sm fw-semi-bold">
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
@@ -1007,7 +1228,11 @@ function FormPreview({ elements }: { elements: FormElement[] }) {
             );
           case "boolean":
             return (
-              <Form.Group key={el.id} className="mb-3">
+              <Form.Group
+                key={el.id}
+                className="mb-3"
+                style={errorStyle(el.id)}
+              >
                 <Form.Label className="fs-sm fw-semi-bold">
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
