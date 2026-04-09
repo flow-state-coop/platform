@@ -42,6 +42,11 @@ import type {
   AttestationForm,
 } from "@/app/flow-councils/types/round";
 import type { FormSchema } from "@/app/flow-councils/types/formSchema";
+import { GOODBUILDERS_TEMPLATE } from "@/app/flow-councils/types/formSchema";
+import {
+  adaptLegacyRoundData,
+  adaptLegacyAttestationData,
+} from "@/app/flow-councils/utils/legacyFormAdapter";
 import { ProjectDetails } from "@/types/project";
 
 type ReviewProps = {
@@ -228,111 +233,68 @@ export default function Review(props: ReviewProps) {
       return safe;
     };
 
-    // Check if any application uses dynamic form
-    const hasDynamic = fullApplications.some(
-      (app) => app.details && "_formVersion" in app.details,
+    const schema = roundFormSchema ?? GOODBUILDERS_TEMPLATE;
+    const roundQuestions = schema.round.filter(
+      (el) => !["section", "divider", "description"].includes(el.type),
+    );
+    const attestationQuestions = schema.attestation.filter(
+      (el) => !["section", "divider", "description"].includes(el.type),
     );
 
-    let headers: string[];
-    let rows: string[][];
+    const headers = [
+      "application_status",
+      "project_name",
+      "funding_address",
+      "manager_emails",
+      ...roundQuestions.map((q) => q.label),
+      ...attestationQuestions.map((q) => q.label),
+    ];
 
-    if (hasDynamic && roundFormSchema) {
-      // Dynamic form: build columns from schema elements that are questions
-      const roundQuestions = roundFormSchema.round.filter(
-        (el) => !["section", "divider", "description"].includes(el.type),
-      );
-      const attestationQuestions = roundFormSchema.attestation.filter(
-        (el) => !["section", "divider", "description"].includes(el.type),
-      );
+    const rows = fullApplications.map((app) => {
+      const projectDetails = app.projectDetails;
+      let roundValues: Record<string, unknown>;
+      let attestationValues: Record<string, unknown>;
 
-      headers = [
-        "application_status",
-        "project_name",
-        "funding_address",
-        ...roundQuestions.map((q) => q.label),
-        ...attestationQuestions.map((q) => q.label),
-      ];
+      if (roundFormSchema && app.details) {
+        const d = app.details as unknown as {
+          round: Record<string, unknown>;
+          attestation: Record<string, unknown>;
+        };
+        roundValues = d.round ?? {};
+        attestationValues = d.attestation ?? {};
+      } else if (app.details) {
+        roundValues = adaptLegacyRoundData(app.details as RoundForm);
+        const legacyDetails = app.details as ApplicationDetails;
+        const attestation =
+          legacyDetails.attestation ??
+          (
+            legacyDetails as ApplicationDetails & {
+              eligibility?: AttestationForm;
+            }
+          ).eligibility;
+        attestationValues = attestation
+          ? adaptLegacyAttestationData(attestation)
+          : {};
+      } else {
+        roundValues = {};
+        attestationValues = {};
+      }
 
-      rows = fullApplications.map((app) => {
-        const projectDetails = app.projectDetails;
-        const isDynamic = app.details && "_formVersion" in app.details;
-        const dynamicDetails = isDynamic
-          ? (app.details as unknown as {
-              round: Record<string, unknown>;
-              attestation: Record<string, unknown>;
-            })
-          : null;
+      const formatVal = (val: unknown) => {
+        if (Array.isArray(val)) return val.join("|");
+        if (typeof val === "boolean") return val ? "Yes" : "No";
+        return String(val ?? "");
+      };
 
-        return [
-          STATUS_LABELS[app.status] || app.status,
-          projectDetails?.name ?? "",
-          app.fundingAddress ?? "",
-          ...roundQuestions.map((q) => {
-            const val = dynamicDetails?.round?.[q.id];
-            if (Array.isArray(val)) return val.join("|");
-            if (typeof val === "boolean") return val ? "Yes" : "No";
-            return String(val ?? "");
-          }),
-          ...attestationQuestions.map((q) => {
-            const val = dynamicDetails?.attestation?.[q.id];
-            if (Array.isArray(val)) return val.join("|");
-            if (typeof val === "boolean") return val ? "Yes" : "No";
-            return String(val ?? "");
-          }),
-        ].map(escCsv);
-      });
-    } else {
-      // Legacy format
-      headers = [
-        "application_status",
-        "project_name",
-        "funding_address",
-        "manager_emails",
-        "contact_name",
-        "contact_telegram",
-        "project_addresses",
-        "goodcollective_pool_addresses",
-        "x_handle",
-        "farcaster_handle",
-        "github_repo",
-      ];
-
-      rows = fullApplications.map((app) => {
-        const projectDetails = app.projectDetails;
-        const smartContracts = projectDetails?.smartContracts ?? [];
-
-        const projectAddresses = smartContracts
-          .filter((sc) => sc.type === "projectAddress")
-          .map((sc) => sc.address)
-          .join("|");
-
-        const goodCollectivePools = smartContracts
-          .filter((sc) => sc.type === "goodCollectivePool")
-          .map((sc) => sc.address)
-          .join("|");
-
-        const githubRepos = [
-          projectDetails?.github,
-          ...(projectDetails?.githubRepos ?? []),
-        ]
-          .filter(Boolean)
-          .join("|");
-
-        return [
-          STATUS_LABELS[app.status] || app.status,
-          projectDetails?.name ?? "",
-          app.fundingAddress ?? "",
-          (app.managerEmails ?? []).join("|"),
-          app.details?.team?.primaryContact?.name ?? "",
-          app.details?.team?.primaryContact?.telegram ?? "",
-          projectAddresses,
-          goodCollectivePools,
-          projectDetails?.twitter ?? "",
-          projectDetails?.farcaster ?? "",
-          githubRepos,
-        ].map(escCsv);
-      });
-    }
+      return [
+        STATUS_LABELS[app.status] || app.status,
+        projectDetails?.name ?? "",
+        app.fundingAddress ?? "",
+        (app.managerEmails ?? []).join("|"),
+        ...roundQuestions.map((q) => formatVal(roundValues[q.id])),
+        ...attestationQuestions.map((q) => formatVal(attestationValues[q.id])),
+      ].map(escCsv);
+    });
 
     const csv = [
       headers.map(escCsv).join(","),
@@ -1025,88 +987,72 @@ export default function Review(props: ReviewProps) {
                       </Nav.Item>
                     </Nav>
 
-                    <Tab.Content>
-                      <Tab.Pane eventKey="project">
-                        <ViewProjectTab
-                          projectDetails={selectedApplication.projectDetails}
-                          managerAddresses={
-                            selectedApplication.managerAddresses
-                          }
-                          managerEmails={selectedApplication.managerEmails}
-                        />
-                      </Tab.Pane>
-                      <Tab.Pane eventKey="round">
-                        <ViewRoundTab
-                          roundData={
-                            selectedApplication.details &&
-                            !("_formVersion" in selectedApplication.details)
-                              ? {
-                                  previousParticipation:
-                                    selectedApplication.details
-                                      .previousParticipation,
-                                  maturityAndUsage:
-                                    selectedApplication.details
-                                      .maturityAndUsage,
-                                  integration:
-                                    selectedApplication.details.integration,
-                                  buildGoals:
-                                    selectedApplication.details.buildGoals,
-                                  growthGoals:
-                                    selectedApplication.details.growthGoals,
-                                  team: selectedApplication.details.team,
-                                  additional:
-                                    selectedApplication.details.additional,
-                                }
-                              : null
-                          }
-                          formSchema={roundFormSchema}
-                          dynamicValues={
-                            selectedApplication.details &&
-                            "_formVersion" in selectedApplication.details
-                              ? ((
-                                  selectedApplication.details as unknown as {
-                                    round: Record<string, unknown>;
-                                  }
-                                ).round ?? {})
-                              : undefined
-                          }
-                        />
-                      </Tab.Pane>
-                      <Tab.Pane eventKey="eligibility">
-                        <ViewAttestationTab
-                          attestationData={
-                            selectedApplication.details &&
-                            !("_formVersion" in selectedApplication.details)
-                              ? (selectedApplication.details?.attestation ??
-                                (
-                                  selectedApplication.details as ApplicationDetails & {
-                                    eligibility?: AttestationForm;
-                                  }
-                                )?.eligibility ??
-                                null)
-                              : null
-                          }
-                          formSchema={roundFormSchema}
-                          dynamicValues={
-                            selectedApplication.details &&
-                            "_formVersion" in selectedApplication.details
-                              ? ((
-                                  selectedApplication.details as unknown as {
-                                    attestation: Record<string, unknown>;
-                                  }
-                                ).attestation ?? {})
-                              : undefined
-                          }
-                        />
-                      </Tab.Pane>
-                      <Tab.Pane eventKey="comments">
-                        <InternalComments
-                          applicationId={selectedApplication.id}
-                          chainId={chainId}
-                          councilId={councilId}
-                        />
-                      </Tab.Pane>
-                    </Tab.Content>
+                    {(() => {
+                      const details = selectedApplication.details;
+                      const schema = roundFormSchema ?? GOODBUILDERS_TEMPLATE;
+
+                      let roundValues: Record<string, unknown> = {};
+                      let attestationValues: Record<string, unknown> = {};
+
+                      if (roundFormSchema && details) {
+                        const d = details as unknown as {
+                          round: Record<string, unknown>;
+                          attestation: Record<string, unknown>;
+                        };
+                        roundValues = d.round ?? {};
+                        attestationValues = d.attestation ?? {};
+                      } else if (details) {
+                        roundValues = adaptLegacyRoundData(
+                          details as RoundForm,
+                        );
+                        const d = details as ApplicationDetails;
+                        const legacy =
+                          d.attestation ??
+                          (
+                            d as ApplicationDetails & {
+                              eligibility?: AttestationForm;
+                            }
+                          ).eligibility ??
+                          {};
+                        attestationValues =
+                          adaptLegacyAttestationData(legacy);
+                      }
+
+                      return (
+                        <Tab.Content>
+                          <Tab.Pane eventKey="project">
+                            <ViewProjectTab
+                              projectDetails={
+                                selectedApplication.projectDetails
+                              }
+                              managerAddresses={
+                                selectedApplication.managerAddresses
+                              }
+                              managerEmails={selectedApplication.managerEmails}
+                            />
+                          </Tab.Pane>
+                          <Tab.Pane eventKey="round">
+                            <ViewRoundTab
+                              formSchema={schema}
+                              dynamicValues={roundValues}
+                            />
+                          </Tab.Pane>
+                          <Tab.Pane eventKey="eligibility">
+                            <ViewAttestationTab
+                              formSchema={schema}
+                              dynamicValues={attestationValues}
+                            />
+                          </Tab.Pane>
+                          <Tab.Pane eventKey="comments">
+                            <InternalComments
+                              applicationId={selectedApplication.id}
+                              chainId={chainId}
+                              councilId={councilId}
+                            />
+                          </Tab.Pane>
+                        </Tab.Content>
+                      );
+                    })()}
                   </Tab.Container>
                 </div>
               </Stack>

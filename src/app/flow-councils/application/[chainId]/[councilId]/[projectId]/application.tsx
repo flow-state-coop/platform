@@ -22,6 +22,11 @@ import type {
   AttestationForm,
 } from "@/app/flow-councils/types/round";
 import type { FormSchema } from "@/app/flow-councils/types/formSchema";
+import { GOODBUILDERS_TEMPLATE } from "@/app/flow-councils/types/formSchema";
+import {
+  adaptLegacyRoundData,
+  adaptLegacyAttestationData,
+} from "@/app/flow-councils/utils/legacyFormAdapter";
 import { generateApplicationTemplate } from "@/app/flow-councils/lib/generateApplicationTemplate";
 import { networks } from "@/lib/networks";
 import { Project } from "@/types/project";
@@ -608,7 +613,10 @@ export default function Application(props: ApplicationProps) {
             ) : isDynamicFormApp ? (
               <FormSkeleton />
             ) : (
-              <ViewRoundTab roundData={roundData} />
+              <ViewRoundTab
+                formSchema={GOODBUILDERS_TEMPLATE}
+                dynamicValues={roundData ? adaptLegacyRoundData(roundData) : {}}
+              />
             )}
           </Tab.Pane>
           <Tab.Pane eventKey="eligibility">
@@ -689,7 +697,14 @@ export default function Application(props: ApplicationProps) {
             ) : isDynamicFormApp ? (
               <FormSkeleton />
             ) : (
-              <ViewAttestationTab attestationData={attestationData} />
+              <ViewAttestationTab
+                formSchema={GOODBUILDERS_TEMPLATE}
+                dynamicValues={
+                  attestationData
+                    ? adaptLegacyAttestationData(attestationData)
+                    : {}
+                }
+              />
             )}
           </Tab.Pane>
         </Tab.Content>
