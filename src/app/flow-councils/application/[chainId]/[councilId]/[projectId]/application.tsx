@@ -27,6 +27,61 @@ import { networks } from "@/lib/networks";
 import { Project } from "@/types/project";
 import useRequireAuth from "@/hooks/requireAuth";
 
+function FormSkeleton() {
+  return (
+    <div className="placeholder-glow">
+      <span
+        className="placeholder rounded bg-secondary d-block mb-4"
+        style={{ width: 200, height: 28 }}
+      />
+      <span
+        className="placeholder rounded bg-secondary d-block mb-2"
+        style={{ width: 160, height: 18 }}
+      />
+      <span
+        className="placeholder rounded bg-secondary d-block mb-4"
+        style={{ height: 46 }}
+      />
+      <span
+        className="placeholder rounded bg-secondary d-block mb-2"
+        style={{ width: 140, height: 18 }}
+      />
+      <span
+        className="placeholder rounded bg-secondary d-block mb-4"
+        style={{ height: 46 }}
+      />
+      <span
+        className="placeholder rounded bg-secondary d-block mb-2"
+        style={{ width: 180, height: 18 }}
+      />
+      <span
+        className="placeholder rounded bg-secondary d-block mb-4"
+        style={{ height: 100 }}
+      />
+      <span
+        className="placeholder rounded bg-secondary d-block mt-5 mb-4"
+        style={{ width: 200, height: 28 }}
+      />
+      <span
+        className="placeholder rounded bg-secondary d-block mb-2"
+        style={{ width: 120, height: 18 }}
+      />
+      <span
+        className="placeholder rounded bg-secondary d-block mb-4"
+        style={{ height: 46 }}
+      />
+      <span
+        className="placeholder rounded bg-secondary d-block mb-2"
+        style={{ width: 150, height: 18 }}
+      />
+      <span
+        className="placeholder rounded bg-secondary d-block"
+        style={{ height: 46 }}
+      />
+    </div>
+  );
+}
+
 type ApplicationProps = {
   chainId: number;
   councilId: string;
@@ -69,6 +124,7 @@ export default function Application(props: ApplicationProps) {
   const [dynamicValidated, setDynamicValidated] = useState(false);
   const [dynamicSaving, setDynamicSaving] = useState(false);
   const [dynamicError, setDynamicError] = useState("");
+  const [isDynamicFormApp, setIsDynamicFormApp] = useState(false);
 
   // Round name for template download
   const [roundName, setRoundName] = useState<string>("");
@@ -133,7 +189,6 @@ export default function Application(props: ApplicationProps) {
     if (!projectId || !address) return;
 
     try {
-      setIsLoading(true);
       const res = await fetch(
         `/api/flow-council/projects/${projectId}?managerAddress=${address}`,
       );
@@ -154,8 +209,6 @@ export default function Application(props: ApplicationProps) {
       }
     } catch (err) {
       console.error("Failed to fetch project:", err);
-    } finally {
-      setIsLoading(false);
     }
   }, [projectId, address]);
 
@@ -184,7 +237,7 @@ export default function Application(props: ApplicationProps) {
                 : app.details;
 
             if (details._formVersion === 1) {
-              // Dynamic form data
+              setIsDynamicFormApp(true);
               setDynamicRoundValues(details.round ?? {});
               setDynamicAttestationValues(details.attestation ?? {});
               if (app.fundingAddress) {
@@ -206,16 +259,26 @@ export default function Application(props: ApplicationProps) {
   }, [projectId, address, chainId, councilId]);
 
   useEffect(() => {
-    fetchFormSchema();
-    fetchProfile();
-  }, [fetchFormSchema, fetchProfile]);
-
-  useEffect(() => {
     if (projectId && address) {
-      fetchProject();
-      fetchApplication();
+      setIsLoading(true);
+      Promise.all([
+        fetchFormSchema(),
+        fetchProfile(),
+        fetchProject(),
+        fetchApplication(),
+      ]).finally(() => setIsLoading(false));
+    } else {
+      fetchFormSchema();
+      fetchProfile();
     }
-  }, [fetchProject, fetchApplication, projectId, address]);
+  }, [
+    fetchFormSchema,
+    fetchProfile,
+    fetchProject,
+    fetchApplication,
+    projectId,
+    address,
+  ]);
 
   useEffect(() => {
     if (project) {
@@ -349,6 +412,26 @@ export default function Application(props: ApplicationProps) {
 
   if (!chainId || !network || !councilId) {
     return <span className="m-auto fs-4 fw-bold">Invalid council</span>;
+  }
+
+  if (isLoading) {
+    return (
+      <Stack direction="vertical">
+        <Nav className="gap-2 mb-4 border-0">
+          {["Project", "Round", "Attestation"].map((label) => (
+            <Nav.Item key={label}>
+              <span
+                className="d-block py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary bg-white text-primary"
+                style={{ width: 140 }}
+              >
+                {label}
+              </span>
+            </Nav.Item>
+          ))}
+        </Nav>
+        <FormSkeleton />
+      </Stack>
+    );
   }
 
   return (
@@ -503,8 +586,9 @@ export default function Application(props: ApplicationProps) {
                     )}
                   </Stack>
                 </>
+              ) : isDynamicFormApp ? (
+                <FormSkeleton />
               ) : (
-                // Legacy mode
                 <RoundTab
                   chainId={chainId}
                   councilId={councilId}
@@ -521,6 +605,8 @@ export default function Application(props: ApplicationProps) {
                 values={dynamicRoundValues}
                 readOnly
               />
+            ) : isDynamicFormApp ? (
+              <FormSkeleton />
             ) : (
               <ViewRoundTab roundData={roundData} />
             )}
@@ -575,8 +661,9 @@ export default function Application(props: ApplicationProps) {
                     )}
                   </Stack>
                 </>
+              ) : isDynamicFormApp ? (
+                <FormSkeleton />
               ) : (
-                // Legacy mode
                 <AttestationTab
                   chainId={chainId}
                   councilId={councilId}
@@ -599,6 +686,8 @@ export default function Application(props: ApplicationProps) {
                 values={dynamicAttestationValues}
                 readOnly
               />
+            ) : isDynamicFormApp ? (
+              <FormSkeleton />
             ) : (
               <ViewAttestationTab attestationData={attestationData} />
             )}
