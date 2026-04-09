@@ -221,10 +221,11 @@ export default function Review(props: ReviewProps) {
     }
 
     const escCsv = (value: string) => {
-      if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-        return `"${value.replace(/"/g, '""')}"`;
+      const safe = /^[=+\-@]/.test(value) ? `\t${value}` : value;
+      if (safe.includes(",") || safe.includes('"') || safe.includes("\n")) {
+        return `"${safe.replace(/"/g, '""')}"`;
       }
-      return value;
+      return safe;
     };
 
     // Check if any application uses dynamic form

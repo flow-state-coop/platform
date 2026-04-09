@@ -58,62 +58,66 @@ function Sidebar() {
     (council: { id: string }) => council.id === councilId?.toLowerCase(),
   );
 
+  const councilIdsKey = useMemo(
+    () =>
+      (flowCouncilsQueryRes?.flowCouncils ?? [])
+        .map((c: { id: string }) => c.id)
+        .slice()
+        .sort()
+        .join(","),
+    [flowCouncilsQueryRes],
+  );
+
   useEffect(() => {
+    if (!councilIdsKey) {
+      return;
+    }
+
+    const ids: string[] = councilIdsKey.split(",").filter(Boolean);
+    let cancelled = false;
+
     (async () => {
-      if (!flowCouncilsQueryRes?.flowCouncils) {
-        return;
-      }
-
-      const councils: Council[] = [];
-      const promises = [];
-
-      for (const flowCouncil of flowCouncilsQueryRes.flowCouncils) {
-        promises.push(
-          (async () => {
-            // Fetch round name from database
-            let roundName = "Flow Council";
-            try {
-              const res = await fetch(
-                `/api/flow-council/rounds?chainId=${chainId}&flowCouncilAddress=${flowCouncil.id}`,
-              );
-              const data = await res.json();
-              if (data.success && data.round?.details) {
-                const details =
-                  typeof data.round.details === "string"
-                    ? JSON.parse(data.round.details)
-                    : data.round.details;
-                roundName = details?.name ?? "Flow Council";
-              }
-            } catch (err) {
-              console.error(err);
+      const fetched = await Promise.all(
+        ids.map(async (id: string) => {
+          let roundName = "Flow Council";
+          try {
+            const res = await fetch(
+              `/api/flow-council/rounds?chainId=${chainId}&flowCouncilAddress=${id}`,
+            );
+            const data = await res.json();
+            if (data.success && data.round?.details) {
+              const details =
+                typeof data.round.details === "string"
+                  ? JSON.parse(data.round.details)
+                  : data.round.details;
+              roundName = details?.name ?? "Flow Council";
             }
+          } catch (err) {
+            console.error(err);
+          }
+          return {
+            id,
+            name: roundName || "Flow Council",
+            description: "N/A",
+          };
+        }),
+      );
 
-            councils.push({
-              id: flowCouncil.id,
-              name: roundName || "Flow Council",
-              description: "N/A",
-            });
-          })(),
-        );
-      }
+      if (cancelled) return;
 
-      await Promise.all(promises);
-
-      councils.sort((a, b) => {
-        if (a.name < b.name) {
-          return -1;
-        }
-
-        if (a.name > b.name) {
-          return 1;
-        }
-
+      fetched.sort((a, b) => {
+        if (a.name < b.name) return -1;
+        if (a.name > b.name) return 1;
         return 0;
       });
 
-      setCouncils(councils);
+      setCouncils(fetched);
     })();
-  }, [flowCouncilsQueryRes, chainId]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [councilIdsKey, chainId]);
 
   const SidebarLinks = () => {
     return (

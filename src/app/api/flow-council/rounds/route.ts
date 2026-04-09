@@ -1,8 +1,32 @@
 import { getServerSession } from "next-auth/next";
+import { z } from "zod";
 import { isAddress } from "viem";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { networks } from "@/lib/networks";
+
+const roundPatchSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  description: z.string().trim().min(1).max(5000),
+  logoUrl: z
+    .string()
+    .trim()
+    .max(2000)
+    .refine(
+      (v) => {
+        if (!v) return true;
+        try {
+          const u = new URL(v);
+          return ["http:", "https:"].includes(u.protocol);
+        } catch {
+          return false;
+        }
+      },
+      { message: "logoUrl must be an http(s) URL" },
+    )
+    .optional()
+    .or(z.literal("")),
+});
 
 export const dynamic = "force-dynamic";
 
@@ -56,20 +80,15 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const {
-      chainId,
-      flowCouncilAddress,
-      name,
-      description,
-      logoUrl,
-      superappSplitterAddress,
-    } = await request.json();
+    const body = await request.json();
+    const { chainId, flowCouncilAddress, superappSplitterAddress } = body;
 
     const session = await getServerSession(authOptions);
 
     if (!session?.address) {
       return new Response(
         JSON.stringify({ success: false, error: "Unauthenticated" }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -90,14 +109,17 @@ export async function PATCH(request: Request) {
       );
     }
 
-    if (!name || !description) {
+    const parsed = roundPatchSchema.safeParse(body);
+    if (!parsed.success) {
       return new Response(
         JSON.stringify({
           success: false,
-          error: "Missing name or description",
+          error: parsed.error.issues[0]?.message ?? "Invalid round data",
         }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
+    const { name, description, logoUrl } = parsed.data;
 
     const round = await db
       .selectFrom("rounds")

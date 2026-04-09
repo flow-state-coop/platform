@@ -195,8 +195,8 @@ const evidenceLinkSchema = z.object({
     .refine(
       (url) => {
         try {
-          new URL(url);
-          return true;
+          const parsed = new URL(url);
+          return ["http:", "https:"].includes(parsed.protocol);
         } catch {
           return false;
         }
@@ -233,7 +233,7 @@ export const milestoneDefinitionSchema = z.object({
 
 export const reactionEmojiSchema = z.enum(ALLOWED_REACTIONS);
 
-export const displayNameSchema = z
+const displayNameSchema = z
   .string()
   .trim()
   .min(1)
@@ -316,7 +316,7 @@ export function validateRoundDetails(
   return { success: true, data: details };
 }
 
-export const formElementSchema = z
+const formElementSchema = z
   .object({
     id: z.string().min(1),
     type: z.enum([
@@ -360,7 +360,7 @@ export const formElementSchema = z
     { message: "select and multiSelect require at least one option" },
   );
 
-export const formSchemaSchema = z.object({
+const formSchemaSchema = z.object({
   round: z.array(formElementSchema).max(100),
   attestation: z.array(formElementSchema).max(100),
 });
@@ -380,9 +380,9 @@ export function validateFormSchema(
 
 type FormElement = z.infer<typeof formElementSchema>;
 
-const STRUCTURAL_TYPES = new Set(["section", "title", "description"]);
+const STRUCTURAL_TYPES = new Set(["section", "description", "divider"]);
 const MAX_STRING_LENGTH = 10_000;
-const MAX_DETAILS_SIZE = 512_000; // 512 KB
+export const MAX_DETAILS_SIZE = 512_000; // 512 KB
 
 function validateFormSection(
   values: Record<string, unknown>,
@@ -418,7 +418,6 @@ function validateFormSection(
     switch (el.type) {
       case "text":
       case "textarea":
-      case "url":
       case "email":
       case "telegram": {
         if (typeof val !== "string") {
@@ -432,6 +431,36 @@ function validateFormSection(
           return {
             success: false,
             error: `"${el.label}" exceeds the ${limit} character limit`,
+          };
+        }
+        break;
+      }
+      case "url": {
+        if (typeof val !== "string") {
+          return {
+            success: false,
+            error: `"${el.label}" must be text`,
+          };
+        }
+        const limit = el.charLimit ?? MAX_STRING_LENGTH;
+        if (val.length > limit) {
+          return {
+            success: false,
+            error: `"${el.label}" exceeds the ${limit} character limit`,
+          };
+        }
+        try {
+          const parsed = new URL(val);
+          if (!["http:", "https:"].includes(parsed.protocol)) {
+            return {
+              success: false,
+              error: `"${el.label}" must be an http(s) URL`,
+            };
+          }
+        } catch {
+          return {
+            success: false,
+            error: `"${el.label}" must be a valid URL`,
           };
         }
         break;
@@ -477,8 +506,7 @@ function validateFormSection(
         if (
           !Array.isArray(val) ||
           val.some(
-            (v: unknown) =>
-              typeof v !== "string" || !el.options?.includes(v),
+            (v: unknown) => typeof v !== "string" || !el.options?.includes(v),
           )
         ) {
           return {
@@ -515,8 +543,7 @@ export function validateDynamicRoundDetails(
   data: Record<string, unknown>,
   formElements: FormElement[],
 ): ValidationResult<Record<string, unknown>> {
-  const serialized = JSON.stringify(data);
-  if (serialized.length > MAX_DETAILS_SIZE) {
+  if (JSON.stringify(data).length > MAX_DETAILS_SIZE) {
     return { success: false, error: "Payload too large" };
   }
 
@@ -536,8 +563,7 @@ export function validateDynamicAttestationDetails(
   data: Record<string, unknown>,
   formElements: FormElement[],
 ): ValidationResult<Record<string, unknown>> {
-  const serialized = JSON.stringify(data);
-  if (serialized.length > MAX_DETAILS_SIZE) {
+  if (JSON.stringify(data).length > MAX_DETAILS_SIZE) {
     return { success: false, error: "Payload too large" };
   }
 

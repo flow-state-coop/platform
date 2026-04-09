@@ -7,6 +7,7 @@ import { errorResponse } from "../../utils";
 import {
   validateRoundDetails,
   validateDynamicRoundDetails,
+  MAX_DETAILS_SIZE,
 } from "../validation";
 import { isRoundAdmin, hasOnChainRole, findRoundByCouncil } from "../auth";
 
@@ -193,6 +194,15 @@ export async function PUT(request: Request) {
     if (!session?.address) {
       return new Response(
         JSON.stringify({ success: false, error: "Unauthenticated" }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    const contentLength = Number(request.headers.get("content-length") ?? 0);
+    if (contentLength > MAX_DETAILS_SIZE) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Payload too large" }),
+        { status: 413, headers: { "Content-Type": "application/json" } },
       );
     }
 

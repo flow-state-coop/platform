@@ -8,7 +8,10 @@ import {
   getRoundAdminEmailsExcludingAddress,
 } from "../../email";
 import { findRoundByCouncil, isAdmin } from "../../auth";
-import { validateDynamicAttestationDetails } from "../../validation";
+import {
+  validateDynamicAttestationDetails,
+  MAX_DETAILS_SIZE,
+} from "../../validation";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +26,7 @@ export async function GET(
     if (!session?.address) {
       return new Response(
         JSON.stringify({ success: false, error: "Unauthenticated" }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -155,6 +159,7 @@ export async function PATCH(
     if (!session?.address) {
       return new Response(
         JSON.stringify({ success: false, error: "Unauthenticated" }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -162,6 +167,14 @@ export async function PATCH(
     if (isNaN(appId)) {
       return new Response(
         JSON.stringify({ success: false, error: "Invalid application ID" }),
+      );
+    }
+
+    const contentLength = Number(request.headers.get("content-length") ?? 0);
+    if (contentLength > MAX_DETAILS_SIZE) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Payload too large" }),
+        { status: 413, headers: { "Content-Type": "application/json" } },
       );
     }
 

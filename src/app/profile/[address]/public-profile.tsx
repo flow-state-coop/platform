@@ -43,7 +43,7 @@ export default function PublicProfile({ address }: { address: string }) {
     (async () => {
       try {
         const res = await fetch(
-          `/api/flow-council/profile/public?address=${encodeURIComponent(address)}`,
+          `/api/flow-council/profile?address=${encodeURIComponent(address)}`,
         );
         const data = await res.json();
         if (data.success) {
