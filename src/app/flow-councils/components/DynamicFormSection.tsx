@@ -91,7 +91,7 @@ export default function DynamicFormSection({
                   type="text"
                   value={String(getValue(el.id))}
                   disabled={readOnly}
-                  placeholder={el.placeholder}
+                  placeholder={readOnly ? undefined : el.placeholder}
                   className={inputClass}
                   isInvalid={
                     validated &&
@@ -113,7 +113,7 @@ export default function DynamicFormSection({
                   {el.label}
                   {el.required && "*"}
                 </Form.Label>
-                {el.baseUrl && (
+                {!readOnly && el.baseUrl && (
                   <Form.Text className="text-muted d-block mb-1">
                     Must start with {el.baseUrl}
                   </Form.Text>
@@ -122,7 +122,9 @@ export default function DynamicFormSection({
                   type="url"
                   value={urlVal}
                   disabled={readOnly}
-                  placeholder={el.placeholder ?? el.baseUrl}
+                  placeholder={
+                    readOnly ? undefined : (el.placeholder ?? el.baseUrl)
+                  }
                   className={inputClass}
                   isInvalid={
                     (validated && !!el.required && !urlVal.trim()) ||
@@ -156,7 +158,11 @@ export default function DynamicFormSection({
                   type="email"
                   value={val}
                   disabled={readOnly}
-                  placeholder={profileData?.email ?? "email@example.com"}
+                  placeholder={
+                    readOnly
+                      ? undefined
+                      : (profileData?.email ?? "email@example.com")
+                  }
                   className={inputClass}
                   isInvalid={validated && !!el.required && !val.trim()}
                   onChange={(e) => handleChange(el.id, e.target.value)}
@@ -187,7 +193,9 @@ export default function DynamicFormSection({
                   type="text"
                   value={val}
                   disabled={readOnly}
-                  placeholder={profileData?.telegram ?? "@handle"}
+                  placeholder={
+                    readOnly ? undefined : (profileData?.telegram ?? "@handle")
+                  }
                   className={inputClass}
                   isInvalid={validated && !!el.required && !val.trim()}
                   onChange={(e) => handleChange(el.id, e.target.value)}
@@ -413,7 +421,9 @@ export default function DynamicFormSection({
                   type="text"
                   value={val}
                   disabled={readOnly}
-                  placeholder={el.placeholder ?? "0x..."}
+                  placeholder={
+                    readOnly ? undefined : (el.placeholder ?? "0x...")
+                  }
                   className={inputClass}
                   isInvalid={
                     (validated && !!el.required && !val.trim()) || !!ethInvalid
