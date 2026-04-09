@@ -124,7 +124,7 @@ export async function PATCH(request: Request) {
     const round = await db
       .selectFrom("rounds")
       .innerJoin("roundAdmins", "rounds.id", "roundAdmins.roundId")
-      .select(["rounds.id"])
+      .select(["rounds.id", "rounds.details"])
       .where("rounds.chainId", "=", chainId)
       .where("rounds.flowCouncilAddress", "=", flowCouncilAddress.toLowerCase())
       .where("roundAdmins.adminAddress", "=", session.address.toLowerCase())
@@ -144,16 +144,10 @@ export async function PATCH(request: Request) {
         ? superappSplitterAddress.toLowerCase()
         : undefined;
 
-    const existingRound = await db
-      .selectFrom("rounds")
-      .select("details")
-      .where("id", "=", round.id)
-      .executeTakeFirst();
-
     const existingDetails =
-      typeof existingRound?.details === "string"
-        ? JSON.parse(existingRound.details)
-        : (existingRound?.details ?? {});
+      typeof round.details === "string"
+        ? JSON.parse(round.details)
+        : (round.details ?? {});
 
     const mergedDetails = { ...existingDetails, name, description, logoUrl };
 

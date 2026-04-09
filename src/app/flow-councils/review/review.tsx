@@ -239,10 +239,10 @@ export default function Review(props: ReviewProps) {
     if (hasDynamic && roundFormSchema) {
       // Dynamic form: build columns from schema elements that are questions
       const roundQuestions = roundFormSchema.round.filter(
-        (el) => !["section", "title", "description"].includes(el.type),
+        (el) => !["section", "divider", "description"].includes(el.type),
       );
       const attestationQuestions = roundFormSchema.attestation.filter(
-        (el) => !["section", "title", "description"].includes(el.type),
+        (el) => !["section", "divider", "description"].includes(el.type),
       );
 
       headers = [
@@ -334,7 +334,10 @@ export default function Review(props: ReviewProps) {
       });
     }
 
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const csv = [
+      headers.map(escCsv).join(","),
+      ...rows.map((r) => r.join(",")),
+    ].join("\n");
 
     const now = new Date();
     const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;

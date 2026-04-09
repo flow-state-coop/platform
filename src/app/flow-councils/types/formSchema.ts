@@ -1,42 +1,28 @@
-export type ElementType = "section" | "description" | "divider";
-
-export type QuestionType =
-  | "text"
-  | "textarea"
-  | "number"
-  | "url"
-  | "email"
-  | "select"
-  | "multiSelect"
-  | "boolean"
-  | "telegram"
-  | "ethAddress";
-
-export type FormElementBase = {
+type FormElementBase = {
   id: string;
   label: string;
 };
 
-export type SectionElement = FormElementBase & {
+type SectionElement = FormElementBase & {
   type: "section";
 };
 
-export type DescriptionElement = FormElementBase & {
+type DescriptionElement = FormElementBase & {
   type: "description";
   content: string;
 };
 
-export type DividerElement = FormElementBase & {
+type DividerElement = FormElementBase & {
   type: "divider";
 };
 
-export type TextQuestion = FormElementBase & {
+type TextQuestion = FormElementBase & {
   type: "text";
   required?: boolean;
   placeholder?: string;
 };
 
-export type TextareaQuestion = FormElementBase & {
+type TextareaQuestion = FormElementBase & {
   type: "textarea";
   required?: boolean;
   placeholder?: string;
@@ -45,48 +31,48 @@ export type TextareaQuestion = FormElementBase & {
   markdown?: boolean;
 };
 
-export type NumberQuestion = FormElementBase & {
+type NumberQuestion = FormElementBase & {
   type: "number";
   required?: boolean;
   min?: number;
   max?: number;
 };
 
-export type UrlQuestion = FormElementBase & {
+type UrlQuestion = FormElementBase & {
   type: "url";
   required?: boolean;
   placeholder?: string;
   baseUrl?: string;
 };
 
-export type EmailQuestion = FormElementBase & {
+type EmailQuestion = FormElementBase & {
   type: "email";
   required?: boolean;
 };
 
-export type SelectQuestion = FormElementBase & {
+type SelectQuestion = FormElementBase & {
   type: "select";
   required?: boolean;
   options: string[];
 };
 
-export type MultiSelectQuestion = FormElementBase & {
+type MultiSelectQuestion = FormElementBase & {
   type: "multiSelect";
   required?: boolean;
   options: string[];
 };
 
-export type BooleanQuestion = FormElementBase & {
+type BooleanQuestion = FormElementBase & {
   type: "boolean";
   required?: boolean;
 };
 
-export type TelegramQuestion = FormElementBase & {
+type TelegramQuestion = FormElementBase & {
   type: "telegram";
   required?: boolean;
 };
 
-export type EthAddressQuestion = FormElementBase & {
+type EthAddressQuestion = FormElementBase & {
   type: "ethAddress";
   required?: boolean;
   placeholder?: string;

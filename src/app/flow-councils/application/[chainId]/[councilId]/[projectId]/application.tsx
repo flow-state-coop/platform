@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import Link from "next/link";
@@ -87,28 +87,22 @@ export default function Application(props: ApplicationProps) {
 
   const network = networks.find((n) => n.id === chainId);
 
-  // Fetch form schema and round name
+  // Fetch round (returns both name and form schema in details)
   const fetchFormSchema = useCallback(async () => {
     try {
-      const [schemaRes, roundRes] = await Promise.all([
-        fetch(
-          `/api/flow-council/rounds/form-schema?chainId=${chainId}&flowCouncilAddress=${councilId}`,
-        ),
-        fetch(
-          `/api/flow-council/rounds?chainId=${chainId}&flowCouncilAddress=${councilId}`,
-        ),
-      ]);
-      const schemaData = await schemaRes.json();
-      if (schemaData.success && schemaData.formSchema) {
-        setFormSchema(schemaData.formSchema);
-      }
-      const roundData = await roundRes.json();
+      const res = await fetch(
+        `/api/flow-council/rounds?chainId=${chainId}&flowCouncilAddress=${councilId}`,
+      );
+      const roundData = await res.json();
       if (roundData.success && roundData.round?.details) {
         const details =
           typeof roundData.round.details === "string"
             ? JSON.parse(roundData.round.details)
             : roundData.round.details;
         setRoundName(details?.name ?? "");
+        if (details?.formSchema) {
+          setFormSchema(details.formSchema);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch form schema:", err);
@@ -235,9 +229,18 @@ export default function Application(props: ApplicationProps) {
     }
   }, [roundData]);
 
-  const showNudge = useMemo(() => {
-    return !profileData.displayName || !profileData.email;
-  }, [profileData.displayName, profileData.email]);
+  const showNudge = !profileData.displayName || !profileData.email;
+
+  const handleDynamicRoundChange = useCallback((id: string, value: unknown) => {
+    setDynamicRoundValues((prev) => ({ ...prev, [id]: value }));
+  }, []);
+
+  const handleDynamicAttestationChange = useCallback(
+    (id: string, value: unknown) => {
+      setDynamicAttestationValues((prev) => ({ ...prev, [id]: value }));
+    },
+    [],
+  );
 
   const handleBack = () => {
     router.push(`/flow-councils/application/${chainId}/${councilId}`);
@@ -462,12 +465,7 @@ export default function Application(props: ApplicationProps) {
                   <DynamicFormSection
                     elements={formSchema.round}
                     values={dynamicRoundValues}
-                    onChange={(id, value) =>
-                      setDynamicRoundValues((prev) => ({
-                        ...prev,
-                        [id]: value,
-                      }))
-                    }
+                    onChange={handleDynamicRoundChange}
                     validated={dynamicValidated}
                     profileData={profileData}
                   />
@@ -535,12 +533,7 @@ export default function Application(props: ApplicationProps) {
                   <DynamicFormSection
                     elements={formSchema.attestation}
                     values={dynamicAttestationValues}
-                    onChange={(id, value) =>
-                      setDynamicAttestationValues((prev) => ({
-                        ...prev,
-                        [id]: value,
-                      }))
-                    }
+                    onChange={handleDynamicAttestationChange}
                     validated={dynamicValidated}
                     profileData={profileData}
                   />

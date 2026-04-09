@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { isAddress } from "viem";
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
@@ -30,22 +31,26 @@ export default function DynamicFormSection({
     if (onChange) onChange(id, value);
   };
 
-  const hasSections = elements.some((el) => el.type === "section");
-  let sectionIdx = 0;
-  let questionIdx = 0;
-  const numberMap = new Map<string, string>();
-  for (const el of elements) {
-    if (el.type === "section") {
-      sectionIdx++;
-      questionIdx = 0;
-    } else if (el.type !== "description" && el.type !== "divider") {
-      questionIdx++;
-      numberMap.set(
-        el.id,
-        hasSections ? `${sectionIdx}.${questionIdx}` : `${questionIdx}`,
-      );
+  const numberMap = useMemo(() => {
+    const map = new Map<string, string>();
+    const hasSections = elements.some((el) => el.type === "section");
+    let sectionIdx = 0;
+    let questionIdx = 0;
+    for (const el of elements) {
+      if (el.type === "section") {
+        sectionIdx++;
+        questionIdx = 0;
+      } else if (el.type !== "description" && el.type !== "divider") {
+        questionIdx++;
+        map.set(
+          el.id,
+          hasSections ? `${sectionIdx}.${questionIdx}` : `${questionIdx}`,
+        );
+      }
     }
-  }
+    return map;
+  }, [elements]);
+
   const num = (id: string) => {
     const n = numberMap.get(id);
     return n ? `${n}. ` : "";

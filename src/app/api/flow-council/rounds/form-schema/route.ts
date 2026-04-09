@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { isAddress } from "viem";
 import { db } from "../../db";
 import { authOptions } from "../../../auth/[...nextauth]/route";
-import { findRoundByCouncil, isAdmin } from "../../auth";
+import { isAdmin } from "../../auth";
 import { validateFormSchema } from "../../validation";
 
 export const dynamic = "force-dynamic";
@@ -67,7 +67,12 @@ export async function PUT(request: Request) {
       return jsonResponse({ success: false, error: "Invalid parameters" }, 400);
     }
 
-    const round = await findRoundByCouncil(chainId, flowCouncilAddress);
+    const round = await db
+      .selectFrom("rounds")
+      .select(["id", "details"])
+      .where("chainId", "=", chainId)
+      .where("flowCouncilAddress", "=", flowCouncilAddress.toLowerCase())
+      .executeTakeFirst();
 
     if (!round) {
       return jsonResponse({ success: false, error: "Round not found" }, 404);
@@ -91,16 +96,10 @@ export async function PUT(request: Request) {
     }
 
     // Read-merge-write to preserve other details keys
-    const existingRound = await db
-      .selectFrom("rounds")
-      .select("details")
-      .where("id", "=", round.id)
-      .executeTakeFirst();
-
     const existingDetails =
-      typeof existingRound?.details === "string"
-        ? JSON.parse(existingRound.details)
-        : (existingRound?.details ?? {});
+      typeof round.details === "string"
+        ? JSON.parse(round.details)
+        : (round.details ?? {});
 
     const mergedDetails = { ...existingDetails, formSchema: validation.data };
 

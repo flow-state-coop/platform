@@ -3,13 +3,13 @@ import { isAddress } from "viem";
 import { db } from "../db";
 import { networks } from "@/lib/networks";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { errorResponse } from "../../utils";
+import { errorResponse, readJsonBody, PayloadTooLargeError } from "../../utils";
 import {
   validateRoundDetails,
   validateDynamicRoundDetails,
   MAX_DETAILS_SIZE,
 } from "../validation";
-import { isRoundAdmin, hasOnChainRole, findRoundByCouncil } from "../auth";
+import { isRoundAdmin, hasOnChainRole } from "../auth";
 
 export const dynamic = "force-dynamic";
 
@@ -198,15 +198,27 @@ export async function PUT(request: Request) {
       );
     }
 
-    const contentLength = Number(request.headers.get("content-length") ?? 0);
-    if (contentLength > MAX_DETAILS_SIZE) {
+    let body: {
+      projectId: number;
+      chainId: number;
+      councilId: string;
+      details?: Record<string, unknown>;
+    };
+    try {
+      body = await readJsonBody(request, MAX_DETAILS_SIZE);
+    } catch (err) {
+      if (err instanceof PayloadTooLargeError) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Payload too large" }),
+          { status: 413, headers: { "Content-Type": "application/json" } },
+        );
+      }
       return new Response(
-        JSON.stringify({ success: false, error: "Payload too large" }),
-        { status: 413, headers: { "Content-Type": "application/json" } },
+        JSON.stringify({ success: false, error: "Invalid request body" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
-
-    const { projectId, chainId, councilId, details } = await request.json();
+    const { projectId, chainId, councilId, details } = body;
 
     if (!projectId || typeof projectId !== "number") {
       return new Response(
@@ -244,7 +256,12 @@ export async function PUT(request: Request) {
       );
     }
 
-    const round = await findRoundByCouncil(chainId, councilId);
+    const round = await db
+      .selectFrom("rounds")
+      .select(["id", "applicationsClosed", "details"])
+      .where("chainId", "=", chainId)
+      .where("flowCouncilAddress", "=", councilId.toLowerCase())
+      .executeTakeFirst();
 
     if (!round) {
       return new Response(
@@ -254,27 +271,29 @@ export async function PUT(request: Request) {
 
     if (details) {
       if (details._formVersion) {
-        const roundRow = await db
-          .selectFrom("rounds")
-          .select("details")
-          .where("id", "=", round.id)
-          .executeTakeFirst();
-
         const roundDetails =
-          typeof roundRow?.details === "string"
-            ? JSON.parse(roundRow.details)
-            : (roundRow?.details ?? {});
+          typeof round.details === "string"
+            ? JSON.parse(round.details)
+            : (round.details ?? {});
 
-        if (roundDetails.formSchema?.round) {
-          const validation = validateDynamicRoundDetails(
-            details,
-            roundDetails.formSchema.round,
+        if (!roundDetails.formSchema?.round) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: "This round does not use a custom form",
+            }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
           );
-          if (!validation.success) {
-            return new Response(
-              JSON.stringify({ success: false, error: validation.error }),
-            );
-          }
+        }
+
+        const validation = validateDynamicRoundDetails(
+          details,
+          roundDetails.formSchema.round,
+        );
+        if (!validation.success) {
+          return new Response(
+            JSON.stringify({ success: false, error: validation.error }),
+          );
         }
       } else {
         const validation = validateRoundDetails(details);

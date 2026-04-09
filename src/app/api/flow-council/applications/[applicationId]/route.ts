@@ -12,6 +12,7 @@ import {
   validateDynamicAttestationDetails,
   MAX_DETAILS_SIZE,
 } from "../../validation";
+import { readJsonBody, PayloadTooLargeError } from "../../../utils";
 
 export const dynamic = "force-dynamic";
 
@@ -170,15 +171,26 @@ export async function PATCH(
       );
     }
 
-    const contentLength = Number(request.headers.get("content-length") ?? 0);
-    if (contentLength > MAX_DETAILS_SIZE) {
+    let body: {
+      details?: Record<string, unknown>;
+      submit?: boolean;
+      fundingAddress?: string;
+    };
+    try {
+      body = await readJsonBody(request, MAX_DETAILS_SIZE);
+    } catch (err) {
+      if (err instanceof PayloadTooLargeError) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Payload too large" }),
+          { status: 413, headers: { "Content-Type": "application/json" } },
+        );
+      }
       return new Response(
-        JSON.stringify({ success: false, error: "Payload too large" }),
-        { status: 413, headers: { "Content-Type": "application/json" } },
+        JSON.stringify({ success: false, error: "Invalid request body" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
-
-    const { details, submit, fundingAddress } = await request.json();
+    const { details, submit, fundingAddress } = body;
 
     // Verify user is a manager of the project
     const existingApp = await db
@@ -235,16 +247,24 @@ export async function PATCH(
           ? JSON.parse(roundRow.details)
           : (roundRow?.details ?? {});
 
-      if (roundDetails.formSchema?.attestation) {
-        const validation = validateDynamicAttestationDetails(
-          details,
-          roundDetails.formSchema.attestation,
+      if (!roundDetails.formSchema?.attestation) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "This round does not use a custom form",
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
         );
-        if (!validation.success) {
-          return new Response(
-            JSON.stringify({ success: false, error: validation.error }),
-          );
-        }
+      }
+
+      const validation = validateDynamicAttestationDetails(
+        details,
+        roundDetails.formSchema.attestation,
+      );
+      if (!validation.success) {
+        return new Response(
+          JSON.stringify({ success: false, error: validation.error }),
+        );
       }
     }
 

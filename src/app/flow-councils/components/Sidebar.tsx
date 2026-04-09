@@ -24,6 +24,87 @@ const FLOW_COUNCIL_MANAGER_QUERY = gql`
 
 type Council = { id: string; name: string; description: string };
 
+const DIM_FILTER =
+  "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)";
+
+const SIDEBAR_LINK_DEFS: {
+  path: string;
+  label: string;
+  alwaysEnabled?: boolean;
+}[] = [
+  { path: "launch", label: "Launch", alwaysEnabled: true },
+  { path: "round-metadata", label: "Metadata" },
+  { path: "permissions", label: "Permissions" },
+  { path: "form-builder", label: "Application" },
+  { path: "review", label: "Recipients" },
+  { path: "membership", label: "Voters" },
+  { path: "communications", label: "Communications" },
+];
+
+type SidebarLinksProps = {
+  chainId: number | null;
+  selectedCouncil: Council | undefined;
+  pathname: string | null;
+};
+
+function SidebarLinks({
+  chainId,
+  selectedCouncil,
+  pathname,
+}: SidebarLinksProps) {
+  return (
+    <Stack direction="vertical" gap={3} className="rounded-4 flex-grow-0 mt-3">
+      {SIDEBAR_LINK_DEFS.map(({ path, label, alwaysEnabled }) => {
+        const href =
+          alwaysEnabled && chainId && selectedCouncil
+            ? `/flow-councils/${path}/${chainId}/${selectedCouncil.id}`
+            : alwaysEnabled
+              ? `/flow-councils/${path}`
+              : `/flow-councils/${path}/${chainId}/${selectedCouncil?.id}`;
+        const isActive = pathname?.startsWith(`/flow-councils/${path}`);
+        const disabled = !alwaysEnabled && !selectedCouncil?.id;
+        return (
+          <Link
+            key={path}
+            href={href}
+            className={`d-flex align-items-center text-decoration-none ${disabled ? "text-info" : ""} ${isActive ? "fw-semi-bold" : ""}`}
+            style={{ pointerEvents: disabled ? "none" : "auto" }}
+          >
+            <Image
+              src={
+                isActive && !disabled ? "/dot-filled.svg" : "/dot-unfilled.svg"
+              }
+              alt="Bullet Point"
+              width={24}
+              height={24}
+              style={{
+                filter: !isActive && !selectedCouncil ? DIM_FILTER : "",
+              }}
+            />
+            {label}
+          </Link>
+        );
+      })}
+      <Link
+        href={`/flow-councils/${chainId}/${selectedCouncil?.id}`}
+        className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""}`}
+        style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
+      >
+        <Image
+          src="/dot-unfilled.svg"
+          alt="Bullet Point"
+          width={24}
+          height={24}
+          style={{
+            filter: !selectedCouncil ? DIM_FILTER : "",
+          }}
+        />
+        UI
+      </Link>
+    </Stack>
+  );
+}
+
 function Sidebar() {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [councils, setCouncils] = useState<Council[]>([]);
@@ -62,7 +143,6 @@ function Sidebar() {
     () =>
       (flowCouncilsQueryRes?.flowCouncils ?? [])
         .map((c: { id: string }) => c.id)
-        .slice()
         .sort()
         .join(","),
     [flowCouncilsQueryRes],
@@ -118,78 +198,6 @@ function Sidebar() {
       cancelled = true;
     };
   }, [councilIdsKey, chainId]);
-
-  const SidebarLinks = () => {
-    return (
-      <Stack
-        direction="vertical"
-        gap={3}
-        className="rounded-4 flex-grow-0 mt-3"
-      >
-        {[
-          { path: "launch", label: "Launch", alwaysEnabled: true },
-          { path: "round-metadata", label: "Metadata" },
-          { path: "permissions", label: "Permissions" },
-          { path: "form-builder", label: "Application" },
-          { path: "review", label: "Recipients" },
-          { path: "membership", label: "Voters" },
-          { path: "communications", label: "Communications" },
-        ].map(({ path, label, alwaysEnabled }) => {
-          const href =
-            alwaysEnabled && chainId && selectedCouncil
-              ? `/flow-councils/${path}/${chainId}/${selectedCouncil.id}`
-              : alwaysEnabled
-                ? `/flow-councils/${path}`
-                : `/flow-councils/${path}/${chainId}/${selectedCouncil?.id}`;
-          const isActive = pathname?.startsWith(`/flow-councils/${path}`);
-          const disabled = !alwaysEnabled && !selectedCouncil?.id;
-          const dimFilter =
-            "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)";
-          return (
-            <Link
-              key={path}
-              href={href}
-              className={`d-flex align-items-center text-decoration-none ${disabled ? "text-info" : ""} ${isActive ? "fw-semi-bold" : ""}`}
-              style={{ pointerEvents: disabled ? "none" : "auto" }}
-            >
-              <Image
-                src={
-                  isActive && !disabled
-                    ? "/dot-filled.svg"
-                    : "/dot-unfilled.svg"
-                }
-                alt="Bullet Point"
-                width={24}
-                height={24}
-                style={{
-                  filter: !isActive && !selectedCouncil ? dimFilter : "",
-                }}
-              />
-              {label}
-            </Link>
-          );
-        })}
-        <Link
-          href={`/flow-councils/${chainId}/${selectedCouncil?.id}`}
-          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""}`}
-          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
-        >
-          <Image
-            src="/dot-unfilled.svg"
-            alt="Bullet Point"
-            width={24}
-            height={24}
-            style={{
-              filter: !selectedCouncil
-                ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
-                : "",
-            }}
-          />
-          UI
-        </Link>
-      </Stack>
-    );
-  };
 
   const CouncilsDropdown = () => (
     <Dropdown className="position-static w-75 overflow-hidden">
@@ -274,7 +282,11 @@ function Sidebar() {
         </Offcanvas.Header>
         <Offcanvas.Body className="d-flex flex-column gap-4 px-3 py-4 fs-6">
           <CouncilsDropdown />
-          <SidebarLinks />
+          <SidebarLinks
+            chainId={chainId}
+            selectedCouncil={selectedCouncil}
+            pathname={pathname}
+          />
         </Offcanvas.Body>
       </Offcanvas>
     );
@@ -288,7 +300,11 @@ function Sidebar() {
     >
       <h1 className="fs-5 fw-semi-bold">Flow Council Admin</h1>
       <CouncilsDropdown />
-      <SidebarLinks />
+      <SidebarLinks
+        chainId={chainId}
+        selectedCouncil={selectedCouncil}
+        pathname={pathname}
+      />
     </Stack>
   );
 }

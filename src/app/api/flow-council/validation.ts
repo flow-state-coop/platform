@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isAddress } from "viem";
 import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
 import { ALLOWED_REACTIONS } from "@/app/flow-councils/lib/constants";
 import type {
@@ -6,6 +7,8 @@ import type {
   BuildMilestone,
   GrowthMilestone,
 } from "@/app/flow-councils/types/round";
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const smartContractSchema = z.object({
   type: z.enum(["projectAddress", "goodCollectivePool"]),
@@ -162,7 +165,9 @@ export function normalizeSocialHandle(
       const host = url.hostname.replace(/^www\./, "");
       const allowed = SOCIAL_ALLOWED_HOSTS[platform] ?? [];
       if (allowed.includes(host)) {
-        return `https://${host}${url.pathname}${url.search}`;
+        // Strip query and hash — they can carry tracking params or
+        // open-redirect chains and we only need the canonical profile path.
+        return `https://${host}${url.pathname}`;
       }
       // Not an allowed host — fall through to treat the last path segment as a handle
       const lastSegment = url.pathname.split("/").filter(Boolean).pop();
@@ -417,8 +422,31 @@ function validateFormSection(
 
     switch (el.type) {
       case "text":
-      case "textarea":
-      case "email":
+      case "textarea": {
+        if (typeof val !== "string") {
+          return {
+            success: false,
+            error: `"${el.label}" must be text`,
+          };
+        }
+        const limit = el.charLimit ?? MAX_STRING_LENGTH;
+        if (val.length > limit) {
+          return {
+            success: false,
+            error: `"${el.label}" exceeds the ${limit} character limit`,
+          };
+        }
+        if (
+          typeof el.minCharLimit === "number" &&
+          val.length < el.minCharLimit
+        ) {
+          return {
+            success: false,
+            error: `"${el.label}" must be at least ${el.minCharLimit} characters`,
+          };
+        }
+        break;
+      }
       case "telegram": {
         if (typeof val !== "string") {
           return {
@@ -431,6 +459,37 @@ function validateFormSection(
           return {
             success: false,
             error: `"${el.label}" exceeds the ${limit} character limit`,
+          };
+        }
+        break;
+      }
+      case "email": {
+        if (typeof val !== "string") {
+          return {
+            success: false,
+            error: `"${el.label}" must be text`,
+          };
+        }
+        const limit = el.charLimit ?? MAX_STRING_LENGTH;
+        if (val.length > limit) {
+          return {
+            success: false,
+            error: `"${el.label}" exceeds the ${limit} character limit`,
+          };
+        }
+        if (!EMAIL_REGEX.test(val)) {
+          return {
+            success: false,
+            error: `"${el.label}" must be a valid email address`,
+          };
+        }
+        break;
+      }
+      case "ethAddress": {
+        if (typeof val !== "string" || !isAddress(val)) {
+          return {
+            success: false,
+            error: `"${el.label}" must be a valid Ethereum address`,
           };
         }
         break;

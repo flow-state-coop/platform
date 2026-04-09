@@ -35,10 +35,11 @@ export async function GET(request: Request) {
       return jsonResponse({ success: false, error: "Invalid address" }, 400);
     }
 
-    const session = await getServerSession(authOptions);
-    const isOwner =
-      includePrivate &&
-      session?.address?.toLowerCase() === address.toLowerCase();
+    let isOwner = false;
+    if (includePrivate) {
+      const session = await getServerSession(authOptions);
+      isOwner = session?.address?.toLowerCase() === address.toLowerCase();
+    }
 
     const profile = await db
       .selectFrom("userProfiles")
