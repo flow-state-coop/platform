@@ -8,6 +8,7 @@ import {
   getRoundAdminEmailsExcludingAddress,
 } from "../../email";
 import { findRoundByCouncil, isAdmin } from "../../auth";
+import { validateDynamicAttestationDetails } from "../../validation";
 
 export const dynamic = "force-dynamic";
 
@@ -176,6 +177,7 @@ export async function PATCH(
       )
       .select([
         "applications.id",
+        "applications.roundId",
         "applications.status",
         "applications.editsUnlocked",
       ])
@@ -206,6 +208,31 @@ export async function PATCH(
           error: "Application is locked and cannot be edited",
         }),
       );
+    }
+
+    if (details && details._formVersion) {
+      const roundRow = await db
+        .selectFrom("rounds")
+        .select("details")
+        .where("id", "=", existingApp.roundId)
+        .executeTakeFirst();
+
+      const roundDetails =
+        typeof roundRow?.details === "string"
+          ? JSON.parse(roundRow.details)
+          : (roundRow?.details ?? {});
+
+      if (roundDetails.formSchema?.attestation) {
+        const validation = validateDynamicAttestationDetails(
+          details,
+          roundDetails.formSchema.attestation,
+        );
+        if (!validation.success) {
+          return new Response(
+            JSON.stringify({ success: false, error: validation.error }),
+          );
+        }
+      }
     }
 
     const updateData: Record<string, unknown> = {

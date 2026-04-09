@@ -378,6 +378,181 @@ export function validateFormSchema(
   return { success: true, data: result.data };
 }
 
+type FormElement = z.infer<typeof formElementSchema>;
+
+const STRUCTURAL_TYPES = new Set(["section", "title", "description"]);
+const MAX_STRING_LENGTH = 10_000;
+const MAX_DETAILS_SIZE = 512_000; // 512 KB
+
+function validateFormSection(
+  values: Record<string, unknown>,
+  formElements: FormElement[],
+  sectionLabel: string,
+): ValidationResult<Record<string, unknown>> {
+  const allowedIds = new Set<string>();
+
+  for (const el of formElements) {
+    if (STRUCTURAL_TYPES.has(el.type)) continue;
+    allowedIds.add(el.id);
+
+    const val = values[el.id];
+
+    if (el.required) {
+      if (val === undefined || val === null || val === "") {
+        return {
+          success: false,
+          error: `"${el.label}" is required`,
+        };
+      }
+      if (el.type === "multiSelect" && Array.isArray(val) && val.length === 0) {
+        return {
+          success: false,
+          error: `"${el.label}" is required`,
+        };
+      }
+    }
+
+    // Skip type checks for empty optional fields
+    if (val === undefined || val === null || val === "") continue;
+
+    switch (el.type) {
+      case "text":
+      case "textarea":
+      case "url":
+      case "email":
+      case "telegram": {
+        if (typeof val !== "string") {
+          return {
+            success: false,
+            error: `"${el.label}" must be text`,
+          };
+        }
+        const limit = el.charLimit ?? MAX_STRING_LENGTH;
+        if (val.length > limit) {
+          return {
+            success: false,
+            error: `"${el.label}" exceeds the ${limit} character limit`,
+          };
+        }
+        break;
+      }
+      case "number":
+        if (typeof val !== "number" && typeof val !== "string") {
+          return {
+            success: false,
+            error: `"${el.label}" must be a number`,
+          };
+        }
+        {
+          const num = Number(val);
+          if (isNaN(num)) {
+            return {
+              success: false,
+              error: `"${el.label}" must be a number`,
+            };
+          }
+          if (el.min !== undefined && num < el.min) {
+            return {
+              success: false,
+              error: `"${el.label}" must be at least ${el.min}`,
+            };
+          }
+          if (el.max !== undefined && num > el.max) {
+            return {
+              success: false,
+              error: `"${el.label}" must be at most ${el.max}`,
+            };
+          }
+        }
+        break;
+      case "select":
+        if (typeof val !== "string" || !el.options?.includes(val)) {
+          return {
+            success: false,
+            error: `"${el.label}" has an invalid selection`,
+          };
+        }
+        break;
+      case "multiSelect":
+        if (
+          !Array.isArray(val) ||
+          val.some(
+            (v: unknown) =>
+              typeof v !== "string" || !el.options?.includes(v),
+          )
+        ) {
+          return {
+            success: false,
+            error: `"${el.label}" has an invalid selection`,
+          };
+        }
+        break;
+      case "boolean":
+        if (typeof val !== "boolean") {
+          return {
+            success: false,
+            error: `"${el.label}" must be true or false`,
+          };
+        }
+        break;
+    }
+  }
+
+  // Strip unknown keys
+  for (const key of Object.keys(values)) {
+    if (!allowedIds.has(key)) {
+      return {
+        success: false,
+        error: `Unknown field "${key}" in ${sectionLabel}`,
+      };
+    }
+  }
+
+  return { success: true, data: values };
+}
+
+export function validateDynamicRoundDetails(
+  data: Record<string, unknown>,
+  formElements: FormElement[],
+): ValidationResult<Record<string, unknown>> {
+  const serialized = JSON.stringify(data);
+  if (serialized.length > MAX_DETAILS_SIZE) {
+    return { success: false, error: "Payload too large" };
+  }
+
+  const values = data.round;
+  if (typeof values !== "object" || values === null) {
+    return { success: false, error: "Missing round data" };
+  }
+
+  return validateFormSection(
+    values as Record<string, unknown>,
+    formElements,
+    "round",
+  );
+}
+
+export function validateDynamicAttestationDetails(
+  data: Record<string, unknown>,
+  formElements: FormElement[],
+): ValidationResult<Record<string, unknown>> {
+  const serialized = JSON.stringify(data);
+  if (serialized.length > MAX_DETAILS_SIZE) {
+    return { success: false, error: "Payload too large" };
+  }
+
+  const values = data.attestation;
+  if (typeof values !== "object" || values === null) {
+    return { success: false, error: "Missing attestation data" };
+  }
+
+  return validateFormSection(
+    values as Record<string, unknown>,
+    formElements,
+    "attestation",
+  );
+}
+
 export const profileSchema = z.object({
   displayName: displayNameSchema,
   bio: z.string().trim().max(300).optional().or(z.literal("")),

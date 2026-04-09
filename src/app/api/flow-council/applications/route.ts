@@ -4,7 +4,10 @@ import { db } from "../db";
 import { networks } from "@/lib/networks";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { errorResponse } from "../../utils";
-import { validateRoundDetails } from "../validation";
+import {
+  validateRoundDetails,
+  validateDynamicRoundDetails,
+} from "../validation";
 import { isRoundAdmin, hasOnChainRole, findRoundByCouncil } from "../auth";
 
 export const dynamic = "force-dynamic";
@@ -240,11 +243,36 @@ export async function PUT(request: Request) {
     }
 
     if (details) {
-      const validation = validateRoundDetails(details);
-      if (!validation.success) {
-        return new Response(
-          JSON.stringify({ success: false, error: validation.error }),
-        );
+      if (details._formVersion) {
+        const roundRow = await db
+          .selectFrom("rounds")
+          .select("details")
+          .where("id", "=", round.id)
+          .executeTakeFirst();
+
+        const roundDetails =
+          typeof roundRow?.details === "string"
+            ? JSON.parse(roundRow.details)
+            : (roundRow?.details ?? {});
+
+        if (roundDetails.formSchema?.round) {
+          const validation = validateDynamicRoundDetails(
+            details,
+            roundDetails.formSchema.round,
+          );
+          if (!validation.success) {
+            return new Response(
+              JSON.stringify({ success: false, error: validation.error }),
+            );
+          }
+        }
+      } else {
+        const validation = validateRoundDetails(details);
+        if (!validation.success) {
+          return new Response(
+            JSON.stringify({ success: false, error: validation.error }),
+          );
+        }
       }
     }
 
