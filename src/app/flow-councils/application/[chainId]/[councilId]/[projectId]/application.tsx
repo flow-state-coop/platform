@@ -621,11 +621,20 @@ export default function Application(props: ApplicationProps) {
                 />
               )
             ) : formSchema ? (
-              <DynamicFormSection
-                elements={formSchema.round}
-                values={dynamicRoundValues}
-                readOnly
-              />
+              <>
+                <FundingAddressSection
+                  value={dynamicFundingAddress}
+                  onChange={setDynamicFundingAddress}
+                  defaultFundingAddress=""
+                  locked
+                  validated={false}
+                />
+                <DynamicFormSection
+                  elements={formSchema.round}
+                  values={dynamicRoundValues}
+                  readOnly
+                />
+              </>
             ) : isDynamicFormApp ? (
               <FormSkeleton />
             ) : (
