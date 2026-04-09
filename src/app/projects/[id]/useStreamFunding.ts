@@ -522,13 +522,19 @@ export default function useStreamFunding(
   const bufferExceedsBalance =
     !!liquidationEstimate && liquidationEstimate.bufferExceedsBalance;
 
+  const isSelfStream =
+    !!address &&
+    !!receiverAddress &&
+    address.toLowerCase() === receiverAddress.toLowerCase();
+
   const canExecute =
     !!address &&
     !!newFlowRate &&
     BigInt(newFlowRate) > 0 &&
     !areTransactionsLoading &&
     !wrapAmountExceedsBalance &&
-    !bufferExceedsBalance;
+    !bufferExceedsBalance &&
+    !isSelfStream;
 
   const resetInputs = useCallback(() => {
     userEditedMonthlyAmount.current = false;
@@ -590,5 +596,6 @@ export default function useStreamFunding(
     isCorrectChain,
     switchChain,
     resetInputs,
+    isSelfStream,
   };
 }

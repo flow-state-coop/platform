@@ -229,6 +229,13 @@ function StreamInputs({
           onChange={(e) => stream.handleMonthlyAmountChange(e.target.value)}
           className="rounded-3"
         />
+        {stream.address && stream.userMonthlyRate !== null && (
+          <Form.Text>
+            Available:{" "}
+            {formatNumber(Number(formatEther(stream.superTokenBalance)))}{" "}
+            {stream.selectedToken.symbol}
+          </Form.Text>
+        )}
       </Form.Group>
 
       {(stream.isSuperTokenNative || stream.isSuperTokenWrapper) && (
@@ -347,6 +354,11 @@ function StreamInputs({
         )}
       </Stack>
 
+      {stream.isSelfStream && (
+        <div className="text-danger" style={{ fontSize: "0.85rem" }}>
+          You cannot open a stream to yourself.
+        </div>
+      )}
       {stream.transactionError && (
         <div className="text-danger" style={{ fontSize: "0.85rem" }}>
           {stream.transactionError}
