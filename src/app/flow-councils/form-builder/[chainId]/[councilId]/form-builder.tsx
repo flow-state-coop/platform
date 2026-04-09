@@ -17,6 +17,23 @@ import Stack from "react-bootstrap/Stack";
 import Collapse from "react-bootstrap/Collapse";
 import ButtonGroup from "react-bootstrap/ButtonGroup";
 import Image from "react-bootstrap/Image";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useRequireAuth from "@/hooks/requireAuth";
 import useSiwe from "@/hooks/siwe";
@@ -166,6 +183,16 @@ const subtleButtonStyle = {
   lineHeight: 1.5,
 };
 
+const dragHandleStyle = {
+  cursor: "grab",
+  padding: "0.1rem 0.25rem",
+  color: "#aaa",
+  fontSize: "1rem",
+  lineHeight: 1,
+  flexShrink: 0,
+  touchAction: "none" as const,
+};
+
 function ElementCard({
   element,
   index,
@@ -189,14 +216,32 @@ function ElementCard({
     !element.label && element.type !== "description",
   );
 
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: element.id });
+
+  const style = {
+    borderRadius: 4,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
   const typeColor = error
     ? "#dc3545"
     : (TYPE_COLORS[element.type] ?? "#888888");
 
   return (
     <div
+      ref={setNodeRef}
+      style={style}
       className="mb-3 bg-white p-3 position-relative overflow-hidden"
-      style={{ borderRadius: 4 }}
     >
       <div
         className="position-absolute top-0 start-0 h-100"
@@ -208,6 +253,14 @@ function ElementCard({
         onClick={() => setExpanded(!expanded)}
       >
         <div className="d-flex align-items-center gap-2 overflow-hidden">
+          <span
+            style={dragHandleStyle}
+            {...attributes}
+            {...listeners}
+            onClick={(e) => e.stopPropagation()}
+          >
+            ⠿
+          </span>
           <Badge
             pill
             className="flex-shrink-0 fs-xxs"
@@ -723,6 +776,28 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
     updateElements(newElements);
   };
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = elements.findIndex((el) => el.id === active.id);
+    const newIndex = elements.findIndex((el) => el.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    updateElements(arrayMove(elements, oldIndex, newIndex));
+  };
+
+  const sortableIds = useMemo(
+    () =>
+      elements.filter((el) => el.id !== WALLET_ELEMENT_ID).map((el) => el.id),
+    [elements],
+  );
+
   const handleTemplate = (template: FormSchema) => {
     const hasItems = schema.round.length > 0 || schema.attestation.length > 0;
     if (hasItems && !window.confirm("Replace current form with template?")) {
@@ -852,21 +927,32 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
         </p>
       )}
 
-      {elements
-        .filter((el) => el.id !== WALLET_ELEMENT_ID)
-        .map((element, index) => (
-          <ElementCard
-            key={element.id}
-            element={element}
-            index={index}
-            total={elements.length - 1}
-            error={validationErrors[element.id]}
-            onUpdate={(el) => handleUpdate(index + 1, el)}
-            onRemove={() => handleRemove(index + 1)}
-            onMoveUp={() => handleMoveUp(index + 1)}
-            onMoveDown={() => handleMoveDown(index + 1)}
-          />
-        ))}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={sortableIds}
+          strategy={verticalListSortingStrategy}
+        >
+          {elements
+            .filter((el) => el.id !== WALLET_ELEMENT_ID)
+            .map((element, index) => (
+              <ElementCard
+                key={element.id}
+                element={element}
+                index={index}
+                total={elements.length - 1}
+                error={validationErrors[element.id]}
+                onUpdate={(el) => handleUpdate(index + 1, el)}
+                onRemove={() => handleRemove(index + 1)}
+                onMoveUp={() => handleMoveUp(index + 1)}
+                onMoveDown={() => handleMoveDown(index + 1)}
+              />
+            ))}
+        </SortableContext>
+      </DndContext>
 
       <Stack direction="horizontal" gap={2} className="mt-3">
         <Dropdown>

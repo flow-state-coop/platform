@@ -1014,8 +1014,7 @@ export default function Review(props: ReviewProps) {
                             }
                           ).eligibility ??
                           {};
-                        attestationValues =
-                          adaptLegacyAttestationData(legacy);
+                        attestationValues = adaptLegacyAttestationData(legacy);
                       }
 
                       return (
