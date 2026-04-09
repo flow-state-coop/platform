@@ -1028,7 +1028,6 @@ export default function Review(props: ReviewProps) {
                               managerAddresses={
                                 selectedApplication.managerAddresses
                               }
-                              managerEmails={selectedApplication.managerEmails}
                             />
                           </Tab.Pane>
                           <Tab.Pane eventKey="round">
