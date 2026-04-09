@@ -21,6 +21,47 @@ import { getApolloClient } from "@/lib/apollo";
 import useSiwe from "@/hooks/siwe";
 import { Project, ProjectDetails } from "@/types/project";
 
+function SkeletonProjectCard() {
+  return (
+    <Card
+      className="rounded-5 border-4 overflow-hidden shadow placeholder-glow"
+      style={{ borderColor: "#030303", height: 430 }}
+    >
+      <div className="bg-lace-100" style={{ height: 102 }} />
+      <span
+        className="placeholder rounded-4 bg-secondary position-absolute border border-4 border-white"
+        style={{ width: 52, height: 52, bottom: 295, left: 16 }}
+      />
+      <Card.Body className="mt-5 p-4 pb-0">
+        <span
+          className="placeholder rounded bg-secondary d-block mb-3"
+          style={{ width: "70%", height: 20 }}
+        />
+        <span
+          className="placeholder rounded bg-secondary d-block mb-2"
+          style={{ height: 14 }}
+        />
+        <span
+          className="placeholder rounded bg-secondary d-block mb-2"
+          style={{ width: "90%", height: 14 }}
+        />
+        <span
+          className="placeholder rounded bg-secondary d-block mb-2"
+          style={{ width: "75%", height: 14 }}
+        />
+        <span
+          className="placeholder rounded bg-secondary d-block"
+          style={{ width: "50%", height: 14 }}
+        />
+      </Card.Body>
+      <Card.Footer
+        className="bg-lace-100 border-0 rounded-3"
+        style={{ height: 52 }}
+      />
+    </Card>
+  );
+}
+
 type ProjectSelectionProps = {
   chainId: number;
   councilId: string;
@@ -68,13 +109,14 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
   const selectedProjectIndex = null;
   const isSubmitting = false;
   const [applicationsClosed, setApplicationsClosed] = useState(false);
-  const [councilMetadata, setCouncilMetadata] = useState({
-    name: "",
-    description: "",
-  });
+  const [councilMetadata, setCouncilMetadata] = useState<{
+    name: string;
+    description: string;
+  } | null>(null);
   const [formSchema, setFormSchema] = useState<FormSchema | null>(null);
 
   const router = useRouter();
@@ -84,7 +126,7 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
   const { openConnectModal } = useConnectModal();
   const { data: walletClient } = useWalletClient();
   const { switchChain } = useSwitchChain();
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const { handleSignIn } = useSiwe();
 
   const isAuthenticated = session && session.address === address;
@@ -131,6 +173,7 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
 
   const fetchProjects = useCallback(async () => {
     if (!address) {
+      setProjectsLoading(false);
       return;
     }
 
@@ -159,6 +202,8 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
       }
     } catch (err) {
       console.error("Failed to fetch projects:", err);
+    } finally {
+      setProjectsLoading(false);
     }
   }, [address]);
 
@@ -278,6 +323,46 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
     return <span className="m-auto fs-4 fw-bold">No council found</span>;
   }
 
+  const pageLoading =
+    sessionStatus === "loading" ||
+    !councilMetadata ||
+    !flowCouncilQueryRes ||
+    !superfluidQueryRes;
+
+  if (pageLoading) {
+    return (
+      <Stack
+        direction="vertical"
+        className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52 placeholder-glow"
+      >
+        <span
+          className="placeholder rounded bg-secondary d-block mt-5 mb-2"
+          style={{ width: 280, height: 30 }}
+        />
+        <span
+          className="placeholder rounded bg-secondary d-block mb-4"
+          style={{ width: 220, height: 18 }}
+        />
+        <span
+          className="placeholder rounded bg-secondary d-block mb-2"
+          style={{ height: 16 }}
+        />
+        <span
+          className="placeholder rounded bg-secondary d-block mb-2"
+          style={{ width: "80%", height: 16 }}
+        />
+        <span
+          className="placeholder rounded bg-secondary d-block mb-5"
+          style={{ width: "45%", height: 16 }}
+        />
+        <span
+          className="placeholder rounded bg-secondary d-block mb-3"
+          style={{ width: 160, height: 28 }}
+        />
+      </Stack>
+    );
+  }
+
   const applicationPreviewLink = !applicationsClosed && formSchema && (
     <Button
       variant="link"
@@ -395,55 +480,65 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
               marginBottom: 8,
             }}
           >
-            {projectsWithStatus.map((project, i: number) => {
-              if (!project.details?.name) {
-                return null;
-              }
+            {projectsLoading ? (
+              <>
+                <SkeletonProjectCard />
+                <SkeletonProjectCard />
+                <SkeletonProjectCard />
+              </>
+            ) : (
+              <>
+                {projectsWithStatus.map((project, i: number) => {
+                  if (!project.details?.name) {
+                    return null;
+                  }
 
-              if (applicationsClosed && project.status === null) {
-                return null;
-              }
+                  if (applicationsClosed && project.status === null) {
+                    return null;
+                  }
 
-              return (
-                <ProjectCard
-                  key={project.id}
-                  name={project.details.name}
-                  description={project.details.description ?? ""}
-                  logoUrl={project.details.logoUrl ?? ""}
-                  bannerUrl={project.details.bannerUrl ?? ""}
-                  status={project.status}
-                  hasApplied={hasApplied}
-                  canReapply={!applicationsClosed}
-                  isSelected={selectedProjectIndex === i}
-                  selectProject={() => {
-                    router.push(
-                      `/flow-councils/application/${chainId}/${councilId}/${project.id}`,
-                    );
-                  }}
-                  updateProject={() => {
-                    router.push(
-                      `/flow-councils/application/${chainId}/${councilId}/${project.id}`,
-                    );
-                  }}
-                  isTransactionConfirming={isSubmitting}
-                />
-              );
-            })}
-            {!applicationsClosed && (
-              <Card
-                className="d-flex flex-col justify-content-center align-items-center border-2 border-secondary rounded-4 fs-6 cursor-pointer"
-                style={{ height: 430 }}
-                onClick={() => {
-                  router.push(
-                    `/flow-councils/application/${chainId}/${councilId}/new`,
+                  return (
+                    <ProjectCard
+                      key={project.id}
+                      name={project.details.name}
+                      description={project.details.description ?? ""}
+                      logoUrl={project.details.logoUrl ?? ""}
+                      bannerUrl={project.details.bannerUrl ?? ""}
+                      status={project.status}
+                      hasApplied={hasApplied}
+                      canReapply={!applicationsClosed}
+                      isSelected={selectedProjectIndex === i}
+                      selectProject={() => {
+                        router.push(
+                          `/flow-councils/application/${chainId}/${councilId}/${project.id}`,
+                        );
+                      }}
+                      updateProject={() => {
+                        router.push(
+                          `/flow-councils/application/${chainId}/${councilId}/${project.id}`,
+                        );
+                      }}
+                      isTransactionConfirming={isSubmitting}
+                    />
                   );
-                }}
-              >
-                <span className="fs-1 text-secondary">+</span>
-                <Card.Text className="d-inline-block m-0 overflow-hidden text-center word-wrap text-secondary">
-                  Create Project
-                </Card.Text>
-              </Card>
+                })}
+                {!applicationsClosed && (
+                  <Card
+                    className="d-flex flex-col justify-content-center align-items-center border-2 border-secondary rounded-4 fs-6 cursor-pointer"
+                    style={{ height: 430 }}
+                    onClick={() => {
+                      router.push(
+                        `/flow-councils/application/${chainId}/${councilId}/new`,
+                      );
+                    }}
+                  >
+                    <span className="fs-1 text-secondary">+</span>
+                    <Card.Text className="d-inline-block m-0 overflow-hidden text-center word-wrap text-secondary">
+                      Create Project
+                    </Card.Text>
+                  </Card>
+                )}
+              </>
             )}
           </div>
         </>
