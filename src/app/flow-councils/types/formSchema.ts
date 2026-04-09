@@ -1,4 +1,4 @@
-export type ElementType = "section" | "description";
+export type ElementType = "section" | "description" | "divider";
 
 export type QuestionType =
   | "text"
@@ -9,7 +9,8 @@ export type QuestionType =
   | "select"
   | "multiSelect"
   | "boolean"
-  | "telegram";
+  | "telegram"
+  | "ethAddress";
 
 export type FormElementBase = {
   id: string;
@@ -23,6 +24,10 @@ export type SectionElement = FormElementBase & {
 export type DescriptionElement = FormElementBase & {
   type: "description";
   content: string;
+};
+
+export type DividerElement = FormElementBase & {
+  type: "divider";
 };
 
 export type TextQuestion = FormElementBase & {
@@ -81,6 +86,12 @@ export type TelegramQuestion = FormElementBase & {
   required?: boolean;
 };
 
+export type EthAddressQuestion = FormElementBase & {
+  type: "ethAddress";
+  required?: boolean;
+  placeholder?: string;
+};
+
 export type FormElement =
   | SectionElement
   | DescriptionElement
@@ -92,7 +103,9 @@ export type FormElement =
   | SelectQuestion
   | MultiSelectQuestion
   | BooleanQuestion
-  | TelegramQuestion;
+  | TelegramQuestion
+  | EthAddressQuestion
+  | DividerElement;
 
 export type FormSchema = {
   round: FormElement[];

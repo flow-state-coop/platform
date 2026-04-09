@@ -1,6 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useAccount, useSwitchChain } from "wagmi";
+import { useSession } from "next-auth/react";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Nav from "react-bootstrap/Nav";
 import Card from "react-bootstrap/Card";
 import Form from "react-bootstrap/Form";
@@ -15,6 +19,7 @@ import ButtonGroup from "react-bootstrap/ButtonGroup";
 import Image from "react-bootstrap/Image";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useRequireAuth from "@/hooks/requireAuth";
+import useSiwe from "@/hooks/siwe";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import {
@@ -27,6 +32,16 @@ import {
 type Props = {
   chainId: number;
   councilId: string;
+  csrfToken: string;
+};
+
+const WALLET_ELEMENT_ID = "__wallet__";
+const WALLET_ELEMENT: FormElement = {
+  id: WALLET_ELEMENT_ID,
+  type: "ethAddress",
+  label: "Wallet to receive funding",
+  required: true,
+  placeholder: "0x...",
 };
 
 type ActiveTab = "project" | "round" | "attestation";
@@ -41,6 +56,7 @@ function newQuestion(type: FormElement["type"]): FormElement {
 
   switch (type) {
     case "section":
+    case "divider":
       return { ...base, type };
     case "description":
       return { ...base, type, content: "" };
@@ -51,6 +67,8 @@ function newQuestion(type: FormElement["type"]): FormElement {
       return { ...base, type, required: false, markdown: true };
     case "number":
       return { ...base, type, required: false };
+    case "ethAddress":
+      return { ...base, type, required: false, placeholder: "0x..." };
     default:
       return { ...base, type, required: false } as FormElement;
   }
@@ -66,11 +84,13 @@ const QUESTION_TYPES: { value: FormElement["type"]; label: string }[] = [
   { value: "multiSelect", label: "Multiple Choice" },
   { value: "boolean", label: "Yes / No" },
   { value: "telegram", label: "Telegram" },
+  { value: "ethAddress", label: "ETH Address" },
 ];
 
 const STRUCTURE_TYPES: { value: FormElement["type"]; label: string }[] = [
   { value: "section", label: "Heading" },
-  { value: "description", label: "Text Section" },
+  { value: "description", label: "Text" },
+  { value: "divider", label: "Dividing Line" },
 ];
 
 const TYPE_COLORS: Record<string, string> = {
@@ -85,11 +105,13 @@ const TYPE_COLORS: Record<string, string> = {
   multiSelect: "#3c655b",
   boolean: "#3c655b",
   telegram: "#056589",
+  ethAddress: "#056589",
+  divider: "#aaaaaa",
 };
 
 const TYPE_DISPLAY_NAMES: Record<string, string> = {
   section: "Heading",
-  description: "Text Section",
+  description: "Text",
   text: "Text",
   textarea: "Text Area",
   number: "Number",
@@ -99,6 +121,8 @@ const TYPE_DISPLAY_NAMES: Record<string, string> = {
   multiSelect: "Multi Select",
   boolean: "Yes/No",
   telegram: "Telegram",
+  ethAddress: "ETH Address",
+  divider: "Dividing Line",
 };
 
 const PROJECT_FIELDS = [
@@ -205,7 +229,7 @@ function ElementCard({
               onMoveUp();
             }}
           >
-            Up
+            ↑
           </button>
           <button
             type="button"
@@ -216,7 +240,7 @@ function ElementCard({
               onMoveDown();
             }}
           >
-            Down
+            ↓
           </button>
           <Button
             variant="link"
@@ -236,7 +260,7 @@ function ElementCard({
       <Collapse in={expanded}>
         <div>
           <hr className="my-2" style={{ opacity: 0.15 }} />
-          {element.type !== "description" && (
+          {element.type !== "description" && element.type !== "divider" && (
             <Form.Group className="mb-3">
               <Form.Label className="fs-sm fw-semi-bold">Label</Form.Label>
               <Form.Control
@@ -249,6 +273,12 @@ function ElementCard({
                 placeholder="Question or heading text"
               />
             </Form.Group>
+          )}
+
+          {element.type === "divider" && (
+            <p className="text-info fs-sm mb-0">
+              Renders as a horizontal dividing line. No configuration needed.
+            </p>
           )}
 
           {element.type === "description" && (
@@ -593,7 +623,7 @@ function ProjectFieldsPreview() {
   );
 }
 
-export default function FormBuilder({ chainId, councilId }: Props) {
+export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
   const [activeTab, setActiveTab] = useState<ActiveTab>("round");
   const [schema, setSchema] = useState<FormSchema>({
     round: [],
@@ -609,8 +639,14 @@ export default function FormBuilder({ chainId, councilId }: Props) {
     Record<string, string>
   >({});
 
+  const router = useRouter();
   const { isMobile } = useMediaQuery();
   const { requireAuth } = useRequireAuth();
+  const { address, chain: connectedChain } = useAccount();
+  const { data: session } = useSession();
+  const { openConnectModal } = useConnectModal();
+  const { switchChain } = useSwitchChain();
+  const { handleSignIn } = useSiwe();
 
   const fetchSchema = useCallback(async () => {
     try {
@@ -633,12 +669,24 @@ export default function FormBuilder({ chainId, councilId }: Props) {
     fetchSchema();
   }, [fetchSchema]);
 
-  const elements =
-    activeTab === "project" ? [] : schema[activeTab as "round" | "attestation"];
+  const elements = useMemo(() => {
+    if (activeTab === "project") return [];
+    if (activeTab === "round") {
+      return [WALLET_ELEMENT, ...schema.round];
+    }
+    return schema.attestation;
+  }, [activeTab, schema.round, schema.attestation]);
 
   const updateElements = (newElements: FormElement[]) => {
     if (activeTab === "project") return;
-    setSchema((prev) => ({ ...prev, [activeTab]: newElements }));
+    if (activeTab === "round") {
+      setSchema((prev) => ({
+        ...prev,
+        round: newElements.filter((el) => el.id !== WALLET_ELEMENT_ID),
+      }));
+    } else {
+      setSchema((prev) => ({ ...prev, [activeTab]: newElements }));
+    }
   };
 
   const handleAdd = (type: FormElement["type"]) => {
@@ -687,9 +735,12 @@ export default function FormBuilder({ chainId, councilId }: Props) {
     const errors: Record<string, string> = {};
     const allElements = [...schema.round, ...schema.attestation];
     for (const el of allElements) {
-      if (el.type === "description") {
+      if (el.id === WALLET_ELEMENT_ID) continue;
+      if (el.type === "divider") {
+        // No validation needed
+      } else if (el.type === "description") {
         if (!el.content?.trim()) {
-          errors[el.id] = "Text Section requires content";
+          errors[el.id] = "Text requires content";
         }
       } else if (el.type === "select" || el.type === "multiSelect") {
         if (!el.label.trim()) {
@@ -761,27 +812,61 @@ export default function FormBuilder({ chainId, councilId }: Props) {
     );
   }
 
+  if (!session || session.address !== address) {
+    return (
+      <>
+        <Sidebar />
+        <Stack
+          direction="vertical"
+          className={`${!isMobile ? "w-75 px-5" : "w-100 px-4"}`}
+        >
+          <Button
+            variant="secondary"
+            className="d-flex justify-content-center align-items-center gap-2 mt-5 fs-lg fw-semi-bold py-4 rounded-4"
+            onClick={() => {
+              if (!address && openConnectModal) {
+                openConnectModal();
+              } else if (connectedChain?.id !== chainId) {
+                switchChain({ chainId });
+              } else {
+                handleSignIn(csrfToken);
+              }
+            }}
+          >
+            {!address
+              ? "Connect Wallet"
+              : connectedChain?.id !== chainId
+                ? "Switch Network"
+                : "Sign In With Ethereum"}
+          </Button>
+        </Stack>
+      </>
+    );
+  }
+
   const editorContent = (
     <>
-      {elements.length === 0 && (
+      {elements.filter((el) => el.id !== WALLET_ELEMENT_ID).length === 0 && (
         <p className="text-info fs-sm">
           No items yet. Add questions or use a template to get started.
         </p>
       )}
 
-      {elements.map((element, index) => (
-        <ElementCard
-          key={element.id}
-          element={element}
-          index={index}
-          total={elements.length}
-          error={validationErrors[element.id]}
-          onUpdate={(el) => handleUpdate(index, el)}
-          onRemove={() => handleRemove(index)}
-          onMoveUp={() => handleMoveUp(index)}
-          onMoveDown={() => handleMoveDown(index)}
-        />
-      ))}
+      {elements
+        .filter((el) => el.id !== WALLET_ELEMENT_ID)
+        .map((element, index) => (
+          <ElementCard
+            key={element.id}
+            element={element}
+            index={index}
+            total={elements.length - 1}
+            error={validationErrors[element.id]}
+            onUpdate={(el) => handleUpdate(index + 1, el)}
+            onRemove={() => handleRemove(index + 1)}
+            onMoveUp={() => handleMoveUp(index + 1)}
+            onMoveDown={() => handleMoveDown(index + 1)}
+          />
+        ))}
 
       <Stack direction="horizontal" gap={2} className="mt-3">
         <Dropdown>
@@ -852,19 +937,6 @@ export default function FormBuilder({ chainId, councilId }: Props) {
           <ProjectFieldsPreview />
         ) : (
           <>
-            {activeTab === "round" && (
-              <Form.Group className="mb-3">
-                <Form.Label className="fs-sm fw-semi-bold">
-                  Wallet to receive funding*
-                </Form.Label>
-                <Form.Control
-                  type="text"
-                  disabled
-                  className="rounded-3"
-                  placeholder="0x..."
-                />
-              </Form.Group>
-            )}
             <FormPreview
               elements={elements}
               validationErrors={validationErrors}
@@ -1032,9 +1104,42 @@ export default function FormBuilder({ chainId, councilId }: Props) {
             </div>
           </div>
         )}
+        <Button
+          variant="secondary"
+          className="py-4 rounded-4 fs-lg fw-semi-bold mt-4"
+          onClick={() =>
+            router.push(`/flow-councils/review/${chainId}/${councilId}`)
+          }
+        >
+          Next
+        </Button>
       </Stack>
     </>
   );
+}
+
+function computeNumbering(elements: FormElement[]) {
+  let sectionIndex = 0;
+  let questionIndex = 0;
+  const hasSections = elements.some((el) => el.type === "section");
+  const numberMap = new Map<string, string>();
+  for (const el of elements) {
+    if (el.type === "section") {
+      sectionIndex++;
+      questionIndex = 0;
+    } else if (
+      el.type !== "description" &&
+      el.type !== "divider" &&
+      el.id !== WALLET_ELEMENT_ID
+    ) {
+      questionIndex++;
+      numberMap.set(
+        el.id,
+        hasSections ? `${sectionIndex}.${questionIndex}` : `${questionIndex}`,
+      );
+    }
+  }
+  return numberMap;
 }
 
 function FormPreview({
@@ -1052,6 +1157,12 @@ function FormPreview({
     validationErrors[id]
       ? { borderLeft: "4px solid #dc3545", paddingLeft: 8 }
       : {};
+
+  const numberMap = computeNumbering(elements);
+  const num = (id: string) => {
+    const n = numberMap.get(id);
+    return n ? `${n}. ` : "";
+  };
 
   return (
     <Form>
@@ -1074,8 +1185,12 @@ function FormPreview({
                 className="text-info fs-sm mb-2"
                 style={errorStyle(el.id)}
               >
-                {el.content || el.label || "(Text Section)"}
+                {el.content || el.label || "(Text)"}
               </p>
+            );
+          case "divider":
+            return (
+              <hr key={el.id} className="my-3" style={errorStyle(el.id)} />
             );
           case "text":
           case "email":
@@ -1087,6 +1202,7 @@ function FormPreview({
                 style={errorStyle(el.id)}
               >
                 <Form.Label className="fs-sm fw-semi-bold">
+                  {num(el.id)}
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
                 </Form.Label>
@@ -1102,6 +1218,44 @@ function FormPreview({
                 />
               </Form.Group>
             );
+          case "ethAddress": {
+            const isWallet = el.id === WALLET_ELEMENT_ID;
+            const group = (
+              <Form.Group
+                key={el.id}
+                className={isWallet ? "mb-0" : "mb-3"}
+                style={errorStyle(el.id)}
+              >
+                <Form.Label className="fs-sm fw-semi-bold">
+                  {!isWallet && num(el.id)}
+                  {el.label || "(Untitled)"}
+                  {el.required && "*"}
+                </Form.Label>
+                <Form.Control
+                  type="text"
+                  disabled
+                  className="rounded-3"
+                  placeholder={el.placeholder ?? "0x..."}
+                />
+              </Form.Group>
+            );
+            return isWallet ? (
+              <div
+                key={el.id}
+                className="rounded-4 p-3 mb-3 border border-2"
+                style={
+                  {
+                    backgroundColor: "#f0f4f0",
+                    "--bs-border-color": "#3c655b",
+                  } as React.CSSProperties
+                }
+              >
+                {group}
+              </div>
+            ) : (
+              group
+            );
+          }
           case "url":
             return (
               <Form.Group
@@ -1110,6 +1264,7 @@ function FormPreview({
                 style={errorStyle(el.id)}
               >
                 <Form.Label className="fs-sm fw-semi-bold">
+                  {num(el.id)}
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
                 </Form.Label>
@@ -1137,14 +1292,11 @@ function FormPreview({
                 style={errorStyle(el.id)}
               >
                 <Form.Label className="fs-sm fw-semi-bold">
+                  {num(el.id)}
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
                   {el.markdown !== false && (
-                    <Badge
-                      bg="light"
-                      text="dark"
-                      className="ms-2 fw-normal fs-xxs"
-                    >
+                    <Badge bg="secondary" className="ms-2 fw-normal fs-xxs">
                       Markdown
                     </Badge>
                   )}
@@ -1172,6 +1324,7 @@ function FormPreview({
                 style={errorStyle(el.id)}
               >
                 <Form.Label className="fs-sm fw-semi-bold">
+                  {num(el.id)}
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
                 </Form.Label>
@@ -1192,6 +1345,7 @@ function FormPreview({
                 style={errorStyle(el.id)}
               >
                 <Form.Label className="fs-sm fw-semi-bold">
+                  {num(el.id)}
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
                 </Form.Label>
@@ -1213,6 +1367,7 @@ function FormPreview({
                 style={errorStyle(el.id)}
               >
                 <Form.Label className="fs-sm fw-semi-bold">
+                  {num(el.id)}
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
                 </Form.Label>
@@ -1234,6 +1389,7 @@ function FormPreview({
                 style={errorStyle(el.id)}
               >
                 <Form.Label className="fs-sm fw-semi-bold">
+                  {num(el.id)}
                   {el.label || "(Untitled)"}
                   {el.required && "*"}
                 </Form.Label>

@@ -331,6 +331,8 @@ export const formElementSchema = z
       "multiSelect",
       "boolean",
       "telegram",
+      "ethAddress",
+      "divider",
     ]),
     label: z.string().max(500),
     content: z.string().max(5000).optional(),
@@ -344,9 +346,13 @@ export const formElementSchema = z
     max: z.number().optional(),
     options: z.array(z.string().max(200)).max(50).optional(),
   })
-  .refine((el) => el.type === "description" || el.label.length >= 1, {
-    message: "label is required for non-description elements",
-  })
+  .refine(
+    (el) =>
+      el.type === "description" ||
+      el.type === "divider" ||
+      el.label.length >= 1,
+    { message: "label is required for non-description/divider elements" },
+  )
   .refine(
     (el) =>
       (el.type !== "select" && el.type !== "multiSelect") ||

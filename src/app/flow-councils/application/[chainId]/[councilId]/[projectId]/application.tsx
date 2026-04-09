@@ -22,6 +22,7 @@ import type {
   AttestationForm,
 } from "@/app/flow-councils/types/round";
 import type { FormSchema } from "@/app/flow-councils/types/formSchema";
+import { generateApplicationTemplate } from "@/app/flow-councils/lib/generateApplicationTemplate";
 import { networks } from "@/lib/networks";
 import { Project } from "@/types/project";
 import useRequireAuth from "@/hooks/requireAuth";
@@ -69,13 +70,15 @@ export default function Application(props: ApplicationProps) {
   const [dynamicSaving, setDynamicSaving] = useState(false);
   const [dynamicError, setDynamicError] = useState("");
 
+  // Round name for template download
+  const [roundName, setRoundName] = useState<string>("");
+
   // Profile data for auto-fill
   const [profileData, setProfileData] = useState<{
     displayName?: string;
     email?: string;
     telegram?: string;
   }>({});
-  const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
   const LOCKED_STATUSES = ["ACCEPTED", "REJECTED", "GRADUATED", "REMOVED"];
   const isInLockedStatus =
@@ -84,15 +87,28 @@ export default function Application(props: ApplicationProps) {
 
   const network = networks.find((n) => n.id === chainId);
 
-  // Fetch form schema
+  // Fetch form schema and round name
   const fetchFormSchema = useCallback(async () => {
     try {
-      const res = await fetch(
-        `/api/flow-council/rounds/form-schema?chainId=${chainId}&flowCouncilAddress=${councilId}`,
-      );
-      const data = await res.json();
-      if (data.success && data.formSchema) {
-        setFormSchema(data.formSchema);
+      const [schemaRes, roundRes] = await Promise.all([
+        fetch(
+          `/api/flow-council/rounds/form-schema?chainId=${chainId}&flowCouncilAddress=${councilId}`,
+        ),
+        fetch(
+          `/api/flow-council/rounds?chainId=${chainId}&flowCouncilAddress=${councilId}`,
+        ),
+      ]);
+      const schemaData = await schemaRes.json();
+      if (schemaData.success && schemaData.formSchema) {
+        setFormSchema(schemaData.formSchema);
+      }
+      const roundData = await roundRes.json();
+      if (roundData.success && roundData.round?.details) {
+        const details =
+          typeof roundData.round.details === "string"
+            ? JSON.parse(roundData.round.details)
+            : roundData.round.details;
+        setRoundName(details?.name ?? "");
       }
     } catch (err) {
       console.error("Failed to fetch form schema:", err);
@@ -220,9 +236,8 @@ export default function Application(props: ApplicationProps) {
   }, [roundData]);
 
   const showNudge = useMemo(() => {
-    if (nudgeDismissed) return false;
     return !profileData.displayName || !profileData.email;
-  }, [nudgeDismissed, profileData.displayName, profileData.email]);
+  }, [profileData.displayName, profileData.email]);
 
   const handleBack = () => {
     router.push(`/flow-councils/application/${chainId}/${councilId}`);
@@ -338,8 +353,6 @@ export default function Application(props: ApplicationProps) {
       {showNudge && (
         <Alert
           variant="warning"
-          dismissible
-          onClose={() => setNudgeDismissed(true)}
           className="mb-3 border border-2 border-warning d-flex align-items-center"
         >
           <div>
@@ -399,78 +412,27 @@ export default function Application(props: ApplicationProps) {
         </Nav>
 
         {formSchema && (
-          <Button
-            variant="link"
-            className="text-primary mb-4 p-0 text-decoration-underline"
-            onClick={() => {
-              const lines: string[] = ["# Application Template\n"];
-              lines.push("## Project Information\n");
-              lines.push("- **Project Name*** — text");
-              lines.push("- **Manager Addresses*** — ETH addresses");
-              lines.push("- **Description*** — 200–5000 characters, markdown");
-              lines.push("- **Logo*** — 1:1 image upload");
-              lines.push("- **Banner*** — 3:1 image upload");
-              lines.push("- **Website*** — URL");
-              lines.push("- **Demo URL** — URL");
-              lines.push("- **X/Twitter** — handle or URL");
-              lines.push("- **Farcaster** — handle or URL");
-              lines.push("- **Telegram** — group URL");
-              lines.push("- **Discord** — channel URL");
-              lines.push("- **GitHub Repos*** — repository URLs");
-              lines.push("- **Smart Contracts** — addresses + chain");
-              lines.push("- **Other Links** — label + URL\n");
-              lines.push("- **Wallet to receive funding*** — ETH address\n");
-              if (formSchema.round.length > 0) {
-                lines.push("## Round Questions\n");
-                for (const el of formSchema.round) {
-                  if (el.type === "section") lines.push(`### ${el.label}\n`);
-                  else if (el.type === "description")
-                    lines.push(`${el.content || ""}\n`);
-                  else {
-                    const req = "required" in el && el.required ? "*" : "";
-                    const typeName =
-                      el.type === "textarea"
-                        ? "long text"
-                        : el.type === "multiSelect"
-                          ? "multi select"
-                          : el.type;
-                    lines.push(`- **${el.label}**${req} — ${typeName}`);
-                  }
-                }
-                lines.push("");
-              }
-              if (formSchema.attestation.length > 0) {
-                lines.push("## Attestation\n");
-                for (const el of formSchema.attestation) {
-                  if (el.type === "section") lines.push(`### ${el.label}\n`);
-                  else if (el.type === "description")
-                    lines.push(`${el.content || ""}\n`);
-                  else {
-                    const req = "required" in el && el.required ? "*" : "";
-                    const typeName =
-                      el.type === "textarea"
-                        ? "long text"
-                        : el.type === "multiSelect"
-                          ? "multi select"
-                          : el.type;
-                    lines.push(`- **${el.label}**${req} — ${typeName}`);
-                  }
-                }
-                lines.push("");
-              }
-              const blob = new Blob([lines.join("\n")], {
-                type: "text/markdown",
-              });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "application-template.md";
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-          >
-            Download Application Template
-          </Button>
+          <div className="text-start mb-4">
+            <Button
+              variant="link"
+              className="text-primary p-0 text-decoration-underline"
+              onClick={() => {
+                const { content, filename } = generateApplicationTemplate(
+                  formSchema,
+                  roundName,
+                );
+                const blob = new Blob([content], { type: "text/markdown" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              Download Application Template
+            </Button>
+          </div>
         )}
 
         <Tab.Content>

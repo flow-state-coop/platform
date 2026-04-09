@@ -1114,7 +1114,9 @@ export default function Review(props: ReviewProps) {
                 className="py-4 rounded-4 fs-lg fw-semi-bold"
                 style={{ pointerEvents: isSubmitting ? "none" : "auto" }}
                 onClick={() =>
-                  router.push(`/flow-councils/${chainId}/${councilId}`)
+                  router.push(
+                    `/flow-councils/membership/${chainId}/${councilId}`,
+                  )
                 }
               >
                 Next

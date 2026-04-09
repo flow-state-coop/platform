@@ -727,6 +727,21 @@ export default function ProjectTab(props: ProjectTabProps) {
         required
         validated={validated}
         invalidFeedback="Copy/paste your link in https://github.com/orgname/reponame format. Don't include a .git suffix"
+        onItemBlur={(index, value) => {
+          if (
+            value &&
+            !value.startsWith("https://") &&
+            !value.startsWith("http://")
+          ) {
+            const newRepos = [...form.githubRepos];
+            newRepos[index] = `https://${value}`;
+            setForm({ ...form, githubRepos: newRepos });
+          } else if (value && value.startsWith("http://")) {
+            const newRepos = [...form.githubRepos];
+            newRepos[index] = value.replace("http://", "https://");
+            setForm({ ...form, githubRepos: newRepos });
+          }
+        }}
       />
 
       <SmartContractRow

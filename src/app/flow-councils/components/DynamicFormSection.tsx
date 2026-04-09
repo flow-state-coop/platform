@@ -1,5 +1,6 @@
 "use client";
 
+import { isAddress } from "viem";
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import MarkdownEditor from "@/components/MarkdownEditor";
@@ -29,6 +30,27 @@ export default function DynamicFormSection({
     if (onChange) onChange(id, value);
   };
 
+  const hasSections = elements.some((el) => el.type === "section");
+  let sectionIdx = 0;
+  let questionIdx = 0;
+  const numberMap = new Map<string, string>();
+  for (const el of elements) {
+    if (el.type === "section") {
+      sectionIdx++;
+      questionIdx = 0;
+    } else if (el.type !== "description" && el.type !== "divider") {
+      questionIdx++;
+      numberMap.set(
+        el.id,
+        hasSections ? `${sectionIdx}.${questionIdx}` : `${questionIdx}`,
+      );
+    }
+  }
+  const num = (id: string) => {
+    const n = numberMap.get(id);
+    return n ? `${n}. ` : "";
+  };
+
   return (
     <>
       {elements.map((el) => {
@@ -45,10 +67,13 @@ export default function DynamicFormSection({
                 {el.content || el.label}
               </p>
             );
+          case "divider":
+            return <hr key={el.id} className="my-3" />;
           case "text":
             return (
               <Form.Group key={el.id} className="mb-4">
                 <Form.Label className="fs-lg fw-bold">
+                  {num(el.id)}
                   {el.label}
                   {el.required && "*"}
                 </Form.Label>
@@ -74,6 +99,7 @@ export default function DynamicFormSection({
             return (
               <Form.Group key={el.id} className="mb-4">
                 <Form.Label className="fs-lg fw-bold">
+                  {num(el.id)}
                   {el.label}
                   {el.required && "*"}
                 </Form.Label>
@@ -112,6 +138,7 @@ export default function DynamicFormSection({
             return (
               <Form.Group key={el.id} className="mb-4">
                 <Form.Label className="fs-lg fw-bold">
+                  {num(el.id)}
                   {el.label}
                   {el.required && "*"}
                 </Form.Label>
@@ -142,6 +169,7 @@ export default function DynamicFormSection({
             return (
               <Form.Group key={el.id} className="mb-4">
                 <Form.Label className="fs-lg fw-bold">
+                  {num(el.id)}
                   {el.label}
                   {el.required && "*"}
                 </Form.Label>
@@ -174,6 +202,7 @@ export default function DynamicFormSection({
             return (
               <Form.Group key={el.id} className="mb-4">
                 <Form.Label className="fs-lg fw-bold">
+                  {num(el.id)}
                   {el.label}
                   {el.required && "*"}
                 </Form.Label>
@@ -226,6 +255,7 @@ export default function DynamicFormSection({
             return (
               <Form.Group key={el.id} className="mb-4">
                 <Form.Label className="fs-lg fw-bold">
+                  {num(el.id)}
                   {el.label}
                   {el.required && "*"}
                 </Form.Label>
@@ -250,6 +280,7 @@ export default function DynamicFormSection({
             return (
               <Form.Group key={el.id} className="mb-4">
                 <Form.Label className="fs-lg fw-bold">
+                  {num(el.id)}
                   {el.label}
                   {el.required && "*"}
                 </Form.Label>
@@ -275,6 +306,7 @@ export default function DynamicFormSection({
             return (
               <Form.Group key={el.id} className="mb-4">
                 <Form.Label className="fs-lg fw-bold">
+                  {num(el.id)}
                   {el.label}
                   {el.required && "*"}
                 </Form.Label>
@@ -306,6 +338,7 @@ export default function DynamicFormSection({
             return (
               <Form.Group key={el.id} className="mb-4">
                 <Form.Label className="fs-lg fw-bold">
+                  {num(el.id)}
                   {el.label}
                   {el.required && "*"}
                 </Form.Label>
@@ -343,6 +376,35 @@ export default function DynamicFormSection({
                 </Stack>
               </Form.Group>
             );
+          case "ethAddress": {
+            const val = String(getValue(el.id));
+            const ethInvalid = validated && val.trim() && !isAddress(val);
+            return (
+              <Form.Group key={el.id} className="mb-4">
+                <Form.Label className="fs-lg fw-bold">
+                  {num(el.id)}
+                  {el.label}
+                  {el.required && "*"}
+                </Form.Label>
+                <Form.Control
+                  type="text"
+                  value={val}
+                  disabled={readOnly}
+                  placeholder={el.placeholder ?? "0x..."}
+                  className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+                  isInvalid={
+                    (validated && !!el.required && !val.trim()) || !!ethInvalid
+                  }
+                  onChange={(e) => handleChange(el.id, e.target.value)}
+                />
+                {ethInvalid && (
+                  <Form.Text className="text-danger">
+                    Please enter a valid ETH address
+                  </Form.Text>
+                )}
+              </Form.Group>
+            );
+          }
         }
       })}
     </>

@@ -212,7 +212,7 @@ export default function Profile() {
       </div>
 
       <Form onSubmit={handleSave}>
-        <Card className="bg-white rounded-4 border-0 shadow-sm p-4 mb-4">
+        <Card className="bg-lace-100 rounded-4 border-0 p-4 mb-4">
           <h5 className="fw-bold mb-3">Public Information</h5>
 
           <Form.Group className="mb-4">
@@ -290,9 +290,9 @@ export default function Profile() {
           </Form.Group>
         </Card>
 
-        <Card className="bg-white rounded-4 border-0 shadow-sm p-4 mb-4">
+        <Card className="bg-lace-100 rounded-4 border-0 p-4 mb-4">
           <h5 className="fw-bold mb-1">
-            Private Information{" "}
+            Contact Information{" "}
             <Badge bg="secondary" className="ms-2 fw-normal">
               Private
             </Badge>
@@ -303,12 +303,7 @@ export default function Profile() {
           </p>
 
           <Form.Group className="mb-4">
-            <Form.Label>
-              Email{" "}
-              <Badge bg="light" text="dark" className="ms-1 fw-normal">
-                Private
-              </Badge>
-            </Form.Label>
+            <Form.Label>Email</Form.Label>
             <Form.Control
               type="email"
               value={form.email}
@@ -322,12 +317,7 @@ export default function Profile() {
           </Form.Group>
 
           <Form.Group className="mb-0">
-            <Form.Label>
-              Telegram{" "}
-              <Badge bg="light" text="dark" className="ms-1 fw-normal">
-                Private
-              </Badge>
-            </Form.Label>
+            <Form.Label>Telegram</Form.Label>
             <Form.Control
               type="text"
               value={form.telegram}

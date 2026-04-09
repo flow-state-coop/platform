@@ -12,6 +12,8 @@ import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import ProjectCard from "@/app/flow-councils/components/ProjectCard";
+import type { FormSchema } from "@/app/flow-councils/types/formSchema";
+import { generateApplicationTemplate } from "@/app/flow-councils/lib/generateApplicationTemplate";
 import InfoTooltip from "@/components/InfoTooltip";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
@@ -73,6 +75,7 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
     name: "",
     description: "",
   });
+  const [formSchema, setFormSchema] = useState<FormSchema | null>(null);
 
   const router = useRouter();
   const { isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
@@ -209,12 +212,17 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
         return;
       }
 
-      // Fetch round metadata from database
       try {
-        const res = await fetch(
-          `/api/flow-council/rounds?chainId=${chainId}&flowCouncilAddress=${councilId}`,
-        );
-        const data = await res.json();
+        const [roundRes, schemaRes] = await Promise.all([
+          fetch(
+            `/api/flow-council/rounds?chainId=${chainId}&flowCouncilAddress=${councilId}`,
+          ),
+          fetch(
+            `/api/flow-council/rounds/form-schema?chainId=${chainId}&flowCouncilAddress=${councilId}`,
+          ),
+        ]);
+
+        const data = await roundRes.json();
         if (data.success && data.round) {
           setApplicationsClosed(data.round.applicationsClosed ?? false);
 
@@ -228,6 +236,11 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
               description: details?.description ?? "N/A",
             });
           }
+        }
+
+        const schemaData = await schemaRes.json();
+        if (schemaData.success && schemaData.formSchema) {
+          setFormSchema(schemaData.formSchema);
         }
       } catch (err) {
         console.error(err);
@@ -265,15 +278,26 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
     return <span className="m-auto fs-4 fw-bold">No council found</span>;
   }
 
-  const applicationPreviewLink = !applicationsClosed && (
-    <a
-      href="https://docs.google.com/document/d/1AnyrCNnXMJ9LYC_wXTK_Xu6il2duswp_QiM8oeU9iFA/edit?tab=t.0"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-primary"
+  const applicationPreviewLink = !applicationsClosed && formSchema && (
+    <Button
+      variant="link"
+      className="text-primary p-0 text-decoration-underline"
+      onClick={() => {
+        const { content, filename } = generateApplicationTemplate(
+          formSchema,
+          councilMetadata.name,
+        );
+        const blob = new Blob([content], { type: "text/markdown" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }}
     >
-      Preview the full application here.
-    </a>
+      Download Application Template
+    </Button>
   );
 
   return (

@@ -122,149 +122,49 @@ function Sidebar() {
         gap={3}
         className="rounded-4 flex-grow-0 mt-3"
       >
-        <Link
-          href={
-            chainId && selectedCouncil
-              ? `/flow-councils/launch/${chainId}/${selectedCouncil.id}`
-              : "/flow-councils/launch"
-          }
-          className={`d-flex align-items-center text-decoration-none ${pathname === "/flow-councils/launch" ? "fw-semi-bold" : ""}`}
-        >
-          <Image
-            src={`${pathname?.startsWith("/flow-councils/launch") ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
-            alt="Bullet Point"
-            width={24}
-            height={24}
-            style={{
-              filter:
-                !pathname?.startsWith("/flow-councils/launch") &&
-                !selectedCouncil
-                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
-                  : "",
-            }}
-          />
-          Launch Config
-        </Link>
-        <Link
-          href={`/flow-councils/round-metadata/${chainId}/${selectedCouncil?.id}`}
-          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname?.startsWith("/flow-councils/round-metadata") ? "fw-semi-bold" : ""}`}
-          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
-        >
-          <Image
-            src={`${pathname?.startsWith("/flow-councils/round-metadata") && !!selectedCouncil ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
-            alt="Bullet Point"
-            width={24}
-            height={24}
-            style={{
-              filter:
-                !pathname?.startsWith("/flow-councils/round-metadata") &&
-                !selectedCouncil
-                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
-                  : "",
-            }}
-          />
-          Round Metadata
-        </Link>
-        <Link
-          href={`/flow-councils/form-builder/${chainId}/${selectedCouncil?.id}`}
-          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname?.startsWith("/flow-councils/form-builder") ? "fw-semi-bold" : ""}`}
-          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
-        >
-          <Image
-            src={`${pathname?.startsWith("/flow-councils/form-builder") && !!selectedCouncil ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
-            alt="Bullet Point"
-            width={24}
-            height={24}
-            style={{
-              filter:
-                !pathname?.startsWith("/flow-councils/form-builder") &&
-                !selectedCouncil
-                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
-                  : "",
-            }}
-          />
-          Application
-        </Link>
-        <Link
-          href={`/flow-councils/permissions/${chainId}/${selectedCouncil?.id}`}
-          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname?.startsWith("/flow-councils/permissions") ? "fw-semi-bold" : ""}`}
-          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
-        >
-          <Image
-            src={`${pathname?.startsWith("/flow-councils/permissions") && !!selectedCouncil ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
-            alt="Bullet Point"
-            width={24}
-            height={24}
-            style={{
-              filter:
-                !pathname?.startsWith("/flow-councils/permissions") &&
-                !selectedCouncil
-                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
-                  : "",
-            }}
-          />
-          Council Permissions
-        </Link>
-        <Link
-          href={`/flow-councils/membership/${chainId}/${selectedCouncil?.id}`}
-          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname?.startsWith("/flow-councils/membership") ? "fw-semi-bold" : ""}`}
-          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
-        >
-          <Image
-            src={`${pathname?.startsWith("/flow-councils/membership") && !!selectedCouncil ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
-            alt="Bullet Point"
-            width={24}
-            height={24}
-            style={{
-              filter:
-                !pathname?.startsWith("/flow-councils/membership") &&
-                !selectedCouncil
-                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
-                  : "",
-            }}
-          />
-          Council Membership
-        </Link>
-        <Link
-          href={`/flow-councils/review/${chainId}/${selectedCouncil?.id}`}
-          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname?.startsWith("/flow-councils/review") ? "fw-semi-bold" : ""}`}
-          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
-        >
-          <Image
-            src={`${pathname?.startsWith("/flow-councils/review") && !!selectedCouncil ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
-            alt="Bullet Point"
-            width={24}
-            height={24}
-            style={{
-              filter:
-                !pathname?.startsWith("/flow-councils/review") &&
-                !selectedCouncil
-                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
-                  : "",
-            }}
-          />
-          Manage Recipients
-        </Link>
-        <Link
-          href={`/flow-councils/communications/${chainId}/${selectedCouncil?.id}`}
-          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname?.startsWith("/flow-councils/communications") ? "fw-semi-bold" : ""}`}
-          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
-        >
-          <Image
-            src={`${pathname?.startsWith("/flow-councils/communications") && !!selectedCouncil ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
-            alt="Bullet Point"
-            width={24}
-            height={24}
-            style={{
-              filter:
-                !pathname?.startsWith("/flow-councils/communications") &&
-                !selectedCouncil
-                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
-                  : "",
-            }}
-          />
-          Round Communications
-        </Link>
+        {[
+          { path: "launch", label: "Launch", alwaysEnabled: true },
+          { path: "round-metadata", label: "Metadata" },
+          { path: "permissions", label: "Permissions" },
+          { path: "form-builder", label: "Application" },
+          { path: "review", label: "Recipients" },
+          { path: "membership", label: "Voters" },
+          { path: "communications", label: "Communications" },
+        ].map(({ path, label, alwaysEnabled }) => {
+          const href =
+            alwaysEnabled && chainId && selectedCouncil
+              ? `/flow-councils/${path}/${chainId}/${selectedCouncil.id}`
+              : alwaysEnabled
+                ? `/flow-councils/${path}`
+                : `/flow-councils/${path}/${chainId}/${selectedCouncil?.id}`;
+          const isActive = pathname?.startsWith(`/flow-councils/${path}`);
+          const disabled = !alwaysEnabled && !selectedCouncil?.id;
+          const dimFilter =
+            "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)";
+          return (
+            <Link
+              key={path}
+              href={href}
+              className={`d-flex align-items-center text-decoration-none ${disabled ? "text-info" : ""} ${isActive ? "fw-semi-bold" : ""}`}
+              style={{ pointerEvents: disabled ? "none" : "auto" }}
+            >
+              <Image
+                src={
+                  isActive && !disabled
+                    ? "/dot-filled.svg"
+                    : "/dot-unfilled.svg"
+                }
+                alt="Bullet Point"
+                width={24}
+                height={24}
+                style={{
+                  filter: !isActive && !selectedCouncil ? dimFilter : "",
+                }}
+              />
+              {label}
+            </Link>
+          );
+        })}
         <Link
           href={`/flow-councils/${chainId}/${selectedCouncil?.id}`}
           className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""}`}
@@ -281,7 +181,7 @@ function Sidebar() {
                 : "",
             }}
           />
-          Council UI
+          UI
         </Link>
       </Stack>
     );

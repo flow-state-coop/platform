@@ -371,7 +371,7 @@ export default function RoundMetadata(props: RoundMetadataProps) {
             variant="secondary"
             className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
             onClick={() =>
-              router.push(`/flow-councils/form-builder/${chainId}/${councilId}`)
+              router.push(`/flow-councils/permissions/${chainId}/${councilId}`)
             }
           >
             Next
