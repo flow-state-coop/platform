@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { isAddress } from "viem";
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
+import Markdown from "@/components/Markdown";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import CharacterCounter from "@/app/flow-councils/components/CharacterCounter";
 import { normalizeEvidenceUrl } from "@/app/api/flow-council/validation";
@@ -30,6 +31,10 @@ export default function DynamicFormSection({
   const handleChange = (id: string, value: unknown) => {
     if (onChange) onChange(id, value);
   };
+
+  const inputClass = readOnly
+    ? "bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
+    : "bg-white border border-2 border-dark rounded-4 py-3 px-3";
 
   const numberMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -87,7 +92,7 @@ export default function DynamicFormSection({
                   value={String(getValue(el.id))}
                   disabled={readOnly}
                   placeholder={el.placeholder}
-                  className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+                  className={inputClass}
                   isInvalid={
                     validated &&
                     !!el.required &&
@@ -118,7 +123,7 @@ export default function DynamicFormSection({
                   value={urlVal}
                   disabled={readOnly}
                   placeholder={el.placeholder ?? el.baseUrl}
-                  className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+                  className={inputClass}
                   isInvalid={
                     (validated && !!el.required && !urlVal.trim()) ||
                     !!baseUrlInvalid
@@ -152,7 +157,7 @@ export default function DynamicFormSection({
                   value={val}
                   disabled={readOnly}
                   placeholder={profileData?.email ?? "email@example.com"}
-                  className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+                  className={inputClass}
                   isInvalid={validated && !!el.required && !val.trim()}
                   onChange={(e) => handleChange(el.id, e.target.value)}
                   onFocus={() => {
@@ -183,7 +188,7 @@ export default function DynamicFormSection({
                   value={val}
                   disabled={readOnly}
                   placeholder={profileData?.telegram ?? "@handle"}
-                  className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+                  className={inputClass}
                   isInvalid={validated && !!el.required && !val.trim()}
                   onChange={(e) => handleChange(el.id, e.target.value)}
                   onFocus={() => {
@@ -211,11 +216,25 @@ export default function DynamicFormSection({
                   {el.label}
                   {el.required && "*"}
                 </Form.Label>
-                {useMarkdown ? (
+                {readOnly ? (
+                  useMarkdown && val.trim() ? (
+                    <div className="bg-light rounded-4 py-3 px-3">
+                      <Markdown>{val}</Markdown>
+                    </div>
+                  ) : (
+                    <Form.Control
+                      as="textarea"
+                      rows={4}
+                      value={val}
+                      disabled
+                      className={`${inputClass} rounded-2`}
+                      style={{ resize: "none" }}
+                    />
+                  )
+                ) : useMarkdown ? (
                   <MarkdownEditor
                     value={val}
                     onChange={(e) => handleChange(el.id, e.target.value)}
-                    disabled={readOnly}
                     placeholder={el.placeholder}
                     rows={4}
                     resizable
@@ -236,10 +255,9 @@ export default function DynamicFormSection({
                       as="textarea"
                       rows={4}
                       value={val}
-                      disabled={readOnly}
                       placeholder={el.placeholder}
                       maxLength={el.charLimit}
-                      className="bg-white border border-2 border-dark rounded-2 py-3 px-3"
+                      className={`${inputClass} rounded-2`}
                       style={{ resize: "vertical" }}
                       isInvalid={validated && !!el.required && !val.trim()}
                       onChange={(e) => handleChange(el.id, e.target.value)}
@@ -270,7 +288,7 @@ export default function DynamicFormSection({
                   disabled={readOnly}
                   min={el.min}
                   max={el.max}
-                  className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+                  className={inputClass}
                   style={{ maxWidth: 200 }}
                   isInvalid={
                     validated &&
@@ -396,7 +414,7 @@ export default function DynamicFormSection({
                   value={val}
                   disabled={readOnly}
                   placeholder={el.placeholder ?? "0x..."}
-                  className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
+                  className={inputClass}
                   isInvalid={
                     (validated && !!el.required && !val.trim()) || !!ethInvalid
                   }
