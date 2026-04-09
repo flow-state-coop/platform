@@ -235,7 +235,7 @@ export async function PATCH(
       );
     }
 
-    if (details && details._formVersion) {
+    if (details) {
       const roundRow = await db
         .selectFrom("rounds")
         .select("details")
@@ -247,24 +247,17 @@ export async function PATCH(
           ? JSON.parse(roundRow.details)
           : (roundRow?.details ?? {});
 
-      if (!roundDetails.formSchema?.attestation) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: "This round does not use a custom form",
-          }),
-          { status: 400, headers: { "Content-Type": "application/json" } },
+      if (roundDetails.formSchema?.attestation) {
+        const validation = validateDynamicAttestationDetails(
+          details,
+          roundDetails.formSchema.attestation,
         );
-      }
-
-      const validation = validateDynamicAttestationDetails(
-        details,
-        roundDetails.formSchema.attestation,
-      );
-      if (!validation.success) {
-        return new Response(
-          JSON.stringify({ success: false, error: validation.error }),
-        );
+        if (!validation.success) {
+          return new Response(
+            JSON.stringify({ success: false, error: validation.error }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
+          );
+        }
       }
     }
 

@@ -270,22 +270,12 @@ export async function PUT(request: Request) {
     }
 
     if (details) {
-      if (details._formVersion) {
-        const roundDetails =
-          typeof round.details === "string"
-            ? JSON.parse(round.details)
-            : (round.details ?? {});
+      const roundDetails =
+        typeof round.details === "string"
+          ? JSON.parse(round.details)
+          : (round.details ?? {});
 
-        if (!roundDetails.formSchema?.round) {
-          return new Response(
-            JSON.stringify({
-              success: false,
-              error: "This round does not use a custom form",
-            }),
-            { status: 400, headers: { "Content-Type": "application/json" } },
-          );
-        }
-
+      if (roundDetails.formSchema?.round) {
         const validation = validateDynamicRoundDetails(
           details,
           roundDetails.formSchema.round,
@@ -293,6 +283,7 @@ export async function PUT(request: Request) {
         if (!validation.success) {
           return new Response(
             JSON.stringify({ success: false, error: validation.error }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
           );
         }
       } else {
@@ -300,6 +291,7 @@ export async function PUT(request: Request) {
         if (!validation.success) {
           return new Response(
             JSON.stringify({ success: false, error: validation.error }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
           );
         }
       }

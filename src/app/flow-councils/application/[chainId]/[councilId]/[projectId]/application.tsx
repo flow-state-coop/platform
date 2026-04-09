@@ -130,6 +130,11 @@ export default function Application(props: ApplicationProps) {
   const [dynamicSaving, setDynamicSaving] = useState(false);
   const [dynamicError, setDynamicError] = useState("");
   const [isDynamicFormApp, setIsDynamicFormApp] = useState(false);
+  const [rawAppDetails, setRawAppDetails] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const [rawFundingAddress, setRawFundingAddress] = useState("");
 
   // Round name for template download
   const [roundName, setRoundName] = useState<string>("");
@@ -240,21 +245,8 @@ export default function Application(props: ApplicationProps) {
               typeof app.details === "string"
                 ? JSON.parse(app.details)
                 : app.details;
-
-            if (details._formVersion === 1) {
-              setIsDynamicFormApp(true);
-              setDynamicRoundValues(details.round ?? {});
-              setDynamicAttestationValues(details.attestation ?? {});
-              if (app.fundingAddress) {
-                setDynamicFundingAddress(app.fundingAddress);
-              }
-            } else {
-              // Legacy data
-              setRoundData(details);
-              if (details.attestation || details.eligibility) {
-                setAttestationData(details.attestation || details.eligibility);
-              }
-            }
+            setRawAppDetails(details);
+            setRawFundingAddress(app.fundingAddress ?? "");
           }
         }
       }
@@ -296,6 +288,30 @@ export default function Application(props: ApplicationProps) {
       setRoundComplete(true);
     }
   }, [roundData]);
+
+  useEffect(() => {
+    if (!rawAppDetails || isLoading) return;
+
+    if (formSchema) {
+      setIsDynamicFormApp(true);
+      setDynamicRoundValues(
+        (rawAppDetails.round as Record<string, unknown>) ?? {},
+      );
+      setDynamicAttestationValues(
+        (rawAppDetails.attestation as Record<string, unknown>) ?? {},
+      );
+      if (rawFundingAddress) {
+        setDynamicFundingAddress(rawFundingAddress);
+      }
+    } else {
+      setRoundData(rawAppDetails as unknown as RoundForm);
+      const attestation =
+        rawAppDetails.attestation ?? rawAppDetails.eligibility;
+      if (attestation) {
+        setAttestationData(attestation as AttestationForm);
+      }
+    }
+  }, [rawAppDetails, formSchema, isLoading, rawFundingAddress]);
 
   const showNudge = !profileData.displayName || !profileData.email;
 
