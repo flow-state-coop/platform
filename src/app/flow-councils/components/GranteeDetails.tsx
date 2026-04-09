@@ -136,7 +136,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             {!!details.website && (
               <Button
                 variant="link"
-                href={`https://${details.website}`}
+                href={`https://${details.website.replace(/^https?:\/\//, "")}`}
                 target="_blank"
                 className="p-0"
               >
@@ -146,7 +146,7 @@ export default function GranteeDetails(props: GranteeDetailsProps) {
             {!!details.demoUrl && (
               <Button
                 variant="link"
-                href={details.demoUrl}
+                href={`https://${details.demoUrl.replace(/^https?:\/\//, "")}`}
                 target="_blank"
                 className="p-0"
               >
