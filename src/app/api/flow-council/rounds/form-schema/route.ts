@@ -143,10 +143,14 @@ export async function PUT(request: Request) {
         if (!appDetails || typeof appDetails !== "object") continue;
 
         let changed = false;
-        for (const removedId of removedIds) {
-          if (removedId in appDetails) {
-            delete appDetails[removedId];
-            changed = true;
+        for (const section of ["round", "attestation"] as const) {
+          const sectionData = appDetails[section];
+          if (!sectionData || typeof sectionData !== "object") continue;
+          for (const removedId of removedIds) {
+            if (removedId in sectionData) {
+              delete (sectionData as Record<string, unknown>)[removedId];
+              changed = true;
+            }
           }
         }
 
