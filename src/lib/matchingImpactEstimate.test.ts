@@ -21,22 +21,24 @@ describe("calcMatchingImpactEstimate", () => {
       newFlowRate: 10n ** 20n,
     });
 
+    // Pinned values guard against accidental formula changes; ordering
+    // alone would only catch monotonicity regressions.
+    expect(small).toBe(58878504672897196n);
+    expect(large).toBe(557794676806083650n);
     expect(large).toBeGreaterThan(small);
   });
 
-  it("is deterministic for identical inputs", () => {
-    const params = {
+  it("matches a pinned value for a representative input set", () => {
+    const result = calcMatchingImpactEstimate({
       totalFlowRate: 5n * 10n ** 17n,
       totalUnits: 250n,
       granteeUnits: 25n,
       granteeFlowRate: 5n * 10n ** 16n,
       previousFlowRate: 10n ** 15n,
-      newFlowRate: 2n * 10n ** 15n,
+      newFlowRate: 10n ** 17n,
       flowRateScaling: 10n ** 13n,
-    };
+    });
 
-    expect(calcMatchingImpactEstimate(params)).toBe(
-      calcMatchingImpactEstimate(params),
-    );
+    expect(result).toBe(3571428571428571n);
   });
 });
