@@ -187,6 +187,15 @@ const subtleButtonStyle = {
   lineHeight: 1.5,
 };
 
+const colorDotStyle = (color: string) => ({
+  width: 10,
+  height: 10,
+  borderRadius: "50%",
+  backgroundColor: color,
+  display: "inline-block",
+  flexShrink: 0,
+});
+
 const dragHandleStyle = {
   cursor: "grab",
   padding: "0.1rem 0.25rem",
@@ -568,9 +577,6 @@ function ElementCard({
 function ProjectFieldsContent() {
   return (
     <>
-      <p className="text-info mb-4">
-        These fields are collected from every applicant automatically.
-      </p>
       {PROJECT_FIELDS.map((group) => (
         <div key={group.section} className="mb-3">
           <span className="fw-semi-bold d-block mb-2">{group.section}</span>
@@ -593,6 +599,9 @@ function ProjectFieldsContent() {
           </div>
         </div>
       ))}
+      <p className="text-info fs-sm mb-0 mt-4">
+        Project fields are standardized and public.
+      </p>
     </>
   );
 }
@@ -967,8 +976,9 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
               <Dropdown.Item
                 key={qt.value}
                 onClick={() => handleAdd(qt.value)}
-                style={{ color: TYPE_COLORS[qt.value] }}
+                className="d-flex align-items-center gap-2"
               >
+                <span style={colorDotStyle(TYPE_COLORS[qt.value])} />
                 {qt.label}
               </Dropdown.Item>
             ))}
@@ -987,11 +997,31 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
               <Dropdown.Item
                 key={st.value}
                 onClick={() => handleAdd(st.value)}
-                style={{ color: TYPE_COLORS[st.value] }}
+                className="d-flex align-items-center gap-2"
               >
+                <span style={colorDotStyle(TYPE_COLORS[st.value])} />
                 {st.label}
               </Dropdown.Item>
             ))}
+          </Dropdown.Menu>
+        </Dropdown>
+        <Dropdown className="ms-auto">
+          <Dropdown.Toggle
+            variant="outline-secondary"
+            size="sm"
+            className="rounded-3"
+          >
+            Start from Template
+          </Dropdown.Toggle>
+          <Dropdown.Menu align="end">
+            <Dropdown.Item onClick={() => handleTemplate(MINIMAL_TEMPLATE)}>
+              Minimal
+            </Dropdown.Item>
+            <Dropdown.Item
+              onClick={() => handleTemplate(GOODBUILDERS_TEMPLATE)}
+            >
+              GoodBuilders
+            </Dropdown.Item>
           </Dropdown.Menu>
         </Dropdown>
       </Stack>
@@ -1044,6 +1074,70 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
     </Card>
   );
 
+  const cardHeader = (
+    <>
+      <div className="mb-3">
+        <h5 className="fw-semi-bold mb-1">Form Builder</h5>
+        <span className="text-info fs-sm">
+          Configure the questions applicants answer when applying to your round
+        </span>
+      </div>
+      {error && (
+        <Alert variant="danger" className="mb-3">
+          {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert
+          variant="success"
+          dismissible
+          onClose={() => setSuccess("")}
+          className="mb-3"
+        >
+          {success}
+        </Alert>
+      )}
+      {hasApplications && (
+        <Alert variant="warning" className="mb-3">
+          Applications already exist. Adding required questions may require
+          applicants to update.
+        </Alert>
+      )}
+    </>
+  );
+
+  const mobileToggleButtonStyle = (isActive: boolean) => ({
+    backgroundColor: isActive ? "#3c655b" : "#fff",
+    color: isActive ? "#fff" : "#3c655b",
+    fontWeight: isActive ? 700 : 500,
+    border: "none",
+    padding: "0.75rem 1.5rem",
+    fontSize: "1rem",
+  });
+
+  const mobileViewToggle = (
+    <ButtonGroup className="mb-3 w-100">
+      <Button
+        style={{
+          ...mobileToggleButtonStyle(mobileView === "editor"),
+          borderRadius: "0.5rem 0 0 0.5rem",
+        }}
+        onClick={() => setMobileView("editor")}
+      >
+        Editor
+      </Button>
+      <Button
+        style={{
+          ...mobileToggleButtonStyle(mobileView === "preview"),
+          borderRadius: "0 0.5rem 0.5rem 0",
+        }}
+        onClick={() => setMobileView("preview")}
+      >
+        Preview
+      </Button>
+    </ButtonGroup>
+  );
+
   return (
     <>
       <Sidebar />
@@ -1051,141 +1145,37 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
         direction="vertical"
         className={`pb-5 ${!isMobile ? "w-75 px-5" : "w-100 px-4"}`}
       >
-        <Card className="bg-lace-100 rounded-4 border-0 p-4 mb-4">
-          <Card.Header className="bg-transparent border-0 p-0">
-            <Stack
-              direction="horizontal"
-              gap={3}
-              className="justify-content-between flex-wrap"
-            >
-              <div>
-                <h5 className="fw-semi-bold mb-1">Application</h5>
-                <span className="text-info fs-sm">
-                  Configure the questions applicants answer when applying to
-                  your round
-                </span>
-              </div>
-              <Stack direction="horizontal" gap={2}>
-                <Dropdown>
-                  <Dropdown.Toggle
-                    variant="secondary"
-                    size="sm"
-                    className="rounded-3"
-                  >
-                    Start from Template
-                  </Dropdown.Toggle>
-                  <Dropdown.Menu>
-                    <Dropdown.Item
-                      onClick={() => handleTemplate(MINIMAL_TEMPLATE)}
-                    >
-                      Minimal
-                    </Dropdown.Item>
-                    <Dropdown.Item
-                      onClick={() => handleTemplate(GOODBUILDERS_TEMPLATE)}
-                    >
-                      GoodBuilders
-                    </Dropdown.Item>
-                  </Dropdown.Menu>
-                </Dropdown>
-                <Button
-                  onClick={() => requireAuth(handleSave)}
-                  disabled={isSaving}
-                  size="sm"
-                  className="rounded-3"
-                >
-                  {isSaving ? <Spinner size="sm" /> : "Save"}
-                </Button>
-              </Stack>
-            </Stack>
-          </Card.Header>
-
-          {(error || success || hasApplications) && (
-            <Card.Body className="p-0 mt-3">
-              {error && (
-                <Alert variant="danger" className="mb-0">
-                  {error}
-                </Alert>
-              )}
-              {success && (
-                <Alert
-                  variant="success"
-                  dismissible
-                  onClose={() => setSuccess("")}
-                  className="mb-0"
-                >
-                  {success}
-                </Alert>
-              )}
-              {hasApplications && (
-                <Alert variant="warning" className="mb-0 mt-2">
-                  Applications already exist. Adding required questions may
-                  require applicants to update.
-                </Alert>
-              )}
-            </Card.Body>
-          )}
-        </Card>
-
         {isMobile ? (
-          <Card className="bg-lace-100 rounded-4 border-0 p-4">
-            <span className="fw-semi-bold d-block mb-3">Form Builder</span>
-            {tabNav}
-            {activeTab === "project" ? (
-              <ProjectFieldsContent />
-            ) : (
-              <>
-                <ButtonGroup className="mb-3">
-                  <Button
-                    size="sm"
-                    className="border-0"
-                    style={{
-                      backgroundColor:
-                        mobileView === "editor"
-                          ? "rgba(60, 101, 91, 0.15)"
-                          : "transparent",
-                      color: mobileView === "editor" ? "#3c655b" : "#6c757d",
-                      borderRadius: "0.5rem 0 0 0.5rem",
-                      fontWeight: mobileView === "editor" ? 600 : 400,
-                    }}
-                    onClick={() => setMobileView("editor")}
-                  >
-                    Editor
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="border-0"
-                    style={{
-                      backgroundColor:
-                        mobileView === "preview"
-                          ? "rgba(60, 101, 91, 0.15)"
-                          : "transparent",
-                      color: mobileView === "preview" ? "#3c655b" : "#6c757d",
-                      borderRadius: "0 0.5rem 0.5rem 0",
-                      fontWeight: mobileView === "preview" ? 600 : 400,
-                    }}
-                    onClick={() => setMobileView("preview")}
-                  >
-                    Preview
-                  </Button>
-                </ButtonGroup>
-                {mobileView === "editor" ? (
-                  editorContent
+          <>
+            {mobileViewToggle}
+            <Card className="bg-lace-100 rounded-4 border-0 p-4">
+              {cardHeader}
+              {tabNav}
+              {mobileView === "editor" ? (
+                activeTab === "project" ? (
+                  <ProjectFieldsContent />
                 ) : (
-                  <div className="bg-white rounded-3 p-3">
+                  editorContent
+                )
+              ) : (
+                <div className="bg-white rounded-3 p-3">
+                  {activeTab === "project" ? (
+                    <ProjectFieldsPreview />
+                  ) : (
                     <FormPreview
                       elements={elements}
                       validationErrors={validationErrors}
                     />
-                  </div>
-                )}
-              </>
-            )}
-          </Card>
+                  )}
+                </div>
+              )}
+            </Card>
+          </>
         ) : (
           <div className="d-flex gap-4 align-items-start">
             <div className="flex-grow-1" style={{ minWidth: 0 }}>
               <Card className="bg-lace-100 rounded-4 border-0 p-4">
-                <span className="fw-semi-bold d-block mb-3">Form Builder</span>
+                {cardHeader}
                 {tabNav}
                 {activeTab === "project" ? (
                   <ProjectFieldsContent />
@@ -1201,15 +1191,24 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
             </div>
           </div>
         )}
-        <Button
-          variant="secondary"
-          className="py-4 rounded-4 fs-lg fw-semi-bold mt-4"
-          onClick={() =>
-            router.push(`/flow-councils/review/${chainId}/${councilId}`)
-          }
-        >
-          Next
-        </Button>
+        <Stack direction="vertical" gap={3} className="mt-4">
+          <Button
+            className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
+            onClick={() => requireAuth(handleSave)}
+            disabled={isSaving}
+          >
+            {isSaving ? <Spinner size="sm" /> : "Save"}
+          </Button>
+          <Button
+            variant="secondary"
+            className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
+            onClick={() =>
+              router.push(`/flow-councils/review/${chainId}/${councilId}`)
+            }
+          >
+            Next
+          </Button>
+        </Stack>
       </Stack>
     </>
   );

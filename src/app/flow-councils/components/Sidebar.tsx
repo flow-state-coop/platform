@@ -35,7 +35,7 @@ const SIDEBAR_LINK_DEFS: {
   { path: "launch", label: "Launch", alwaysEnabled: true },
   { path: "round-metadata", label: "Metadata" },
   { path: "permissions", label: "Permissions" },
-  { path: "form-builder", label: "Application" },
+  { path: "form-builder", label: "Form Builder" },
   { path: "review", label: "Recipients" },
   { path: "membership", label: "Voters" },
   { path: "communications", label: "Communications" },
