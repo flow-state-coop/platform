@@ -696,7 +696,6 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [hasApplications, setHasApplications] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [mobileView, setMobileView] = useState<MobileView>("editor");
@@ -765,6 +764,19 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
   };
 
   const handleRemove = (index: number) => {
+    const element = elements[index];
+    const isStructural =
+      element.type === "section" ||
+      element.type === "divider" ||
+      element.type === "description";
+
+    if (!isStructural) {
+      const confirmed = window.confirm(
+        "Delete this question? Any existing answers from applicants will be discarded when you save.",
+      );
+      if (!confirmed) return;
+    }
+
     updateElements(elements.filter((_, i) => i !== index));
   };
 
@@ -873,7 +885,6 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
 
       if (data.success) {
         setSuccess("Form schema saved");
-        setHasApplications(data.hasApplications);
       } else {
         setError(data.error || "Failed to save");
       }
@@ -1095,12 +1106,6 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
           className="mb-3"
         >
           {success}
-        </Alert>
-      )}
-      {hasApplications && (
-        <Alert variant="warning" className="mb-3">
-          Applications already exist. Adding required questions may require
-          applicants to update.
         </Alert>
       )}
     </>
