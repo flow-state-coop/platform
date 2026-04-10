@@ -95,11 +95,11 @@ const QUESTION_TYPES: { value: FormElement["type"]; label: string }[] = [
   { value: "text", label: "Short Text" },
   { value: "textarea", label: "Long Text" },
   { value: "number", label: "Number" },
-  { value: "url", label: "URL" },
-  { value: "email", label: "Email" },
   { value: "select", label: "Single Choice" },
   { value: "multiSelect", label: "Multiple Choice" },
   { value: "boolean", label: "Yes / No" },
+  { value: "url", label: "URL" },
+  { value: "email", label: "Email" },
   { value: "telegram", label: "Telegram" },
   { value: "ethAddress", label: "ETH Address" },
 ];
@@ -110,20 +110,24 @@ const STRUCTURE_TYPES: { value: FormElement["type"]; label: string }[] = [
   { value: "divider", label: "Dividing Line" },
 ];
 
+const COLOR_STANDARD = "#3c655b";
+const COLOR_COMMS = "#056589";
+const COLOR_STRUCTURAL = "#888888";
+
 const TYPE_COLORS: Record<string, string> = {
-  section: "#3c655b",
-  description: "#888888",
-  text: "#056589",
-  textarea: "#49796b",
-  number: "#d95d39",
-  url: "#056589",
-  email: "#056589",
-  select: "#3c655b",
-  multiSelect: "#3c655b",
-  boolean: "#3c655b",
-  telegram: "#056589",
-  ethAddress: "#056589",
-  divider: "#aaaaaa",
+  text: COLOR_STANDARD,
+  textarea: COLOR_STANDARD,
+  number: COLOR_STANDARD,
+  select: COLOR_STANDARD,
+  multiSelect: COLOR_STANDARD,
+  boolean: COLOR_STANDARD,
+  url: COLOR_COMMS,
+  email: COLOR_COMMS,
+  telegram: COLOR_COMMS,
+  ethAddress: COLOR_COMMS,
+  section: COLOR_STRUCTURAL,
+  description: COLOR_STRUCTURAL,
+  divider: COLOR_STRUCTURAL,
 };
 
 const TYPE_DISPLAY_NAMES: Record<string, string> = {
@@ -213,7 +217,9 @@ function ElementCard({
   onMoveDown: () => void;
 }) {
   const [expanded, setExpanded] = useState(
-    !element.label && element.type !== "description",
+    !element.label &&
+      element.type !== "description" &&
+      element.type !== "divider",
   );
 
   const {
@@ -249,8 +255,10 @@ function ElementCard({
       />
       <div
         className="d-flex align-items-center justify-content-between"
-        style={{ cursor: "pointer" }}
-        onClick={() => setExpanded(!expanded)}
+        style={{ cursor: element.type === "divider" ? "default" : "pointer" }}
+        onClick={() => {
+          if (element.type !== "divider") setExpanded(!expanded);
+        }}
       >
         <div className="d-flex align-items-center gap-2 overflow-hidden">
           <span
@@ -261,16 +269,17 @@ function ElementCard({
           >
             ⠿
           </span>
-          <Badge
-            pill
-            className="flex-shrink-0 fs-xxs"
+          <span
+            className="badge rounded-pill flex-shrink-0 fs-xxs text-white"
             style={{ backgroundColor: typeColor }}
           >
             {TYPE_DISPLAY_NAMES[element.type] ?? element.type}
-          </Badge>
-          <span className="text-truncate fs-sm">
-            {element.label || "(untitled)"}
           </span>
+          {element.type !== "divider" && (
+            <span className="text-truncate fs-sm">
+              {element.label || "(untitled)"}
+            </span>
+          )}
         </div>
         <div className="d-flex gap-1 flex-shrink-0 ms-2 align-items-center">
           <button
@@ -326,12 +335,6 @@ function ElementCard({
                 placeholder="Question or heading text"
               />
             </Form.Group>
-          )}
-
-          {element.type === "divider" && (
-            <p className="text-info fs-sm mb-0">
-              Renders as a horizontal dividing line. No configuration needed.
-            </p>
           )}
 
           {element.type === "description" && (
@@ -961,7 +964,11 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
           </Dropdown.Toggle>
           <Dropdown.Menu>
             {QUESTION_TYPES.map((qt) => (
-              <Dropdown.Item key={qt.value} onClick={() => handleAdd(qt.value)}>
+              <Dropdown.Item
+                key={qt.value}
+                onClick={() => handleAdd(qt.value)}
+                style={{ color: TYPE_COLORS[qt.value] }}
+              >
                 {qt.label}
               </Dropdown.Item>
             ))}
@@ -977,7 +984,11 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
           </Dropdown.Toggle>
           <Dropdown.Menu>
             {STRUCTURE_TYPES.map((st) => (
-              <Dropdown.Item key={st.value} onClick={() => handleAdd(st.value)}>
+              <Dropdown.Item
+                key={st.value}
+                onClick={() => handleAdd(st.value)}
+                style={{ color: TYPE_COLORS[st.value] }}
+              >
                 {st.label}
               </Dropdown.Item>
             ))}
