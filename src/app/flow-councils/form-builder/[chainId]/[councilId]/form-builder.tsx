@@ -694,6 +694,10 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
     round: [],
     attestation: [],
   });
+  const [savedSchema, setSavedSchema] = useState<FormSchema>({
+    round: [],
+    attestation: [],
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -721,6 +725,7 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
 
       if (data.success && data.formSchema) {
         setSchema(data.formSchema);
+        setSavedSchema(data.formSchema);
       }
     } catch (err) {
       console.error(err);
@@ -732,6 +737,21 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
   useEffect(() => {
     fetchSchema();
   }, [fetchSchema]);
+
+  const hasUnsavedChanges = useMemo(
+    () => JSON.stringify(schema) !== JSON.stringify(savedSchema),
+    [schema, savedSchema],
+  );
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasUnsavedChanges]);
 
   const elements = useMemo(() => {
     if (activeTab === "project") return [];
@@ -884,6 +904,7 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
       const data = await res.json();
 
       if (data.success) {
+        setSavedSchema(schema);
         setSuccess("Form schema saved");
       } else {
         setError(data.error || "Failed to save");
@@ -1207,9 +1228,17 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
           <Button
             variant="secondary"
             className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
-            onClick={() =>
-              router.push(`/flow-councils/review/${chainId}/${councilId}`)
-            }
+            onClick={() => {
+              if (
+                hasUnsavedChanges &&
+                !window.confirm(
+                  "You have unsaved changes to the form. Leave without saving?",
+                )
+              ) {
+                return;
+              }
+              router.push(`/flow-councils/review/${chainId}/${councilId}`);
+            }}
           >
             Next
           </Button>
