@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isAddress } from "viem";
 import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
 import { ALLOWED_REACTIONS } from "@/app/flow-councils/lib/constants";
+import { STRUCTURAL_TYPES } from "@/app/flow-councils/types/formSchema";
 import type {
   TeamMember,
   BuildMilestone,
@@ -9,6 +10,10 @@ import type {
 } from "@/app/flow-councils/types/round";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function isValidEmail(value: string): boolean {
+  return EMAIL_REGEX.test(value);
+}
 
 const smartContractSchema = z.object({
   type: z.enum(["projectAddress", "goodCollectivePool"]),
@@ -385,9 +390,84 @@ export function validateFormSchema(
 
 type FormElement = z.infer<typeof formElementSchema>;
 
-const STRUCTURAL_TYPES = new Set(["section", "description", "divider"]);
 const MAX_STRING_LENGTH = 10_000;
 export const MAX_DETAILS_SIZE = 512_000; // 512 KB
+
+type FieldValidator = (val: unknown, el: FormElement) => string | null;
+
+function checkStringWithLimit(val: unknown, el: FormElement): string | null {
+  if (typeof val !== "string") return `"${el.label}" must be text`;
+  const limit = el.charLimit ?? MAX_STRING_LENGTH;
+  if (val.length > limit) {
+    return `"${el.label}" exceeds the ${limit} character limit`;
+  }
+  return null;
+}
+
+function checkTextWithMin(val: unknown, el: FormElement): string | null {
+  const err = checkStringWithLimit(val, el);
+  if (err) return err;
+  const str = val as string;
+  if (typeof el.minCharLimit === "number" && str.length < el.minCharLimit) {
+    return `"${el.label}" must be at least ${el.minCharLimit} characters`;
+  }
+  return null;
+}
+
+const VALIDATORS: Partial<Record<FormElement["type"], FieldValidator>> = {
+  text: checkTextWithMin,
+  textarea: checkTextWithMin,
+  telegram: checkStringWithLimit,
+  email: (val, el) => {
+    const err = checkStringWithLimit(val, el);
+    if (err) return err;
+    return isValidEmail(val as string)
+      ? null
+      : `"${el.label}" must be a valid email address`;
+  },
+  ethAddress: (val, el) =>
+    typeof val !== "string" || !isAddress(val)
+      ? `"${el.label}" must be a valid Ethereum address`
+      : null,
+  url: (val, el) => {
+    const err = checkStringWithLimit(val, el);
+    if (err) return err;
+    try {
+      const parsed = new URL(val as string);
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        return `"${el.label}" must be an http(s) URL`;
+      }
+    } catch {
+      return `"${el.label}" must be a valid URL`;
+    }
+    return null;
+  },
+  number: (val, el) => {
+    if (typeof val !== "number" && typeof val !== "string") {
+      return `"${el.label}" must be a number`;
+    }
+    const num = Number(val);
+    if (isNaN(num)) return `"${el.label}" must be a number`;
+    if (el.min !== undefined && num < el.min) {
+      return `"${el.label}" must be at least ${el.min}`;
+    }
+    if (el.max !== undefined && num > el.max) {
+      return `"${el.label}" must be at most ${el.max}`;
+    }
+    return null;
+  },
+  select: (val, el) =>
+    typeof val !== "string" || !el.options?.includes(val)
+      ? `"${el.label}" has an invalid selection`
+      : null,
+  multiSelect: (val, el) =>
+    !Array.isArray(val) ||
+    val.some((v: unknown) => typeof v !== "string" || !el.options?.includes(v))
+      ? `"${el.label}" has an invalid selection`
+      : null,
+  boolean: (val, el) =>
+    typeof val !== "boolean" ? `"${el.label}" must be true or false` : null,
+};
 
 function validateFormSection(
   values: Record<string, unknown>,
@@ -404,188 +484,22 @@ function validateFormSection(
 
     if (el.required) {
       if (val === undefined || val === null || val === "") {
-        return {
-          success: false,
-          error: `"${el.label}" is required`,
-        };
+        return { success: false, error: `"${el.label}" is required` };
       }
       if (el.type === "multiSelect" && Array.isArray(val) && val.length === 0) {
-        return {
-          success: false,
-          error: `"${el.label}" is required`,
-        };
+        return { success: false, error: `"${el.label}" is required` };
       }
     }
 
-    // Skip type checks for empty optional fields
     if (val === undefined || val === null || val === "") continue;
 
-    switch (el.type) {
-      case "text":
-      case "textarea": {
-        if (typeof val !== "string") {
-          return {
-            success: false,
-            error: `"${el.label}" must be text`,
-          };
-        }
-        const limit = el.charLimit ?? MAX_STRING_LENGTH;
-        if (val.length > limit) {
-          return {
-            success: false,
-            error: `"${el.label}" exceeds the ${limit} character limit`,
-          };
-        }
-        if (
-          typeof el.minCharLimit === "number" &&
-          val.length < el.minCharLimit
-        ) {
-          return {
-            success: false,
-            error: `"${el.label}" must be at least ${el.minCharLimit} characters`,
-          };
-        }
-        break;
-      }
-      case "telegram": {
-        if (typeof val !== "string") {
-          return {
-            success: false,
-            error: `"${el.label}" must be text`,
-          };
-        }
-        const limit = el.charLimit ?? MAX_STRING_LENGTH;
-        if (val.length > limit) {
-          return {
-            success: false,
-            error: `"${el.label}" exceeds the ${limit} character limit`,
-          };
-        }
-        break;
-      }
-      case "email": {
-        if (typeof val !== "string") {
-          return {
-            success: false,
-            error: `"${el.label}" must be text`,
-          };
-        }
-        const limit = el.charLimit ?? MAX_STRING_LENGTH;
-        if (val.length > limit) {
-          return {
-            success: false,
-            error: `"${el.label}" exceeds the ${limit} character limit`,
-          };
-        }
-        if (!EMAIL_REGEX.test(val)) {
-          return {
-            success: false,
-            error: `"${el.label}" must be a valid email address`,
-          };
-        }
-        break;
-      }
-      case "ethAddress": {
-        if (typeof val !== "string" || !isAddress(val)) {
-          return {
-            success: false,
-            error: `"${el.label}" must be a valid Ethereum address`,
-          };
-        }
-        break;
-      }
-      case "url": {
-        if (typeof val !== "string") {
-          return {
-            success: false,
-            error: `"${el.label}" must be text`,
-          };
-        }
-        const limit = el.charLimit ?? MAX_STRING_LENGTH;
-        if (val.length > limit) {
-          return {
-            success: false,
-            error: `"${el.label}" exceeds the ${limit} character limit`,
-          };
-        }
-        try {
-          const parsed = new URL(val);
-          if (!["http:", "https:"].includes(parsed.protocol)) {
-            return {
-              success: false,
-              error: `"${el.label}" must be an http(s) URL`,
-            };
-          }
-        } catch {
-          return {
-            success: false,
-            error: `"${el.label}" must be a valid URL`,
-          };
-        }
-        break;
-      }
-      case "number":
-        if (typeof val !== "number" && typeof val !== "string") {
-          return {
-            success: false,
-            error: `"${el.label}" must be a number`,
-          };
-        }
-        {
-          const num = Number(val);
-          if (isNaN(num)) {
-            return {
-              success: false,
-              error: `"${el.label}" must be a number`,
-            };
-          }
-          if (el.min !== undefined && num < el.min) {
-            return {
-              success: false,
-              error: `"${el.label}" must be at least ${el.min}`,
-            };
-          }
-          if (el.max !== undefined && num > el.max) {
-            return {
-              success: false,
-              error: `"${el.label}" must be at most ${el.max}`,
-            };
-          }
-        }
-        break;
-      case "select":
-        if (typeof val !== "string" || !el.options?.includes(val)) {
-          return {
-            success: false,
-            error: `"${el.label}" has an invalid selection`,
-          };
-        }
-        break;
-      case "multiSelect":
-        if (
-          !Array.isArray(val) ||
-          val.some(
-            (v: unknown) => typeof v !== "string" || !el.options?.includes(v),
-          )
-        ) {
-          return {
-            success: false,
-            error: `"${el.label}" has an invalid selection`,
-          };
-        }
-        break;
-      case "boolean":
-        if (typeof val !== "boolean") {
-          return {
-            success: false,
-            error: `"${el.label}" must be true or false`,
-          };
-        }
-        break;
+    const validator = VALIDATORS[el.type];
+    if (validator) {
+      const err = validator(val, el);
+      if (err) return { success: false, error: err };
     }
   }
 
-  // Strip unknown keys
   for (const key of Object.keys(values)) {
     if (!allowedIds.has(key)) {
       return {
@@ -651,10 +565,7 @@ export const profileSchema = z.object({
     .max(255)
     .optional()
     .or(z.literal(""))
-    .refine(
-      (val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
-      "Invalid email",
-    ),
+    .refine((val) => !val || isValidEmail(val), "Invalid email"),
   telegram: z.string().trim().max(255).optional().or(z.literal("")),
 });
 

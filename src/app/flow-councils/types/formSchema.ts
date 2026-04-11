@@ -98,6 +98,12 @@ export type FormSchema = {
   attestation: FormElement[];
 };
 
+export const STRUCTURAL_TYPES: ReadonlySet<FormElement["type"]> = new Set([
+  "section",
+  "description",
+  "divider",
+]);
+
 // Stable UUIDs for templates — hardcoded so they never change across deploys
 export const MINIMAL_TEMPLATE: FormSchema = {
   round: [
@@ -122,7 +128,6 @@ export const MINIMAL_TEMPLATE: FormSchema = {
 
 export const GOODBUILDERS_TEMPLATE: FormSchema = {
   round: [
-    // Section 1: Previous Participation
     { id: "gb-r-s01", type: "section", label: "1. Previous Participation" },
     {
       id: "gb-r-q01",
@@ -150,7 +155,6 @@ export const GOODBUILDERS_TEMPLATE: FormSchema = {
       placeholder:
         "Progress made, milestones completed, blockers, and what you've been up to.",
     },
-    // Section 2: Maturity & Usage
     { id: "gb-r-s02", type: "section", label: "2. Maturity & Usage" },
     {
       id: "gb-r-q05",
@@ -191,7 +195,6 @@ export const GOODBUILDERS_TEMPLATE: FormSchema = {
       type: "textarea",
       label: "Other relevant usage data (if available)",
     },
-    // Section 3: Integration
     { id: "gb-r-s03", type: "section", label: "3. Integration" },
     {
       id: "gb-r-q10",
@@ -222,7 +225,6 @@ export const GOODBUILDERS_TEMPLATE: FormSchema = {
       required: true,
       placeholder: "Value for users + GoodDollar ecosystem",
     },
-    // Section 4: What you'll build
     { id: "gb-r-s04", type: "section", label: "4. What you'll build" },
     {
       id: "gb-r-q13",
@@ -247,7 +249,6 @@ export const GOODBUILDERS_TEMPLATE: FormSchema = {
       placeholder: "Why your build matters for the GoodDollar ecosystem.",
       charLimit: 500,
     },
-    // Section 5: How you'll grow
     { id: "gb-r-s05", type: "section", label: "5. How you'll grow" },
     {
       id: "gb-r-q16",
@@ -278,7 +279,6 @@ export const GOODBUILDERS_TEMPLATE: FormSchema = {
       placeholder: "Why your growth matters for the GoodDollar ecosystem.",
       charLimit: 500,
     },
-    // Section 6: Team
     { id: "gb-r-s06", type: "section", label: "6. Team" },
     {
       id: "gb-r-q20",
@@ -308,7 +308,6 @@ export const GOODBUILDERS_TEMPLATE: FormSchema = {
       label: "Additional Teammates",
       placeholder: "Name, role, telegram, GitHub/LinkedIn for each teammate.",
     },
-    // Section 7: Additional
     { id: "gb-r-s07", type: "section", label: "7. Additional" },
     {
       id: "gb-r-q25",
@@ -318,7 +317,6 @@ export const GOODBUILDERS_TEMPLATE: FormSchema = {
     },
   ],
   attestation: [
-    // Section 1: Commitment
     { id: "gb-a-s01", type: "section", label: "1. Commitment" },
     {
       id: "gb-a-q01",
@@ -327,7 +325,6 @@ export const GOODBUILDERS_TEMPLATE: FormSchema = {
         "If accepted into GoodBuilders, I agree to: post progress updates, join Demo Days, join office hours, share KPI data, communicate in program channels, and provide feedback.",
       required: true,
     },
-    // Section 2: Identity & KYC
     { id: "gb-a-s02", type: "section", label: "2. Identity & KYC" },
     {
       id: "gb-a-q02",
@@ -360,7 +357,6 @@ export const GOODBUILDERS_TEMPLATE: FormSchema = {
       label: "Contact Email",
       required: true,
     },
-    // Section 3: Data Acknowledgement
     { id: "gb-a-s03", type: "section", label: "3. Data Acknowledgement" },
     {
       id: "gb-a-q07",
@@ -369,7 +365,6 @@ export const GOODBUILDERS_TEMPLATE: FormSchema = {
         "I consent to the collection and use of my data for the purposes of participating in the GoodBuilders program and receiving a grant via the Flow State platform.",
       required: true,
     },
-    // Section 4: Privacy & Transparency
     { id: "gb-a-s04", type: "section", label: "4. Privacy & Transparency" },
     {
       id: "gb-a-q08",
