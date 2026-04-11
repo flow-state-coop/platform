@@ -2,9 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount, useSwitchChain } from "wagmi";
-import { useSession } from "next-auth/react";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Nav from "react-bootstrap/Nav";
 import Card from "react-bootstrap/Card";
 import Form from "react-bootstrap/Form";
@@ -36,12 +33,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useRequireAuth from "@/hooks/requireAuth";
-import useSiwe from "@/hooks/siwe";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import {
   type FormElement,
   type FormSchema,
+  STRUCTURAL_TYPES,
   MINIMAL_TEMPLATE,
   GOODBUILDERS_TEMPLATE,
 } from "@/app/flow-councils/types/formSchema";
@@ -49,8 +46,11 @@ import {
 type Props = {
   chainId: number;
   councilId: string;
-  csrfToken: string;
 };
+
+function confirmDestructive(message: string): boolean {
+  return window.confirm(message);
+}
 
 const WALLET_ELEMENT_ID = "__wallet__";
 const WALLET_ELEMENT: FormElement = {
@@ -64,12 +64,8 @@ const WALLET_ELEMENT: FormElement = {
 type ActiveTab = "project" | "round" | "attestation";
 type MobileView = "editor" | "preview";
 
-function generateId() {
-  return crypto.randomUUID();
-}
-
 function newQuestion(type: FormElement["type"]): FormElement {
-  const base = { id: generateId(), label: "" };
+  const base = { id: crypto.randomUUID(), label: "" };
 
   switch (type) {
     case "section":
@@ -114,7 +110,7 @@ const COLOR_STANDARD = "#3c655b";
 const COLOR_COMMS = "#056589";
 const COLOR_STRUCTURAL = "#888888";
 
-const TYPE_COLORS: Record<string, string> = {
+const TYPE_COLORS: Record<FormElement["type"], string> = {
   text: COLOR_STANDARD,
   textarea: COLOR_STANDARD,
   number: COLOR_STANDARD,
@@ -130,7 +126,7 @@ const TYPE_COLORS: Record<string, string> = {
   divider: COLOR_STRUCTURAL,
 };
 
-const TYPE_DISPLAY_NAMES: Record<string, string> = {
+const TYPE_DISPLAY_NAMES: Record<FormElement["type"], string> = {
   section: "Heading",
   description: "Text",
   text: "Text",
@@ -688,16 +684,13 @@ function ProjectFieldsPreview() {
   );
 }
 
-export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
+export default function FormBuilder({ chainId, councilId }: Props) {
   const [activeTab, setActiveTab] = useState<ActiveTab>("round");
   const [schema, setSchema] = useState<FormSchema>({
     round: [],
     attestation: [],
   });
-  const [savedSchema, setSavedSchema] = useState<FormSchema>({
-    round: [],
-    attestation: [],
-  });
+  const [dirty, setDirty] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -710,11 +703,6 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
   const router = useRouter();
   const { isMobile } = useMediaQuery();
   const { requireAuth } = useRequireAuth();
-  const { address, chain: connectedChain } = useAccount();
-  const { data: session } = useSession();
-  const { openConnectModal } = useConnectModal();
-  const { switchChain } = useSwitchChain();
-  const { handleSignIn } = useSiwe();
 
   const fetchSchema = useCallback(async () => {
     try {
@@ -725,7 +713,7 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
 
       if (data.success && data.formSchema) {
         setSchema(data.formSchema);
-        setSavedSchema(data.formSchema);
+        setDirty(false);
       }
     } catch (err) {
       console.error(err);
@@ -738,26 +726,19 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
     fetchSchema();
   }, [fetchSchema]);
 
-  const hasUnsavedChanges = useMemo(
-    () => JSON.stringify(schema) !== JSON.stringify(savedSchema),
-    [schema, savedSchema],
-  );
-
   useEffect(() => {
-    if (!hasUnsavedChanges) return;
+    if (!dirty) return;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [hasUnsavedChanges]);
+  }, [dirty]);
 
   const elements = useMemo(() => {
     if (activeTab === "project") return [];
-    if (activeTab === "round") {
-      return [WALLET_ELEMENT, ...schema.round];
-    }
+    if (activeTab === "round") return [WALLET_ELEMENT, ...schema.round];
     return schema.attestation;
   }, [activeTab, schema.round, schema.attestation]);
 
@@ -771,6 +752,7 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
     } else {
       setSchema((prev) => ({ ...prev, [activeTab]: newElements }));
     }
+    setDirty(true);
   };
 
   const handleAdd = (type: FormElement["type"]) => {
@@ -785,34 +767,21 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
 
   const handleRemove = (index: number) => {
     const element = elements[index];
-    const isStructural =
-      element.type === "section" ||
-      element.type === "divider" ||
-      element.type === "description";
-
-    if (!isStructural) {
-      const confirmed = window.confirm("Delete this question?");
-      if (!confirmed) return;
+    if (
+      !STRUCTURAL_TYPES.has(element.type) &&
+      !confirmDestructive("Delete this question?")
+    ) {
+      return;
     }
-
     updateElements(elements.filter((_, i) => i !== index));
   };
 
-  const handleMoveUp = (index: number) => {
-    if (index === 0) return;
+  const move = (index: number, delta: number) => {
+    const target = index + delta;
+    if (target < 0 || target >= elements.length) return;
     const newElements = [...elements];
-    [newElements[index - 1], newElements[index]] = [
-      newElements[index],
-      newElements[index - 1],
-    ];
-    updateElements(newElements);
-  };
-
-  const handleMoveDown = (index: number) => {
-    if (index === elements.length - 1) return;
-    const newElements = [...elements];
-    [newElements[index], newElements[index + 1]] = [
-      newElements[index + 1],
+    [newElements[index], newElements[target]] = [
+      newElements[target],
       newElements[index],
     ];
     updateElements(newElements);
@@ -842,10 +811,14 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
 
   const handleTemplate = (template: FormSchema) => {
     const hasItems = schema.round.length > 0 || schema.attestation.length > 0;
-    if (hasItems && !window.confirm("Replace current form with template?")) {
+    if (
+      hasItems &&
+      !confirmDestructive("Replace current form with template?")
+    ) {
       return;
     }
     setSchema(template);
+    setDirty(true);
   };
 
   const validateElements = (): Record<string, string> => {
@@ -853,9 +826,8 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
     const allElements = [...schema.round, ...schema.attestation];
     for (const el of allElements) {
       if (el.id === WALLET_ELEMENT_ID) continue;
-      if (el.type === "divider") {
-        // No validation needed
-      } else if (el.type === "description") {
+      if (el.type === "divider") continue;
+      if (el.type === "description") {
         if (!el.content?.trim()) {
           errors[el.id] = "Text requires content";
         }
@@ -865,10 +837,8 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
         } else if (!el.options.some((o) => o.trim())) {
           errors[el.id] = "At least one non-empty option is required";
         }
-      } else {
-        if (!el.label.trim()) {
-          errors[el.id] = "Label is required";
-        }
+      } else if (!el.label.trim()) {
+        errors[el.id] = "Label is required";
       }
     }
     return errors;
@@ -903,7 +873,7 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
       const data = await res.json();
 
       if (data.success) {
-        setSavedSchema(schema);
+        setDirty(false);
         setSuccess("Form schema saved");
       } else {
         setError(data.error || "Failed to save");
@@ -925,38 +895,6 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
           className={`justify-content-center align-items-center ${!isMobile ? "w-75 px-5" : "w-100 px-4"}`}
         >
           <Spinner />
-        </Stack>
-      </>
-    );
-  }
-
-  if (!session || session.address !== address) {
-    return (
-      <>
-        <Sidebar />
-        <Stack
-          direction="vertical"
-          className={`${!isMobile ? "w-75 px-5" : "w-100 px-4"}`}
-        >
-          <Button
-            variant="secondary"
-            className="d-flex justify-content-center align-items-center gap-2 mt-5 fs-lg fw-semi-bold py-4 rounded-4"
-            onClick={() => {
-              if (!address && openConnectModal) {
-                openConnectModal();
-              } else if (connectedChain?.id !== chainId) {
-                switchChain({ chainId });
-              } else {
-                handleSignIn(csrfToken);
-              }
-            }}
-          >
-            {!address
-              ? "Connect Wallet"
-              : connectedChain?.id !== chainId
-                ? "Switch Network"
-                : "Sign In With Ethereum"}
-          </Button>
         </Stack>
       </>
     );
@@ -990,8 +928,8 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
                 error={validationErrors[element.id]}
                 onUpdate={(el) => handleUpdate(index + 1, el)}
                 onRemove={() => handleRemove(index + 1)}
-                onMoveUp={() => handleMoveUp(index + 1)}
-                onMoveDown={() => handleMoveDown(index + 1)}
+                onMoveUp={() => move(index + 1, -1)}
+                onMoveDown={() => move(index + 1, 1)}
               />
             ))}
         </SortableContext>
@@ -1094,12 +1032,10 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
         {activeTab === "project" ? (
           <ProjectFieldsPreview />
         ) : (
-          <>
-            <FormPreview
-              elements={elements}
-              validationErrors={validationErrors}
-            />
-          </>
+          <FormPreview
+            elements={elements}
+            validationErrors={validationErrors}
+          />
         )}
       </div>
     </Card>
@@ -1198,25 +1134,27 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
           </>
         ) : (
           <div className="d-flex gap-4 align-items-start">
-            <div className="flex-grow-1" style={{ minWidth: 0 }}>
-              <Card className="bg-lace-100 rounded-4 border-0 p-4">
-                {cardHeader}
-                {tabNav}
-                {activeTab === "project" ? (
-                  <ProjectFieldsContent />
-                ) : (
-                  editorContent
-                )}
-              </Card>
-            </div>
-            <div style={{ width: "45%", flexShrink: 0 }}>
-              <div style={{ position: "sticky", top: "1rem" }}>
-                {previewPane}
-              </div>
+            <Card
+              className="bg-lace-100 rounded-4 border-0 p-4 flex-grow-1"
+              style={{ minWidth: 0 }}
+            >
+              {cardHeader}
+              {tabNav}
+              {activeTab === "project" ? (
+                <ProjectFieldsContent />
+              ) : (
+                editorContent
+              )}
+            </Card>
+            <div
+              className="flex-shrink-0 position-sticky"
+              style={{ width: "45%", top: "1rem" }}
+            >
+              {previewPane}
             </div>
           </div>
         )}
-        <Stack direction="vertical" gap={3} className="mt-4">
+        <div className="d-grid gap-3 mt-4">
           <Button
             className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
             onClick={() => requireAuth(handleSave)}
@@ -1229,8 +1167,8 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
             className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
             onClick={() => {
               if (
-                hasUnsavedChanges &&
-                !window.confirm(
+                dirty &&
+                !confirmDestructive(
                   "You have unsaved changes to the form. Leave without saving?",
                 )
               ) {
@@ -1241,7 +1179,7 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
           >
             Next
           </Button>
-        </Stack>
+        </div>
       </Stack>
     </>
   );
