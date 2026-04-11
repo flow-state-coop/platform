@@ -7,7 +7,7 @@ import Stack from "react-bootstrap/Stack";
 import Markdown from "@/components/Markdown";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import CharacterCounter from "@/app/flow-councils/components/CharacterCounter";
-import { normalizeEvidenceUrl } from "@/app/api/flow-council/validation";
+import { normalizeUrl } from "@/app/flow-councils/utils/normalizeUrl";
 import type { FormElement } from "@/app/flow-councils/types/formSchema";
 
 type Props = {
@@ -133,7 +133,7 @@ export default function DynamicFormSection({
                   onChange={(e) => handleChange(el.id, e.target.value)}
                   onBlur={() => {
                     if (urlVal.trim()) {
-                      handleChange(el.id, normalizeEvidenceUrl(urlVal));
+                      handleChange(el.id, normalizeUrl(urlVal));
                     }
                   }}
                 />

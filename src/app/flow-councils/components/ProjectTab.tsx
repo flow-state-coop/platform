@@ -17,7 +17,7 @@ import { type SmartContract, type OtherLink } from "@/types/project";
 import { CHARACTER_LIMITS } from "../constants";
 import useSiwe from "@/hooks/siwe";
 import MarkdownEditor from "@/components/MarkdownEditor";
-import { normalizeEvidenceUrl } from "@/app/api/flow-council/validation";
+import { normalizeUrl } from "@/app/flow-councils/utils/normalizeUrl";
 import { Project } from "@/types/project";
 
 async function uploadToS3(file: Blob, fileName: string): Promise<string> {
@@ -569,7 +569,7 @@ export default function ProjectTab(props: ProjectTabProps) {
           onBlur={() => {
             setForm((prev) => ({
               ...prev,
-              website: normalizeEvidenceUrl(prev.website),
+              website: normalizeUrl(prev.website),
             }));
             setTouched((prev) => ({ ...prev, website: true }));
           }}
@@ -587,7 +587,7 @@ export default function ProjectTab(props: ProjectTabProps) {
           onBlur={() =>
             setForm((prev) => ({
               ...prev,
-              demoUrl: normalizeEvidenceUrl(prev.demoUrl),
+              demoUrl: normalizeUrl(prev.demoUrl),
             }))
           }
         />
@@ -633,9 +633,7 @@ export default function ProjectTab(props: ProjectTabProps) {
           onBlur={() => {
             setForm((prev) => ({
               ...prev,
-              telegram: prev.telegram
-                ? normalizeEvidenceUrl(prev.telegram)
-                : "",
+              telegram: prev.telegram ? normalizeUrl(prev.telegram) : "",
             }));
             setTouched((prev) => ({ ...prev, telegram: true }));
           }}
@@ -658,7 +656,7 @@ export default function ProjectTab(props: ProjectTabProps) {
           onBlur={() => {
             setForm((prev) => ({
               ...prev,
-              discord: prev.discord ? normalizeEvidenceUrl(prev.discord) : "",
+              discord: prev.discord ? normalizeUrl(prev.discord) : "",
             }));
             setTouched((prev) => ({ ...prev, discord: true }));
           }}
@@ -682,7 +680,7 @@ export default function ProjectTab(props: ProjectTabProps) {
             setForm((prev) => ({
               ...prev,
               karmaProfile: prev.karmaProfile
-                ? normalizeEvidenceUrl(prev.karmaProfile)
+                ? normalizeUrl(prev.karmaProfile)
                 : "",
             }));
             setTouched((prev) => ({ ...prev, karmaProfile: true }));
@@ -707,7 +705,7 @@ export default function ProjectTab(props: ProjectTabProps) {
             setForm((prev) => ({
               ...prev,
               gardensPool: prev.gardensPool
-                ? normalizeEvidenceUrl(prev.gardensPool)
+                ? normalizeUrl(prev.gardensPool)
                 : "",
             }));
             setTouched((prev) => ({ ...prev, gardensPool: true }));

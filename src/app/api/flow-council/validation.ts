@@ -3,6 +3,7 @@ import { isAddress } from "viem";
 import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
 import { ALLOWED_REACTIONS } from "@/app/flow-councils/lib/constants";
 import { STRUCTURAL_TYPES } from "@/app/flow-councils/types/formSchema";
+import { normalizeUrl } from "@/app/flow-councils/utils/normalizeUrl";
 import type {
   TeamMember,
   BuildMilestone,
@@ -188,20 +189,12 @@ export function normalizeSocialHandle(
   return `${SOCIAL_BASE_URLS[platform]}/${encodeURIComponent(handle)}`;
 }
 
-export function normalizeEvidenceUrl(raw: string): string {
-  const trimmed = raw.trim();
-  if (!trimmed) return trimmed;
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  if (trimmed.startsWith("//")) return `https:${trimmed}`;
-  return `https://${trimmed}`;
-}
-
 const evidenceLinkSchema = z.object({
   name: z.string().min(1).max(200),
   link: z
     .string()
     .max(2000)
-    .transform(normalizeEvidenceUrl)
+    .transform(normalizeUrl)
     .refine(
       (url) => {
         try {
