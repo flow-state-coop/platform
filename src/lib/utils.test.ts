@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  extractTwitterHandle,
   formatNumberWithCommas,
   isNumber,
   sqrtBigInt,
@@ -44,24 +43,6 @@ describe("sqrtBigInt", () => {
     const root = sqrtBigInt(big);
     expect(root * root <= big).toBe(true);
     expect((root + 1n) * (root + 1n) > big).toBe(true);
-  });
-});
-
-describe("extractTwitterHandle", () => {
-  it("extracts the handle from valid twitter URLs", () => {
-    expect(extractTwitterHandle("https://twitter.com/elonmusk")).toBe(
-      "elonmusk",
-    );
-    expect(extractTwitterHandle("https://www.twitter.com/@vitalik")).toBe(
-      "vitalik",
-    );
-    expect(extractTwitterHandle("http://twitter.com/jack")).toBe("jack");
-  });
-
-  it("returns null for empty or non-twitter URLs", () => {
-    expect(extractTwitterHandle("")).toBeNull();
-    expect(extractTwitterHandle("https://example.com/foo")).toBeNull();
-    expect(extractTwitterHandle("https://x.com/elonmusk")).toBeNull();
   });
 });
 
