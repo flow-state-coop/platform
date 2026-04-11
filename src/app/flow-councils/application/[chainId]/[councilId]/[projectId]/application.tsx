@@ -357,6 +357,7 @@ export default function Application(props: ApplicationProps) {
     try {
       const res = await fetch("/api/flow-council/applications", {
         method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: savedProjectId ?? project?.id,
           chainId,
@@ -403,6 +404,7 @@ export default function Application(props: ApplicationProps) {
         `/api/flow-council/applications/${applicationId}`,
         {
           method: "PATCH",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             details: {
               _formVersion: 1,
