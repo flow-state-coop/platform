@@ -10,6 +10,7 @@ import {
 import { findRoundByCouncil, isAdmin } from "../../auth";
 import {
   validateDynamicAttestationDetails,
+  validateDynamicRoundDetails,
   MAX_DETAILS_SIZE,
 } from "../../validation";
 import { readJsonBody, PayloadTooLargeError } from "../../../utils";
@@ -246,6 +247,19 @@ export async function PATCH(
         typeof roundRow?.details === "string"
           ? JSON.parse(roundRow.details)
           : (roundRow?.details ?? {});
+
+      if (roundDetails.formSchema?.round) {
+        const validation = validateDynamicRoundDetails(
+          details,
+          roundDetails.formSchema.round,
+        );
+        if (!validation.success) {
+          return new Response(
+            JSON.stringify({ success: false, error: validation.error }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
+          );
+        }
+      }
 
       if (roundDetails.formSchema?.attestation) {
         const validation = validateDynamicAttestationDetails(
