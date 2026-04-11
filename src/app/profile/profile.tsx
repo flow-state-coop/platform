@@ -38,6 +38,48 @@ const INITIAL_PROFILE: ProfileForm = {
   telegram: "",
 };
 
+const SOCIAL_FIELDS: {
+  field: keyof ProfileForm;
+  label: string;
+  placeholder: string;
+}[] = [
+  {
+    field: "twitter",
+    label: "Twitter / X",
+    placeholder: "@handle or https://x.com/handle",
+  },
+  {
+    field: "github",
+    label: "GitHub",
+    placeholder: "username or https://github.com/user",
+  },
+  {
+    field: "linkedin",
+    label: "LinkedIn",
+    placeholder: "username or https://linkedin.com/in/user",
+  },
+  {
+    field: "farcaster",
+    label: "Farcaster",
+    placeholder: "@handle or https://farcaster.xyz/handle",
+  },
+];
+
+function toProfileForm(
+  p: Partial<Record<keyof ProfileForm, unknown>>,
+): ProfileForm {
+  return {
+    displayName: (p.displayName as string) ?? "",
+    bio: (p.bio as string) ?? "",
+    twitter: (p.twitter as string) ?? "",
+    github: (p.github as string) ?? "",
+    linkedin: (p.linkedin as string) ?? "",
+    farcaster: (p.farcaster as string) ?? "",
+    email: (p.email as string) ?? "",
+    telegram: (p.telegram as string) ?? "",
+  };
+}
+
 export default function Profile() {
   const { address } = useAccount();
   const { data: session } = useSession();
@@ -45,7 +87,7 @@ export default function Profile() {
   const { handleSignIn } = useSiwe();
   const hasSession = !!session && session.address === address;
   const [form, setForm] = useState<ProfileForm>(INITIAL_PROFILE);
-  const [savedForm, setSavedForm] = useState<ProfileForm>(INITIAL_PROFILE);
+  const [dirty, setDirty] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -68,19 +110,8 @@ export default function Profile() {
       const data = await res.json();
 
       if (data.success && data.profile) {
-        const p = data.profile;
-        const loaded: ProfileForm = {
-          displayName: p.displayName ?? "",
-          bio: p.bio ?? "",
-          twitter: p.twitter ?? "",
-          github: p.github ?? "",
-          linkedin: p.linkedin ?? "",
-          farcaster: p.farcaster ?? "",
-          email: p.email ?? "",
-          telegram: p.telegram ?? "",
-        };
-        setForm(loaded);
-        setSavedForm(loaded);
+        setForm(toProfileForm(data.profile));
+        setDirty(false);
       }
     } catch (err) {
       console.error(err);
@@ -107,19 +138,8 @@ export default function Profile() {
       const data = await res.json();
 
       if (data.success) {
-        const p = data.profile;
-        const saved: ProfileForm = {
-          displayName: p.displayName ?? "",
-          bio: p.bio ?? "",
-          twitter: p.twitter ?? "",
-          github: p.github ?? "",
-          linkedin: p.linkedin ?? "",
-          farcaster: p.farcaster ?? "",
-          email: p.email ?? "",
-          telegram: p.telegram ?? "",
-        };
-        setForm(saved);
-        setSavedForm(saved);
+        setForm(toProfileForm(data.profile));
+        setDirty(false);
         setSuccess("Profile saved");
       } else {
         setError(data.error || "Failed to save");
@@ -131,8 +151,6 @@ export default function Profile() {
       setIsSaving(false);
     }
   };
-
-  const hasChanges = JSON.stringify(form) !== JSON.stringify(savedForm);
 
   if (!hasSession) {
     return (
@@ -188,6 +206,7 @@ export default function Profile() {
 
   const updateField = (field: keyof ProfileForm, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setDirty(true);
   };
 
   return (
@@ -245,49 +264,21 @@ export default function Profile() {
             <Form.Text className="text-muted">Max 300 characters.</Form.Text>
           </Form.Group>
 
-          <Form.Group className="mb-4">
-            <Form.Label>Twitter / X</Form.Label>
-            <Form.Control
-              type="text"
-              value={form.twitter}
-              onChange={(e) => updateField("twitter", e.target.value)}
-              placeholder="@handle or https://x.com/handle"
-              className="rounded-3"
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-4">
-            <Form.Label>GitHub</Form.Label>
-            <Form.Control
-              type="text"
-              value={form.github}
-              onChange={(e) => updateField("github", e.target.value)}
-              placeholder="username or https://github.com/user"
-              className="rounded-3"
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-4">
-            <Form.Label>LinkedIn</Form.Label>
-            <Form.Control
-              type="text"
-              value={form.linkedin}
-              onChange={(e) => updateField("linkedin", e.target.value)}
-              placeholder="username or https://linkedin.com/in/user"
-              className="rounded-3"
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-0">
-            <Form.Label>Farcaster</Form.Label>
-            <Form.Control
-              type="text"
-              value={form.farcaster}
-              onChange={(e) => updateField("farcaster", e.target.value)}
-              placeholder="@handle or https://farcaster.xyz/handle"
-              className="rounded-3"
-            />
-          </Form.Group>
+          {SOCIAL_FIELDS.map(({ field, label, placeholder }, i) => (
+            <Form.Group
+              key={field}
+              className={i === SOCIAL_FIELDS.length - 1 ? "mb-0" : "mb-4"}
+            >
+              <Form.Label>{label}</Form.Label>
+              <Form.Control
+                type="text"
+                value={form[field]}
+                onChange={(e) => updateField(field, e.target.value)}
+                placeholder={placeholder}
+                className="rounded-3"
+              />
+            </Form.Group>
+          ))}
         </Card>
 
         <Card className="bg-lace-100 rounded-4 border-0 p-4 mb-4">
@@ -333,7 +324,7 @@ export default function Profile() {
 
         <Button
           type="submit"
-          disabled={isSaving || !form.displayName.trim() || !hasChanges}
+          disabled={isSaving || !form.displayName.trim() || !dirty}
           className="rounded-3 w-100"
         >
           {isSaving ? <Spinner size="sm" /> : "Save"}
