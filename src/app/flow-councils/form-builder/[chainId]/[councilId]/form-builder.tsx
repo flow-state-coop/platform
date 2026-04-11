@@ -893,6 +893,7 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
     try {
       const res = await fetch("/api/flow-council/rounds/form-schema", {
         method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chainId,
           flowCouncilAddress: councilId,
