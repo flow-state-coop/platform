@@ -791,9 +791,7 @@ export default function FormBuilder({ chainId, councilId, csrfToken }: Props) {
       element.type === "description";
 
     if (!isStructural) {
-      const confirmed = window.confirm(
-        "Delete this question? Any existing answers from applicants will be discarded when you save.",
-      );
+      const confirmed = window.confirm("Delete this question?");
       if (!confirmed) return;
     }
 

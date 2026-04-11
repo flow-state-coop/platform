@@ -123,21 +123,6 @@ export async function PUT(request: Request) {
 
     const mergedDetails = { ...existingDetails, formSchema: validation.data };
 
-    const oldFormSchema = existingDetails?.formSchema;
-    const collectIds = (schema: unknown): Set<string> => {
-      const ids = new Set<string>();
-      const s = schema as
-        | { round?: { id: string }[]; attestation?: { id: string }[] }
-        | undefined;
-      for (const el of s?.round ?? []) ids.add(el.id);
-      for (const el of s?.attestation ?? []) ids.add(el.id);
-      return ids;
-    };
-
-    const oldIds = collectIds(oldFormSchema);
-    const newIds = collectIds(validation.data);
-    const removedIds = [...oldIds].filter((id) => !newIds.has(id));
-
     await db
       .updateTable("rounds")
       .set({
@@ -146,43 +131,6 @@ export async function PUT(request: Request) {
       })
       .where("id", "=", round.id)
       .execute();
-
-    if (removedIds.length > 0) {
-      const applications = await db
-        .selectFrom("applications")
-        .select(["id", "details"])
-        .where("roundId", "=", round.id)
-        .execute();
-
-      for (const app of applications) {
-        const appDetails =
-          typeof app.details === "string"
-            ? JSON.parse(app.details)
-            : (app.details ?? {});
-
-        if (!appDetails || typeof appDetails !== "object") continue;
-
-        let changed = false;
-        for (const section of ["round", "attestation"] as const) {
-          const sectionData = appDetails[section];
-          if (!sectionData || typeof sectionData !== "object") continue;
-          for (const removedId of removedIds) {
-            if (removedId in sectionData) {
-              delete (sectionData as Record<string, unknown>)[removedId];
-              changed = true;
-            }
-          }
-        }
-
-        if (changed) {
-          await db
-            .updateTable("applications")
-            .set({ details: appDetails, updatedAt: new Date() })
-            .where("id", "=", app.id)
-            .execute();
-        }
-      }
-    }
 
     return jsonResponse({
       success: true,
