@@ -94,6 +94,28 @@ type ApplicationProps = {
   csrfToken: string;
 };
 
+const FORM_VERSION = 1;
+const LOCKED_STATUSES = ["ACCEPTED", "REJECTED", "GRADUATED", "REMOVED"];
+const TABS = [
+  { key: "project", label: "Project" },
+  { key: "round", label: "Round" },
+  { key: "eligibility", label: "Attestation" },
+] as const;
+
+function parseRoundDetails(round: { details: unknown }): {
+  name: string;
+  formSchema: FormSchema | null;
+} {
+  const details =
+    typeof round.details === "string"
+      ? JSON.parse(round.details)
+      : round.details;
+  return {
+    name: details?.name ?? "",
+    formSchema: details?.formSchema ?? null,
+  };
+}
+
 export default function Application(props: ApplicationProps) {
   const { chainId, councilId, projectId, csrfToken } = props;
 
@@ -114,10 +136,6 @@ export default function Application(props: ApplicationProps) {
   const [editsUnlocked, setEditsUnlocked] = useState(false);
   const [isLoading, setIsLoading] = useState(!!projectId);
 
-  const [projectComplete, setProjectComplete] = useState(false);
-  const [roundComplete, setRoundComplete] = useState(false);
-
-  // Dynamic form schema
   const [formSchema, setFormSchema] = useState<FormSchema | null>(null);
   const [dynamicRoundValues, setDynamicRoundValues] = useState<
     Record<string, unknown>
@@ -129,53 +147,42 @@ export default function Application(props: ApplicationProps) {
   const [dynamicValidated, setDynamicValidated] = useState(false);
   const [dynamicSaving, setDynamicSaving] = useState(false);
   const [dynamicError, setDynamicError] = useState("");
-  const [isDynamicFormApp, setIsDynamicFormApp] = useState(false);
-  const [rawAppDetails, setRawAppDetails] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
-  const [rawFundingAddress, setRawFundingAddress] = useState("");
 
-  // Round name for template download
   const [roundName, setRoundName] = useState<string>("");
 
-  // Profile data for auto-fill
   const [profileData, setProfileData] = useState<{
     displayName?: string;
     email?: string;
     telegram?: string;
   }>({});
 
-  const LOCKED_STATUSES = ["ACCEPTED", "REJECTED", "GRADUATED", "REMOVED"];
+  const projectComplete = !!project;
+  const roundComplete = !!applicationId;
+  const isDynamicFormApp = formSchema != null;
+
   const isInLockedStatus =
     applicationStatus !== null && LOCKED_STATUSES.includes(applicationStatus);
   const isApplicationLocked = isInLockedStatus && !editsUnlocked;
 
   const network = networks.find((n) => n.id === chainId);
 
-  // Fetch round (returns both name and form schema in details)
-  const fetchFormSchema = useCallback(async () => {
+  const fetchRound = useCallback(async (): Promise<FormSchema | null> => {
     try {
       const res = await fetch(
         `/api/flow-council/rounds?chainId=${chainId}&flowCouncilAddress=${councilId}`,
       );
-      const roundData = await res.json();
-      if (roundData.success && roundData.round?.details) {
-        const details =
-          typeof roundData.round.details === "string"
-            ? JSON.parse(roundData.round.details)
-            : roundData.round.details;
-        setRoundName(details?.name ?? "");
-        if (details?.formSchema) {
-          setFormSchema(details.formSchema);
-        }
-      }
+      const data = await res.json();
+      if (!data.success || !data.round?.details) return null;
+      const { name, formSchema: schema } = parseRoundDetails(data.round);
+      setRoundName(name);
+      if (schema) setFormSchema(schema);
+      return schema;
     } catch (err) {
       console.error("Failed to fetch form schema:", err);
+      return null;
     }
   }, [chainId, councilId]);
 
-  // Fetch user profile for auto-fill
   const fetchProfile = useCallback(async () => {
     if (!address) return;
     try {
@@ -222,96 +229,81 @@ export default function Application(props: ApplicationProps) {
     }
   }, [projectId, address]);
 
-  const fetchApplication = useCallback(async () => {
-    if (!projectId || !address) return;
+  const fetchApplication = useCallback(
+    async (schema: FormSchema | null) => {
+      if (!projectId || !address) return;
 
-    try {
-      const res = await fetch("/api/flow-council/applications", {
-        method: "POST",
-        body: JSON.stringify({ chainId, councilId }),
-      });
-      const data = await res.json();
+      try {
+        const res = await fetch("/api/flow-council/applications", {
+          method: "POST",
+          body: JSON.stringify({ chainId, councilId }),
+        });
+        const data = await res.json();
 
-      if (data.success && data.applications) {
+        if (!data.success || !data.applications) return;
         const app = data.applications.find(
           (a: { projectId: number }) => a.projectId === parseInt(projectId, 10),
         );
-        if (app) {
-          setApplicationId(app.id);
-          setApplicationStatus(app.status);
-          setEditsUnlocked(app.editsUnlocked ?? false);
-          if (app.details) {
-            const details =
-              typeof app.details === "string"
-                ? JSON.parse(app.details)
-                : app.details;
-            setRawAppDetails(details);
-            setRawFundingAddress(app.fundingAddress ?? "");
+        if (!app) return;
+
+        setApplicationId(app.id);
+        setApplicationStatus(app.status);
+        setEditsUnlocked(app.editsUnlocked ?? false);
+        if (!app.details) return;
+
+        const details =
+          typeof app.details === "string"
+            ? JSON.parse(app.details)
+            : app.details;
+
+        if (schema) {
+          setDynamicRoundValues(
+            (details.round as Record<string, unknown>) ?? {},
+          );
+          setDynamicAttestationValues(
+            (details.attestation as Record<string, unknown>) ?? {},
+          );
+          if (app.fundingAddress) {
+            setDynamicFundingAddress(app.fundingAddress);
+          }
+        } else {
+          setRoundData(details as unknown as RoundForm);
+          const attestation = details.attestation ?? details.eligibility;
+          if (attestation) {
+            setAttestationData(attestation as AttestationForm);
           }
         }
+      } catch (err) {
+        console.error("Failed to fetch application:", err);
       }
-    } catch (err) {
-      console.error("Failed to fetch application:", err);
-    }
-  }, [projectId, address, chainId, councilId]);
+    },
+    [projectId, address, chainId, councilId],
+  );
 
   useEffect(() => {
     if (projectId && address) {
       setIsLoading(true);
-      Promise.all([
-        fetchFormSchema(),
-        fetchProfile(),
-        fetchProject(),
-        fetchApplication(),
-      ]).finally(() => setIsLoading(false));
+      (async () => {
+        const schema = await fetchRound();
+        await Promise.all([
+          fetchProfile(),
+          fetchProject(),
+          fetchApplication(schema),
+        ]);
+        setIsLoading(false);
+      })();
     } else {
-      fetchFormSchema();
+      fetchRound();
       fetchProfile();
     }
   }, [
-    fetchFormSchema,
+    fetchRound,
     fetchProfile,
     fetchProject,
     fetchApplication,
     projectId,
     address,
   ]);
-
-  useEffect(() => {
-    if (project) {
-      setProjectComplete(true);
-    }
-  }, [project]);
-
-  useEffect(() => {
-    if (roundData) {
-      setRoundComplete(true);
-    }
-  }, [roundData]);
-
-  useEffect(() => {
-    if (!rawAppDetails || isLoading) return;
-
-    if (formSchema) {
-      setIsDynamicFormApp(true);
-      setDynamicRoundValues(
-        (rawAppDetails.round as Record<string, unknown>) ?? {},
-      );
-      setDynamicAttestationValues(
-        (rawAppDetails.attestation as Record<string, unknown>) ?? {},
-      );
-      if (rawFundingAddress) {
-        setDynamicFundingAddress(rawFundingAddress);
-      }
-    } else {
-      setRoundData(rawAppDetails as unknown as RoundForm);
-      const attestation =
-        rawAppDetails.attestation ?? rawAppDetails.eligibility;
-      if (attestation) {
-        setAttestationData(attestation as AttestationForm);
-      }
-    }
-  }, [rawAppDetails, formSchema, isLoading, rawFundingAddress]);
 
   const showNudge = !profileData.displayName || !profileData.email;
 
@@ -333,14 +325,12 @@ export default function Application(props: ApplicationProps) {
   const handleProjectSaved = (savedProject: Project) => {
     setSavedProjectId(savedProject.id);
     setProject(savedProject);
-    setProjectComplete(true);
     setActiveTab("round");
     window.scrollTo(0, 0);
   };
 
   const handleRoundSaved = (savedRoundData: RoundForm, appId?: number) => {
     setRoundData(savedRoundData);
-    setRoundComplete(true);
     if (appId) {
       setApplicationId(appId);
     }
@@ -348,7 +338,6 @@ export default function Application(props: ApplicationProps) {
     window.scrollTo(0, 0);
   };
 
-  // Dynamic form: save round data
   const handleDynamicRoundSave = async () => {
     setDynamicValidated(true);
     setDynamicError("");
@@ -363,7 +352,7 @@ export default function Application(props: ApplicationProps) {
           chainId,
           councilId,
           details: {
-            _formVersion: 1,
+            _formVersion: FORM_VERSION,
             round: dynamicRoundValues,
             attestation: dynamicAttestationValues,
           },
@@ -381,7 +370,6 @@ export default function Application(props: ApplicationProps) {
       if (json.application?.id) {
         setApplicationId(json.application.id);
       }
-      setRoundComplete(true);
       setDynamicSaving(false);
       setActiveTab("eligibility");
       window.scrollTo(0, 0);
@@ -392,7 +380,6 @@ export default function Application(props: ApplicationProps) {
     }
   };
 
-  // Dynamic form: submit attestation
   const handleDynamicAttestationSubmit = async () => {
     if (!applicationId) return;
     setDynamicValidated(true);
@@ -407,7 +394,7 @@ export default function Application(props: ApplicationProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             details: {
-              _formVersion: 1,
+              _formVersion: FORM_VERSION,
               round: dynamicRoundValues,
               attestation: dynamicAttestationValues,
             },
@@ -479,45 +466,21 @@ export default function Application(props: ApplicationProps) {
         onSelect={(k) => k && setActiveTab(k)}
       >
         <Nav className="gap-2 mb-4 border-0">
-          <Nav.Item>
-            <Nav.Link
-              eventKey="project"
-              className={`py-3 rounded-4 fs-lg fw-bold d-flex justify-content-center align-items-center text-center border border-2 border-primary ${
-                activeTab === "project"
-                  ? "bg-primary text-white"
-                  : "bg-white text-primary"
-              }`}
-              style={{ width: 140 }}
-            >
-              Project
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link
-              eventKey="round"
-              className={`py-3 rounded-4 fs-lg fw-bold d-flex justify-content-center align-items-center text-center border border-2 border-primary ${
-                activeTab === "round"
-                  ? "bg-primary text-white"
-                  : "bg-white text-primary"
-              }`}
-              style={{ width: 140 }}
-            >
-              Round
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link
-              eventKey="eligibility"
-              className={`py-3 rounded-4 fs-lg fw-bold d-flex justify-content-center align-items-center text-center border border-2 border-primary ${
-                activeTab === "eligibility"
-                  ? "bg-primary text-white"
-                  : "bg-white text-primary"
-              }`}
-              style={{ width: 140 }}
-            >
-              Attestation
-            </Nav.Link>
-          </Nav.Item>
+          {TABS.map(({ key, label }) => (
+            <Nav.Item key={key}>
+              <Nav.Link
+                eventKey={key}
+                className={`py-3 rounded-4 fs-lg fw-bold d-flex justify-content-center align-items-center text-center border border-2 border-primary ${
+                  activeTab === key
+                    ? "bg-primary text-white"
+                    : "bg-white text-primary"
+                }`}
+                style={{ width: 140 }}
+              >
+                {label}
+              </Nav.Link>
+            </Nav.Item>
+          ))}
         </Nav>
 
         {formSchema && (
@@ -536,7 +499,7 @@ export default function Application(props: ApplicationProps) {
                 a.href = url;
                 a.download = filename;
                 a.click();
-                URL.revokeObjectURL(url);
+                setTimeout(() => URL.revokeObjectURL(url), 0);
               }}
             >
               Download Application Template
@@ -557,7 +520,6 @@ export default function Application(props: ApplicationProps) {
           <Tab.Pane eventKey="round">
             {projectComplete && !isApplicationLocked ? (
               formSchema ? (
-                // Dynamic form mode
                 <>
                   <FundingAddressSection
                     value={dynamicFundingAddress}
@@ -649,7 +611,6 @@ export default function Application(props: ApplicationProps) {
           <Tab.Pane eventKey="eligibility">
             {roundComplete && !isApplicationLocked ? (
               formSchema ? (
-                // Dynamic form mode
                 <>
                   <DynamicFormSection
                     elements={formSchema.attestation}
