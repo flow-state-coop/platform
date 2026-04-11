@@ -3,7 +3,8 @@ import { isAddress } from "viem";
 import { db } from "../../db";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { isAdmin } from "../../auth";
-import { validateFormSchema } from "../../validation";
+import { validateFormSchema, MAX_DETAILS_SIZE } from "../../validation";
+import { readJsonBody, PayloadTooLargeError } from "../../../utils";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +62,26 @@ export async function PUT(request: Request) {
       return jsonResponse({ success: false, error: "Unauthenticated" }, 401);
     }
 
-    const { chainId, flowCouncilAddress, formSchema } = await request.json();
+    let parsed: {
+      chainId?: number;
+      flowCouncilAddress?: string;
+      formSchema?: unknown;
+    };
+    try {
+      parsed = await readJsonBody(request, MAX_DETAILS_SIZE);
+    } catch (err) {
+      if (err instanceof PayloadTooLargeError) {
+        return jsonResponse(
+          { success: false, error: "Payload too large" },
+          413,
+        );
+      }
+      return jsonResponse(
+        { success: false, error: "Invalid request body" },
+        400,
+      );
+    }
+    const { chainId, flowCouncilAddress, formSchema } = parsed;
 
     if (!chainId || !flowCouncilAddress || !isAddress(flowCouncilAddress)) {
       return jsonResponse({ success: false, error: "Invalid parameters" }, 400);
