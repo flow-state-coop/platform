@@ -224,6 +224,7 @@ export async function PUT(request: Request) {
     if (!projectId || typeof projectId !== "number") {
       return new Response(
         JSON.stringify({ success: false, error: "Invalid project ID" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -231,12 +232,14 @@ export async function PUT(request: Request) {
     if (!network) {
       return new Response(
         JSON.stringify({ success: false, error: "Wrong network" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
     if (!councilId || !isAddress(councilId)) {
       return new Response(
         JSON.stringify({ success: false, error: "Invalid council ID" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -254,6 +257,7 @@ export async function PUT(request: Request) {
           success: false,
           error: "Not authorized to update this project",
         }),
+        { status: 403, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -267,6 +271,7 @@ export async function PUT(request: Request) {
     if (!round) {
       return new Response(
         JSON.stringify({ success: false, error: "Round not found" }),
+        { status: 404, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -331,6 +336,7 @@ export async function PUT(request: Request) {
           success: false,
           error: "Application is locked and cannot be edited",
         }),
+        { status: 409, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -369,6 +375,7 @@ export async function PUT(request: Request) {
             success: false,
             error: "Applications are currently closed",
           }),
+          { status: 409, headers: { "Content-Type": "application/json" } },
         );
       }
 
@@ -422,6 +429,7 @@ export async function PUT(request: Request) {
     console.error(err);
     return new Response(
       JSON.stringify({ success: false, error: "Failed to save application" }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
 }
