@@ -6,7 +6,6 @@ import { useSession } from "next-auth/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
-import Spinner from "react-bootstrap/Spinner";
 import ApplicantSidebar from "@/app/flow-councils/components/ApplicantSidebar";
 import useSiwe from "@/hooks/siwe";
 
@@ -168,16 +167,8 @@ export default function ApplicationLayout({
     );
   }
 
-  // Loading state
-  if (isLoading || !resolvedParams) {
-    return (
-      <Stack
-        direction="vertical"
-        className="justify-content-center align-items-center px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
-      >
-        <Spinner className="mt-5" />
-      </Stack>
-    );
+  if (!resolvedParams) {
+    return null;
   }
 
   return (
@@ -193,6 +184,7 @@ export default function ApplicationLayout({
         projectName={projectName ?? "New Project"}
         roundName={roundName}
         applicationStatus={applicationStatus}
+        isLoading={isLoading}
       />
       <div className="flex-grow-1 w-75">{children}</div>
     </Stack>

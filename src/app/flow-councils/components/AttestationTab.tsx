@@ -9,17 +9,12 @@ import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import Toast from "react-bootstrap/Toast";
 import useRequireAuth from "@/hooks/requireAuth";
+import { isValidEmail } from "@/app/api/flow-council/validation";
 import {
   type RoundForm,
   type AttestationForm,
   INITIAL_ATTESTATION_FORM,
 } from "@/app/flow-councils/types/round";
-
-const isValidEmail = (email: string): boolean => {
-  if (!email) return false;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
 
 type AttestationTabProps = {
   chainId: number;

@@ -190,6 +190,13 @@ model UserProfile {
   id          Int      @id @default(autoincrement())
   address     String   @unique @db.VarChar(42)
   displayName String   @map("display_name") @db.VarChar(50)
+  bio         String?  @db.VarChar(300)
+  twitter     String?  @db.VarChar(255)
+  github      String?  @db.VarChar(255)
+  linkedin    String?  @db.VarChar(255)
+  farcaster   String?  @db.VarChar(255)
+  email       String?  @db.VarChar(255)
+  telegram    String?  @db.VarChar(255)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 

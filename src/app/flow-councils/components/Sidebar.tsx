@@ -24,6 +24,87 @@ const FLOW_COUNCIL_MANAGER_QUERY = gql`
 
 type Council = { id: string; name: string; description: string };
 
+const DIM_FILTER =
+  "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)";
+
+const SIDEBAR_LINK_DEFS: {
+  path: string;
+  label: string;
+  alwaysEnabled?: boolean;
+}[] = [
+  { path: "launch", label: "Launch", alwaysEnabled: true },
+  { path: "round-metadata", label: "Metadata" },
+  { path: "permissions", label: "Permissions" },
+  { path: "form-builder", label: "Form Builder" },
+  { path: "review", label: "Recipients" },
+  { path: "membership", label: "Voters" },
+  { path: "communications", label: "Communications" },
+];
+
+type SidebarLinksProps = {
+  chainId: number | null;
+  selectedCouncil: Council | undefined;
+  pathname: string | null;
+};
+
+function SidebarLinks({
+  chainId,
+  selectedCouncil,
+  pathname,
+}: SidebarLinksProps) {
+  return (
+    <Stack direction="vertical" gap={3} className="rounded-4 flex-grow-0 mt-3">
+      {SIDEBAR_LINK_DEFS.map(({ path, label, alwaysEnabled }) => {
+        const href =
+          alwaysEnabled && chainId && selectedCouncil
+            ? `/flow-councils/${path}/${chainId}/${selectedCouncil.id}`
+            : alwaysEnabled
+              ? `/flow-councils/${path}`
+              : `/flow-councils/${path}/${chainId}/${selectedCouncil?.id}`;
+        const isActive = pathname?.startsWith(`/flow-councils/${path}`);
+        const disabled = !alwaysEnabled && !selectedCouncil?.id;
+        return (
+          <Link
+            key={path}
+            href={href}
+            className={`d-flex align-items-center text-decoration-none ${disabled ? "text-info" : ""} ${isActive ? "fw-semi-bold" : ""}`}
+            style={{ pointerEvents: disabled ? "none" : "auto" }}
+          >
+            <Image
+              src={
+                isActive && !disabled ? "/dot-filled.svg" : "/dot-unfilled.svg"
+              }
+              alt="Bullet Point"
+              width={24}
+              height={24}
+              style={{
+                filter: !isActive && !selectedCouncil ? DIM_FILTER : "",
+              }}
+            />
+            {label}
+          </Link>
+        );
+      })}
+      <Link
+        href={`/flow-councils/${chainId}/${selectedCouncil?.id}`}
+        className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""}`}
+        style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
+      >
+        <Image
+          src="/dot-unfilled.svg"
+          alt="Bullet Point"
+          width={24}
+          height={24}
+          style={{
+            filter: !selectedCouncil ? DIM_FILTER : "",
+          }}
+        />
+        UI
+      </Link>
+    </Stack>
+  );
+}
+
 function Sidebar() {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [councils, setCouncils] = useState<Council[]>([]);
@@ -31,11 +112,8 @@ function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Extract chainId and councilId from pathname
-  // Pattern: /flow-councils/[section]/[chainId]/[councilId]
   const { chainId, councilId } = useMemo(() => {
     const segments = pathname?.split("/").filter(Boolean) ?? [];
-    // segments: ["flow-councils", "launch", "42161", "0x..."]
     if (segments.length >= 4 && segments[0] === "flow-councils") {
       return {
         chainId: Number(segments[2]) || null,
@@ -58,214 +136,65 @@ function Sidebar() {
     (council: { id: string }) => council.id === councilId?.toLowerCase(),
   );
 
+  const councilIdsKey = useMemo(
+    () =>
+      (flowCouncilsQueryRes?.flowCouncils ?? [])
+        .map((c: { id: string }) => c.id)
+        .sort()
+        .join(","),
+    [flowCouncilsQueryRes],
+  );
+
   useEffect(() => {
+    if (!councilIdsKey) {
+      return;
+    }
+
+    const ids: string[] = councilIdsKey.split(",").filter(Boolean);
+    let cancelled = false;
+
     (async () => {
-      if (!flowCouncilsQueryRes?.flowCouncils) {
-        return;
-      }
-
-      const councils: Council[] = [];
-      const promises = [];
-
-      for (const flowCouncil of flowCouncilsQueryRes.flowCouncils) {
-        promises.push(
-          (async () => {
-            // Fetch round name from database
-            let roundName = "Flow Council";
-            try {
-              const res = await fetch(
-                `/api/flow-council/rounds?chainId=${chainId}&flowCouncilAddress=${flowCouncil.id}`,
-              );
-              const data = await res.json();
-              if (data.success && data.round?.details) {
-                const details =
-                  typeof data.round.details === "string"
-                    ? JSON.parse(data.round.details)
-                    : data.round.details;
-                roundName = details?.name ?? "Flow Council";
-              }
-            } catch (err) {
-              console.error(err);
+      const fetched = await Promise.all(
+        ids.map(async (id: string) => {
+          let roundName = "Flow Council";
+          try {
+            const res = await fetch(
+              `/api/flow-council/rounds?chainId=${chainId}&flowCouncilAddress=${id}`,
+            );
+            const data = await res.json();
+            if (data.success && data.round?.details) {
+              const details =
+                typeof data.round.details === "string"
+                  ? JSON.parse(data.round.details)
+                  : data.round.details;
+              roundName = details?.name ?? "Flow Council";
             }
+          } catch (err) {
+            console.error(err);
+          }
+          return {
+            id,
+            name: roundName || "Flow Council",
+            description: "N/A",
+          };
+        }),
+      );
 
-            councils.push({
-              id: flowCouncil.id,
-              name: roundName || "Flow Council",
-              description: "N/A",
-            });
-          })(),
-        );
-      }
+      if (cancelled) return;
 
-      await Promise.all(promises);
-
-      councils.sort((a, b) => {
-        if (a.name < b.name) {
-          return -1;
-        }
-
-        if (a.name > b.name) {
-          return 1;
-        }
-
+      fetched.sort((a, b) => {
+        if (a.name < b.name) return -1;
+        if (a.name > b.name) return 1;
         return 0;
       });
 
-      setCouncils(councils);
+      setCouncils(fetched);
     })();
-  }, [flowCouncilsQueryRes, chainId]);
 
-  const SidebarLinks = () => {
-    return (
-      <Stack
-        direction="vertical"
-        gap={3}
-        className="rounded-4 flex-grow-0 mt-3"
-      >
-        <Link
-          href={
-            chainId && selectedCouncil
-              ? `/flow-councils/launch/${chainId}/${selectedCouncil.id}`
-              : "/flow-councils/launch"
-          }
-          className={`d-flex align-items-center text-decoration-none ${pathname === "/flow-councils/launch" ? "fw-semi-bold" : ""}`}
-        >
-          <Image
-            src={`${pathname?.startsWith("/flow-councils/launch") ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
-            alt="Bullet Point"
-            width={24}
-            height={24}
-            style={{
-              filter:
-                !pathname?.startsWith("/flow-councils/launch") &&
-                !selectedCouncil
-                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
-                  : "",
-            }}
-          />
-          Launch Config
-        </Link>
-        <Link
-          href={`/flow-councils/round-metadata/${chainId}/${selectedCouncil?.id}`}
-          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname?.startsWith("/flow-councils/round-metadata") ? "fw-semi-bold" : ""}`}
-          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
-        >
-          <Image
-            src={`${pathname?.startsWith("/flow-councils/round-metadata") && !!selectedCouncil ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
-            alt="Bullet Point"
-            width={24}
-            height={24}
-            style={{
-              filter:
-                !pathname?.startsWith("/flow-councils/round-metadata") &&
-                !selectedCouncil
-                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
-                  : "",
-            }}
-          />
-          Round Metadata
-        </Link>
-        <Link
-          href={`/flow-councils/permissions/${chainId}/${selectedCouncil?.id}`}
-          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname?.startsWith("/flow-councils/permissions") ? "fw-semi-bold" : ""}`}
-          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
-        >
-          <Image
-            src={`${pathname?.startsWith("/flow-councils/permissions") && !!selectedCouncil ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
-            alt="Bullet Point"
-            width={24}
-            height={24}
-            style={{
-              filter:
-                !pathname?.startsWith("/flow-councils/permissions") &&
-                !selectedCouncil
-                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
-                  : "",
-            }}
-          />
-          Council Permissions
-        </Link>
-        <Link
-          href={`/flow-councils/membership/${chainId}/${selectedCouncil?.id}`}
-          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname?.startsWith("/flow-councils/membership") ? "fw-semi-bold" : ""}`}
-          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
-        >
-          <Image
-            src={`${pathname?.startsWith("/flow-councils/membership") && !!selectedCouncil ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
-            alt="Bullet Point"
-            width={24}
-            height={24}
-            style={{
-              filter:
-                !pathname?.startsWith("/flow-councils/membership") &&
-                !selectedCouncil
-                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
-                  : "",
-            }}
-          />
-          Council Membership
-        </Link>
-        <Link
-          href={`/flow-councils/review/${chainId}/${selectedCouncil?.id}`}
-          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname?.startsWith("/flow-councils/review") ? "fw-semi-bold" : ""}`}
-          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
-        >
-          <Image
-            src={`${pathname?.startsWith("/flow-councils/review") && !!selectedCouncil ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
-            alt="Bullet Point"
-            width={24}
-            height={24}
-            style={{
-              filter:
-                !pathname?.startsWith("/flow-councils/review") &&
-                !selectedCouncil
-                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
-                  : "",
-            }}
-          />
-          Manage Recipients
-        </Link>
-        <Link
-          href={`/flow-councils/communications/${chainId}/${selectedCouncil?.id}`}
-          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""} ${pathname?.startsWith("/flow-councils/communications") ? "fw-semi-bold" : ""}`}
-          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
-        >
-          <Image
-            src={`${pathname?.startsWith("/flow-councils/communications") && !!selectedCouncil ? "/dot-filled.svg" : "/dot-unfilled.svg"}`}
-            alt="Bullet Point"
-            width={24}
-            height={24}
-            style={{
-              filter:
-                !pathname?.startsWith("/flow-councils/communications") &&
-                !selectedCouncil
-                  ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
-                  : "",
-            }}
-          />
-          Round Communications
-        </Link>
-        <Link
-          href={`/flow-councils/${chainId}/${selectedCouncil?.id}`}
-          className={`d-flex align-items-center text-decoration-none ${!selectedCouncil?.id ? "text-info" : ""}`}
-          style={{ pointerEvents: !selectedCouncil?.id ? "none" : "auto" }}
-        >
-          <Image
-            src="/dot-unfilled.svg"
-            alt="Bullet Point"
-            width={24}
-            height={24}
-            style={{
-              filter: !selectedCouncil
-                ? "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)"
-                : "",
-            }}
-          />
-          Council UI
-        </Link>
-      </Stack>
-    );
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, [councilIdsKey, chainId]);
 
   const CouncilsDropdown = () => (
     <Dropdown className="position-static w-75 overflow-hidden">
@@ -350,7 +279,11 @@ function Sidebar() {
         </Offcanvas.Header>
         <Offcanvas.Body className="d-flex flex-column gap-4 px-3 py-4 fs-6">
           <CouncilsDropdown />
-          <SidebarLinks />
+          <SidebarLinks
+            chainId={chainId}
+            selectedCouncil={selectedCouncil}
+            pathname={pathname}
+          />
         </Offcanvas.Body>
       </Offcanvas>
     );
@@ -364,7 +297,11 @@ function Sidebar() {
     >
       <h1 className="fs-5 fw-semi-bold">Flow Council Admin</h1>
       <CouncilsDropdown />
-      <SidebarLinks />
+      <SidebarLinks
+        chainId={chainId}
+        selectedCouncil={selectedCouncil}
+        pathname={pathname}
+      />
     </Stack>
   );
 }

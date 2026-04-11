@@ -19,6 +19,7 @@ type MultiInputProps = {
   validated?: boolean;
   lockedIndices?: number[];
   invalidFeedback?: string;
+  onItemBlur?: (index: number, value: string) => void;
 };
 
 export default function MultiInput(props: MultiInputProps) {
@@ -35,6 +36,7 @@ export default function MultiInput(props: MultiInputProps) {
     validated = false,
     lockedIndices = [],
     invalidFeedback,
+    onItemBlur,
   } = props;
 
   const [touchedIndices, setTouchedIndices] = useState<Set<number>>(new Set());
@@ -95,9 +97,10 @@ export default function MultiInput(props: MultiInputProps) {
                 isInvalid={isInvalid(value, index)}
                 disabled={isLocked(index)}
                 onChange={(e) => handleChange(index, e.target.value)}
-                onBlur={() =>
-                  setTouchedIndices((prev) => new Set(prev).add(index))
-                }
+                onBlur={() => {
+                  setTouchedIndices((prev) => new Set(prev).add(index));
+                  onItemBlur?.(index, value);
+                }}
               />
               {values.length > 1 && !isLocked(index) && (
                 <Button

@@ -609,7 +609,7 @@ export default function Permissions(props: PermissionsProps) {
             className="py-4 rounded-4 fs-lg fw-semi-bold"
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() =>
-              router.push(`/flow-councils/membership/${chainId}/${councilId}`)
+              router.push(`/flow-councils/form-builder/${chainId}/${councilId}`)
             }
           >
             Next

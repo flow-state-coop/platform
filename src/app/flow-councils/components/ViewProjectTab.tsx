@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Image from "react-bootstrap/Image";
@@ -9,7 +10,6 @@ import { ProjectDetails } from "@/types/project";
 type ViewProjectTabProps = {
   projectDetails: ProjectDetails | null;
   managerAddresses?: string[];
-  managerEmails?: string[];
 };
 
 const CONTRACT_TYPE_LABELS: Record<string, string> = {
@@ -18,7 +18,7 @@ const CONTRACT_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function ViewProjectTab(props: ViewProjectTabProps) {
-  const { projectDetails, managerAddresses = [], managerEmails = [] } = props;
+  const { projectDetails, managerAddresses = [] } = props;
 
   if (!projectDetails) {
     return <p className="text-muted">No project data available.</p>;
@@ -43,42 +43,23 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
         <Stack direction="vertical" gap={2}>
           {managerAddresses.length > 0 ? (
             managerAddresses.map((address, index) => (
-              <Form.Control
+              <div
                 key={index}
-                type="text"
-                value={address}
-                disabled
-                className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-              />
+                className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold d-flex align-items-center gap-2"
+              >
+                <span className="font-monospace text-truncate">{address}</span>
+                <Link
+                  href={`/profile/${address}`}
+                  className="text-primary text-decoration-none flex-shrink-0"
+                >
+                  View Profile
+                </Link>
+              </div>
             ))
           ) : (
             <Form.Control
               type="text"
-              value="N/A"
-              disabled
-              className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-            />
-          )}
-        </Stack>
-      </Form.Group>
-
-      <Form.Group className="mb-4">
-        <Form.Label className="fs-lg fw-bold">Manager Emails</Form.Label>
-        <Stack direction="vertical" gap={2}>
-          {managerEmails.length > 0 ? (
-            managerEmails.map((email, index) => (
-              <Form.Control
-                key={index}
-                type="text"
-                value={email}
-                disabled
-                className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
-              />
-            ))
-          ) : (
-            <Form.Control
-              type="text"
-              value="N/A"
+              value=""
               disabled
               className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
             />
@@ -92,7 +73,7 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
         </Form.Label>
         <Form.Control
           type="text"
-          value={projectDetails.defaultFundingAddress ?? "N/A"}
+          value={projectDetails.defaultFundingAddress ?? ""}
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -125,7 +106,7 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
         ) : (
           <Form.Control
             type="text"
-            value="N/A"
+            value=""
             disabled
             className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
           />
@@ -147,7 +128,7 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
         ) : (
           <Form.Control
             type="text"
-            value="N/A"
+            value=""
             disabled
             className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
           />
@@ -158,7 +139,7 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
         <Form.Label className="fs-lg fw-bold">Website</Form.Label>
         <Form.Control
           type="text"
-          value={projectDetails.website ?? "N/A"}
+          value={projectDetails.website ?? ""}
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -168,7 +149,7 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
         <Form.Label className="fs-lg fw-bold">Demo/Application Link</Form.Label>
         <Form.Control
           type="text"
-          value={projectDetails.demoUrl ?? "N/A"}
+          value={projectDetails.demoUrl ?? ""}
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -180,7 +161,7 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
         <Form.Label className="fs-lg fw-bold">X/Twitter</Form.Label>
         <Form.Control
           type="text"
-          value={projectDetails.twitter ? `@${projectDetails.twitter}` : "N/A"}
+          value={projectDetails.twitter ? `@${projectDetails.twitter}` : ""}
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -190,9 +171,7 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
         <Form.Label className="fs-lg fw-bold">Farcaster</Form.Label>
         <Form.Control
           type="text"
-          value={
-            projectDetails.farcaster ? `@${projectDetails.farcaster}` : "N/A"
-          }
+          value={projectDetails.farcaster ? `@${projectDetails.farcaster}` : ""}
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -202,7 +181,7 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
         <Form.Label className="fs-lg fw-bold">Telegram Group</Form.Label>
         <Form.Control
           type="text"
-          value={projectDetails.telegram ?? "N/A"}
+          value={projectDetails.telegram ?? ""}
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -212,7 +191,7 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
         <Form.Label className="fs-lg fw-bold">Discord Channel</Form.Label>
         <Form.Control
           type="text"
-          value={projectDetails.discord ?? "N/A"}
+          value={projectDetails.discord ?? ""}
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -222,7 +201,7 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
         <Form.Label className="fs-lg fw-bold">Karma Profile</Form.Label>
         <Form.Control
           type="text"
-          value={projectDetails.karmaProfile ?? "N/A"}
+          value={projectDetails.karmaProfile ?? ""}
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -232,7 +211,7 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
         <Form.Label className="fs-lg fw-bold">Gardens Pool</Form.Label>
         <Form.Control
           type="text"
-          value={projectDetails.gardensPool ?? "N/A"}
+          value={projectDetails.gardensPool ?? ""}
           disabled
           className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
         />
@@ -257,7 +236,7 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
           ) : (
             <Form.Control
               type="text"
-              value="N/A"
+              value=""
               disabled
               className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
             />
@@ -279,14 +258,14 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
                   <span className="text-muted">({contract.network})</span>
                 </Stack>
                 <code className="d-block text-break">
-                  {contract.address || "N/A"}
+                  {contract.address || ""}
                 </code>
               </div>
             ))
           ) : (
             <Form.Control
               type="text"
-              value="N/A"
+              value=""
               disabled
               className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
             />
@@ -303,15 +282,15 @@ export default function ViewProjectTab(props: ViewProjectTabProps) {
             projectDetails.otherLinks.map((link, index) => (
               <div key={index} className="bg-light rounded-4 p-3">
                 <span className="fw-semi-bold d-block mb-1">
-                  {link.description || "N/A"}
+                  {link.description || ""}
                 </span>
-                <code className="d-block text-break">{link.url || "N/A"}</code>
+                <code className="d-block text-break">{link.url || ""}</code>
               </div>
             ))
           ) : (
             <Form.Control
               type="text"
-              value="N/A"
+              value=""
               disabled
               className="bg-light border-0 rounded-4 py-3 px-3 fw-semi-bold"
             />

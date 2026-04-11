@@ -3,9 +3,13 @@ import { isAddress } from "viem";
 import { db } from "../db";
 import { networks } from "@/lib/networks";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { errorResponse } from "../../utils";
-import { validateRoundDetails } from "../validation";
-import { isRoundAdmin, hasOnChainRole, findRoundByCouncil } from "../auth";
+import { errorResponse, readJsonBody, PayloadTooLargeError } from "../../utils";
+import {
+  validateRoundDetails,
+  validateDynamicRoundDetails,
+  MAX_DETAILS_SIZE,
+} from "../validation";
+import { isRoundAdmin, hasOnChainRole } from "../auth";
 
 export const dynamic = "force-dynamic";
 
@@ -37,24 +41,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const round = await db
-      .selectFrom("rounds")
-      .select("id")
-      .where("chainId", "=", chainId)
-      .where("flowCouncilAddress", "=", councilId.toLowerCase())
-      .executeTakeFirst();
+    const userAddress = session.address.toLowerCase();
+
+    const [round, onChainAdmin] = await Promise.all([
+      db
+        .selectFrom("rounds")
+        .select("id")
+        .where("chainId", "=", chainId)
+        .where("flowCouncilAddress", "=", councilId.toLowerCase())
+        .executeTakeFirst(),
+      hasOnChainRole(chainId, councilId, userAddress),
+    ]);
 
     if (!round) {
       return new Response(JSON.stringify({ success: true, applications: [] }));
     }
 
-    const userAddress = session.address.toLowerCase();
-
-    const [dbAdmin, onChainAdmin] = await Promise.all([
-      isRoundAdmin(round.id, userAddress),
-      hasOnChainRole(chainId, councilId, userAddress),
-    ]);
-
+    const dbAdmin = await isRoundAdmin(round.id, userAddress);
     const admin = dbAdmin || onChainAdmin;
 
     let applications;
@@ -190,14 +193,37 @@ export async function PUT(request: Request) {
     if (!session?.address) {
       return new Response(
         JSON.stringify({ success: false, error: "Unauthenticated" }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    const { projectId, chainId, councilId, details } = await request.json();
+    let body: {
+      projectId: number;
+      chainId: number;
+      councilId: string;
+      details?: Record<string, unknown>;
+      fundingAddress?: string;
+    };
+    try {
+      body = await readJsonBody(request, MAX_DETAILS_SIZE);
+    } catch (err) {
+      if (err instanceof PayloadTooLargeError) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Payload too large" }),
+          { status: 413, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid request body" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    const { projectId, chainId, councilId, details, fundingAddress } = body;
 
     if (!projectId || typeof projectId !== "number") {
       return new Response(
         JSON.stringify({ success: false, error: "Invalid project ID" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -205,22 +231,31 @@ export async function PUT(request: Request) {
     if (!network) {
       return new Response(
         JSON.stringify({ success: false, error: "Wrong network" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
     if (!councilId || !isAddress(councilId)) {
       return new Response(
         JSON.stringify({ success: false, error: "Invalid council ID" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    // Verify user is a manager of the project
-    const isManager = await db
-      .selectFrom("projectManagers")
-      .select("id")
-      .where("projectId", "=", projectId)
-      .where("managerAddress", "=", session.address.toLowerCase())
-      .executeTakeFirst();
+    const [isManager, round] = await Promise.all([
+      db
+        .selectFrom("projectManagers")
+        .select("id")
+        .where("projectId", "=", projectId)
+        .where("managerAddress", "=", session.address.toLowerCase())
+        .executeTakeFirst(),
+      db
+        .selectFrom("rounds")
+        .select(["id", "applicationsClosed", "details"])
+        .where("chainId", "=", chainId)
+        .where("flowCouncilAddress", "=", councilId.toLowerCase())
+        .executeTakeFirst(),
+    ]);
 
     if (!isManager) {
       return new Response(
@@ -228,23 +263,57 @@ export async function PUT(request: Request) {
           success: false,
           error: "Not authorized to update this project",
         }),
+        { status: 403, headers: { "Content-Type": "application/json" } },
       );
     }
-
-    const round = await findRoundByCouncil(chainId, councilId);
 
     if (!round) {
       return new Response(
         JSON.stringify({ success: false, error: "Round not found" }),
+        { status: 404, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    if (details) {
-      const validation = validateRoundDetails(details);
-      if (!validation.success) {
+    const roundDetails =
+      typeof round.details === "string"
+        ? JSON.parse(round.details)
+        : (round.details ?? {});
+
+    const isDynamicFlow = !!roundDetails.formSchema?.round;
+
+    if (isDynamicFlow) {
+      if (
+        !fundingAddress ||
+        typeof fundingAddress !== "string" ||
+        !isAddress(fundingAddress)
+      ) {
         return new Response(
-          JSON.stringify({ success: false, error: validation.error }),
+          JSON.stringify({ success: false, error: "Invalid funding address" }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
         );
+      }
+    }
+
+    if (details) {
+      if (isDynamicFlow) {
+        const validation = validateDynamicRoundDetails(
+          details,
+          roundDetails.formSchema.round,
+        );
+        if (!validation.success) {
+          return new Response(
+            JSON.stringify({ success: false, error: validation.error }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
+          );
+        }
+      } else {
+        const validation = validateRoundDetails(details);
+        if (!validation.success) {
+          return new Response(
+            JSON.stringify({ success: false, error: validation.error }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
+          );
+        }
       }
     }
 
@@ -266,18 +335,28 @@ export async function PUT(request: Request) {
           success: false,
           error: "Application is locked and cannot be edited",
         }),
+        { status: 409, headers: { "Content-Type": "application/json" } },
       );
     }
 
     let application;
 
     if (existingApplication) {
+      const updateValues: Record<string, unknown> = {
+        details: details,
+        updatedAt: new Date(),
+      };
+
+      const isStatusLocked = LOCKED_STATUSES.includes(
+        existingApplication.status,
+      );
+      if (isDynamicFlow && !isStatusLocked && fundingAddress) {
+        updateValues.fundingAddress = fundingAddress.toLowerCase();
+      }
+
       application = await db
         .updateTable("applications")
-        .set({
-          details: details,
-          updatedAt: new Date(),
-        })
+        .set(updateValues)
         .where("id", "=", existingApplication.id)
         .returning([
           "id",
@@ -295,30 +374,36 @@ export async function PUT(request: Request) {
             success: false,
             error: "Applications are currently closed",
           }),
+          { status: 409, headers: { "Content-Type": "application/json" } },
         );
       }
 
-      const project = await db
-        .selectFrom("projects")
-        .select("details")
-        .where("id", "=", projectId)
-        .executeTakeFirst();
+      let insertFundingAddress: string;
+      if (isDynamicFlow) {
+        insertFundingAddress = (fundingAddress as string).toLowerCase();
+      } else {
+        const project = await db
+          .selectFrom("projects")
+          .select("details")
+          .where("id", "=", projectId)
+          .executeTakeFirst();
 
-      const projectDetails =
-        typeof project?.details === "string"
-          ? JSON.parse(project.details)
-          : project?.details;
+        const projectDetails =
+          typeof project?.details === "string"
+            ? JSON.parse(project.details)
+            : project?.details;
 
-      const fundingAddress =
-        projectDetails?.defaultFundingAddress || session.address;
+        insertFundingAddress = (
+          projectDetails?.defaultFundingAddress || session.address
+        ).toLowerCase();
+      }
 
-      // Create new application with INCOMPLETE status
       application = await db
         .insertInto("applications")
         .values({
           projectId,
           roundId: round.id,
-          fundingAddress: fundingAddress.toLowerCase(),
+          fundingAddress: insertFundingAddress,
           status: "INCOMPLETE",
           details: details,
         })
@@ -343,6 +428,7 @@ export async function PUT(request: Request) {
     console.error(err);
     return new Response(
       JSON.stringify({ success: false, error: "Failed to save application" }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
 }

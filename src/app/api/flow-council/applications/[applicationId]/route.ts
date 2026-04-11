@@ -8,6 +8,12 @@ import {
   getRoundAdminEmailsExcludingAddress,
 } from "../../email";
 import { findRoundByCouncil, isAdmin } from "../../auth";
+import {
+  validateDynamicAttestationDetails,
+  validateDynamicRoundDetails,
+  MAX_DETAILS_SIZE,
+} from "../../validation";
+import { readJsonBody, PayloadTooLargeError } from "../../../utils";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +28,7 @@ export async function GET(
     if (!session?.address) {
       return new Response(
         JSON.stringify({ success: false, error: "Unauthenticated" }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -154,6 +161,7 @@ export async function PATCH(
     if (!session?.address) {
       return new Response(
         JSON.stringify({ success: false, error: "Unauthenticated" }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -164,7 +172,26 @@ export async function PATCH(
       );
     }
 
-    const { details, submit, fundingAddress } = await request.json();
+    let body: {
+      details?: Record<string, unknown>;
+      submit?: boolean;
+      fundingAddress?: string;
+    };
+    try {
+      body = await readJsonBody(request, MAX_DETAILS_SIZE);
+    } catch (err) {
+      if (err instanceof PayloadTooLargeError) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Payload too large" }),
+          { status: 413, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid request body" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    const { details, submit, fundingAddress } = body;
 
     // Verify user is a manager of the project
     const existingApp = await db
@@ -176,6 +203,7 @@ export async function PATCH(
       )
       .select([
         "applications.id",
+        "applications.roundId",
         "applications.status",
         "applications.editsUnlocked",
       ])
@@ -206,6 +234,45 @@ export async function PATCH(
           error: "Application is locked and cannot be edited",
         }),
       );
+    }
+
+    if (details) {
+      const roundRow = await db
+        .selectFrom("rounds")
+        .select("details")
+        .where("id", "=", existingApp.roundId)
+        .executeTakeFirst();
+
+      const roundDetails =
+        typeof roundRow?.details === "string"
+          ? JSON.parse(roundRow.details)
+          : (roundRow?.details ?? {});
+
+      if (roundDetails.formSchema?.round) {
+        const validation = validateDynamicRoundDetails(
+          details,
+          roundDetails.formSchema.round,
+        );
+        if (!validation.success) {
+          return new Response(
+            JSON.stringify({ success: false, error: validation.error }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
+          );
+        }
+      }
+
+      if (roundDetails.formSchema?.attestation) {
+        const validation = validateDynamicAttestationDetails(
+          details,
+          roundDetails.formSchema.attestation,
+        );
+        if (!validation.success) {
+          return new Response(
+            JSON.stringify({ success: false, error: validation.error }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
+          );
+        }
+      }
     }
 
     const updateData: Record<string, unknown> = {
