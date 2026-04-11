@@ -112,11 +112,8 @@ function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Extract chainId and councilId from pathname
-  // Pattern: /flow-councils/[section]/[chainId]/[councilId]
   const { chainId, councilId } = useMemo(() => {
     const segments = pathname?.split("/").filter(Boolean) ?? [];
-    // segments: ["flow-councils", "launch", "42161", "0x..."]
     if (segments.length >= 4 && segments[0] === "flow-councils") {
       return {
         chainId: Number(segments[2]) || null,
