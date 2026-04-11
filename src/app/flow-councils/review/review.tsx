@@ -1033,6 +1033,9 @@ export default function Review(props: ReviewProps) {
                             <ViewRoundTab
                               formSchema={schema}
                               dynamicValues={roundValues}
+                              fundingAddress={
+                                selectedApplication.fundingAddress
+                              }
                             />
                           </Tab.Pane>
                           <Tab.Pane eventKey="eligibility">
