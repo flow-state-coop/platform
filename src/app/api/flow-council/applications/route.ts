@@ -41,24 +41,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const round = await db
-      .selectFrom("rounds")
-      .select("id")
-      .where("chainId", "=", chainId)
-      .where("flowCouncilAddress", "=", councilId.toLowerCase())
-      .executeTakeFirst();
+    const userAddress = session.address.toLowerCase();
+
+    const [round, onChainAdmin] = await Promise.all([
+      db
+        .selectFrom("rounds")
+        .select("id")
+        .where("chainId", "=", chainId)
+        .where("flowCouncilAddress", "=", councilId.toLowerCase())
+        .executeTakeFirst(),
+      hasOnChainRole(chainId, councilId, userAddress),
+    ]);
 
     if (!round) {
       return new Response(JSON.stringify({ success: true, applications: [] }));
     }
 
-    const userAddress = session.address.toLowerCase();
-
-    const [dbAdmin, onChainAdmin] = await Promise.all([
-      isRoundAdmin(round.id, userAddress),
-      hasOnChainRole(chainId, councilId, userAddress),
-    ]);
-
+    const dbAdmin = await isRoundAdmin(round.id, userAddress);
     const admin = dbAdmin || onChainAdmin;
 
     let applications;
@@ -243,13 +242,20 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Verify user is a manager of the project
-    const isManager = await db
-      .selectFrom("projectManagers")
-      .select("id")
-      .where("projectId", "=", projectId)
-      .where("managerAddress", "=", session.address.toLowerCase())
-      .executeTakeFirst();
+    const [isManager, round] = await Promise.all([
+      db
+        .selectFrom("projectManagers")
+        .select("id")
+        .where("projectId", "=", projectId)
+        .where("managerAddress", "=", session.address.toLowerCase())
+        .executeTakeFirst(),
+      db
+        .selectFrom("rounds")
+        .select(["id", "applicationsClosed", "details"])
+        .where("chainId", "=", chainId)
+        .where("flowCouncilAddress", "=", councilId.toLowerCase())
+        .executeTakeFirst(),
+    ]);
 
     if (!isManager) {
       return new Response(
@@ -260,13 +266,6 @@ export async function PUT(request: Request) {
         { status: 403, headers: { "Content-Type": "application/json" } },
       );
     }
-
-    const round = await db
-      .selectFrom("rounds")
-      .select(["id", "applicationsClosed", "details"])
-      .where("chainId", "=", chainId)
-      .where("flowCouncilAddress", "=", councilId.toLowerCase())
-      .executeTakeFirst();
 
     if (!round) {
       return new Response(

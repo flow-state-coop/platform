@@ -4,15 +4,16 @@ import { db } from "../../db";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { isAdmin } from "../../auth";
 import { validateFormSchema, MAX_DETAILS_SIZE } from "../../validation";
-import { readJsonBody, PayloadTooLargeError } from "../../../utils";
+import {
+  errorResponse,
+  readJsonBody,
+  PayloadTooLargeError,
+} from "../../../utils";
 
 export const dynamic = "force-dynamic";
 
-function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
+function successResponse(body: Record<string, unknown>) {
+  return new Response(JSON.stringify({ success: true, ...body }));
 }
 
 export async function GET(request: Request) {
@@ -22,7 +23,7 @@ export async function GET(request: Request) {
     const flowCouncilAddress = searchParams.get("flowCouncilAddress");
 
     if (!chainId || !flowCouncilAddress || !isAddress(flowCouncilAddress)) {
-      return jsonResponse({ success: false, error: "Invalid parameters" }, 400);
+      return errorResponse("Invalid parameters", 400);
     }
 
     const round = await db
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
       .executeTakeFirst();
 
     if (!round) {
-      return jsonResponse({ success: false, error: "Round not found" }, 404);
+      return errorResponse("Round not found", 404);
     }
 
     const details =
@@ -41,16 +42,10 @@ export async function GET(request: Request) {
         ? JSON.parse(round.details)
         : (round.details ?? {});
 
-    return jsonResponse({
-      success: true,
-      formSchema: details.formSchema ?? null,
-    });
+    return successResponse({ formSchema: details.formSchema ?? null });
   } catch (err) {
     console.error(err);
-    return jsonResponse(
-      { success: false, error: "Failed to fetch form schema" },
-      500,
-    );
+    return errorResponse("Failed to fetch form schema", 500);
   }
 }
 
@@ -59,7 +54,7 @@ export async function PUT(request: Request) {
     const session = await getServerSession(authOptions);
 
     if (!session?.address) {
-      return jsonResponse({ success: false, error: "Unauthenticated" }, 401);
+      return errorResponse("Unauthenticated", 401);
     }
 
     let parsed: {
@@ -71,20 +66,14 @@ export async function PUT(request: Request) {
       parsed = await readJsonBody(request, MAX_DETAILS_SIZE);
     } catch (err) {
       if (err instanceof PayloadTooLargeError) {
-        return jsonResponse(
-          { success: false, error: "Payload too large" },
-          413,
-        );
+        return errorResponse("Payload too large", 413);
       }
-      return jsonResponse(
-        { success: false, error: "Invalid request body" },
-        400,
-      );
+      return errorResponse("Invalid request body", 400);
     }
     const { chainId, flowCouncilAddress, formSchema } = parsed;
 
     if (!chainId || !flowCouncilAddress || !isAddress(flowCouncilAddress)) {
-      return jsonResponse({ success: false, error: "Invalid parameters" }, 400);
+      return errorResponse("Invalid parameters", 400);
     }
 
     const round = await db
@@ -95,7 +84,7 @@ export async function PUT(request: Request) {
       .executeTakeFirst();
 
     if (!round) {
-      return jsonResponse({ success: false, error: "Round not found" }, 404);
+      return errorResponse("Round not found", 404);
     }
 
     const authorized = await isAdmin(
@@ -106,16 +95,15 @@ export async function PUT(request: Request) {
     );
 
     if (!authorized) {
-      return jsonResponse({ success: false, error: "Not authorized" }, 403);
+      return errorResponse("Not authorized", 403);
     }
 
     const validation = validateFormSchema(formSchema);
 
     if (!validation.success) {
-      return jsonResponse({ success: false, error: validation.error }, 400);
+      return errorResponse(validation.error, 400);
     }
 
-    // Read-merge-write to preserve other details keys
     const existingDetails =
       typeof round.details === "string"
         ? JSON.parse(round.details)
@@ -132,15 +120,9 @@ export async function PUT(request: Request) {
       .where("id", "=", round.id)
       .execute();
 
-    return jsonResponse({
-      success: true,
-      formSchema: validation.data,
-    });
+    return successResponse({ formSchema: validation.data });
   } catch (err) {
     console.error(err);
-    return jsonResponse(
-      { success: false, error: "Failed to save form schema" },
-      500,
-    );
+    return errorResponse("Failed to save form schema", 500);
   }
 }
