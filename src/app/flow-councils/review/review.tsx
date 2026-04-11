@@ -41,12 +41,11 @@ import type {
   RoundForm,
   AttestationForm,
 } from "@/app/flow-councils/types/round";
-import type { FormSchema } from "@/app/flow-councils/types/formSchema";
-import { GOODBUILDERS_TEMPLATE } from "@/app/flow-councils/types/formSchema";
 import {
-  adaptLegacyRoundData,
-  adaptLegacyAttestationData,
-} from "@/app/flow-councils/utils/legacyFormAdapter";
+  GOODBUILDERS_TEMPLATE,
+  type FormSchema,
+} from "@/app/flow-councils/types/formSchema";
+import { getApplicationAsDynamic } from "@/app/flow-councils/utils/legacyFormAdapter";
 import { ProjectDetails } from "@/types/project";
 
 type ReviewProps = {
@@ -233,11 +232,11 @@ export default function Review(props: ReviewProps) {
       return safe;
     };
 
-    const schema = roundFormSchema ?? GOODBUILDERS_TEMPLATE;
-    const roundQuestions = schema.round.filter(
+    const csvSchema = roundFormSchema ?? GOODBUILDERS_TEMPLATE;
+    const roundQuestions = csvSchema.round.filter(
       (el) => !["section", "divider", "description"].includes(el.type),
     );
-    const attestationQuestions = schema.attestation.filter(
+    const attestationQuestions = csvSchema.attestation.filter(
       (el) => !["section", "divider", "description"].includes(el.type),
     );
 
@@ -252,33 +251,10 @@ export default function Review(props: ReviewProps) {
 
     const rows = fullApplications.map((app) => {
       const projectDetails = app.projectDetails;
-      let roundValues: Record<string, unknown>;
-      let attestationValues: Record<string, unknown>;
-
-      if (roundFormSchema && app.details) {
-        const d = app.details as unknown as {
-          round: Record<string, unknown>;
-          attestation: Record<string, unknown>;
-        };
-        roundValues = d.round ?? {};
-        attestationValues = d.attestation ?? {};
-      } else if (app.details) {
-        roundValues = adaptLegacyRoundData(app.details as RoundForm);
-        const legacyDetails = app.details as ApplicationDetails;
-        const attestation =
-          legacyDetails.attestation ??
-          (
-            legacyDetails as ApplicationDetails & {
-              eligibility?: AttestationForm;
-            }
-          ).eligibility;
-        attestationValues = attestation
-          ? adaptLegacyAttestationData(attestation)
-          : {};
-      } else {
-        roundValues = {};
-        attestationValues = {};
-      }
+      const { roundValues, attestationValues } = getApplicationAsDynamic(
+        app.details,
+        roundFormSchema,
+      );
 
       const formatVal = (val: unknown) => {
         if (Array.isArray(val)) return val.join("|");
@@ -988,34 +964,11 @@ export default function Review(props: ReviewProps) {
                     </Nav>
 
                     {(() => {
-                      const details = selectedApplication.details;
-                      const schema = roundFormSchema ?? GOODBUILDERS_TEMPLATE;
-
-                      let roundValues: Record<string, unknown> = {};
-                      let attestationValues: Record<string, unknown> = {};
-
-                      if (roundFormSchema && details) {
-                        const d = details as unknown as {
-                          round: Record<string, unknown>;
-                          attestation: Record<string, unknown>;
-                        };
-                        roundValues = d.round ?? {};
-                        attestationValues = d.attestation ?? {};
-                      } else if (details) {
-                        roundValues = adaptLegacyRoundData(
-                          details as RoundForm,
+                      const { schema, roundValues, attestationValues } =
+                        getApplicationAsDynamic(
+                          selectedApplication.details,
+                          roundFormSchema,
                         );
-                        const d = details as ApplicationDetails;
-                        const legacy =
-                          d.attestation ??
-                          (
-                            d as ApplicationDetails & {
-                              eligibility?: AttestationForm;
-                            }
-                          ).eligibility ??
-                          {};
-                        attestationValues = adaptLegacyAttestationData(legacy);
-                      }
 
                       return (
                         <Tab.Content>

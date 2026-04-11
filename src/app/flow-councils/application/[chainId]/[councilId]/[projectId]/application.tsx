@@ -22,11 +22,7 @@ import type {
   AttestationForm,
 } from "@/app/flow-councils/types/round";
 import type { FormSchema } from "@/app/flow-councils/types/formSchema";
-import { GOODBUILDERS_TEMPLATE } from "@/app/flow-councils/types/formSchema";
-import {
-  adaptLegacyRoundData,
-  adaptLegacyAttestationData,
-} from "@/app/flow-councils/utils/legacyFormAdapter";
+import { getApplicationAsDynamic } from "@/app/flow-councils/utils/legacyFormAdapter";
 import { generateApplicationTemplate } from "@/app/flow-councils/lib/generateApplicationTemplate";
 import { networks } from "@/lib/networks";
 import { Project } from "@/types/project";
@@ -420,6 +416,13 @@ export default function Application(props: ApplicationProps) {
     }
   };
 
+  const legacyView = getApplicationAsDynamic(
+    roundData || attestationData
+      ? { ...(roundData ?? {}), attestation: attestationData ?? undefined }
+      : null,
+    null,
+  );
+
   if (!chainId || !network || !councilId) {
     return <span className="m-auto fs-4 fw-bold">Invalid council</span>;
   }
@@ -603,8 +606,8 @@ export default function Application(props: ApplicationProps) {
               <FormSkeleton />
             ) : (
               <ViewRoundTab
-                formSchema={GOODBUILDERS_TEMPLATE}
-                dynamicValues={roundData ? adaptLegacyRoundData(roundData) : {}}
+                formSchema={legacyView.schema}
+                dynamicValues={legacyView.roundValues}
               />
             )}
           </Tab.Pane>
@@ -686,12 +689,8 @@ export default function Application(props: ApplicationProps) {
               <FormSkeleton />
             ) : (
               <ViewAttestationTab
-                formSchema={GOODBUILDERS_TEMPLATE}
-                dynamicValues={
-                  attestationData
-                    ? adaptLegacyAttestationData(attestationData)
-                    : {}
-                }
+                formSchema={legacyView.schema}
+                dynamicValues={legacyView.attestationValues}
               />
             )}
           </Tab.Pane>

@@ -1,8 +1,6 @@
 import {
   type RoundForm,
   type AttestationForm,
-  type BuildMilestone,
-  type GrowthMilestone,
   type TeamMember,
   PROJECT_STAGE_LABELS,
   INTEGRATION_STATUS_LABELS,
@@ -10,36 +8,28 @@ import {
   INTEGRATION_TYPE_LABELS,
   RECIPIENT_TYPE_LABELS,
 } from "@/app/flow-councils/types/round";
+import {
+  GOODBUILDERS_TEMPLATE,
+  type FormSchema,
+} from "@/app/flow-councils/types/formSchema";
 
-function formatBuildMilestones(milestones: BuildMilestone[]): string {
+type MilestoneLike = { title?: string; description?: string };
+
+function formatMilestones<T extends MilestoneLike>(
+  milestones: T[],
+  getItems: (m: T) => string[],
+  itemsLabel: string,
+): string {
   return milestones
     .map((m, i) => {
-      const deliverables = m.deliverables
-        .filter((d) => d.trim())
-        .map((d) => `- ${d}`)
+      const items = getItems(m)
+        .filter((x) => x.trim())
+        .map((x) => `- ${x}`)
         .join("\n");
       return [
         `**Milestone ${i + 1}: ${m.title || "(Untitled)"}**`,
         m.description || "",
-        deliverables ? `Deliverables:\n${deliverables}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n");
-    })
-    .join("\n\n");
-}
-
-function formatGrowthMilestones(milestones: GrowthMilestone[]): string {
-  return milestones
-    .map((m, i) => {
-      const activations = m.activations
-        .filter((a) => a.trim())
-        .map((a) => `- ${a}`)
-        .join("\n");
-      return [
-        `**Milestone ${i + 1}: ${m.title || "(Untitled)"}**`,
-        m.description || "",
-        activations ? `Activations:\n${activations}` : "",
+        items ? `${itemsLabel}:\n${items}` : "",
       ]
         .filter(Boolean)
         .join("\n");
@@ -101,14 +91,22 @@ export function adaptLegacyRoundData(
     "gb-r-q13": build?.primaryBuildGoal || undefined,
     "gb-r-q14":
       (build?.milestones?.length ?? 0) > 0
-        ? formatBuildMilestones(build!.milestones)
+        ? formatMilestones(
+            build!.milestones,
+            (m) => m.deliverables,
+            "Deliverables",
+          )
         : undefined,
     "gb-r-q15": build?.ecosystemImpact || undefined,
     "gb-r-q16": growth?.primaryGrowthGoal || undefined,
     "gb-r-q17": growth?.targetUsers || undefined,
     "gb-r-q18":
       (growth?.milestones?.length ?? 0) > 0
-        ? formatGrowthMilestones(growth!.milestones)
+        ? formatMilestones(
+            growth!.milestones,
+            (m) => m.activations,
+            "Activations",
+          )
         : undefined,
     "gb-r-q19": growth?.ecosystemImpact || undefined,
     "gb-r-q20": contact?.name || undefined,
@@ -138,4 +136,42 @@ export function adaptLegacyAttestationData(
     "gb-a-q07": data.dataAcknowledgement?.gdprConsent,
     "gb-a-q08": data.privacyTransparency?.agreedToPrivacy,
   };
+}
+
+type DetailsShape = {
+  round?: Record<string, unknown>;
+  attestation?: Partial<AttestationForm> | Record<string, unknown>;
+  eligibility?: Partial<AttestationForm> | Record<string, unknown>;
+};
+
+export function getApplicationAsDynamic(
+  details: unknown,
+  roundFormSchema: FormSchema | null | undefined,
+): {
+  schema: FormSchema;
+  roundValues: Record<string, unknown>;
+  attestationValues: Record<string, unknown>;
+} {
+  const schema = roundFormSchema ?? GOODBUILDERS_TEMPLATE;
+
+  if (!details) {
+    return { schema, roundValues: {}, attestationValues: {} };
+  }
+
+  if (roundFormSchema) {
+    const d = details as DetailsShape;
+    return {
+      schema,
+      roundValues: d.round ?? {},
+      attestationValues: (d.attestation as Record<string, unknown>) ?? {},
+    };
+  }
+
+  const d = details as DetailsShape;
+  const roundValues = adaptLegacyRoundData(details as Partial<RoundForm>);
+  const legacyAttestation = d.attestation ?? d.eligibility;
+  const attestationValues = legacyAttestation
+    ? adaptLegacyAttestationData(legacyAttestation as Partial<AttestationForm>)
+    : {};
+  return { schema, roundValues, attestationValues };
 }
