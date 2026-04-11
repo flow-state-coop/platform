@@ -203,6 +203,7 @@ export async function PUT(request: Request) {
       chainId: number;
       councilId: string;
       details?: Record<string, unknown>;
+      fundingAddress?: string;
     };
     try {
       body = await readJsonBody(request, MAX_DETAILS_SIZE);
@@ -218,7 +219,7 @@ export async function PUT(request: Request) {
         { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
-    const { projectId, chainId, councilId, details } = body;
+    const { projectId, chainId, councilId, details, fundingAddress } = body;
 
     if (!projectId || typeof projectId !== "number") {
       return new Response(
@@ -269,13 +270,28 @@ export async function PUT(request: Request) {
       );
     }
 
-    if (details) {
-      const roundDetails =
-        typeof round.details === "string"
-          ? JSON.parse(round.details)
-          : (round.details ?? {});
+    const roundDetails =
+      typeof round.details === "string"
+        ? JSON.parse(round.details)
+        : (round.details ?? {});
 
-      if (roundDetails.formSchema?.round) {
+    const isDynamicFlow = !!roundDetails.formSchema?.round;
+
+    if (isDynamicFlow) {
+      if (
+        !fundingAddress ||
+        typeof fundingAddress !== "string" ||
+        !isAddress(fundingAddress)
+      ) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid funding address" }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+    }
+
+    if (details) {
+      if (isDynamicFlow) {
         const validation = validateDynamicRoundDetails(
           details,
           roundDetails.formSchema.round,
@@ -321,12 +337,21 @@ export async function PUT(request: Request) {
     let application;
 
     if (existingApplication) {
+      const updateValues: Record<string, unknown> = {
+        details: details,
+        updatedAt: new Date(),
+      };
+
+      const isStatusLocked = LOCKED_STATUSES.includes(
+        existingApplication.status,
+      );
+      if (isDynamicFlow && !isStatusLocked && fundingAddress) {
+        updateValues.fundingAddress = fundingAddress.toLowerCase();
+      }
+
       application = await db
         .updateTable("applications")
-        .set({
-          details: details,
-          updatedAt: new Date(),
-        })
+        .set(updateValues)
         .where("id", "=", existingApplication.id)
         .returning([
           "id",
@@ -347,27 +372,32 @@ export async function PUT(request: Request) {
         );
       }
 
-      const project = await db
-        .selectFrom("projects")
-        .select("details")
-        .where("id", "=", projectId)
-        .executeTakeFirst();
+      let insertFundingAddress: string;
+      if (isDynamicFlow) {
+        insertFundingAddress = (fundingAddress as string).toLowerCase();
+      } else {
+        const project = await db
+          .selectFrom("projects")
+          .select("details")
+          .where("id", "=", projectId)
+          .executeTakeFirst();
 
-      const projectDetails =
-        typeof project?.details === "string"
-          ? JSON.parse(project.details)
-          : project?.details;
+        const projectDetails =
+          typeof project?.details === "string"
+            ? JSON.parse(project.details)
+            : project?.details;
 
-      const fundingAddress =
-        projectDetails?.defaultFundingAddress || session.address;
+        insertFundingAddress = (
+          projectDetails?.defaultFundingAddress || session.address
+        ).toLowerCase();
+      }
 
-      // Create new application with INCOMPLETE status
       application = await db
         .insertInto("applications")
         .values({
           projectId,
           roundId: round.id,
-          fundingAddress: fundingAddress.toLowerCase(),
+          fundingAddress: insertFundingAddress,
           status: "INCOMPLETE",
           details: details,
         })
