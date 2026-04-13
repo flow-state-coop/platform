@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAccount } from "wagmi";
-import { getCsrfToken, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
@@ -133,6 +133,7 @@ export default function Profile() {
     try {
       const res = await fetch("/api/flow-council/profile", {
         method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
       const data = await res.json();
@@ -180,13 +181,7 @@ export default function Profile() {
           <Button
             variant="secondary"
             disabled={!address}
-            onClick={() =>
-              getCsrfToken()
-                .then((token) => {
-                  if (token) handleSignIn(token);
-                })
-                .catch(console.error)
-            }
+            onClick={() => handleSignIn()}
             className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
           >
             Sign In With Ethereum
