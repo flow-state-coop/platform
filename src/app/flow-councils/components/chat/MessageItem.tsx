@@ -37,7 +37,6 @@ type MessageItemProps = {
   hideAdminTag?: boolean;
   reactions?: ReactionSummary[];
   onReactionToggle?: (emoji: string) => void;
-  reactionsDisabled?: boolean;
   isPinned?: boolean;
   canPin?: boolean;
   onPin?: () => void;
@@ -84,7 +83,6 @@ export default function MessageItem(props: MessageItemProps) {
     hideAdminTag,
     reactions,
     onReactionToggle,
-    reactionsDisabled,
     isPinned,
     canPin,
     onPin,
@@ -190,16 +188,14 @@ export default function MessageItem(props: MessageItemProps) {
       <Markdown className={`mb-0 ms-5 ${isSystemMessage ? "fst-italic" : ""}`}>
         {message.content}
       </Markdown>
-      {onReactionToggle &&
-        (!reactionsDisabled || (reactions && reactions.length > 0)) && (
-          <div className="ms-5">
-            <ReactionBar
-              reactions={reactions || []}
-              onToggle={onReactionToggle}
-              disabled={reactionsDisabled}
-            />
-          </div>
-        )}
+      {onReactionToggle && (
+        <div className="ms-5">
+          <ReactionBar
+            reactions={reactions || []}
+            onToggle={onReactionToggle}
+          />
+        </div>
+      )}
     </div>
   );
 }
