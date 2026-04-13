@@ -27,6 +27,7 @@ type ApplicantSidebarProps = {
   projectName: string;
   roundName: string;
   applicationStatus: ApplicationStatus;
+  isLoading?: boolean;
 };
 
 export default function ApplicantSidebar(props: ApplicantSidebarProps) {
@@ -37,6 +38,7 @@ export default function ApplicantSidebar(props: ApplicantSidebarProps) {
     projectName,
     roundName,
     applicationStatus,
+    isLoading,
   } = props;
 
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
@@ -114,6 +116,34 @@ export default function ApplicantSidebar(props: ApplicantSidebarProps) {
       </Stack>
     </>
   );
+
+  if (isLoading) {
+    if (isMobile || isTablet) {
+      return null;
+    }
+
+    return (
+      <Stack
+        direction="vertical"
+        gap={3}
+        className="w-25 flex-shrink-0 align-self-start rounded-4 bg-lace-100 p-4 fs-6 me-5 placeholder-glow"
+        style={{ position: "sticky", top: "1rem" }}
+      >
+        <span
+          className="placeholder rounded bg-secondary d-block"
+          style={{ width: 180, height: 24 }}
+        />
+        <span
+          className="placeholder rounded bg-secondary d-block mb-3"
+          style={{ width: 120, height: 16 }}
+        />
+        <span
+          className="placeholder rounded bg-secondary d-block"
+          style={{ width: 140, height: 20 }}
+        />
+      </Stack>
+    );
+  }
 
   if ((isMobile || isTablet) && !showMobileSidebar) {
     return (

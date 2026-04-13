@@ -26,7 +26,7 @@ export function useProfileDisplayName(): {
     setProfileLoaded(false);
     const controller = new AbortController();
 
-    fetch(`/api/flow-council/profile?address=${address}`, {
+    fetch(`/api/flow-council/profile?address=${encodeURIComponent(address)}`, {
       signal: controller.signal,
     })
       .then((res) => res.json())

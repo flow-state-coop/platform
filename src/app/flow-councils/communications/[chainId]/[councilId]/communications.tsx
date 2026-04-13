@@ -297,6 +297,13 @@ export default function Communications(props: CommunicationsProps) {
           </Stack>
         </>
       )}
+      <Button
+        variant="secondary"
+        className="py-4 rounded-4 fs-lg fw-semi-bold mt-4"
+        onClick={() => router.push(`/flow-councils/${chainId}/${councilId}`)}
+      >
+        Next
+      </Button>
     </Stack>
   );
 }

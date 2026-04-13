@@ -13,7 +13,7 @@ import InfoTooltip from "@/components/InfoTooltip";
 import CharacterCounter from "@/app/flow-councils/components/CharacterCounter";
 import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
 import useRequireAuth from "@/hooks/requireAuth";
-import { normalizeEvidenceUrl } from "@/app/api/flow-council/validation";
+import { normalizeUrl } from "@/app/flow-councils/utils/normalizeUrl";
 import type {
   MilestoneWithProgress,
   DeliverableProgress,
@@ -490,7 +490,7 @@ export default function MilestoneCard({
   ) => {
     const filteredEvidence = data.evidence
       .filter((e) => e.name.trim() !== "" && e.link.trim() !== "")
-      .map((e) => ({ ...e, link: normalizeEvidenceUrl(e.link) }));
+      .map((e) => ({ ...e, link: normalizeUrl(e.link) }));
     const updatedItems = [...milestone.progress.items];
     while (updatedItems.length <= itemIndex) {
       updatedItems.push({ completion: 0, evidence: [] });

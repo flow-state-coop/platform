@@ -41,6 +41,8 @@ import type {
   RoundForm,
   AttestationForm,
 } from "@/app/flow-councils/types/round";
+import type { FormSchema } from "@/app/flow-councils/types/formSchema";
+import { getApplicationAsDynamic } from "@/app/flow-councils/utils/legacyFormAdapter";
 import { ProjectDetails } from "@/types/project";
 
 type ReviewProps = {
@@ -116,6 +118,9 @@ export default function Review(props: ReviewProps) {
     useState<Application | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
+  const [roundFormSchema, setRoundFormSchema] = useState<FormSchema | null>(
+    null,
+  );
   const [selectedTab, setSelectedTab] = useState<string>("project");
   const [newStatus, setNewStatus] = useState<Status | null>(null);
   const [reviewComment, setReviewComment] = useState("");
@@ -171,6 +176,9 @@ export default function Review(props: ReviewProps) {
                 ? JSON.parse(data.round.details)
                 : data.round.details;
             setRoundName(details?.name ?? "Flow Council");
+            if (details?.formSchema) {
+              setRoundFormSchema(details.formSchema);
+            }
           }
         }
       } catch (err) {
@@ -212,13 +220,15 @@ export default function Review(props: ReviewProps) {
       return;
     }
 
-    const headers = [
-      "application_status",
-      "project_name",
-      "funding_address",
-      "manager_emails",
-      "contact_name",
-      "contact_telegram",
+    const escCsv = (value: string) => {
+      const safe = /^[=+\-@]/.test(value) ? `\t${value}` : value;
+      if (safe.includes(",") || safe.includes('"') || safe.includes("\n")) {
+        return `"${safe.replace(/"/g, '""')}"`;
+      }
+      return safe;
+    };
+
+    const projectHeaders = [
       "project_addresses",
       "goodcollective_pool_addresses",
       "x_handle",
@@ -226,50 +236,101 @@ export default function Review(props: ReviewProps) {
       "github_repo",
     ];
 
-    const escCsv = (value: string) => {
-      if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-        return `"${value.replace(/"/g, '""')}"`;
-      }
-      return value;
-    };
-
-    const rows = fullApplications.map((app) => {
-      const projectDetails = app.projectDetails;
+    const formatProjectColumns = (
+      projectDetails: ProjectDetails | null,
+    ): string[] => {
       const smartContracts = projectDetails?.smartContracts ?? [];
-
-      const projectAddresses = smartContracts
-        .filter((sc) => sc.type === "projectAddress")
-        .map((sc) => sc.address)
-        .join("|");
-
-      const goodCollectivePools = smartContracts
-        .filter((sc) => sc.type === "goodCollectivePool")
-        .map((sc) => sc.address)
-        .join("|");
-
-      const githubRepos = [
-        projectDetails?.github,
-        ...(projectDetails?.githubRepos ?? []),
-      ]
-        .filter(Boolean)
-        .join("|");
-
       return [
-        STATUS_LABELS[app.status] || app.status,
-        projectDetails?.name ?? "",
-        app.fundingAddress ?? "",
-        (app.managerEmails ?? []).join("|"),
-        app.details?.team?.primaryContact?.name ?? "",
-        app.details?.team?.primaryContact?.telegram ?? "",
-        projectAddresses,
-        goodCollectivePools,
+        smartContracts
+          .filter((sc) => sc.type === "projectAddress")
+          .map((sc) => sc.address)
+          .join("|"),
+        smartContracts
+          .filter((sc) => sc.type === "goodCollectivePool")
+          .map((sc) => sc.address)
+          .join("|"),
         projectDetails?.twitter ?? "",
         projectDetails?.farcaster ?? "",
-        githubRepos,
-      ].map(escCsv);
-    });
+        [projectDetails?.github, ...(projectDetails?.githubRepos ?? [])]
+          .filter(Boolean)
+          .join("|"),
+      ];
+    };
 
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    let headers: string[];
+    let rows: string[][];
+
+    if (!roundFormSchema) {
+      headers = [
+        "application_status",
+        "project_name",
+        "funding_address",
+        "manager_emails",
+        "contact_name",
+        "contact_telegram",
+        ...projectHeaders,
+      ];
+
+      rows = fullApplications.map((app) => {
+        const projectDetails = app.projectDetails;
+        return [
+          STATUS_LABELS[app.status] || app.status,
+          projectDetails?.name ?? "",
+          app.fundingAddress ?? "",
+          (app.managerEmails ?? []).join("|"),
+          app.details?.team?.primaryContact?.name ?? "",
+          app.details?.team?.primaryContact?.telegram ?? "",
+          ...formatProjectColumns(projectDetails),
+        ].map(escCsv);
+      });
+    } else {
+      const roundQuestions = roundFormSchema.round.filter(
+        (el) => !["section", "divider", "description"].includes(el.type),
+      );
+      const attestationQuestions = roundFormSchema.attestation.filter(
+        (el) => !["section", "divider", "description"].includes(el.type),
+      );
+
+      const formatVal = (val: unknown) => {
+        if (Array.isArray(val)) return val.join("|");
+        if (typeof val === "boolean") return val ? "Yes" : "No";
+        return String(val ?? "");
+      };
+
+      headers = [
+        "application_status",
+        "project_name",
+        "funding_address",
+        "manager_emails",
+        ...projectHeaders,
+        ...roundQuestions.map((q) => q.label),
+        ...attestationQuestions.map((q) => q.label),
+      ];
+
+      rows = fullApplications.map((app) => {
+        const projectDetails = app.projectDetails;
+        const { roundValues, attestationValues } = getApplicationAsDynamic(
+          app.details,
+          roundFormSchema,
+        );
+        return [
+          STATUS_LABELS[app.status] || app.status,
+          projectDetails?.name ?? "",
+          app.fundingAddress ?? "",
+          (app.managerEmails ?? []).join("|"),
+          ...formatProjectColumns(projectDetails),
+          ...roundQuestions.map((q) => formatVal(roundValues[q.id])),
+          ...attestationQuestions.map((q) =>
+            formatVal(attestationValues[q.id]),
+          ),
+        ].map(escCsv);
+      });
+    }
+
+    const csv = [
+      headers.map(escCsv).join(","),
+      ...rows.map((r) => r.join(",")),
+    ].join("\n");
 
     const now = new Date();
     const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
@@ -284,7 +345,14 @@ export default function Review(props: ReviewProps) {
     link.click();
     URL.revokeObjectURL(url);
     setIsExportingCsv(false);
-  }, [applications, flowCouncil, chainId, isExportingCsv, roundName]);
+  }, [
+    applications,
+    flowCouncil,
+    chainId,
+    isExportingCsv,
+    roundName,
+    roundFormSchema,
+  ]);
 
   const fetchApplications = useCallback(async () => {
     if (!flowCouncil || !chainId) {
@@ -950,62 +1018,50 @@ export default function Review(props: ReviewProps) {
                       </Nav.Item>
                     </Nav>
 
-                    <Tab.Content>
-                      <Tab.Pane eventKey="project">
-                        <ViewProjectTab
-                          projectDetails={selectedApplication.projectDetails}
-                          managerAddresses={
-                            selectedApplication.managerAddresses
-                          }
-                          managerEmails={selectedApplication.managerEmails}
-                        />
-                      </Tab.Pane>
-                      <Tab.Pane eventKey="round">
-                        <ViewRoundTab
-                          roundData={
-                            selectedApplication.details
-                              ? {
-                                  previousParticipation:
-                                    selectedApplication.details
-                                      .previousParticipation,
-                                  maturityAndUsage:
-                                    selectedApplication.details
-                                      .maturityAndUsage,
-                                  integration:
-                                    selectedApplication.details.integration,
-                                  buildGoals:
-                                    selectedApplication.details.buildGoals,
-                                  growthGoals:
-                                    selectedApplication.details.growthGoals,
-                                  team: selectedApplication.details.team,
-                                  additional:
-                                    selectedApplication.details.additional,
-                                }
-                              : null
-                          }
-                        />
-                      </Tab.Pane>
-                      <Tab.Pane eventKey="eligibility">
-                        <ViewAttestationTab
-                          attestationData={
-                            selectedApplication.details?.attestation ??
-                            (
-                              selectedApplication.details as ApplicationDetails & {
-                                eligibility?: AttestationForm;
+                    {(() => {
+                      const { schema, roundValues, attestationValues } =
+                        getApplicationAsDynamic(
+                          selectedApplication.details,
+                          roundFormSchema,
+                        );
+
+                      return (
+                        <Tab.Content>
+                          <Tab.Pane eventKey="project">
+                            <ViewProjectTab
+                              projectDetails={
+                                selectedApplication.projectDetails
                               }
-                            )?.eligibility ??
-                            null
-                          }
-                        />
-                      </Tab.Pane>
-                      <Tab.Pane eventKey="comments">
-                        <InternalComments
-                          applicationId={selectedApplication.id}
-                          chainId={chainId}
-                          councilId={councilId}
-                        />
-                      </Tab.Pane>
-                    </Tab.Content>
+                              managerAddresses={
+                                selectedApplication.managerAddresses
+                              }
+                            />
+                          </Tab.Pane>
+                          <Tab.Pane eventKey="round">
+                            <ViewRoundTab
+                              formSchema={schema}
+                              dynamicValues={roundValues}
+                              fundingAddress={
+                                selectedApplication.fundingAddress
+                              }
+                            />
+                          </Tab.Pane>
+                          <Tab.Pane eventKey="eligibility">
+                            <ViewAttestationTab
+                              formSchema={schema}
+                              dynamicValues={attestationValues}
+                            />
+                          </Tab.Pane>
+                          <Tab.Pane eventKey="comments">
+                            <InternalComments
+                              applicationId={selectedApplication.id}
+                              chainId={chainId}
+                              councilId={councilId}
+                            />
+                          </Tab.Pane>
+                        </Tab.Content>
+                      );
+                    })()}
                   </Tab.Container>
                 </div>
               </Stack>
@@ -1017,7 +1073,9 @@ export default function Review(props: ReviewProps) {
                 className="py-4 rounded-4 fs-lg fw-semi-bold"
                 style={{ pointerEvents: isSubmitting ? "none" : "auto" }}
                 onClick={() =>
-                  router.push(`/flow-councils/${chainId}/${councilId}`)
+                  router.push(
+                    `/flow-councils/membership/${chainId}/${councilId}`,
+                  )
                 }
               >
                 Next

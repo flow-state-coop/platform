@@ -17,6 +17,7 @@ import { type SmartContract, type OtherLink } from "@/types/project";
 import { CHARACTER_LIMITS } from "../constants";
 import useSiwe from "@/hooks/siwe";
 import MarkdownEditor from "@/components/MarkdownEditor";
+import { normalizeUrl } from "@/app/flow-councils/utils/normalizeUrl";
 import { Project } from "@/types/project";
 
 async function uploadToS3(file: Blob, fileName: string): Promise<string> {
@@ -60,7 +61,6 @@ type ProjectTabProps = {
 type ProjectForm = {
   name: string;
   managerAddresses: string[];
-  managerEmails: string[];
   defaultFundingAddress: string;
   description: string;
   website: string;
@@ -74,12 +74,6 @@ type ProjectForm = {
   githubRepos: string[];
   smartContracts: SmartContract[];
   otherLinks: OtherLink[];
-};
-
-const isValidEmail = (email: string): boolean => {
-  if (!email) return true;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
 };
 
 const isValidGithubRepo = (url: string): boolean => {
@@ -97,7 +91,6 @@ export default function ProjectTab(props: ProjectTabProps) {
   const [form, setForm] = useState<ProjectForm>({
     name: "",
     managerAddresses: [""],
-    managerEmails: [""],
     defaultFundingAddress: "",
     description: "",
     website: "",
@@ -150,10 +143,6 @@ export default function ProjectTab(props: ProjectTabProps) {
         managerAddresses:
           project.managerAddresses && project.managerAddresses.length > 0
             ? project.managerAddresses
-            : [""],
-        managerEmails:
-          project.managerEmails && project.managerEmails.length > 0
-            ? project.managerEmails
             : [""],
         defaultFundingAddress: project.details.defaultFundingAddress ?? "",
         description: project.details.description ?? "",
@@ -220,29 +209,24 @@ export default function ProjectTab(props: ProjectTabProps) {
   const hasBanner = !!bannerBlob || !!existingBannerUrl;
   const hasValidManagerAddress =
     form.managerAddresses.filter((a) => a && isAddress(a)).length > 0;
-  const hasValidManagerEmail =
-    form.managerEmails.filter((e) => e && isValidEmail(e)).length > 0;
   const hasValidGithubRepo =
     form.githubRepos.filter((r) => r && isValidGithubRepo(r)).length > 0;
 
+  const descMin = CHARACTER_LIMITS.projectDescription.min;
   const isDescriptionValid =
     !!form.description &&
-    form.description.length >= CHARACTER_LIMITS.projectDescription.min &&
+    form.description.length >= descMin &&
     form.description.length <= CHARACTER_LIMITS.projectDescription.max;
-
-  const hasAtLeastOneSocial = !!form.twitter || !!form.farcaster;
 
   const isValid =
     !!form.name &&
     hasValidManagerAddress &&
-    hasValidManagerEmail &&
     isAddress(form.defaultFundingAddress) &&
     isDescriptionValid &&
     hasLogo &&
     hasBanner &&
     !!form.website &&
-    hasValidGithubRepo &&
-    hasAtLeastOneSocial;
+    hasValidGithubRepo;
 
   const handleFileUploadLogo = () => {
     if (!fileInputRefLogo.current?.files) return;
@@ -304,7 +288,6 @@ export default function ProjectTab(props: ProjectTabProps) {
         managerAddresses: form.managerAddresses.filter(
           (a) => a && isAddress(a),
         ),
-        managerEmails: form.managerEmails.filter((e) => e && isValidEmail(e)),
         defaultFundingAddress: form.defaultFundingAddress,
         demoUrl: form.demoUrl,
         farcaster: form.farcaster,
@@ -352,7 +335,6 @@ export default function ProjectTab(props: ProjectTabProps) {
         managerAddresses: form.managerAddresses.filter(
           (a) => a && isAddress(a),
         ),
-        managerEmails: form.managerEmails.filter((e) => e && isValidEmail(e)),
       });
     } catch (err) {
       console.error(err);
@@ -409,18 +391,6 @@ export default function ProjectTab(props: ProjectTabProps) {
         validated={validated}
         lockedIndices={[0]}
         invalidFeedback="Please enter a valid ETH address"
-      />
-
-      <MultiInput
-        label="Manager Emails"
-        subtitle="Provide one or more email to receive project & funding round communications."
-        values={form.managerEmails}
-        onChange={(values) => setForm({ ...form, managerEmails: values })}
-        placeholder=""
-        addLabel="Add Another"
-        validate={isValidEmail}
-        required
-        validated={validated}
       />
 
       <Form.Group className="mb-4">
@@ -595,7 +565,13 @@ export default function ProjectTab(props: ProjectTabProps) {
           className={`bg-white border border-2 rounded-4 py-3 px-3 ${(validated || touched.website) && !form.website ? "border-danger" : "border-dark"}`}
           isInvalid={(validated || touched.website) && !form.website}
           onChange={(e) => setForm({ ...form, website: e.target.value })}
-          onBlur={() => setTouched((prev) => ({ ...prev, website: true }))}
+          onBlur={() => {
+            setForm((prev) => ({
+              ...prev,
+              website: normalizeUrl(prev.website),
+            }));
+            setTouched((prev) => ({ ...prev, website: true }));
+          }}
         />
       </Form.Group>
 
@@ -607,6 +583,12 @@ export default function ProjectTab(props: ProjectTabProps) {
           placeholder="https://..."
           className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
           onChange={(e) => setForm({ ...form, demoUrl: e.target.value })}
+          onBlur={() =>
+            setForm((prev) => ({
+              ...prev,
+              demoUrl: normalizeUrl(prev.demoUrl),
+            }))
+          }
         />
       </Form.Group>
 
@@ -617,9 +599,8 @@ export default function ProjectTab(props: ProjectTabProps) {
         <Form.Control
           type="text"
           value={form.twitter}
-          placeholder="@ - At least one social account is required"
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !hasAtLeastOneSocial ? "border-danger" : "border-dark"}`}
-          isInvalid={validated && !hasAtLeastOneSocial}
+          placeholder="@handle or https://x.com/handle"
+          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
           onChange={(e) => setForm({ ...form, twitter: e.target.value })}
         />
       </Form.Group>
@@ -629,9 +610,8 @@ export default function ProjectTab(props: ProjectTabProps) {
         <Form.Control
           type="text"
           value={form.farcaster}
-          placeholder="@ - At least one social account is required"
-          className={`bg-white border border-2 rounded-4 py-3 px-3 ${validated && !hasAtLeastOneSocial ? "border-danger" : "border-dark"}`}
-          isInvalid={validated && !hasAtLeastOneSocial}
+          placeholder="@handle or https://farcaster.xyz/handle"
+          className="bg-white border border-2 border-dark rounded-4 py-3 px-3"
           onChange={(e) => setForm({ ...form, farcaster: e.target.value })}
         />
       </Form.Group>
@@ -649,7 +629,13 @@ export default function ProjectTab(props: ProjectTabProps) {
             !form.telegram.startsWith("https://t.me/")
           }
           onChange={(e) => setForm({ ...form, telegram: e.target.value })}
-          onBlur={() => setTouched((prev) => ({ ...prev, telegram: true }))}
+          onBlur={() => {
+            setForm((prev) => ({
+              ...prev,
+              telegram: prev.telegram ? normalizeUrl(prev.telegram) : "",
+            }));
+            setTouched((prev) => ({ ...prev, telegram: true }));
+          }}
         />
       </Form.Group>
 
@@ -666,7 +652,13 @@ export default function ProjectTab(props: ProjectTabProps) {
             !form.discord.startsWith("https://discord")
           }
           onChange={(e) => setForm({ ...form, discord: e.target.value })}
-          onBlur={() => setTouched((prev) => ({ ...prev, discord: true }))}
+          onBlur={() => {
+            setForm((prev) => ({
+              ...prev,
+              discord: prev.discord ? normalizeUrl(prev.discord) : "",
+            }));
+            setTouched((prev) => ({ ...prev, discord: true }));
+          }}
         />
       </Form.Group>
 
@@ -683,7 +675,15 @@ export default function ProjectTab(props: ProjectTabProps) {
             !form.karmaProfile.startsWith("https://")
           }
           onChange={(e) => setForm({ ...form, karmaProfile: e.target.value })}
-          onBlur={() => setTouched((prev) => ({ ...prev, karmaProfile: true }))}
+          onBlur={() => {
+            setForm((prev) => ({
+              ...prev,
+              karmaProfile: prev.karmaProfile
+                ? normalizeUrl(prev.karmaProfile)
+                : "",
+            }));
+            setTouched((prev) => ({ ...prev, karmaProfile: true }));
+          }}
         />
       </Form.Group>
 
@@ -700,7 +700,15 @@ export default function ProjectTab(props: ProjectTabProps) {
             !form.gardensPool.startsWith("https://")
           }
           onChange={(e) => setForm({ ...form, gardensPool: e.target.value })}
-          onBlur={() => setTouched((prev) => ({ ...prev, gardensPool: true }))}
+          onBlur={() => {
+            setForm((prev) => ({
+              ...prev,
+              gardensPool: prev.gardensPool
+                ? normalizeUrl(prev.gardensPool)
+                : "",
+            }));
+            setTouched((prev) => ({ ...prev, gardensPool: true }));
+          }}
         />
       </Form.Group>
 
@@ -716,6 +724,21 @@ export default function ProjectTab(props: ProjectTabProps) {
         required
         validated={validated}
         invalidFeedback="Copy/paste your link in https://github.com/orgname/reponame format. Don't include a .git suffix"
+        onItemBlur={(index, value) => {
+          if (
+            value &&
+            !value.startsWith("https://") &&
+            !value.startsWith("http://")
+          ) {
+            const newRepos = [...form.githubRepos];
+            newRepos[index] = `https://${value}`;
+            setForm({ ...form, githubRepos: newRepos });
+          } else if (value && value.startsWith("http://")) {
+            const newRepos = [...form.githubRepos];
+            newRepos[index] = value.replace("http://", "https://");
+            setForm({ ...form, githubRepos: newRepos });
+          }
+        }}
       />
 
       <SmartContractRow

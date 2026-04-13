@@ -118,6 +118,13 @@ export type UserProfile = {
   id: Generated<number>;
   address: string;
   displayName: string;
+  bio: string | null;
+  twitter: string | null;
+  github: string | null;
+  linkedin: string | null;
+  farcaster: string | null;
+  email: string | null;
+  telegram: string | null;
   createdAt: Generated<Timestamp>;
   updatedAt: Generated<Timestamp>;
 };
