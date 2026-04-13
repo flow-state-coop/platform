@@ -13,7 +13,9 @@ import {
 export const dynamic = "force-dynamic";
 
 function successResponse(body: Record<string, unknown>) {
-  return new Response(JSON.stringify({ success: true, ...body }));
+  return new Response(JSON.stringify({ success: true, ...body }), {
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 export async function GET(request: Request) {

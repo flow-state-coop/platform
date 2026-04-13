@@ -900,6 +900,8 @@ export default function FormBuilder({ chainId, councilId }: Props) {
     );
   }
 
+  const walletOffset = activeTab === "round" ? 1 : 0;
+
   const editorContent = (
     <>
       {elements.filter((el) => el.id !== WALLET_ELEMENT_ID).length === 0 && (
@@ -924,12 +926,12 @@ export default function FormBuilder({ chainId, councilId }: Props) {
                 key={element.id}
                 element={element}
                 index={index}
-                total={elements.length - 1}
+                total={elements.length - walletOffset}
                 error={validationErrors[element.id]}
-                onUpdate={(el) => handleUpdate(index + 1, el)}
-                onRemove={() => handleRemove(index + 1)}
-                onMoveUp={() => move(index + 1, -1)}
-                onMoveDown={() => move(index + 1, 1)}
+                onUpdate={(el) => handleUpdate(index + walletOffset, el)}
+                onRemove={() => handleRemove(index + walletOffset)}
+                onMoveUp={() => move(index + walletOffset, -1)}
+                onMoveDown={() => move(index + walletOffset, 1)}
               />
             ))}
         </SortableContext>
