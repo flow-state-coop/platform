@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Stack from "react-bootstrap/Stack";
 import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
@@ -52,6 +53,7 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
   );
 
   const { data: session } = useSession();
+  const { openConnectModal } = useConnectModal();
 
   const {
     displayNames,
@@ -65,8 +67,9 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
     messages,
     chainId,
     councilId,
-    sessionAddress: session?.address,
+    userAddress: currentUserAddress,
     newestFirst: true,
+    onConnectWallet: openConnectModal,
   });
 
   const authorAddresses = useMemo(() => {
@@ -82,6 +85,7 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
         chainId: chainId.toString(),
         councilId,
       });
+      if (currentUserAddress) params.set("address", currentUserAddress);
       const res = await fetch(`/api/flow-council/round-feed?${params}`);
       const data = await res.json();
 
@@ -105,7 +109,7 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [chainId, councilId, setFetchedData, clearData]);
+  }, [chainId, councilId, currentUserAddress, setFetchedData, clearData]);
 
   useEffect(() => {
     fetchMessages();
@@ -258,7 +262,6 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
                 onReactionToggle={(emoji) =>
                   handleReactionToggle(message.id, emoji)
                 }
-                reactionsDisabled={!session?.address}
                 isPinned={!!message.pinnedAt}
                 canPin={isAdmin}
                 onPin={() =>

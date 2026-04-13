@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isAddress } from "viem";
 import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
 import { ALLOWED_REACTIONS } from "@/app/flow-councils/lib/constants";
 import type {
@@ -275,6 +276,10 @@ export function validateDisplayName(data: unknown): ValidationResult<string> {
     return { success: false, error: issue.message };
   }
   return { success: true, data: result.data };
+}
+
+export function parseAddressParam(value: string | null): string | undefined {
+  return value && isAddress(value) ? value : undefined;
 }
 
 export function validateReactionEmoji(

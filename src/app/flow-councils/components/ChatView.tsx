@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSession } from "next-auth/react";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Stack from "react-bootstrap/Stack";
 import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
@@ -74,6 +75,7 @@ export default function ChatView(props: ChatViewProps) {
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
 
   const { data: session } = useSession();
+  const { openConnectModal } = useConnectModal();
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -88,8 +90,9 @@ export default function ChatView(props: ChatViewProps) {
     messages,
     chainId,
     councilId,
-    sessionAddress: session?.address,
+    userAddress: currentUserAddress,
     newestFirst,
+    onConnectWallet: openConnectModal,
   });
 
   const authorAddresses = useMemo(() => {
@@ -106,9 +109,18 @@ export default function ChatView(props: ChatViewProps) {
     if (roundId) params.set("roundId", roundId.toString());
     if (applicationId) params.set("applicationId", applicationId.toString());
     if (projectId) params.set("projectId", projectId.toString());
+    if (currentUserAddress) params.set("address", currentUserAddress);
 
     return params.toString();
-  }, [channelType, chainId, councilId, roundId, applicationId, projectId]);
+  }, [
+    channelType,
+    chainId,
+    councilId,
+    roundId,
+    applicationId,
+    projectId,
+    currentUserAddress,
+  ]);
 
   const fetchMessages = useCallback(async () => {
     try {
@@ -341,7 +353,6 @@ export default function ChatView(props: ChatViewProps) {
                 onReactionToggle={(emoji) =>
                   handleReactionToggle(message.id, emoji)
                 }
-                reactionsDisabled={!session?.address}
                 isPinned={!!message.pinnedAt}
                 canPin={canModerate}
                 onPin={() =>
