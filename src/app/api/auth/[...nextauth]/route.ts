@@ -2,8 +2,7 @@ import { headers, cookies as nextCookies } from "next/headers";
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { createPublicClient, http, type Hex } from "viem";
-import { verifySiweMessage } from "viem/siwe";
-import { SiweMessage } from "siwe";
+import { parseSiweMessage, verifySiweMessage } from "viem/siwe";
 import { networks } from "@/lib/networks";
 
 function getPublicClient(chainId: number) {
@@ -32,8 +31,10 @@ const providers = [
     async authorize(credentials) {
       try {
         const headersList = await headers();
-        const siwe = new SiweMessage(JSON.parse(credentials?.message || "{}"));
-        const message = siwe.prepareMessage();
+        const message = credentials?.message || "";
+        const siweFields = parseSiweMessage(message);
+
+        if (!siweFields.chainId || !siweFields.address) return null;
 
         const nextAuthUrl = new URL(
           headersList.get("origin") ?? "https://flowstate.network",
@@ -41,7 +42,7 @@ const providers = [
         const cookies = await nextCookies();
         const nonce = cookies.get("next-auth.csrf-token")?.value.split("|")[0];
 
-        const publicClient = getPublicClient(siwe.chainId);
+        const publicClient = getPublicClient(siweFields.chainId);
 
         const isValid = await verifySiweMessage(publicClient, {
           message,
@@ -51,7 +52,7 @@ const providers = [
         });
 
         if (isValid) {
-          return { id: siwe.address };
+          return { id: siweFields.address };
         }
         return null;
       } catch (e) {

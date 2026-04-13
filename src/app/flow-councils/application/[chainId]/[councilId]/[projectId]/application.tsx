@@ -87,7 +87,6 @@ type ApplicationProps = {
   chainId: number;
   councilId: string;
   projectId?: string;
-  csrfToken: string;
 };
 
 const FORM_VERSION = 1;
@@ -113,7 +112,7 @@ function parseRoundDetails(round: { details: unknown }): {
 }
 
 export default function Application(props: ApplicationProps) {
-  const { chainId, councilId, projectId, csrfToken } = props;
+  const { chainId, councilId, projectId } = props;
 
   const router = useRouter();
   const { address } = useAccount();
@@ -513,7 +512,6 @@ export default function Application(props: ApplicationProps) {
         <Tab.Content>
           <Tab.Pane eventKey="project">
             <ProjectTab
-              csrfToken={csrfToken}
               project={project}
               isLoading={isLoading}
               onSave={handleProjectSaved}

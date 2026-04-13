@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TransactionReceipt } from "viem";
 import {
   useChainId,
   usePublicClient,
@@ -67,16 +68,21 @@ export default function useTransactionsQueue() {
   const { data: capabilities } = useCapabilities();
   const { sendCallsSyncAsync } = useSendCallsSync();
 
-  const isBatchSupported = !!capabilities?.[chainId]?.atomicBatch?.supported;
+  const shouldUseSendCalls =
+    !!capabilities?.[chainId]?.atomicBatch?.supported || !walletClient;
 
-  const executeTransactions = async (calls: TransactionCall[]) => {
+  const executeTransactions = async (
+    calls: TransactionCall[],
+  ): Promise<TransactionReceipt[]> => {
     setAreTransactionsLoading(true);
     setTransactionError("");
     setCompletedTransactions(0);
 
     try {
-      if (isBatchSupported && calls.length > 1) {
-        await sendCallsSyncAsync({
+      let receipts: TransactionReceipt[];
+
+      if (shouldUseSendCalls) {
+        const result = await sendCallsSyncAsync({
           calls: calls.map((call) => ({
             to: call.to,
             data: call.data,
@@ -84,20 +90,15 @@ export default function useTransactionsQueue() {
           })),
         });
 
-        setCompletedTransactions(calls.length);
+        receipts = (result.receipts ?? []) as TransactionReceipt[];
       } else {
-        if (!walletClient || !publicClient) {
+        if (!publicClient) {
           throw new Error("Wallet not connected");
         }
 
-        for (const call of calls) {
-          await publicClient.call({
-            to: call.to,
-            data: call.data,
-            value: call.value,
-            account: walletClient.account,
-          });
+        receipts = [];
 
+        for (const call of calls) {
           const hash = await walletClient.sendTransaction({
             to: call.to,
             data: call.data,
@@ -105,17 +106,20 @@ export default function useTransactionsQueue() {
             chain: walletClient.chain,
           });
 
-          await publicClient.waitForTransactionReceipt({
+          const receipt = await publicClient.waitForTransactionReceipt({
             hash,
             confirmations: 3,
           });
 
+          receipts.push(receipt);
           setCompletedTransactions((prev) => prev + 1);
         }
       }
 
       setAreTransactionsLoading(false);
       setCompletedTransactions(0);
+
+      return receipts;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setTransactionError(getTransactionErrorMessage(err));
@@ -152,7 +156,7 @@ export default function useTransactionsQueue() {
     areTransactionsLoading,
     completedTransactions,
     transactionError,
-    isBatchSupported,
+    shouldUseSendCalls,
     executeTransactions,
     executeWithProgress,
   };

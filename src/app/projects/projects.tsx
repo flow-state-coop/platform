@@ -17,12 +17,11 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { Project, ProjectDetails } from "@/types/project";
 
 type ProjectsProps = {
-  csrfToken: string;
   owner: string | null;
 };
 
 export default function Projects(props: ProjectsProps) {
-  const { csrfToken, owner } = props;
+  const { owner } = props;
 
   const [showProjectCreationModal, setShowProjectCreationModal] =
     useState(false);
@@ -103,7 +102,7 @@ export default function Projects(props: ProjectsProps) {
     if (!address && openConnectModal) {
       openConnectModal();
     } else if (!session || session.address !== address) {
-      handleSignIn(csrfToken);
+      handleSignIn();
       setPendingCreate(true);
     } else {
       setShowProjectCreationModal(true);
@@ -179,7 +178,6 @@ export default function Projects(props: ProjectsProps) {
       )}
       <ProjectModal
         show={showProjectCreationModal}
-        csrfToken={csrfToken}
         handleClose={() => setShowProjectCreationModal(false)}
         onProjectCreated={fetchProjects}
         mode="create"

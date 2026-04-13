@@ -36,7 +36,6 @@ export default function ApplicationLayout({
   const [applicationStatus, setApplicationStatus] =
     useState<ApplicationStatus>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [csrfToken, setCsrfToken] = useState<string>("");
 
   const { address, chain: connectedChain } = useAccount();
   const { data: session } = useSession();
@@ -48,17 +47,6 @@ export default function ApplicationLayout({
   useEffect(() => {
     params.then((p) => setResolvedParams(p));
   }, [params]);
-
-  // Get CSRF token from cookies
-  useEffect(() => {
-    const cookies = document.cookie.split(";");
-    const csrfCookie = cookies.find((c) =>
-      c.trim().startsWith("next-auth.csrf-token="),
-    );
-    if (csrfCookie) {
-      setCsrfToken(csrfCookie.split("=")[1]?.split("|")[0] ?? "");
-    }
-  }, []);
 
   const chainId = resolvedParams ? Number(resolvedParams.chainId) : null;
   const councilId = resolvedParams?.councilId ?? null;
@@ -165,7 +153,7 @@ export default function ApplicationLayout({
             } else if (connectedChain?.id !== chainId) {
               switchChain({ chainId: chainId! });
             } else {
-              handleSignIn(csrfToken);
+              handleSignIn();
             }
           }}
         >

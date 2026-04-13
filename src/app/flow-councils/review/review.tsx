@@ -52,7 +52,6 @@ type ReviewProps = {
   chainId?: number;
   councilId?: string;
   hostname: string;
-  csfrToken: string;
 };
 
 type ApplicationDetails = RoundForm & {
@@ -115,7 +114,7 @@ const FLOW_COUNCIL_QUERY = gql`
 `;
 
 export default function Review(props: ReviewProps) {
-  const { chainId, councilId, hostname, csfrToken } = props;
+  const { chainId, councilId, hostname } = props;
 
   const [applications, setApplications] = useState<ApplicationSummary[]>([]);
   const [selectedApplication, setSelectedApplication] =
@@ -610,7 +609,7 @@ export default function Review(props: ReviewProps) {
                 ? openConnectModal()
                 : connectedChain?.id !== chainId
                   ? switchChain({ chainId })
-                  : handleSignIn(csfrToken);
+                  : handleSignIn();
             }}
           >
             Sign In With Ethereum

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useAccount } from "wagmi";
-import { getCsrfToken, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import useSiwe from "./siwe";
 
@@ -24,11 +24,7 @@ export default function useRequireAuth() {
         return false;
       }
       if (!hasSession) {
-        getCsrfToken()
-          .then((token) => {
-            if (token) handleSignIn(token);
-          })
-          .catch(console.error);
+        handleSignIn();
         const id = ++latestAuthRequestId;
         pendingRef.current = { id, callback: onAuthed };
         return false;

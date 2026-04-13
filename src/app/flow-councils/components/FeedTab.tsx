@@ -12,14 +12,9 @@ import useSiwe from "@/hooks/siwe";
 type FeedTabProps = {
   chainId: number;
   councilId: string;
-  csfrToken: string;
 };
 
-export default function FeedTab({
-  chainId,
-  councilId,
-  csfrToken,
-}: FeedTabProps) {
+export default function FeedTab({ chainId, councilId }: FeedTabProps) {
   const [roundId, setRoundId] = useState<number | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -86,7 +81,7 @@ export default function FeedTab({
             } else if (connectedChain?.id !== chainId) {
               switchChain({ chainId });
             } else {
-              handleSignIn(csfrToken);
+              handleSignIn();
             }
           }}
         >

@@ -52,7 +52,6 @@ async function uploadToS3(file: Blob, fileName: string): Promise<string> {
 type RoundMetadataProps = {
   chainId: number;
   councilId?: string;
-  csrfToken: string;
 };
 
 type RoundDetails = {
@@ -62,7 +61,7 @@ type RoundDetails = {
 };
 
 export default function RoundMetadata(props: RoundMetadataProps) {
-  const { chainId, councilId, csrfToken } = props;
+  const { chainId, councilId } = props;
 
   const [roundDetails, setRoundDetails] = useState<RoundDetails>({
     name: "",
@@ -340,7 +339,7 @@ export default function RoundMetadata(props: RoundMetadataProps) {
                 } else if (connectedChain?.id !== chainId) {
                   switchChain({ chainId });
                 } else {
-                  handleSignIn(csrfToken);
+                  handleSignIn();
                 }
               }}
             >
