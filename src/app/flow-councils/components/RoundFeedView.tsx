@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Stack from "react-bootstrap/Stack";
@@ -78,6 +78,9 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
 
   const { ensByAddress } = useEnsResolution(authorAddresses);
 
+  const currentUserAddressRef = useRef(currentUserAddress);
+  currentUserAddressRef.current = currentUserAddress;
+
   const fetchMessages = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -85,7 +88,8 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
         chainId: chainId.toString(),
         councilId,
       });
-      if (currentUserAddress) params.set("address", currentUserAddress);
+      if (currentUserAddressRef.current)
+        params.set("address", currentUserAddressRef.current);
       const res = await fetch(`/api/flow-council/round-feed?${params}`);
       const data = await res.json();
 
@@ -109,7 +113,7 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [chainId, councilId, currentUserAddress, setFetchedData, clearData]);
+  }, [chainId, councilId, setFetchedData, clearData]);
 
   useEffect(() => {
     fetchMessages();

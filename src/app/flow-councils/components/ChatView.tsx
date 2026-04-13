@@ -101,6 +101,9 @@ export default function ChatView(props: ChatViewProps) {
 
   const { ensByAddress } = useEnsResolution(authorAddresses);
 
+  const currentUserAddressRef = useRef(currentUserAddress);
+  currentUserAddressRef.current = currentUserAddress;
+
   const buildQueryParams = useCallback(() => {
     const params = new URLSearchParams({ channelType });
 
@@ -109,18 +112,11 @@ export default function ChatView(props: ChatViewProps) {
     if (roundId) params.set("roundId", roundId.toString());
     if (applicationId) params.set("applicationId", applicationId.toString());
     if (projectId) params.set("projectId", projectId.toString());
-    if (currentUserAddress) params.set("address", currentUserAddress);
+    if (currentUserAddressRef.current)
+      params.set("address", currentUserAddressRef.current);
 
     return params.toString();
-  }, [
-    channelType,
-    chainId,
-    councilId,
-    roundId,
-    applicationId,
-    projectId,
-    currentUserAddress,
-  ]);
+  }, [channelType, chainId, councilId, roundId, applicationId, projectId]);
 
   const fetchMessages = useCallback(async () => {
     try {
