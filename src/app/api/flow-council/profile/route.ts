@@ -72,9 +72,15 @@ export async function PUT(request: Request) {
       body = await readJsonBody(request, MAX_DETAILS_SIZE);
     } catch (err) {
       if (err instanceof PayloadTooLargeError) {
-        return jsonResponse({ success: false, error: "Payload too large" }, 413);
+        return jsonResponse(
+          { success: false, error: "Payload too large" },
+          413,
+        );
       }
-      return jsonResponse({ success: false, error: "Invalid request body" }, 400);
+      return jsonResponse(
+        { success: false, error: "Invalid request body" },
+        400,
+      );
     }
     const validation = validateProfile(body);
 

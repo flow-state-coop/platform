@@ -41,10 +41,7 @@ import type {
   RoundForm,
   AttestationForm,
 } from "@/app/flow-councils/types/round";
-import {
-  GOODBUILDERS_TEMPLATE,
-  type FormSchema,
-} from "@/app/flow-councils/types/formSchema";
+import type { FormSchema } from "@/app/flow-councils/types/formSchema";
 import { getApplicationAsDynamic } from "@/app/flow-councils/utils/legacyFormAdapter";
 import { ProjectDetails } from "@/types/project";
 
@@ -231,28 +228,67 @@ export default function Review(props: ReviewProps) {
       return safe;
     };
 
-    const csvSchema = roundFormSchema ?? GOODBUILDERS_TEMPLATE;
-    const roundQuestions = csvSchema.round.filter(
-      (el) => !["section", "divider", "description"].includes(el.type),
-    );
-    const attestationQuestions = csvSchema.attestation.filter(
-      (el) => !["section", "divider", "description"].includes(el.type),
-    );
-
-    const headers = [
-      "application_status",
-      "project_name",
-      "funding_address",
-      "manager_emails",
-      ...roundQuestions.map((q) => q.label),
-      ...attestationQuestions.map((q) => q.label),
+    const projectHeaders = [
+      "project_addresses",
+      "goodcollective_pool_addresses",
+      "x_handle",
+      "farcaster_handle",
+      "github_repo",
     ];
 
-    const rows = fullApplications.map((app) => {
-      const projectDetails = app.projectDetails;
-      const { roundValues, attestationValues } = getApplicationAsDynamic(
-        app.details,
-        roundFormSchema,
+    const formatProjectColumns = (
+      projectDetails: ProjectDetails | null,
+    ): string[] => {
+      const smartContracts = projectDetails?.smartContracts ?? [];
+      return [
+        smartContracts
+          .filter((sc) => sc.type === "projectAddress")
+          .map((sc) => sc.address)
+          .join("|"),
+        smartContracts
+          .filter((sc) => sc.type === "goodCollectivePool")
+          .map((sc) => sc.address)
+          .join("|"),
+        projectDetails?.twitter ?? "",
+        projectDetails?.farcaster ?? "",
+        [projectDetails?.github, ...(projectDetails?.githubRepos ?? [])]
+          .filter(Boolean)
+          .join("|"),
+      ];
+    };
+
+    let headers: string[];
+    let rows: string[][];
+
+    if (!roundFormSchema) {
+      headers = [
+        "application_status",
+        "project_name",
+        "funding_address",
+        "manager_emails",
+        "contact_name",
+        "contact_telegram",
+        ...projectHeaders,
+      ];
+
+      rows = fullApplications.map((app) => {
+        const projectDetails = app.projectDetails;
+        return [
+          STATUS_LABELS[app.status] || app.status,
+          projectDetails?.name ?? "",
+          app.fundingAddress ?? "",
+          (app.managerEmails ?? []).join("|"),
+          app.details?.team?.primaryContact?.name ?? "",
+          app.details?.team?.primaryContact?.telegram ?? "",
+          ...formatProjectColumns(projectDetails),
+        ].map(escCsv);
+      });
+    } else {
+      const roundQuestions = roundFormSchema.round.filter(
+        (el) => !["section", "divider", "description"].includes(el.type),
+      );
+      const attestationQuestions = roundFormSchema.attestation.filter(
+        (el) => !["section", "divider", "description"].includes(el.type),
       );
 
       const formatVal = (val: unknown) => {
@@ -261,15 +297,35 @@ export default function Review(props: ReviewProps) {
         return String(val ?? "");
       };
 
-      return [
-        STATUS_LABELS[app.status] || app.status,
-        projectDetails?.name ?? "",
-        app.fundingAddress ?? "",
-        (app.managerEmails ?? []).join("|"),
-        ...roundQuestions.map((q) => formatVal(roundValues[q.id])),
-        ...attestationQuestions.map((q) => formatVal(attestationValues[q.id])),
-      ].map(escCsv);
-    });
+      headers = [
+        "application_status",
+        "project_name",
+        "funding_address",
+        "manager_emails",
+        ...projectHeaders,
+        ...roundQuestions.map((q) => q.label),
+        ...attestationQuestions.map((q) => q.label),
+      ];
+
+      rows = fullApplications.map((app) => {
+        const projectDetails = app.projectDetails;
+        const { roundValues, attestationValues } = getApplicationAsDynamic(
+          app.details,
+          roundFormSchema,
+        );
+        return [
+          STATUS_LABELS[app.status] || app.status,
+          projectDetails?.name ?? "",
+          app.fundingAddress ?? "",
+          (app.managerEmails ?? []).join("|"),
+          ...formatProjectColumns(projectDetails),
+          ...roundQuestions.map((q) => formatVal(roundValues[q.id])),
+          ...attestationQuestions.map((q) =>
+            formatVal(attestationValues[q.id]),
+          ),
+        ].map(escCsv);
+      });
+    }
 
     const csv = [
       headers.map(escCsv).join(","),
