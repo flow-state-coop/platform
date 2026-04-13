@@ -73,9 +73,9 @@ export default function DynamicFormSection({
             );
           case "description":
             return (
-              <p key={el.id} className="text-muted mb-3">
-                {el.content || el.label}
-              </p>
+              <div key={el.id} className="text-muted mb-3">
+                <Markdown>{el.content || el.label}</Markdown>
+              </div>
             );
           case "divider":
             return <hr key={el.id} className="my-3" />;
