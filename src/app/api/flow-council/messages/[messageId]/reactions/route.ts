@@ -13,15 +13,7 @@ export async function POST(
 ) {
   try {
     const { messageId } = await params;
-    const { emoji, chainId, councilId } = await request.json();
-
-    const session = await getServerSession(authOptions);
-
-    if (!session?.address) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Unauthenticated" }),
-      );
-    }
+    const { emoji, chainId, councilId, authorAddress } = await request.json();
 
     const validation = validateReactionEmoji(emoji);
     if (!validation.success) {
@@ -53,7 +45,24 @@ export async function POST(
       message.channelType === "PUBLIC_PROJECT" ||
       message.channelType === "PUBLIC_ROUND";
 
-    if (!isPublicChannel) {
+    let address: string;
+
+    if (isPublicChannel) {
+      if (!authorAddress || !isAddress(authorAddress)) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid author address" }),
+        );
+      }
+      address = authorAddress;
+    } else {
+      const session = await getServerSession(authOptions);
+
+      if (!session?.address) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Unauthenticated" }),
+        );
+      }
+
       if (!chainId || !councilId) {
         return new Response(
           JSON.stringify({
@@ -92,13 +101,15 @@ export async function POST(
           JSON.stringify({ success: false, error: "Not authorized" }),
         );
       }
+
+      address = session.address;
     }
 
     const existing = await db
       .selectFrom("messageReactions")
       .select("id")
       .where("messageId", "=", messageIdNum)
-      .where("authorAddress", "=", session.address.toLowerCase())
+      .where("authorAddress", "=", address.toLowerCase())
       .where("emoji", "=", validation.data)
       .executeTakeFirst();
 
@@ -115,7 +126,7 @@ export async function POST(
       .insertInto("messageReactions")
       .values({
         messageId: messageIdNum,
-        authorAddress: session.address.toLowerCase(),
+        authorAddress: address.toLowerCase(),
         emoji: validation.data,
       })
       .execute();

@@ -1,10 +1,9 @@
-import { getServerSession } from "next-auth/next";
 import { isAddress } from "viem";
 import { db } from "../db";
-import { authOptions } from "../../auth/[...nextauth]/route";
 import { findRoundByCouncil } from "../auth";
 import { getAuthorAffiliations } from "../affiliations";
 import { fetchDisplayNames, fetchReactions } from "../enrichment";
+import { parseAddressParam } from "../validation";
 import { parseDetails, type ProjectMetadata } from "../utils";
 import type { ProjectDetails } from "@/types/project";
 
@@ -91,8 +90,6 @@ export async function GET(request: Request) {
       }
     }
 
-    const session = await getServerSession(authOptions);
-
     const authorAddresses = messages.map((m) => m.authorAddress);
     const affiliations = await getAuthorAffiliations(
       authorAddresses,
@@ -101,11 +98,13 @@ export async function GET(request: Request) {
       councilId,
     );
 
+    const reactionsAddress = parseAddressParam(searchParams.get("address"));
+
     const [displayNames, reactions] = await Promise.all([
       fetchDisplayNames(authorAddresses),
       fetchReactions(
         messages.map((m) => m.id),
-        session?.address,
+        reactionsAddress,
       ),
     ]);
 

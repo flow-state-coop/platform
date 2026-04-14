@@ -10,16 +10,18 @@ type ChatActionsParams<T extends PinnableMessage> = {
   messages: T[];
   chainId?: number;
   councilId?: string;
-  sessionAddress?: string;
+  userAddress?: string;
   newestFirst?: boolean;
+  onConnectWallet?: () => void;
 };
 
 export function useChatActions<T extends PinnableMessage>({
   messages,
   chainId,
   councilId,
-  sessionAddress,
+  userAddress,
   newestFirst = false,
+  onConnectWallet,
 }: ChatActionsParams<T>) {
   const [displayNames, setDisplayNames] = useState<Record<string, string>>({});
   const [reactions, setReactions] = useState<Record<number, ReactionSummary[]>>(
@@ -99,7 +101,10 @@ export function useChatActions<T extends PinnableMessage>({
 
   const handleReactionToggle = useCallback(
     async (messageId: number, emoji: string) => {
-      if (!sessionAddress) return;
+      if (!userAddress) {
+        onConnectWallet?.();
+        return;
+      }
 
       let rollback: ReactionSummary[] | undefined;
 
@@ -129,7 +134,12 @@ export function useChatActions<T extends PinnableMessage>({
           `/api/flow-council/messages/${messageId}/reactions`,
           {
             method: "POST",
-            body: JSON.stringify({ emoji, chainId, councilId }),
+            body: JSON.stringify({
+              emoji,
+              chainId,
+              councilId,
+              authorAddress: userAddress,
+            }),
           },
         );
         const data = await res.json();
@@ -141,7 +151,7 @@ export function useChatActions<T extends PinnableMessage>({
         setReactions((r) => ({ ...r, [messageId]: rollback! }));
       }
     },
-    [sessionAddress, chainId, councilId],
+    [userAddress, onConnectWallet, chainId, councilId],
   );
 
   return {

@@ -573,6 +573,10 @@ export function validateProfile(data: unknown): ValidationResult<ProfileData> {
   return { success: true, data: result.data };
 }
 
+export function parseAddressParam(value: string | null): string | undefined {
+  return value && isAddress(value) ? value : undefined;
+}
+
 export function validateReactionEmoji(
   data: unknown,
 ): ValidationResult<(typeof ALLOWED_REACTIONS)[number]> {

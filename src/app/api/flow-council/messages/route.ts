@@ -3,6 +3,7 @@ import { isAddress } from "viem";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { fetchDisplayNames, fetchReactions } from "../enrichment";
+import { parseAddressParam } from "../validation";
 import { ChannelType } from "@/generated/kysely";
 import {
   sendChatMessageEmail,
@@ -186,12 +187,14 @@ export async function GET(request: Request) {
       managedProjectIds = managed.map((m) => m.projectId);
     }
 
+    const reactionsAddress = parseAddressParam(searchParams.get("address"));
+
     const authorAddressesForNames = messages.map((m) => m.authorAddress);
     const [displayNames, reactions] = await Promise.all([
       fetchDisplayNames(authorAddressesForNames),
       fetchReactions(
         messages.map((m) => m.id),
-        session?.address,
+        reactionsAddress,
       ),
     ]);
 
