@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 
 vi.mock("next-auth/next", () => ({
   getServerSession: vi.fn(),
@@ -27,10 +27,6 @@ const db = getTestDb();
 const MIN_DESCRIPTION = "x".repeat(CHARACTER_LIMITS.projectDescription.min);
 
 let fixture: SeededFixture;
-
-beforeAll(async () => {
-  fixture = await resetAndSeed(db);
-});
 
 afterAll(async () => {
   await resetDb(db);

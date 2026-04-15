@@ -17,6 +17,7 @@ export default async function globalSetup() {
 
   execSync("pnpm prisma migrate deploy", {
     stdio: "inherit",
+    timeout: 30_000,
     env: { ...process.env, DATABASE_URL: testUrl },
   });
 }

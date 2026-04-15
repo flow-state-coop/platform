@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 
 vi.mock("next-auth/next", () => ({
   getServerSession: vi.fn(),
@@ -38,10 +38,6 @@ import { mockSession, mockUnauthenticated } from "../../../../../tests/helpers/s
 const db = getTestDb();
 
 let fixture: SeededFixture;
-
-beforeAll(async () => {
-  fixture = await resetAndSeed(db);
-});
 
 afterAll(async () => {
   await resetDb(db);

@@ -14,6 +14,10 @@ export const TEST_COUNCIL_ADDRESS =
   "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
 export const TEST_CHAIN_ID = 10;
 
+// Singleton shared across all test files in the same process. Vitest's
+// integration project forks per file (fileParallelism: false + forks pool),
+// so `db.destroy()` in one file's afterAll only closes this process's
+// connection. If that isolation model changes, this needs revisiting.
 let cached: Kysely<DB> | null = null;
 
 export function getTestDb(): Kysely<DB> {
@@ -50,6 +54,7 @@ const TABLES_IN_DELETE_ORDER = [
   "projectEmails",
   "projectManagers",
   "projects",
+  "userProfiles",
   "roundAdminEmails",
   "roundAdmins",
   "rounds",
