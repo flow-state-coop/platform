@@ -27,6 +27,11 @@ export default defineConfig({
           name: "integration",
           environment: "node",
           include: ["src/**/*.integration.test.{ts,tsx}"],
+          setupFiles: ["./tests/setup/integration-env.ts"],
+          globalSetup: ["./tests/setup/global.ts"],
+          // Integration tests share a single Neon test branch; run them
+          // sequentially to avoid FK races during reset/seed.
+          fileParallelism: false,
         },
       },
     ],
