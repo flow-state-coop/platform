@@ -7,7 +7,7 @@ vi.mock("next-auth/next", () => ({
 vi.mock("@/app/api/auth/[...nextauth]/route", () => ({ authOptions: {} }));
 
 vi.mock("../db", async () => {
-  const { getTestDb } = await import("../../../../../tests/helpers/db");
+  const { getTestDb } = await import("@tests/helpers/db");
   return { db: getTestDb() };
 });
 
@@ -19,8 +19,8 @@ import {
   TEST_MANAGER_ADDRESS,
   TEST_OTHER_MANAGER_ADDRESS,
   type SeededFixture,
-} from "../../../../../tests/helpers/db";
-import { mockSession, mockUnauthenticated } from "../../../../../tests/helpers/session";
+} from "@tests/helpers/db";
+import { mockSession, mockUnauthenticated } from "@tests/helpers/session";
 import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
 
 const db = getTestDb();

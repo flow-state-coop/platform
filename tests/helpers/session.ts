@@ -1,5 +1,6 @@
 import { vi } from "vitest";
 import { getServerSession } from "next-auth/next";
+import type { Session } from "next-auth";
 
 // Callers must put `vi.mock("next-auth/next")` and
 // `vi.mock("@/app/api/auth/[...nextauth]/route", () => ({ authOptions: {} }))`
@@ -7,13 +8,12 @@ import { getServerSession } from "next-auth/next";
 // configure the mock's return value per-test.
 
 export function mockSession(address: string) {
-  vi.mocked(getServerSession).mockResolvedValue({
+  const session: Session = {
     address,
     user: { name: address, image: "" },
-    // Minimal session shape — cast because the app extends Session with
-    // an address field not present in the base type.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any);
+    expires: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+  };
+  vi.mocked(getServerSession).mockResolvedValue(session);
 }
 
 export function mockUnauthenticated() {

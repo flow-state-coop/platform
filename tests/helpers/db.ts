@@ -1,6 +1,7 @@
-import { Kysely, CamelCasePlugin } from "kysely";
+import { Kysely, CamelCasePlugin, sql } from "kysely";
 import { NeonDialect } from "kysely-neon";
 import type { DB } from "@/generated/kysely";
+import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
 
 export const TEST_MANAGER_ADDRESS =
   "0x1111111111111111111111111111111111111111";
@@ -44,29 +45,33 @@ export function getTestDb(): Kysely<DB> {
   return cached;
 }
 
-// Deletion order respects FK dependencies: children before parents.
-const TABLES_IN_DELETE_ORDER = [
-  "messageReactions",
+// TRUNCATE ... RESTART IDENTITY CASCADE wipes every table in one round-trip
+// and resets sequences, avoiding the per-table DELETE chatter and the
+// FK-ordering maintenance that goes with it. Physical (snake_case) table
+// names are used here because raw SQL bypasses the CamelCasePlugin.
+const TABLES_TO_RESET = [
+  "message_reactions",
   "messages",
-  "milestoneProgress",
+  "milestone_progress",
   "recipients",
   "applications",
-  "projectEmails",
-  "projectManagers",
+  "project_emails",
+  "project_managers",
   "projects",
-  "userProfiles",
-  "roundAdminEmails",
-  "roundAdmins",
+  "user_profiles",
+  "round_admin_emails",
+  "round_admins",
   "rounds",
 ] as const;
 
 export async function resetDb(db: Kysely<DB>): Promise<void> {
-  for (const table of TABLES_IN_DELETE_ORDER) {
-    await db.deleteFrom(table).execute();
-  }
+  const identifiers = TABLES_TO_RESET.map((t) => sql.table(t));
+  await sql`truncate table ${sql.join(identifiers)} restart identity cascade`.execute(
+    db,
+  );
 }
 
-const MIN_DESCRIPTION = "x".repeat(250);
+const MIN_DESCRIPTION = "x".repeat(CHARACTER_LIMITS.projectDescription.min);
 
 export type SeededFixture = {
   roundId: number;
