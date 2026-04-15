@@ -96,6 +96,7 @@ export default function Explore(props: ExploreProps) {
             activeStreamCount={goodBuildersS3Inflow?.activeIncomingStreamCount}
             tokenSymbol="G$"
             link="https://flowstate.network/goodbuilders-3"
+            showSupRewards
           />
           <RoundCard
             name="Arbitrum Mini Apps"
@@ -121,6 +122,7 @@ export default function Explore(props: ExploreProps) {
             activeStreamCount={coreInflow?.activeIncomingStreamCount}
             tokenSymbol="ETHx"
             link="/flow-guilds/core"
+            showSupRewards
           />
           <RoundCard
             name="Cracked Devs"
@@ -145,6 +147,7 @@ export default function Explore(props: ExploreProps) {
             activeStreamCount={guildGuildInflow?.activeIncomingStreamCount}
             tokenSymbol="ETHx"
             link="/flow-guilds/guild-guild"
+            showSupRewards
           />
         </div>
         <span className="fs-4 fw-semi-bold">Completed</span>
