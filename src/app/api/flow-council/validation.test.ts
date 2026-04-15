@@ -118,7 +118,7 @@ describe("normalizeSocialHandle", () => {
     ).toBe("https://x.com/alice");
   });
 
-  it("normalizes twitter.com to x.com (allowed host)", () => {
+  it("preserves twitter.com as an allowed host", () => {
     expect(
       normalizeSocialHandle("https://twitter.com/alice", "twitter"),
     ).toBe("https://twitter.com/alice");
