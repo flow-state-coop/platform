@@ -45,10 +45,7 @@ export function getTestDb(): Kysely<DB> {
   return cached;
 }
 
-// TRUNCATE ... RESTART IDENTITY CASCADE wipes every table in one round-trip
-// and resets sequences, avoiding the per-table DELETE chatter and the
-// FK-ordering maintenance that goes with it. Physical (snake_case) table
-// names are used here because raw SQL bypasses the CamelCasePlugin.
+// Physical (snake_case) table names — raw SQL bypasses the CamelCasePlugin.
 const TABLES_TO_RESET = [
   "message_reactions",
   "messages",

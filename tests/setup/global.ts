@@ -15,9 +15,24 @@ export default async function globalSetup() {
     );
   }
 
+  // Neon computes auto-suspend when idle; Prisma's default connect timeout can
+  // fire before a cold compute finishes booting. Ensure connect_timeout is
+  // generous enough to ride out the wake.
+  const migrateUrl = withConnectTimeout(testUrl, 30);
+
+  // prisma.config.ts reads COUNCIL_DATABASE_URL — override it (not DATABASE_URL)
+  // so `migrate deploy` targets the test branch, not production.
   execSync("pnpm prisma migrate deploy", {
     stdio: "inherit",
-    timeout: 30_000,
-    env: { ...process.env, DATABASE_URL: testUrl },
+    timeout: 60_000,
+    env: { ...process.env, COUNCIL_DATABASE_URL: migrateUrl },
   });
+}
+
+function withConnectTimeout(urlString: string, seconds: number): string {
+  const url = new URL(urlString);
+  if (!url.searchParams.has("connect_timeout")) {
+    url.searchParams.set("connect_timeout", String(seconds));
+  }
+  return url.toString();
 }
