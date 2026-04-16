@@ -12,7 +12,6 @@ vi.mock("./db", async () => {
   return { db: getTestDb() };
 });
 
-// adminCache is exported in stage 3 — import as if it already exists.
 import {
   isAdmin,
   canReadChannel,
@@ -50,7 +49,6 @@ afterAll(async () => {
 beforeEach(async () => {
   fixture = await resetAndSeed(db);
   adminCache.clear();
-  // Default: no on-chain roles granted
   vi.mocked(createPublicClient).mockReturnValue(
     mockPublicClient([
       {
@@ -61,10 +59,6 @@ beforeEach(async () => {
     ]) as unknown as ReturnType<typeof createPublicClient>,
   );
 });
-
-// ---------------------------------------------------------------------------
-// isAdmin
-// ---------------------------------------------------------------------------
 
 describe("isAdmin", () => {
   it("(a) DB admin returns true even when on-chain returns false", async () => {
@@ -214,10 +208,6 @@ describe("isAdmin", () => {
     expect(callCountAfterSecond).toBe(callCountAfterFirst);
   });
 });
-
-// ---------------------------------------------------------------------------
-// canReadChannel
-// ---------------------------------------------------------------------------
 
 describe("canReadChannel", () => {
   it("PUBLIC_ROUND + null address → true", async () => {
@@ -426,10 +416,6 @@ describe("canReadChannel", () => {
     expect(result).toBe(false);
   });
 });
-
-// ---------------------------------------------------------------------------
-// canWriteChannel
-// ---------------------------------------------------------------------------
 
 describe("canWriteChannel", () => {
   it("INTERNAL_APPLICATION requires on-chain role — role present → true", async () => {
@@ -663,10 +649,6 @@ describe("canWriteChannel", () => {
     expect(result).toBe(false);
   });
 });
-
-// ---------------------------------------------------------------------------
-// canModerateChannel
-// ---------------------------------------------------------------------------
 
 describe("canModerateChannel", () => {
   it("PUBLIC_PROJECT requires project manager — manager → true", async () => {

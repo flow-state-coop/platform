@@ -13,7 +13,8 @@ export type MockPublicClient = {
 
 export function mockPublicClient(stubs: ReadContractStub[]): MockPublicClient {
   const readContract = vi.fn(async (params: Record<string, unknown>) => {
-    const address = String(params.address ?? "").toLowerCase();
+    const rawAddress = String(params.address ?? "");
+    const address = rawAddress.toLowerCase();
     const functionName = String(params.functionName ?? "");
     const args = (params.args as readonly unknown[] | undefined) ?? [];
 
@@ -38,7 +39,7 @@ export function mockPublicClient(stubs: ReadContractStub[]): MockPublicClient {
 
     if (!match) {
       throw new Error(
-        `unmocked readContract call: address=${address} fn=${functionName} args=${JSON.stringify(args)}`,
+        `unmocked readContract call: address=${rawAddress} fn=${functionName} args=${JSON.stringify(args)}`,
       );
     }
 
