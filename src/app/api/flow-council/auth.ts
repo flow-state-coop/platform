@@ -134,7 +134,7 @@ export async function findRoundByCouncil(
     .executeTakeFirst();
 }
 
-const adminCache = new Map<string, { value: boolean; expiry: number }>();
+export const adminCache = new Map<string, { value: boolean; expiry: number }>();
 const ADMIN_CACHE_TTL = 60_000;
 
 export async function isAdmin(

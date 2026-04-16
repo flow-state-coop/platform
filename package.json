@@ -11,6 +11,7 @@
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration --passWithNoTests",
     "test:coverage": "vitest run --coverage",
+    "update-subgraph-fixtures": "tsx scripts/update-subgraph-fixtures.ts",
     "prettier": "prettier -w src",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -83,6 +84,7 @@
     "prettier": "^3.2.5",
     "prisma": "^7.2.0",
     "prisma-kysely": "^2.2.1",
+    "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^4.1.4"
   }
