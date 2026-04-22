@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
+import { getTestDb, resetDb } from "@tests/helpers/db";
 import { seedE2eFixture } from "../helpers/e2eDb";
 import { FIXTURE_FILE } from "./fixtureFile";
 
@@ -32,6 +33,12 @@ export default async function globalSetup() {
     );
   }
 
-  const fixture = await seedE2eFixture();
+  // Reset before seeding: a prior run's teardown may have been skipped (CI
+  // timeout, process crash), leaving rows that would collide on unique
+  // constraints or shadow the fixture we're inserting here.
+  const db = getTestDb();
+  await resetDb(db);
+
+  const fixture = await seedE2eFixture(db);
   writeFileSync(FIXTURE_FILE, JSON.stringify(fixture), "utf-8");
 }

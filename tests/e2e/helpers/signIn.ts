@@ -27,7 +27,10 @@ export async function signInViaSiweApi(page: Page): Promise<void> {
 
   const csrfRes = await page.request.get(`${baseUrl}/api/auth/csrf`);
   const { csrfToken } = await csrfRes.json();
-  const nonce = csrfToken.split("|")[0];
+  // `/api/auth/csrf` returns the raw token. The pipe-delimited `token|hash`
+  // form lives only in the cookie; the server splits the cookie and compares
+  // the first half to the SIWE `nonce`, so the nonce is the raw `csrfToken`.
+  const nonce = csrfToken;
 
   const host = new URL(baseUrl).host;
   const message = createSiweMessage({

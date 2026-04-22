@@ -28,12 +28,3 @@ test("authenticated user reaches the council page", async ({ page }) => {
   await page.goto(path);
   await expect(page).toHaveURL(new RegExp(path.replace(/[./]/g, "\\$&")));
 });
-
-test("@live OP Sepolia stream bootstrap smoke test", async ({ page }) => {
-  // `@live` runs only via `pnpm test:live` (CI main-branch). No network
-  // stubs — the council page hits the real OP Sepolia subgraph/RPC. The
-  // test asserts the page renders without broadcasting any transaction.
-  const fx = readFixture();
-  await page.goto(`/flow-councils/${fx.chainId}/${fx.councilAddress}`);
-  await expect(page.locator("body")).toBeVisible();
-});

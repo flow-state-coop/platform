@@ -36,6 +36,8 @@ jobs:
         run: pnpm test:integration
         env:
           TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          TEST_PRIVATE_KEY: ${{ secrets.TEST_PRIVATE_KEY }}
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
@@ -45,9 +47,11 @@ jobs:
       # a locally-built server so the workflow stays self-contained.
       - name: Resolve E2E base URL
         id: baseurl
+        env:
+          VERCEL_PREVIEW_URL: ${{ secrets.VERCEL_PREVIEW_URL }}
         run: |
-          if [ -n "${{ secrets.VERCEL_PREVIEW_URL }}" ]; then
-            echo "url=${{ secrets.VERCEL_PREVIEW_URL }}" >> "$GITHUB_OUTPUT"
+          if [ -n "$VERCEL_PREVIEW_URL" ]; then
+            echo "url=$VERCEL_PREVIEW_URL" >> "$GITHUB_OUTPUT"
             echo "local=false" >> "$GITHUB_OUTPUT"
           else
             echo "url=http://localhost:3000" >> "$GITHUB_OUTPUT"

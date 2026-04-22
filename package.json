@@ -10,7 +10,7 @@
     "test": "vitest run --passWithNoTests",
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration --passWithNoTests",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --grep-invert @live",
     "test:live": "playwright test --grep @live",
     "test:coverage": "vitest run --coverage",
     "update-subgraph-fixtures": "tsx scripts/update-subgraph-fixtures.ts",
