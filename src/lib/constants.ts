@@ -12,15 +12,7 @@ export const WALLET_CONNECT_PROJECT_ID =
   process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID!;
 export const ZERO_ADDRESS =
   "0x0000000000000000000000000000000000000000" as Address;
-export const PINATA_JWT_KEY = process.env.NEXT_PUBLIC_PINATA_JWT_KEY;
 export const SUPERVISUAL_BASE_URL = "https://graph.flowstate.network";
 export const OG_DEFAULT_IMAGE_URL = "https://flowstate.network/og_v2.png";
-export const IPFS_GATEWAYS = [
-  "https://ipfs.fleek.co",
-  "https://silver-definite-penguin-424.mypinata.cloud",
-  "https://4everland.io",
-  "https://gateway.pinata.cloud",
-  "https://permaweb.eu.org",
-  "https://ipfs.io",
-  "https://nftstorage.link",
-];
+// Consumed only by useEnsResolution, which reads [0] for ENS avatar CIDs.
+export const IPFS_GATEWAYS = ["https://ipfs.fleek.co"];
