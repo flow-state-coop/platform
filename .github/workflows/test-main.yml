@@ -1,0 +1,107 @@
+name: test-main
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test:unit
+
+      - name: Integration tests
+        run: pnpm test:integration
+        env:
+          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          TEST_PRIVATE_KEY: ${{ secrets.TEST_PRIVATE_KEY }}
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      # If VERCEL_PREVIEW_URL is configured as a repository secret, E2E runs
+      # against the Vercel preview (matches the spec). Otherwise fall back to
+      # a locally-built server so the workflow stays self-contained.
+      - name: Resolve E2E base URL
+        id: baseurl
+        env:
+          VERCEL_PREVIEW_URL: ${{ secrets.VERCEL_PREVIEW_URL }}
+        run: |
+          if [ -n "$VERCEL_PREVIEW_URL" ]; then
+            echo "url=$VERCEL_PREVIEW_URL" >> "$GITHUB_OUTPUT"
+            echo "local=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "url=http://localhost:3000" >> "$GITHUB_OUTPUT"
+            echo "local=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build
+        if: steps.baseurl.outputs.local == 'true'
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID }}
+          NEXT_PUBLIC_POSTHOG_KEY: ${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}
+          NEXT_PUBLIC_POSTHOG_HOST: ${{ secrets.NEXT_PUBLIC_POSTHOG_HOST }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: http://localhost:3000
+          COUNCIL_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+
+      - name: Start server
+        if: steps.baseurl.outputs.local == 'true'
+        run: pnpm start &
+        env:
+          NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: http://localhost:3000
+          COUNCIL_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+
+      - name: Wait for server
+        if: steps.baseurl.outputs.local == 'true'
+        run: pnpm exec wait-on http://localhost:3000 --timeout 60000
+
+      - name: E2E tests
+        run: pnpm test:e2e
+        env:
+          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          TEST_PRIVATE_KEY: ${{ secrets.TEST_PRIVATE_KEY }}
+          E2E_BASE_URL: ${{ steps.baseurl.outputs.url }}
+
+      - name: Live smoke tests
+        run: pnpm test:live
+        env:
+          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          TEST_PRIVATE_KEY: ${{ secrets.TEST_PRIVATE_KEY }}
+          E2E_BASE_URL: ${{ steps.baseurl.outputs.url }}
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
