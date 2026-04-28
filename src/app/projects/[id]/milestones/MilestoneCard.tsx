@@ -35,11 +35,6 @@ type EditingDeliverable = {
   evidence: EvidenceLink[];
 };
 
-const TYPE_LABELS: Record<string, string> = {
-  build: "Build",
-  growth: "Growth",
-};
-
 function CompletionBar({ completion }: { completion: number }) {
   const variant =
     completion === 100 ? "success" : completion >= 50 ? "primary" : "info";
@@ -238,7 +233,7 @@ function DefinitionEditForm({
   );
   const [validated, setValidated] = useState(false);
 
-  const itemLabel = milestone.type === "build" ? "Deliverable" : "Activation";
+  const itemLabel = milestone.itemLabel;
 
   const isTitleEmpty = !title.trim();
   const isDescriptionShort =
@@ -396,8 +391,8 @@ export default function MilestoneCard({
 
   const isProgressEditing = editingItemIndex !== null || editingOtherDetails;
 
-  const badgeLabel = `${TYPE_LABELS[milestone.type]} Milestone ${milestone.index + 1}`;
-  const itemLabel = milestone.type === "build" ? "Deliverables" : "Activations";
+  const badgeLabel = `${milestone.milestoneLabel} Milestone ${milestone.index + 1}`;
+  const itemLabel = `${milestone.itemLabel}s`;
 
   const handleEditDeliverableClick = (index: number) => {
     requireAuth(() => setEditingItemIndex(index));

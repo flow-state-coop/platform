@@ -219,7 +219,7 @@ export const milestoneProgressSchema = z.object({
 });
 
 export const milestoneDefinitionSchema = z.object({
-  title: z.string().min(1, "Title is required"),
+  title: z.string().min(1, "Title is required").max(200),
   description: z
     .string()
     .min(
@@ -228,7 +228,8 @@ export const milestoneDefinitionSchema = z.object({
     )
     .max(CHARACTER_LIMITS.milestoneDescription.max),
   items: z
-    .array(z.string())
+    .array(z.string().max(500))
+    .max(50)
     .refine((items) => items.some((item) => item.trim() !== ""), {
       message: "At least one item is required",
     }),
@@ -319,7 +320,7 @@ export function validateRoundDetails(
   return { success: true, data: details };
 }
 
-const formElementSchema = z
+export const formElementSchema = z
   .object({
     id: z.string().min(1),
     type: z.enum([
@@ -335,6 +336,7 @@ const formElementSchema = z
       "boolean",
       "telegram",
       "ethAddress",
+      "milestone",
       "divider",
     ]),
     label: z.string().max(500),
@@ -348,6 +350,12 @@ const formElementSchema = z
     min: z.number().optional(),
     max: z.number().optional(),
     options: z.array(z.string().max(200)).max(50).optional(),
+    milestoneLabel: z.string().max(100).optional(),
+    itemLabel: z.string().max(100).optional(),
+    minCount: z.number().int().min(1).max(5).optional(),
+    descriptionPlaceholder: z.string().max(500).optional(),
+    descriptionMinChars: z.number().int().nonnegative().optional(),
+    descriptionMaxChars: z.number().int().positive().optional(),
   })
   .refine(
     (el) =>
@@ -361,6 +369,13 @@ const formElementSchema = z
       (el.type !== "select" && el.type !== "multiSelect") ||
       (Array.isArray(el.options) && el.options.length > 0),
     { message: "select and multiSelect require at least one option" },
+  )
+  .refine(
+    (el) =>
+      el.descriptionMinChars === undefined ||
+      el.descriptionMaxChars === undefined ||
+      el.descriptionMinChars <= el.descriptionMaxChars,
+    { message: "descriptionMinChars must be ≤ descriptionMaxChars" },
   );
 
 const formSchemaSchema = z.object({
@@ -381,7 +396,7 @@ export function validateFormSchema(
   return { success: true, data: result.data };
 }
 
-type FormElement = z.infer<typeof formElementSchema>;
+export type FormElement = z.infer<typeof formElementSchema>;
 
 const MAX_STRING_LENGTH = 10_000;
 export const MAX_DETAILS_SIZE = 512_000; // 512 KB
@@ -460,6 +475,64 @@ const VALIDATORS: Partial<Record<FormElement["type"], FieldValidator>> = {
       : null,
   boolean: (val, el) =>
     typeof val !== "boolean" ? `"${el.label}" must be true or false` : null,
+  milestone: (val, el) => {
+    const minCount = el.minCount ?? 1;
+    const milestoneLabel = el.milestoneLabel ?? el.label ?? "Milestone";
+    if (!Array.isArray(val)) {
+      return `"${el.label}" must be a list of milestones`;
+    }
+    if (val.length < minCount) {
+      return `"${el.label}" requires at least ${minCount} milestone${minCount === 1 ? "" : "s"}`;
+    }
+    if (val.length > 20) {
+      return `"${el.label}" allows at most 20 milestones`;
+    }
+    for (let i = 0; i < val.length; i++) {
+      const m = val[i] as {
+        title?: unknown;
+        description?: unknown;
+        items?: unknown;
+      };
+      if (!m || typeof m !== "object") {
+        return `${milestoneLabel} ${i + 1} is malformed`;
+      }
+      if (typeof m.title !== "string" || m.title.trim() === "") {
+        return `${milestoneLabel} ${i + 1} title is required`;
+      }
+      if (m.title.length > 200) {
+        return `${milestoneLabel} ${i + 1} title exceeds 200 characters`;
+      }
+      if (typeof m.description !== "string" || m.description.trim() === "") {
+        return `${milestoneLabel} ${i + 1} description is required`;
+      }
+      if (
+        typeof el.descriptionMinChars === "number" &&
+        m.description.length < el.descriptionMinChars
+      ) {
+        return `${milestoneLabel} ${i + 1} description must be at least ${el.descriptionMinChars} characters`;
+      }
+      const descMax =
+        typeof el.descriptionMaxChars === "number"
+          ? el.descriptionMaxChars
+          : MAX_STRING_LENGTH;
+      if (m.description.length > descMax) {
+        return `${milestoneLabel} ${i + 1} description exceeds ${descMax} characters`;
+      }
+      if (!Array.isArray(m.items) || m.items.length === 0) {
+        return `${milestoneLabel} ${i + 1} requires at least one ${el.itemLabel ?? "item"}`;
+      }
+      for (let j = 0; j < m.items.length; j++) {
+        const item = m.items[j];
+        if (typeof item !== "string" || item.trim() === "") {
+          return `${milestoneLabel} ${i + 1} ${el.itemLabel ?? "item"} ${j + 1} is required`;
+        }
+        if (item.length > 500) {
+          return `${milestoneLabel} ${i + 1} ${el.itemLabel ?? "item"} ${j + 1} exceeds 500 characters`;
+        }
+      }
+    }
+    return null;
+  },
 };
 
 function validateFormSection(
@@ -479,12 +552,18 @@ function validateFormSection(
       if (val === undefined || val === null || val === "") {
         return { success: false, error: `"${el.label}" is required` };
       }
-      if (el.type === "multiSelect" && Array.isArray(val) && val.length === 0) {
+      if (
+        (el.type === "multiSelect" || el.type === "milestone") &&
+        Array.isArray(val) &&
+        val.length === 0
+      ) {
         return { success: false, error: `"${el.label}" is required` };
       }
     }
 
-    if (val === undefined || val === null || val === "") continue;
+    if (val === undefined || val === null || val === "") {
+      if (el.type !== "milestone") continue;
+    }
 
     const validator = VALIDATORS[el.type];
     if (validator) {

@@ -128,7 +128,7 @@ model Recipient {
 model MilestoneProgress {
   id              Int         @id @default(autoincrement())
   applicationId   Int         @map("application_id")
-  milestoneType   String      @map("milestone_type") @db.VarChar(10)
+  milestoneType   String      @map("milestone_type") @db.VarChar(100)
   milestoneIndex  Int         @map("milestone_index")
   progress        Json?
   createdAt       DateTime    @default(now()) @map("created_at")

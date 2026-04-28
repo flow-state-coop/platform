@@ -7,6 +7,9 @@ import Stack from "react-bootstrap/Stack";
 import Markdown from "@/components/Markdown";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import CharacterCounter from "@/app/flow-councils/components/CharacterCounter";
+import DynamicMilestoneInput, {
+  type DynamicMilestoneValue,
+} from "@/app/flow-councils/components/DynamicMilestoneInput";
 import { normalizeUrl } from "@/app/flow-councils/utils/normalizeUrl";
 import type { FormElement } from "@/app/flow-councils/types/formSchema";
 
@@ -16,6 +19,7 @@ type Props = {
   onChange?: (id: string, value: unknown) => void;
   validated?: boolean;
   readOnly?: boolean;
+  lockBlockCount?: boolean;
   profileData?: { email?: string; telegram?: string };
 };
 
@@ -25,6 +29,7 @@ export default function DynamicFormSection({
   onChange,
   validated = false,
   readOnly = false,
+  lockBlockCount = false,
   profileData,
 }: Props) {
   const getValue = (id: string) => values[id] ?? "";
@@ -436,6 +441,24 @@ export default function DynamicFormSection({
                   </Form.Text>
                 )}
               </Form.Group>
+            );
+          }
+          case "milestone": {
+            const raw = values[el.id];
+            const milestoneValues: DynamicMilestoneValue[] = Array.isArray(raw)
+              ? (raw as DynamicMilestoneValue[])
+              : [];
+            return (
+              <DynamicMilestoneInput
+                key={el.id}
+                element={el}
+                values={milestoneValues}
+                onChange={(v) => handleChange(el.id, v)}
+                validated={validated}
+                readOnly={readOnly}
+                lockBlockCount={lockBlockCount}
+                numberPrefix={num(el.id)}
+              />
             );
           }
         }

@@ -14,7 +14,9 @@ export type MilestoneProgressData = {
 };
 
 export type MilestoneWithProgress = {
-  type: "build" | "growth";
+  type: string;
+  milestoneLabel: string;
+  itemLabel: string;
   index: number;
   title: string;
   description: string;
