@@ -16,7 +16,7 @@ vi.mock("next-auth/next", () => ({
 
 vi.mock("@/app/api/auth/[...nextauth]/route", () => ({ authOptions: {} }));
 
-vi.mock("../../db", async () => {
+vi.mock("../db", async () => {
   const { getTestDb } = await import("@tests/helpers/db");
   return { db: getTestDb() };
 });
@@ -179,17 +179,20 @@ async function seedDynamicApplication(
     .executeTakeFirstOrThrow();
 }
 
-/** Seed a round with a formSchema containing a milestone element */
+/** Seed a round with a formSchema containing a milestone element.
+ * Uses a chainId distinct from the fixture round to avoid the
+ * (chain_id, flow_council_address) unique constraint. */
 async function seedRoundWithMilestoneSchema(
   elementId: string,
   milestoneLabel: string,
   itemLabel: string,
   minCount: number = 1,
+  chainId: number = TEST_CHAIN_ID + 1,
 ) {
   const round = await db
     .insertInto("rounds")
     .values({
-      chainId: TEST_CHAIN_ID,
+      chainId,
       flowCouncilAddress: TEST_COUNCIL_ADDRESS,
       applicationsClosed: false,
       details: JSON.stringify({
@@ -361,11 +364,13 @@ describe("GET — legacy and dynamic applications do not cross-pollute", () => {
       "Key Result",
     );
 
-    // A second round for the legacy application (same council, different ID)
+    // A second round for the legacy application. Use a distinct chainId so we
+    // don't collide with the fixture round or the dynamic round on
+    // (chain_id, flow_council_address).
     const legacyRound = await db
       .insertInto("rounds")
       .values({
-        chainId: TEST_CHAIN_ID,
+        chainId: TEST_CHAIN_ID + 2,
         flowCouncilAddress: TEST_COUNCIL_ADDRESS,
         applicationsClosed: false,
         details: JSON.stringify({ name: "Legacy Round" }),
@@ -477,7 +482,15 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — legacy", (
       .where("id", "=", app.id)
       .executeTakeFirstOrThrow();
 
-    const details = JSON.parse(updated.details as string);
+    const details = updated.details as {
+      buildGoals: {
+        milestones: Array<{
+          title: string;
+          description: string;
+          deliverables: string[];
+        }>;
+      };
+    };
     expect(details.buildGoals.milestones[0].title).toBe("Updated Build Title");
     expect(details.buildGoals.milestones[0].deliverables).toEqual([
       "New Deliverable",
@@ -621,7 +634,7 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
         milestoneIndex: 0,
         definition: {
           title: "Updated Dynamic Title",
-          description: "d".repeat(50),
+          description: "d".repeat(500),
           items: ["Updated KR 1", "KR 2"],
         },
       }),
@@ -637,7 +650,12 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
       .where("id", "=", app.id)
       .executeTakeFirstOrThrow();
 
-    const details = JSON.parse(updated.details as string);
+    const details = updated.details as {
+      round: Record<
+        string,
+        Array<{ title: string; description: string; items: string[] }>
+      >;
+    };
     expect(details.round[ELEMENT_UUID][0].title).toBe("Updated Dynamic Title");
     expect(details.round[ELEMENT_UUID][0].items).toEqual([
       "Updated KR 1",
@@ -645,7 +663,7 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
     ]);
     // Gap 4: title and description must persist exactly as sent
     expect(details.round[ELEMENT_UUID][0].title).toBe("Updated Dynamic Title");
-    expect(details.round[ELEMENT_UUID][0].description).toBe("d".repeat(50));
+    expect(details.round[ELEMENT_UUID][0].description).toBe("d".repeat(500));
   });
 
   // Gap 2: editsUnlocked=false rejection — dynamic path
@@ -688,7 +706,7 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
         milestoneIndex: 0,
         definition: {
           title: "Should Be Blocked",
-          description: "b".repeat(50),
+          description: "b".repeat(500),
           items: ["Blocked KR"],
         },
       }),
@@ -807,7 +825,7 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
         milestoneIndex: 5,
         definition: {
           title: "Ghost Milestone",
-          description: "g".repeat(50),
+          description: "g".repeat(500),
           items: ["item"],
         },
       }),
