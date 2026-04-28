@@ -94,10 +94,13 @@ export default function DynamicMilestoneInput(props: Props) {
     });
   };
 
-  const blocks = values.length >= minCount ? values : [
-    ...values,
-    ...Array.from({ length: minCount - values.length }, emptyMilestone),
-  ];
+  const blocks =
+    values.length >= minCount
+      ? values
+      : [
+          ...values,
+          ...Array.from({ length: minCount - values.length }, emptyMilestone),
+        ];
 
   const canAdd = !readOnly && !lockBlockCount;
   const canRemoveBlock = (i: number) =>

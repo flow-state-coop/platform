@@ -72,7 +72,11 @@ describe("formElementSchema — milestone type", () => {
     const result = validateDynamicRoundDetails(
       {
         round: {
-          [MILESTONE_UUID]: [validMilestoneEntry(), validMilestoneEntry(), validMilestoneEntry()],
+          [MILESTONE_UUID]: [
+            validMilestoneEntry(),
+            validMilestoneEntry(),
+            validMilestoneEntry(),
+          ],
         },
       },
       [fullMilestoneElement() as FormElement],
@@ -212,7 +216,11 @@ describe("validateDynamicRoundDetails — milestone entry field presence", () =>
   });
 
   it("rejects a milestone entry with an empty description", () => {
-    const element = { ...fullMilestoneElement(), minCount: 1, descriptionMinChars: 1 };
+    const element = {
+      ...fullMilestoneElement(),
+      minCount: 1,
+      descriptionMinChars: 1,
+    };
     const result = validateDynamicRoundDetails(
       {
         round: {
@@ -242,7 +250,9 @@ describe("validateDynamicRoundDetails — milestone entry field presence", () =>
     const result = validateDynamicRoundDetails(
       {
         round: {
-          [MILESTONE_UUID]: [validMilestoneEntry({ items: ["Valid item", ""] })],
+          [MILESTONE_UUID]: [
+            validMilestoneEntry({ items: ["Valid item", ""] }),
+          ],
         },
       },
       [element as FormElement],

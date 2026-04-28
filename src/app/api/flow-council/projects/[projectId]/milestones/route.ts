@@ -71,8 +71,7 @@ function resolveDynamicLabels(
     (el) => el.id === elementId,
   );
   return {
-    milestoneLabel:
-      element?.milestoneLabel || element?.label || "Milestone",
+    milestoneLabel: element?.milestoneLabel || element?.label || "Milestone",
     itemLabel: element?.itemLabel || "Deliverable",
   };
 }
@@ -156,7 +155,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
       const milestones: MilestoneWithProgress[] = [];
 
       if (isDynamicAppDetails(appDetailsRaw)) {
-        const milestoneElements = getMilestoneElements(roundDetails?.formSchema);
+        const milestoneElements = getMilestoneElements(
+          roundDetails?.formSchema,
+        );
         for (const element of milestoneElements) {
           const raw = appDetailsRaw.round[element.id];
           if (!Array.isArray(raw)) continue;

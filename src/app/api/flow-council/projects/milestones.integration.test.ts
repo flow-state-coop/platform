@@ -236,7 +236,10 @@ describe("GET /api/flow-council/projects/[projectId]/milestones — legacy", () 
 
     await seedLegacyApplication(project.id, fixture.roundId);
 
-    const res = await GET(makeGetRequest(project.id), makeRouteParams(project.id));
+    const res = await GET(
+      makeGetRequest(project.id),
+      makeRouteParams(project.id),
+    );
     const body = await readJson(res);
 
     expect(body.success).toBe(true);
@@ -252,7 +255,10 @@ describe("GET /api/flow-council/projects/[projectId]/milestones — legacy", () 
 
     expect(buildMilestone).toBeDefined();
     expect(buildMilestone.title).toBe("Build Milestone 1");
-    expect(buildMilestone.itemNames).toEqual(["Deliverable A", "Deliverable B"]);
+    expect(buildMilestone.itemNames).toEqual([
+      "Deliverable A",
+      "Deliverable B",
+    ]);
 
     expect(growthMilestone).toBeDefined();
     expect(growthMilestone.title).toBe("Growth Milestone 1");
@@ -273,7 +279,10 @@ describe("GET /api/flow-council/projects/[projectId]/milestones — legacy", () 
 
     await seedLegacyApplication(project.id, fixture.roundId);
 
-    const res = await GET(makeGetRequest(project.id), makeRouteParams(project.id));
+    const res = await GET(
+      makeGetRequest(project.id),
+      makeRouteParams(project.id),
+    );
     const body = await readJson(res);
 
     expect(body.success).toBe(true);
@@ -322,7 +331,10 @@ describe("GET /api/flow-council/projects/[projectId]/milestones — dynamic", ()
       },
     ]);
 
-    const res = await GET(makeGetRequest(project.id), makeRouteParams(project.id));
+    const res = await GET(
+      makeGetRequest(project.id),
+      makeRouteParams(project.id),
+    );
     const body = await readJson(res);
 
     expect(body.success).toBe(true);
@@ -373,15 +385,23 @@ describe("GET — legacy and dynamic applications do not cross-pollute", () => {
       .execute();
 
     const legacyApp = await seedLegacyApplication(project.id, legacyRound.id);
-    const dynamicApp = await seedDynamicApplication(project.id, round.id, ELEMENT_UUID, [
-      {
-        title: "Dynamic Milestone",
-        description: "z".repeat(50),
-        items: ["KR 1"],
-      },
-    ]);
+    const dynamicApp = await seedDynamicApplication(
+      project.id,
+      round.id,
+      ELEMENT_UUID,
+      [
+        {
+          title: "Dynamic Milestone",
+          description: "z".repeat(50),
+          items: ["KR 1"],
+        },
+      ],
+    );
 
-    const res = await GET(makeGetRequest(project.id), makeRouteParams(project.id));
+    const res = await GET(
+      makeGetRequest(project.id),
+      makeRouteParams(project.id),
+    );
     const body = await readJson(res);
 
     expect(body.success).toBe(true);
@@ -581,13 +601,18 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
       .values({ projectId: project.id, managerAddress: TEST_MANAGER_ADDRESS })
       .execute();
 
-    const app = await seedDynamicApplication(project.id, round.id, ELEMENT_UUID, [
-      {
-        title: "Original Title",
-        description: "x".repeat(50),
-        items: ["KR 1"],
-      },
-    ]);
+    const app = await seedDynamicApplication(
+      project.id,
+      round.id,
+      ELEMENT_UUID,
+      [
+        {
+          title: "Original Title",
+          description: "x".repeat(50),
+          items: ["KR 1"],
+        },
+      ],
+    );
 
     const res = await PATCH(
       makePatchRequest(project.id, {
@@ -697,13 +722,18 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
       .values({ projectId: project.id, managerAddress: TEST_MANAGER_ADDRESS })
       .execute();
 
-    const app = await seedDynamicApplication(project.id, round.id, ELEMENT_UUID, [
-      {
-        title: "UUID Milestone",
-        description: "x".repeat(50),
-        items: ["Item 1"],
-      },
-    ]);
+    const app = await seedDynamicApplication(
+      project.id,
+      round.id,
+      ELEMENT_UUID,
+      [
+        {
+          title: "UUID Milestone",
+          description: "x".repeat(50),
+          items: ["Item 1"],
+        },
+      ],
+    );
 
     // PATCH with a progress update (not a definition edit) so milestone_progress is written
     const res = await PATCH(
@@ -756,9 +786,18 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
       .values({ projectId: project.id, managerAddress: TEST_MANAGER_ADDRESS })
       .execute();
 
-    const app = await seedDynamicApplication(project.id, round.id, ELEMENT_UUID, [
-      { title: "Only Milestone", description: "x".repeat(50), items: ["KR 1"] },
-    ]);
+    const app = await seedDynamicApplication(
+      project.id,
+      round.id,
+      ELEMENT_UUID,
+      [
+        {
+          title: "Only Milestone",
+          description: "x".repeat(50),
+          items: ["KR 1"],
+        },
+      ],
+    );
 
     // milestoneIndex 5 is out of range (only index 0 exists)
     const res = await PATCH(
@@ -801,13 +840,18 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
       .values({ projectId: project.id, managerAddress: TEST_MANAGER_ADDRESS })
       .execute();
 
-    const app = await seedDynamicApplication(project.id, round.id, ELEMENT_UUID, [
-      {
-        title: "Feed Milestone",
-        description: "f".repeat(50),
-        items: ["KR Feed"],
-      },
-    ]);
+    const app = await seedDynamicApplication(
+      project.id,
+      round.id,
+      ELEMENT_UUID,
+      [
+        {
+          title: "Feed Milestone",
+          description: "f".repeat(50),
+          items: ["KR Feed"],
+        },
+      ],
+    );
 
     await PATCH(
       makePatchRequest(project.id, {
@@ -882,9 +926,12 @@ describe("PATCH — milestoneType length validation", () => {
       "Key Result",
     );
 
-    const app = await seedDynamicApplication(project.id, round.id, ELEMENT_UUID, [
-      { title: "M1", description: "x".repeat(50), items: ["KR"] },
-    ]);
+    const app = await seedDynamicApplication(
+      project.id,
+      round.id,
+      ELEMENT_UUID,
+      [{ title: "M1", description: "x".repeat(50), items: ["KR"] }],
+    );
 
     const res = await PATCH(
       makePatchRequest(project.id, {
