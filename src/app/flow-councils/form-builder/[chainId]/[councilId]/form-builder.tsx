@@ -549,15 +549,23 @@ function ElementCard({
                   <Form.Control
                     type="number"
                     className="rounded-3"
+                    min={0}
                     value={element.descriptionMinChars ?? ""}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      if (!e.target.value) {
+                        onUpdate({
+                          ...element,
+                          descriptionMinChars: undefined,
+                        });
+                        return;
+                      }
+                      const n = Number(e.target.value);
+                      if (!Number.isFinite(n)) return;
                       onUpdate({
                         ...element,
-                        descriptionMinChars: e.target.value
-                          ? Number(e.target.value)
-                          : undefined,
-                      })
-                    }
+                        descriptionMinChars: Math.max(0, Math.round(n)),
+                      });
+                    }}
                     placeholder="None"
                   />
                 </Form.Group>
@@ -568,15 +576,23 @@ function ElementCard({
                   <Form.Control
                     type="number"
                     className="rounded-3"
+                    min={1}
                     value={element.descriptionMaxChars ?? ""}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      if (!e.target.value) {
+                        onUpdate({
+                          ...element,
+                          descriptionMaxChars: undefined,
+                        });
+                        return;
+                      }
+                      const n = Number(e.target.value);
+                      if (!Number.isFinite(n)) return;
                       onUpdate({
                         ...element,
-                        descriptionMaxChars: e.target.value
-                          ? Number(e.target.value)
-                          : undefined,
-                      })
-                    }
+                        descriptionMaxChars: Math.max(1, Math.round(n)),
+                      });
+                    }}
                     placeholder="None"
                   />
                 </Form.Group>

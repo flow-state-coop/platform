@@ -261,6 +261,23 @@ describe("validateDynamicRoundDetails — milestone entry field presence", () =>
     );
     expect(result.success).toBe(false);
   });
+
+  it("rejects a milestone entry with more than 50 items", () => {
+    const element = { ...fullMilestoneElement(), minCount: 1 };
+    const tooMany = Array.from({ length: 51 }, (_, i) => `Item ${i + 1}`);
+    const result = validateDynamicRoundDetails(
+      {
+        round: {
+          [MILESTONE_UUID]: [validMilestoneEntry({ items: tooMany })],
+        },
+      },
+      [element as FormElement],
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toMatch(/at most 50/i);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -51,10 +51,11 @@ export default function DynamicMilestoneInput(props: Props) {
       while (padded.length < minCount) padded.push(emptyMilestone());
       onChange(padded);
     }
-    // values.length (not values) — the array identity changes on every parent
-    // render via spread updates, which would cause an infinite re-render loop.
+    // Deps intentionally exclude `values` (array identity flips every parent
+    // render and would loop) and `onChange` (its identity flips every parent
+    // render and would fire wasted no-op cycles).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values.length, minCount, readOnly, onChange]);
+  }, [values.length, minCount, readOnly]);
 
   const updateMilestone = (index: number, next: DynamicMilestoneValue) => {
     const copy = [...values];

@@ -524,6 +524,9 @@ const VALIDATORS: Partial<Record<FormElement["type"], FieldValidator>> = {
       if (!Array.isArray(m.items) || m.items.length === 0) {
         return `${milestoneLabel} ${i + 1} requires at least one ${el.itemLabel ?? "item"}`;
       }
+      if (m.items.length > 50) {
+        return `${milestoneLabel} ${i + 1} allows at most 50 ${el.itemLabel ?? "item"}s`;
+      }
       for (let j = 0; j < m.items.length; j++) {
         const item = m.items[j];
         if (typeof item !== "string" || item.trim() === "") {
