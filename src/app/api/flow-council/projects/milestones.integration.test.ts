@@ -203,6 +203,7 @@ async function seedRoundWithMilestoneSchema(
               id: elementId,
               type: "milestone",
               label: "Engineering Milestones",
+              required: true,
               milestoneLabel,
               itemLabel,
               minCount,
@@ -268,7 +269,7 @@ describe("GET /api/flow-council/projects/[projectId]/milestones — legacy", () 
     expect(growthMilestone.itemNames).toEqual(["Activation 1"]);
   });
 
-  it("legacy milestones expose milestoneLabel 'Build'/'Growth' and itemLabel 'Deliverable'/'Activation'", async () => {
+  it("legacy milestones expose milestoneLabel 'Build Milestone'/'Growth Milestone' and itemLabel 'Deliverable'/'Activation'", async () => {
     const project = await db
       .insertInto("projects")
       .values({ details: JSON.stringify({ name: "Legacy Labels Project" }) })
@@ -296,9 +297,9 @@ describe("GET /api/flow-council/projects/[projectId]/milestones — legacy", () 
 
     // The feature spec states legacy milestones must expose these labels
     // so the UI can render them consistently alongside dynamic milestones.
-    expect(buildM.milestoneLabel).toBe("Build");
+    expect(buildM.milestoneLabel).toBe("Build Milestone");
     expect(buildM.itemLabel).toBe("Deliverable");
-    expect(growthM.milestoneLabel).toBe("Growth");
+    expect(growthM.milestoneLabel).toBe("Growth Milestone");
     expect(growthM.itemLabel).toBe("Activation");
   });
 });

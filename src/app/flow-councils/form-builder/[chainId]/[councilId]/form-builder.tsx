@@ -368,7 +368,7 @@ function ElementCard({
             </Form.Group>
           )}
 
-          {"required" in element && (
+          {"required" in element && element.type !== "milestone" && (
             <Form.Check
               type="checkbox"
               label="Required"

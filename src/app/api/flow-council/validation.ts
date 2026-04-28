@@ -376,7 +376,10 @@ export const formElementSchema = z
       el.descriptionMaxChars === undefined ||
       el.descriptionMinChars <= el.descriptionMaxChars,
     { message: "descriptionMinChars must be ≤ descriptionMaxChars" },
-  );
+  )
+  .refine((el) => el.type !== "milestone" || el.required === true, {
+    message: "milestone elements must have required: true",
+  });
 
 const formSchemaSchema = z.object({
   round: z.array(formElementSchema).max(100),
@@ -561,9 +564,7 @@ function validateFormSection(
       }
     }
 
-    if (val === undefined || val === null || val === "") {
-      if (el.type !== "milestone") continue;
-    }
+    if (val === undefined || val === null || val === "") continue;
 
     const validator = VALIDATORS[el.type];
     if (validator) {

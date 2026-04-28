@@ -77,8 +77,8 @@ function resolveDynamicLabels(
 }
 
 const LEGACY_MILESTONE_LABELS: Record<string, string> = {
-  build: "Build",
-  growth: "Growth",
+  build: "Build Milestone",
+  growth: "Growth Milestone",
 };
 
 const LEGACY_ITEM_LABELS: Record<string, string> = {
@@ -187,7 +187,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
             const key = `${app.applicationId}-build-${i}`;
             milestones.push({
               type: "build",
-              milestoneLabel: "Build",
+              milestoneLabel: "Build Milestone",
               itemLabel: "Deliverable",
               index: i,
               title: m.title,
@@ -204,7 +204,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
             const key = `${app.applicationId}-growth-${i}`;
             milestones.push({
               type: "growth",
-              milestoneLabel: "Growth",
+              milestoneLabel: "Growth Milestone",
               itemLabel: "Activation",
               index: i,
               title: m.title,
@@ -251,7 +251,7 @@ function buildEvidencePostContent(
   evidence: EvidenceLink[],
   pid: number,
 ): string {
-  const header = `Evidence ${verb} ${roundName} - ${typeLabel} Milestone ${milestoneIndex + 1} - ${itemLabel} ${itemIndex + 1} (${completion}% Complete)`;
+  const header = `Evidence ${verb} ${roundName} - ${typeLabel} ${milestoneIndex + 1} - ${itemLabel} ${itemIndex + 1} (${completion}% Complete)`;
   const lines = evidence.map((e) => `- [${e.name}](${e.link})`);
   return `${header}:\n\n${lines.join("\n")}\n\n[Go to the milestone](/projects/${pid}?tab=milestones&milestone=${milestoneType}-${milestoneIndex})`;
 }
@@ -264,7 +264,7 @@ function buildTextUpdatePostContent(
   otherDetails: string,
   pid: number,
 ): string {
-  return `Details updated on ${roundName} - ${typeLabel} Milestone ${milestoneIndex + 1}:\n\n${otherDetails}\n\n[Go to the milestone](/projects/${pid}?tab=milestones&milestone=${milestoneType}-${milestoneIndex})`;
+  return `Details updated on ${roundName} - ${typeLabel} ${milestoneIndex + 1}:\n\n${otherDetails}\n\n[Go to the milestone](/projects/${pid}?tab=milestones&milestone=${milestoneType}-${milestoneIndex})`;
 }
 
 export async function PATCH(request: Request, { params }: RouteParams) {
@@ -311,7 +311,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       typeof milestoneType !== "string" ||
       milestoneType.length === 0 ||
       milestoneType.length > 100 ||
-      typeof milestoneIndex !== "number"
+      !Number.isInteger(milestoneIndex) ||
+      milestoneIndex < 0
     ) {
       return Response.json({ success: false, error: "Invalid parameters" });
     }

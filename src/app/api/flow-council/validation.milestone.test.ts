@@ -25,6 +25,7 @@ function fullMilestoneElement() {
     id: MILESTONE_UUID,
     type: "milestone" as const,
     label: "Engineering Milestones",
+    required: true,
     milestoneLabel: "Build Milestone",
     itemLabel: "Deliverable",
     minCount: 3,
@@ -40,6 +41,7 @@ function minimalMilestoneElement() {
     id: MILESTONE_UUID,
     type: "milestone" as const,
     label: "Milestones",
+    required: true,
   };
 }
 

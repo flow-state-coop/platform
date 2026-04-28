@@ -391,7 +391,7 @@ export default function MilestoneCard({
 
   const isProgressEditing = editingItemIndex !== null || editingOtherDetails;
 
-  const badgeLabel = `${milestone.milestoneLabel} Milestone ${milestone.index + 1}`;
+  const badgeLabel = `${milestone.milestoneLabel} ${milestone.index + 1}`;
   const itemLabel = `${milestone.itemLabel}s`;
 
   const handleEditDeliverableClick = (index: number) => {
