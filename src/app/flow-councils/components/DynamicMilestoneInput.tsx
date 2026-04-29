@@ -7,6 +7,7 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import Markdown from "@/components/Markdown";
+import { MAX_MILESTONES } from "@/app/api/flow-council/validation";
 import type { MilestoneQuestion } from "@/app/flow-councils/types/formSchema";
 
 export type DynamicMilestoneValue = {
@@ -94,7 +95,7 @@ export default function DynamicMilestoneInput(props: Props) {
     });
   };
 
-  const canAdd = !readOnly && !lockBlockCount;
+  const canAdd = !readOnly && !lockBlockCount && blocks.length < MAX_MILESTONES;
   const canRemoveBlock = (i: number) =>
     !readOnly && !lockBlockCount && i >= minCount;
 

@@ -12,6 +12,8 @@ import type {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+export const MAX_STRING_LENGTH = 10_000;
+
 export function isValidEmail(value: string): boolean {
   return EMAIL_REGEX.test(value);
 }
@@ -367,8 +369,18 @@ export const formElementSchema = z
     itemLabel: z.enum(["Deliverable", "Activation"]).optional(),
     minCount: z.number().int().min(1).max(5).optional(),
     descriptionPlaceholder: z.string().max(500).optional(),
-    descriptionMinChars: z.number().int().nonnegative().optional(),
-    descriptionMaxChars: z.number().int().positive().optional(),
+    descriptionMinChars: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(MAX_STRING_LENGTH)
+      .optional(),
+    descriptionMaxChars: z
+      .number()
+      .int()
+      .positive()
+      .max(MAX_STRING_LENGTH)
+      .optional(),
   })
   .refine(
     (el) =>
@@ -414,7 +426,6 @@ export function validateFormSchema(
 
 export type FormElement = z.infer<typeof formElementSchema>;
 
-export const MAX_STRING_LENGTH = 10_000;
 export const MAX_DETAILS_SIZE = 512_000; // 512 KB
 export const MAX_MILESTONES = 20;
 
