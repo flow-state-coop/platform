@@ -218,21 +218,34 @@ export const milestoneProgressSchema = z.object({
   items: z.array(deliverableProgressSchema),
 });
 
-export const milestoneDefinitionSchema = z.object({
-  title: z.string().min(1, "Title is required").max(200),
-  description: z
-    .string()
-    .min(
-      CHARACTER_LIMITS.milestoneDescription.min,
-      `Description must be at least ${CHARACTER_LIMITS.milestoneDescription.min} characters`,
-    )
-    .max(CHARACTER_LIMITS.milestoneDescription.max),
-  items: z
-    .array(z.string().max(500))
-    .max(50)
-    .refine((items) => items.some((item) => item.trim() !== ""), {
-      message: "At least one item is required",
-    }),
+export function makeMilestoneDefinitionSchema(opts: {
+  descriptionMinChars: number;
+  descriptionMaxChars: number;
+}) {
+  return z.object({
+    title: z.string().min(1, "Title is required").max(200),
+    description: z
+      .string()
+      .min(
+        opts.descriptionMinChars,
+        `Description must be at least ${opts.descriptionMinChars} characters`,
+      )
+      .max(
+        opts.descriptionMaxChars,
+        `Description must be at most ${opts.descriptionMaxChars} characters`,
+      ),
+    items: z
+      .array(z.string().max(500))
+      .max(50)
+      .refine((items) => items.some((item) => item.trim() !== ""), {
+        message: "At least one item is required",
+      }),
+  });
+}
+
+export const milestoneDefinitionSchema = makeMilestoneDefinitionSchema({
+  descriptionMinChars: CHARACTER_LIMITS.milestoneDescription.min,
+  descriptionMaxChars: CHARACTER_LIMITS.milestoneDescription.max,
 });
 
 export const reactionEmojiSchema = z.enum(ALLOWED_REACTIONS);
@@ -351,7 +364,7 @@ export const formElementSchema = z
     max: z.number().optional(),
     options: z.array(z.string().max(200)).max(50).optional(),
     milestoneLabel: z.string().max(100).optional(),
-    itemLabel: z.string().max(100).optional(),
+    itemLabel: z.enum(["Deliverable", "Activation"]).optional(),
     minCount: z.number().int().min(1).max(5).optional(),
     descriptionPlaceholder: z.string().max(500).optional(),
     descriptionMinChars: z.number().int().nonnegative().optional(),
@@ -401,7 +414,7 @@ export function validateFormSchema(
 
 export type FormElement = z.infer<typeof formElementSchema>;
 
-const MAX_STRING_LENGTH = 10_000;
+export const MAX_STRING_LENGTH = 10_000;
 export const MAX_DETAILS_SIZE = 512_000; // 512 KB
 
 type FieldValidator = (val: unknown, el: FormElement) => string | null;

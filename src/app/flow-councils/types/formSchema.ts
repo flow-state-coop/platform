@@ -78,11 +78,13 @@ type EthAddressQuestion = FormElementBase & {
   placeholder?: string;
 };
 
+export type MilestoneItemLabel = "Deliverable" | "Activation";
+
 export type MilestoneQuestion = FormElementBase & {
   type: "milestone";
   required?: boolean;
   milestoneLabel?: string;
-  itemLabel?: string;
+  itemLabel?: MilestoneItemLabel;
   minCount?: number;
   descriptionPlaceholder?: string;
   descriptionMinChars?: number;

@@ -494,15 +494,19 @@ function ElementCard({
                   <Form.Label className="fs-sm fw-semi-bold">
                     Sub-item Label
                   </Form.Label>
-                  <Form.Control
-                    type="text"
+                  <Form.Select
                     className="rounded-3"
-                    value={element.itemLabel ?? ""}
+                    value={element.itemLabel ?? "Deliverable"}
                     onChange={(e) =>
-                      onUpdate({ ...element, itemLabel: e.target.value })
+                      onUpdate({
+                        ...element,
+                        itemLabel: e.target.value as "Deliverable" | "Activation",
+                      })
                     }
-                    placeholder="Deliverable"
-                  />
+                  >
+                    <option value="Deliverable">Deliverable</option>
+                    <option value="Activation">Activation</option>
+                  </Form.Select>
                 </Form.Group>
               </Stack>
               <Form.Group className="mb-3">

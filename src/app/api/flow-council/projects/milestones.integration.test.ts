@@ -313,7 +313,7 @@ describe("GET /api/flow-council/projects/[projectId]/milestones — dynamic", ()
     const round = await seedRoundWithMilestoneSchema(
       ELEMENT_UUID,
       "Engineering Milestone",
-      "Key Result",
+      "Activation",
     );
 
     const project = await db
@@ -331,7 +331,7 @@ describe("GET /api/flow-council/projects/[projectId]/milestones — dynamic", ()
       {
         title: "Ship the API",
         description: "x".repeat(50),
-        items: ["Key Result 1", "Key Result 2"],
+        items: ["Activation 1", "Activation 2"],
       },
     ]);
 
@@ -347,9 +347,9 @@ describe("GET /api/flow-council/projects/[projectId]/milestones — dynamic", ()
     const [milestone] = body.applications[0].milestones;
     expect(milestone.type).toBe(ELEMENT_UUID);
     expect(milestone.milestoneLabel).toBe("Engineering Milestone");
-    expect(milestone.itemLabel).toBe("Key Result");
+    expect(milestone.itemLabel).toBe("Activation");
     expect(milestone.title).toBe("Ship the API");
-    expect(milestone.itemNames).toEqual(["Key Result 1", "Key Result 2"]);
+    expect(milestone.itemNames).toEqual(["Activation 1", "Activation 2"]);
   });
 });
 
@@ -362,7 +362,7 @@ describe("GET — legacy and dynamic applications do not cross-pollute", () => {
     const round = await seedRoundWithMilestoneSchema(
       ELEMENT_UUID,
       "Engineering Milestone",
-      "Key Result",
+      "Activation",
     );
 
     // A second round for the legacy application. Use a distinct chainId so we
@@ -399,7 +399,7 @@ describe("GET — legacy and dynamic applications do not cross-pollute", () => {
         {
           title: "Dynamic Milestone",
           description: "z".repeat(50),
-          items: ["KR 1"],
+          items: ["Activation 1"],
         },
       ],
     );
@@ -601,7 +601,7 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
     const round = await seedRoundWithMilestoneSchema(
       ELEMENT_UUID,
       "Engineering Milestone",
-      "Key Result",
+      "Activation",
     );
 
     const project = await db
@@ -623,7 +623,7 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
         {
           title: "Original Title",
           description: "x".repeat(50),
-          items: ["KR 1"],
+          items: ["Activation 1"],
         },
       ],
     );
@@ -674,7 +674,7 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
     const round = await seedRoundWithMilestoneSchema(
       ELEMENT_UUID,
       "Engineering Milestone",
-      "Key Result",
+      "Activation",
     );
 
     const project = await db
@@ -694,7 +694,7 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
           {
             title: "Locked Dynamic Milestone",
             description: "x".repeat(50),
-            items: ["KR 1"],
+            items: ["Activation 1"],
           },
         ],
       },
@@ -727,7 +727,7 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
     const round = await seedRoundWithMilestoneSchema(
       ELEMENT_UUID,
       "Engineering Milestone",
-      "Key Result",
+      "Activation",
     );
 
     const project = await db
@@ -791,7 +791,7 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
     const round = await seedRoundWithMilestoneSchema(
       ELEMENT_UUID,
       "Engineering Milestone",
-      "Key Result",
+      "Activation",
     );
 
     const project = await db
@@ -813,7 +813,7 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
         {
           title: "Only Milestone",
           description: "x".repeat(50),
-          items: ["KR 1"],
+          items: ["Activation 1"],
         },
       ],
     );
@@ -845,7 +845,7 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
     const round = await seedRoundWithMilestoneSchema(
       ELEMENT_UUID,
       "Engineering Milestone",
-      "Key Result",
+      "Activation",
     );
 
     const project = await db
@@ -942,7 +942,7 @@ describe("PATCH — milestoneType length validation", () => {
     const round = await seedRoundWithMilestoneSchema(
       ELEMENT_UUID,
       "Engineering Milestone",
-      "Key Result",
+      "Activation",
     );
 
     const app = await seedDynamicApplication(

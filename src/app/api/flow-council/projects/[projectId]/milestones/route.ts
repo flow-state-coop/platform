@@ -6,6 +6,8 @@ import { parseDetails } from "@/app/api/flow-council/utils";
 import {
   milestoneProgressSchema,
   milestoneDefinitionSchema,
+  makeMilestoneDefinitionSchema,
+  MAX_STRING_LENGTH,
 } from "@/app/api/flow-council/validation";
 import type { RoundForm } from "@/app/flow-councils/types/round";
 import type {
@@ -348,22 +350,34 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       return Response.json({ success: false, error: "Invalid parameters" });
     }
 
+    // Fetched once and reused for the dynamic-element lookup and the feed-post
+    // round name below, instead of querying the same row twice per request.
+    // Skipped only on the legacy definition-edit path, where neither is needed.
+    const needsRoundDetails = isDynamic || !definition;
+    let roundDetailsParsed: {
+      name?: string;
+      formSchema?: FormSchema;
+    } | null = null;
+    if (needsRoundDetails) {
+      const roundRow = await db
+        .selectFrom("rounds")
+        .select("details")
+        .where("id", "=", application.roundId)
+        .executeTakeFirst();
+      roundDetailsParsed = parseDetails<{
+        name?: string;
+        formSchema?: FormSchema;
+      }>(roundRow?.details);
+    }
+
     // For dynamic apps, milestoneType is used as an object-key lookup against
     // appDetails.round. Verify it matches a milestone element declared in the
     // round's formSchema so a manager cannot probe or overwrite arbitrary keys
     // in the stored application JSON (e.g. __proto__, unrelated fields).
     let dynamicMilestoneElement: MilestoneQuestion | undefined;
     if (isDynamic) {
-      const roundForLookup = await db
-        .selectFrom("rounds")
-        .select("details")
-        .where("id", "=", application.roundId)
-        .executeTakeFirst();
-      const roundDetailsForLookup = parseDetails<{
-        formSchema?: FormSchema;
-      }>(roundForLookup?.details);
       dynamicMilestoneElement = getMilestoneElements(
-        roundDetailsForLookup?.formSchema,
+        roundDetailsParsed?.formSchema,
       ).find((el) => el.id === milestoneType);
       if (!dynamicMilestoneElement) {
         return Response.json({ success: false, error: "Invalid parameters" });
@@ -381,7 +395,18 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         );
       }
 
-      const parsedDef = milestoneDefinitionSchema.safeParse(definition);
+      // Dynamic milestones honor the per-element descriptionMin/MaxChars
+      // configured in the round's formSchema. Falling back to the legacy
+      // 500–5000 bounds here would lock applicants out of editing data they
+      // were allowed to submit (e.g. an admin-configured 100–8000 range).
+      const definitionSchema = dynamicMilestoneElement
+        ? makeMilestoneDefinitionSchema({
+            descriptionMinChars: dynamicMilestoneElement.descriptionMinChars ?? 0,
+            descriptionMaxChars:
+              dynamicMilestoneElement.descriptionMaxChars ?? MAX_STRING_LENGTH,
+          })
+        : milestoneDefinitionSchema;
+      const parsedDef = definitionSchema.safeParse(definition);
       if (!parsedDef.success) {
         return Response.json({
           success: false,
@@ -508,20 +533,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     const newProgress = parsed.data;
     const feedMessages: string[] = [];
 
-    const roundData = await db
-      .selectFrom("rounds")
-      .select("details")
-      .where("id", "=", application.roundId)
-      .executeTakeFirst();
-
-    const roundDetails = parseDetails<{
-      name?: string;
-      formSchema?: FormSchema;
-    }>(roundData?.details);
-    const roundName = roundDetails?.name ?? "Round";
+    const roundName = roundDetailsParsed?.name ?? "Round";
     const { milestoneLabel: typeLabel, itemLabel } = getMilestoneLabels(
       milestoneType,
-      roundDetails?.formSchema,
+      roundDetailsParsed?.formSchema,
       isDynamic,
     );
 

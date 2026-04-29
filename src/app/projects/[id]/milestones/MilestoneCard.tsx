@@ -392,7 +392,7 @@ export default function MilestoneCard({
   const isProgressEditing = editingItemIndex !== null || editingOtherDetails;
 
   const badgeLabel = `${milestone.milestoneLabel} ${milestone.index + 1}`;
-  const itemLabel = `${milestone.itemLabel}s`;
+  const itemLabel = milestone.itemLabel;
 
   const handleEditDeliverableClick = (index: number) => {
     requireAuth(() => setEditingItemIndex(index));
@@ -617,7 +617,7 @@ export default function MilestoneCard({
                           className="fs-xs text-muted text-uppercase fw-semi-bold"
                           style={{ letterSpacing: "0.05em" }}
                         >
-                          {itemLabel.slice(0, -1)} {i + 1}
+                          {itemLabel} {i + 1}
                         </span>
                         <div className="fw-semi-bold mt-1">{name}</div>
                       </div>
