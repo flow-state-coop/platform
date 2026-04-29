@@ -7,7 +7,7 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import Markdown from "@/components/Markdown";
-import { MAX_MILESTONES } from "@/app/api/flow-council/validation";
+import { MAX_MILESTONES } from "@/app/flow-councils/constants";
 import type { MilestoneQuestion } from "@/app/flow-councils/types/formSchema";
 
 export type DynamicMilestoneValue = {

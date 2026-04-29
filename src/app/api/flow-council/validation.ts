@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isAddress } from "viem";
-import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
+import { CHARACTER_LIMITS, MAX_MILESTONES } from "@/app/flow-councils/constants";
 import { ALLOWED_REACTIONS } from "@/app/flow-councils/lib/constants";
 import { STRUCTURAL_TYPES } from "@/app/flow-councils/types/formSchema";
 import { normalizeUrl } from "@/app/flow-councils/utils/normalizeUrl";
@@ -427,7 +427,6 @@ export function validateFormSchema(
 export type FormElement = z.infer<typeof formElementSchema>;
 
 export const MAX_DETAILS_SIZE = 512_000; // 512 KB
-export const MAX_MILESTONES = 20;
 
 type FieldValidator = (val: unknown, el: FormElement) => string | null;
 
