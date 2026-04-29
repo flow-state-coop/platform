@@ -22,6 +22,8 @@ export type MilestoneWithProgress = {
   description: string;
   itemNames: string[];
   progress: MilestoneProgressData;
+  descriptionMinChars: number;
+  descriptionMaxChars: number;
 };
 
 export type ApplicationMilestones = {

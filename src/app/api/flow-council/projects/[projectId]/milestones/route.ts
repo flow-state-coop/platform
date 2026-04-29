@@ -9,6 +9,7 @@ import {
   makeMilestoneDefinitionSchema,
   MAX_STRING_LENGTH,
 } from "@/app/api/flow-council/validation";
+import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
 import type { RoundForm } from "@/app/flow-councils/types/round";
 import type {
   FormSchema,
@@ -166,6 +167,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
           const milestoneLabel =
             element.milestoneLabel || element.label || "Milestone";
           const itemLabel = element.itemLabel || "Deliverable";
+          const descriptionMinChars = element.descriptionMinChars ?? 0;
+          const descriptionMaxChars =
+            element.descriptionMaxChars ?? MAX_STRING_LENGTH;
           (raw as DynamicMilestoneValue[]).forEach((m, i) => {
             if (!m || typeof m !== "object") return;
             const items = Array.isArray(m.items) ? m.items : [];
@@ -180,6 +184,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
                 typeof m.description === "string" ? m.description : "",
               itemNames: items,
               progress: progressMap.get(key) ?? emptyProgress(items.length),
+              descriptionMinChars,
+              descriptionMaxChars,
             });
           });
         }
@@ -197,6 +203,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
               itemNames: m.deliverables,
               progress:
                 progressMap.get(key) ?? emptyProgress(m.deliverables.length),
+              descriptionMinChars: CHARACTER_LIMITS.milestoneDescription.min,
+              descriptionMaxChars: CHARACTER_LIMITS.milestoneDescription.max,
             });
           });
         }
@@ -214,6 +222,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
               itemNames: m.activations,
               progress:
                 progressMap.get(key) ?? emptyProgress(m.activations.length),
+              descriptionMinChars: CHARACTER_LIMITS.milestoneDescription.min,
+              descriptionMaxChars: CHARACTER_LIMITS.milestoneDescription.max,
             });
           });
         }

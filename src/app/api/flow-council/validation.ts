@@ -505,7 +505,7 @@ const VALIDATORS: Partial<Record<FormElement["type"], FieldValidator>> = {
     typeof val !== "boolean" ? `"${el.label}" must be true or false` : null,
   milestone: (val, el) => {
     const minCount = el.minCount ?? 1;
-    const milestoneLabel = el.milestoneLabel ?? el.label ?? "Milestone";
+    const milestoneLabel = el.milestoneLabel || el.label || "Milestone";
     if (!Array.isArray(val)) {
       return `"${el.label}" must be a list of milestones`;
     }
