@@ -82,6 +82,15 @@ function newQuestion(type: FormElement["type"]): FormElement {
       return { ...base, type, required: false };
     case "ethAddress":
       return { ...base, type, required: false, placeholder: "0x..." };
+    case "milestone":
+      return {
+        ...base,
+        type,
+        required: true,
+        milestoneLabel: "Milestone",
+        itemLabel: "Deliverable",
+        minCount: 1,
+      };
     default:
       return { ...base, type, required: false } as FormElement;
   }
@@ -98,6 +107,7 @@ const QUESTION_TYPES: { value: FormElement["type"]; label: string }[] = [
   { value: "email", label: "Email" },
   { value: "telegram", label: "Telegram" },
   { value: "ethAddress", label: "ETH Address" },
+  { value: "milestone", label: "Milestone" },
 ];
 
 const STRUCTURE_TYPES: { value: FormElement["type"]; label: string }[] = [
@@ -108,6 +118,7 @@ const STRUCTURE_TYPES: { value: FormElement["type"]; label: string }[] = [
 
 const COLOR_STANDARD = "#3c655b";
 const COLOR_COMMS = "#056589";
+const COLOR_MILESTONE = "#d95d39";
 const COLOR_STRUCTURAL = "#888888";
 
 const TYPE_COLORS: Record<FormElement["type"], string> = {
@@ -117,6 +128,7 @@ const TYPE_COLORS: Record<FormElement["type"], string> = {
   select: COLOR_STANDARD,
   multiSelect: COLOR_STANDARD,
   boolean: COLOR_STANDARD,
+  milestone: COLOR_MILESTONE,
   url: COLOR_COMMS,
   email: COLOR_COMMS,
   telegram: COLOR_COMMS,
@@ -139,6 +151,7 @@ const TYPE_DISPLAY_NAMES: Record<FormElement["type"], string> = {
   boolean: "Yes/No",
   telegram: "Telegram",
   ethAddress: "ETH Address",
+  milestone: "Milestone",
   divider: "Dividing Line",
 };
 
@@ -356,7 +369,7 @@ function ElementCard({
             </Form.Group>
           )}
 
-          {"required" in element && (
+          {"required" in element && element.type !== "milestone" && (
             <Form.Check
               type="checkbox"
               label="Required"
@@ -454,6 +467,146 @@ function ElementCard({
                 }
                 className="mb-3"
               />
+            </>
+          )}
+
+          {element.type === "milestone" && (
+            <>
+              <Stack direction="horizontal" gap={3} className="mb-3">
+                <Form.Group className="flex-grow-1">
+                  <Form.Label className="fs-sm fw-semi-bold">
+                    Milestone Label
+                  </Form.Label>
+                  <Form.Control
+                    type="text"
+                    className="rounded-3"
+                    value={element.milestoneLabel ?? ""}
+                    onChange={(e) =>
+                      onUpdate({
+                        ...element,
+                        milestoneLabel: e.target.value,
+                      })
+                    }
+                    placeholder="Milestone"
+                  />
+                </Form.Group>
+                <Form.Group className="flex-grow-1">
+                  <Form.Label className="fs-sm fw-semi-bold">
+                    Sub-item Label
+                  </Form.Label>
+                  <Form.Select
+                    className="rounded-3"
+                    value={element.itemLabel ?? "Deliverable"}
+                    onChange={(e) =>
+                      onUpdate({
+                        ...element,
+                        itemLabel: e.target.value as
+                          | "Deliverable"
+                          | "Activation",
+                      })
+                    }
+                  >
+                    <option value="Deliverable">Deliverable</option>
+                    <option value="Activation">Activation</option>
+                  </Form.Select>
+                </Form.Group>
+              </Stack>
+              <Form.Group className="mb-3">
+                <Form.Label className="fs-sm fw-semi-bold">
+                  Minimum Count
+                </Form.Label>
+                <Form.Select
+                  className="rounded-3"
+                  value={element.minCount ?? 1}
+                  onChange={(e) =>
+                    onUpdate({
+                      ...element,
+                      minCount: Number(e.target.value),
+                    })
+                  }
+                >
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                  <option value={4}>4</option>
+                  <option value={5}>5</option>
+                </Form.Select>
+                <Form.Text className="text-muted">
+                  Applicants must complete at least this many milestones (1–5).
+                </Form.Text>
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label className="fs-sm fw-semi-bold">
+                  Description Placeholder
+                </Form.Label>
+                <Form.Control
+                  type="text"
+                  className="rounded-3"
+                  value={element.descriptionPlaceholder ?? ""}
+                  onChange={(e) =>
+                    onUpdate({
+                      ...element,
+                      descriptionPlaceholder: e.target.value || undefined,
+                    })
+                  }
+                />
+              </Form.Group>
+              <Stack direction="horizontal" gap={3} className="mb-3">
+                <Form.Group className="flex-grow-1">
+                  <Form.Label className="fs-sm fw-semi-bold">
+                    Description Min Characters
+                  </Form.Label>
+                  <Form.Control
+                    type="number"
+                    className="rounded-3"
+                    min={0}
+                    value={element.descriptionMinChars ?? ""}
+                    onChange={(e) => {
+                      if (!e.target.value) {
+                        onUpdate({
+                          ...element,
+                          descriptionMinChars: undefined,
+                        });
+                        return;
+                      }
+                      const n = Number(e.target.value);
+                      if (!Number.isFinite(n)) return;
+                      onUpdate({
+                        ...element,
+                        descriptionMinChars: Math.max(0, Math.round(n)),
+                      });
+                    }}
+                    placeholder="None"
+                  />
+                </Form.Group>
+                <Form.Group className="flex-grow-1">
+                  <Form.Label className="fs-sm fw-semi-bold">
+                    Description Max Characters
+                  </Form.Label>
+                  <Form.Control
+                    type="number"
+                    className="rounded-3"
+                    min={1}
+                    value={element.descriptionMaxChars ?? ""}
+                    onChange={(e) => {
+                      if (!e.target.value) {
+                        onUpdate({
+                          ...element,
+                          descriptionMaxChars: undefined,
+                        });
+                        return;
+                      }
+                      const n = Number(e.target.value);
+                      if (!Number.isFinite(n)) return;
+                      onUpdate({
+                        ...element,
+                        descriptionMaxChars: Math.max(1, Math.round(n)),
+                      });
+                    }}
+                    placeholder="None"
+                  />
+                </Form.Group>
+              </Stack>
             </>
           )}
 
@@ -1057,13 +1210,16 @@ export default function FormBuilder({ chainId, councilId }: Props) {
         </Alert>
       )}
       {success && (
-        <Alert
-          variant="success"
-          dismissible
-          onClose={() => setSuccess("")}
-          className="mb-3"
-        >
-          {success}
+        <Alert variant="success" className="mb-3 d-flex align-items-center">
+          <span className="flex-grow-1">{success}</span>
+          <Button
+            variant="transparent"
+            className="p-0 border-0 lh-1"
+            onClick={() => setSuccess("")}
+            aria-label="Close"
+          >
+            <Image src="/close.svg" alt="Close" width={24} height={24} />
+          </Button>
         </Alert>
       )}
     </>
@@ -1468,6 +1624,57 @@ function FormPreview({
                 </Stack>
               </Form.Group>
             );
+          case "milestone": {
+            const minCount = Math.max(1, Math.min(5, el.minCount ?? 1));
+            const milestoneLabel = el.milestoneLabel || "Milestone";
+            const itemLabel = el.itemLabel || "Deliverable";
+            return (
+              <Form.Group
+                key={el.id}
+                className="mb-3"
+                style={errorStyle(el.id)}
+              >
+                <Form.Label className="fs-sm fw-semi-bold">
+                  {num(el.id)}
+                  {el.label || "(Untitled)"}
+                  {el.required && "*"}
+                </Form.Label>
+                {Array.from({ length: minCount }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="border rounded-3 p-2 mb-2"
+                    style={{ backgroundColor: "#fafafa" }}
+                  >
+                    <span className="fw-semi-bold fs-sm d-block mb-1">
+                      {milestoneLabel} {i + 1}
+                    </span>
+                    <Form.Control
+                      type="text"
+                      disabled
+                      className="rounded-3 mb-2"
+                      placeholder="Title"
+                    />
+                    <Form.Control
+                      as="textarea"
+                      rows={2}
+                      disabled
+                      className="rounded-3 mb-2"
+                      placeholder={el.descriptionPlaceholder ?? "Description"}
+                    />
+                    <Form.Control
+                      type="text"
+                      disabled
+                      className="rounded-3"
+                      placeholder={itemLabel}
+                    />
+                  </div>
+                ))}
+                <Form.Text className="text-muted">
+                  Minimum {minCount}; applicants can add more.
+                </Form.Text>
+              </Form.Group>
+            );
+          }
         }
       })}
     </Form>

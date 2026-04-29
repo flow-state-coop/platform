@@ -11,7 +11,6 @@ import Markdown from "@/components/Markdown";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import InfoTooltip from "@/components/InfoTooltip";
 import CharacterCounter from "@/app/flow-councils/components/CharacterCounter";
-import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
 import useRequireAuth from "@/hooks/requireAuth";
 import { normalizeUrl } from "@/app/flow-councils/utils/normalizeUrl";
 import type {
@@ -33,11 +32,6 @@ type MilestoneCardProps = {
 type EditingDeliverable = {
   completion: number;
   evidence: EvidenceLink[];
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  build: "Build",
-  growth: "Growth",
 };
 
 function CompletionBar({ completion }: { completion: number }) {
@@ -238,13 +232,13 @@ function DefinitionEditForm({
   );
   const [validated, setValidated] = useState(false);
 
-  const itemLabel = milestone.type === "build" ? "Deliverable" : "Activation";
+  const itemLabel = milestone.itemLabel;
+  const descMin = milestone.descriptionMinChars;
+  const descMax = milestone.descriptionMaxChars;
 
   const isTitleEmpty = !title.trim();
-  const isDescriptionShort =
-    description.length < CHARACTER_LIMITS.milestoneDescription.min;
-  const isDescriptionLong =
-    description.length > CHARACTER_LIMITS.milestoneDescription.max;
+  const isDescriptionShort = description.length < descMin;
+  const isDescriptionLong = description.length > descMax;
   const hasValidItem = items.some((item) => item.trim() !== "");
 
   const titleInvalid = validated && isTitleEmpty;
@@ -305,11 +299,7 @@ function DefinitionEditForm({
           placeholder="Describe the outcomes you aim to achieve"
           isInvalid={descriptionInvalid}
         />
-        <CharacterCounter
-          value={description}
-          min={CHARACTER_LIMITS.milestoneDescription.min}
-          max={CHARACTER_LIMITS.milestoneDescription.max}
-        />
+        <CharacterCounter value={description} min={descMin} max={descMax} />
       </Form.Group>
       <Form.Group>
         <Form.Label className="fw-semi-bold">{itemLabel}s*</Form.Label>
@@ -396,8 +386,8 @@ export default function MilestoneCard({
 
   const isProgressEditing = editingItemIndex !== null || editingOtherDetails;
 
-  const badgeLabel = `${TYPE_LABELS[milestone.type]} Milestone ${milestone.index + 1}`;
-  const itemLabel = milestone.type === "build" ? "Deliverables" : "Activations";
+  const badgeLabel = `${milestone.milestoneLabel} ${milestone.index + 1}`;
+  const itemLabel = milestone.itemLabel;
 
   const handleEditDeliverableClick = (index: number) => {
     requireAuth(() => setEditingItemIndex(index));
@@ -622,7 +612,7 @@ export default function MilestoneCard({
                           className="fs-xs text-muted text-uppercase fw-semi-bold"
                           style={{ letterSpacing: "0.05em" }}
                         >
-                          {itemLabel.slice(0, -1)} {i + 1}
+                          {itemLabel} {i + 1}
                         </span>
                         <div className="fw-semi-bold mt-1">{name}</div>
                       </div>

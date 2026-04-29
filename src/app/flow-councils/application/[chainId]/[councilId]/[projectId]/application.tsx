@@ -536,6 +536,7 @@ export default function Application(props: ApplicationProps) {
                     values={dynamicRoundValues}
                     onChange={handleDynamicRoundChange}
                     validated={dynamicValidated}
+                    lockBlockCount={isInLockedStatus && editsUnlocked}
                     profileData={profileData}
                   />
                   {dynamicError && (
@@ -618,6 +619,7 @@ export default function Application(props: ApplicationProps) {
                     values={dynamicAttestationValues}
                     onChange={handleDynamicAttestationChange}
                     validated={dynamicValidated}
+                    lockBlockCount={isInLockedStatus && editsUnlocked}
                     profileData={profileData}
                   />
                   {dynamicError && (

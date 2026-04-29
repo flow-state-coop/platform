@@ -14,12 +14,16 @@ export type MilestoneProgressData = {
 };
 
 export type MilestoneWithProgress = {
-  type: "build" | "growth";
+  type: string;
+  milestoneLabel: string;
+  itemLabel: string;
   index: number;
   title: string;
   description: string;
   itemNames: string[];
   progress: MilestoneProgressData;
+  descriptionMinChars: number;
+  descriptionMaxChars: number;
 };
 
 export type ApplicationMilestones = {

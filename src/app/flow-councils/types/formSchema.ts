@@ -78,6 +78,19 @@ type EthAddressQuestion = FormElementBase & {
   placeholder?: string;
 };
 
+export type MilestoneItemLabel = "Deliverable" | "Activation";
+
+export type MilestoneQuestion = FormElementBase & {
+  type: "milestone";
+  required?: boolean;
+  milestoneLabel?: string;
+  itemLabel?: MilestoneItemLabel;
+  minCount?: number;
+  descriptionPlaceholder?: string;
+  descriptionMinChars?: number;
+  descriptionMaxChars?: number;
+};
+
 export type FormElement =
   | SectionElement
   | DescriptionElement
@@ -91,6 +104,7 @@ export type FormElement =
   | BooleanQuestion
   | TelegramQuestion
   | EthAddressQuestion
+  | MilestoneQuestion
   | DividerElement;
 
 export type FormSchema = {

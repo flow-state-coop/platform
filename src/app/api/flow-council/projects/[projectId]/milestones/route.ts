@@ -6,8 +6,16 @@ import { parseDetails } from "@/app/api/flow-council/utils";
 import {
   milestoneProgressSchema,
   milestoneDefinitionSchema,
+  makeMilestoneDefinitionSchema,
+  MAX_STRING_LENGTH,
 } from "@/app/api/flow-council/validation";
+import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
 import type { RoundForm } from "@/app/flow-councils/types/round";
+import type {
+  FormSchema,
+  MilestoneQuestion,
+} from "@/app/flow-councils/types/formSchema";
+import type { DynamicMilestoneValue } from "@/app/flow-councils/components/DynamicMilestoneInput";
 import type {
   ApplicationMilestones,
   MilestoneWithProgress,
@@ -26,6 +34,72 @@ function emptyProgress(itemCount: number): MilestoneProgressData {
       completion: 0,
       evidence: [],
     })),
+  };
+}
+
+type DynamicAppDetails = {
+  round?: Record<string, unknown>;
+  attestation?: Record<string, unknown>;
+};
+
+// Dynamic apps store answers under appDetails.round[elementId].
+// Legacy apps use top-level buildGoals/growthGoals; absence of a 'round'
+// key is the discriminant.
+function isDynamicAppDetails(appDetails: unknown): appDetails is {
+  round: Record<string, unknown>;
+} {
+  return (
+    !!appDetails &&
+    typeof appDetails === "object" &&
+    "round" in (appDetails as object) &&
+    typeof (appDetails as DynamicAppDetails).round === "object" &&
+    (appDetails as DynamicAppDetails).round !== null
+  );
+}
+
+function getMilestoneElements(
+  formSchema: FormSchema | null | undefined,
+): MilestoneQuestion[] {
+  if (!formSchema?.round) return [];
+  return formSchema.round.filter(
+    (el): el is MilestoneQuestion => el.type === "milestone",
+  );
+}
+
+function resolveDynamicLabels(
+  formSchema: FormSchema | null | undefined,
+  elementId: string,
+): { milestoneLabel: string; itemLabel: string } {
+  const element = getMilestoneElements(formSchema).find(
+    (el) => el.id === elementId,
+  );
+  return {
+    milestoneLabel: element?.milestoneLabel || element?.label || "Milestone",
+    itemLabel: element?.itemLabel || "Deliverable",
+  };
+}
+
+const LEGACY_MILESTONE_LABELS: Record<string, string> = {
+  build: "Build Milestone",
+  growth: "Growth Milestone",
+};
+
+const LEGACY_ITEM_LABELS: Record<string, string> = {
+  build: "Deliverable",
+  growth: "Activation",
+};
+
+function getMilestoneLabels(
+  milestoneType: string,
+  formSchema: FormSchema | null | undefined,
+  isDynamic: boolean,
+): { milestoneLabel: string; itemLabel: string } {
+  if (isDynamic) {
+    return resolveDynamicLabels(formSchema, milestoneType);
+  }
+  return {
+    milestoneLabel: LEGACY_MILESTONE_LABELS[milestoneType] ?? milestoneType,
+    itemLabel: LEGACY_ITEM_LABELS[milestoneType] ?? "Deliverable",
   };
 }
 
@@ -74,38 +148,85 @@ export async function GET(_request: Request, { params }: RouteParams) {
     }
 
     const result: ApplicationMilestones[] = applications.map((app) => {
-      const roundDetails = parseDetails<{ name?: string }>(app.roundDetails);
-      const appDetails = parseDetails<RoundForm>(app.appDetails);
+      const roundDetails = parseDetails<{
+        name?: string;
+        formSchema?: FormSchema;
+      }>(app.roundDetails);
+      const appDetailsRaw = parseDetails<RoundForm & DynamicAppDetails>(
+        app.appDetails,
+      );
       const milestones: MilestoneWithProgress[] = [];
 
-      if (appDetails?.buildGoals?.milestones) {
-        appDetails.buildGoals.milestones.forEach((m, i) => {
-          const key = `${app.applicationId}-build-${i}`;
-          milestones.push({
-            type: "build",
-            index: i,
-            title: m.title,
-            description: m.description,
-            itemNames: m.deliverables,
-            progress:
-              progressMap.get(key) ?? emptyProgress(m.deliverables.length),
+      if (isDynamicAppDetails(appDetailsRaw)) {
+        const milestoneElements = getMilestoneElements(
+          roundDetails?.formSchema,
+        );
+        for (const element of milestoneElements) {
+          const raw = appDetailsRaw.round[element.id];
+          if (!Array.isArray(raw)) continue;
+          const milestoneLabel =
+            element.milestoneLabel || element.label || "Milestone";
+          const itemLabel = element.itemLabel || "Deliverable";
+          const descriptionMinChars = element.descriptionMinChars ?? 0;
+          const descriptionMaxChars =
+            element.descriptionMaxChars ?? MAX_STRING_LENGTH;
+          (raw as DynamicMilestoneValue[]).forEach((m, i) => {
+            if (!m || typeof m !== "object") return;
+            const items = Array.isArray(m.items) ? m.items : [];
+            const key = `${app.applicationId}-${element.id}-${i}`;
+            milestones.push({
+              type: element.id,
+              milestoneLabel,
+              itemLabel,
+              index: i,
+              title: typeof m.title === "string" ? m.title : "",
+              description:
+                typeof m.description === "string" ? m.description : "",
+              itemNames: items,
+              progress: progressMap.get(key) ?? emptyProgress(items.length),
+              descriptionMinChars,
+              descriptionMaxChars,
+            });
           });
-        });
-      }
+        }
+      } else {
+        if (appDetailsRaw?.buildGoals?.milestones) {
+          appDetailsRaw.buildGoals.milestones.forEach((m, i) => {
+            const key = `${app.applicationId}-build-${i}`;
+            milestones.push({
+              type: "build",
+              milestoneLabel: "Build Milestone",
+              itemLabel: "Deliverable",
+              index: i,
+              title: m.title,
+              description: m.description,
+              itemNames: m.deliverables,
+              progress:
+                progressMap.get(key) ?? emptyProgress(m.deliverables.length),
+              descriptionMinChars: CHARACTER_LIMITS.milestoneDescription.min,
+              descriptionMaxChars: CHARACTER_LIMITS.milestoneDescription.max,
+            });
+          });
+        }
 
-      if (appDetails?.growthGoals?.milestones) {
-        appDetails.growthGoals.milestones.forEach((m, i) => {
-          const key = `${app.applicationId}-growth-${i}`;
-          milestones.push({
-            type: "growth",
-            index: i,
-            title: m.title,
-            description: m.description,
-            itemNames: m.activations,
-            progress:
-              progressMap.get(key) ?? emptyProgress(m.activations.length),
+        if (appDetailsRaw?.growthGoals?.milestones) {
+          appDetailsRaw.growthGoals.milestones.forEach((m, i) => {
+            const key = `${app.applicationId}-growth-${i}`;
+            milestones.push({
+              type: "growth",
+              milestoneLabel: "Growth Milestone",
+              itemLabel: "Activation",
+              index: i,
+              title: m.title,
+              description: m.description,
+              itemNames: m.activations,
+              progress:
+                progressMap.get(key) ?? emptyProgress(m.activations.length),
+              descriptionMinChars: CHARACTER_LIMITS.milestoneDescription.min,
+              descriptionMaxChars: CHARACTER_LIMITS.milestoneDescription.max,
+            });
           });
-        });
+        }
       }
 
       return {
@@ -129,15 +250,6 @@ export async function GET(_request: Request, { params }: RouteParams) {
 }
 
 const MILESTONE_AUTHOR_ADDRESS = "0x0000000000000000000000000000000000000000";
-const MILESTONE_TYPE_LABELS: Record<string, string> = {
-  build: "Build",
-  growth: "Growth",
-};
-
-const MILESTONE_ITEM_LABELS: Record<string, string> = {
-  build: "Deliverable",
-  growth: "Activation",
-};
 
 function buildEvidencePostContent(
   verb: "added to" | "updated on",
@@ -151,7 +263,7 @@ function buildEvidencePostContent(
   evidence: EvidenceLink[],
   pid: number,
 ): string {
-  const header = `Evidence ${verb} ${roundName} - ${typeLabel} Milestone ${milestoneIndex + 1} - ${itemLabel} ${itemIndex + 1} (${completion}% Complete)`;
+  const header = `Evidence ${verb} ${roundName} - ${typeLabel} ${milestoneIndex + 1} - ${itemLabel} ${itemIndex + 1} (${completion}% Complete)`;
   const lines = evidence.map((e) => `- [${e.name}](${e.link})`);
   return `${header}:\n\n${lines.join("\n")}\n\n[Go to the milestone](/projects/${pid}?tab=milestones&milestone=${milestoneType}-${milestoneIndex})`;
 }
@@ -164,7 +276,7 @@ function buildTextUpdatePostContent(
   otherDetails: string,
   pid: number,
 ): string {
-  return `Details updated on ${roundName} - ${typeLabel} Milestone ${milestoneIndex + 1}:\n\n${otherDetails}\n\n[Go to the milestone](/projects/${pid}?tab=milestones&milestone=${milestoneType}-${milestoneIndex})`;
+  return `Details updated on ${roundName} - ${typeLabel} ${milestoneIndex + 1}:\n\n${otherDetails}\n\n[Go to the milestone](/projects/${pid}?tab=milestones&milestone=${milestoneType}-${milestoneIndex})`;
 }
 
 export async function PATCH(request: Request, { params }: RouteParams) {
@@ -208,8 +320,11 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     if (
       typeof applicationId !== "number" ||
-      !["build", "growth"].includes(milestoneType) ||
-      typeof milestoneIndex !== "number"
+      typeof milestoneType !== "string" ||
+      milestoneType.length === 0 ||
+      milestoneType.length > 100 ||
+      !Number.isInteger(milestoneIndex) ||
+      milestoneIndex < 0
     ) {
       return Response.json({ success: false, error: "Invalid parameters" });
     }
@@ -236,6 +351,49 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       });
     }
 
+    const appDetailsParsed = parseDetails<RoundForm & DynamicAppDetails>(
+      application.details,
+    );
+    const isDynamic = isDynamicAppDetails(appDetailsParsed);
+
+    if (!isDynamic && !["build", "growth"].includes(milestoneType)) {
+      return Response.json({ success: false, error: "Invalid parameters" });
+    }
+
+    // Fetched once and reused for the dynamic-element lookup and the feed-post
+    // round name below, instead of querying the same row twice per request.
+    // Skipped only on the legacy definition-edit path, where neither is needed.
+    const needsRoundDetails = isDynamic || !definition;
+    let roundDetailsParsed: {
+      name?: string;
+      formSchema?: FormSchema;
+    } | null = null;
+    if (needsRoundDetails) {
+      const roundRow = await db
+        .selectFrom("rounds")
+        .select("details")
+        .where("id", "=", application.roundId)
+        .executeTakeFirst();
+      roundDetailsParsed = parseDetails<{
+        name?: string;
+        formSchema?: FormSchema;
+      }>(roundRow?.details);
+    }
+
+    // For dynamic apps, milestoneType is used as an object-key lookup against
+    // appDetails.round. Verify it matches a milestone element declared in the
+    // round's formSchema so a manager cannot probe or overwrite arbitrary keys
+    // in the stored application JSON (e.g. __proto__, unrelated fields).
+    let dynamicMilestoneElement: MilestoneQuestion | undefined;
+    if (isDynamic) {
+      dynamicMilestoneElement = getMilestoneElements(
+        roundDetailsParsed?.formSchema,
+      ).find((el) => el.id === milestoneType);
+      if (!dynamicMilestoneElement) {
+        return Response.json({ success: false, error: "Invalid parameters" });
+      }
+    }
+
     if (definition) {
       if (!application.editsUnlocked) {
         return new Response(
@@ -247,7 +405,18 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         );
       }
 
-      const parsedDef = milestoneDefinitionSchema.safeParse(definition);
+      // Dynamic milestones honor the per-element descriptionMin/MaxChars
+      // configured in the round's formSchema. Falling back to the legacy
+      // 500–5000 bounds here would lock applicants out of editing data they
+      // were allowed to submit (e.g. an admin-configured 100–8000 range).
+      const definitionSchema = dynamicMilestoneElement
+        ? makeMilestoneDefinitionSchema({
+            descriptionMinChars: dynamicMilestoneElement.descriptionMinChars ?? 0,
+            descriptionMaxChars:
+              dynamicMilestoneElement.descriptionMaxChars ?? MAX_STRING_LENGTH,
+          })
+        : milestoneDefinitionSchema;
+      const parsedDef = definitionSchema.safeParse(definition);
       if (!parsedDef.success) {
         return Response.json({
           success: false,
@@ -255,14 +424,47 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         });
       }
 
-      const appDetails = parseDetails<RoundForm>(application.details);
-      if (!appDetails) {
+      if (!appDetailsParsed) {
         return Response.json({
           success: false,
           error: "Failed to parse application details",
         });
       }
 
+      if (isDynamic) {
+        const dynamicAppDetails = appDetailsParsed as DynamicAppDetails & {
+          round: Record<string, unknown>;
+        };
+        const milestonesArray = dynamicAppDetails.round[milestoneType];
+        if (
+          !Array.isArray(milestonesArray) ||
+          milestoneIndex >= milestonesArray.length
+        ) {
+          return Response.json({
+            success: false,
+            error: "Milestone index out of range",
+          });
+        }
+        const updated: DynamicMilestoneValue = {
+          title: parsedDef.data.title,
+          description: parsedDef.data.description,
+          items: parsedDef.data.items,
+        };
+        (milestonesArray as DynamicMilestoneValue[])[milestoneIndex] = updated;
+
+        await db
+          .updateTable("applications")
+          .set({
+            details: JSON.stringify(dynamicAppDetails),
+            updatedAt: new Date(),
+          })
+          .where("id", "=", applicationId)
+          .execute();
+
+        return Response.json({ success: true });
+      }
+
+      const appDetails = appDetailsParsed as RoundForm;
       const milestonesArray =
         milestoneType === "build"
           ? appDetails.buildGoals?.milestones
@@ -341,16 +543,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     const newProgress = parsed.data;
     const feedMessages: string[] = [];
 
-    const roundData = await db
-      .selectFrom("rounds")
-      .select("details")
-      .where("id", "=", application.roundId)
-      .executeTakeFirst();
-
-    const roundDetails = parseDetails<{ name?: string }>(roundData?.details);
-    const roundName = roundDetails?.name ?? "Round";
-    const typeLabel = MILESTONE_TYPE_LABELS[milestoneType] ?? milestoneType;
-    const itemLabel = MILESTONE_ITEM_LABELS[milestoneType] ?? "Deliverable";
+    const roundName = roundDetailsParsed?.name ?? "Round";
+    const { milestoneLabel: typeLabel, itemLabel } = getMilestoneLabels(
+      milestoneType,
+      roundDetailsParsed?.formSchema,
+      isDynamic,
+    );
 
     for (let i = 0; i < newProgress.items.length; i++) {
       const newItem = newProgress.items[i];

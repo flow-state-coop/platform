@@ -4,3 +4,5 @@ export const CHARACTER_LIMITS = {
   milestoneDescription: { min: 500, max: 5000 },
   ecosystemImpact: { max: 4000 },
 } as const;
+
+export const MAX_MILESTONES = 20;
