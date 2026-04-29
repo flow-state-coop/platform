@@ -118,6 +118,7 @@ const STRUCTURE_TYPES: { value: FormElement["type"]; label: string }[] = [
 
 const COLOR_STANDARD = "#3c655b";
 const COLOR_COMMS = "#056589";
+const COLOR_MILESTONE = "#d95d39";
 const COLOR_STRUCTURAL = "#888888";
 
 const TYPE_COLORS: Record<FormElement["type"], string> = {
@@ -127,7 +128,7 @@ const TYPE_COLORS: Record<FormElement["type"], string> = {
   select: COLOR_STANDARD,
   multiSelect: COLOR_STANDARD,
   boolean: COLOR_STANDARD,
-  milestone: COLOR_STANDARD,
+  milestone: COLOR_MILESTONE,
   url: COLOR_COMMS,
   email: COLOR_COMMS,
   telegram: COLOR_COMMS,
