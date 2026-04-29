@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useMemo } from "react";
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
@@ -44,42 +44,41 @@ export default function DynamicMilestoneInput(props: Props) {
   const milestoneLabel = element.milestoneLabel || "Milestone";
   const itemLabel = element.itemLabel || "Deliverable";
 
-  useEffect(() => {
-    if (readOnly) return;
-    if (values.length < minCount) {
-      const padded = [...values];
-      while (padded.length < minCount) padded.push(emptyMilestone());
-      onChange(padded);
-    }
-    // Deps intentionally exclude `values` (array identity flips every parent
-    // render and would loop) and `onChange` (its identity flips every parent
-    // render and would fire wasted no-op cycles).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values.length, minCount, readOnly]);
+  // Pad to minCount synchronously during render so the rendered blocks and the
+  // array used by update handlers always agree. User edits commit the padded
+  // shape back to parent state via onChange, so we never need an effect to
+  // sync — and there's no intermediate render with a mismatched array.
+  const blocks = useMemo(() => {
+    if (values.length >= minCount) return values;
+    return [
+      ...values,
+      ...Array.from({ length: minCount - values.length }, emptyMilestone),
+    ];
+  }, [values, minCount]);
 
   const updateMilestone = (index: number, next: DynamicMilestoneValue) => {
-    const copy = [...values];
+    const copy = [...blocks];
     copy[index] = next;
     onChange(copy);
   };
 
   const addMilestone = () => {
-    onChange([...values, emptyMilestone()]);
+    onChange([...blocks, emptyMilestone()]);
   };
 
   const removeMilestone = (index: number) => {
-    onChange(values.filter((_, i) => i !== index));
+    onChange(blocks.filter((_, i) => i !== index));
   };
 
   const updateItem = (mIndex: number, iIndex: number, value: string) => {
-    const milestone = values[mIndex];
+    const milestone = blocks[mIndex];
     const newItems = [...milestone.items];
     newItems[iIndex] = value;
     updateMilestone(mIndex, { ...milestone, items: newItems });
   };
 
   const addItem = (mIndex: number) => {
-    const milestone = values[mIndex];
+    const milestone = blocks[mIndex];
     updateMilestone(mIndex, {
       ...milestone,
       items: [...milestone.items, ""],
@@ -87,21 +86,13 @@ export default function DynamicMilestoneInput(props: Props) {
   };
 
   const removeItem = (mIndex: number, iIndex: number) => {
-    const milestone = values[mIndex];
+    const milestone = blocks[mIndex];
     const newItems = milestone.items.filter((_, i) => i !== iIndex);
     updateMilestone(mIndex, {
       ...milestone,
       items: newItems.length > 0 ? newItems : [""],
     });
   };
-
-  const blocks =
-    values.length >= minCount
-      ? values
-      : [
-          ...values,
-          ...Array.from({ length: minCount - values.length }, emptyMilestone),
-        ];
 
   const canAdd = !readOnly && !lockBlockCount;
   const canRemoveBlock = (i: number) =>

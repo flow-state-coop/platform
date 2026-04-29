@@ -416,6 +416,7 @@ export type FormElement = z.infer<typeof formElementSchema>;
 
 export const MAX_STRING_LENGTH = 10_000;
 export const MAX_DETAILS_SIZE = 512_000; // 512 KB
+export const MAX_MILESTONES = 20;
 
 type FieldValidator = (val: unknown, el: FormElement) => string | null;
 
@@ -500,8 +501,8 @@ const VALIDATORS: Partial<Record<FormElement["type"], FieldValidator>> = {
     if (val.length < minCount) {
       return `"${el.label}" requires at least ${minCount} milestone${minCount === 1 ? "" : "s"}`;
     }
-    if (val.length > 20) {
-      return `"${el.label}" allows at most 20 milestones`;
+    if (val.length > MAX_MILESTONES) {
+      return `"${el.label}" allows at most ${MAX_MILESTONES} milestones`;
     }
     for (let i = 0; i < val.length; i++) {
       const m = val[i] as {
