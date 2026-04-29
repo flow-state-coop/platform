@@ -500,7 +500,9 @@ function ElementCard({
                     onChange={(e) =>
                       onUpdate({
                         ...element,
-                        itemLabel: e.target.value as "Deliverable" | "Activation",
+                        itemLabel: e.target.value as
+                          | "Deliverable"
+                          | "Activation",
                       })
                     }
                   >
@@ -513,19 +515,22 @@ function ElementCard({
                 <Form.Label className="fs-sm fw-semi-bold">
                   Minimum Count
                 </Form.Label>
-                <Form.Control
-                  type="number"
+                <Form.Select
                   className="rounded-3"
-                  min={1}
-                  max={5}
                   value={element.minCount ?? 1}
-                  onChange={(e) => {
-                    const n = Number(e.target.value);
-                    if (!Number.isFinite(n)) return;
-                    const clamped = Math.max(1, Math.min(5, Math.round(n)));
-                    onUpdate({ ...element, minCount: clamped });
-                  }}
-                />
+                  onChange={(e) =>
+                    onUpdate({
+                      ...element,
+                      minCount: Number(e.target.value),
+                    })
+                  }
+                >
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                  <option value={4}>4</option>
+                  <option value={5}>5</option>
+                </Form.Select>
                 <Form.Text className="text-muted">
                   Applicants must complete at least this many milestones (1–5).
                 </Form.Text>
@@ -1205,13 +1210,16 @@ export default function FormBuilder({ chainId, councilId }: Props) {
         </Alert>
       )}
       {success && (
-        <Alert
-          variant="success"
-          dismissible
-          onClose={() => setSuccess("")}
-          className="mb-3"
-        >
-          {success}
+        <Alert variant="success" className="mb-3 d-flex align-items-center">
+          <span className="flex-grow-1">{success}</span>
+          <Button
+            variant="transparent"
+            className="p-0 border-0 lh-1"
+            onClick={() => setSuccess("")}
+            aria-label="Close"
+          >
+            <Image src="/close.svg" alt="Close" width={24} height={24} />
+          </Button>
         </Alert>
       )}
     </>
