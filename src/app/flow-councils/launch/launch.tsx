@@ -29,7 +29,7 @@ import { networks } from "@/lib/networks";
 import { flowCouncilFactoryAbi } from "@/lib/abi/flowCouncilFactory";
 import { superAppSplitterFactoryAbi } from "@/lib/abi/superAppSplitterFactory";
 
-const SUPERAPP_SPLITTER_SIDE_PORTION = BigInt(50);
+const SUPERAPP_SPLITTER_FEE_PORTION = BigInt(50);
 
 type LaunchProps = {
   defaultNetwork: Network;
@@ -126,7 +126,10 @@ export default function Launch(props: LaunchProps) {
         flowCouncilAddress = eventArgs.flowCouncil;
         onProgress();
 
-        if (selectedNetwork.superAppSplitterFactory) {
+        if (
+          selectedNetwork.superAppSplitterFactory &&
+          selectedNetwork.superAppSplitterFactory !== "0x"
+        ) {
           const splitterHash = await writeContract(wagmiConfig, {
             address: selectedNetwork.superAppSplitterFactory as Address,
             abi: superAppSplitterFactoryAbi,
@@ -136,8 +139,8 @@ export default function Launch(props: LaunchProps) {
               token,
               address,
               eventArgs.distributionPool,
-              selectedNetwork.feeRecipientPool,
-              SUPERAPP_SPLITTER_SIDE_PORTION,
+              SUPERAPP_SPLITTER_FEE_PORTION,
+              [address],
             ],
           });
 
@@ -317,7 +320,7 @@ export default function Launch(props: LaunchProps) {
               <>
                 <Spinner size="sm" className="ms-2" />
                 {completedTransactions > 0 &&
-                  ` ${completedTransactions}/${selectedNetwork.superAppSplitterFactory ? 2 : 1}`}
+                  ` ${completedTransactions}/${selectedNetwork.superAppSplitterFactory && selectedNetwork.superAppSplitterFactory !== "0x" ? 2 : 1}`}
               </>
             ) : !address ? (
               "Connect Wallet"

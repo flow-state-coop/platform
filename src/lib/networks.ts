@@ -29,7 +29,6 @@ const networks: Network[] = [
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     superAppSplitterFactory: "0x",
-    feeRecipientPool: "0x",
     tokens: [
       {
         symbol: "ETHx",
@@ -81,7 +80,6 @@ const networks: Network[] = [
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     superAppSplitterFactory: "0x",
-    feeRecipientPool: "0x",
     tokens: [
       {
         symbol: "ETHx",
@@ -122,8 +120,7 @@ const networks: Network[] = [
     gda: "0x308b7405272d11494716e30C6E972DbF6fb89555",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
-    superAppSplitterFactory: "0x6dEd495DEa4515d4303A01197B52A1B392E0FA80",
-    feeRecipientPool: "0x75dbcecd12c6650f35373d774033190a3b2a23ea",
+    superAppSplitterFactory: "0x",
     tokens: [
       {
         symbol: "G$",
@@ -165,7 +162,6 @@ const networks: Network[] = [
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     superAppSplitterFactory: "0x",
-    feeRecipientPool: "0x",
     tokens: [
       {
         symbol: "ETHx",
@@ -216,8 +212,7 @@ const networks: Network[] = [
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     gda: "0xd453d38A001B47271488886532f1CCeAbf0c7eF3",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
-    superAppSplitterFactory: "0x",
-    feeRecipientPool: "0x",
+    superAppSplitterFactory: "0x4a7f0361D107e7F880da8D6A0800Fc1f843A78D4",
     tokens: [
       {
         symbol: "ETHx",

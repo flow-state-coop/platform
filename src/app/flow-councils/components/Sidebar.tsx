@@ -13,6 +13,7 @@ import Image from "react-bootstrap/Image";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
+import { networks } from "@/lib/networks";
 
 const FLOW_COUNCIL_MANAGER_QUERY = gql`
   query FlowCouncilManagerQuery($address: String!) {
@@ -31,6 +32,7 @@ const SIDEBAR_LINK_DEFS: {
   path: string;
   label: string;
   alwaysEnabled?: boolean;
+  requiresSplitterFactory?: boolean;
 }[] = [
   { path: "launch", label: "Launch", alwaysEnabled: true },
   { path: "round-metadata", label: "Metadata" },
@@ -38,6 +40,7 @@ const SIDEBAR_LINK_DEFS: {
   { path: "form-builder", label: "Form Builder" },
   { path: "review", label: "Recipients" },
   { path: "membership", label: "Voters" },
+  { path: "funding", label: "Funding", requiresSplitterFactory: true },
   { path: "communications", label: "Communications" },
 ];
 
@@ -52,9 +55,21 @@ function SidebarLinks({
   selectedCouncil,
   pathname,
 }: SidebarLinksProps) {
+  const network = chainId
+    ? networks.find((n) => n.id === chainId)
+    : undefined;
+  const splitterFactoryDeployed =
+    !!network &&
+    network.superAppSplitterFactory !== "0x" &&
+    network.superAppSplitterFactory !==
+      "0x0000000000000000000000000000000000000000";
+
   return (
     <Stack direction="vertical" gap={3} className="rounded-4 flex-grow-0 mt-3">
-      {SIDEBAR_LINK_DEFS.map(({ path, label, alwaysEnabled }) => {
+      {SIDEBAR_LINK_DEFS.filter(
+        ({ requiresSplitterFactory }) =>
+          !requiresSplitterFactory || splitterFactoryDeployed,
+      ).map(({ path, label, alwaysEnabled }) => {
         const href =
           alwaysEnabled && chainId && selectedCouncil
             ? `/flow-councils/${path}/${chainId}/${selectedCouncil.id}`
