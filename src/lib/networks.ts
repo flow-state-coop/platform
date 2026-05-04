@@ -1,5 +1,13 @@
 import { Network } from "@/types/network";
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+function isSplitterFactoryDeployed(network: Network | undefined): boolean {
+  if (!network) return false;
+  const addr = network.superAppSplitterFactory;
+  return addr !== "0x" && addr !== ZERO_ADDRESS;
+}
+
 const networks: Network[] = [
   {
     id: 42161,
@@ -233,4 +241,4 @@ const networks: Network[] = [
   },
 ];
 
-export { networks };
+export { networks, isSplitterFactoryDeployed };

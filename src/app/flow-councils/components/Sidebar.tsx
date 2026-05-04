@@ -13,7 +13,7 @@ import Image from "react-bootstrap/Image";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
-import { networks } from "@/lib/networks";
+import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
 
 const FLOW_COUNCIL_MANAGER_QUERY = gql`
   query FlowCouncilManagerQuery($address: String!) {
@@ -58,11 +58,7 @@ function SidebarLinks({
   const network = chainId
     ? networks.find((n) => n.id === chainId)
     : undefined;
-  const splitterFactoryDeployed =
-    !!network &&
-    network.superAppSplitterFactory !== "0x" &&
-    network.superAppSplitterFactory !==
-      "0x0000000000000000000000000000000000000000";
+  const splitterFactoryDeployed = isSplitterFactoryDeployed(network);
 
   return (
     <Stack direction="vertical" gap={3} className="rounded-4 flex-grow-0 mt-3">

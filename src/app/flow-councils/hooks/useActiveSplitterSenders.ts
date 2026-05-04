@@ -1,12 +1,18 @@
 import { useQuery, gql } from "@apollo/client";
 import { getApolloClient } from "@/lib/apollo";
 
+const SENDERS_PAGE_SIZE = 1000;
+
 const ACTIVE_SPLITTER_SENDERS_QUERY = gql`
-  query ActiveSplitterSenders($splitter: ID!, $token: String!) {
+  query ActiveSplitterSenders(
+    $splitter: ID!
+    $token: String!
+    $first: Int!
+  ) {
     account(id: $splitter) {
       inflows(
         where: { currentFlowRate_gt: "0", token: $token }
-        first: 1000
+        first: $first
       ) {
         sender {
           id
@@ -25,6 +31,7 @@ export type ActiveSplitterSenders = {
   senders: string[];
   blockNumber: number | null;
   loading: boolean;
+  truncated: boolean;
 };
 
 export default function useActiveSplitterSenders({
@@ -44,6 +51,7 @@ export default function useActiveSplitterSenders({
     variables: {
       splitter: splitterAddress?.toLowerCase(),
       token: tokenAddress?.toLowerCase(),
+      first: SENDERS_PAGE_SIZE,
     },
     skip,
   });
@@ -53,6 +61,7 @@ export default function useActiveSplitterSenders({
       (i: { sender: { id: string } }) => i.sender.id,
     ) ?? [];
   const blockNumber: number | null = data?._meta?.block?.number ?? null;
+  const truncated = senders.length === SENDERS_PAGE_SIZE;
 
-  return { senders, blockNumber, loading };
+  return { senders, blockNumber, loading, truncated };
 }

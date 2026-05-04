@@ -23,7 +23,7 @@ import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
-import { networks } from "@/lib/networks";
+import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
 import { VOTER_MANAGER_ROLE } from "../lib/constants";
 import Papa from "papaparse";
 import { isNumber } from "@/lib/utils";
@@ -800,13 +800,8 @@ export default function Membership(props: MembershipProps) {
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() => {
               const network = networks.find((n) => n.id === chainId);
-              const splitterFactoryDeployed =
-                !!network &&
-                network.superAppSplitterFactory !== "0x" &&
-                network.superAppSplitterFactory !==
-                  "0x0000000000000000000000000000000000000000";
               router.push(
-                splitterFactoryDeployed
+                isSplitterFactoryDeployed(network)
                   ? `/flow-councils/funding/${chainId}/${councilId}`
                   : `/flow-councils/communications/${chainId}/${councilId}`,
               );

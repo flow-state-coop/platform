@@ -100,9 +100,10 @@ export default function useSplitterReads({
     query: { enabled: !!splitterAddress && !!connectedAddress },
   });
 
+  // FEE_PORTION is encoded as permille on the splitter contract (e.g. 50 -> 5%).
   const feePortion =
     feePortionRaw !== undefined && feePortionRaw !== null
-      ? Number(BigInt(feePortionRaw)) / 10
+      ? Number(feePortionRaw) / 10
       : null;
   const superTokenBalance = balanceData ? BigInt(balanceData[0]) : null;
   const liquidationPeriod = pppConfig ? BigInt(pppConfig[0]) : null;

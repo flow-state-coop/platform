@@ -31,7 +31,7 @@ import Alert from "react-bootstrap/Alert";
 import { hostAddress } from "@sfpro/sdk/abi/core";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { getApolloClient } from "@/lib/apollo";
-import { networks } from "@/lib/networks";
+import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
 import { superAppSplitterAbi } from "@/lib/abi/superAppSplitter";
 import {
   buildBatchCall,
@@ -68,7 +68,7 @@ const FLOW_COUNCIL_QUERY = gql`
 const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 
 function isPositiveDecimal(s: string) {
-  return /^\d*(\.\d*)?$/.test(s);
+  return /^\d+(\.\d*)?$|^\d*\.\d+$/.test(s);
 }
 
 function sanitizeTxError(err: unknown): string {
@@ -109,10 +109,7 @@ export default function Funding(props: FundingProps) {
     () => networks.find((n) => n.id === chainId),
     [chainId],
   );
-  const factoryDeployed =
-    !!network &&
-    network.superAppSplitterFactory !== ("0x" as Address) &&
-    network.superAppSplitterFactory !== ("0x0000000000000000000000000000000000000000" as Address);
+  const factoryDeployed = isSplitterFactoryDeployed(network);
 
   const councilMetadata = useCouncilMetadata(
     chainId ?? 0,
@@ -206,105 +203,111 @@ export default function Funding(props: FundingProps) {
   });
 
   // Action 1 state
-  const [a1MonthlyAmount, setA1MonthlyAmount] = useState("");
-  const [a1WrapAmount, setA1WrapAmount] = useState("");
+  const [streamMonthlyAmount, setStreamMonthlyAmount] = useState("");
+  const [streamWrapAmount, setStreamWrapAmount] = useState("");
 
   // Action 2 state
-  const [a2DepositAmount, setA2DepositAmount] = useState("");
-  const [a2WrapAmount, setA2WrapAmount] = useState("");
+  const [depositAmount, setDepositAmount] = useState("");
+  const [depositWrapAmount, setDepositWrapAmount] = useState("");
 
   // Action 3 state
-  const [a3ConfirmText, setA3ConfirmText] = useState("");
+  const [closeAllConfirmText, setCloseAllConfirmText] = useState("");
   const [closeAllError, setCloseAllError] = useState("");
   const [closeAllSuccess, setCloseAllSuccess] = useState(false);
   const [isClosingAll, setIsClosingAll] = useState(false);
 
-  const a1NewFlowRate = useMemo(() => {
-    if (!a1MonthlyAmount || !isPositiveDecimal(a1MonthlyAmount)) return 0n;
+  const streamFlowRate = useMemo(() => {
+    if (!streamMonthlyAmount || !isPositiveDecimal(streamMonthlyAmount)) return 0n;
     try {
-      const wei = parseEther(a1MonthlyAmount);
+      const wei = parseEther(streamMonthlyAmount);
       return wei / BigInt(SECONDS_IN_MONTH);
     } catch {
       return 0n;
     }
-  }, [a1MonthlyAmount]);
+  }, [streamMonthlyAmount]);
 
-  const a1RequiredBuffer = useMemo(() => {
-    if (a1NewFlowRate === 0n || !liquidationPeriod) return 0n;
-    return a1NewFlowRate * liquidationPeriod;
-  }, [a1NewFlowRate, liquidationPeriod]);
+  const streamRequiredBuffer = useMemo(() => {
+    if (streamFlowRate === 0n || !liquidationPeriod) return 0n;
+    return streamFlowRate * liquidationPeriod;
+  }, [streamFlowRate, liquidationPeriod]);
 
-  const a1WrapWei = useMemo(() => {
-    if (!a1WrapAmount || !isPositiveDecimal(a1WrapAmount)) return 0n;
+  const streamWrapWei = useMemo(() => {
+    if (!streamWrapAmount || !isPositiveDecimal(streamWrapAmount)) return 0n;
     try {
-      return parseEther(a1WrapAmount);
+      return parseEther(streamWrapAmount);
     } catch {
       return 0n;
     }
-  }, [a1WrapAmount]);
+  }, [streamWrapAmount]);
 
-  const a1WrapUnits = useMemo(() => {
-    if (!a1WrapAmount || !isPositiveDecimal(a1WrapAmount)) return 0n;
+  const streamWrapUnits = useMemo(() => {
+    if (!streamWrapAmount || !isPositiveDecimal(streamWrapAmount)) return 0n;
     try {
-      return parseUnits(a1WrapAmount, underlyingDecimals);
+      return parseUnits(streamWrapAmount, underlyingDecimals);
     } catch {
       return 0n;
     }
-  }, [a1WrapAmount, underlyingDecimals]);
+  }, [streamWrapAmount, underlyingDecimals]);
 
-  const a1AvailableSuper = adminBalance + a1WrapWei;
-  const a1HasSufficientForBuffer = a1AvailableSuper >= a1RequiredBuffer;
-  const a1WrapExceedsUnderlying =
-    isSuperTokenWrapper === true && a1WrapUnits > underlyingValue;
+  const streamAvailableSuper = adminBalance + streamWrapWei;
+  const streamHasSufficientForBuffer = streamAvailableSuper >= streamRequiredBuffer;
+  const streamWrapExceedsUnderlying =
+    isSuperTokenWrapper === true && streamWrapUnits > underlyingValue;
 
-  const a2DepositWei = useMemo(() => {
-    if (!a2DepositAmount || !isPositiveDecimal(a2DepositAmount)) return 0n;
+  const depositWei = useMemo(() => {
+    if (!depositAmount || !isPositiveDecimal(depositAmount)) return 0n;
     try {
-      return parseEther(a2DepositAmount);
+      return parseEther(depositAmount);
     } catch {
       return 0n;
     }
-  }, [a2DepositAmount]);
+  }, [depositAmount]);
 
-  const a2WrapWei = useMemo(() => {
-    if (!a2WrapAmount || !isPositiveDecimal(a2WrapAmount)) return 0n;
+  const depositWrapWei = useMemo(() => {
+    if (!depositWrapAmount || !isPositiveDecimal(depositWrapAmount)) return 0n;
     try {
-      return parseEther(a2WrapAmount);
+      return parseEther(depositWrapAmount);
     } catch {
       return 0n;
     }
-  }, [a2WrapAmount]);
+  }, [depositWrapAmount]);
 
-  const a2WrapUnits = useMemo(() => {
-    if (!a2WrapAmount || !isPositiveDecimal(a2WrapAmount)) return 0n;
+  const depositWrapUnits = useMemo(() => {
+    if (!depositWrapAmount || !isPositiveDecimal(depositWrapAmount)) return 0n;
     try {
-      return parseUnits(a2WrapAmount, underlyingDecimals);
+      return parseUnits(depositWrapAmount, underlyingDecimals);
     } catch {
       return 0n;
     }
-  }, [a2WrapAmount, underlyingDecimals]);
+  }, [depositWrapAmount, underlyingDecimals]);
 
-  const a2AvailableSuper = adminBalance + a2WrapWei;
-  const a2HasSufficient = a2DepositWei > 0n && a2AvailableSuper >= a2DepositWei;
-  const a2WrapExceedsUnderlying =
-    isSuperTokenWrapper === true && a2WrapUnits > underlyingValue;
+  const depositAvailableSuper = adminBalance + depositWrapWei;
+  const depositHasSufficient = depositWei > 0n && depositAvailableSuper >= depositWei;
+  const depositWrapExceedsUnderlying =
+    isSuperTokenWrapper === true && depositWrapUnits > underlyingValue;
 
-  const a2NewImpliedMax = useMemo(() => {
+  const depositNewImpliedMax = useMemo(() => {
     if (!liquidationPeriod || liquidationPeriod === 0n) return null;
     if (splitterTokenBalance === null) return null;
-    const newBalance = splitterTokenBalance + a2DepositWei;
+    const newBalance = splitterTokenBalance + depositWei;
     if (newBalance <= 0n) return 0n;
     return (newBalance * BigInt(SECONDS_IN_MONTH)) / liquidationPeriod;
-  }, [splitterTokenBalance, a2DepositWei, liquidationPeriod]);
+  }, [splitterTokenBalance, depositWei, liquidationPeriod]);
 
-  // On-chain role authority is the gate for Close All. Subgraph isSuperAdmin
-  // is supplementary — used to render the Danger Zone when wallets aren't yet
-  // role-indexed but the user is a council manager. Either source unlocking is
-  // sufficient because the contract revert is the hard gate.
+  // canCloseStreams gates rendering the Danger Zone. Subgraph isSuperAdmin lets
+  // council managers see the panel before role indexing catches up; on-chain
+  // roles override and unlock submission.
   const canCloseStreams =
     hasDefaultAdminRole === true ||
     hasStreamAdminRole === true ||
     isSuperAdmin === true;
+
+  // canSubmitClose gates the actual button. If both on-chain roles are confirmed
+  // false, the contract will revert — keep the button disabled instead of just
+  // warning. Treat null (still loading) as not yet definitively false.
+  const onChainRolesDefinitivelyFalse =
+    hasDefaultAdminRole === false && hasStreamAdminRole === false;
+  const canSubmitClose = canCloseStreams && !onChainRolesDefinitivelyFalse;
 
   const senderSnapshot = useActiveSplitterSenders({
     splitterAddress,
@@ -328,20 +331,20 @@ export default function Funding(props: FundingProps) {
   } = useTransactionsQueue();
 
   const {
-    areTransactionsLoading: a2Loading,
-    completedTransactions: a2Completed,
-    transactionError: a2Error,
-    executeTransactions: a2Execute,
+    areTransactionsLoading: depositLoading,
+    completedTransactions: depositCompleted,
+    transactionError: depositError,
+    executeTransactions: depositExecute,
   } = useTransactionsQueue();
 
-  const handleAction1 = async () => {
+  const handleOpenStream = async () => {
     if (
       !address ||
       !acceptedToken ||
       !splitterAddress ||
       !chainId ||
-      a1NewFlowRate === 0n ||
-      !a1HasSufficientForBuffer
+      streamFlowRate === 0n ||
+      !streamHasSufficientForBuffer
     ) {
       return;
     }
@@ -352,13 +355,13 @@ export default function Funding(props: FundingProps) {
 
     const needsApproval =
       isSuperTokenWrapper === true &&
-      a1WrapUnits > BigInt(underlyingAllowance ?? 0);
+      streamWrapUnits > BigInt(underlyingAllowance ?? 0);
 
-    if (a1WrapWei > 0n) {
+    if (streamWrapWei > 0n) {
       const wrap = buildWrapCalls({
         tokenAddress: acceptedToken,
-        wrapAmountWei: a1WrapWei,
-        wrapAmountUnits: a1WrapUnits,
+        wrapAmountWei: streamWrapWei,
+        wrapAmountUnits: streamWrapUnits,
         isSuperTokenWrapper: isSuperTokenWrapper === true,
         isSuperTokenNative: isSuperTokenNative === true,
         tokenUnderlyingAddress: underlyingAddress,
@@ -368,13 +371,13 @@ export default function Funding(props: FundingProps) {
       batchOps.push(...wrap.batchOps);
     }
 
-    if (a1RequiredBuffer > 0n) {
+    if (streamRequiredBuffer > 0n) {
       batchOps.push(
         buildSuperTokenTransferBatchOp({
           tokenAddress: acceptedToken,
           from: address,
           to: splitterAddress,
-          amount: a1RequiredBuffer,
+          amount: streamRequiredBuffer,
         }),
       );
     }
@@ -383,7 +386,7 @@ export default function Funding(props: FundingProps) {
       buildCreateFlowBatchOp({
         tokenAddress: acceptedToken,
         receiverAddress: splitterAddress,
-        flowRate: a1NewFlowRate,
+        flowRate: streamFlowRate,
         chainId: chainKey,
       }),
     );
@@ -393,21 +396,21 @@ export default function Funding(props: FundingProps) {
 
     try {
       await executeTransactions(calls);
-      setA1MonthlyAmount("");
-      setA1WrapAmount("");
+      setStreamMonthlyAmount("");
+      setStreamWrapAmount("");
     } catch {
       // surface via transactionError
     }
   };
 
-  const handleAction2 = async () => {
+  const handleDeposit = async () => {
     if (
       !address ||
       !acceptedToken ||
       !splitterAddress ||
       !chainId ||
-      a2DepositWei === 0n ||
-      !a2HasSufficient
+      depositWei === 0n ||
+      !depositHasSufficient
     ) {
       return;
     }
@@ -418,13 +421,13 @@ export default function Funding(props: FundingProps) {
 
     const needsApproval =
       isSuperTokenWrapper === true &&
-      a2WrapUnits > BigInt(underlyingAllowance ?? 0);
+      depositWrapUnits > BigInt(underlyingAllowance ?? 0);
 
-    if (a2WrapWei > 0n) {
+    if (depositWrapWei > 0n) {
       const wrap = buildWrapCalls({
         tokenAddress: acceptedToken,
-        wrapAmountWei: a2WrapWei,
-        wrapAmountUnits: a2WrapUnits,
+        wrapAmountWei: depositWrapWei,
+        wrapAmountUnits: depositWrapUnits,
         isSuperTokenWrapper: isSuperTokenWrapper === true,
         isSuperTokenNative: isSuperTokenNative === true,
         tokenUnderlyingAddress: underlyingAddress,
@@ -439,7 +442,7 @@ export default function Funding(props: FundingProps) {
         tokenAddress: acceptedToken,
         from: address,
         to: splitterAddress,
-        amount: a2DepositWei,
+        amount: depositWei,
       }),
     );
 
@@ -447,11 +450,11 @@ export default function Funding(props: FundingProps) {
     if (batchCall) calls.push(batchCall);
 
     try {
-      await a2Execute(calls);
-      setA2DepositAmount("");
-      setA2WrapAmount("");
+      await depositExecute(calls);
+      setDepositAmount("");
+      setDepositWrapAmount("");
     } catch {
-      // surface via a2Error
+      // surface via depositError
     }
   };
 
@@ -461,7 +464,7 @@ export default function Funding(props: FundingProps) {
       !splitterAddress ||
       !chainId ||
       !publicClient ||
-      a3ConfirmText !== "Close All" ||
+      closeAllConfirmText !== "Close All" ||
       validSenders.length === 0
     ) {
       return;
@@ -480,7 +483,7 @@ export default function Funding(props: FundingProps) {
       });
       await waitForReceipt(publicClient, hash);
       setCloseAllSuccess(true);
-      setA3ConfirmText("");
+      setCloseAllConfirmText("");
     } catch (err) {
       console.error(err);
       setCloseAllError(sanitizeTxError(err));
@@ -498,7 +501,7 @@ export default function Funding(props: FundingProps) {
 
   const tokenSymbol = tokenInfo?.symbol ?? "";
 
-  const renderAction1Button = () => {
+  const renderStreamButton = () => {
     if (!address) {
       return (
         <Button
@@ -523,12 +526,12 @@ export default function Funding(props: FundingProps) {
       <Button
         disabled={
           areTransactionsLoading ||
-          a1NewFlowRate === 0n ||
-          !a1HasSufficientForBuffer ||
-          a1WrapExceedsUnderlying
+          streamFlowRate === 0n ||
+          !streamHasSufficientForBuffer ||
+          streamWrapExceedsUnderlying
         }
         className="fs-lg fw-semi-bold py-4 rounded-4"
-        onClick={handleAction1}
+        onClick={handleOpenStream}
       >
         {areTransactionsLoading ? (
           <>
@@ -542,7 +545,7 @@ export default function Funding(props: FundingProps) {
     );
   };
 
-  const renderAction2Button = () => {
+  const renderDepositButton = () => {
     if (!address) {
       return (
         <Button
@@ -566,18 +569,18 @@ export default function Funding(props: FundingProps) {
     return (
       <Button
         disabled={
-          a2Loading ||
-          a2DepositWei === 0n ||
-          !a2HasSufficient ||
-          a2WrapExceedsUnderlying
+          depositLoading ||
+          depositWei === 0n ||
+          !depositHasSufficient ||
+          depositWrapExceedsUnderlying
         }
         className="fs-lg fw-semi-bold py-4 rounded-4"
-        onClick={handleAction2}
+        onClick={handleDeposit}
       >
-        {a2Loading ? (
+        {depositLoading ? (
           <>
             <Spinner size="sm" className="me-2" />
-            {a2Completed > 0 ? `${a2Completed}` : null}
+            {depositCompleted > 0 ? `${depositCompleted}` : null}
           </>
         ) : (
           "Deposit"
@@ -736,13 +739,13 @@ export default function Funding(props: FundingProps) {
                   type="text"
                   inputMode="decimal"
                   placeholder="0.0"
-                  value={a1MonthlyAmount}
+                  value={streamMonthlyAmount}
                   onChange={(e) => {
                     if (
                       e.target.value === "" ||
                       isPositiveDecimal(e.target.value)
                     ) {
-                      setA1MonthlyAmount(e.target.value);
+                      setStreamMonthlyAmount(e.target.value);
                     }
                   }}
                   className="border-0 rounded-4 bg-white py-4 fw-semi-bold"
@@ -759,7 +762,7 @@ export default function Funding(props: FundingProps) {
                   </Card.Text>
                   <span className="fw-semi-bold">
                     {liquidationPeriod
-                      ? `${Number(formatUnits(a1RequiredBuffer, 18)).toLocaleString(
+                      ? `${Number(formatUnits(streamRequiredBuffer, 18)).toLocaleString(
                           undefined,
                           { maximumFractionDigits: 6 },
                         )} ${tokenSymbol}`
@@ -798,13 +801,13 @@ export default function Funding(props: FundingProps) {
                     type="text"
                     inputMode="decimal"
                     placeholder="0.0"
-                    value={a1WrapAmount}
+                    value={streamWrapAmount}
                     onChange={(e) => {
                       if (
                         e.target.value === "" ||
                         isPositiveDecimal(e.target.value)
                       ) {
-                        setA1WrapAmount(e.target.value);
+                        setStreamWrapAmount(e.target.value);
                       }
                     }}
                     className="border-0 rounded-4 bg-white py-4 fw-semi-bold"
@@ -812,12 +815,12 @@ export default function Funding(props: FundingProps) {
                   />
                 </Form.Group>
               )}
-              {a1WrapExceedsUnderlying ? (
+              {streamWrapExceedsUnderlying ? (
                 <Alert variant="danger" className="mb-0 fw-semi-bold">
                   Wrap amount exceeds your underlying balance.
                 </Alert>
               ) : null}
-              {!a1HasSufficientForBuffer && a1NewFlowRate > 0n ? (
+              {!streamHasSufficientForBuffer && streamFlowRate > 0n ? (
                 <Alert variant="danger" className="mb-0 fw-semi-bold">
                   Required buffer exceeds your {tokenSymbol} balance plus the
                   amount you intend to wrap.
@@ -828,7 +831,7 @@ export default function Funding(props: FundingProps) {
                   {transactionError}
                 </Alert>
               ) : null}
-              {renderAction1Button()}
+              {renderStreamButton()}
             </Stack>
           </Card.Body>
         </Card>
@@ -852,13 +855,13 @@ export default function Funding(props: FundingProps) {
                   type="text"
                   inputMode="decimal"
                   placeholder="0.0"
-                  value={a2DepositAmount}
+                  value={depositAmount}
                   onChange={(e) => {
                     if (
                       e.target.value === "" ||
                       isPositiveDecimal(e.target.value)
                     ) {
-                      setA2DepositAmount(e.target.value);
+                      setDepositAmount(e.target.value);
                     }
                   }}
                   className="border-0 rounded-4 bg-white py-4 fw-semi-bold"
@@ -896,13 +899,13 @@ export default function Funding(props: FundingProps) {
                     type="text"
                     inputMode="decimal"
                     placeholder="0.0"
-                    value={a2WrapAmount}
+                    value={depositWrapAmount}
                     onChange={(e) => {
                       if (
                         e.target.value === "" ||
                         isPositiveDecimal(e.target.value)
                       ) {
-                        setA2WrapAmount(e.target.value);
+                        setDepositWrapAmount(e.target.value);
                       }
                     }}
                     className="border-0 rounded-4 bg-white py-4 fw-semi-bold"
@@ -910,7 +913,7 @@ export default function Funding(props: FundingProps) {
                   />
                 </Form.Group>
               )}
-              {a2DepositWei > 0n && a2NewImpliedMax !== null ? (
+              {depositWei > 0n && depositNewImpliedMax !== null ? (
                 <Stack direction="vertical" gap={1}>
                   {impliedMaxMonthlyRate !== null &&
                   impliedMaxMonthlyRate > 0n ? (
@@ -920,7 +923,7 @@ export default function Funding(props: FundingProps) {
                         +
                         {Number(
                           formatUnits(
-                            a2NewImpliedMax - impliedMaxMonthlyRate,
+                            depositNewImpliedMax - impliedMaxMonthlyRate,
                             18,
                           ),
                         ).toLocaleString(undefined, {
@@ -932,7 +935,7 @@ export default function Funding(props: FundingProps) {
                   ) : null}
                   <Card.Text className="mb-0 fw-semi-bold">
                     New implied max:{" "}
-                    {Number(formatUnits(a2NewImpliedMax, 18)).toLocaleString(
+                    {Number(formatUnits(depositNewImpliedMax, 18)).toLocaleString(
                       undefined,
                       { maximumFractionDigits: 4 },
                     )}{" "}
@@ -940,23 +943,23 @@ export default function Funding(props: FundingProps) {
                   </Card.Text>
                 </Stack>
               ) : null}
-              {a2WrapExceedsUnderlying ? (
+              {depositWrapExceedsUnderlying ? (
                 <Alert variant="danger" className="mb-0 fw-semi-bold">
                   Wrap amount exceeds your underlying balance.
                 </Alert>
               ) : null}
-              {a2DepositWei > 0n && !a2HasSufficient ? (
+              {depositWei > 0n && !depositHasSufficient ? (
                 <Alert variant="danger" className="mb-0 fw-semi-bold">
                   Deposit exceeds your {tokenSymbol} balance plus the amount
                   you intend to wrap.
                 </Alert>
               ) : null}
-              {a2Error ? (
+              {depositError ? (
                 <Alert variant="danger" className="mb-0 fw-semi-bold">
-                  {a2Error}
+                  {depositError}
                 </Alert>
               ) : null}
-              {renderAction2Button()}
+              {renderDepositButton()}
             </Stack>
           </Card.Body>
         </Card>
@@ -999,6 +1002,13 @@ export default function Funding(props: FundingProps) {
                   )}
                 </Card.Text>
               ) : null}
+              {canCloseStreams && senderSnapshot.truncated ? (
+                <Alert variant="warning" className="mb-0 fw-semi-bold">
+                  Showing the first {validSenders.length} active senders. There
+                  are likely more — run Close All again after this transaction
+                  to close the remaining streams.
+                </Alert>
+              ) : null}
               <Form.Group>
                 <Form.Label className="fw-semi-bold">
                   Type{" "}
@@ -1006,9 +1016,9 @@ export default function Funding(props: FundingProps) {
                 </Form.Label>
                 <Form.Control
                   type="text"
-                  disabled={!canCloseStreams}
-                  value={a3ConfirmText}
-                  onChange={(e) => setA3ConfirmText(e.target.value)}
+                  disabled={!canSubmitClose}
+                  value={closeAllConfirmText}
+                  onChange={(e) => setCloseAllConfirmText(e.target.value)}
                   className="border-0 rounded-4 bg-white py-4 fw-semi-bold"
                   style={{ paddingTop: 12, paddingBottom: 12 }}
                 />
@@ -1021,9 +1031,9 @@ export default function Funding(props: FundingProps) {
               <Button
                 variant="danger"
                 disabled={
-                  !canCloseStreams ||
+                  !canSubmitClose ||
                   isClosingAll ||
-                  a3ConfirmText !== "Close All" ||
+                  closeAllConfirmText !== "Close All" ||
                   validSenders.length === 0
                 }
                 className="fs-lg fw-semi-bold py-4 rounded-4"
