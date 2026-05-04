@@ -202,15 +202,12 @@ export default function Funding(props: FundingProps) {
     },
   });
 
-  // Action 1 state
   const [streamMonthlyAmount, setStreamMonthlyAmount] = useState("");
   const [streamWrapAmount, setStreamWrapAmount] = useState("");
 
-  // Action 2 state
   const [depositAmount, setDepositAmount] = useState("");
   const [depositWrapAmount, setDepositWrapAmount] = useState("");
 
-  // Action 3 state
   const [closeAllConfirmText, setCloseAllConfirmText] = useState("");
   const [closeAllError, setCloseAllError] = useState("");
   const [closeAllSuccess, setCloseAllSuccess] = useState(false);

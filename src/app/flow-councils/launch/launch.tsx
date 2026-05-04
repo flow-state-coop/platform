@@ -25,7 +25,7 @@ import useSiwe from "@/hooks/siwe";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { Network } from "@/types/network";
 import { getApolloClient } from "@/lib/apollo";
-import { networks } from "@/lib/networks";
+import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
 import { flowCouncilFactoryAbi } from "@/lib/abi/flowCouncilFactory";
 import { superAppSplitterFactoryAbi } from "@/lib/abi/superAppSplitterFactory";
 
@@ -126,10 +126,7 @@ export default function Launch(props: LaunchProps) {
         flowCouncilAddress = eventArgs.flowCouncil;
         onProgress();
 
-        if (
-          selectedNetwork.superAppSplitterFactory &&
-          selectedNetwork.superAppSplitterFactory !== "0x"
-        ) {
+        if (isSplitterFactoryDeployed(selectedNetwork)) {
           const splitterHash = await writeContract(wagmiConfig, {
             address: selectedNetwork.superAppSplitterFactory as Address,
             abi: superAppSplitterFactoryAbi,
@@ -320,7 +317,7 @@ export default function Launch(props: LaunchProps) {
               <>
                 <Spinner size="sm" className="ms-2" />
                 {completedTransactions > 0 &&
-                  ` ${completedTransactions}/${selectedNetwork.superAppSplitterFactory && selectedNetwork.superAppSplitterFactory !== "0x" ? 2 : 1}`}
+                  ` ${completedTransactions}/${isSplitterFactoryDeployed(selectedNetwork) ? 2 : 1}`}
               </>
             ) : !address ? (
               "Connect Wallet"

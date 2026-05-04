@@ -38,12 +38,12 @@ export default function useActiveSplitterSenders({
   splitterAddress,
   tokenAddress,
   chainId,
-  enabled = true,
+  enabled,
 }: {
   splitterAddress: string | null | undefined;
   tokenAddress: string | null | undefined;
   chainId: number;
-  enabled?: boolean;
+  enabled: boolean;
 }): ActiveSplitterSenders {
   const skip = !enabled || !splitterAddress || !tokenAddress;
   const { data, loading } = useQuery(ACTIVE_SPLITTER_SENDERS_QUERY, {
