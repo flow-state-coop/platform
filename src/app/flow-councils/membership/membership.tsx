@@ -24,6 +24,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
+import useCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 import { VOTER_MANAGER_ROLE } from "../lib/constants";
 import Papa from "papaparse";
 import { isNumber } from "@/lib/utils";
@@ -95,6 +96,8 @@ export default function Membership(props: MembershipProps) {
     },
     skip: !councilId,
   });
+
+  const councilMetadata = useCouncilMetadata(chainId ?? 0, councilId ?? "");
 
   const flowCouncil = flowCouncilQueryRes?.flowCouncil ?? null;
   const isValidMembersEntry = membersEntry.every(
@@ -800,8 +803,11 @@ export default function Membership(props: MembershipProps) {
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() => {
               const network = networks.find((n) => n.id === chainId);
+              const hasSplitter =
+                isSplitterFactoryDeployed(network) &&
+                !!councilMetadata.superappSplitterAddress;
               router.push(
-                isSplitterFactoryDeployed(network)
+                hasSplitter
                   ? `/flow-councils/funding/${chainId}/${councilId}`
                   : `/flow-councils/communications/${chainId}/${councilId}`,
               );
