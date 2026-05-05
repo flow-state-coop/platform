@@ -115,8 +115,7 @@ export default function Funding(props: FundingProps) {
     chainId ?? 0,
     councilId ?? "",
   );
-  const splitterAddress = (councilMetadata.superappSplitterAddress ??
-    null) as Address | null;
+  const splitterAddress = councilMetadata.superappSplitterAddress;
   const hasSplitter = !!splitterAddress && factoryDeployed;
 
   const splitterReads = useSplitterReads({

@@ -98,6 +98,13 @@ export default function Membership(props: MembershipProps) {
   });
 
   const councilMetadata = useCouncilMetadata(chainId ?? 0, councilId ?? "");
+  const network = useMemo(
+    () => networks.find((n) => n.id === chainId),
+    [chainId],
+  );
+  const hasSplitter =
+    isSplitterFactoryDeployed(network) &&
+    !!councilMetadata.superappSplitterAddress;
 
   const flowCouncil = flowCouncilQueryRes?.flowCouncil ?? null;
   const isValidMembersEntry = membersEntry.every(
@@ -802,10 +809,6 @@ export default function Membership(props: MembershipProps) {
             className="fs-lg fw-semi-bold py-4 rounded-4"
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() => {
-              const network = networks.find((n) => n.id === chainId);
-              const hasSplitter =
-                isSplitterFactoryDeployed(network) &&
-                !!councilMetadata.superappSplitterAddress;
               router.push(
                 hasSplitter
                   ? `/flow-councils/funding/${chainId}/${councilId}`

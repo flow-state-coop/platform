@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import {
-  Address,
   isAddress,
   erc20Abi,
   parseEther,
@@ -339,7 +338,7 @@ export default function DistributionPoolFunding(props: {
 
     const flowParams = {
       tokenAddress: distributionTokenAddress,
-      receiverAddress: splitterAddress as Address,
+      receiverAddress: splitterAddress,
       flowRate: BigInt(newFlowRate),
       chainId,
     };

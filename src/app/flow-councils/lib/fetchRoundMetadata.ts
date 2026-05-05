@@ -1,8 +1,10 @@
+import { isAddress, type Address } from "viem";
+
 export type RoundMetadata = {
   name: string;
   description: string;
   logoUrl: string;
-  superappSplitterAddress: string | null;
+  superappSplitterAddress: Address | null;
 };
 
 const DEFAULT_METADATA: RoundMetadata = {
@@ -28,11 +30,15 @@ export async function fetchRoundMetadata(
           ? JSON.parse(data.round.details)
           : data.round.details;
 
+      const raw = data.round.superappSplitterAddress;
+      const splitter: Address | null =
+        typeof raw === "string" && isAddress(raw) ? raw : null;
+
       return {
         name: details?.name ?? DEFAULT_METADATA.name,
         description: details?.description ?? DEFAULT_METADATA.description,
         logoUrl: details?.logoUrl ?? DEFAULT_METADATA.logoUrl,
-        superappSplitterAddress: data.round.superappSplitterAddress ?? null,
+        superappSplitterAddress: splitter,
       };
     }
   } catch (err) {
