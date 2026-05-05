@@ -77,7 +77,10 @@ export default function Launch(props: LaunchProps) {
 
   const flowCouncil = flowCouncilQueryRes?.flowCouncil;
 
-  const launchNetworks = networks.filter((network) => network.label === "celo");
+  const launchNetworks = networks.filter(
+    (network) =>
+      network.label === "celo" || network.label === "optimism-sepolia",
+  );
   const defaultToken =
     selectedNetwork.tokens.find((t) => t.symbol === "G$") ??
     selectedNetwork.tokens[0];

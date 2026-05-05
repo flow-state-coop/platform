@@ -146,7 +146,7 @@ export default function Funding(props: FundingProps) {
     client: chainId ? getApolloClient("flowCouncil", chainId) : undefined,
     variables: { councilId: councilId?.toLowerCase() },
     skip: !councilId || !chainId,
-    pollInterval: 4000,
+    pollInterval: 10000,
   });
 
   const isSuperAdmin = useMemo(() => {
@@ -310,7 +310,6 @@ export default function Funding(props: FundingProps) {
     splitterAddress,
     tokenAddress: acceptedToken,
     chainId: chainId ?? 0,
-    // Only fetch the senders snapshot for users who could actually close streams.
     enabled: !!splitterAddress && !!acceptedToken && canCloseStreams,
   });
 
@@ -396,7 +395,7 @@ export default function Funding(props: FundingProps) {
       setStreamMonthlyAmount("");
       setStreamWrapAmount("");
     } catch {
-      // surface via transactionError
+      /* empty */
     }
   };
 
@@ -451,7 +450,7 @@ export default function Funding(props: FundingProps) {
       setDepositAmount("");
       setDepositWrapAmount("");
     } catch {
-      // surface via depositError
+      /* empty */
     }
   };
 
@@ -481,6 +480,7 @@ export default function Funding(props: FundingProps) {
       await waitForReceipt(publicClient, hash);
       setCloseAllSuccess(true);
       setCloseAllConfirmText("");
+      await senderSnapshot.refetch();
     } catch (err) {
       console.error(err);
       setCloseAllError(sanitizeTxError(err));
@@ -488,8 +488,6 @@ export default function Funding(props: FundingProps) {
       setIsClosingAll(false);
     }
   };
-
-  // Renders
 
   const explorerHref =
     network?.blockExplorer && splitterAddress

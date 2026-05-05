@@ -32,6 +32,7 @@ export type ActiveSplitterSenders = {
   blockNumber: number | null;
   loading: boolean;
   truncated: boolean;
+  refetch: () => Promise<unknown>;
 };
 
 export default function useActiveSplitterSenders({
@@ -46,7 +47,7 @@ export default function useActiveSplitterSenders({
   enabled: boolean;
 }): ActiveSplitterSenders {
   const skip = !enabled || !splitterAddress || !tokenAddress;
-  const { data, loading } = useQuery(ACTIVE_SPLITTER_SENDERS_QUERY, {
+  const { data, loading, refetch } = useQuery(ACTIVE_SPLITTER_SENDERS_QUERY, {
     client: getApolloClient("superfluid", chainId),
     variables: {
       splitter: splitterAddress?.toLowerCase(),
@@ -63,5 +64,5 @@ export default function useActiveSplitterSenders({
   const blockNumber: number | null = data?._meta?.block?.number ?? null;
   const truncated = senders.length === SENDERS_PAGE_SIZE;
 
-  return { senders, blockNumber, loading, truncated };
+  return { senders, blockNumber, loading, truncated, refetch };
 }

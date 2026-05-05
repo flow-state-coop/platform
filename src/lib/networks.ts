@@ -220,7 +220,7 @@ const networks: Network[] = [
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     gda: "0xd453d38A001B47271488886532f1CCeAbf0c7eF3",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
-    superAppSplitterFactory: "0xE6A8d34f522E44C118E0d10eADBA3f1beDE52cBa",
+    superAppSplitterFactory: "0x11a295213E878cEe7EDBB40298a84d3e0d602fE7",
     tokens: [
       {
         symbol: "ETHx",

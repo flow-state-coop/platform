@@ -14,6 +14,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
+import useCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 
 const FLOW_COUNCIL_MANAGER_QUERY = gql`
   query FlowCouncilManagerQuery($address: String!) {
@@ -59,12 +60,17 @@ function SidebarLinks({
     ? networks.find((n) => n.id === chainId)
     : undefined;
   const splitterFactoryDeployed = isSplitterFactoryDeployed(network);
+  const councilMetadata = useCouncilMetadata(
+    chainId ?? 0,
+    selectedCouncil?.id ?? "",
+  );
+  const hasSplitter =
+    splitterFactoryDeployed && !!councilMetadata.superappSplitterAddress;
 
   return (
     <Stack direction="vertical" gap={3} className="rounded-4 flex-grow-0 mt-3">
       {SIDEBAR_LINK_DEFS.filter(
-        ({ requiresSplitterFactory }) =>
-          !requiresSplitterFactory || splitterFactoryDeployed,
+        ({ requiresSplitterFactory }) => !requiresSplitterFactory || hasSplitter,
       ).map(({ path, label, alwaysEnabled }) => {
         const href =
           alwaysEnabled && chainId && selectedCouncil
