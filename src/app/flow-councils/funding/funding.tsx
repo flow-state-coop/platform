@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Address, erc20Abi, formatUnits, parseEther, parseUnits } from "viem";
@@ -31,6 +31,7 @@ import {
   buildBatchCall,
   buildCreateFlowBatchOp,
   buildSuperTokenTransferBatchOp,
+  buildUpdateFlowBatchOp,
   buildWrapCalls,
 } from "@/lib/superfluidTransactions";
 import { TransactionCall } from "@/types/transactionCall";
@@ -59,10 +60,30 @@ const FLOW_COUNCIL_QUERY = gql`
   }
 `;
 
+const SF_SENDER_OUTFLOWS_QUERY = gql`
+  query SenderOutflowsQuery($userAddress: ID!, $token: String!) {
+    account(id: $userAddress) {
+      outflows(where: { token: $token, currentFlowRate_gt: "0" }) {
+        receiver {
+          id
+        }
+        currentFlowRate
+      }
+    }
+  }
+`;
+
 const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 
 function isPositiveDecimal(s: string) {
   return /^\d+(\.\d*)?$|^\d*\.\d+$/.test(s);
+}
+
+function formatMonthlyForInput(monthlyWei: bigint): string {
+  const PRECISION_DIVISOR = 10n ** 9n;
+  const half = PRECISION_DIVISOR / 2n;
+  const rounded = ((monthlyWei + half) / PRECISION_DIVISOR) * PRECISION_DIVISOR;
+  return formatUnits(rounded, 18);
 }
 
 function sanitizeTxError(err: unknown): string {
@@ -152,6 +173,26 @@ export default function Funding(props: FundingProps) {
     );
   }, [flowCouncilQueryRes, address]);
 
+  const { data: senderOutflowsRes } = useQuery(SF_SENDER_OUTFLOWS_QUERY, {
+    client: chainId ? getApolloClient("superfluid", chainId) : undefined,
+    variables: {
+      userAddress: address?.toLowerCase() ?? "",
+      token: acceptedToken?.toLowerCase() ?? "",
+    },
+    skip: !address || !acceptedToken || !chainId,
+    pollInterval: 10000,
+  });
+
+  const currentFlowRate = useMemo<bigint | null>(() => {
+    if (!address || !acceptedToken || !splitterAddress) return null;
+    if (!senderOutflowsRes) return null;
+    const outflow = senderOutflowsRes.account?.outflows?.find(
+      (o: { receiver: { id: string }; currentFlowRate: string }) =>
+        o.receiver.id === splitterAddress.toLowerCase(),
+    );
+    return outflow ? BigInt(outflow.currentFlowRate) : 0n;
+  }, [senderOutflowsRes, address, acceptedToken, splitterAddress]);
+
   const { balanceUntilUpdatedAt: adminBalanceRaw } = useSuperTokenBalanceOfNow({
     token: acceptedToken ?? undefined,
     address,
@@ -194,6 +235,20 @@ export default function Funding(props: FundingProps) {
   const [streamMonthlyAmount, setStreamMonthlyAmount] = useState("");
   const [streamWrapAmount, setStreamWrapAmount] = useState("");
 
+  const hasPrefilledStreamRef = useRef(false);
+  const prefilledStreamStringRef = useRef("");
+  useEffect(() => {
+    if (hasPrefilledStreamRef.current) return;
+    if (currentFlowRate === null) return;
+    hasPrefilledStreamRef.current = true;
+    if (currentFlowRate > 0n) {
+      const monthlyWei = currentFlowRate * BigInt(SECONDS_IN_MONTH);
+      const prefill = formatMonthlyForInput(monthlyWei);
+      prefilledStreamStringRef.current = prefill;
+      setStreamMonthlyAmount(prefill);
+    }
+  }, [currentFlowRate]);
+
   const [depositAmount, setDepositAmount] = useState("");
   const [depositWrapAmount, setDepositWrapAmount] = useState("");
 
@@ -219,10 +274,19 @@ export default function Funding(props: FundingProps) {
     }
   }, [streamMonthlyAmount]);
 
+  const additionalFlowRate = useMemo(() => {
+    const current = currentFlowRate ?? 0n;
+    return streamFlowRate > current ? streamFlowRate - current : 0n;
+  }, [streamFlowRate, currentFlowRate]);
+
   const streamRequiredBuffer = useMemo(() => {
-    if (streamFlowRate === 0n || !liquidationPeriod) return 0n;
-    return streamFlowRate * liquidationPeriod;
-  }, [streamFlowRate, liquidationPeriod]);
+    if (additionalFlowRate === 0n || !liquidationPeriod) return 0n;
+    return additionalFlowRate * liquidationPeriod;
+  }, [additionalFlowRate, liquidationPeriod]);
+
+  const isStreamUpdate = (currentFlowRate ?? 0n) > 0n;
+  const streamFlowRateUnchanged =
+    currentFlowRate !== null && streamFlowRate === currentFlowRate;
 
   const streamWrapWei = useMemo(() => {
     if (!streamWrapAmount || !isPositiveDecimal(streamWrapAmount)) return 0n;
@@ -352,6 +416,7 @@ export default function Funding(props: FundingProps) {
       !splitterAddress ||
       !chainId ||
       streamFlowRate === 0n ||
+      streamFlowRateUnchanged ||
       !streamHasSufficientForBuffer
     ) {
       return;
@@ -390,21 +455,26 @@ export default function Funding(props: FundingProps) {
       );
     }
 
-    batchOps.push(
-      buildCreateFlowBatchOp({
-        tokenAddress: acceptedToken,
-        receiverAddress: splitterAddress,
-        flowRate: streamFlowRate,
-        chainId: chainKey,
-      }),
-    );
+    const flowOp = isStreamUpdate
+      ? buildUpdateFlowBatchOp({
+          tokenAddress: acceptedToken,
+          receiverAddress: splitterAddress,
+          flowRate: streamFlowRate,
+          chainId: chainKey,
+        })
+      : buildCreateFlowBatchOp({
+          tokenAddress: acceptedToken,
+          receiverAddress: splitterAddress,
+          flowRate: streamFlowRate,
+          chainId: chainKey,
+        });
+    batchOps.push(flowOp);
 
     const batchCall = buildBatchCall(batchOps, chainKey);
     if (batchCall) calls.push(batchCall);
 
     try {
       await executeTransactions(calls);
-      setStreamMonthlyAmount("");
       setStreamWrapAmount("");
     } catch {
       /* empty */
@@ -615,6 +685,7 @@ export default function Funding(props: FundingProps) {
         disabled={
           areTransactionsLoading ||
           streamFlowRate === 0n ||
+          streamFlowRateUnchanged ||
           !streamHasSufficientForBuffer ||
           streamWrapExceedsUnderlying
         }
@@ -626,6 +697,8 @@ export default function Funding(props: FundingProps) {
             <Spinner size="sm" className="me-2" />
             {completedTransactions > 0 ? `${completedTransactions}` : null}
           </>
+        ) : isStreamUpdate ? (
+          "Update Stream"
         ) : (
           "Open Stream"
         )}
@@ -850,6 +923,17 @@ export default function Funding(props: FundingProps) {
               <Form.Group>
                 <Form.Label className="fw-semi-bold">
                   Monthly flow rate ({tokenSymbol})
+                  {isStreamUpdate &&
+                  currentFlowRate &&
+                  streamMonthlyAmount !== prefilledStreamStringRef.current ? (
+                    <span className="text-info ms-2 fw-normal">
+                      Current:{" "}
+                      {formatMonthlyForInput(
+                        currentFlowRate * BigInt(SECONDS_IN_MONTH),
+                      )}{" "}
+                      {tokenSymbol}/mo
+                    </span>
+                  ) : null}
                 </Form.Label>
                 <Form.Control
                   type="text"
@@ -874,7 +958,9 @@ export default function Funding(props: FundingProps) {
               >
                 <Stack direction="vertical" className="flex-grow-1">
                   <Card.Text className="text-info mb-0 fw-semi-bold">
-                    Required buffer deposit
+                    {isStreamUpdate
+                      ? "Additional buffer required"
+                      : "Required buffer deposit"}
                   </Card.Text>
                   <span className="fw-semi-bold">
                     {liquidationPeriod
@@ -939,8 +1025,9 @@ export default function Funding(props: FundingProps) {
               ) : null}
               {!streamHasSufficientForBuffer && streamFlowRate > 0n ? (
                 <Alert variant="danger" className="mb-0 fw-semi-bold">
-                  Required buffer exceeds your {tokenSymbol} balance plus the
-                  amount you intend to wrap.
+                  {isStreamUpdate ? "Additional buffer" : "Required buffer"}{" "}
+                  exceeds your {tokenSymbol} balance plus the amount you intend
+                  to wrap.
                 </Alert>
               ) : null}
               {transactionError ? (
