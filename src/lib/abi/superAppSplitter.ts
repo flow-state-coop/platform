@@ -30,4 +30,25 @@ export const superAppSplitterAbi = [
     outputs: [],
     stateMutability: "nonpayable",
   },
+  {
+    type: "function",
+    name: "roundEndsAt",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "isRoundClosed",
+    inputs: [],
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "setRoundEnd",
+    inputs: [{ name: "endsAt", type: "uint256" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
 ] as const;

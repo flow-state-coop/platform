@@ -20,6 +20,9 @@ export type SplitterReads = {
   impliedMaxMonthlyRate: bigint | null;
   hasStreamAdminRole: boolean | null;
   hasDefaultAdminRole: boolean | null;
+  roundEndsAt: bigint | null;
+  isRoundClosed: boolean | null;
+  refetchRoundEnd: () => void;
 };
 
 export default function useSplitterReads({
@@ -100,6 +103,25 @@ export default function useSplitterReads({
     query: { enabled: !!splitterAddress && !!connectedAddress },
   });
 
+  const { data: roundEndsAtRaw, refetch: refetchRoundEndsAt } = useReadContract(
+    {
+      address: splitterAddress ?? undefined,
+      abi: superAppSplitterAbi,
+      functionName: "roundEndsAt",
+      chainId,
+      query: { enabled: !!splitterAddress, refetchInterval: 10000 },
+    },
+  );
+
+  const { data: isRoundClosedRaw, refetch: refetchIsRoundClosed } =
+    useReadContract({
+      address: splitterAddress ?? undefined,
+      abi: superAppSplitterAbi,
+      functionName: "isRoundClosed",
+      chainId,
+      query: { enabled: !!splitterAddress, refetchInterval: 10000 },
+    });
+
   // FEE_PORTION is encoded as permille on the splitter contract (e.g. 50 -> 5%).
   const feePortion =
     feePortionRaw !== undefined && feePortionRaw !== null
@@ -120,6 +142,11 @@ export default function useSplitterReads({
     return (superTokenBalance * BigInt(SECONDS_IN_MONTH)) / liquidationPeriod;
   }, [superTokenBalance, liquidationPeriod]);
 
+  const refetchRoundEnd = () => {
+    refetchRoundEndsAt();
+    refetchIsRoundClosed();
+  };
+
   return {
     acceptedToken: (acceptedToken as Address | undefined) ?? null,
     feePortion,
@@ -130,5 +157,12 @@ export default function useSplitterReads({
       hasStreamAdminRole === undefined ? null : Boolean(hasStreamAdminRole),
     hasDefaultAdminRole:
       hasDefaultAdminRole === undefined ? null : Boolean(hasDefaultAdminRole),
+    roundEndsAt:
+      roundEndsAtRaw !== undefined && roundEndsAtRaw !== null
+        ? BigInt(roundEndsAtRaw)
+        : null,
+    isRoundClosed:
+      isRoundClosedRaw === undefined ? null : Boolean(isRoundClosedRaw),
+    refetchRoundEnd,
   };
 }

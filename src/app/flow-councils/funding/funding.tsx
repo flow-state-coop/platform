@@ -132,6 +132,9 @@ export default function Funding(props: FundingProps) {
     impliedMaxMonthlyRate,
     hasStreamAdminRole,
     hasDefaultAdminRole,
+    roundEndsAt,
+    isRoundClosed,
+    refetchRoundEnd,
   } = splitterReads;
 
   const tokenInfo = useMemo(() => {
@@ -211,6 +214,12 @@ export default function Funding(props: FundingProps) {
   const [closeAllError, setCloseAllError] = useState("");
   const [closeAllSuccess, setCloseAllSuccess] = useState(false);
   const [isClosingAll, setIsClosingAll] = useState(false);
+
+  const [roundEndDateInput, setRoundEndDateInput] = useState("");
+  const [roundEndError, setRoundEndError] = useState("");
+  const [roundEndSuccess, setRoundEndSuccess] = useState("");
+  const [isSchedulingRoundEnd, setIsSchedulingRoundEnd] = useState(false);
+  const [isCancellingRoundEnd, setIsCancellingRoundEnd] = useState(false);
 
   const streamFlowRate = useMemo(() => {
     if (!streamMonthlyAmount || !isPositiveDecimal(streamMonthlyAmount)) return 0n;
@@ -297,6 +306,20 @@ export default function Funding(props: FundingProps) {
     hasDefaultAdminRole === true ||
     hasStreamAdminRole === true ||
     isSuperAdmin === true;
+
+  const roundStatus = useMemo<
+    "open" | "scheduled" | "closed" | "loading"
+  >(() => {
+    if (isRoundClosed === null || roundEndsAt === null) return "loading";
+    if (isRoundClosed) return "closed";
+    if (roundEndsAt > 0n) return "scheduled";
+    return "open";
+  }, [isRoundClosed, roundEndsAt]);
+
+  const roundEndsAtDate = useMemo(() => {
+    if (!roundEndsAt || roundEndsAt === 0n) return null;
+    return new Date(Number(roundEndsAt) * 1000);
+  }, [roundEndsAt]);
 
   // canSubmitClose gates the actual button. If both on-chain roles are confirmed
   // false, the contract will revert — keep the button disabled instead of just
@@ -450,6 +473,87 @@ export default function Funding(props: FundingProps) {
       setDepositWrapAmount("");
     } catch {
       /* empty */
+    }
+  };
+
+  const handleScheduleRoundEnd = async () => {
+    if (
+      !address ||
+      !splitterAddress ||
+      !chainId ||
+      !publicClient ||
+      !canSubmitClose
+    ) {
+      return;
+    }
+
+    const parsed = roundEndDateInput ? new Date(roundEndDateInput) : null;
+    if (!parsed || Number.isNaN(parsed.getTime())) {
+      setRoundEndError("Pick a valid date and time");
+      return;
+    }
+
+    const endsAt = BigInt(Math.floor(parsed.getTime() / 1000));
+    if (endsAt <= BigInt(Math.floor(Date.now() / 1000))) {
+      setRoundEndError("End time must be in the future");
+      return;
+    }
+
+    setIsSchedulingRoundEnd(true);
+    setRoundEndError("");
+    setRoundEndSuccess("");
+
+    try {
+      const hash = await writeContract(wagmiConfig, {
+        address: splitterAddress,
+        abi: superAppSplitterAbi,
+        functionName: "setRoundEnd",
+        args: [endsAt],
+        chainId,
+      });
+      await waitForReceipt(publicClient, hash);
+      setRoundEndSuccess("Round end scheduled.");
+      setRoundEndDateInput("");
+      refetchRoundEnd();
+    } catch (err) {
+      console.error(err);
+      setRoundEndError(sanitizeTxError(err));
+    } finally {
+      setIsSchedulingRoundEnd(false);
+    }
+  };
+
+  const handleCancelRoundEnd = async () => {
+    if (
+      !address ||
+      !splitterAddress ||
+      !chainId ||
+      !publicClient ||
+      !canSubmitClose
+    ) {
+      return;
+    }
+
+    setIsCancellingRoundEnd(true);
+    setRoundEndError("");
+    setRoundEndSuccess("");
+
+    try {
+      const hash = await writeContract(wagmiConfig, {
+        address: splitterAddress,
+        abi: superAppSplitterAbi,
+        functionName: "setRoundEnd",
+        args: [0n],
+        chainId,
+      });
+      await waitForReceipt(publicClient, hash);
+      setRoundEndSuccess("Scheduled round end cancelled.");
+      refetchRoundEnd();
+    } catch (err) {
+      console.error(err);
+      setRoundEndError(sanitizeTxError(err));
+    } finally {
+      setIsCancellingRoundEnd(false);
     }
   };
 
@@ -707,6 +811,28 @@ export default function Funding(props: FundingProps) {
                   )}
                 </span>
               </Stack>
+              <Stack direction="vertical" gap={1} className="flex-grow-1">
+                <Card.Text className="text-info mb-0 fw-semi-bold">
+                  Round status
+                </Card.Text>
+                <span className="fw-semi-bold">
+                  {roundStatus === "loading" ? (
+                    <Spinner size="sm" />
+                  ) : roundStatus === "open" ? (
+                    <span className="text-success">Open</span>
+                  ) : roundStatus === "scheduled" ? (
+                    <span className="text-warning">
+                      Scheduled — closes{" "}
+                      {roundEndsAtDate?.toLocaleString(undefined, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </span>
+                  ) : (
+                    <span className="text-danger">Closed</span>
+                  )}
+                </span>
+              </Stack>
             </Stack>
           </Card.Body>
         </Card>
@@ -958,6 +1084,105 @@ export default function Funding(props: FundingProps) {
           </Card.Body>
         </Card>
 
+        {/* Schedule Round End */}
+        {canCloseStreams ? (
+          <Card className="bg-lace-100 rounded-4 border-0 p-4">
+            <Card.Header className="bg-transparent border-0 p-0">
+              <Card.Title className="fs-5 fw-semi-bold">
+                Schedule Round End
+              </Card.Title>
+              <Card.Text className="text-info mb-0">
+                Set a future round-end timestamp to block new donors and stop
+                existing donors from updating their flows. Existing streams keep
+                running until you evict them with Close All below. Schedule
+                first to avoid racing a donor during the close window.
+              </Card.Text>
+            </Card.Header>
+            <Card.Body className="p-0 mt-4">
+              <Stack direction="vertical" gap={3}>
+                {roundStatus === "scheduled" ? (
+                  <Alert variant="warning" className="mb-0 fw-semi-bold">
+                    Round end currently scheduled for{" "}
+                    {roundEndsAtDate?.toLocaleString(undefined, {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                    .
+                  </Alert>
+                ) : null}
+                {roundStatus === "closed" ? (
+                  <Alert variant="danger" className="mb-0 fw-semi-bold">
+                    Round is already closed. New incoming streams will revert.
+                  </Alert>
+                ) : null}
+                {roundStatus !== "closed" ? (
+                  <Form.Group>
+                    <Form.Label className="fw-semi-bold">
+                      Round end date and time
+                    </Form.Label>
+                    <Form.Control
+                      type="datetime-local"
+                      disabled={!canSubmitClose}
+                      value={roundEndDateInput}
+                      onChange={(e) => setRoundEndDateInput(e.target.value)}
+                      className="border-0 rounded-4 bg-white py-4 fw-semi-bold"
+                      style={{ paddingTop: 12, paddingBottom: 12 }}
+                    />
+                  </Form.Group>
+                ) : null}
+                {roundEndError ? (
+                  <Alert variant="danger" className="mb-0 fw-semi-bold">
+                    {roundEndError}
+                  </Alert>
+                ) : null}
+                {roundStatus !== "closed" ? (
+                  <Stack
+                    direction={isMobile ? "vertical" : "horizontal"}
+                    gap={3}
+                  >
+                    <Button
+                      disabled={
+                        !canSubmitClose ||
+                        isSchedulingRoundEnd ||
+                        isCancellingRoundEnd ||
+                        !roundEndDateInput
+                      }
+                      className="fs-lg fw-semi-bold py-4 rounded-4 flex-grow-1"
+                      onClick={handleScheduleRoundEnd}
+                    >
+                      {isSchedulingRoundEnd ? (
+                        <Spinner size="sm" />
+                      ) : roundStatus === "scheduled" ? (
+                        "Reschedule"
+                      ) : (
+                        "Schedule"
+                      )}
+                    </Button>
+                    {roundStatus === "scheduled" ? (
+                      <Button
+                        variant="outline-secondary"
+                        disabled={
+                          !canSubmitClose ||
+                          isSchedulingRoundEnd ||
+                          isCancellingRoundEnd
+                        }
+                        className="fs-lg fw-semi-bold py-4 rounded-4 flex-grow-1"
+                        onClick={handleCancelRoundEnd}
+                      >
+                        {isCancellingRoundEnd ? (
+                          <Spinner size="sm" />
+                        ) : (
+                          "Cancel scheduled"
+                        )}
+                      </Button>
+                    ) : null}
+                  </Stack>
+                ) : null}
+              </Stack>
+            </Card.Body>
+          </Card>
+        ) : null}
+
         {/* Danger Zone — Close All */}
         <Card className="rounded-4 border border-danger p-4">
           <Card.Header className="bg-transparent border-0 p-0">
@@ -965,8 +1190,9 @@ export default function Funding(props: FundingProps) {
               Danger Zone — Close All
             </Card.Title>
             <Card.Text className="text-info mb-0">
-              Close every active incoming stream to the splitter in a single
-              transaction. The on-chain closure is the round-end signal.
+              Evict every active incoming stream to the splitter in a single
+              transaction. Run this after scheduling the round end above so no
+              donor can open a stream during the close window.
             </Card.Text>
           </Card.Header>
           <Card.Body className="p-0 mt-4">
@@ -1062,6 +1288,15 @@ export default function Funding(props: FundingProps) {
           className="position-fixed bottom-0 end-0 m-4 bg-success p-4 fw-semi-bold fs-6 text-white"
         >
           Streams closed.
+        </Toast>
+        <Toast
+          show={!!roundEndSuccess}
+          delay={4000}
+          autohide={true}
+          onClose={() => setRoundEndSuccess("")}
+          className="position-fixed bottom-0 end-0 m-4 bg-success p-4 fw-semi-bold fs-6 text-white"
+        >
+          {roundEndSuccess}
         </Toast>
       </Stack>
     </>
