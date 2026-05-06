@@ -79,6 +79,10 @@ function isPositiveDecimal(s: string) {
   return /^\d+(\.\d*)?$|^\d*\.\d+$/.test(s);
 }
 
+function isInProgressDecimal(s: string) {
+  return s === "" || s === "." || isPositiveDecimal(s);
+}
+
 function formatMonthlyForInput(monthlyWei: bigint): string {
   const PRECISION_DIVISOR = 10n ** 9n;
   const half = PRECISION_DIVISOR / 2n;
@@ -941,10 +945,7 @@ export default function Funding(props: FundingProps) {
                   placeholder="0.0"
                   value={streamMonthlyAmount}
                   onChange={(e) => {
-                    if (
-                      e.target.value === "" ||
-                      isPositiveDecimal(e.target.value)
-                    ) {
+                    if (isInProgressDecimal(e.target.value)) {
                       setStreamMonthlyAmount(e.target.value);
                     }
                   }}
@@ -1006,10 +1007,7 @@ export default function Funding(props: FundingProps) {
                     placeholder="0.0"
                     value={streamWrapAmount}
                     onChange={(e) => {
-                      if (
-                        e.target.value === "" ||
-                        isPositiveDecimal(e.target.value)
-                      ) {
+                      if (isInProgressDecimal(e.target.value)) {
                         setStreamWrapAmount(e.target.value);
                       }
                     }}
@@ -1063,10 +1061,7 @@ export default function Funding(props: FundingProps) {
                   placeholder="0.0"
                   value={depositAmount}
                   onChange={(e) => {
-                    if (
-                      e.target.value === "" ||
-                      isPositiveDecimal(e.target.value)
-                    ) {
+                    if (isInProgressDecimal(e.target.value)) {
                       setDepositAmount(e.target.value);
                     }
                   }}
@@ -1107,10 +1102,7 @@ export default function Funding(props: FundingProps) {
                     placeholder="0.0"
                     value={depositWrapAmount}
                     onChange={(e) => {
-                      if (
-                        e.target.value === "" ||
-                        isPositiveDecimal(e.target.value)
-                      ) {
+                      if (isInProgressDecimal(e.target.value)) {
                         setDepositWrapAmount(e.target.value);
                       }
                     }}
