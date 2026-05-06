@@ -838,12 +838,12 @@ export default function Funding(props: FundingProps) {
               Super App Splitter
             </Card.Title>
             <Card.Text className="text-info mb-0">
-              Donations stream to the splitter, which deducts the sustainability
-              fee and forwards the rest to the distribution pool. The splitter
-              must hold a Super Token buffer for the GDA leg of each stream (GDA
-              cannot borrow protocol app credit). Retained fees accumulate in
-              the splitter and back the buffer by design. The first stream is
-              seeded by an admin so public donors never hit a revert.
+              Flow Councils use a stream split forwarding contract to give round
+              admins the ability to close the funding round and all incoming
+              streams on behalf of all individual donors. It also collects a
+              platform sustainability fee which accrues in the contract until
+              round close. This contract must always hold at 4 hours worth of
+              the token at the current funding rate.
             </Card.Text>
           </Card.Header>
           <Card.Body className="p-0 mt-4">
@@ -949,12 +949,13 @@ export default function Funding(props: FundingProps) {
         <Card className="bg-lace-100 rounded-4 border-0 p-4">
           <Card.Header className="bg-transparent border-0 p-0">
             <Card.Title className="fs-5 fw-semi-bold">
-              Open Primary Stream
+              Sponsor Stream
             </Card.Title>
             <Card.Text className="text-info mb-0">
-              Stream tokens from your wallet to the splitter and seed the
-              required GDA buffer. The first donor cannot stream cleanly until
-              this is done.
+              Round operators must open the round&apos;s first funding stream
+              here after grantees have been added to the round. In this checkout
+              flow, you&apos;ll fund your own 4-hour buffer deposit, so we can
+              abstract that complexity from funders on the main UI.
             </Card.Text>
           </Card.Header>
           <Card.Body className="p-0 mt-4">
@@ -1077,11 +1078,13 @@ export default function Funding(props: FundingProps) {
         <Card className="bg-lace-100 rounded-4 border-0 p-4">
           <Card.Header className="bg-transparent border-0 p-0">
             <Card.Title className="fs-5 fw-semi-bold">
-              Direct Deposit
+              Splitter Transfer
             </Card.Title>
             <Card.Text className="text-info mb-0">
-              Add Super Tokens directly to the splitter to grow its headroom.
-              The implied max funding rate scales with the splitter balance.
+              Add Super Tokens to the splitter contract without opening a
+              stream. This raises the max funding rate for your round. We
+              recommend this option if you expect significant, early community
+              funding support.
             </Card.Text>
           </Card.Header>
           <Card.Body className="p-0 mt-4">
@@ -1203,13 +1206,12 @@ export default function Funding(props: FundingProps) {
           <Card className="bg-lace-100 rounded-4 border-0 p-4">
             <Card.Header className="bg-transparent border-0 p-0">
               <Card.Title className="fs-5 fw-semi-bold">
-                Schedule Round End
+                Round End Date
               </Card.Title>
               <Card.Text className="text-info mb-0">
-                Set a future round-end timestamp to block new donors and stop
-                existing donors from updating their flows. Existing streams keep
-                running until you evict them with Close All below. Schedule
-                first to avoid racing a donor during the close window.
+                Set an end to your round (in your local timezone). After this
+                date passes, streams into the round can only be closed. You can
+                do this for your community donors in the next section.
               </Card.Text>
             </Card.Header>
             <Card.Body className="p-0 mt-4">
@@ -1325,8 +1327,8 @@ export default function Funding(props: FundingProps) {
             <Card.Text className="text-info mb-0">
               Flow Council funding streams are open-ended by default. You can
               close all incoming streams to your round here. We only recommend
-              doing this in emergencies or after your round&apos;s scheduled
-              end.
+              doing this in emergencies or after your round&apos;s scheduled end
+              date.
             </Card.Text>
           </Card.Header>
           <Card.Body className="p-0 mt-4">
