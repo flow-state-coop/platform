@@ -15,17 +15,11 @@ const ACTIVE_SPLITTER_SENDERS_QUERY = gql`
         }
       }
     }
-    _meta {
-      block {
-        number
-      }
-    }
   }
 `;
 
 export type ActiveSplitterSenders = {
   senders: string[];
-  blockNumber: number | null;
   loading: boolean;
   truncated: boolean;
   refetch: () => Promise<unknown>;
@@ -57,8 +51,7 @@ export default function useActiveSplitterSenders({
     data?.account?.inflows?.map(
       (i: { sender: { id: string } }) => i.sender.id,
     ) ?? [];
-  const blockNumber: number | null = data?._meta?.block?.number ?? null;
   const truncated = senders.length === SENDERS_PAGE_SIZE;
 
-  return { senders, blockNumber, loading, truncated, refetch };
+  return { senders, loading, truncated, refetch };
 }

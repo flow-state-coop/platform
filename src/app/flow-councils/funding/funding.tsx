@@ -686,6 +686,11 @@ export default function Funding(props: FundingProps) {
       ? `${network.blockExplorer.replace(/\/$/, "")}/address/${splitterAddress}`
       : null;
 
+  const superfluidStreamsHref =
+    network?.superfluidExplorer && splitterAddress
+      ? `${network.superfluidExplorer.replace(/\/$/, "")}/accounts/${splitterAddress}?tab=streams`
+      : null;
+
   const tokenSymbol = tokenInfo?.symbol ?? "";
 
   const renderStreamButton = () => {
@@ -1351,8 +1356,16 @@ export default function Funding(props: FundingProps) {
                 <Card.Text className="mb-0 fw-semi-bold">
                   {senderSnapshot.loading ? (
                     <Spinner size="sm" />
-                  ) : senderSnapshot.blockNumber !== null ? (
-                    `${validSenders.length} stream${validSenders.length === 1 ? "" : "s"} to close (snapshot at block ${senderSnapshot.blockNumber})`
+                  ) : superfluidStreamsHref ? (
+                    <a
+                      href={superfluidStreamsHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary text-decoration-none"
+                    >
+                      {validSenders.length} stream
+                      {validSenders.length === 1 ? "" : "s"} to close
+                    </a>
                   ) : (
                     `${validSenders.length} stream${validSenders.length === 1 ? "" : "s"} to close`
                   )}
