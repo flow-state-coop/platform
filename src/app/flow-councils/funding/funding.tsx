@@ -1323,9 +1323,10 @@ export default function Funding(props: FundingProps) {
               Danger Zone — Close All
             </Card.Title>
             <Card.Text className="text-info mb-0">
-              Evict every active incoming stream to the splitter in a single
-              transaction. Run this after scheduling the round end above so no
-              donor can open a stream during the close window.
+              Flow Council funding streams are open-ended by default. You can
+              close all incoming streams to your round here. We only recommend
+              doing this in emergencies or after your round&apos;s scheduled
+              end.
             </Card.Text>
           </Card.Header>
           <Card.Body className="p-0 mt-4">
@@ -1371,7 +1372,7 @@ export default function Funding(props: FundingProps) {
                   disabled={!canSubmitClose}
                   value={closeAllConfirmText}
                   onChange={(e) => setCloseAllConfirmText(e.target.value)}
-                  className="border-0 rounded-4 bg-white py-4 fw-semi-bold"
+                  className="border border-danger rounded-4 bg-white py-4 fw-semi-bold"
                   style={{ paddingTop: 12, paddingBottom: 12 }}
                 />
               </Form.Group>
@@ -1390,7 +1391,7 @@ export default function Funding(props: FundingProps) {
                     validSenders.length === 0)
                 }
                 style={{ pointerEvents: closeAllSuccess ? "none" : "auto" }}
-                className="fs-lg fw-semi-bold py-4 rounded-4"
+                className="fs-lg fw-semi-bold py-4 rounded-4 text-light shadow"
                 onClick={handleCloseAll}
               >
                 {closeAllSuccess ? (
