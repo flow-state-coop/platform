@@ -1,10 +1,5 @@
-import {
-  arbitrum,
-  base,
-  celo,
-  optimism,
-  optimismSepolia,
-} from "viem/chains";
+import { Chain } from "viem";
+import { arbitrum, base, celo, optimism, optimismSepolia } from "viem/chains";
 import { Network } from "@/types/network";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -15,6 +10,18 @@ function isSplitterFactoryDeployed(network: Network | undefined): boolean {
   return addr !== "0x" && addr !== ZERO_ADDRESS;
 }
 
+const VIEM_CHAINS_BY_ID: Record<number, Chain> = {
+  [arbitrum.id]: arbitrum,
+  [base.id]: base,
+  [celo.id]: celo,
+  [optimism.id]: optimism,
+  [optimismSepolia.id]: optimismSepolia,
+};
+
+function getViemChain(chainId: number): Chain | undefined {
+  return VIEM_CHAINS_BY_ID[chainId];
+}
+
 const networks: Network[] = [
   {
     id: 42161,
@@ -22,7 +29,6 @@ const networks: Network[] = [
     label: "arbitrum-one",
     icon: "/arb.svg",
     rpcUrl: "https://arb1.arbitrum.io/rpc",
-    viemChain: arbitrum,
     blockExplorer: "https://arbiscan.io/",
     superfluidExplorer: "https://explorer.superfluid.finance/arbitrum-one",
     superfluidDashboard: "https://app.superfluid.finance",
@@ -75,7 +81,6 @@ const networks: Network[] = [
     icon: "/base.svg",
     blockExplorer: "https://basescan.org",
     rpcUrl: "https://base-rpc.publicnode.com",
-    viemChain: base,
     superfluidExplorer: "https://explorer.superfluid.finance/base-mainnet",
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
@@ -117,7 +122,6 @@ const networks: Network[] = [
     icon: "/celo.svg",
     blockExplorer: "https://celoscan.io",
     rpcUrl: "https://forno.celo.org",
-    viemChain: celo,
     superfluidExplorer: "https://explorer.superfluid.finance/celo",
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
@@ -158,7 +162,6 @@ const networks: Network[] = [
     label: "optimism",
     icon: "/optimism.svg",
     rpcUrl: "https://optimism-rpc.publicnode.com",
-    viemChain: optimism,
     blockExplorer: "https://optimistic.etherscan.io",
     superfluidExplorer: "https://explorer.superfluid.finance/optimism-mainnet",
     superfluidDashboard: "https://app.superfluid.finance",
@@ -210,7 +213,6 @@ const networks: Network[] = [
     label: "optimism-sepolia",
     icon: "/optimism.svg",
     rpcUrl: "https://optimism-sepolia-rpc.publicnode.com",
-    viemChain: optimismSepolia,
     blockExplorer: "https://sepolia-optimism.etherscan.io",
     superfluidExplorer: "https://explorer.superfluid.finance/optimism-sepolia",
     superfluidDashboard: "https://app.superfluid.finance",
@@ -253,4 +255,4 @@ const networks: Network[] = [
   },
 ];
 
-export { networks, isSplitterFactoryDeployed };
+export { networks, isSplitterFactoryDeployed, getViemChain };

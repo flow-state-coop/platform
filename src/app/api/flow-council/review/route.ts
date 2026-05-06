@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { createPublicClient, http, parseAbi, Address, isAddress } from "viem";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { networks } from "@/lib/networks";
+import { networks, getViemChain } from "@/lib/networks";
 import { ApplicationStatus } from "@/generated/kysely";
 import {
   sendApplicationStatusChangedEmail,
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     const publicClient = createPublicClient({
-      chain: network.viemChain,
+      chain: getViemChain(network.id),
       transport: http(network.rpcUrl),
     });
 

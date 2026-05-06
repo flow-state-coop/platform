@@ -1,7 +1,7 @@
 import { Address, createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
-import { networks } from "@/lib/networks";
+import { networks, getViemChain } from "@/lib/networks";
 import {
   GOODBUILDERS_COUNCIL_ADDRESSES,
   GOODDOLLAR_IDENTITY_ADDRESS,
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       return Response.json({ success: false, error: "Celo network missing" });
     }
     const celoPublicClient = createPublicClient({
-      chain: celoNetwork.viemChain,
+      chain: getViemChain(celoNetwork.id),
       transport: http(celoNetwork.rpcUrl),
     });
 
@@ -62,12 +62,16 @@ export async function POST(request: Request) {
       process.env.FLOW_STATE_ELIGIBILITY_PK as `0x${string}`,
     );
 
+    const viemChain = getViemChain(network.id);
+    if (!viemChain) {
+      return Response.json({ success: false, error: "Unsupported chain" });
+    }
     const publicClient = createPublicClient({
-      chain: network.viemChain,
+      chain: viemChain,
       transport: http(network.rpcUrl),
     });
     const walletClient = createWalletClient({
-      chain: network.viemChain,
+      chain: viemChain,
       transport: http(network.rpcUrl),
     });
 

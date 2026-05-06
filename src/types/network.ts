@@ -1,4 +1,4 @@
-import { Address, Chain } from "viem";
+import { Address } from "viem";
 import { Token } from "@/types/token";
 
 export type Network = {
@@ -7,7 +7,6 @@ export type Network = {
   label: string;
   icon: string;
   rpcUrl: string;
-  viemChain: Chain;
   blockExplorer: string;
   superfluidExplorer: string;
   superfluidDashboard: string;

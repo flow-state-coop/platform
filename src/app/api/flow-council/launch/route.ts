@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { createPublicClient, http, parseAbi, Address, isAddress } from "viem";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { networks } from "@/lib/networks";
+import { networks, getViemChain } from "@/lib/networks";
 import { DEFAULT_ADMIN_ROLE } from "@/app/flow-councils/lib/constants";
 
 export const dynamic = "force-dynamic";
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     }
 
     const publicClient = createPublicClient({
-      chain: network.viemChain,
+      chain: getViemChain(network.id),
       transport: http(network.rpcUrl),
     });
 
