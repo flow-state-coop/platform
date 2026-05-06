@@ -1246,7 +1246,7 @@ export default function Funding(props: FundingProps) {
                       disabled={!canSubmitClose}
                       value={roundEndDateInput}
                       onChange={(e) => setRoundEndDateInput(e.target.value)}
-                      className="border-0 rounded-4 bg-white py-4 fw-semi-bold"
+                      className="border-0 rounded-4 bg-white py-4 fw-semi-bold w-auto"
                       style={{ paddingTop: 12, paddingBottom: 12 }}
                     />
                   </Form.Group>
@@ -1312,7 +1312,7 @@ export default function Funding(props: FundingProps) {
                         ) : isCancellingRoundEnd ? (
                           <Spinner size="sm" />
                         ) : (
-                          "Cancel scheduled"
+                          "Remove End Date"
                         )}
                       </Button>
                     ) : null}
