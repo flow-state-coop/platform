@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Address, parseEventLogs } from "viem";
@@ -77,9 +77,13 @@ export default function Launch(props: LaunchProps) {
 
   const flowCouncil = flowCouncilQueryRes?.flowCouncil;
 
-  const launchNetworks = networks.filter(
-    (network) =>
-      network.label === "celo" || network.label === "optimism-sepolia",
+  const launchNetworks = useMemo(
+    () =>
+      networks.filter(
+        (network) =>
+          network.label === "celo" || network.label === "optimism-sepolia",
+      ),
+    [],
   );
   const defaultToken =
     selectedNetwork.tokens.find((t) => t.symbol === "G$") ??

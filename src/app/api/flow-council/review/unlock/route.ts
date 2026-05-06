@@ -1,6 +1,5 @@
 import { getServerSession } from "next-auth/next";
 import { createPublicClient, http, parseAbi, Address, isAddress } from "viem";
-import { celo } from "viem/chains";
 import { db } from "../../db";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { networks } from "@/lib/networks";
@@ -54,7 +53,7 @@ export async function POST(request: Request) {
     }
 
     const publicClient = createPublicClient({
-      chain: celo,
+      chain: network.viemChain,
       transport: http(network.rpcUrl),
     });
 
