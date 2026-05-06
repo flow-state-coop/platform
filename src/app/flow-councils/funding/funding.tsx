@@ -844,11 +844,11 @@ export default function Funding(props: FundingProps) {
             </Card.Title>
             <Card.Text className="text-info mb-0">
               Flow Councils use a stream split forwarding contract to give round
-              admins the ability to close the funding round and all incoming
-              streams on behalf of all individual donors. It also collects a
-              platform sustainability fee which accrues in the contract until
-              round close. This contract must always hold at 4 hours worth of
-              the token at the current funding rate.
+              admins the ability to close the round and all incoming streams on
+              behalf of all donors. The splitter also collects a platform
+              sustainability fee which accrues in the contract until round
+              close. This contract must always hold at least 4 hours of the
+              token at the current funding rate.
             </Card.Text>
           </Card.Header>
           <Card.Body className="p-0 mt-4">
@@ -957,10 +957,10 @@ export default function Funding(props: FundingProps) {
               Sponsor Stream
             </Card.Title>
             <Card.Text className="text-info mb-0">
-              Round operators must open the round&apos;s first funding stream
-              here after grantees have been added to the round. In this checkout
-              flow, you&apos;ll fund your own 4-hour buffer deposit, so we can
-              abstract that complexity from funders on the main UI.
+              Admins must open the round&apos;s first funding stream here after
+              grantees have been added. In this checkout flow, you&apos;ll fund
+              your own 4-hour buffer deposit. We avoid that complexity for
+              funders on the public UI.
             </Card.Text>
           </Card.Header>
           <Card.Body className="p-0 mt-4">
@@ -1086,10 +1086,10 @@ export default function Funding(props: FundingProps) {
               Splitter Transfer
             </Card.Title>
             <Card.Text className="text-info mb-0">
-              Add Super Tokens to the splitter contract without opening a
-              stream. This raises the max funding rate for your round. We
-              recommend this option if you expect significant, early community
-              funding support.
+              Add Super Tokens to the splitter without opening a stream. This
+              raises the max funding rate your round can support without waiting
+              for fees to accrue in the contract. We recommend this option if
+              you expect early, significant funding support from your community.
             </Card.Text>
           </Card.Header>
           <Card.Body className="p-0 mt-4">
@@ -1214,9 +1214,9 @@ export default function Funding(props: FundingProps) {
                 Round End Date
               </Card.Title>
               <Card.Text className="text-info mb-0">
-                Set an end to your round (in your local timezone). After this
-                date passes, streams into the round can only be closed. You can
-                do this for your community donors in the next section.
+                Set an end to your round (in your local time zone). After this
+                passes, streams into the round can only be closed. You can do
+                this for your community donors in the next section.
               </Card.Text>
             </Card.Header>
             <Card.Body className="p-0 mt-4">
