@@ -56,9 +56,7 @@ function SidebarLinks({
   selectedCouncil,
   pathname,
 }: SidebarLinksProps) {
-  const network = chainId
-    ? networks.find((n) => n.id === chainId)
-    : undefined;
+  const network = chainId ? networks.find((n) => n.id === chainId) : undefined;
   const splitterFactoryDeployed = isSplitterFactoryDeployed(network);
   const councilMetadata = useCouncilMetadata(
     chainId ?? 0,
@@ -70,7 +68,8 @@ function SidebarLinks({
   return (
     <Stack direction="vertical" gap={3} className="rounded-4 flex-grow-0 mt-3">
       {SIDEBAR_LINK_DEFS.filter(
-        ({ requiresSplitterFactory }) => !requiresSplitterFactory || hasSplitter,
+        ({ requiresSplitterFactory }) =>
+          !requiresSplitterFactory || hasSplitter,
       ).map(({ path, label, alwaysEnabled }) => {
         const href =
           alwaysEnabled && chainId && selectedCouncil

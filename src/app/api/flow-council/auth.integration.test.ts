@@ -195,7 +195,9 @@ describe("isAdmin", () => {
       TEST_COUNCIL_ADDRESS,
       TEST_OUTSIDER_ADDRESS,
     );
-    const callCountAfterFirst = (client.readContract as ReturnType<typeof vi.fn>).mock.calls.length;
+    const callCountAfterFirst = (
+      client.readContract as ReturnType<typeof vi.fn>
+    ).mock.calls.length;
 
     await isAdmin(
       fixture.roundId,
@@ -203,7 +205,9 @@ describe("isAdmin", () => {
       TEST_COUNCIL_ADDRESS,
       TEST_OUTSIDER_ADDRESS,
     );
-    const callCountAfterSecond = (client.readContract as ReturnType<typeof vi.fn>).mock.calls.length;
+    const callCountAfterSecond = (
+      client.readContract as ReturnType<typeof vi.fn>
+    ).mock.calls.length;
 
     expect(callCountAfterSecond).toBe(callCountAfterFirst);
   });

@@ -4,11 +4,7 @@ import { getApolloClient } from "@/lib/apollo";
 const SENDERS_PAGE_SIZE = 1000;
 
 const ACTIVE_SPLITTER_SENDERS_QUERY = gql`
-  query ActiveSplitterSenders(
-    $splitter: ID!
-    $token: String!
-    $first: Int!
-  ) {
+  query ActiveSplitterSenders($splitter: ID!, $token: String!, $first: Int!) {
     account(id: $splitter) {
       inflows(
         where: { currentFlowRate_gt: "0", token: $token }

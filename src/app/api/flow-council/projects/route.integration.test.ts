@@ -43,14 +43,18 @@ async function readJson(res: Response) {
 
 describe("GET /api/flow-council/projects", () => {
   it("returns 400-ish error when managerAddress is missing", async () => {
-    const res = await GET(new Request("http://localhost/api/flow-council/projects"));
+    const res = await GET(
+      new Request("http://localhost/api/flow-council/projects"),
+    );
     const body = await readJson(res);
     expect(body).toEqual({ success: false, error: "Invalid manager address" });
   });
 
   it("rejects invalid address format", async () => {
     const res = await GET(
-      new Request("http://localhost/api/flow-council/projects?managerAddress=notanaddress"),
+      new Request(
+        "http://localhost/api/flow-council/projects?managerAddress=notanaddress",
+      ),
     );
     const body = await readJson(res);
     expect(body.success).toBe(false);
@@ -91,7 +95,9 @@ describe("POST /api/flow-council/projects", () => {
 
   it("rejects unauthenticated requests", async () => {
     mockUnauthenticated();
-    const res = await POST(postRequest({ name: "x", description: MIN_DESCRIPTION }));
+    const res = await POST(
+      postRequest({ name: "x", description: MIN_DESCRIPTION }),
+    );
     const body = await readJson(res);
     expect(body).toEqual({ success: false, error: "Unauthenticated" });
   });
@@ -145,7 +151,9 @@ describe("PATCH /api/flow-council/projects", () => {
 
   it("rejects unauthenticated requests", async () => {
     mockUnauthenticated();
-    const res = await PATCH(patchRequest({ projectId: fixture.alphaProjectId }));
+    const res = await PATCH(
+      patchRequest({ projectId: fixture.alphaProjectId }),
+    );
     const body = await readJson(res);
     expect(body).toEqual({ success: false, error: "Unauthenticated" });
   });

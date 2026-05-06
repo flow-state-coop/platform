@@ -85,9 +85,7 @@ export default function useSplitterReads({
     address: splitterAddress ?? undefined,
     abi: superAppSplitterAbi,
     functionName: "hasRole",
-    args: connectedAddress
-      ? [STREAM_ADMIN_ROLE, connectedAddress]
-      : undefined,
+    args: connectedAddress ? [STREAM_ADMIN_ROLE, connectedAddress] : undefined,
     chainId,
     query: { enabled: !!splitterAddress && !!connectedAddress },
   });
@@ -96,9 +94,7 @@ export default function useSplitterReads({
     address: splitterAddress ?? undefined,
     abi: superAppSplitterAbi,
     functionName: "hasRole",
-    args: connectedAddress
-      ? [DEFAULT_ADMIN_ROLE, connectedAddress]
-      : undefined,
+    args: connectedAddress ? [DEFAULT_ADMIN_ROLE, connectedAddress] : undefined,
     chainId,
     query: { enabled: !!splitterAddress && !!connectedAddress },
   });

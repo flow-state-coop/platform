@@ -3,13 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Address,
-  erc20Abi,
-  formatUnits,
-  parseEther,
-  parseUnits,
-} from "viem";
+import { Address, erc20Abi, formatUnits, parseEther, parseUnits } from "viem";
 import {
   useAccount,
   useBalance,
@@ -111,10 +105,7 @@ export default function Funding(props: FundingProps) {
   );
   const factoryDeployed = isSplitterFactoryDeployed(network);
 
-  const councilMetadata = useCouncilMetadata(
-    chainId ?? 0,
-    councilId ?? "",
-  );
+  const councilMetadata = useCouncilMetadata(chainId ?? 0, councilId ?? "");
   const splitterAddress = councilMetadata.superappSplitterAddress;
   const hasSplitter = !!splitterAddress && factoryDeployed;
 
@@ -192,14 +183,10 @@ export default function Funding(props: FundingProps) {
     address: underlyingAddress,
     abi: erc20Abi,
     functionName: "allowance",
-    args:
-      address && acceptedToken
-        ? [address, acceptedToken]
-        : undefined,
+    args: address && acceptedToken ? [address, acceptedToken] : undefined,
     chainId: chainId ?? 0,
     query: {
-      enabled:
-        !!address && !!acceptedToken && isSuperTokenWrapper === true,
+      enabled: !!address && !!acceptedToken && isSuperTokenWrapper === true,
       refetchInterval: 10000,
     },
   });
@@ -222,7 +209,8 @@ export default function Funding(props: FundingProps) {
   const [isCancellingRoundEnd, setIsCancellingRoundEnd] = useState(false);
 
   const streamFlowRate = useMemo(() => {
-    if (!streamMonthlyAmount || !isPositiveDecimal(streamMonthlyAmount)) return 0n;
+    if (!streamMonthlyAmount || !isPositiveDecimal(streamMonthlyAmount))
+      return 0n;
     try {
       const wei = parseEther(streamMonthlyAmount);
       return wei / BigInt(SECONDS_IN_MONTH);
@@ -255,7 +243,8 @@ export default function Funding(props: FundingProps) {
   }, [streamWrapAmount, underlyingDecimals]);
 
   const streamAvailableSuper = adminBalance + streamWrapWei;
-  const streamHasSufficientForBuffer = streamAvailableSuper >= streamRequiredBuffer;
+  const streamHasSufficientForBuffer =
+    streamAvailableSuper >= streamRequiredBuffer;
   const streamWrapExceedsUnderlying =
     isSuperTokenWrapper === true && streamWrapUnits > underlyingValue;
 
@@ -287,7 +276,8 @@ export default function Funding(props: FundingProps) {
   }, [depositWrapAmount, underlyingDecimals]);
 
   const depositAvailableSuper = adminBalance + depositWrapWei;
-  const depositHasSufficient = depositWei > 0n && depositAvailableSuper >= depositWei;
+  const depositHasSufficient =
+    depositWei > 0n && depositAvailableSuper >= depositWei;
   const depositWrapExceedsUnderlying =
     isSuperTokenWrapper === true && depositWrapUnits > underlyingValue;
 
@@ -738,10 +728,10 @@ export default function Funding(props: FundingProps) {
             <Card.Text className="text-info mb-0">
               Donations stream to the splitter, which deducts the sustainability
               fee and forwards the rest to the distribution pool. The splitter
-              must hold a Super Token buffer for the GDA leg of each stream
-              (GDA cannot borrow protocol app credit). Retained fees accumulate
-              in the splitter and back the buffer by design. The first stream
-              is seeded by an admin so public donors never hit a revert.
+              must hold a Super Token buffer for the GDA leg of each stream (GDA
+              cannot borrow protocol app credit). Retained fees accumulate in
+              the splitter and back the buffer by design. The first stream is
+              seeded by an admin so public donors never hit a revert.
             </Card.Text>
           </Card.Header>
           <Card.Body className="p-0 mt-4">
@@ -774,7 +764,11 @@ export default function Funding(props: FundingProps) {
                   Sustainability fee
                 </Card.Text>
                 <span className="fw-semi-bold">
-                  {feePortion !== null ? `${feePortion}%` : <Spinner size="sm" />}
+                  {feePortion !== null ? (
+                    `${feePortion}%`
+                  ) : (
+                    <Spinner size="sm" />
+                  )}
                 </span>
               </Stack>
               <Stack direction="vertical" gap={1} className="flex-grow-1">
@@ -783,10 +777,11 @@ export default function Funding(props: FundingProps) {
                 </Card.Text>
                 <span className="fw-semi-bold">
                   {splitterTokenBalance !== null ? (
-                    `${Number(formatUnits(splitterTokenBalance, 18)).toLocaleString(
-                      undefined,
-                      { maximumFractionDigits: 4 },
-                    )} ${tokenSymbol}`
+                    `${Number(
+                      formatUnits(splitterTokenBalance, 18),
+                    ).toLocaleString(undefined, {
+                      maximumFractionDigits: 4,
+                    })} ${tokenSymbol}`
                   ) : (
                     <Spinner size="sm" />
                   )}
@@ -801,10 +796,11 @@ export default function Funding(props: FundingProps) {
                     impliedMaxMonthlyRate === 0n ? (
                       "—"
                     ) : (
-                      `${Number(formatUnits(impliedMaxMonthlyRate, 18)).toLocaleString(
-                        undefined,
-                        { maximumFractionDigits: 4 },
-                      )} ${tokenSymbol}/mo`
+                      `${Number(
+                        formatUnits(impliedMaxMonthlyRate, 18),
+                      ).toLocaleString(undefined, {
+                        maximumFractionDigits: 4,
+                      })} ${tokenSymbol}/mo`
                     )
                   ) : (
                     <Spinner size="sm" />
@@ -882,10 +878,11 @@ export default function Funding(props: FundingProps) {
                   </Card.Text>
                   <span className="fw-semi-bold">
                     {liquidationPeriod
-                      ? `${Number(formatUnits(streamRequiredBuffer, 18)).toLocaleString(
-                          undefined,
-                          { maximumFractionDigits: 6 },
-                        )} ${tokenSymbol}`
+                      ? `${Number(
+                          formatUnits(streamRequiredBuffer, 18),
+                        ).toLocaleString(undefined, {
+                          maximumFractionDigits: 6,
+                        })} ${tokenSymbol}`
                       : "—"}
                   </span>
                 </Stack>
@@ -959,7 +956,9 @@ export default function Funding(props: FundingProps) {
         {/* Action 2 — Direct deposit */}
         <Card className="bg-lace-100 rounded-4 border-0 p-4">
           <Card.Header className="bg-transparent border-0 p-0">
-            <Card.Title className="fs-5 fw-semi-bold">Direct Deposit</Card.Title>
+            <Card.Title className="fs-5 fw-semi-bold">
+              Direct Deposit
+            </Card.Title>
             <Card.Text className="text-info mb-0">
               Add Super Tokens directly to the splitter to grow its headroom.
               The implied max funding rate scales with the splitter balance.
@@ -1055,10 +1054,11 @@ export default function Funding(props: FundingProps) {
                   ) : null}
                   <Card.Text className="mb-0 fw-semi-bold">
                     New implied max:{" "}
-                    {Number(formatUnits(depositNewImpliedMax, 18)).toLocaleString(
-                      undefined,
-                      { maximumFractionDigits: 4 },
-                    )}{" "}
+                    {Number(
+                      formatUnits(depositNewImpliedMax, 18),
+                    ).toLocaleString(undefined, {
+                      maximumFractionDigits: 4,
+                    })}{" "}
                     {tokenSymbol}/mo
                   </Card.Text>
                 </Stack>
@@ -1070,8 +1070,8 @@ export default function Funding(props: FundingProps) {
               ) : null}
               {depositWei > 0n && !depositHasSufficient ? (
                 <Alert variant="danger" className="mb-0 fw-semi-bold">
-                  Deposit exceeds your {tokenSymbol} balance plus the amount
-                  you intend to wrap.
+                  Deposit exceeds your {tokenSymbol} balance plus the amount you
+                  intend to wrap.
                 </Alert>
               ) : null}
               {depositError ? (
@@ -1231,8 +1231,7 @@ export default function Funding(props: FundingProps) {
               ) : null}
               <Form.Group>
                 <Form.Label className="fw-semi-bold">
-                  Type{" "}
-                  <span className="text-danger">Close All</span> to confirm
+                  Type <span className="text-danger">Close All</span> to confirm
                 </Form.Label>
                 <Form.Control
                   type="text"

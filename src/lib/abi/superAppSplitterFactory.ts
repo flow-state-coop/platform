@@ -10,9 +10,7 @@ export const superAppSplitterFactoryAbi = [
       { name: "_feePortion", type: "int96" },
       { name: "_streamAdmins", type: "address[]" },
     ],
-    outputs: [
-      { name: "superAppSplitter", type: "address" },
-    ],
+    outputs: [{ name: "superAppSplitter", type: "address" }],
     stateMutability: "nonpayable",
   },
 ] as const;
