@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import NextImage from "next/image";
 import { useRouter } from "next/navigation";
 import { Address, erc20Abi, formatUnits, parseEther, parseUnits } from "viem";
 import {
@@ -18,7 +19,6 @@ import { gql, useQuery } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
-import Toast from "react-bootstrap/Toast";
 import Spinner from "react-bootstrap/Spinner";
 import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
@@ -88,6 +88,21 @@ function formatMonthlyForInput(monthlyWei: bigint): string {
   const half = PRECISION_DIVISOR / 2n;
   const rounded = ((monthlyWei + half) / PRECISION_DIVISOR) * PRECISION_DIVISOR;
   return formatUnits(rounded, 18);
+}
+
+function SuccessCheckmark() {
+  return (
+    <NextImage
+      src="/success.svg"
+      alt="Success"
+      width={20}
+      height={20}
+      style={{
+        filter:
+          "brightness(0) saturate(100%) invert(85%) sepia(8%) saturate(138%) hue-rotate(138deg) brightness(93%) contrast(106%)",
+      }}
+    />
+  );
 }
 
 function sanitizeTxError(err: unknown): string {
@@ -263,9 +278,14 @@ export default function Funding(props: FundingProps) {
 
   const [roundEndDateInput, setRoundEndDateInput] = useState("");
   const [roundEndError, setRoundEndError] = useState("");
-  const [roundEndSuccess, setRoundEndSuccess] = useState("");
   const [isSchedulingRoundEnd, setIsSchedulingRoundEnd] = useState(false);
   const [isCancellingRoundEnd, setIsCancellingRoundEnd] = useState(false);
+
+  const [streamFlashSuccess, setStreamFlashSuccess] = useState(false);
+  const [depositFlashSuccess, setDepositFlashSuccess] = useState(false);
+  const [scheduleFlashSuccess, setScheduleFlashSuccess] = useState(false);
+  const [cancelScheduleFlashSuccess, setCancelScheduleFlashSuccess] =
+    useState(false);
 
   const streamFlowRate = useMemo(() => {
     if (!streamMonthlyAmount || !isPositiveDecimal(streamMonthlyAmount))
@@ -480,6 +500,8 @@ export default function Funding(props: FundingProps) {
     try {
       await executeTransactions(calls);
       setStreamWrapAmount("");
+      setStreamFlashSuccess(true);
+      setTimeout(() => setStreamFlashSuccess(false), 3000);
     } catch {
       /* empty */
     }
@@ -535,6 +557,8 @@ export default function Funding(props: FundingProps) {
       await depositExecute(calls);
       setDepositAmount("");
       setDepositWrapAmount("");
+      setDepositFlashSuccess(true);
+      setTimeout(() => setDepositFlashSuccess(false), 3000);
     } catch {
       /* empty */
     }
@@ -565,7 +589,6 @@ export default function Funding(props: FundingProps) {
 
     setIsSchedulingRoundEnd(true);
     setRoundEndError("");
-    setRoundEndSuccess("");
 
     try {
       const hash = await writeContract(wagmiConfig, {
@@ -576,9 +599,10 @@ export default function Funding(props: FundingProps) {
         chainId,
       });
       await waitForReceipt(publicClient, hash);
-      setRoundEndSuccess("Round end scheduled.");
       setRoundEndDateInput("");
       refetchRoundEnd();
+      setScheduleFlashSuccess(true);
+      setTimeout(() => setScheduleFlashSuccess(false), 3000);
     } catch (err) {
       console.error(err);
       setRoundEndError(sanitizeTxError(err));
@@ -600,7 +624,6 @@ export default function Funding(props: FundingProps) {
 
     setIsCancellingRoundEnd(true);
     setRoundEndError("");
-    setRoundEndSuccess("");
 
     try {
       const hash = await writeContract(wagmiConfig, {
@@ -611,8 +634,9 @@ export default function Funding(props: FundingProps) {
         chainId,
       });
       await waitForReceipt(publicClient, hash);
-      setRoundEndSuccess("Scheduled round end cancelled.");
       refetchRoundEnd();
+      setCancelScheduleFlashSuccess(true);
+      setTimeout(() => setCancelScheduleFlashSuccess(false), 3000);
     } catch (err) {
       console.error(err);
       setRoundEndError(sanitizeTxError(err));
@@ -646,6 +670,7 @@ export default function Funding(props: FundingProps) {
       });
       await waitForReceipt(publicClient, hash);
       setCloseAllSuccess(true);
+      setTimeout(() => setCloseAllSuccess(false), 3000);
       setCloseAllConfirmText("");
       await senderSnapshot.refetch();
     } catch (err) {
@@ -686,17 +711,22 @@ export default function Funding(props: FundingProps) {
     }
     return (
       <Button
+        variant={streamFlashSuccess ? "success" : "primary"}
         disabled={
-          areTransactionsLoading ||
-          streamFlowRate === 0n ||
-          streamFlowRateUnchanged ||
-          !streamHasSufficientForBuffer ||
-          streamWrapExceedsUnderlying
+          !streamFlashSuccess &&
+          (areTransactionsLoading ||
+            streamFlowRate === 0n ||
+            streamFlowRateUnchanged ||
+            !streamHasSufficientForBuffer ||
+            streamWrapExceedsUnderlying)
         }
+        style={{ pointerEvents: streamFlashSuccess ? "none" : "auto" }}
         className="fs-lg fw-semi-bold py-4 rounded-4"
         onClick={handleOpenStream}
       >
-        {areTransactionsLoading ? (
+        {streamFlashSuccess ? (
+          <SuccessCheckmark />
+        ) : areTransactionsLoading ? (
           <>
             <Spinner size="sm" className="me-2" />
             {completedTransactions > 0 ? `${completedTransactions}` : null}
@@ -733,16 +763,21 @@ export default function Funding(props: FundingProps) {
     }
     return (
       <Button
+        variant={depositFlashSuccess ? "success" : "primary"}
         disabled={
-          depositLoading ||
-          depositWei === 0n ||
-          !depositHasSufficient ||
-          depositWrapExceedsUnderlying
+          !depositFlashSuccess &&
+          (depositLoading ||
+            depositWei === 0n ||
+            !depositHasSufficient ||
+            depositWrapExceedsUnderlying)
         }
+        style={{ pointerEvents: depositFlashSuccess ? "none" : "auto" }}
         className="fs-lg fw-semi-bold py-4 rounded-4"
         onClick={handleDeposit}
       >
-        {depositLoading ? (
+        {depositFlashSuccess ? (
+          <SuccessCheckmark />
+        ) : depositLoading ? (
           <>
             <Spinner size="sm" className="me-2" />
             {depositCompleted > 0 ? `${depositCompleted}` : null}
@@ -1220,16 +1255,23 @@ export default function Funding(props: FundingProps) {
                     gap={3}
                   >
                     <Button
+                      variant={scheduleFlashSuccess ? "success" : "primary"}
                       disabled={
-                        !canSubmitClose ||
-                        isSchedulingRoundEnd ||
-                        isCancellingRoundEnd ||
-                        !roundEndDateInput
+                        !scheduleFlashSuccess &&
+                        (!canSubmitClose ||
+                          isSchedulingRoundEnd ||
+                          isCancellingRoundEnd ||
+                          !roundEndDateInput)
                       }
+                      style={{
+                        pointerEvents: scheduleFlashSuccess ? "none" : "auto",
+                      }}
                       className="fs-lg fw-semi-bold py-4 rounded-4 flex-grow-1"
                       onClick={handleScheduleRoundEnd}
                     >
-                      {isSchedulingRoundEnd ? (
+                      {scheduleFlashSuccess ? (
+                        <SuccessCheckmark />
+                      ) : isSchedulingRoundEnd ? (
                         <Spinner size="sm" />
                       ) : roundStatus === "scheduled" ? (
                         "Reschedule"
@@ -1239,16 +1281,28 @@ export default function Funding(props: FundingProps) {
                     </Button>
                     {roundStatus === "scheduled" ? (
                       <Button
-                        variant="outline-secondary"
-                        disabled={
-                          !canSubmitClose ||
-                          isSchedulingRoundEnd ||
-                          isCancellingRoundEnd
+                        variant={
+                          cancelScheduleFlashSuccess
+                            ? "success"
+                            : "outline-secondary"
                         }
+                        disabled={
+                          !cancelScheduleFlashSuccess &&
+                          (!canSubmitClose ||
+                            isSchedulingRoundEnd ||
+                            isCancellingRoundEnd)
+                        }
+                        style={{
+                          pointerEvents: cancelScheduleFlashSuccess
+                            ? "none"
+                            : "auto",
+                        }}
                         className="fs-lg fw-semi-bold py-4 rounded-4 flex-grow-1"
                         onClick={handleCancelRoundEnd}
                       >
-                        {isCancellingRoundEnd ? (
+                        {cancelScheduleFlashSuccess ? (
+                          <SuccessCheckmark />
+                        ) : isCancellingRoundEnd ? (
                           <Spinner size="sm" />
                         ) : (
                           "Cancel scheduled"
@@ -1327,17 +1381,25 @@ export default function Funding(props: FundingProps) {
                 </Alert>
               ) : null}
               <Button
-                variant="danger"
+                variant={closeAllSuccess ? "success" : "danger"}
                 disabled={
-                  !canSubmitClose ||
-                  isClosingAll ||
-                  closeAllConfirmText !== "Close All" ||
-                  validSenders.length === 0
+                  !closeAllSuccess &&
+                  (!canSubmitClose ||
+                    isClosingAll ||
+                    closeAllConfirmText !== "Close All" ||
+                    validSenders.length === 0)
                 }
+                style={{ pointerEvents: closeAllSuccess ? "none" : "auto" }}
                 className="fs-lg fw-semi-bold py-4 rounded-4"
                 onClick={handleCloseAll}
               >
-                {isClosingAll ? <Spinner size="sm" /> : "Close All"}
+                {closeAllSuccess ? (
+                  <SuccessCheckmark />
+                ) : isClosingAll ? (
+                  <Spinner size="sm" />
+                ) : (
+                  "Close All"
+                )}
               </Button>
             </Stack>
           </Card.Body>
@@ -1357,25 +1419,6 @@ export default function Funding(props: FundingProps) {
             Next
           </Button>
         </Stack>
-
-        <Toast
-          show={closeAllSuccess}
-          delay={4000}
-          autohide={true}
-          onClose={() => setCloseAllSuccess(false)}
-          className="position-fixed bottom-0 end-0 m-4 bg-success p-4 fw-semi-bold fs-6 text-white"
-        >
-          Streams closed.
-        </Toast>
-        <Toast
-          show={!!roundEndSuccess}
-          delay={4000}
-          autohide={true}
-          onClose={() => setRoundEndSuccess("")}
-          className="position-fixed bottom-0 end-0 m-4 bg-success p-4 fw-semi-bold fs-6 text-white"
-        >
-          {roundEndSuccess}
-        </Toast>
       </Stack>
     </>
   );
