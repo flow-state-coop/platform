@@ -63,9 +63,6 @@ export async function POST(request: Request) {
     );
 
     const viemChain = getViemChain(network.id);
-    if (!viemChain) {
-      return Response.json({ success: false, error: "Unsupported chain" });
-    }
     const publicClient = createPublicClient({
       chain: viemChain,
       transport: http(network.rpcUrl),

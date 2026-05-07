@@ -407,6 +407,7 @@ export default function Funding(props: FundingProps) {
       !acceptedToken ||
       !splitterAddress ||
       !chainId ||
+      !(chainId in hostAddress) ||
       streamFlowRate === 0n ||
       streamFlowRateUnchanged ||
       !streamHasSufficientForBuffer
@@ -481,6 +482,7 @@ export default function Funding(props: FundingProps) {
       !acceptedToken ||
       !splitterAddress ||
       !chainId ||
+      !(chainId in hostAddress) ||
       depositWei === 0n ||
       !depositHasSufficient
     ) {

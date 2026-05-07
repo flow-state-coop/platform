@@ -19,8 +19,12 @@ const VIEM_CHAINS_BY_ID: Record<number, Chain> = {
   [optimismSepolia.id]: optimismSepolia,
 };
 
-function getViemChain(chainId: number): Chain | undefined {
-  return VIEM_CHAINS_BY_ID[chainId];
+function getViemChain(chainId: number): Chain {
+  const chain = VIEM_CHAINS_BY_ID[chainId];
+  if (!chain) {
+    throw new Error(`Unsupported chainId ${chainId}: missing from VIEM_CHAINS_BY_ID`);
+  }
+  return chain;
 }
 
 const networks: Network[] = [
