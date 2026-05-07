@@ -122,6 +122,7 @@ export default function Review(props: ReviewProps) {
   const { chainId, councilId, hostname } = props;
 
   const [applications, setApplications] = useState<ApplicationSummary[]>([]);
+  const [isLoadingApplications, setIsLoadingApplications] = useState(true);
   const [selectedApplication, setSelectedApplication] =
     useState<Application | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
@@ -451,6 +452,8 @@ export default function Review(props: ReviewProps) {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoadingApplications(false);
     }
   }, [flowCouncil, chainId]);
 
@@ -988,131 +991,164 @@ export default function Review(props: ReviewProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {applications?.map(
-                    (application: ApplicationSummary, i: number) => {
-                      const addressLower =
-                        application.fundingAddress.toLowerCase();
-                      const override = connectionOverrides.get(addressLower);
-                      const membership =
-                        poolMembershipByAddress.get(addressLower);
-                      const isConnecting =
-                        connectingAddresses.has(addressLower);
-                      const status:
-                        | "connected"
-                        | "slots-full"
-                        | "disconnected"
-                        | null = override
-                        ? override
-                        : !membership
-                          ? null
-                          : membership.isConnected
-                            ? "connected"
-                            : "disconnected";
-                      return (
-                        <tr key={i}>
-                          <td className="w-25 align-middle">
-                            {application.projectDetails?.name ?? "N/A"}
-                          </td>
-                          <td className="w-25 text-center align-middle">
-                            {status === null ? (
-                              isLoadingPoolData ? (
-                                <Placeholder animation="glow">
-                                  <Placeholder
-                                    className="d-inline-block rounded-circle"
-                                    style={{ width: 24, height: 24 }}
-                                  />
-                                </Placeholder>
-                              ) : (
-                                <span className="text-muted">—</span>
-                              )
-                            ) : status === "connected" ? (
-                              <InfoTooltip
-                                position={{ top: true }}
-                                content={<>Connected</>}
-                                target={
-                                  <Image
-                                    src="/plug-connected.svg"
-                                    alt="Connected"
-                                    width={24}
-                                    height={24}
-                                  />
-                                }
-                              />
-                            ) : status === "slots-full" ? (
-                              <InfoTooltip
-                                position={{ top: true }}
-                                content={
-                                  <>
-                                    Autoconnect slots full — recipient must
-                                    connect manually from the pool page
-                                  </>
-                                }
-                                target={
-                                  <Image
-                                    src="/warning-triangle.svg"
-                                    alt="Autoconnect slots full"
-                                    width={24}
-                                    height={24}
-                                  />
-                                }
-                              />
-                            ) : isConnecting || isConnectingAll ? (
-                              <Spinner size="sm" />
-                            ) : (
-                              <InfoTooltip
-                                position={{ top: true }}
-                                content={<>Connect to pool</>}
-                                target={
-                                  <Button
-                                    variant="link"
-                                    className="p-0 border-0"
-                                    onClick={() =>
-                                      handleTryConnect(
-                                        application.fundingAddress as Address,
-                                      )
-                                    }
-                                  >
+                  {isLoadingApplications &&
+                    Array.from({ length: 3 }).map((_, i) => (
+                      <tr key={`skel-${i}`}>
+                        <td className="w-25 align-middle">
+                          <Placeholder animation="glow">
+                            <Placeholder xs={8} />
+                          </Placeholder>
+                        </td>
+                        <td className="w-25 text-center align-middle">
+                          <Placeholder animation="glow">
+                            <Placeholder
+                              className="d-inline-block rounded-circle"
+                              style={{ width: 24, height: 24 }}
+                            />
+                          </Placeholder>
+                        </td>
+                        <td className="w-25 text-center align-middle">
+                          <Placeholder animation="glow">
+                            <Placeholder xs={6} />
+                          </Placeholder>
+                        </td>
+                        <td className="w-25 align-middle">
+                          <Placeholder animation="glow">
+                            <Placeholder.Button
+                              variant="secondary"
+                              xs={12}
+                              className="py-4 rounded-4"
+                            />
+                          </Placeholder>
+                        </td>
+                      </tr>
+                    ))}
+                  {!isLoadingApplications &&
+                    applications?.map(
+                      (application: ApplicationSummary, i: number) => {
+                        const addressLower =
+                          application.fundingAddress.toLowerCase();
+                        const override = connectionOverrides.get(addressLower);
+                        const membership =
+                          poolMembershipByAddress.get(addressLower);
+                        const isConnecting =
+                          connectingAddresses.has(addressLower);
+                        const status:
+                          | "connected"
+                          | "slots-full"
+                          | "disconnected"
+                          | null = override
+                          ? override
+                          : !membership
+                            ? null
+                            : membership.isConnected
+                              ? "connected"
+                              : "disconnected";
+                        return (
+                          <tr key={i}>
+                            <td className="w-25 align-middle">
+                              {application.projectDetails?.name ?? "N/A"}
+                            </td>
+                            <td className="w-25 text-center align-middle">
+                              {status === null ? (
+                                isLoadingPoolData ? (
+                                  <Placeholder animation="glow">
+                                    <Placeholder
+                                      className="d-inline-block rounded-circle"
+                                      style={{ width: 24, height: 24 }}
+                                    />
+                                  </Placeholder>
+                                ) : (
+                                  <span className="text-muted">—</span>
+                                )
+                              ) : status === "connected" ? (
+                                <InfoTooltip
+                                  position={{ top: true }}
+                                  content={<>Connected</>}
+                                  target={
                                     <Image
-                                      src="/plug-disconnected.svg"
-                                      alt="Connect to pool"
+                                      src="/plug-connected.svg"
+                                      alt="Connected"
                                       width={24}
                                       height={24}
                                     />
-                                  </Button>
-                                }
-                              />
-                            )}
-                          </td>
-                          <td className="w-25 text-center align-middle">
-                            {STATUS_LABELS[application.status] ||
-                              application.status}
-                          </td>
-                          <td className="w-25 align-middle">
-                            {application.status === "SUBMITTED" ? (
-                              <Button
-                                className="w-100 px-10 py-4 rounded-4 fw-semi-bold text-light"
-                                onClick={() =>
-                                  handleSelectApplication(application)
-                                }
-                              >
-                                Review
-                              </Button>
-                            ) : application.status !== "INCOMPLETE" ? (
-                              <Button
-                                variant="secondary"
-                                className="w-100 py-4 rounded-4 fw-semi-bold"
-                                onClick={() =>
-                                  handleSelectApplication(application)
-                                }
-                              >
-                                Edit Status
-                              </Button>
-                            ) : null}
-                          </td>
-                        </tr>
-                      );
-                    },
-                  )}
+                                  }
+                                />
+                              ) : status === "slots-full" ? (
+                                <InfoTooltip
+                                  position={{ top: true }}
+                                  content={
+                                    <>
+                                      Autoconnect slots full — recipient must
+                                      connect manually from the pool page
+                                    </>
+                                  }
+                                  target={
+                                    <Image
+                                      src="/warning-triangle.svg"
+                                      alt="Autoconnect slots full"
+                                      width={24}
+                                      height={24}
+                                    />
+                                  }
+                                />
+                              ) : isConnecting || isConnectingAll ? (
+                                <Spinner size="sm" />
+                              ) : (
+                                <InfoTooltip
+                                  position={{ top: true }}
+                                  content={<>Connect to pool</>}
+                                  target={
+                                    <Button
+                                      variant="link"
+                                      className="p-0 border-0"
+                                      onClick={() =>
+                                        handleTryConnect(
+                                          application.fundingAddress as Address,
+                                        )
+                                      }
+                                    >
+                                      <Image
+                                        src="/plug-disconnected.svg"
+                                        alt="Connect to pool"
+                                        width={24}
+                                        height={24}
+                                      />
+                                    </Button>
+                                  }
+                                />
+                              )}
+                            </td>
+                            <td className="w-25 text-center align-middle">
+                              {STATUS_LABELS[application.status] ||
+                                application.status}
+                            </td>
+                            <td className="w-25 align-middle">
+                              {application.status === "SUBMITTED" ? (
+                                <Button
+                                  className="w-100 px-10 py-4 rounded-4 fw-semi-bold text-light"
+                                  onClick={() =>
+                                    handleSelectApplication(application)
+                                  }
+                                >
+                                  Review
+                                </Button>
+                              ) : application.status !== "INCOMPLETE" ? (
+                                <Button
+                                  variant="secondary"
+                                  className="w-100 py-4 rounded-4 fw-semi-bold"
+                                  onClick={() =>
+                                    handleSelectApplication(application)
+                                  }
+                                >
+                                  Edit Status
+                                </Button>
+                              ) : null}
+                            </td>
+                          </tr>
+                        );
+                      },
+                    )}
                 </tbody>
               </Table>
             </div>
