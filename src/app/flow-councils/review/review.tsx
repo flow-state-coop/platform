@@ -238,6 +238,8 @@ export default function Review(props: ReviewProps) {
   const isLoadingPoolData =
     flowCouncilQueryResLoading || distributionPoolLoading;
 
+  const isAuthed = !!session;
+
   const connectAllState: ConnectAllState = isConnectingAll
     ? "submitting"
     : isLoadingPoolData
@@ -448,7 +450,7 @@ export default function Review(props: ReviewProps) {
   ]);
 
   const fetchApplications = useCallback(async () => {
-    if (!flowCouncil || !chainId || !session) {
+    if (!flowCouncil || !chainId || !isAuthed) {
       return;
     }
 
@@ -472,7 +474,7 @@ export default function Review(props: ReviewProps) {
     } finally {
       setIsLoadingApplications(false);
     }
-  }, [flowCouncil, chainId, session]);
+  }, [flowCouncil, chainId, isAuthed]);
 
   const isManager = useMemo(() => {
     const flowCouncilManager = flowCouncil?.flowCouncilManagers.find(
