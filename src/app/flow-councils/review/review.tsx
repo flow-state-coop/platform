@@ -173,9 +173,8 @@ export default function Review(props: ReviewProps) {
     [chainId],
   );
   const distributionPool = useDistributionPoolQuery(
-    network ?? networks[0],
+    network,
     flowCouncil?.distributionPool,
-    !!network && !!flowCouncil?.distributionPool,
   );
   const poolMembershipByAddress = useMemo(() => {
     const map = new Map<string, { isConnected: boolean }>();
@@ -940,10 +939,7 @@ export default function Review(props: ReviewProps) {
                             {application.projectDetails?.name ?? "N/A"}
                           </td>
                           <td className="w-25 text-center align-middle">
-                            {!membership ? null : isConnecting ||
-                              isConnectingAll ? (
-                              <Spinner size="sm" />
-                            ) : membership.isConnected ? (
+                            {!membership ? null : membership.isConnected ? (
                               <InfoTooltip
                                 position={{ top: true }}
                                 content={<>Connected</>}
@@ -956,10 +952,12 @@ export default function Review(props: ReviewProps) {
                                   />
                                 }
                               />
+                            ) : isConnecting || isConnectingAll ? (
+                              <Spinner size="sm" />
                             ) : (
                               <InfoTooltip
                                 position={{ top: true }}
-                                content={<>tryConnectPoolFor</>}
+                                content={<>Connect to pool</>}
                                 target={
                                   <Button
                                     variant="link"
@@ -972,7 +970,7 @@ export default function Review(props: ReviewProps) {
                                   >
                                     <Image
                                       src="/close.svg"
-                                      alt="tryConnectPoolFor"
+                                      alt="Connect to pool"
                                       width={24}
                                       height={24}
                                     />
