@@ -448,7 +448,7 @@ export default function Review(props: ReviewProps) {
   ]);
 
   const fetchApplications = useCallback(async () => {
-    if (!flowCouncil || !chainId) {
+    if (!flowCouncil || !chainId || !session) {
       return;
     }
 
@@ -472,7 +472,7 @@ export default function Review(props: ReviewProps) {
     } finally {
       setIsLoadingApplications(false);
     }
-  }, [flowCouncil, chainId]);
+  }, [flowCouncil, chainId, session]);
 
   const isManager = useMemo(() => {
     const flowCouncilManager = flowCouncil?.flowCouncilManagers.find(
