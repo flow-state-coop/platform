@@ -46,14 +46,17 @@ test("admin reaches the review page with an authenticated session", async ({
   await expect(
     page.getByRole("columnheader", { name: "Pool Connection" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("columnheader", { name: "Address" }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("columnheader", { name: "Address" })).toHaveCount(
+    0,
+  );
 
   // Connect All sits above Next. With the default subgraph mock returning
-  // no pool members, every recipient is treated as not-in-GDA, so the
-  // disconnected list is empty and the button shows "All Connected" disabled.
-  const connectAll = page.getByRole("button", { name: /All Connected/ });
+  // no pool members, the pool membership map is empty, so the button shows
+  // "No Recipients in Pool" disabled (distinguishing this from the genuine
+  // "All Connected" case where members exist and are all connected).
+  const connectAll = page.getByRole("button", {
+    name: /No Recipients in Pool/,
+  });
   await expect(connectAll).toBeVisible();
   await expect(connectAll).toBeDisabled();
 

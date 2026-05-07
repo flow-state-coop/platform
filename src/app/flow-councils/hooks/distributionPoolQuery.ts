@@ -41,7 +41,7 @@ export default function useDistributionPoolQuery(
   distributionPoolAddress?: string,
   enabled = true,
 ) {
-  const { data: superfluidQueryRes } = useQuery(SUPERFLUID_QUERY, {
+  const { data: superfluidQueryRes, loading } = useQuery(SUPERFLUID_QUERY, {
     client: getApolloClient("superfluid", network?.id),
     variables: {
       distributionPool: distributionPoolAddress?.toLowerCase(),
@@ -50,5 +50,5 @@ export default function useDistributionPoolQuery(
     pollInterval: 10000,
   });
 
-  return superfluidQueryRes?.pool;
+  return { pool: superfluidQueryRes?.pool, loading };
 }

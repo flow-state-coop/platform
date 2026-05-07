@@ -18,6 +18,7 @@ import Toast from "react-bootstrap/Toast";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Spinner from "react-bootstrap/Spinner";
+import Placeholder from "react-bootstrap/Placeholder";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import Alert from "react-bootstrap/Alert";
 import Table from "react-bootstrap/Table";
@@ -174,10 +175,8 @@ export default function Review(props: ReviewProps) {
     () => networks.find((n) => n.id === chainId),
     [chainId],
   );
-  const distributionPool = useDistributionPoolQuery(
-    network,
-    flowCouncil?.distributionPool,
-  );
+  const { pool: distributionPool, loading: distributionPoolLoading } =
+    useDistributionPoolQuery(network, flowCouncil?.distributionPool);
   const poolMembershipByAddress = useMemo(() => {
     const map = new Map<string, { isConnected: boolean }>();
     const members = distributionPool?.poolMembers as
@@ -227,6 +226,9 @@ export default function Review(props: ReviewProps) {
       return changed ? next : prev;
     });
   }, [poolMembershipByAddress]);
+
+  const isLoadingPoolData =
+    flowCouncilQueryResLoading || distributionPoolLoading;
 
   const [roundName, setRoundName] = useState("Flow Council");
 
@@ -1012,7 +1014,18 @@ export default function Review(props: ReviewProps) {
                             {application.projectDetails?.name ?? "N/A"}
                           </td>
                           <td className="w-25 text-center align-middle">
-                            {status === null ? null : status === "connected" ? (
+                            {status === null ? (
+                              isLoadingPoolData ? (
+                                <Placeholder animation="glow">
+                                  <Placeholder
+                                    className="d-inline-block rounded-circle"
+                                    style={{ width: 24, height: 24 }}
+                                  />
+                                </Placeholder>
+                              ) : (
+                                <span className="text-muted">—</span>
+                              )
+                            ) : status === "connected" ? (
                               <InfoTooltip
                                 position={{ top: true }}
                                 content={<>Connected</>}
@@ -1368,22 +1381,37 @@ export default function Review(props: ReviewProps) {
             )}
 
             <Stack direction="vertical" gap={3} className="mt-4 mb-30">
-              <Button
-                variant="primary"
-                className="py-4 rounded-4 fs-lg fw-semi-bold text-light"
-                disabled={
-                  isConnectingAll || disconnectedRecipients.length === 0
-                }
-                onClick={handleConnectAll}
-              >
-                {isConnectingAll ? (
-                  <Spinner size="sm" />
-                ) : disconnectedRecipients.length === 0 ? (
-                  "All Connected"
-                ) : (
-                  "Connect All"
-                )}
-              </Button>
+              {(() => {
+                const connectAllState = isConnectingAll
+                  ? "submitting"
+                  : isLoadingPoolData
+                    ? "loading"
+                    : disconnectedRecipients.length > 0
+                      ? "actionable"
+                      : poolMembershipByAddress.size === 0
+                        ? "no-members"
+                        : "all-connected";
+                return (
+                  <Button
+                    variant="primary"
+                    className="py-4 rounded-4 fs-lg fw-semi-bold text-light"
+                    disabled={connectAllState !== "actionable"}
+                    onClick={handleConnectAll}
+                  >
+                    {connectAllState === "submitting" ? (
+                      <Spinner size="sm" />
+                    ) : connectAllState === "loading" ? (
+                      "Loading…"
+                    ) : connectAllState === "actionable" ? (
+                      "Connect All"
+                    ) : connectAllState === "no-members" ? (
+                      "No Recipients in Pool"
+                    ) : (
+                      "All Connected"
+                    )}
+                  </Button>
+                );
+              })()}
               {slotsFullCount > 0 && (
                 <Alert variant="warning" className="mb-0">
                   {slotsFullCount} recipient
