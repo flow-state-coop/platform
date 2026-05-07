@@ -3,11 +3,12 @@ import { arbitrum, base, celo, optimism, optimismSepolia } from "viem/chains";
 import { Network } from "@/types/network";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const SPLITTER_FACTORY_NOT_DEPLOYED = "0x";
 
 function isSplitterFactoryDeployed(network: Network | undefined): boolean {
   if (!network) return false;
   const addr = network.superAppSplitterFactory;
-  return addr !== "0x" && addr !== ZERO_ADDRESS;
+  return addr !== SPLITTER_FACTORY_NOT_DEPLOYED && addr !== ZERO_ADDRESS;
 }
 
 const VIEM_CHAINS_BY_ID: Record<number, Chain> = {

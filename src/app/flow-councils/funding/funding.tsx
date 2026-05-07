@@ -377,9 +377,6 @@ export default function Funding(props: FundingProps) {
     return (newBalance * BigInt(SECONDS_IN_MONTH)) / liquidationPeriod;
   }, [splitterTokenBalance, depositWei, liquidationPeriod]);
 
-  // canCloseStreams gates rendering the Danger Zone. Subgraph isSuperAdmin lets
-  // council managers see the panel before role indexing catches up; on-chain
-  // roles override and unlock submission.
   const canCloseStreams =
     hasDefaultAdminRole === true ||
     hasStreamAdminRole === true ||
@@ -399,9 +396,6 @@ export default function Funding(props: FundingProps) {
     return new Date(Number(roundEndsAt) * 1000);
   }, [roundEndsAt]);
 
-  // canSubmitClose gates the actual button. If both on-chain roles are confirmed
-  // false, the contract will revert — keep the button disabled instead of just
-  // warning. Treat null (still loading) as not yet definitively false.
   const onChainRolesDefinitivelyFalse =
     hasDefaultAdminRole === false && hasStreamAdminRole === false;
   const canSubmitClose = canCloseStreams && !onChainRolesDefinitivelyFalse;
@@ -870,11 +864,11 @@ export default function Funding(props: FundingProps) {
                     rel="noopener noreferrer"
                     className="text-primary text-decoration-none fw-semi-bold"
                   >
-                    {truncateStr(splitterAddress as string, 16)}
+                    {truncateStr(splitterAddress!, 16)}
                   </a>
                 ) : (
                   <span className="fw-semi-bold">
-                    {truncateStr(splitterAddress as string, 16)}
+                    {truncateStr(splitterAddress!, 16)}
                   </span>
                 )}
               </Stack>
