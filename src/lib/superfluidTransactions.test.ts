@@ -9,6 +9,7 @@ import {
   buildUpdateFlowBatchOp,
   buildDeleteFlowBatchOp,
   buildBatchCall,
+  buildSuperTokenTransferBatchOp,
 } from "./superfluidTransactions";
 
 // OP Sepolia — confirmed present in cfaAddress and hostAddress
@@ -227,6 +228,45 @@ describe("buildDeleteFlowBatchOp", () => {
     });
 
     expect(op.data).toContain(expectedCallData.slice(2));
+  });
+});
+
+describe("buildSuperTokenTransferBatchOp", () => {
+  const TRANSFER_AMOUNT = 5_000_000_000_000_000_000n;
+
+  it("has ERC20_TRANSFER_FROM operationType", () => {
+    const op = buildSuperTokenTransferBatchOp({
+      tokenAddress: TOKEN_ADDRESS,
+      from: SENDER_ADDRESS,
+      to: RECEIVER_ADDRESS,
+      amount: TRANSFER_AMOUNT,
+    });
+
+    expect(op.operationType).toBe(OPERATION_TYPE.ERC20_TRANSFER_FROM);
+  });
+
+  it("targets the SuperToken address", () => {
+    const op = buildSuperTokenTransferBatchOp({
+      tokenAddress: TOKEN_ADDRESS,
+      from: SENDER_ADDRESS,
+      to: RECEIVER_ADDRESS,
+      amount: TRANSFER_AMOUNT,
+    });
+
+    expect(op.target).toBe(TOKEN_ADDRESS);
+  });
+
+  it("data encodes from, to, and amount", () => {
+    const op = buildSuperTokenTransferBatchOp({
+      tokenAddress: TOKEN_ADDRESS,
+      from: SENDER_ADDRESS,
+      to: RECEIVER_ADDRESS,
+      amount: TRANSFER_AMOUNT,
+    });
+
+    expect(op.data.toLowerCase()).toContain(SENDER_ADDRESS.slice(2));
+    expect(op.data.toLowerCase()).toContain(RECEIVER_ADDRESS.slice(2));
+    expect(op.data).toContain(TRANSFER_AMOUNT.toString(16));
   });
 });
 

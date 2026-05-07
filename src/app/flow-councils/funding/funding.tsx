@@ -44,6 +44,7 @@ import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 import useSplitterReads from "@/app/flow-councils/hooks/useSplitterReads";
 import useActiveSplitterSenders from "@/app/flow-councils/hooks/useActiveSplitterSenders";
+import { isPositiveDecimal, sanitizeTxError } from "./helpers";
 import { DEFAULT_ADMIN_ROLE } from "../lib/constants";
 
 type FundingProps = { chainId?: number; councilId?: string };
@@ -75,10 +76,6 @@ const SF_SENDER_OUTFLOWS_QUERY = gql`
 
 const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 
-function isPositiveDecimal(s: string) {
-  return /^\d+(\.\d*)?$|^\d*\.\d+$/.test(s);
-}
-
 function isInProgressDecimal(s: string) {
   return s === "" || s === "." || isPositiveDecimal(s);
 }
@@ -103,29 +100,6 @@ function SuccessCheckmark() {
       }}
     />
   );
-}
-
-function sanitizeTxError(err: unknown): string {
-  if (typeof err === "object" && err !== null) {
-    const code = (err as { code?: unknown }).code;
-    if (
-      code === "ACTION_REJECTED" ||
-      code === 4001 ||
-      (err as { name?: unknown }).name === "UserRejectedRequestError"
-    ) {
-      return "Transaction rejected";
-    }
-    const msg = (err as { message?: unknown }).message;
-    if (typeof msg === "string") {
-      if (msg.includes("AccessControl")) {
-        return "Not authorized: missing role on the splitter contract";
-      }
-      if (msg.toLowerCase().includes("user rejected")) {
-        return "Transaction rejected";
-      }
-    }
-  }
-  return "Transaction failed";
 }
 
 export default function Funding(props: FundingProps) {
