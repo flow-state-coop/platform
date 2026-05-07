@@ -38,9 +38,8 @@ import useSiwe from "@/hooks/siwe";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks } from "@/lib/networks";
-import {
-  SUPERFLUID_CALL_AGREEMENT_OPERATION,
-} from "@/lib/constants";
+import { SUPERFLUID_CALL_AGREEMENT_OPERATION } from "@/lib/constants";
+import { gdaForwarderAbi } from "@sfpro/sdk/abi";
 import { hostAbi, gdaAbi } from "@sfpro/sdk/abi/core";
 import { RECIPIENT_MANAGER_ROLE } from "../lib/constants";
 import { getApolloClient } from "@/lib/apollo";
@@ -144,6 +143,9 @@ export default function Review(props: ReviewProps) {
   );
   const [isConnectingAll, setIsConnectingAll] = useState(false);
   const [connectError, setConnectError] = useState("");
+  const [connectionOverrides, setConnectionOverrides] = useState<
+    Map<string, "connected" | "slots-full">
+  >(new Map());
 
   const topRef = useRef<HTMLDivElement>(null);
   const publicClient = usePublicClient();
@@ -193,14 +195,39 @@ export default function Review(props: ReviewProps) {
       applications
         .map((a) => ({
           address: a.fundingAddress,
-          membership: poolMembershipByAddress.get(
-            a.fundingAddress.toLowerCase(),
-          ),
+          addressLower: a.fundingAddress.toLowerCase(),
         }))
-        .filter((x) => x.membership && !x.membership.isConnected)
-        .map((x) => x.address as Address),
-    [applications, poolMembershipByAddress],
+        .filter(({ addressLower }) => {
+          if (connectionOverrides.has(addressLower)) return false;
+          const membership = poolMembershipByAddress.get(addressLower);
+          return !!membership && !membership.isConnected;
+        })
+        .map(({ address }) => address as Address),
+    [applications, poolMembershipByAddress, connectionOverrides],
   );
+  const slotsFullCount = useMemo(
+    () =>
+      Array.from(connectionOverrides.values()).filter((v) => v === "slots-full")
+        .length,
+    [connectionOverrides],
+  );
+
+  useEffect(() => {
+    if (poolMembershipByAddress.size === 0) return;
+    setConnectionOverrides((prev) => {
+      if (prev.size === 0) return prev;
+      let changed = false;
+      const next = new Map(prev);
+      for (const addr of next.keys()) {
+        if (poolMembershipByAddress.get(addr)?.isConnected) {
+          next.delete(addr);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [poolMembershipByAddress]);
+
   const [roundName, setRoundName] = useState("Flow Council");
 
   useEffect(() => {
@@ -625,6 +652,18 @@ export default function Review(props: ReviewProps) {
         });
 
         await waitForReceipt(publicClient, hash);
+
+        const isConnected = await publicClient.readContract({
+          address: network.gdaForwarder,
+          abi: gdaForwarderAbi,
+          functionName: "isMemberConnected",
+          args: [flowCouncil.distributionPool as Address, recipient],
+        });
+        setConnectionOverrides((prev) => {
+          const next = new Map(prev);
+          next.set(key, isConnected ? "connected" : "slots-full");
+          return next;
+        });
       } catch (err) {
         console.error(err);
         setConnectError("Failed to connect recipient");
@@ -647,7 +686,8 @@ export default function Review(props: ReviewProps) {
 
   const handleConnectAll = useCallback(async () => {
     if (!network || !flowCouncil?.distributionPool || !publicClient) return;
-    if (disconnectedRecipients.length === 0) return;
+    const targets = disconnectedRecipients;
+    if (targets.length === 0) return;
     if (!(await ensureChain())) return;
 
     const poolAddress = flowCouncil.distributionPool as Address;
@@ -656,7 +696,7 @@ export default function Review(props: ReviewProps) {
     setIsConnectingAll(true);
 
     try {
-      const operations = disconnectedRecipients.map((member) => ({
+      const operations = targets.map((member) => ({
         operationType: SUPERFLUID_CALL_AGREEMENT_OPERATION,
         target: network.gda,
         data: encodeAbiParameters(
@@ -680,6 +720,27 @@ export default function Review(props: ReviewProps) {
       });
 
       await waitForReceipt(publicClient, hash);
+
+      const results = await publicClient.multicall({
+        contracts: targets.map((member) => ({
+          address: network.gdaForwarder,
+          abi: gdaForwarderAbi,
+          functionName: "isMemberConnected" as const,
+          args: [poolAddress, member] as const,
+        })),
+        allowFailure: true,
+      });
+      setConnectionOverrides((prev) => {
+        const next = new Map(prev);
+        results.forEach((r, i) => {
+          if (r.status !== "success") return;
+          next.set(
+            targets[i].toLowerCase(),
+            r.result ? "connected" : "slots-full",
+          );
+        });
+        return next;
+      });
     } catch (err) {
       console.error(err);
       setConnectError("Failed to connect recipients");
@@ -927,26 +988,56 @@ export default function Review(props: ReviewProps) {
                 <tbody>
                   {applications?.map(
                     (application: ApplicationSummary, i: number) => {
-                      const membership = poolMembershipByAddress.get(
-                        application.fundingAddress.toLowerCase(),
-                      );
-                      const isConnecting = connectingAddresses.has(
-                        application.fundingAddress.toLowerCase(),
-                      );
+                      const addressLower =
+                        application.fundingAddress.toLowerCase();
+                      const override = connectionOverrides.get(addressLower);
+                      const membership =
+                        poolMembershipByAddress.get(addressLower);
+                      const isConnecting =
+                        connectingAddresses.has(addressLower);
+                      const status:
+                        | "connected"
+                        | "slots-full"
+                        | "disconnected"
+                        | null = override
+                        ? override
+                        : !membership
+                          ? null
+                          : membership.isConnected
+                            ? "connected"
+                            : "disconnected";
                       return (
                         <tr key={i}>
                           <td className="w-25 align-middle">
                             {application.projectDetails?.name ?? "N/A"}
                           </td>
                           <td className="w-25 text-center align-middle">
-                            {!membership ? null : membership.isConnected ? (
+                            {status === null ? null : status === "connected" ? (
                               <InfoTooltip
                                 position={{ top: true }}
                                 content={<>Connected</>}
                                 target={
                                   <Image
-                                    src="/check-circle.svg"
+                                    src="/plug-connected.svg"
                                     alt="Connected"
+                                    width={24}
+                                    height={24}
+                                  />
+                                }
+                              />
+                            ) : status === "slots-full" ? (
+                              <InfoTooltip
+                                position={{ top: true }}
+                                content={
+                                  <>
+                                    Autoconnect slots full — recipient must
+                                    connect manually from the pool page
+                                  </>
+                                }
+                                target={
+                                  <Image
+                                    src="/warning-triangle.svg"
+                                    alt="Autoconnect slots full"
                                     width={24}
                                     height={24}
                                   />
@@ -969,7 +1060,7 @@ export default function Review(props: ReviewProps) {
                                     }
                                   >
                                     <Image
-                                      src="/close.svg"
+                                      src="/plug-disconnected.svg"
                                       alt="Connect to pool"
                                       width={24}
                                       height={24}
@@ -1293,6 +1384,14 @@ export default function Review(props: ReviewProps) {
                   "Connect All"
                 )}
               </Button>
+              {slotsFullCount > 0 && (
+                <Alert variant="warning" className="mb-0">
+                  {slotsFullCount} recipient
+                  {slotsFullCount === 1 ? "" : "s"} couldn&apos;t autoconnect
+                  because their autoconnect slots are full. They&apos;ll need to
+                  connect manually from the pool page.
+                </Alert>
+              )}
               {connectError && (
                 <Alert variant="danger" className="mb-0">
                   {connectError}
