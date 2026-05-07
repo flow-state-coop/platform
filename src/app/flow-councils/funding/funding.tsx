@@ -719,7 +719,8 @@ export default function Funding(props: FundingProps) {
         variant={streamFlashSuccess ? "success" : "primary"}
         disabled={
           !streamFlashSuccess &&
-          (areTransactionsLoading ||
+          (!canCloseStreams ||
+            areTransactionsLoading ||
             streamFlowRate === 0n ||
             streamFlowRateUnchanged ||
             !streamHasSufficientForBuffer ||
@@ -771,7 +772,8 @@ export default function Funding(props: FundingProps) {
         variant={depositFlashSuccess ? "success" : "primary"}
         disabled={
           !depositFlashSuccess &&
-          (depositLoading ||
+          (!canCloseStreams ||
+            depositLoading ||
             depositWei === 0n ||
             !depositHasSufficient ||
             depositWrapExceedsUnderlying)
@@ -951,121 +953,122 @@ export default function Funding(props: FundingProps) {
         </Card>
 
         {/* Round End Date */}
-        {canCloseStreams ? (
-          <Card className="bg-lace-100 rounded-4 border-0 p-4">
-            <Card.Header className="bg-transparent border-0 p-0">
-              <Card.Title className="fs-5 fw-semi-bold">
-                Round End Date
-              </Card.Title>
-              <Card.Text className="text-info mb-0">
-                Set an end to your round (in your local time zone). After this
-                passes, streams into the round can only be closed. You can do
-                this for all active streams at the bottom of this page.
-              </Card.Text>
-            </Card.Header>
-            <Card.Body className="p-0 mt-4">
-              <Stack direction="vertical" gap={3}>
-                {roundStatus === "scheduled" ? (
-                  <Alert variant="warning" className="mb-0 fw-semi-bold">
-                    Round end currently scheduled for{" "}
-                    {roundEndsAtDate?.toLocaleString(undefined, {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
-                    .
-                  </Alert>
-                ) : null}
-                {roundStatus === "closed" ? (
-                  <Alert variant="danger" className="mb-0 fw-semi-bold">
-                    Round is already closed. New incoming streams will revert.
-                  </Alert>
-                ) : null}
-                {roundStatus !== "closed" ? (
-                  <Form.Group>
-                    <Form.Label className="fw-semi-bold">
-                      Round end date and time
-                    </Form.Label>
-                    <Form.Control
-                      type="datetime-local"
-                      disabled={!canSubmitClose}
-                      value={roundEndDateInput}
-                      onChange={(e) => setRoundEndDateInput(e.target.value)}
-                      className="border-0 rounded-4 bg-white py-4 fw-semi-bold w-auto"
-                      style={{ paddingTop: 12, paddingBottom: 12 }}
-                    />
-                  </Form.Group>
-                ) : null}
-                {roundEndError ? (
-                  <Alert variant="danger" className="mb-0 fw-semi-bold">
-                    {roundEndError}
-                  </Alert>
-                ) : null}
-                {roundStatus !== "closed" ? (
-                  <Stack
-                    direction={isMobile ? "vertical" : "horizontal"}
-                    gap={3}
+        <Card className="bg-lace-100 rounded-4 border-0 p-4">
+          <Card.Header className="bg-transparent border-0 p-0">
+            <Card.Title className="fs-5 fw-semi-bold">
+              Round End Date
+            </Card.Title>
+            <Card.Text className="text-info mb-0">
+              Set an end to your round (in your local time zone). After this
+              passes, streams into the round can only be closed. You can do this
+              for all active streams at the bottom of this page.
+            </Card.Text>
+          </Card.Header>
+          <Card.Body className="p-0 mt-4">
+            <Stack direction="vertical" gap={3}>
+              {!canCloseStreams ? (
+                <Card.Text className="text-info mb-0 fw-semi-bold">
+                  (Read only—connect a wallet with admin permissions to make
+                  changes.)
+                </Card.Text>
+              ) : null}
+              {roundStatus === "scheduled" ? (
+                <Alert variant="warning" className="mb-0 fw-semi-bold">
+                  Round end currently scheduled for{" "}
+                  {roundEndsAtDate?.toLocaleString(undefined, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                  .
+                </Alert>
+              ) : null}
+              {roundStatus === "closed" ? (
+                <Alert variant="danger" className="mb-0 fw-semi-bold">
+                  Round is already closed. New incoming streams will revert.
+                </Alert>
+              ) : null}
+              {roundStatus !== "closed" ? (
+                <Form.Group>
+                  <Form.Label className="fw-semi-bold">
+                    Round end date and time
+                  </Form.Label>
+                  <Form.Control
+                    type="datetime-local"
+                    disabled={!canSubmitClose}
+                    value={roundEndDateInput}
+                    onChange={(e) => setRoundEndDateInput(e.target.value)}
+                    className={`border-0 rounded-4 bg-white py-4 fw-semi-bold w-auto ${!canSubmitClose ? "text-info" : ""}`}
+                    style={{ paddingTop: 12, paddingBottom: 12 }}
+                  />
+                </Form.Group>
+              ) : null}
+              {roundEndError ? (
+                <Alert variant="danger" className="mb-0 fw-semi-bold">
+                  {roundEndError}
+                </Alert>
+              ) : null}
+              {roundStatus !== "closed" ? (
+                <Stack direction={isMobile ? "vertical" : "horizontal"} gap={3}>
+                  <Button
+                    variant={scheduleFlashSuccess ? "success" : "primary"}
+                    disabled={
+                      !scheduleFlashSuccess &&
+                      (!canSubmitClose ||
+                        isSchedulingRoundEnd ||
+                        isCancellingRoundEnd ||
+                        !roundEndDateInput)
+                    }
+                    style={{
+                      pointerEvents: scheduleFlashSuccess ? "none" : "auto",
+                    }}
+                    className="fs-lg fw-semi-bold py-4 rounded-4 flex-grow-1"
+                    onClick={handleScheduleRoundEnd}
                   >
+                    {scheduleFlashSuccess ? (
+                      <SuccessCheckmark />
+                    ) : isSchedulingRoundEnd ? (
+                      <Spinner size="sm" />
+                    ) : roundStatus === "scheduled" ? (
+                      "Reschedule"
+                    ) : (
+                      "Schedule"
+                    )}
+                  </Button>
+                  {roundStatus === "scheduled" ? (
                     <Button
-                      variant={scheduleFlashSuccess ? "success" : "primary"}
+                      variant={
+                        cancelScheduleFlashSuccess
+                          ? "success"
+                          : "outline-secondary"
+                      }
                       disabled={
-                        !scheduleFlashSuccess &&
+                        !cancelScheduleFlashSuccess &&
                         (!canSubmitClose ||
                           isSchedulingRoundEnd ||
-                          isCancellingRoundEnd ||
-                          !roundEndDateInput)
+                          isCancellingRoundEnd)
                       }
                       style={{
-                        pointerEvents: scheduleFlashSuccess ? "none" : "auto",
+                        pointerEvents: cancelScheduleFlashSuccess
+                          ? "none"
+                          : "auto",
                       }}
                       className="fs-lg fw-semi-bold py-4 rounded-4 flex-grow-1"
-                      onClick={handleScheduleRoundEnd}
+                      onClick={handleCancelRoundEnd}
                     >
-                      {scheduleFlashSuccess ? (
+                      {cancelScheduleFlashSuccess ? (
                         <SuccessCheckmark />
-                      ) : isSchedulingRoundEnd ? (
+                      ) : isCancellingRoundEnd ? (
                         <Spinner size="sm" />
-                      ) : roundStatus === "scheduled" ? (
-                        "Reschedule"
                       ) : (
-                        "Schedule"
+                        "Remove End Date"
                       )}
                     </Button>
-                    {roundStatus === "scheduled" ? (
-                      <Button
-                        variant={
-                          cancelScheduleFlashSuccess
-                            ? "success"
-                            : "outline-secondary"
-                        }
-                        disabled={
-                          !cancelScheduleFlashSuccess &&
-                          (!canSubmitClose ||
-                            isSchedulingRoundEnd ||
-                            isCancellingRoundEnd)
-                        }
-                        style={{
-                          pointerEvents: cancelScheduleFlashSuccess
-                            ? "none"
-                            : "auto",
-                        }}
-                        className="fs-lg fw-semi-bold py-4 rounded-4 flex-grow-1"
-                        onClick={handleCancelRoundEnd}
-                      >
-                        {cancelScheduleFlashSuccess ? (
-                          <SuccessCheckmark />
-                        ) : isCancellingRoundEnd ? (
-                          <Spinner size="sm" />
-                        ) : (
-                          "Remove End Date"
-                        )}
-                      </Button>
-                    ) : null}
-                  </Stack>
-                ) : null}
-              </Stack>
-            </Card.Body>
-          </Card>
-        ) : null}
+                  ) : null}
+                </Stack>
+              ) : null}
+            </Stack>
+          </Card.Body>
+        </Card>
 
         {/* Action 1 — Open primary stream */}
         <Card className="bg-lace-100 rounded-4 border-0 p-4">
@@ -1082,6 +1085,12 @@ export default function Funding(props: FundingProps) {
           </Card.Header>
           <Card.Body className="p-0 mt-4">
             <Stack direction="vertical" gap={3}>
+              {!canCloseStreams ? (
+                <Card.Text className="text-info mb-0 fw-semi-bold">
+                  (Read only—connect a wallet with admin permissions to make
+                  changes.)
+                </Card.Text>
+              ) : null}
               <Form.Group>
                 <Form.Label className="fw-semi-bold">
                   Monthly flow rate ({tokenSymbol})
@@ -1101,6 +1110,7 @@ export default function Funding(props: FundingProps) {
                   type="text"
                   inputMode="decimal"
                   placeholder="0.0"
+                  disabled={!canCloseStreams}
                   value={streamMonthlyAmount}
                   onChange={(e) => {
                     if (isInProgressDecimal(e.target.value)) {
@@ -1163,6 +1173,7 @@ export default function Funding(props: FundingProps) {
                     type="text"
                     inputMode="decimal"
                     placeholder="0.0"
+                    disabled={!canCloseStreams}
                     value={streamWrapAmount}
                     onChange={(e) => {
                       if (isInProgressDecimal(e.target.value)) {
@@ -1211,6 +1222,12 @@ export default function Funding(props: FundingProps) {
           </Card.Header>
           <Card.Body className="p-0 mt-4">
             <Stack direction="vertical" gap={3}>
+              {!canCloseStreams ? (
+                <Card.Text className="text-info mb-0 fw-semi-bold">
+                  (Read only—connect a wallet with admin permissions to make
+                  changes.)
+                </Card.Text>
+              ) : null}
               <Form.Group>
                 <Form.Label className="fw-semi-bold">
                   Deposit amount ({tokenSymbol})
@@ -1219,6 +1236,7 @@ export default function Funding(props: FundingProps) {
                   type="text"
                   inputMode="decimal"
                   placeholder="0.0"
+                  disabled={!canCloseStreams}
                   value={depositAmount}
                   onChange={(e) => {
                     if (isInProgressDecimal(e.target.value)) {
@@ -1260,6 +1278,7 @@ export default function Funding(props: FundingProps) {
                     type="text"
                     inputMode="decimal"
                     placeholder="0.0"
+                    disabled={!canCloseStreams}
                     value={depositWrapAmount}
                     onChange={(e) => {
                       if (isInProgressDecimal(e.target.value)) {
@@ -1340,7 +1359,8 @@ export default function Funding(props: FundingProps) {
             <Stack direction="vertical" gap={3}>
               {!canCloseStreams ? (
                 <Card.Text className="text-info mb-0 fw-semi-bold">
-                  Restricted to Super Admin.
+                  (Read only—connect a wallet with admin permissions to make
+                  changes.)
                 </Card.Text>
               ) : null}
               {isSuperAdmin &&
