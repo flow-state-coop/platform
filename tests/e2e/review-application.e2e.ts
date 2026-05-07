@@ -39,4 +39,24 @@ test("admin reaches the review page with an authenticated session", async ({
 
   await page.goto(path);
   await expect(page).toHaveURL(new RegExp(path.replace(/[./]/g, "\\$&")));
+
+  // Recipient table: Address column is gone; Project + Pool Connection are present.
+  const projectHeader = page.getByRole("columnheader", { name: "Project" });
+  await expect(projectHeader).toBeVisible();
+  await expect(
+    page.getByRole("columnheader", { name: "Pool Connection" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("columnheader", { name: "Address" }),
+  ).toHaveCount(0);
+
+  // Connect All sits above Next. With the default subgraph mock returning
+  // no pool members, every recipient is treated as not-in-GDA, so the
+  // disconnected list is empty and the button shows "All Connected" disabled.
+  const connectAll = page.getByRole("button", { name: /All Connected/ });
+  await expect(connectAll).toBeVisible();
+  await expect(connectAll).toBeDisabled();
+
+  const nextButton = page.getByRole("button", { name: "Next" });
+  await expect(nextButton).toBeVisible();
 });
