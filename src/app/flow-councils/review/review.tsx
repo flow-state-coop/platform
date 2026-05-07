@@ -93,6 +93,13 @@ type Status =
   | "REMOVED"
   | "GRADUATED";
 
+type ConnectAllState =
+  | "submitting"
+  | "loading"
+  | "actionable"
+  | "no-members"
+  | "all-connected";
+
 const STATUS_LABELS: Record<Status, string> = {
   INCOMPLETE: "Incomplete",
   SUBMITTED: "Submitted",
@@ -230,6 +237,16 @@ export default function Review(props: ReviewProps) {
 
   const isLoadingPoolData =
     flowCouncilQueryResLoading || distributionPoolLoading;
+
+  const connectAllState: ConnectAllState = isConnectingAll
+    ? "submitting"
+    : isLoadingPoolData
+      ? "loading"
+      : disconnectedRecipients.length > 0
+        ? "actionable"
+        : poolMembershipByAddress.size === 0
+          ? "no-members"
+          : "all-connected";
 
   const [roundName, setRoundName] = useState("Flow Council");
 
@@ -1417,37 +1434,24 @@ export default function Review(props: ReviewProps) {
             )}
 
             <Stack direction="vertical" gap={3} className="mt-4 mb-30">
-              {(() => {
-                const connectAllState = isConnectingAll
-                  ? "submitting"
-                  : isLoadingPoolData
-                    ? "loading"
-                    : disconnectedRecipients.length > 0
-                      ? "actionable"
-                      : poolMembershipByAddress.size === 0
-                        ? "no-members"
-                        : "all-connected";
-                return (
-                  <Button
-                    variant="primary"
-                    className="py-4 rounded-4 fs-lg fw-semi-bold text-light"
-                    disabled={connectAllState !== "actionable"}
-                    onClick={handleConnectAll}
-                  >
-                    {connectAllState === "submitting" ? (
-                      <Spinner size="sm" />
-                    ) : connectAllState === "loading" ? (
-                      "Loading…"
-                    ) : connectAllState === "actionable" ? (
-                      "Connect All"
-                    ) : connectAllState === "no-members" ? (
-                      "No Recipients in Pool"
-                    ) : (
-                      "All Connected"
-                    )}
-                  </Button>
-                );
-              })()}
+              <Button
+                variant="primary"
+                className="py-4 rounded-4 fs-lg fw-semi-bold text-light"
+                disabled={connectAllState !== "actionable"}
+                onClick={handleConnectAll}
+              >
+                {connectAllState === "submitting" ? (
+                  <Spinner size="sm" />
+                ) : connectAllState === "loading" ? (
+                  "Loading…"
+                ) : connectAllState === "actionable" ? (
+                  "Connect All"
+                ) : connectAllState === "no-members" ? (
+                  "No Recipients in Pool"
+                ) : (
+                  "All Connected"
+                )}
+              </Button>
               {slotsFullCount > 0 && (
                 <Alert variant="warning" className="mb-0">
                   {slotsFullCount} recipient
