@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { networks, isSplitterFactoryDeployed } from "./networks";
+import {
+  networks,
+  isSplitterFactoryDeployed,
+  getViemChain,
+} from "./networks";
 
 describe("isSplitterFactoryDeployed", () => {
   it("returns false for undefined network", () => {
@@ -26,4 +30,18 @@ describe("isSplitterFactoryDeployed", () => {
     expect(network?.superAppSplitterFactory).toMatch(/^0x[0-9a-fA-F]{40}$/);
     expect(isSplitterFactoryDeployed(network)).toBe(true);
   });
+});
+
+describe("getViemChain", () => {
+  it("throws for an unknown chainId", () => {
+    expect(() => getViemChain(999_999)).toThrow(/Unsupported chainId/);
+  });
+
+  it.each(networks.map((n) => [n.label, n.id] as const))(
+    "resolves a viem chain for %s (%d)",
+    (_label, id) => {
+      const chain = getViemChain(id);
+      expect(chain.id).toBe(id);
+    },
+  );
 });
