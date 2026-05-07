@@ -11,6 +11,16 @@ function isSplitterFactoryDeployed(network: Network | undefined): boolean {
   return addr !== SPLITTER_FACTORY_NOT_DEPLOYED && addr !== ZERO_ADDRESS;
 }
 
+const FLOW_COUNCIL_NETWORK_LABELS: ReadonlySet<string> = new Set([
+  "celo",
+  "optimism-sepolia",
+]);
+
+function isFlowCouncilNetwork(network: Network | undefined): boolean {
+  if (!network) return false;
+  return FLOW_COUNCIL_NETWORK_LABELS.has(network.label);
+}
+
 const VIEM_CHAINS_BY_ID: Record<number, Chain> = {
   [arbitrum.id]: arbitrum,
   [base.id]: base,
@@ -22,7 +32,9 @@ const VIEM_CHAINS_BY_ID: Record<number, Chain> = {
 function getViemChain(chainId: number): Chain {
   const chain = VIEM_CHAINS_BY_ID[chainId];
   if (!chain) {
-    throw new Error(`Unsupported chainId ${chainId}: missing from VIEM_CHAINS_BY_ID`);
+    throw new Error(
+      `Unsupported chainId ${chainId}: missing from VIEM_CHAINS_BY_ID`,
+    );
   }
   return chain;
 }
@@ -260,4 +272,9 @@ const networks: Network[] = [
   },
 ];
 
-export { networks, isSplitterFactoryDeployed, getViemChain };
+export {
+  networks,
+  isSplitterFactoryDeployed,
+  isFlowCouncilNetwork,
+  getViemChain,
+};

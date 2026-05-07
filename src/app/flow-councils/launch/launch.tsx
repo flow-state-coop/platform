@@ -25,7 +25,11 @@ import useSiwe from "@/hooks/siwe";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { Network } from "@/types/network";
 import { getApolloClient } from "@/lib/apollo";
-import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
+import {
+  networks,
+  isSplitterFactoryDeployed,
+  isFlowCouncilNetwork,
+} from "@/lib/networks";
 import { flowCouncilFactoryAbi } from "@/lib/abi/flowCouncilFactory";
 import { superAppSplitterFactoryAbi } from "@/lib/abi/superAppSplitterFactory";
 
@@ -78,11 +82,7 @@ export default function Launch(props: LaunchProps) {
   const flowCouncil = flowCouncilQueryRes?.flowCouncil;
 
   const launchNetworks = useMemo(
-    () =>
-      networks.filter(
-        (network) =>
-          network.label === "celo" || network.label === "optimism-sepolia",
-      ),
+    () => networks.filter(isFlowCouncilNetwork),
     [],
   );
   const defaultToken =

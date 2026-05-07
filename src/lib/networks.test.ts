@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  networks,
-  isSplitterFactoryDeployed,
-  getViemChain,
-} from "./networks";
+import { networks, isSplitterFactoryDeployed, getViemChain } from "./networks";
 
 describe("isSplitterFactoryDeployed", () => {
   it("returns false for undefined network", () => {

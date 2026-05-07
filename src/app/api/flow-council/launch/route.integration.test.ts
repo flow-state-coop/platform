@@ -56,7 +56,11 @@ function postRequest(body: unknown) {
   });
 }
 
-function stubAdminRole(councilAddress: string, callerAddress: string, hasRole: boolean) {
+function stubAdminRole(
+  councilAddress: string,
+  callerAddress: string,
+  hasRole: boolean,
+) {
   vi.mocked(createPublicClient).mockReturnValue(
     mockPublicClient([
       {
