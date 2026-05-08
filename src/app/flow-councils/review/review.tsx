@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Address } from "viem";
+import { Address, encodeAbiParameters, encodeFunctionData } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "@wagmi/core";
 import { useSession } from "next-auth/react";
@@ -18,6 +18,7 @@ import Toast from "react-bootstrap/Toast";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Spinner from "react-bootstrap/Spinner";
+import Placeholder from "react-bootstrap/Placeholder";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import Alert from "react-bootstrap/Alert";
 import Table from "react-bootstrap/Table";
@@ -28,13 +29,19 @@ import Tab from "react-bootstrap/Tab";
 import Dropdown from "react-bootstrap/Dropdown";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import CopyTooltip from "@/components/CopyTooltip";
+import InfoTooltip from "@/components/InfoTooltip";
 import ViewProjectTab from "@/app/flow-councils/components/ViewProjectTab";
 import ViewRoundTab from "@/app/flow-councils/components/ViewRoundTab";
 import ViewAttestationTab from "@/app/flow-councils/components/ViewAttestationTab";
 import InternalComments from "@/app/flow-councils/components/InternalComments";
+import useDistributionPoolQuery from "@/app/flow-councils/hooks/distributionPoolQuery";
 import useSiwe from "@/hooks/siwe";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
+import { networks } from "@/lib/networks";
+import { SUPERFLUID_CALL_AGREEMENT_OPERATION } from "@/lib/constants";
+import { gdaForwarderAbi } from "@sfpro/sdk/abi";
+import { hostAbi, gdaAbi } from "@sfpro/sdk/abi/core";
 import { RECIPIENT_MANAGER_ROLE } from "../lib/constants";
 import { getApolloClient } from "@/lib/apollo";
 import type {
@@ -86,6 +93,13 @@ type Status =
   | "REMOVED"
   | "GRADUATED";
 
+type ConnectAllState =
+  | "submitting"
+  | "loading"
+  | "actionable"
+  | "no-members"
+  | "all-connected";
+
 const STATUS_LABELS: Record<Status, string> = {
   INCOMPLETE: "Incomplete",
   SUBMITTED: "Submitted",
@@ -102,6 +116,7 @@ const FLOW_COUNCIL_QUERY = gql`
       id
       maxVotingSpread
       superToken
+      distributionPool
       flowCouncilManagers {
         account
         role
@@ -114,6 +129,7 @@ export default function Review(props: ReviewProps) {
   const { chainId, councilId, hostname } = props;
 
   const [applications, setApplications] = useState<ApplicationSummary[]>([]);
+  const [isLoadingApplications, setIsLoadingApplications] = useState(true);
   const [selectedApplication, setSelectedApplication] =
     useState<Application | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
@@ -131,6 +147,14 @@ export default function Review(props: ReviewProps) {
     useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [connectingAddresses, setConnectingAddresses] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isConnectingAll, setIsConnectingAll] = useState(false);
+  const [connectError, setConnectError] = useState("");
+  const [connectionOverrides, setConnectionOverrides] = useState<
+    Map<string, "connected" | "slots-full">
+  >(new Map());
 
   const topRef = useRef<HTMLDivElement>(null);
   const publicClient = usePublicClient();
@@ -155,6 +179,77 @@ export default function Review(props: ReviewProps) {
 
   const granteeApplicationLink = `${hostname}/flow-councils/application/${chainId}/${councilId}`;
   const flowCouncil = flowCouncilQueryRes?.flowCouncil;
+  const network = useMemo(
+    () => networks.find((n) => n.id === chainId),
+    [chainId],
+  );
+  const { pool: distributionPool, loading: distributionPoolLoading } =
+    useDistributionPoolQuery(network, flowCouncil?.distributionPool);
+  const poolMembershipByAddress = useMemo(() => {
+    const map = new Map<string, { isConnected: boolean }>();
+    const members = distributionPool?.poolMembers as
+      | { account: { id: string }; isConnected: boolean }[]
+      | undefined;
+    if (members) {
+      for (const m of members) {
+        map.set(m.account.id.toLowerCase(), { isConnected: m.isConnected });
+      }
+    }
+    return map;
+  }, [distributionPool]);
+  const disconnectedRecipients = useMemo(
+    () =>
+      applications
+        .map((a) => ({
+          address: a.fundingAddress,
+          addressLower: a.fundingAddress.toLowerCase(),
+        }))
+        .filter(({ addressLower }) => {
+          if (connectionOverrides.has(addressLower)) return false;
+          const membership = poolMembershipByAddress.get(addressLower);
+          return !!membership && !membership.isConnected;
+        })
+        .map(({ address }) => address as Address),
+    [applications, poolMembershipByAddress, connectionOverrides],
+  );
+  const slotsFullCount = useMemo(
+    () =>
+      Array.from(connectionOverrides.values()).filter((v) => v === "slots-full")
+        .length,
+    [connectionOverrides],
+  );
+
+  useEffect(() => {
+    if (poolMembershipByAddress.size === 0) return;
+    setConnectionOverrides((prev) => {
+      if (prev.size === 0) return prev;
+      let changed = false;
+      const next = new Map(prev);
+      for (const addr of next.keys()) {
+        if (poolMembershipByAddress.get(addr)?.isConnected) {
+          next.delete(addr);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [poolMembershipByAddress]);
+
+  const isLoadingPoolData =
+    flowCouncilQueryResLoading || distributionPoolLoading;
+
+  const isAuthed = !!session;
+
+  const connectAllState: ConnectAllState = isConnectingAll
+    ? "submitting"
+    : isLoadingPoolData
+      ? "loading"
+      : disconnectedRecipients.length > 0
+        ? "actionable"
+        : poolMembershipByAddress.size === 0
+          ? "no-members"
+          : "all-connected";
+
   const [roundName, setRoundName] = useState("Flow Council");
 
   useEffect(() => {
@@ -355,7 +450,7 @@ export default function Review(props: ReviewProps) {
   ]);
 
   const fetchApplications = useCallback(async () => {
-    if (!flowCouncil || !chainId) {
+    if (!flowCouncil || !chainId || !isAuthed) {
       return;
     }
 
@@ -376,8 +471,10 @@ export default function Review(props: ReviewProps) {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoadingApplications(false);
     }
-  }, [flowCouncil, chainId]);
+  }, [flowCouncil, chainId, isAuthed]);
 
   const isManager = useMemo(() => {
     const flowCouncilManager = flowCouncil?.flowCouncilManagers.find(
@@ -533,6 +630,155 @@ export default function Review(props: ReviewProps) {
       setError("Failed to toggle applications status");
     }
   };
+
+  const ensureChain = useCallback(async () => {
+    if (!chainId) return false;
+    if (!address) {
+      openConnectModal?.();
+      return false;
+    }
+    if (connectedChain?.id !== chainId) {
+      switchChain({ chainId });
+      return false;
+    }
+    return true;
+  }, [chainId, address, connectedChain?.id, openConnectModal, switchChain]);
+
+  const handleTryConnect = useCallback(
+    async (recipient: Address) => {
+      if (!network || !flowCouncil?.distributionPool || !publicClient) return;
+      if (!(await ensureChain())) return;
+
+      const key = recipient.toLowerCase();
+      setConnectError("");
+      setConnectingAddresses((prev) => {
+        const next = new Set(prev);
+        next.add(key);
+        return next;
+      });
+
+      try {
+        const callData = encodeFunctionData({
+          abi: gdaAbi,
+          functionName: "tryConnectPoolFor",
+          args: [
+            flowCouncil.distributionPool as Address,
+            recipient,
+            "0x" as `0x${string}`,
+          ],
+        });
+
+        const hash = await writeContract(wagmiConfig, {
+          address: network.superfluidHost,
+          abi: hostAbi,
+          functionName: "callAgreement",
+          args: [network.gda, callData, "0x"],
+        });
+
+        await waitForReceipt(publicClient, hash);
+
+        const isConnected = await publicClient.readContract({
+          address: network.gdaForwarder,
+          abi: gdaForwarderAbi,
+          functionName: "isMemberConnected",
+          args: [flowCouncil.distributionPool as Address, recipient],
+        });
+        setConnectionOverrides((prev) => {
+          const next = new Map(prev);
+          next.set(key, isConnected ? "connected" : "slots-full");
+          return next;
+        });
+      } catch (err) {
+        console.error(err);
+        setConnectError("Failed to connect recipient");
+      } finally {
+        setConnectingAddresses((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      }
+    },
+    [
+      network,
+      flowCouncil?.distributionPool,
+      publicClient,
+      wagmiConfig,
+      ensureChain,
+    ],
+  );
+
+  const handleConnectAll = useCallback(async () => {
+    if (!network || !flowCouncil?.distributionPool || !publicClient) return;
+    const targets = disconnectedRecipients;
+    if (targets.length === 0) return;
+    if (!(await ensureChain())) return;
+
+    const poolAddress = flowCouncil.distributionPool as Address;
+
+    setConnectError("");
+    setIsConnectingAll(true);
+
+    try {
+      const operations = targets.map((member) => ({
+        operationType: SUPERFLUID_CALL_AGREEMENT_OPERATION,
+        target: network.gda,
+        data: encodeAbiParameters(
+          [{ type: "bytes" }, { type: "bytes" }],
+          [
+            encodeFunctionData({
+              abi: gdaAbi,
+              functionName: "tryConnectPoolFor",
+              args: [poolAddress, member, "0x" as `0x${string}`],
+            }),
+            "0x" as `0x${string}`,
+          ],
+        ),
+      }));
+
+      const hash = await writeContract(wagmiConfig, {
+        address: network.superfluidHost,
+        abi: hostAbi,
+        functionName: "batchCall",
+        args: [operations],
+      });
+
+      await waitForReceipt(publicClient, hash);
+
+      const results = await publicClient.multicall({
+        contracts: targets.map((member) => ({
+          address: network.gdaForwarder,
+          abi: gdaForwarderAbi,
+          functionName: "isMemberConnected" as const,
+          args: [poolAddress, member] as const,
+        })),
+        allowFailure: true,
+      });
+      setConnectionOverrides((prev) => {
+        const next = new Map(prev);
+        results.forEach((r, i) => {
+          if (r.status !== "success") return;
+          next.set(
+            targets[i].toLowerCase(),
+            r.result ? "connected" : "slots-full",
+          );
+        });
+        return next;
+      });
+    } catch (err) {
+      console.error(err);
+      setConnectError("Failed to connect recipients");
+    } finally {
+      setIsConnectingAll(false);
+    }
+  }, [
+    network,
+    flowCouncil?.distributionPool,
+    publicClient,
+    wagmiConfig,
+    disconnectedRecipients,
+    ensureChain,
+  ]);
 
   const handleSubmitReview = async () => {
     if (!session) {
@@ -734,10 +980,12 @@ export default function Review(props: ReviewProps) {
                   }}
                 >
                   <tr>
-                    <th className="bg-white">Address</th>
-                    <th className="bg-white">Name</th>
-                    <th className="bg-white text-center">Status</th>
-                    <th className="bg-white text-end">
+                    <th className="bg-white w-25">Project</th>
+                    <th className="bg-white text-center w-25">
+                      Pool Connection
+                    </th>
+                    <th className="bg-white text-center w-25">Status</th>
+                    <th className="bg-white text-end w-25">
                       {applications.length > 0 && (
                         <Button
                           variant="link"
@@ -762,44 +1010,164 @@ export default function Review(props: ReviewProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {applications?.map(
-                    (application: ApplicationSummary, i: number) => (
-                      <tr key={i}>
+                  {isLoadingApplications &&
+                    Array.from({ length: 3 }).map((_, i) => (
+                      <tr key={`skel-${i}`}>
                         <td className="w-25 align-middle">
-                          {application.fundingAddress}
-                        </td>
-                        <td className="w-25 align-middle">
-                          {application.projectDetails?.name ?? "N/A"}
+                          <Placeholder animation="glow">
+                            <Placeholder xs={8} />
+                          </Placeholder>
                         </td>
                         <td className="w-25 text-center align-middle">
-                          {STATUS_LABELS[application.status] ||
-                            application.status}
+                          <Placeholder animation="glow">
+                            <Placeholder
+                              className="d-inline-block rounded-circle"
+                              style={{ width: 24, height: 24 }}
+                            />
+                          </Placeholder>
+                        </td>
+                        <td className="w-25 text-center align-middle">
+                          <Placeholder animation="glow">
+                            <Placeholder xs={6} />
+                          </Placeholder>
                         </td>
                         <td className="w-25 align-middle">
-                          {application.status === "SUBMITTED" ? (
-                            <Button
-                              className="w-100 px-10 py-4 rounded-4 fw-semi-bold text-light"
-                              onClick={() =>
-                                handleSelectApplication(application)
-                              }
-                            >
-                              Review
-                            </Button>
-                          ) : application.status !== "INCOMPLETE" ? (
-                            <Button
+                          <Placeholder animation="glow">
+                            <Placeholder.Button
                               variant="secondary"
-                              className="w-100 py-4 rounded-4 fw-semi-bold"
-                              onClick={() =>
-                                handleSelectApplication(application)
-                              }
-                            >
-                              Edit Status
-                            </Button>
-                          ) : null}
+                              xs={12}
+                              className="py-4 rounded-4"
+                            />
+                          </Placeholder>
                         </td>
                       </tr>
-                    ),
-                  )}
+                    ))}
+                  {!isLoadingApplications &&
+                    applications?.map(
+                      (application: ApplicationSummary, i: number) => {
+                        const addressLower =
+                          application.fundingAddress.toLowerCase();
+                        const override = connectionOverrides.get(addressLower);
+                        const membership =
+                          poolMembershipByAddress.get(addressLower);
+                        const isConnecting =
+                          connectingAddresses.has(addressLower);
+                        const status:
+                          | "connected"
+                          | "slots-full"
+                          | "disconnected"
+                          | null = override
+                          ? override
+                          : !membership
+                            ? null
+                            : membership.isConnected
+                              ? "connected"
+                              : "disconnected";
+                        return (
+                          <tr key={i}>
+                            <td className="w-25 align-middle">
+                              {application.projectDetails?.name ?? "N/A"}
+                            </td>
+                            <td className="w-25 text-center align-middle">
+                              {status === null ? (
+                                isLoadingPoolData ? (
+                                  <Placeholder animation="glow">
+                                    <Placeholder
+                                      className="d-inline-block rounded-circle"
+                                      style={{ width: 24, height: 24 }}
+                                    />
+                                  </Placeholder>
+                                ) : (
+                                  <span className="text-muted">—</span>
+                                )
+                              ) : status === "connected" ? (
+                                <InfoTooltip
+                                  position={{ top: true }}
+                                  content={<>Connected</>}
+                                  target={
+                                    <Image
+                                      src="/plug-connected.svg"
+                                      alt="Connected"
+                                      width={24}
+                                      height={24}
+                                    />
+                                  }
+                                />
+                              ) : status === "slots-full" ? (
+                                <InfoTooltip
+                                  position={{ top: true }}
+                                  content={
+                                    <>
+                                      Autoconnect slots full — recipient must
+                                      connect manually from the pool page
+                                    </>
+                                  }
+                                  target={
+                                    <Image
+                                      src="/warning-triangle.svg"
+                                      alt="Autoconnect slots full"
+                                      width={24}
+                                      height={24}
+                                    />
+                                  }
+                                />
+                              ) : isConnecting || isConnectingAll ? (
+                                <Spinner size="sm" />
+                              ) : (
+                                <InfoTooltip
+                                  position={{ top: true }}
+                                  content={<>Connect to pool</>}
+                                  target={
+                                    <Button
+                                      variant="link"
+                                      className="p-0 border-0"
+                                      onClick={() =>
+                                        handleTryConnect(
+                                          application.fundingAddress as Address,
+                                        )
+                                      }
+                                    >
+                                      <Image
+                                        src="/plug-disconnected.svg"
+                                        alt="Connect to pool"
+                                        width={24}
+                                        height={24}
+                                      />
+                                    </Button>
+                                  }
+                                />
+                              )}
+                            </td>
+                            <td className="w-25 text-center align-middle">
+                              {STATUS_LABELS[application.status] ||
+                                application.status}
+                            </td>
+                            <td className="w-25 align-middle">
+                              {application.status === "SUBMITTED" ? (
+                                <Button
+                                  className="w-100 px-10 py-4 rounded-4 fw-semi-bold text-light"
+                                  onClick={() =>
+                                    handleSelectApplication(application)
+                                  }
+                                >
+                                  Review
+                                </Button>
+                              ) : application.status !== "INCOMPLETE" ? (
+                                <Button
+                                  variant="secondary"
+                                  className="w-100 py-4 rounded-4 fw-semi-bold"
+                                  onClick={() =>
+                                    handleSelectApplication(application)
+                                  }
+                                >
+                                  Edit Status
+                                </Button>
+                              ) : null}
+                            </td>
+                          </tr>
+                        );
+                      },
+                    )}
                 </tbody>
               </Table>
             </div>
@@ -1068,6 +1436,37 @@ export default function Review(props: ReviewProps) {
             )}
 
             <Stack direction="vertical" gap={3} className="mt-4 mb-30">
+              <Button
+                variant="primary"
+                className="py-4 rounded-4 fs-lg fw-semi-bold text-light"
+                disabled={connectAllState !== "actionable"}
+                onClick={handleConnectAll}
+              >
+                {connectAllState === "submitting" ? (
+                  <Spinner size="sm" />
+                ) : connectAllState === "loading" ? (
+                  "Loading…"
+                ) : connectAllState === "actionable" ? (
+                  "Connect All"
+                ) : connectAllState === "no-members" ? (
+                  "No Recipients in Pool"
+                ) : (
+                  "All Connected"
+                )}
+              </Button>
+              {slotsFullCount > 0 && (
+                <Alert variant="warning" className="mb-0">
+                  {slotsFullCount} recipient
+                  {slotsFullCount === 1 ? "" : "s"} couldn&apos;t autoconnect
+                  because their autoconnect slots are full. They&apos;ll need to
+                  connect manually from the pool page.
+                </Alert>
+              )}
+              {connectError && (
+                <Alert variant="danger" className="mb-0">
+                  {connectError}
+                </Alert>
+              )}
               <Button
                 variant="secondary"
                 className="py-4 rounded-4 fs-lg fw-semi-bold"

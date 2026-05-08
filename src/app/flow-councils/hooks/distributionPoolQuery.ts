@@ -37,18 +37,18 @@ const SUPERFLUID_QUERY = gql`
 `;
 
 export default function useDistributionPoolQuery(
-  network: Network,
+  network: Network | undefined,
   distributionPoolAddress?: string,
   enabled = true,
 ) {
-  const { data: superfluidQueryRes } = useQuery(SUPERFLUID_QUERY, {
-    client: getApolloClient("superfluid", network.id),
+  const { data: superfluidQueryRes, loading } = useQuery(SUPERFLUID_QUERY, {
+    client: getApolloClient("superfluid", network?.id),
     variables: {
       distributionPool: distributionPoolAddress?.toLowerCase(),
     },
-    skip: !distributionPoolAddress || !enabled,
+    skip: !network || !distributionPoolAddress || !enabled,
     pollInterval: 10000,
   });
 
-  return superfluidQueryRes?.pool;
+  return { pool: superfluidQueryRes?.pool, loading };
 }
