@@ -619,8 +619,8 @@ export default function Review(props: ReviewProps) {
             <Stack direction="vertical">
               <Card.Text className="text-danger small">
                 Your stream exceeds the current funding rate cap for this round.
-                You can raise the cap by including a one-time transfer equal to
-                4 hours of your proposed stream rate.
+                You can raise the cap by including a one-time transfer to cover
+                the gap between the current cap and your proposed stream rate.
               </Card.Text>
               <Stack
                 direction="horizontal"
