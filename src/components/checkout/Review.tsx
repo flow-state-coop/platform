@@ -51,6 +51,9 @@ export type ReviewProps = {
     symbol: string;
   };
   showQfMultiplier?: boolean;
+  exceedsSplitterCap?: boolean;
+  requiredTransferWei?: bigint;
+  hasSufficientBalanceForTransfer?: boolean;
 };
 
 type TransactionDetailsSnapshot = {
@@ -63,6 +66,8 @@ type TransactionDetailsSnapshot = {
   matchingMultiplier: number | null;
   newFlowRate: string;
   flowRateToReceiver: string;
+  exceedsSplitterCap: boolean;
+  requiredTransferWei: bigint;
 };
 
 export default function Review(props: ReviewProps) {
@@ -89,6 +94,9 @@ export default function Review(props: ReviewProps) {
     superTokenBalance,
     underlyingTokenBalance,
     showQfMultiplier,
+    exceedsSplitterCap = false,
+    requiredTransferWei = BigInt(0),
+    hasSufficientBalanceForTransfer = true,
   } = props;
 
   const [transactionDetailsSnapshot, setTransactionDetailsSnapshot] =
@@ -97,6 +105,31 @@ export default function Review(props: ReviewProps) {
     hasAcceptedCloseLiquidationWarning,
     setHasAcceptedCloseLiquidationWarning,
   ] = useState(false);
+  const [
+    hasAcceptedSplitterCapWarning,
+    setHasAcceptedSplitterCapWarning,
+  ] = useState(false);
+
+  const wrapAmountForDisplay =
+    areTransactionsLoading && transactionDetailsSnapshot
+      ? transactionDetailsSnapshot.wrapAmount
+      : wrapAmount?.replace(/,/g, "");
+  const hasWrap = Number(wrapAmountForDisplay ?? "0") > 0;
+  const hasTransfer =
+    areTransactionsLoading && transactionDetailsSnapshot
+      ? transactionDetailsSnapshot.exceedsSplitterCap
+      : exceedsSplitterCap;
+  const transferWeiForDisplay =
+    areTransactionsLoading && transactionDetailsSnapshot
+      ? transactionDetailsSnapshot.requiredTransferWei
+      : requiredTransferWei;
+  const transferLetter = hasWrap ? "B" : "A";
+  const streamLetter =
+    hasWrap && hasTransfer ? "C" : hasWrap || hasTransfer ? "B" : "A";
+  const transferShortfallWei =
+    requiredTransferWei -
+    superTokenBalance -
+    parseEther(wrapAmount?.replace(/,/g, "") ?? "0");
 
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -134,6 +167,8 @@ export default function Review(props: ReviewProps) {
       netImpact,
       newFlowRate,
       flowRateToReceiver,
+      exceedsSplitterCap,
+      requiredTransferWei,
     });
 
     try {
@@ -302,15 +337,30 @@ export default function Review(props: ReviewProps) {
               </Card.Text>
             </Stack>
           )}
+          {hasTransfer && (
+            <Stack direction="vertical" gap={1}>
+              <Card.Text className="border-bottom border-secondary mb-2 pb-1">
+                {transferLetter}. One-Time Transfer
+              </Card.Text>
+              <Stack
+                direction="vertical"
+                gap={2}
+                className="justify-content-center align-items-center bg-white p-4 rounded-4"
+              >
+                <Image src={token.icon} alt="" width={28} height={28} />
+                <Card.Text className="m-0 border-0 text-center fs-lg fw-semi-bold">
+                  {formatNumber(Number(formatEther(transferWeiForDisplay)))}{" "}
+                  {token.symbol}
+                </Card.Text>
+                <Card.Text className="border-0 text-center text-secondary small mb-0">
+                  Sent to round pool to raise the funding rate cap
+                </Card.Text>
+              </Stack>
+            </Stack>
+          )}
           <Stack direction="vertical" gap={1}>
             <Card.Text className="border-bottom border-secondary m-0 pb-1">
-              {Number(
-                areTransactionsLoading && transactionDetailsSnapshot
-                  ? transactionDetailsSnapshot.wrapAmount
-                  : wrapAmount?.replace(/,/g, ""),
-              ) > 0
-                ? "B."
-                : "A."}{" "}
+              {streamLetter}.{" "}
               {isFundingDistributionPool
                 ? "Edit Matching Stream"
                 : "Edit Grantee Stream"}
@@ -559,6 +609,41 @@ export default function Review(props: ReviewProps) {
               </Card.Text>
             </Stack>
           )}
+          {exceedsSplitterCap && (
+            <Stack direction="vertical">
+              <Card.Text className="text-danger small">
+                Your stream exceeds the current funding rate cap for this round.
+                You can raise the cap by including a one-time transfer equal to
+                4 hours of your proposed stream rate.
+              </Card.Text>
+              <Stack
+                direction="horizontal"
+                gap={2}
+                className="align-items-center"
+              >
+                <FormCheckInput
+                  checked={hasAcceptedSplitterCapWarning}
+                  disabled={!hasSufficientBalanceForTransfer}
+                  className="border-black"
+                  onChange={() =>
+                    setHasAcceptedSplitterCapWarning(
+                      !hasAcceptedSplitterCapWarning,
+                    )
+                  }
+                />
+                <Card.Text className="text-danger small mb-0">
+                  Continue?
+                </Card.Text>
+              </Stack>
+              {!hasSufficientBalanceForTransfer && transferShortfallWei > 0 && (
+                <Card.Text className="text-danger small mt-1 mb-0">
+                  Top up an additional{" "}
+                  {formatNumber(Number(formatEther(transferShortfallWei)))}{" "}
+                  {token.symbol} to enable.
+                </Card.Text>
+              )}
+            </Stack>
+          )}
           {isLiquidationClose && (
             <Stack direction="vertical">
               <Card.Text className="text-danger small">
@@ -592,7 +677,8 @@ export default function Review(props: ReviewProps) {
             disabled={
               calls.length === 0 ||
               step === Step.SUCCESS ||
-              (isLiquidationClose && !hasAcceptedCloseLiquidationWarning)
+              (isLiquidationClose && !hasAcceptedCloseLiquidationWarning) ||
+              (exceedsSplitterCap && !hasAcceptedSplitterCapWarning)
             }
             className="d-flex justify-content-center mt-4 py-4 rounded-4 fw-semi-bold text-light"
             onClick={
