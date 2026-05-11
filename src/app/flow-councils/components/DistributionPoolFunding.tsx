@@ -142,7 +142,7 @@ export default function DistributionPoolFunding(props: {
   const splitterBalanceNow = useFlowingAmount(
     BigInt(splitterBalanceUntilUpdatedAt ?? 0),
     splitterUpdatedAtTimestamp ?? 0,
-    BigInt(superAppFunderData?.totalInflowRate ?? 0),
+    BigInt(superAppFunderData?.totalNetFlowRate ?? 0),
   );
   const { data: ethBalance } = useBalance({
     address,
@@ -223,14 +223,15 @@ export default function DistributionPoolFunding(props: {
 
   const maxFundingRate =
     splitterBalanceNow / BigInt(SUPERFLUID_LIQUIDATION_PERIOD_SECONDS);
-  const requiredTransferWei = newFlowRate
-    ? BigInt(newFlowRate) * BigInt(SUPERFLUID_LIQUIDATION_PERIOD_SECONDS)
-    : BigInt(0);
   const exceedsSplitterCap =
     !!splitterAddress &&
     !!newFlowRate &&
     BigInt(newFlowRate) > BigInt(flowRateToReceiver) &&
     BigInt(newFlowRate) > maxFundingRate;
+  const requiredTransferWei = exceedsSplitterCap
+    ? BigInt(newFlowRate) * BigInt(SUPERFLUID_LIQUIDATION_PERIOD_SECONDS) -
+      splitterBalanceNow
+    : BigInt(0);
   const wrapAmountForTransferCheck = parseEther(
     wrapAmount?.replace(/,/g, "") ?? "0",
   );

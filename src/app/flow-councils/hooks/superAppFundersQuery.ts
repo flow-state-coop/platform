@@ -4,6 +4,7 @@ import { getApolloClient } from "@/lib/apollo";
 
 export type SuperAppFunderData = {
   totalInflowRate: string;
+  totalNetFlowRate: string;
   totalAmountStreamedInUntilUpdatedAt: string;
   updatedAtTimestamp: number;
   funderCount: number;
@@ -14,6 +15,7 @@ const SUPER_APP_FUNDERS_QUERY = gql`
     account(id: $superApp) {
       accountTokenSnapshots(where: { token: $token }) {
         totalInflowRate
+        totalNetFlowRate
         totalAmountStreamedInUntilUpdatedAt
         updatedAtTimestamp
       }
@@ -54,6 +56,7 @@ export default function useSuperAppFundersQuery(
 
   return {
     totalInflowRate: snapshot.totalInflowRate,
+    totalNetFlowRate: snapshot.totalNetFlowRate,
     totalAmountStreamedInUntilUpdatedAt:
       snapshot.totalAmountStreamedInUntilUpdatedAt,
     updatedAtTimestamp: Number(snapshot.updatedAtTimestamp),

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
 import { formatEther, parseEther } from "viem";
 import dayjs from "dayjs";
@@ -127,9 +127,15 @@ export default function Review(props: ReviewProps) {
   const streamLetter =
     hasWrap && hasTransfer ? "C" : hasWrap || hasTransfer ? "B" : "A";
   const transferShortfallWei =
-    requiredTransferWei -
-    superTokenBalance -
-    parseEther(wrapAmount?.replace(/,/g, "") ?? "0");
+    areTransactionsLoading && transactionDetailsSnapshot
+      ? BigInt(0)
+      : requiredTransferWei -
+        superTokenBalance -
+        parseEther(wrapAmount?.replace(/,/g, "") ?? "0");
+
+  useEffect(() => {
+    setHasAcceptedSplitterCapWarning(false);
+  }, [newFlowRate]);
 
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
