@@ -393,51 +393,57 @@ export default function FlowCouncil({
                 </Dropdown.Menu>
               </Dropdown>
               <Stack direction="vertical" className="flex-grow-0">
-                <div
-                  className="pb-5"
-                  style={{
-                    display: "grid",
-                    columnGap: "1.5rem",
-                    rowGap: "3rem",
-                    gridTemplateColumns: isTablet
-                      ? "repeat(2,minmax(0,1fr))"
-                      : isSmallScreen
-                        ? "repeat(3,minmax(0,1fr))"
-                        : isMediumScreen || isBigScreen
-                          ? "repeat(4,minmax(0,1fr))"
-                          : "",
-                  }}
-                >
-                  {isGranteesLoading
-                    ? granteeSkeletons
-                    : grantees.map((grantee: Grantee) => (
-                        <GranteeCard
-                          key={`${grantee.address}-${grantee.id}`}
-                          granteeAddress={grantee.address}
-                          name={grantee.details.name ?? ""}
-                          description={grantee.details.description ?? ""}
-                          logoUrl={grantee.details.logoUrl ?? ""}
-                          bannerUrl={grantee.details.bannerUrl ?? ""}
-                          placeholderLogo={grantee.placeholderLogo}
-                          placeholderBanner={grantee.placeholderBanner}
-                          flowRate={grantee.flowRate}
-                          units={grantee.units}
-                          token={token}
-                          votingPower={votingPower}
-                          showGranteeDetails={() =>
-                            setShowGranteeDetails(grantee)
-                          }
-                          granteeColor={granteeColors[grantee.address]}
-                          onAddToBallot={animateVoteBubble}
-                          isGraduated={grantee.isGraduated}
-                          totalAmountReceived={grantee.totalAmountReceived}
-                        />
-                      ))}
-                  {!isGranteesLoading &&
-                    hasNextGrantee.current === true &&
-                    grantees.length > 0 &&
-                    granteeSkeletons}
-                </div>
+                {!isGranteesLoading && grantees.length === 0 ? (
+                  <div className="text-center py-10 fs-5 text-secondary">
+                    No grantees yet
+                  </div>
+                ) : (
+                  <div
+                    className="pb-5"
+                    style={{
+                      display: "grid",
+                      columnGap: "1.5rem",
+                      rowGap: "3rem",
+                      gridTemplateColumns: isTablet
+                        ? "repeat(2,minmax(0,1fr))"
+                        : isSmallScreen
+                          ? "repeat(3,minmax(0,1fr))"
+                          : isMediumScreen || isBigScreen
+                            ? "repeat(4,minmax(0,1fr))"
+                            : "",
+                    }}
+                  >
+                    {isGranteesLoading
+                      ? granteeSkeletons
+                      : grantees.map((grantee: Grantee) => (
+                          <GranteeCard
+                            key={`${grantee.address}-${grantee.id}`}
+                            granteeAddress={grantee.address}
+                            name={grantee.details.name ?? ""}
+                            description={grantee.details.description ?? ""}
+                            logoUrl={grantee.details.logoUrl ?? ""}
+                            bannerUrl={grantee.details.bannerUrl ?? ""}
+                            placeholderLogo={grantee.placeholderLogo}
+                            placeholderBanner={grantee.placeholderBanner}
+                            flowRate={grantee.flowRate}
+                            units={grantee.units}
+                            token={token}
+                            votingPower={votingPower}
+                            showGranteeDetails={() =>
+                              setShowGranteeDetails(grantee)
+                            }
+                            granteeColor={granteeColors[grantee.address]}
+                            onAddToBallot={animateVoteBubble}
+                            isGraduated={grantee.isGraduated}
+                            totalAmountReceived={grantee.totalAmountReceived}
+                          />
+                        ))}
+                    {!isGranteesLoading &&
+                      hasNextGrantee.current === true &&
+                      grantees.length > 0 &&
+                      granteeSkeletons}
+                  </div>
+                )}
               </Stack>
             </Tab.Pane>
             <Tab.Pane eventKey="feed">
