@@ -28,6 +28,8 @@ import useAnimateVoteBubble from "../../hooks/animateVoteBubble";
 import { networks } from "@/lib/networks";
 import { shuffle, getPlaceholderImageSrc, generateColor } from "@/lib/utils";
 
+const SKELETON_COUNT = 4;
+
 export default function FlowCouncil({
   chainId,
   councilId,
@@ -83,6 +85,9 @@ export default function FlowCouncil({
     !council || !distributionPool || councilMetadata.name === "";
   const isGranteesLoading =
     grantees.length === 0 && (!council || !projects || !distributionPool);
+  const granteeSkeletons = Array.from({ length: SKELETON_COUNT }, (_, i) => (
+    <GranteeCardSkeleton key={i} />
+  ));
 
   const getGrantee = useCallback(
     (recipient: {
@@ -404,9 +409,7 @@ export default function FlowCouncil({
                   }}
                 >
                   {isGranteesLoading
-                    ? Array.from({ length: 4 }).map((_, i) => (
-                        <GranteeCardSkeleton key={`skeleton-${i}`} />
-                      ))
+                    ? granteeSkeletons
                     : grantees.map((grantee: Grantee) => (
                         <GranteeCard
                           key={`${grantee.address}-${grantee.id}`}
@@ -433,9 +436,7 @@ export default function FlowCouncil({
                   {!isGranteesLoading &&
                     hasNextGrantee.current === true &&
                     grantees.length > 0 &&
-                    Array.from({ length: 4 }).map((_, i) => (
-                      <GranteeCardSkeleton key={`next-skeleton-${i}`} />
-                    ))}
+                    granteeSkeletons}
                 </div>
               </Stack>
             </Tab.Pane>
