@@ -1,4 +1,3 @@
-import { useState, useLayoutEffect } from "react";
 import { formatEther } from "viem";
 import { useAccount } from "wagmi";
 import removeMarkdown from "remove-markdown";
@@ -39,8 +38,6 @@ export default function PoolInfo(props: PoolInfoProps) {
     showDistributionPoolFunding,
   } = props;
 
-  const [showFullInfo, setShowFullInfo] = useState(true);
-
   const { council, projects, superAppFunderData } = useFlowCouncil();
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
@@ -74,135 +71,98 @@ export default function PoolInfo(props: PoolInfoProps) {
     (network) => network.id === chainId,
   )?.superfluidExplorer;
 
-  useLayoutEffect(() => {
-    if (!showFullInfo) {
-      window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
-    }
-  }, [showFullInfo]);
-
   return (
     <div
       className="px-8 py-6 pool-info-background rounded-5"
       style={{ maxWidth: "100vw" }}
     >
-      <Stack
-        direction="horizontal"
-        className="justify-content-between align-items-center mb-2"
-      >
-        <Stack direction="horizontal" gap={1}>
-          <Card.Text className="m-0 fs-3 fw-semi-bold">{name}</Card.Text>
-          <InfoTooltip
-            position={{ bottom: true }}
-            tooltipStyle={{ maxWidth: 400 }}
-            content=<p className="m-0 p-2">
-              {removeMarkdown(description).replace(/\r?\n|\r/g, " ")}
-            </p>
-            target={
-              <Image
-                src="/info.svg"
-                alt="description"
-                width={24}
-                className="mb-4"
-              />
-            }
-          />
-        </Stack>
-        {isMobile && !showFullInfo && (
-          <Button
-            variant="transparent"
-            className="p-0"
-            onClick={() => setShowFullInfo(true)}
-          >
-            <Image src="/expand-more.svg" alt="toggle" width={48} />
-          </Button>
-        )}
+      <Stack direction="horizontal" gap={1} className="align-items-center mb-2">
+        <Card.Text className="m-0 fs-3 fw-semi-bold">{name}</Card.Text>
+        <InfoTooltip
+          position={{ bottom: true }}
+          tooltipStyle={{ maxWidth: 400 }}
+          content=<p className="m-0 p-2">
+            {removeMarkdown(description).replace(/\r?\n|\r/g, " ")}
+          </p>
+          target={
+            <Image
+              src="/info.svg"
+              alt="description"
+              width={24}
+              className="mb-4"
+            />
+          }
+        />
       </Stack>
       <Card.Text className="mb-8 fs-lg">
         <Card.Link href={`/flow-councils/application/${chainId}/${councilId}`}>
           Apply to the Round
         </Card.Link>
       </Card.Text>
-      {(!isMobile || showFullInfo) && (
-        <>
-          <Table borderless className="fs-lg">
-            <thead className="border-bottom border-dark">
-              <tr>
-                <th className="w-25 ps-0 bg-transparent text-dark">
-                  {isMobile ? "Token" : "Funding Token"}
-                </th>
-                <th className="w-25 bg-transparent text-dark">
-                  {isMobile ? "Monthly" : "Monthly Flow"}
-                </th>
-                <th className="w-25 bg-transparent text-dark">
-                  {isMobile ? "Total" : "Total Flow"}
-                </th>
-                <th className="w-25 bg-transparent text-dark">Funders</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="w-25 ps-0 bg-transparent">
-                  {distributionTokenInfo.symbol}
-                </td>
-                <td className="w-25 bg-transparent">
-                  <Card.Link
-                    href={`${superfluidExplorer}/pools/${distributionPool?.id}`}
-                    target="_blank"
-                  >
-                    {formatNumber(Number(formatEther(poolMonthly)))}
-                  </Card.Link>
-                </td>
-                <td className="w-25 bg-transparent">
-                  {formatNumber(Number(formatEther(poolTotal)))}
-                </td>
-                <td className="w-25 bg-transparent">
-                  {formatNumber(funderCount)}
-                </td>
-              </tr>
-            </tbody>
-          </Table>
-          <Stack
-            direction={isMobile ? "vertical" : "horizontal"}
-            gap={4}
-            className="justify-content-end w-100 mt-8"
-          >
-            {(!isMobile || showFullInfo) && (
-              <Button
-                variant="secondary"
-                className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
-                style={{ width: isMobile ? "100%" : 240 }}
-                onClick={showDistributionPoolFunding}
+      <Table borderless className="fs-lg">
+        <thead className="border-bottom border-dark">
+          <tr>
+            <th className="w-25 ps-0 bg-transparent text-dark">
+              {isMobile ? "Token" : "Funding Token"}
+            </th>
+            <th className="w-25 bg-transparent text-dark">
+              {isMobile ? "Monthly" : "Monthly Flow"}
+            </th>
+            <th className="w-25 bg-transparent text-dark">
+              {isMobile ? "Total" : "Total Flow"}
+            </th>
+            <th className="w-25 bg-transparent text-dark">Funders</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="w-25 ps-0 bg-transparent">
+              {distributionTokenInfo.symbol}
+            </td>
+            <td className="w-25 bg-transparent">
+              <Card.Link
+                href={`${superfluidExplorer}/pools/${distributionPool?.id}`}
+                target="_blank"
               >
-                Grow the Pie
-              </Button>
-            )}
-            <EligibilityButton
-              chainId={chainId}
-              councilId={councilId}
-              isMobile={isMobile}
-            />
-            {recipient && recipientProject && (
-              <Button
-                variant="link"
-                href={`/projects/${recipientProject.id}?edit=true`}
-                className="bg-primary py-4 text-light rounded-4 fs-lg fw-semi-bold text-decoration-none"
-                style={{ width: isMobile ? "100%" : 240 }}
-              >
-                Edit Project
-              </Button>
-            )}
-          </Stack>
-        </>
-      )}
-      {isMobile && showFullInfo && (
+                {formatNumber(Number(formatEther(poolMonthly)))}
+              </Card.Link>
+            </td>
+            <td className="w-25 bg-transparent">
+              {formatNumber(Number(formatEther(poolTotal)))}
+            </td>
+            <td className="w-25 bg-transparent">{formatNumber(funderCount)}</td>
+          </tr>
+        </tbody>
+      </Table>
+      <Stack
+        direction={isMobile ? "vertical" : "horizontal"}
+        gap={4}
+        className="justify-content-end w-100 mt-8"
+      >
         <Button
-          variant="transparent"
-          className="p-0 ms-auto mt-5"
-          onClick={() => setShowFullInfo(false)}
+          variant="secondary"
+          className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
+          style={{ width: isMobile ? "100%" : 240 }}
+          onClick={showDistributionPoolFunding}
         >
-          <Image src="/expand-less.svg" alt="toggle" width={48} />
+          Grow the Pie
         </Button>
-      )}
+        <EligibilityButton
+          chainId={chainId}
+          councilId={councilId}
+          isMobile={isMobile}
+        />
+        {recipient && recipientProject && (
+          <Button
+            variant="link"
+            href={`/projects/${recipientProject.id}?edit=true`}
+            className="bg-primary py-4 text-light rounded-4 fs-lg fw-semi-bold text-decoration-none"
+            style={{ width: isMobile ? "100%" : 240 }}
+          >
+            Edit Project
+          </Button>
+        )}
+      </Stack>
     </div>
   );
 }
