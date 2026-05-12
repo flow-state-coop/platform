@@ -7,14 +7,15 @@ import { useAccount, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Stack from "react-bootstrap/Stack";
 import Modal from "react-bootstrap/Modal";
-import Spinner from "react-bootstrap/Spinner";
 import Nav from "react-bootstrap/Nav";
 import Tab from "react-bootstrap/Tab";
 import Dropdown from "react-bootstrap/Dropdown";
 import PoolConnectionButton from "@/components/PoolConnectionButton";
 import GranteeCard from "@/app/flow-councils/components/GranteeCard";
+import GranteeCardSkeleton from "@/app/flow-councils/components/GranteeCardSkeleton";
 import FeedTab from "@/app/flow-councils/components/FeedTab";
 import RoundBanner from "@/app/flow-councils/components/RoundBanner";
+import RoundBannerSkeleton from "@/app/flow-councils/components/RoundBannerSkeleton";
 import GranteeDetails from "@/app/flow-councils/components/GranteeDetails";
 import Ballot from "@/app/flow-councils/components/Ballot";
 import DistributionPoolFunding from "@/app/flow-councils/components/DistributionPoolFunding";
@@ -78,6 +79,10 @@ export default function FlowCouncil({
   const votingPower =
     !!address && councilMember?.votingPower ? councilMember.votingPower : 0;
   const currentBallotStringified = JSON.stringify(currentBallot);
+  const isRoundLoading =
+    !council || !distributionPool || councilMetadata.name === "";
+  const isGranteesLoading =
+    grantees.length === 0 && (!council || !projects || !distributionPool);
 
   const getGrantee = useCallback(
     (recipient: {
@@ -310,19 +315,23 @@ export default function FlowCouncil({
         onMouseUp={clearZeroVotes}
         onTouchEnd={clearZeroVotes}
       >
-        <RoundBanner
-          name={councilMetadata.name ?? "Flow Council"}
-          description={councilMetadata.description ?? "N/A"}
-          chainId={chainId}
-          councilId={councilId}
-          distributionTokenInfo={token}
-          distributionPool={distributionPool}
-          showDistributionPoolFunding={() =>
-            address
-              ? setShowDistributionPoolFunding(true)
-              : openConnectModal?.()
-          }
-        />
+        {isRoundLoading ? (
+          <RoundBannerSkeleton />
+        ) : (
+          <RoundBanner
+            name={councilMetadata.name ?? "Flow Council"}
+            description={councilMetadata.description ?? "N/A"}
+            chainId={chainId}
+            councilId={councilId}
+            distributionTokenInfo={token}
+            distributionPool={distributionPool}
+            showDistributionPoolFunding={() =>
+              address
+                ? setShowDistributionPoolFunding(true)
+                : openConnectModal?.()
+            }
+          />
+        )}
         <Tab.Container
           activeKey={selectedTab}
           onSelect={(key) => setSelectedTab(key ?? "grantees")}
@@ -394,36 +403,40 @@ export default function FlowCouncil({
                           : "",
                   }}
                 >
-                  {grantees.map((grantee: Grantee) => (
-                    <GranteeCard
-                      key={`${grantee.address}-${grantee.id}`}
-                      granteeAddress={grantee.address}
-                      name={grantee.details.name ?? ""}
-                      description={grantee.details.description ?? ""}
-                      logoUrl={grantee.details.logoUrl ?? ""}
-                      bannerUrl={grantee.details.bannerUrl ?? ""}
-                      placeholderLogo={grantee.placeholderLogo}
-                      placeholderBanner={grantee.placeholderBanner}
-                      flowRate={grantee.flowRate}
-                      units={grantee.units}
-                      token={token}
-                      votingPower={votingPower}
-                      showGranteeDetails={() => setShowGranteeDetails(grantee)}
-                      granteeColor={granteeColors[grantee.address]}
-                      onAddToBallot={animateVoteBubble}
-                      isGraduated={grantee.isGraduated}
-                      totalAmountReceived={grantee.totalAmountReceived}
-                    />
-                  ))}
+                  {isGranteesLoading
+                    ? Array.from({ length: 4 }).map((_, i) => (
+                        <GranteeCardSkeleton key={`skeleton-${i}`} />
+                      ))
+                    : grantees.map((grantee: Grantee) => (
+                        <GranteeCard
+                          key={`${grantee.address}-${grantee.id}`}
+                          granteeAddress={grantee.address}
+                          name={grantee.details.name ?? ""}
+                          description={grantee.details.description ?? ""}
+                          logoUrl={grantee.details.logoUrl ?? ""}
+                          bannerUrl={grantee.details.bannerUrl ?? ""}
+                          placeholderLogo={grantee.placeholderLogo}
+                          placeholderBanner={grantee.placeholderBanner}
+                          flowRate={grantee.flowRate}
+                          units={grantee.units}
+                          token={token}
+                          votingPower={votingPower}
+                          showGranteeDetails={() =>
+                            setShowGranteeDetails(grantee)
+                          }
+                          granteeColor={granteeColors[grantee.address]}
+                          onAddToBallot={animateVoteBubble}
+                          isGraduated={grantee.isGraduated}
+                          totalAmountReceived={grantee.totalAmountReceived}
+                        />
+                      ))}
+                  {!isGranteesLoading &&
+                    hasNextGrantee.current === true &&
+                    grantees.length > 0 &&
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <GranteeCardSkeleton key={`next-skeleton-${i}`} />
+                    ))}
                 </div>
-                {hasNextGrantee.current === true && (
-                  <Stack
-                    direction="horizontal"
-                    className="justify-content-center m-auto"
-                  >
-                    <Spinner />
-                  </Stack>
-                )}
               </Stack>
             </Tab.Pane>
             <Tab.Pane eventKey="feed">
