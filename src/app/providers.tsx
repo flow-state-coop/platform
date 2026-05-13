@@ -22,6 +22,7 @@ import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { DonorParamsContextProvider } from "@/context/DonorParams";
 import { FlowCouncilContextProvider } from "@/context/FlowCouncil";
+import ConsentGate from "@/components/ConsentGate";
 import { networks } from "@/lib/networks";
 import { WALLET_CONNECT_PROJECT_ID, DEFAULT_CHAIN_ID } from "@/lib/constants";
 import "@rainbow-me/rainbowkit/styles.css";
@@ -152,6 +153,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         <QueryClientProvider client={queryClient}>
           <SessionProvider>
             <AuthSync />
+            <ConsentGate />
             <RainbowKitWithInitialChain>
               <PostHogProvider client={posthog}>
                 <DonorParamsContextProvider>
