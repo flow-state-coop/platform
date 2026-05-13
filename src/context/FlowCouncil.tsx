@@ -200,7 +200,7 @@ function FlowCouncilContextProviderInner({
   const council = useCouncilQuery(network, councilId, isVotingPage);
   const councilMetadata = useFlowCouncilMetadata(Number(chainId), councilId);
   const projects = useRecipientsQuery(network, council?.recipients, councilId);
-  const distributionPool = useDistributionPoolQuery(
+  const { pool: distributionPool } = useDistributionPoolQuery(
     network,
     council?.distributionPool,
     isVotingPage,

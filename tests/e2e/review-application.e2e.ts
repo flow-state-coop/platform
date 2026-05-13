@@ -39,4 +39,27 @@ test("admin reaches the review page with an authenticated session", async ({
 
   await page.goto(path);
   await expect(page).toHaveURL(new RegExp(path.replace(/[./]/g, "\\$&")));
+
+  // Recipient table: Address column is gone; Project + Pool Connection are present.
+  const projectHeader = page.getByRole("columnheader", { name: "Project" });
+  await expect(projectHeader).toBeVisible();
+  await expect(
+    page.getByRole("columnheader", { name: "Pool Connection" }),
+  ).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Address" })).toHaveCount(
+    0,
+  );
+
+  // Connect All sits above Next. With the default subgraph mock returning
+  // no pool members, the pool membership map is empty, so the button shows
+  // "No Recipients in Pool" disabled (distinguishing this from the genuine
+  // "All Connected" case where members exist and are all connected).
+  const connectAll = page.getByRole("button", {
+    name: /No Recipients in Pool/,
+  });
+  await expect(connectAll).toBeVisible();
+  await expect(connectAll).toBeDisabled();
+
+  const nextButton = page.getByRole("button", { name: "Next" });
+  await expect(nextButton).toBeVisible();
 });

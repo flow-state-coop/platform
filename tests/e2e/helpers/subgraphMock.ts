@@ -14,6 +14,7 @@ const FLOW_COUNCIL_RESPONSE = {
       distributionPool: "0x0000000000000000000000000000000000000001",
       recipients: [],
       councilMembers: [],
+      flowCouncilManagers: [],
       rounds: [],
     },
   },
