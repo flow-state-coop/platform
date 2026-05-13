@@ -807,6 +807,7 @@ export default function Membership(props: MembershipProps) {
           <Button
             variant="secondary"
             className="fs-lg fw-semi-bold py-4 rounded-4"
+            disabled={councilMetadata.isPending}
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() => {
               router.push(

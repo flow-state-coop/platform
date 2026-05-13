@@ -12,12 +12,12 @@ const DEFAULT_METADATA: RoundMetadata = {
 };
 
 export default function useCouncilMetadata(chainId: number, councilId: string) {
-  const { data } = useQuery({
+  const { data, isPending } = useQuery({
     queryKey: ["councilMetadata", chainId, councilId],
     queryFn: () => fetchRoundMetadata(chainId, councilId),
     enabled: !!chainId && !!councilId,
     staleTime: 60_000,
   });
 
-  return data ?? DEFAULT_METADATA;
+  return { ...(data ?? DEFAULT_METADATA), isPending };
 }
