@@ -249,6 +249,7 @@ export default function Funding(props: FundingProps) {
   const [closeAllError, setCloseAllError] = useState("");
   const [closeAllSuccess, setCloseAllSuccess] = useState(false);
   const [isClosingAll, setIsClosingAll] = useState(false);
+  const [isRefreshingSenders, setIsRefreshingSenders] = useState(false);
 
   const [roundEndDateInput, setRoundEndDateInput] = useState("");
   const [roundEndError, setRoundEndError] = useState("");
@@ -612,6 +613,15 @@ export default function Funding(props: FundingProps) {
       setRoundEndError(sanitizeTxError(err));
     } finally {
       setIsCancellingRoundEnd(false);
+    }
+  };
+
+  const handleRefreshSenders = async () => {
+    setIsRefreshingSenders(true);
+    try {
+      await senderSnapshot.refetch();
+    } finally {
+      setIsRefreshingSenders(false);
     }
   };
 
@@ -1343,23 +1353,49 @@ export default function Funding(props: FundingProps) {
                 </Alert>
               ) : null}
               {canCloseStreams ? (
-                <Card.Text className="mb-0 fw-semi-bold">
-                  {senderSnapshot.loading ? (
-                    <Spinner size="sm" />
-                  ) : superfluidStreamsHref ? (
-                    <a
-                      href={superfluidStreamsHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary text-decoration-none"
+                <Stack
+                  direction="horizontal"
+                  gap={2}
+                  className="align-items-center"
+                >
+                  <Card.Text className="mb-0 fw-semi-bold">
+                    {senderSnapshot.loading ? (
+                      <Spinner size="sm" />
+                    ) : superfluidStreamsHref ? (
+                      <a
+                        href={superfluidStreamsHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary text-decoration-none"
+                      >
+                        {validSenders.length} stream
+                        {validSenders.length === 1 ? "" : "s"} to close
+                      </a>
+                    ) : (
+                      `${validSenders.length} stream${validSenders.length === 1 ? "" : "s"} to close`
+                    )}
+                  </Card.Text>
+                  {!senderSnapshot.loading ? (
+                    <Button
+                      variant="link"
+                      className="p-0 border-0 lh-1"
+                      onClick={handleRefreshSenders}
+                      disabled={isRefreshingSenders}
+                      aria-label="Refresh stream count"
                     >
-                      {validSenders.length} stream
-                      {validSenders.length === 1 ? "" : "s"} to close
-                    </a>
-                  ) : (
-                    `${validSenders.length} stream${validSenders.length === 1 ? "" : "s"} to close`
-                  )}
-                </Card.Text>
+                      {isRefreshingSenders ? (
+                        <Spinner size="sm" />
+                      ) : (
+                        <NextImage
+                          src="/reload.svg"
+                          alt="Refresh"
+                          width={20}
+                          height={20}
+                        />
+                      )}
+                    </Button>
+                  ) : null}
+                </Stack>
               ) : null}
               {canCloseStreams && senderSnapshot.truncated ? (
                 <Alert variant="warning" className="mb-0 fw-semi-bold">
