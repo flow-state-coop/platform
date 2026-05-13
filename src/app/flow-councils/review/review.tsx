@@ -477,7 +477,7 @@ export default function Review(props: ReviewProps) {
   }, [flowCouncil, chainId, isAuthed]);
 
   const isManager = useMemo(() => {
-    const flowCouncilManager = flowCouncil?.flowCouncilManagers.find(
+    const flowCouncilManager = flowCouncil?.flowCouncilManagers?.find(
       (m: { account: string; role: string }) =>
         m.account === address?.toLowerCase() &&
         m.role === RECIPIENT_MANAGER_ROLE,
