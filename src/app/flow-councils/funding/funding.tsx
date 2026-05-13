@@ -699,8 +699,7 @@ export default function Funding(props: FundingProps) {
         variant={streamFlashSuccess ? "success" : "primary"}
         disabled={
           !streamFlashSuccess &&
-          (!canCloseStreams ||
-            areTransactionsLoading ||
+          (areTransactionsLoading ||
             streamFlowRate === 0n ||
             streamFlowRateUnchanged ||
             !streamHasSufficientForBuffer ||
@@ -752,8 +751,7 @@ export default function Funding(props: FundingProps) {
         variant={depositFlashSuccess ? "success" : "primary"}
         disabled={
           !depositFlashSuccess &&
-          (!canCloseStreams ||
-            depositLoading ||
+          (depositLoading ||
             depositWei === 0n ||
             !depositHasSufficient ||
             depositWrapExceedsUnderlying)
@@ -1065,12 +1063,6 @@ export default function Funding(props: FundingProps) {
           </Card.Header>
           <Card.Body className="p-0 mt-4">
             <Stack direction="vertical" gap={3}>
-              {!canCloseStreams ? (
-                <Card.Text className="text-info mb-0 fw-semi-bold">
-                  (Read only—connect a wallet with admin permissions to make
-                  changes.)
-                </Card.Text>
-              ) : null}
               <Form.Group>
                 <Form.Label className="fw-semi-bold">
                   Monthly flow rate ({tokenSymbol})
@@ -1090,7 +1082,6 @@ export default function Funding(props: FundingProps) {
                   type="text"
                   inputMode="decimal"
                   placeholder="0.0"
-                  disabled={!canCloseStreams}
                   value={streamMonthlyAmount}
                   onChange={(e) => {
                     if (isInProgressDecimal(e.target.value)) {
@@ -1153,7 +1144,6 @@ export default function Funding(props: FundingProps) {
                     type="text"
                     inputMode="decimal"
                     placeholder="0.0"
-                    disabled={!canCloseStreams}
                     value={streamWrapAmount}
                     onChange={(e) => {
                       if (isInProgressDecimal(e.target.value)) {
@@ -1202,12 +1192,6 @@ export default function Funding(props: FundingProps) {
           </Card.Header>
           <Card.Body className="p-0 mt-4">
             <Stack direction="vertical" gap={3}>
-              {!canCloseStreams ? (
-                <Card.Text className="text-info mb-0 fw-semi-bold">
-                  (Read only—connect a wallet with admin permissions to make
-                  changes.)
-                </Card.Text>
-              ) : null}
               <Form.Group>
                 <Form.Label className="fw-semi-bold">
                   Deposit amount ({tokenSymbol})
@@ -1216,7 +1200,6 @@ export default function Funding(props: FundingProps) {
                   type="text"
                   inputMode="decimal"
                   placeholder="0.0"
-                  disabled={!canCloseStreams}
                   value={depositAmount}
                   onChange={(e) => {
                     if (isInProgressDecimal(e.target.value)) {
@@ -1258,7 +1241,6 @@ export default function Funding(props: FundingProps) {
                     type="text"
                     inputMode="decimal"
                     placeholder="0.0"
-                    disabled={!canCloseStreams}
                     value={depositWrapAmount}
                     onChange={(e) => {
                       if (isInProgressDecimal(e.target.value)) {
