@@ -422,9 +422,21 @@ export async function POST(request: Request) {
               const inboxAddresses = Array.from(
                 new Set([...adminAddresses, ...granteeAddresses]),
               );
+              // Dedupe email recipients by address — a user who is both a
+              // round admin and a project manager of an accepted project
+              // would otherwise receive two identical announcement emails.
+              const seenAddresses = new Set<string>();
+              const allRecipients = [
+                ...adminRecipients,
+                ...granteeRecipients,
+              ].filter((r) => {
+                const addr = r.address.toLowerCase();
+                if (seenAddresses.has(addr)) return false;
+                seenAddresses.add(addr);
+                return true;
+              });
               return Promise.all([
-                sendAnnouncementEmail(adminRecipients, emailData),
-                sendAnnouncementEmail(granteeRecipients, emailData),
+                sendAnnouncementEmail(allRecipients, emailData),
                 writeInboxItems(
                   inboxAddresses.map((address) => ({
                     recipientAddress: address,

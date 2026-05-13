@@ -1,7 +1,8 @@
 import { getServerSession } from "next-auth/next";
 import { isAddress } from "viem";
-import { sql } from "kysely";
+import { sql, type Insertable, type Updateable } from "kysely";
 import { db } from "../db";
+import type { DB } from "@/generated/kysely";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import {
   validateProfile,
@@ -142,7 +143,7 @@ export async function PUT(request: Request) {
 
     const shouldBumpEmailVersion = emailChanged || consentRevoked;
 
-    const values = {
+    const baseValues = {
       address,
       displayName: data.displayName,
       bio: data.bio || null,
@@ -164,38 +165,43 @@ export async function PUT(request: Request) {
 
     // Build the update set. Fields that came through as `undefined` in the
     // request body are omitted so existing values are preserved.
-    const updateSet: Record<string, unknown> = {
-      displayName: values.displayName,
-      bio: values.bio,
-      twitter: values.twitter,
-      github: values.github,
-      linkedin: values.linkedin,
-      farcaster: values.farcaster,
-      email: values.email,
-      telegram: values.telegram,
+    const updateSet: Updateable<DB["userProfiles"]> = {
+      ...baseValues,
       updatedAt: new Date(),
     };
+    // Insert payload starts from baseValues; consent + notification fields are
+    // merged in below so a brand-new user who sets them on first save doesn't
+    // silently fall back to DB defaults (this branch only runs the updateSet
+    // on conflict, not on insert).
+    const values: Insertable<DB["userProfiles"]> = { ...baseValues };
 
     if (data.consentConfirmedAt !== undefined) {
       updateSet.consentConfirmedAt = newConsentConfirmedAt;
+      values.consentConfirmedAt = newConsentConfirmedAt;
     }
     if (data.consentVersion !== undefined) {
       updateSet.consentVersion = data.consentVersion;
+      values.consentVersion = data.consentVersion;
     }
     if (data.notifyApplicationEligibility !== undefined) {
       updateSet.notifyApplicationEligibility = data.notifyApplicationEligibility;
+      values.notifyApplicationEligibility = data.notifyApplicationEligibility;
     }
     if (data.notifyProjectChannels !== undefined) {
       updateSet.notifyProjectChannels = data.notifyProjectChannels;
+      values.notifyProjectChannels = data.notifyProjectChannels;
     }
     if (data.notifyRoundAnnouncements !== undefined) {
       updateSet.notifyRoundAnnouncements = data.notifyRoundAnnouncements;
+      values.notifyRoundAnnouncements = data.notifyRoundAnnouncements;
     }
     if (data.notifyInternalReview !== undefined) {
       updateSet.notifyInternalReview = data.notifyInternalReview;
+      values.notifyInternalReview = data.notifyInternalReview;
     }
     if (data.notifyPlatform !== undefined) {
       updateSet.notifyPlatform = data.notifyPlatform;
+      values.notifyPlatform = data.notifyPlatform;
     }
 
     // On email change, clear any prior bounce suspension since the user has
@@ -207,8 +213,10 @@ export async function PUT(request: Request) {
 
     if (shouldBumpEmailVersion) {
       // Use a raw SQL expression so the increment is atomic at the SQL
-      // level (rather than computing `current + 1` in JS).
-      updateSet.emailVersion = sql<number>`email_version + 1`;
+      // level (rather than computing `current + 1` in JS). The cast is
+      // necessary because Updateable narrows to the column type — Kysely
+      // accepts the raw expression at runtime via doUpdateSet.
+      updateSet.emailVersion = sql<number>`email_version + 1` as unknown as number;
     }
 
     const profile = await db
