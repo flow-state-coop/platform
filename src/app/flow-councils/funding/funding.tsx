@@ -916,8 +916,8 @@ export default function Funding(props: FundingProps) {
                   ) : roundStatus === "open" ? (
                     <span className="text-success">Open</span>
                   ) : roundStatus === "scheduled" ? (
-                    <span className="text-warning">
-                      Scheduled — closes{" "}
+                    <span className="text-success">
+                      Open - Ends{" "}
                       {roundEndsAtDate?.toLocaleString(undefined, {
                         dateStyle: "medium",
                         timeStyle: "short",
