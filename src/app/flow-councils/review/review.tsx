@@ -1062,7 +1062,7 @@ export default function Review(props: ReviewProps) {
                             ? null
                             : membership.isConnected
                               ? "connected"
-                              : "disconnected";
+                              : "slots-full";
                         return (
                           <tr key={i}>
                             <td className="w-25 align-middle">
@@ -1098,14 +1098,14 @@ export default function Review(props: ReviewProps) {
                                   position={{ top: true }}
                                   content={
                                     <>
-                                      Autoconnect slots full — recipient must
-                                      connect manually from the pool page
+                                      Not auto-connected - recipient needs to
+                                      manually connect from the public voting UI
                                     </>
                                   }
                                   target={
                                     <Image
                                       src="/warning-triangle.svg"
-                                      alt="Autoconnect slots full"
+                                      alt="Not auto-connected"
                                       width={24}
                                       height={24}
                                     />
