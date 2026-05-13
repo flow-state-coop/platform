@@ -65,20 +65,23 @@ export async function POST(request: Request) {
       return Response.json({ success: true, recipientCount: 0 });
     }
 
-    await sendPlatformMessageEmail(recipients, {
-      baseUrl,
-      subject,
-      content,
-    });
-
-    await writeInboxItems(
-      recipients.map((r) => ({
-        recipientAddress: r.address,
-        category: "platform" as const,
-        sourceLabel: "Flow State",
-        snippet: subject,
-      })),
-    );
+    // Independent side effects — run in parallel so a SES failure doesn't
+    // silently drop the inbox writes (and vice versa).
+    await Promise.all([
+      sendPlatformMessageEmail(recipients, {
+        baseUrl,
+        subject,
+        content,
+      }),
+      writeInboxItems(
+        recipients.map((r) => ({
+          recipientAddress: r.address,
+          category: "platform" as const,
+          sourceLabel: "Flow State",
+          snippet: subject,
+        })),
+      ),
+    ]);
 
     return Response.json({ success: true, recipientCount: recipients.length });
   } catch (error) {

@@ -468,7 +468,7 @@ export async function POST(request: Request) {
                   recipientAddress: address,
                   category: "internal_review",
                   sourceLabel: details.projectName,
-                  snippet: messageContent,
+                  snippet: inboxSnippet,
                   messageId: message.id,
                   applicationId,
                 })),
