@@ -114,22 +114,18 @@ export default function ConsentGate() {
     setError(null);
 
     try {
-      // Strip server-managed / non-PUT fields before spreading. The PUT
-      // handler is a full upsert, so all remaining existing fields (email,
-      // displayName, bio, socials, telegram, etc.) must be passed through
-      // unchanged so they aren't cleared.
-      const {
-        address: _address,
-        emailSuspendedAt: _emailSuspendedAt,
-        emailSuspensionReason: _emailSuspensionReason,
-        ...rest
-      } = profile;
-      void _address;
-      void _emailSuspendedAt;
-      void _emailSuspensionReason;
-
+      // PUT is a full upsert — pass existing identity/social fields through
+      // unchanged so they aren't cleared. Server-managed fields (`address`,
+      // `emailSuspendedAt`, `emailSuspensionReason`) are not sent.
       const body = {
-        ...rest,
+        displayName: profile.displayName,
+        bio: profile.bio,
+        twitter: profile.twitter,
+        github: profile.github,
+        linkedin: profile.linkedin,
+        farcaster: profile.farcaster,
+        email: profile.email,
+        telegram: profile.telegram,
         consentConfirmedAt: new Date().toISOString(),
         consentVersion: CONSENT_VERSION,
         notifyApplicationEligibility,

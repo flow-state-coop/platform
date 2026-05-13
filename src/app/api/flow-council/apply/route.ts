@@ -163,22 +163,26 @@ export async function POST(request: Request) {
       ])
         .then(async ([details, recipients, adminAddresses]) => {
           if (!details) return;
-          await sendApplicationSubmittedEmail(recipients, {
-            baseUrl,
-            projectName: details.projectName,
-            roundName: details.roundName,
-            chainId: details.chainId,
-            councilId: details.councilId,
-          });
-          await writeInboxItems(
-            adminAddresses.map((address) => ({
-              recipientAddress: address,
-              category: "application_eligibility" as const,
-              sourceLabel: details.roundName,
-              snippet: `New application from ${details.projectName}`,
-              applicationId,
-            })),
-          );
+          // Independent side effects — run in parallel so a SES failure
+          // doesn't silently drop the inbox writes (and vice versa).
+          await Promise.all([
+            sendApplicationSubmittedEmail(recipients, {
+              baseUrl,
+              projectName: details.projectName,
+              roundName: details.roundName,
+              chainId: details.chainId,
+              councilId: details.councilId,
+            }),
+            writeInboxItems(
+              adminAddresses.map((address) => ({
+                recipientAddress: address,
+                category: "application_eligibility" as const,
+                sourceLabel: details.roundName,
+                snippet: `New application from ${details.projectName}`,
+                applicationId,
+              })),
+            ),
+          ]);
         })
         .catch((err) =>
           console.error("Failed to send submission email/inbox:", err),

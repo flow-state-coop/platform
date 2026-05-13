@@ -37,6 +37,7 @@ type InboxResponse = {
   success: true;
   items: InboxItem[];
   unreadCount: number;
+  nextCursor: string | null;
 };
 
 type CategoryFilter = InboxCategory | "all";
@@ -90,30 +91,40 @@ export default function InboxPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
   const [error, setError] = useState<string>("");
 
   const fetchInbox = useCallback(
-    async (category: CategoryFilter) => {
+    async (category: CategoryFilter, before: string | null = null) => {
       if (status !== "authenticated") return;
-      setIsLoading(true);
+      const isInitial = before === null;
+      if (isInitial) setIsLoading(true);
+      else setIsLoadingMore(true);
       setError("");
       try {
-        const qs =
-          category === "all" ? "" : `?category=${encodeURIComponent(category)}`;
+        const params = new URLSearchParams();
+        if (category !== "all") params.set("category", category);
+        if (before) params.set("before", before);
+        const qs = params.toString() ? `?${params.toString()}` : "";
         const res = await fetch(`/api/flow-council/inbox${qs}`);
         if (!res.ok) {
           setError("Failed to load inbox.");
           return;
         }
         const data = (await res.json()) as InboxResponse;
-        setItems(data.items ?? []);
+        setItems((prev) =>
+          isInitial ? (data.items ?? []) : [...prev, ...(data.items ?? [])],
+        );
         setUnreadCount(data.unreadCount ?? 0);
+        setNextCursor(data.nextCursor ?? null);
       } catch (err) {
         console.error(err);
         setError("Failed to load inbox.");
       } finally {
-        setIsLoading(false);
+        if (isInitial) setIsLoading(false);
+        else setIsLoadingMore(false);
       }
     },
     [status],
@@ -124,6 +135,11 @@ export default function InboxPage() {
       fetchInbox(selectedCategory);
     }
   }, [status, selectedCategory, fetchInbox]);
+
+  const handleLoadMore = () => {
+    if (isLoadingMore || !nextCursor) return;
+    fetchInbox(selectedCategory, nextCursor);
+  };
 
   const handleSelectCategory = (category: CategoryFilter) => {
     setSelectedCategory(category);
@@ -373,6 +389,18 @@ export default function InboxPage() {
             );
             return <div key={item.id}>{rowContent}</div>;
           })}
+          {nextCursor && (
+            <div className="d-flex justify-content-center pt-3">
+              <Button
+                variant="outline-secondary"
+                className="rounded-3"
+                onClick={handleLoadMore}
+                disabled={isLoadingMore}
+              >
+                {isLoadingMore ? <Spinner size="sm" /> : "Load older"}
+              </Button>
+            </div>
+          )}
         </Stack>
       )}
     </Container>

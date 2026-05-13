@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { isAddress } from "viem";
+import removeMarkdown from "remove-markdown";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { fetchDisplayNames, fetchReactions } from "../enrichment";
@@ -376,6 +377,9 @@ export async function POST(request: Request) {
     if (effectiveRoundId) {
       const baseUrl = new URL(request.url).origin;
       const messageContent = content.trim();
+      // Inbox snippets are rendered as plain text — strip markdown so users
+      // don't see raw syntax (`**bold**`, `[link](url)`) in their inbox.
+      const inboxSnippet = removeMarkdown(messageContent);
       const displayNames = await fetchDisplayNames([session.address]);
       const sender = formatSender(
         session.address,
@@ -426,7 +430,7 @@ export async function POST(request: Request) {
                     recipientAddress: address,
                     category: "round_announcements",
                     sourceLabel: details.roundName,
-                    snippet: messageContent,
+                    snippet: inboxSnippet,
                     messageId: message.id,
                   })),
                 ),
@@ -520,7 +524,7 @@ export async function POST(request: Request) {
                     recipientAddress: address,
                     category: "project_channels",
                     sourceLabel: details.projectName,
-                    snippet: messageContent,
+                    snippet: inboxSnippet,
                     messageId: message.id,
                   })),
                 ),

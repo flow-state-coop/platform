@@ -32,12 +32,12 @@ export async function POST(request: Request) {
   const provided = authHeader.startsWith("Bearer ")
     ? authHeader.slice(7)
     : "";
-  const providedBuf = Buffer.from(provided);
-  const secretBuf = Buffer.from(secret);
-  if (
-    providedBuf.length !== secretBuf.length ||
-    !crypto.timingSafeEqual(providedBuf, secretBuf)
-  ) {
+  // Hash both sides first so the comparison is constant-length and
+  // constant-time regardless of `provided` length — avoids leaking the
+  // secret's length via a short-circuit on length mismatch.
+  const providedHash = crypto.createHash("sha256").update(provided).digest();
+  const secretHash = crypto.createHash("sha256").update(secret).digest();
+  if (!crypto.timingSafeEqual(providedHash, secretHash)) {
     return unauthorized();
   }
 

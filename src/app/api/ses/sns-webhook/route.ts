@@ -61,6 +61,26 @@ async function suspendEmail(
     .execute();
 }
 
+// For multi-recipient events: isolate failures per address so one DB error
+// doesn't prevent suspending the rest. Always ack to SNS — retrying a
+// partial-success batch would re-suspend already-handled addresses.
+async function suspendAll(
+  addresses: Array<{ emailAddress?: string } | undefined>,
+  reason: "hard_bounce" | "complaint",
+) {
+  const results = await Promise.allSettled(
+    addresses
+      .map((r) => r?.emailAddress)
+      .filter((e): e is string => typeof e === "string" && e.length > 0)
+      .map((email) => suspendEmail(email, reason)),
+  );
+  for (const r of results) {
+    if (r.status === "rejected") {
+      console.error("[sns-webhook] suspendEmail failed", r.reason);
+    }
+  }
+}
+
 export async function POST(request: Request) {
   // 1. Read body as text. SNS sends Content-Type: text/plain with JSON body.
   const raw = await request.text();
@@ -122,22 +142,15 @@ export async function POST(request: Request) {
     const eventType = inner.eventType;
 
     if (eventType === "Bounce" && inner.bounce?.bounceType === "Permanent") {
-      const recipients = inner.bounce?.bouncedRecipients ?? [];
-      for (const r of recipients) {
-        if (typeof r?.emailAddress === "string" && r.emailAddress.length > 0) {
-          await suspendEmail(r.emailAddress, "hard_bounce");
-        }
-      }
+      await suspendAll(inner.bounce?.bouncedRecipients ?? [], "hard_bounce");
       return ok();
     }
 
     if (eventType === "Complaint") {
-      const recipients = inner.complaint?.complainedRecipients ?? [];
-      for (const r of recipients) {
-        if (typeof r?.emailAddress === "string" && r.emailAddress.length > 0) {
-          await suspendEmail(r.emailAddress, "complaint");
-        }
-      }
+      await suspendAll(
+        inner.complaint?.complainedRecipients ?? [],
+        "complaint",
+      );
       return ok();
     }
 

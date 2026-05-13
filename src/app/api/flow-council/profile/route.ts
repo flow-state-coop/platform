@@ -132,10 +132,13 @@ export async function PUT(request: Request) {
     const emailChanged =
       currentRow !== undefined && normalizedEmail !== (currentRow.email ?? null);
 
-    // Transition 2: consent revocation (had consent → null/undefined).
+    // Transition 2: consent revocation (had consent → explicit null).
+    // `undefined` means "field omitted" — must NOT count as revocation, or any
+    // PUT that doesn't send `consentConfirmedAt` would silently bump
+    // `emailVersion` and invalidate outstanding prefs/unsubscribe tokens.
     const consentRevoked =
       currentRow?.consentConfirmedAt != null &&
-      (data.consentConfirmedAt === null || data.consentConfirmedAt === undefined);
+      data.consentConfirmedAt === null;
 
     const shouldBumpEmailVersion = emailChanged || consentRevoked;
 

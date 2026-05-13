@@ -36,6 +36,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const categoryParam = searchParams.get("category");
     const limitParam = searchParams.get("limit");
+    const beforeParam = searchParams.get("before");
 
     if (
       categoryParam !== null &&
@@ -53,6 +54,15 @@ export async function GET(request: Request) {
         return jsonResponse({ success: false, error: "Invalid limit" }, 400);
       }
       limit = Math.min(parsed, MAX_LIMIT);
+    }
+
+    let beforeDate: Date | null = null;
+    if (beforeParam !== null) {
+      const parsed = new Date(beforeParam);
+      if (isNaN(parsed.getTime())) {
+        return jsonResponse({ success: false, error: "Invalid before" }, 400);
+      }
+      beforeDate = parsed;
     }
 
     let query = db
@@ -75,8 +85,15 @@ export async function GET(request: Request) {
     if (categoryParam) {
       query = query.where("category", "=", categoryParam);
     }
+    if (beforeDate) {
+      query = query.where("createdAt", "<", beforeDate);
+    }
 
     const items = await query.execute();
+    const nextCursor =
+      items.length === limit
+        ? items[items.length - 1].createdAt.toISOString()
+        : null;
 
     const unreadCountRow = await db
       .selectFrom("inboxItems")
@@ -87,7 +104,7 @@ export async function GET(request: Request) {
 
     const unreadCount = unreadCountRow ? Number(unreadCountRow.count) : 0;
 
-    return jsonResponse({ success: true, items, unreadCount });
+    return jsonResponse({ success: true, items, unreadCount, nextCursor });
   } catch (err) {
     console.error(err);
     return jsonResponse({ success: false, error: "Server error" }, 500);

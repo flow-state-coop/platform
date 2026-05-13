@@ -33,7 +33,7 @@ export default function Header() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/flow-council/inbox");
+        const res = await fetch("/api/flow-council/inbox/unread-count");
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled && typeof data?.unreadCount === "number") {
