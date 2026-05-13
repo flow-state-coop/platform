@@ -3,6 +3,7 @@ import {
   Address,
   isAddress,
   erc20Abi,
+  encodeFunctionData,
   parseEther,
   parseUnits,
   formatUnits,
@@ -10,6 +11,7 @@ import {
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import dayjs from "dayjs";
 import { useQuery, gql } from "@apollo/client";
+import { superTokenAbi } from "@sfpro/sdk/abi";
 import { hostAddress } from "@sfpro/sdk/abi/core";
 import duration from "dayjs/plugin/duration";
 import Offcanvas from "react-bootstrap/Offcanvas";
@@ -46,7 +48,11 @@ import {
   formatNumberWithCommas,
   roundWeiAmount,
 } from "@/lib/utils";
-import { SECONDS_IN_MONTH, MAX_FLOW_RATE } from "@/lib/constants";
+import {
+  SECONDS_IN_MONTH,
+  SUPERFLUID_LIQUIDATION_PERIOD_SECONDS,
+  MAX_FLOW_RATE,
+} from "@/lib/constants";
 import { getSocialShare } from "../lib/socialShare";
 
 const SF_ACCOUNT_QUERY = gql`
@@ -125,6 +131,19 @@ export default function DistributionPoolFunding(props: {
       address,
       chainId: network.id,
     });
+  const {
+    balanceUntilUpdatedAt: splitterBalanceUntilUpdatedAt,
+    updatedAtTimestamp: splitterUpdatedAtTimestamp,
+  } = useSuperTokenBalanceOfNow({
+    token: distributionTokenAddress,
+    address: splitterAddress ?? undefined,
+    chainId: network.id,
+  });
+  const splitterBalanceNow = useFlowingAmount(
+    BigInt(splitterBalanceUntilUpdatedAt ?? 0),
+    splitterUpdatedAtTimestamp ?? 0,
+    BigInt(superAppFunderData?.totalNetFlowRate ?? 0),
+  );
   const { data: ethBalance } = useBalance({
     address,
     chainId: network.id,
@@ -201,6 +220,24 @@ export default function DistributionPoolFunding(props: {
   }, [address, splitterAddress, superfluidQueryRes]);
 
   const flowRateToReceiver = outflowToReceiver?.currentFlowRate ?? "0";
+
+  const maxFundingRate =
+    splitterBalanceNow / BigInt(SUPERFLUID_LIQUIDATION_PERIOD_SECONDS);
+  const exceedsSplitterCap =
+    !!splitterAddress &&
+    !!newFlowRate &&
+    BigInt(newFlowRate) > BigInt(flowRateToReceiver) &&
+    BigInt(newFlowRate) > maxFundingRate;
+  const requiredTransferWei = exceedsSplitterCap
+    ? BigInt(newFlowRate) * BigInt(SUPERFLUID_LIQUIDATION_PERIOD_SECONDS) -
+      splitterBalanceNow
+    : BigInt(0);
+  const wrapAmountForTransferCheck = parseEther(
+    wrapAmount?.replace(/,/g, "") ?? "0",
+  );
+  const hasSufficientBalanceForTransfer =
+    !exceedsSplitterCap ||
+    superTokenBalance + wrapAmountForTransferCheck >= requiredTransferWei;
 
   const suggestedTokenBalance = newFlowRate
     ? BigInt(newFlowRate) * BigInt(SECONDS_IN_MONTH) * BigInt(3)
@@ -319,10 +356,12 @@ export default function DistributionPoolFunding(props: {
     const needsApproval =
       isSuperTokenWrapper &&
       wrapAmountUnits > BigInt(underlyingTokenAllowance ?? 0);
+    const hasWrap = !!wrapAmount && Number(wrapAmount.replace(/,/g, "")) > 0;
     const newCalls: TransactionCall[] = [];
-    const batchOps = [];
+    const wrapBatchOps = [];
+    const flowBatchOps = [];
 
-    if (wrapAmount && Number(wrapAmount?.replace(/,/g, "")) > 0) {
+    if (hasWrap) {
       const wrap = buildWrapCalls({
         tokenAddress: distributionTokenAddress,
         wrapAmountWei,
@@ -334,7 +373,7 @@ export default function DistributionPoolFunding(props: {
       });
 
       newCalls.push(...wrap.calls);
-      batchOps.push(...wrap.batchOps);
+      wrapBatchOps.push(...wrap.batchOps);
     }
 
     const flowParams = {
@@ -345,19 +384,48 @@ export default function DistributionPoolFunding(props: {
     };
 
     if (BigInt(newFlowRate) === BigInt(0) && BigInt(flowRateToReceiver) > 0) {
-      batchOps.push(
+      flowBatchOps.push(
         buildDeleteFlowBatchOp({ ...flowParams, senderAddress: address }),
       );
     } else if (BigInt(flowRateToReceiver) > 0) {
-      batchOps.push(buildUpdateFlowBatchOp(flowParams));
+      flowBatchOps.push(buildUpdateFlowBatchOp(flowParams));
     } else if (BigInt(newFlowRate) > 0) {
-      batchOps.push(buildCreateFlowBatchOp(flowParams));
+      flowBatchOps.push(buildCreateFlowBatchOp(flowParams));
     }
 
-    const batchCall = buildBatchCall(batchOps, chainId);
+    const shouldIncludeTransfer =
+      exceedsSplitterCap && requiredTransferWei > BigInt(0);
 
-    if (batchCall) {
-      newCalls.push(batchCall);
+    if (shouldIncludeTransfer) {
+      const wrapBatchCall = buildBatchCall(wrapBatchOps, chainId);
+
+      if (wrapBatchCall) {
+        newCalls.push(wrapBatchCall);
+      }
+
+      newCalls.push({
+        to: distributionTokenAddress,
+        data: encodeFunctionData({
+          abi: superTokenAbi,
+          functionName: "transfer",
+          args: [splitterAddress as Address, requiredTransferWei],
+        }),
+      });
+
+      const flowBatchCall = buildBatchCall(flowBatchOps, chainId);
+
+      if (flowBatchCall) {
+        newCalls.push(flowBatchCall);
+      }
+    } else {
+      const batchCall = buildBatchCall(
+        [...wrapBatchOps, ...flowBatchOps],
+        chainId,
+      );
+
+      if (batchCall) {
+        newCalls.push(batchCall);
+      }
     }
 
     return newCalls;
@@ -374,6 +442,8 @@ export default function DistributionPoolFunding(props: {
     tokenUnderlyingAddress,
     underlyingTokenBalance?.decimals,
     network.id,
+    exceedsSplitterCap,
+    requiredTransferWei,
   ]);
 
   useEffect(() => {
@@ -573,6 +643,11 @@ export default function DistributionPoolFunding(props: {
                 isSuperTokenPure={isSuperTokenPure ?? false}
                 superTokenBalance={superTokenBalance}
                 underlyingTokenBalance={underlyingTokenBalance}
+                exceedsSplitterCap={exceedsSplitterCap}
+                requiredTransferWei={requiredTransferWei}
+                hasSufficientBalanceForTransfer={
+                  hasSufficientBalanceForTransfer
+                }
               />
               <Success
                 step={step}
