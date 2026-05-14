@@ -946,8 +946,7 @@ export default function Funding(props: FundingProps) {
             <Stack direction="vertical" gap={3}>
               {!canCloseStreams ? (
                 <Card.Text className="text-info mb-0 fw-semi-bold">
-                  (Read only—connect a wallet with admin permissions to make
-                  changes.)
+                  (Round Super Admins Only)
                 </Card.Text>
               ) : null}
               {roundStatus === "scheduled" ? (
@@ -1321,8 +1320,7 @@ export default function Funding(props: FundingProps) {
             <Stack direction="vertical" gap={3}>
               {!canCloseStreams ? (
                 <Card.Text className="text-info mb-0 fw-semi-bold">
-                  (Read only—connect a wallet with admin permissions to make
-                  changes.)
+                  (Round Super Admins Only)
                 </Card.Text>
               ) : null}
               {isSuperAdmin &&
