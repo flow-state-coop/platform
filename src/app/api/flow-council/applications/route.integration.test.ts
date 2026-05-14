@@ -72,10 +72,12 @@ function putRequest(body: unknown) {
 describe("POST /api/flow-council/applications", () => {
   it("returns 401 without a session", async () => {
     mockUnauthenticated();
-    const res = await POST(postRequest({
-      chainId: TEST_CHAIN_ID,
-      councilId: TEST_COUNCIL_ADDRESS,
-    }));
+    const res = await POST(
+      postRequest({
+        chainId: TEST_CHAIN_ID,
+        councilId: TEST_COUNCIL_ADDRESS,
+      }),
+    );
     expect(res.status).toBe(401);
     const body = await readJson(res);
     expect(body).toEqual({ success: false, error: "Unauthenticated" });

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useReducer, useMemo } from "react";
 import { useParams, usePathname } from "next/navigation";
+import { Address } from "viem";
 import { useAccount } from "wagmi";
 import { GDAPool } from "@/types/gdaPool";
 import { networks } from "@/lib/networks";
@@ -34,7 +35,7 @@ export const FlowCouncilContext = createContext<{
     name: string;
     description: string;
     logoUrl: string;
-    superappSplitterAddress: string | null;
+    superappSplitterAddress: Address | null;
   };
   councilMember?: CouncilMember;
   currentBallot?: CurrentBallot;

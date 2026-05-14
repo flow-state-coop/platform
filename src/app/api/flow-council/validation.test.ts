@@ -119,15 +119,15 @@ describe("normalizeSocialHandle", () => {
   });
 
   it("preserves twitter.com as an allowed host", () => {
-    expect(
-      normalizeSocialHandle("https://twitter.com/alice", "twitter"),
-    ).toBe("https://twitter.com/alice");
+    expect(normalizeSocialHandle("https://twitter.com/alice", "twitter")).toBe(
+      "https://twitter.com/alice",
+    );
   });
 
   it("extracts handle from a non-allowed host and rebuilds the URL", () => {
-    expect(
-      normalizeSocialHandle("https://facebook.com/alice", "twitter"),
-    ).toBe("https://x.com/alice");
+    expect(normalizeSocialHandle("https://facebook.com/alice", "twitter")).toBe(
+      "https://x.com/alice",
+    );
   });
 
   it("returns empty string for empty input", () => {

@@ -1,9 +1,8 @@
 import { getServerSession } from "next-auth/next";
 import { createPublicClient, http, parseAbi, Address, isAddress } from "viem";
-import { celo } from "viem/chains";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { networks } from "@/lib/networks";
+import { networks, getViemChain } from "@/lib/networks";
 import { DEFAULT_ADMIN_ROLE } from "@/app/flow-councils/lib/constants";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +28,7 @@ export async function POST(request: Request) {
 
     const network = networks.find((network) => network.id === chainId);
 
-    if (!network || network.label !== "celo") {
+    if (!network) {
       return new Response(
         JSON.stringify({ success: false, error: "Invalid network" }),
       );
@@ -54,7 +53,7 @@ export async function POST(request: Request) {
     }
 
     const publicClient = createPublicClient({
-      chain: celo,
+      chain: getViemChain(network.id),
       transport: http(network.rpcUrl),
     });
 

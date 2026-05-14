@@ -378,7 +378,7 @@ export default function DistributionPoolFunding(props: {
 
     const flowParams = {
       tokenAddress: distributionTokenAddress,
-      receiverAddress: splitterAddress as Address,
+      receiverAddress: splitterAddress,
       flowRate: BigInt(newFlowRate),
       chainId,
     };

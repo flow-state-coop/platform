@@ -411,7 +411,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       // were allowed to submit (e.g. an admin-configured 100–8000 range).
       const definitionSchema = dynamicMilestoneElement
         ? makeMilestoneDefinitionSchema({
-            descriptionMinChars: dynamicMilestoneElement.descriptionMinChars ?? 0,
+            descriptionMinChars:
+              dynamicMilestoneElement.descriptionMinChars ?? 0,
             descriptionMaxChars:
               dynamicMilestoneElement.descriptionMaxChars ?? MAX_STRING_LENGTH,
           })

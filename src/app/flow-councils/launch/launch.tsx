@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Address, parseEventLogs } from "viem";
@@ -25,11 +25,15 @@ import useSiwe from "@/hooks/siwe";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { Network } from "@/types/network";
 import { getApolloClient } from "@/lib/apollo";
-import { networks } from "@/lib/networks";
+import {
+  networks,
+  isSplitterFactoryDeployed,
+  isFlowCouncilNetwork,
+} from "@/lib/networks";
 import { flowCouncilFactoryAbi } from "@/lib/abi/flowCouncilFactory";
 import { superAppSplitterFactoryAbi } from "@/lib/abi/superAppSplitterFactory";
 
-const SUPERAPP_SPLITTER_SIDE_PORTION = BigInt(50);
+const SUPERAPP_SPLITTER_FEE_PORTION = BigInt(50);
 
 type LaunchProps = {
   defaultNetwork: Network;
@@ -77,7 +81,10 @@ export default function Launch(props: LaunchProps) {
 
   const flowCouncil = flowCouncilQueryRes?.flowCouncil;
 
-  const launchNetworks = networks.filter((network) => network.label === "celo");
+  const launchNetworks = useMemo(
+    () => networks.filter(isFlowCouncilNetwork),
+    [],
+  );
   const defaultToken =
     selectedNetwork.tokens.find((t) => t.symbol === "G$") ??
     selectedNetwork.tokens[0];
@@ -126,7 +133,7 @@ export default function Launch(props: LaunchProps) {
         flowCouncilAddress = eventArgs.flowCouncil;
         onProgress();
 
-        if (selectedNetwork.superAppSplitterFactory) {
+        if (isSplitterFactoryDeployed(selectedNetwork)) {
           const splitterHash = await writeContract(wagmiConfig, {
             address: selectedNetwork.superAppSplitterFactory as Address,
             abi: superAppSplitterFactoryAbi,
@@ -136,8 +143,8 @@ export default function Launch(props: LaunchProps) {
               token,
               address,
               eventArgs.distributionPool,
-              selectedNetwork.feeRecipientPool,
-              SUPERAPP_SPLITTER_SIDE_PORTION,
+              SUPERAPP_SPLITTER_FEE_PORTION,
+              [address],
             ],
           });
 
@@ -317,7 +324,7 @@ export default function Launch(props: LaunchProps) {
               <>
                 <Spinner size="sm" className="ms-2" />
                 {completedTransactions > 0 &&
-                  ` ${completedTransactions}/${selectedNetwork.superAppSplitterFactory ? 2 : 1}`}
+                  ` ${completedTransactions}/${isSplitterFactoryDeployed(selectedNetwork) ? 2 : 1}`}
               </>
             ) : !address ? (
               "Connect Wallet"

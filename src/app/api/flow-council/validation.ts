@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { isAddress } from "viem";
-import { CHARACTER_LIMITS, MAX_MILESTONES } from "@/app/flow-councils/constants";
+import {
+  CHARACTER_LIMITS,
+  MAX_MILESTONES,
+} from "@/app/flow-councils/constants";
 import { ALLOWED_REACTIONS } from "@/app/flow-councils/lib/constants";
 import { STRUCTURAL_TYPES } from "@/app/flow-councils/types/formSchema";
 import { normalizeUrl } from "@/app/flow-councils/utils/normalizeUrl";

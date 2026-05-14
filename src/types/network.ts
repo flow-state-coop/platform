@@ -27,5 +27,4 @@ export type Network = {
   gdaForwarder: Address;
   cfaForwarder: Address;
   superAppSplitterFactory: Address;
-  feeRecipientPool: Address;
 };

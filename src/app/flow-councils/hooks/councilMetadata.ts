@@ -1,27 +1,23 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   fetchRoundMetadata,
   type RoundMetadata,
 } from "@/app/flow-councils/lib/fetchRoundMetadata";
 
+const DEFAULT_METADATA: RoundMetadata = {
+  name: "",
+  description: "",
+  logoUrl: "",
+  superappSplitterAddress: null,
+};
+
 export default function useCouncilMetadata(chainId: number, councilId: string) {
-  const [metadata, setMetadata] = useState<RoundMetadata>({
-    name: "",
-    description: "",
-    logoUrl: "",
-    superappSplitterAddress: null,
+  const { data, isPending } = useQuery({
+    queryKey: ["councilMetadata", chainId, councilId],
+    queryFn: () => fetchRoundMetadata(chainId, councilId),
+    enabled: !!chainId && !!councilId,
+    staleTime: 60_000,
   });
 
-  useEffect(() => {
-    (async () => {
-      if (!chainId || !councilId) {
-        return;
-      }
-
-      const result = await fetchRoundMetadata(chainId, councilId);
-      setMetadata(result);
-    })();
-  }, [chainId, councilId]);
-
-  return metadata;
+  return { ...(data ?? DEFAULT_METADATA), isPending };
 }

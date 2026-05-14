@@ -1,4 +1,43 @@
+import { Chain } from "viem";
+import { arbitrum, base, celo, optimism, optimismSepolia } from "viem/chains";
 import { Network } from "@/types/network";
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const SPLITTER_FACTORY_NOT_DEPLOYED = "0x";
+
+function isSplitterFactoryDeployed(network: Network | undefined): boolean {
+  if (!network) return false;
+  const addr = network.superAppSplitterFactory;
+  return addr !== SPLITTER_FACTORY_NOT_DEPLOYED && addr !== ZERO_ADDRESS;
+}
+
+const FLOW_COUNCIL_NETWORK_LABELS: ReadonlySet<string> = new Set([
+  "celo",
+  "optimism-sepolia",
+]);
+
+function isFlowCouncilNetwork(network: Network | undefined): boolean {
+  if (!network) return false;
+  return FLOW_COUNCIL_NETWORK_LABELS.has(network.label);
+}
+
+const VIEM_CHAINS_BY_ID: Record<number, Chain> = {
+  [arbitrum.id]: arbitrum,
+  [base.id]: base,
+  [celo.id]: celo,
+  [optimism.id]: optimism,
+  [optimismSepolia.id]: optimismSepolia,
+};
+
+function getViemChain(chainId: number): Chain {
+  const chain = VIEM_CHAINS_BY_ID[chainId];
+  if (!chain) {
+    throw new Error(
+      `Unsupported chainId ${chainId}: missing from VIEM_CHAINS_BY_ID`,
+    );
+  }
+  return chain;
+}
 
 const networks: Network[] = [
   {
@@ -29,7 +68,6 @@ const networks: Network[] = [
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     superAppSplitterFactory: "0x",
-    feeRecipientPool: "0x",
     tokens: [
       {
         symbol: "ETHx",
@@ -81,7 +119,6 @@ const networks: Network[] = [
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     superAppSplitterFactory: "0x",
-    feeRecipientPool: "0x",
     tokens: [
       {
         symbol: "ETHx",
@@ -122,8 +159,7 @@ const networks: Network[] = [
     gda: "0x308b7405272d11494716e30C6E972DbF6fb89555",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
-    superAppSplitterFactory: "0x6dEd495DEa4515d4303A01197B52A1B392E0FA80",
-    feeRecipientPool: "0x75dbcecd12c6650f35373d774033190a3b2a23ea",
+    superAppSplitterFactory: "0x",
     tokens: [
       {
         symbol: "G$",
@@ -165,7 +201,6 @@ const networks: Network[] = [
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     superAppSplitterFactory: "0x",
-    feeRecipientPool: "0x",
     tokens: [
       {
         symbol: "ETHx",
@@ -204,9 +239,9 @@ const networks: Network[] = [
     flowSplitter: "0xd53B8Bed28E122eA20dCC90d3991a614EC163a21",
     flowSplitterSubgraph:
       "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-splitter-optimism-sepolia/v0.0.2/gn",
-    flowCouncilFactory: "0xe43AE1AF645b244275eb0d84704515F9B88C4494",
+    flowCouncilFactory: "0xDD1a61127d910e6a7CD71788F0Ebb5A46DFDB424",
     flowCouncilSubgraph:
-      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-council-optimism-sepolia/v0.4.1/gn",
+      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-council-optimism-sepolia/v0.4.2/gn",
     flowStateEligibilityNft: "0x1059A20C7aA0B4576B631d064730dB2E02940535",
     flowStateEligibilityMinScore: 0.5,
     superfluidHost: "0xd399e2Fb5f4cf3722a11F65b88FAB6B2B8621005",
@@ -216,8 +251,7 @@ const networks: Network[] = [
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
     gda: "0xd453d38A001B47271488886532f1CCeAbf0c7eF3",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
-    superAppSplitterFactory: "0x",
-    feeRecipientPool: "0x",
+    superAppSplitterFactory: "0x11a295213E878cEe7EDBB40298a84d3e0d602fE7",
     tokens: [
       {
         symbol: "ETHx",
@@ -238,4 +272,9 @@ const networks: Network[] = [
   },
 ];
 
-export { networks };
+export {
+  networks,
+  isSplitterFactoryDeployed,
+  isFlowCouncilNetwork,
+  getViemChain,
+};
