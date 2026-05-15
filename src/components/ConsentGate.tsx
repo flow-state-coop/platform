@@ -10,7 +10,8 @@ import { CONSENT_TEXT, CONSENT_VERSION } from "@/lib/consent";
 // (internal-only). `createdAt`/`updatedAt` are not returned by this endpoint.
 type ProfileShape = {
   address: string;
-  displayName: string | null;
+  // NOT NULL in DB and validated with min(1) server-side — never null in practice.
+  displayName: string;
   bio: string | null;
   twitter: string | null;
   github: string | null;

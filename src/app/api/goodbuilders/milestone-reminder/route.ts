@@ -59,47 +59,50 @@ export async function GET(request: Request) {
 
       const roundName = details?.roundName ?? "GoodBuilders";
 
-      if (recipients.length > 0) {
-        const templateData = {
-          roundName,
-          subject: REMINDER_SUBJECT,
-          body: REMINDER_BODY,
-        };
+      const templateData = {
+        roundName,
+        subject: REMINDER_SUBJECT,
+        body: REMINDER_BODY,
+      };
 
-        const results = await Promise.allSettled(
-          recipients.map((recipient) =>
-            sendPersonalizedEmail(
-              recipient,
-              "goodbuilders-milestone-reminder",
-              templateData,
-              baseUrl,
-            ),
-          ),
-        );
+      // Email batch and inbox write are independent — run them in parallel
+      // (matches platform-message/route.ts) to cut per-round latency.
+      const [emailResults] = await Promise.all([
+        recipients.length > 0
+          ? Promise.allSettled(
+              recipients.map((recipient) =>
+                sendPersonalizedEmail(
+                  recipient,
+                  "goodbuilders-milestone-reminder",
+                  templateData,
+                  baseUrl,
+                ),
+              ),
+            )
+          : Promise.resolve([]),
+        addresses.length > 0
+          ? writeInboxItems(
+              addresses.map((address) => ({
+                recipientAddress: address,
+                category: "application_eligibility" as const,
+                sourceLabel: roundName,
+                snippet: INBOX_SNIPPET,
+              })),
+            )
+          : Promise.resolve(),
+      ]);
 
-        for (const result of results) {
-          if (result.status === "rejected") {
-            console.error(
-              "Failed to send goodbuilders milestone reminder:",
-              result.reason,
-            );
-          }
+      for (const result of emailResults) {
+        if (result.status === "rejected") {
+          console.error(
+            "Failed to send goodbuilders milestone reminder:",
+            result.reason,
+          );
         }
-
-        totalRecipients += recipients.length;
       }
 
-      if (addresses.length > 0) {
-        await writeInboxItems(
-          addresses.map((address) => ({
-            recipientAddress: address,
-            category: "application_eligibility" as const,
-            sourceLabel: roundName,
-            snippet: INBOX_SNIPPET,
-          })),
-        );
-        totalInboxItems += addresses.length;
-      }
+      totalRecipients += recipients.length;
+      totalInboxItems += addresses.length;
     }
 
     return Response.json({
