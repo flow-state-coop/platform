@@ -88,6 +88,7 @@ export async function POST(request: Request) {
           sourceLabel: "Flow State",
           snippet: subject,
         })),
+        { throwOnError: true },
       ),
     ]);
 

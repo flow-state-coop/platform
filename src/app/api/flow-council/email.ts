@@ -282,6 +282,10 @@ export async function resolvePlatformRecipients(): Promise<ResolvedRecipient[]> 
 // leg of platform messages so opting out of platform *email* doesn't also
 // suppress the in-app inbox item — matching the resolve*Addresses() pattern
 // the other notification paths use for their inbox writes.
+//
+// Loads every profile address into memory; the caller then issues a single
+// bulk INSERT into inbox_items. Fine at current scale — revisit with a chunked
+// insert (and a cursor here) if the user base grows by orders of magnitude.
 export async function resolvePlatformAddresses(): Promise<string[]> {
   const rows = await db
     .selectFrom("userProfiles")

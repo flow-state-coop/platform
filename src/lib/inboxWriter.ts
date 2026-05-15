@@ -10,7 +10,17 @@ export type InboxItemInput = {
   applicationId?: number | null;
 };
 
-export async function writeInboxItems(items: InboxItemInput[]): Promise<void> {
+export type WriteInboxItemsOptions = {
+  // By default failures are logged and swallowed (best-effort, fire-and-forget).
+  // Set this when the caller awaits the result and reports success/failure to
+  // the user, so a failed insert isn't silently masked.
+  throwOnError?: boolean;
+};
+
+export async function writeInboxItems(
+  items: InboxItemInput[],
+  options?: WriteInboxItemsOptions,
+): Promise<void> {
   if (items.length === 0) return;
   try {
     await db
@@ -28,5 +38,6 @@ export async function writeInboxItems(items: InboxItemInput[]): Promise<void> {
       .execute();
   } catch (error) {
     console.error("Failed to write inbox items:", error);
+    if (options?.throwOnError) throw error;
   }
 }
