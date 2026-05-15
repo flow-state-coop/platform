@@ -65,28 +65,35 @@ export async function GET(request: Request) {
       beforeDate = parsed;
     }
 
+    // Join applications → rounds so application-linked items can build a
+    // valid deep link (/flow-councils/review/[chainId]/[councilId]). The
+    // inbox_items table only carries the application_id FK, not chain/council.
     let query = db
       .selectFrom("inboxItems")
+      .leftJoin("applications", "applications.id", "inboxItems.applicationId")
+      .leftJoin("rounds", "rounds.id", "applications.roundId")
       .select([
-        "id",
-        "recipientAddress",
-        "messageId",
-        "applicationId",
-        "category",
-        "sourceLabel",
-        "snippet",
-        "readAt",
-        "createdAt",
+        "inboxItems.id",
+        "inboxItems.recipientAddress",
+        "inboxItems.messageId",
+        "inboxItems.applicationId",
+        "inboxItems.category",
+        "inboxItems.sourceLabel",
+        "inboxItems.snippet",
+        "inboxItems.readAt",
+        "inboxItems.createdAt",
+        "rounds.chainId as reviewChainId",
+        "rounds.flowCouncilAddress as reviewCouncilId",
       ])
-      .where("recipientAddress", "=", address)
-      .orderBy("createdAt", "desc")
+      .where("inboxItems.recipientAddress", "=", address)
+      .orderBy("inboxItems.createdAt", "desc")
       .limit(limit);
 
     if (categoryParam) {
-      query = query.where("category", "=", categoryParam);
+      query = query.where("inboxItems.category", "=", categoryParam);
     }
     if (beforeDate) {
-      query = query.where("createdAt", "<", beforeDate);
+      query = query.where("inboxItems.createdAt", "<", beforeDate);
     }
 
     const items = await query.execute();

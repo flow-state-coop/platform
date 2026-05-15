@@ -309,7 +309,6 @@ export async function sendApplicationSubmittedEmail(
       projectName,
       roundName,
       ctaLink,
-      unsubLink: ctaLink,
     },
     baseUrl,
   );
@@ -337,7 +336,6 @@ export async function sendApplicationStatusChangedEmail(
       roundName,
       status,
       ctaLink,
-      unsubLink: ctaLink,
     },
     baseUrl,
   );
@@ -367,7 +365,6 @@ export async function sendChatMessageEmail(
       sender,
       messageContent: removeMarkdown(messageContent),
       ctaLink,
-      unsubLink: ctaLink,
     },
     baseUrl,
   );
@@ -388,7 +385,6 @@ export async function sendAnnouncementEmail(
       sender,
       messageContent: removeMarkdown(messageContent),
       ctaLink,
-      unsubLink: ctaLink,
     },
     baseUrl,
   );
@@ -418,7 +414,6 @@ export async function sendInternalCommentEmail(
       sender,
       message_content: removeMarkdown(messageContent),
       ctaLink,
-      unsubLink: ctaLink,
     },
     baseUrl,
   );

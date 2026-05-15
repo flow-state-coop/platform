@@ -31,6 +31,8 @@ type InboxItem = {
   snippet: string | null;
   readAt: string | null;
   createdAt: string;
+  reviewChainId: number | null;
+  reviewCouncilId: string | null;
 };
 
 type InboxResponse = {
@@ -75,8 +77,12 @@ function formatTimestamp(value: string): string {
 }
 
 function getItemHref(item: InboxItem): string | null {
-  if (item.applicationId != null) {
-    return `/flow-councils/review?applicationId=${item.applicationId}`;
+  if (
+    item.applicationId != null &&
+    item.reviewChainId != null &&
+    item.reviewCouncilId != null
+  ) {
+    return `/flow-councils/review/${item.reviewChainId}/${item.reviewCouncilId}?applicationId=${item.applicationId}`;
   }
   return null;
 }

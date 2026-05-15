@@ -528,9 +528,21 @@ export async function POST(request: Request) {
               const inboxAddresses = Array.from(
                 new Set([...adminAddresses, ...managerAddresses]),
               );
+              // Dedupe email recipients by address — a user who is both a
+              // round admin and a project manager of the accepted project
+              // would otherwise receive two identical chat-message emails.
+              const seenAddresses = new Set<string>();
+              const allRecipients = [
+                ...adminRecipients,
+                ...managerRecipients,
+              ].filter((r) => {
+                const addr = r.address.toLowerCase();
+                if (seenAddresses.has(addr)) return false;
+                seenAddresses.add(addr);
+                return true;
+              });
               return Promise.all([
-                sendChatMessageEmail(adminRecipients, emailData),
-                sendChatMessageEmail(managerRecipients, emailData),
+                sendChatMessageEmail(allRecipients, emailData),
                 writeInboxItems(
                   inboxAddresses.map((address) => ({
                     recipientAddress: address,
