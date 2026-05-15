@@ -169,6 +169,8 @@ export default function InboxPage() {
           prev.map((it) => (it.id === item.id ? { ...it, readAt: null } : it)),
         );
         setUnreadCount((prev) => prev + 1);
+      } else {
+        window.dispatchEvent(new Event("inbox:unread-changed"));
       }
     } catch (err) {
       console.error(err);
@@ -197,6 +199,8 @@ export default function InboxPage() {
       if (!res.ok) {
         setItems(previousItems);
         setUnreadCount(previousUnread);
+      } else {
+        window.dispatchEvent(new Event("inbox:unread-changed"));
       }
     } catch (err) {
       console.error(err);

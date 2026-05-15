@@ -31,7 +31,7 @@ export default function Header() {
       return;
     }
     let cancelled = false;
-    (async () => {
+    const refetch = async () => {
       try {
         const res = await fetch("/api/flow-council/inbox/unread-count");
         if (!res.ok) return;
@@ -42,11 +42,17 @@ export default function Header() {
       } catch (err) {
         console.error(err);
       }
-    })();
+    };
+    refetch();
+    // Refresh when the inbox marks items read (same tab) so the badge
+    // doesn't go stale until a hard reload.
+    window.addEventListener("inbox:unread-changed", refetch);
     return () => {
       cancelled = true;
+      window.removeEventListener("inbox:unread-changed", refetch);
     };
-  }, [isAuthenticated]);
+    // pathname dep: also re-sync on client navigation as a safety net.
+  }, [isAuthenticated, pathname]);
 
   return (
     <header className="w-100">

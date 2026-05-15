@@ -1,13 +1,16 @@
 import crypto from "crypto";
 import { z } from "zod";
 import {
-  resolvePlatformAddresses,
-  resolvePlatformRecipients,
+  resolvePlatformTargets,
   sendPlatformMessageEmail,
 } from "@/app/api/flow-council/email";
 import { writeInboxItems } from "@/lib/inboxWriter";
+import { readJsonBody, PayloadTooLargeError } from "@/app/api/utils";
 
 export const dynamic = "force-dynamic";
+
+// content is capped at 10KB by bodySchema; allow generous JSON/field overhead.
+const MAX_BODY_SIZE = 32 * 1024;
 
 const bodySchema = z.object({
   subject: z.string().min(1).max(200),
@@ -44,9 +47,15 @@ export async function POST(request: Request) {
 
   let parsedBody: z.infer<typeof bodySchema>;
   try {
-    const json = await request.json();
+    const json = await readJsonBody(request, MAX_BODY_SIZE);
     parsedBody = bodySchema.parse(json);
   } catch (error) {
+    if (error instanceof PayloadTooLargeError) {
+      return Response.json(
+        { success: false, error: error.message },
+        { status: 413 },
+      );
+    }
     return Response.json(
       {
         success: false,
@@ -62,10 +71,8 @@ export async function POST(request: Request) {
   try {
     // Email recipients are preference-filtered; inbox recipients are not —
     // a user who opted out of platform *email* still gets the in-app item.
-    const [recipients, inboxAddresses] = await Promise.all([
-      resolvePlatformRecipients(),
-      resolvePlatformAddresses(),
-    ]);
+    // Resolved in a single pass over userProfiles.
+    const { recipients, inboxAddresses } = await resolvePlatformTargets();
 
     if (recipients.length === 0 && inboxAddresses.length === 0) {
       return Response.json({ success: true, recipientCount: 0 });

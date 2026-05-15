@@ -101,14 +101,14 @@ export async function POST(request: Request) {
     return ok({ ok: false, error: "Invalid JSON" }, 400);
   }
 
-  // 3. Verify signature BEFORE any side effect. Forged messages stop here.
+  // 2. Verify signature BEFORE any side effect. Forged messages stop here.
   try {
     await validateSignature(payload as unknown as Record<string, unknown>);
   } catch {
     return ok({ ok: false, error: "Invalid signature" }, 403);
   }
 
-  // 4. Branch on payload.Type.
+  // 3. Branch on payload.Type.
   const type = payload.Type;
 
   if (type === "SubscriptionConfirmation" || type === "UnsubscribeConfirmation") {
@@ -167,6 +167,6 @@ export async function POST(request: Request) {
     return ok();
   }
 
-  // 5. Unknown SNS Type — ack so SNS does not retry indefinitely.
+  // 4. Unknown SNS Type — ack so SNS does not retry indefinitely.
   return ok();
 }

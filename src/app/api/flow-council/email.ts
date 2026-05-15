@@ -265,33 +265,45 @@ export async function resolveAcceptedGranteeAddresses(
   return rows.map((r) => r.managerAddress);
 }
 
-export async function resolvePlatformRecipients(): Promise<ResolvedRecipient[]> {
-  const rows = await db
-    .selectFrom("userProfiles")
-    .select(["address", "email", "emailVersion"])
-    .where("email", "is not", null)
-    .where("consentConfirmedAt", "is not", null)
-    .where("emailSuspendedAt", "is", null)
-    .where("notifyPlatform", "=", true)
-    .execute();
-  return toResolvedRecipients(rows);
-}
-
-// Unfiltered counterpart to resolvePlatformRecipients: every user with a
-// profile, ignoring email/consent/suspension/preference. Used for the inbox
-// leg of platform messages so opting out of platform *email* doesn't also
-// suppress the in-app inbox item — matching the resolve*Addresses() pattern
-// the other notification paths use for their inbox writes.
+// Resolves both legs of a platform message in a single pass over
+// `userProfiles`:
+//   - `recipients`: email-eligible users (consent + preference + not
+//     suspended), used for the personalized email send.
+//   - `inboxAddresses`: every profile address, unfiltered — opting out of
+//     platform *email* must not suppress the in-app inbox item, matching the
+//     resolve*Addresses() pattern the other notification paths use.
 //
-// Loads every profile address into memory; the caller then issues a single
-// bulk INSERT into inbox_items. Fine at current scale — revisit with a chunked
+// Loads every profile into memory; the caller then issues a single bulk
+// INSERT into inbox_items. Fine at current scale — revisit with a chunked
 // insert (and a cursor here) if the user base grows by orders of magnitude.
-export async function resolvePlatformAddresses(): Promise<string[]> {
+export async function resolvePlatformTargets(): Promise<{
+  recipients: ResolvedRecipient[];
+  inboxAddresses: string[];
+}> {
   const rows = await db
     .selectFrom("userProfiles")
-    .select("address")
+    .select([
+      "address",
+      "email",
+      "emailVersion",
+      "consentConfirmedAt",
+      "emailSuspendedAt",
+      "notifyPlatform",
+    ])
     .execute();
-  return rows.map((r) => r.address);
+
+  const emailEligible = rows.filter(
+    (r) =>
+      r.email != null &&
+      r.consentConfirmedAt != null &&
+      r.emailSuspendedAt == null &&
+      r.notifyPlatform === true,
+  );
+
+  return {
+    recipients: toResolvedRecipients(emailEligible),
+    inboxAddresses: rows.map((r) => r.address),
+  };
 }
 
 async function sendPersonalizedBatch(
