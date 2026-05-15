@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { z } from "zod";
 import {
+  resolvePlatformAddresses,
   resolvePlatformRecipients,
   sendPlatformMessageEmail,
 } from "@/app/api/flow-council/email";
@@ -59,23 +60,30 @@ export async function POST(request: Request) {
   const baseUrl = parsedBody.baseUrl ?? new URL(request.url).origin;
 
   try {
-    const recipients = await resolvePlatformRecipients();
+    // Email recipients are preference-filtered; inbox recipients are not —
+    // a user who opted out of platform *email* still gets the in-app item.
+    const [recipients, inboxAddresses] = await Promise.all([
+      resolvePlatformRecipients(),
+      resolvePlatformAddresses(),
+    ]);
 
-    if (recipients.length === 0) {
+    if (recipients.length === 0 && inboxAddresses.length === 0) {
       return Response.json({ success: true, recipientCount: 0 });
     }
 
     // Independent side effects — run in parallel so a SES failure doesn't
     // silently drop the inbox writes (and vice versa).
     await Promise.all([
-      sendPlatformMessageEmail(recipients, {
-        baseUrl,
-        subject,
-        content,
-      }),
+      recipients.length > 0
+        ? sendPlatformMessageEmail(recipients, {
+            baseUrl,
+            subject,
+            content,
+          })
+        : Promise.resolve(),
       writeInboxItems(
-        recipients.map((r) => ({
-          recipientAddress: r.address,
+        inboxAddresses.map((address) => ({
+          recipientAddress: address,
           category: "platform" as const,
           sourceLabel: "Flow State",
           snippet: subject,

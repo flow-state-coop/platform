@@ -277,6 +277,19 @@ export async function resolvePlatformRecipients(): Promise<ResolvedRecipient[]> 
   return toResolvedRecipients(rows);
 }
 
+// Unfiltered counterpart to resolvePlatformRecipients: every user with a
+// profile, ignoring email/consent/suspension/preference. Used for the inbox
+// leg of platform messages so opting out of platform *email* doesn't also
+// suppress the in-app inbox item — matching the resolve*Addresses() pattern
+// the other notification paths use for their inbox writes.
+export async function resolvePlatformAddresses(): Promise<string[]> {
+  const rows = await db
+    .selectFrom("userProfiles")
+    .select("address")
+    .execute();
+  return rows.map((r) => r.address);
+}
+
 async function sendPersonalizedBatch(
   recipients: ResolvedRecipient[],
   templateName: string,

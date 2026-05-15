@@ -56,13 +56,17 @@ export async function GET(request: Request) {
       limit = Math.min(parsed, MAX_LIMIT);
     }
 
-    let beforeDate: Date | null = null;
+    // Cursor is the row `id`, not `createdAt`. inbox_items is insert-only
+    // with an autoincrement id, so id order matches createdAt order while
+    // being monotonic and gap-free — a batch of writes sharing one
+    // timestamp can't get skipped by a strict `<` on createdAt.
+    let beforeId: number | null = null;
     if (beforeParam !== null) {
-      const parsed = new Date(beforeParam);
-      if (isNaN(parsed.getTime())) {
+      const parsed = parseInt(beforeParam, 10);
+      if (isNaN(parsed) || parsed <= 0) {
         return jsonResponse({ success: false, error: "Invalid before" }, 400);
       }
-      beforeDate = parsed;
+      beforeId = parsed;
     }
 
     // Join applications → rounds so application-linked items can build a
@@ -86,20 +90,20 @@ export async function GET(request: Request) {
         "rounds.flowCouncilAddress as reviewCouncilId",
       ])
       .where("inboxItems.recipientAddress", "=", address)
-      .orderBy("inboxItems.createdAt", "desc")
+      .orderBy("inboxItems.id", "desc")
       .limit(limit);
 
     if (categoryParam) {
       query = query.where("inboxItems.category", "=", categoryParam);
     }
-    if (beforeDate) {
-      query = query.where("inboxItems.createdAt", "<", beforeDate);
+    if (beforeId) {
+      query = query.where("inboxItems.id", "<", beforeId);
     }
 
     const items = await query.execute();
     const nextCursor =
       items.length === limit
-        ? items[items.length - 1].createdAt.toISOString()
+        ? String(items[items.length - 1].id)
         : null;
 
     const unreadCountRow = await db

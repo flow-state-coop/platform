@@ -1,6 +1,12 @@
 import MessageValidator from "sns-validator";
 import { sql } from "kysely";
 import { db } from "@/app/api/flow-council/db";
+import { readJsonBody, PayloadTooLargeError } from "@/app/api/utils";
+
+// SNS caps a single message at 256 KB; anything larger is not a real SNS
+// delivery. Cap the read so an unauthenticated caller can't stream an
+// unbounded body into memory ahead of signature verification.
+const MAX_SNS_BODY_SIZE = 262_144;
 
 // SECURITY: this endpoint accepts unauthenticated traffic. Every payload
 // MUST pass `sns-validator`'s signature check before we touch the DB.
@@ -82,14 +88,16 @@ async function suspendAll(
 }
 
 export async function POST(request: Request) {
-  // 1. Read body as text. SNS sends Content-Type: text/plain with JSON body.
-  const raw = await request.text();
-
-  // 2. Parse JSON.
+  // 1. Read + parse the body under a hard byte cap. SNS sends
+  //    Content-Type: text/plain with a JSON body; readJsonBody streams it
+  //    so a lying Content-Length can't defeat the cap.
   let payload: SnsEnvelope;
   try {
-    payload = JSON.parse(raw) as SnsEnvelope;
-  } catch {
+    payload = await readJsonBody<SnsEnvelope>(request, MAX_SNS_BODY_SIZE);
+  } catch (err) {
+    if (err instanceof PayloadTooLargeError) {
+      return ok({ ok: false, error: "Payload too large" }, 413);
+    }
     return ok({ ok: false, error: "Invalid JSON" }, 400);
   }
 
