@@ -145,7 +145,7 @@ export default function Profile() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [saved, setSaved] = useState(false);
 
   const addresses = address ? [address] : [];
   const { ensByAddress } = useEnsResolution(addresses);
@@ -181,7 +181,7 @@ export default function Profile() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setSuccess("");
+    setSaved(false);
     setIsSaving(true);
 
     const emailChanged = form.savedEmail !== form.email;
@@ -228,7 +228,7 @@ export default function Profile() {
       if (data.success) {
         setForm(toProfileForm(data.profile));
         setDirty(false);
-        setSuccess("Profile saved");
+        setSaved(true);
       } else {
         setError(data.error || "Failed to save");
       }
@@ -298,14 +298,13 @@ export default function Profile() {
       return next;
     });
     setDirty(true);
+    setSaved(false);
+    setError("");
   };
 
   return (
     <Container className="py-5" style={{ maxWidth: 600 }}>
       <h2 className="mb-4">Profile</h2>
-
-      {error && <Alert variant="danger">{error}</Alert>}
-      {success && <Alert variant="success">{success}</Alert>}
 
       <div className="mb-3">
         <Form.Label className="text-muted small mb-0">
@@ -462,12 +461,19 @@ export default function Profile() {
           </Stack>
         </Card>
 
+        {error && (
+          <Alert variant="danger" className="rounded-3">
+            {error}
+          </Alert>
+        )}
+
         <Button
           type="submit"
+          variant={saved ? "success" : "primary"}
           disabled={isSaving || !form.displayName.trim() || !dirty}
           className="rounded-3 w-100"
         >
-          {isSaving ? <Spinner size="sm" /> : "Save"}
+          {isSaving ? <Spinner size="sm" /> : saved ? <>✓ Saved</> : "Save"}
         </Button>
       </Form>
     </Container>
