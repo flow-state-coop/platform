@@ -105,9 +105,7 @@ const NOTIFICATION_FIELDS: {
   { field: "notifyPlatform", label: "Flow State Platform updates" },
 ];
 
-function toProfileForm(
-  p: Partial<Record<string, unknown>>,
-): ProfileForm {
+function toProfileForm(p: Partial<Record<string, unknown>>): ProfileForm {
   const email = (p.email as string) ?? "";
   const consentConfirmedAt = (p.consentConfirmedAt as string | null) ?? null;
   return {
@@ -439,9 +437,7 @@ export default function Profile() {
               id="consent"
               checked={form.consentChecked}
               disabled={!form.email}
-              onChange={(e) =>
-                updateField("consentChecked", e.target.checked)
-              }
+              onChange={(e) => updateField("consentChecked", e.target.checked)}
               label={CONSENT_TEXT}
             />
             {!form.email && (
@@ -451,20 +447,19 @@ export default function Profile() {
             )}
           </Form.Group>
 
-          {form.consentChecked && (
-            <Stack gap={2}>
-              {NOTIFICATION_FIELDS.map(({ field, label }) => (
-                <Form.Check
-                  key={field}
-                  type="switch"
-                  id={`switch-${field}`}
-                  checked={form[field]}
-                  onChange={(e) => updateField(field, e.target.checked)}
-                  label={label}
-                />
-              ))}
-            </Stack>
-          )}
+          <Stack gap={2}>
+            {NOTIFICATION_FIELDS.map(({ field, label }) => (
+              <Form.Check
+                key={field}
+                type="switch"
+                id={`switch-${field}`}
+                checked={form[field]}
+                disabled={!form.consentChecked}
+                onChange={(e) => updateField(field, e.target.checked)}
+                label={label}
+              />
+            ))}
+          </Stack>
         </Card>
 
         <Button
