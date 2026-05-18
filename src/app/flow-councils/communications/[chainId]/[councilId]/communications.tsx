@@ -259,7 +259,6 @@ export default function Communications(props: CommunicationsProps) {
                   canWrite={isAdmin}
                   canModerate={isAdmin}
                   currentUserAddress={session?.address}
-                  showEmailCheckbox={isAdmin}
                   emptyMessage="No announcements yet."
                 />
               ) : selectedProjectChannel ? (
@@ -273,7 +272,6 @@ export default function Communications(props: CommunicationsProps) {
                   canWrite={true}
                   canModerate={isAdmin}
                   currentUserAddress={session?.address}
-                  showEmailCheckbox={true}
                   emptyMessage="No messages yet in this project chat."
                 />
               ) : (

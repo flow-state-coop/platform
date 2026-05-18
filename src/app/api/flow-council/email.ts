@@ -1,7 +1,15 @@
-import { SendTemplatedEmailCommand } from "@aws-sdk/client-ses";
 import removeMarkdown from "remove-markdown";
-import { sesClient, SES_FROM_EMAIL, SES_CONFIGURATION_SET } from "./ses";
+import {
+  sendPersonalizedEmail,
+  type PersonalizedRecipient,
+} from "./ses";
 import { db } from "./db";
+import { generateNotificationToken } from "@/lib/notificationToken";
+import type { NotificationCategory } from "@/lib/consent";
+
+export type ResolvedRecipient = PersonalizedRecipient & {
+  emailVersion: number;
+};
 
 type ApplicationSubmittedEmailData = {
   baseUrl: string;
@@ -52,160 +60,298 @@ type InternalCommentEmailData = {
   applicationId: number;
 };
 
-async function sendTemplatedEmail(
-  to: string[],
-  templateName: string,
-  templateData: Record<string, string>,
-): Promise<void> {
-  if (to.length === 0) return;
+type NotifyColumn =
+  | "notifyApplicationEligibility"
+  | "notifyProjectChannels"
+  | "notifyRoundAnnouncements"
+  | "notifyInternalReview"
+  | "notifyPlatform";
 
-  try {
-    const command = new SendTemplatedEmailCommand({
-      Source: SES_FROM_EMAIL,
-      Destination: {
-        ToAddresses: [SES_FROM_EMAIL],
-        BccAddresses: to,
-      },
-      Template: templateName,
-      TemplateData: JSON.stringify(templateData),
-      ...(SES_CONFIGURATION_SET && {
-        ConfigurationSetName: SES_CONFIGURATION_SET,
-      }),
-    });
-
-    await sesClient.send(command);
-  } catch (error) {
-    console.error("Failed to send email:", error);
+function notifyColumnFor(category: NotificationCategory): NotifyColumn {
+  switch (category) {
+    case "application_eligibility":
+      return "notifyApplicationEligibility";
+    case "project_channels":
+      return "notifyProjectChannels";
+    case "round_announcements":
+      return "notifyRoundAnnouncements";
+    case "internal_review":
+      return "notifyInternalReview";
+    case "platform":
+      return "notifyPlatform";
   }
 }
 
-export async function getProjectEmails(
+function toResolvedRecipients(
+  rows: Array<{ address: string; email: string | null; emailVersion: number }>,
+): ResolvedRecipient[] {
+  const out: ResolvedRecipient[] = [];
+  for (const row of rows) {
+    if (!row.email) continue;
+    const token = generateNotificationToken(row.address, row.emailVersion);
+    out.push({
+      address: row.address,
+      email: row.email,
+      emailVersion: row.emailVersion,
+      unsubToken: token,
+      prefsToken: token,
+    });
+  }
+  return out;
+}
+
+export async function resolveProjectManagerRecipients(
+  projectId: number,
+  category: NotificationCategory,
+  excludeAddress?: string,
+): Promise<ResolvedRecipient[]> {
+  const col = notifyColumnFor(category);
+  let q = db
+    .selectFrom("projectManagers")
+    .innerJoin(
+      "userProfiles",
+      "userProfiles.address",
+      "projectManagers.managerAddress",
+    )
+    .select([
+      "userProfiles.address",
+      "userProfiles.email",
+      "userProfiles.emailVersion",
+    ])
+    .where("projectManagers.projectId", "=", projectId)
+    .where("userProfiles.email", "is not", null)
+    .where("userProfiles.consentConfirmedAt", "is not", null)
+    .where("userProfiles.emailSuspendedAt", "is", null)
+    .where(`userProfiles.${col}`, "=", true);
+  if (excludeAddress) {
+    q = q.where(
+      "projectManagers.managerAddress",
+      "!=",
+      excludeAddress.toLowerCase(),
+    );
+  }
+  const rows = await q.execute();
+  return toResolvedRecipients(rows);
+}
+
+export async function resolveProjectManagerAddresses(
   projectId: number,
   excludeAddress?: string,
 ): Promise<string[]> {
-  let query = db
-    .selectFrom("projectEmails")
-    .select("email")
+  let q = db
+    .selectFrom("projectManagers")
+    .select("managerAddress")
     .where("projectId", "=", projectId);
-
   if (excludeAddress) {
-    query = query.where((eb) =>
-      eb.or([
-        eb("managerAddress", "is", null),
-        eb("managerAddress", "!=", excludeAddress.toLowerCase()),
-      ]),
-    );
+    q = q.where("managerAddress", "!=", excludeAddress.toLowerCase());
   }
-
-  const emails = await query.execute();
-  return emails.map((e) => e.email);
+  const rows = await q.execute();
+  return rows.map((r) => r.managerAddress);
 }
 
-export async function getRoundAdminEmailsExcludingAddress(
+export async function resolveRoundAdminRecipients(
   roundId: number,
+  category: NotificationCategory,
   excludeAddress?: string,
-): Promise<string[]> {
-  let query = db
+): Promise<ResolvedRecipient[]> {
+  const col = notifyColumnFor(category);
+  let q = db
     .selectFrom("roundAdmins")
     .innerJoin(
-      "roundAdminEmails",
-      "roundAdmins.id",
-      "roundAdminEmails.roundAdminId",
+      "userProfiles",
+      "userProfiles.address",
+      "roundAdmins.adminAddress",
     )
-    .select("roundAdminEmails.email")
-    .where("roundAdmins.roundId", "=", roundId);
-
+    .select([
+      "userProfiles.address",
+      "userProfiles.email",
+      "userProfiles.emailVersion",
+    ])
+    .where("roundAdmins.roundId", "=", roundId)
+    .where("userProfiles.email", "is not", null)
+    .where("userProfiles.consentConfirmedAt", "is not", null)
+    .where("userProfiles.emailSuspendedAt", "is", null)
+    .where(`userProfiles.${col}`, "=", true);
   if (excludeAddress) {
-    query = query.where(
+    q = q.where(
       "roundAdmins.adminAddress",
       "!=",
       excludeAddress.toLowerCase(),
     );
   }
-
-  const emails = await query.execute();
-  return emails.map((e) => e.email);
+  const rows = await q.execute();
+  return toResolvedRecipients(rows);
 }
 
-export async function getChatMessageRecipients(
-  projectId: number,
-  roundId: number,
-  senderAddress?: string,
-): Promise<string[]> {
-  const [projectEmails, roundAdminEmails] = await Promise.all([
-    getProjectEmails(projectId, senderAddress),
-    getRoundAdminEmailsExcludingAddress(roundId, senderAddress),
-  ]);
-
-  // Combine all emails
-  const allEmails = new Set([...projectEmails, ...roundAdminEmails]);
-
-  return Array.from(allEmails);
-}
-
-export async function getAcceptedGranteeEmails(
+export async function resolveRoundAdminAddresses(
   roundId: number,
   excludeAddress?: string,
 ): Promise<string[]> {
-  // Get all project emails for projects with accepted applications in this round
-  let query = db
-    .selectFrom("applications")
-    .innerJoin(
-      "projectEmails",
-      "applications.projectId",
-      "projectEmails.projectId",
-    )
-    .select("projectEmails.email")
-    .where("applications.roundId", "=", roundId)
-    .where("applications.status", "=", "ACCEPTED");
-
+  let q = db
+    .selectFrom("roundAdmins")
+    .select("adminAddress")
+    .where("roundId", "=", roundId);
   if (excludeAddress) {
-    query = query.where((eb) =>
-      eb.or([
-        eb("projectEmails.managerAddress", "is", null),
-        eb("projectEmails.managerAddress", "!=", excludeAddress.toLowerCase()),
-      ]),
-    );
+    q = q.where("adminAddress", "!=", excludeAddress.toLowerCase());
   }
-
-  const emails = await query.execute();
-  return [...new Set(emails.map((e) => e.email))];
+  const rows = await q.execute();
+  return rows.map((r) => r.adminAddress);
 }
 
-export async function getAnnouncementRecipients(
+export async function resolveAcceptedGranteeRecipients(
   roundId: number,
-  senderAddress?: string,
+  category: NotificationCategory,
+  excludeAddress?: string,
+): Promise<ResolvedRecipient[]> {
+  const col = notifyColumnFor(category);
+  let q = db
+    .selectFrom("applications")
+    .innerJoin(
+      "projectManagers",
+      "projectManagers.projectId",
+      "applications.projectId",
+    )
+    .innerJoin(
+      "userProfiles",
+      "userProfiles.address",
+      "projectManagers.managerAddress",
+    )
+    .select([
+      "userProfiles.address",
+      "userProfiles.email",
+      "userProfiles.emailVersion",
+    ])
+    .distinct()
+    .where("applications.roundId", "=", roundId)
+    .where("applications.status", "=", "ACCEPTED")
+    .where("userProfiles.email", "is not", null)
+    .where("userProfiles.consentConfirmedAt", "is not", null)
+    .where("userProfiles.emailSuspendedAt", "is", null)
+    .where(`userProfiles.${col}`, "=", true);
+  if (excludeAddress) {
+    q = q.where(
+      "projectManagers.managerAddress",
+      "!=",
+      excludeAddress.toLowerCase(),
+    );
+  }
+  const rows = await q.execute();
+  return toResolvedRecipients(rows);
+}
+
+export async function resolveAcceptedGranteeAddresses(
+  roundId: number,
+  excludeAddress?: string,
 ): Promise<string[]> {
-  const [granteeEmails, roundAdminEmails] = await Promise.all([
-    getAcceptedGranteeEmails(roundId, senderAddress),
-    getRoundAdminEmailsExcludingAddress(roundId, senderAddress),
-  ]);
+  let q = db
+    .selectFrom("applications")
+    .innerJoin(
+      "projectManagers",
+      "projectManagers.projectId",
+      "applications.projectId",
+    )
+    .select("projectManagers.managerAddress")
+    .distinct()
+    .where("applications.roundId", "=", roundId)
+    .where("applications.status", "=", "ACCEPTED");
+  if (excludeAddress) {
+    q = q.where(
+      "projectManagers.managerAddress",
+      "!=",
+      excludeAddress.toLowerCase(),
+    );
+  }
+  const rows = await q.execute();
+  return rows.map((r) => r.managerAddress);
+}
 
-  // Combine all emails
-  const allEmails = new Set([...granteeEmails, ...roundAdminEmails]);
+// Resolves both legs of a platform message in a single pass over
+// `userProfiles`:
+//   - `recipients`: email-eligible users (consent + preference + not
+//     suspended), used for the personalized email send.
+//   - `inboxAddresses`: every profile address, unfiltered — opting out of
+//     platform *email* must not suppress the in-app inbox item, matching the
+//     resolve*Addresses() pattern the other notification paths use.
+//
+// Loads every profile into memory; the caller then issues a single bulk
+// INSERT into inbox_items. Fine at current scale — revisit with a chunked
+// insert (and a cursor here) if the user base grows by orders of magnitude.
+export async function resolvePlatformTargets(): Promise<{
+  recipients: ResolvedRecipient[];
+  inboxAddresses: string[];
+}> {
+  const rows = await db
+    .selectFrom("userProfiles")
+    .select([
+      "address",
+      "email",
+      "emailVersion",
+      "consentConfirmedAt",
+      "emailSuspendedAt",
+      "notifyPlatform",
+    ])
+    .execute();
 
-  return Array.from(allEmails);
+  const emailEligible = rows.filter(
+    (r) =>
+      r.email != null &&
+      r.consentConfirmedAt != null &&
+      r.emailSuspendedAt == null &&
+      r.notifyPlatform === true,
+  );
+
+  return {
+    recipients: toResolvedRecipients(emailEligible),
+    inboxAddresses: rows.map((r) => r.address),
+  };
+}
+
+async function sendPersonalizedBatch(
+  recipients: ResolvedRecipient[],
+  templateName: string,
+  templateData: Record<string, string>,
+  baseUrl: string,
+): Promise<void> {
+  if (recipients.length === 0) return;
+  // Send in fixed-size chunks rather than one big parallel fan-out: a
+  // platform-wide blast (one SES call per recipient) would otherwise risk
+  // tripping SES rate limits / Lambda concurrency once the user base grows.
+  const CHUNK_SIZE = 50;
+  for (let i = 0; i < recipients.length; i += CHUNK_SIZE) {
+    const chunk = recipients.slice(i, i + CHUNK_SIZE);
+    const results = await Promise.allSettled(
+      chunk.map((r) =>
+        sendPersonalizedEmail(r, templateName, templateData, baseUrl),
+      ),
+    );
+    for (const r of results) {
+      if (r.status === "rejected") {
+        console.error("Personalized email send failed:", r.reason);
+      }
+    }
+  }
 }
 
 export async function sendApplicationSubmittedEmail(
-  recipients: string[],
+  recipients: ResolvedRecipient[],
   data: ApplicationSubmittedEmailData,
 ): Promise<void> {
   const { baseUrl, projectName, roundName, chainId, councilId } = data;
-
   const ctaLink = `${baseUrl}/flow-councils/review/${chainId}/${councilId}?tab=manage`;
-  const unsubLink = `${baseUrl}/flow-councils/application/${chainId}/${councilId}`;
-
-  await sendTemplatedEmail(recipients, "flow-council-application-submitted", {
-    projectName,
-    roundName,
-    ctaLink,
-    unsubLink,
-  });
+  await sendPersonalizedBatch(
+    recipients,
+    "flow-council-application-submitted",
+    {
+      projectName,
+      roundName,
+      ctaLink,
+    },
+    baseUrl,
+  );
 }
 
 export async function sendApplicationStatusChangedEmail(
-  recipients: string[],
+  recipients: ResolvedRecipient[],
   data: ApplicationStatusChangedEmailData,
 ): Promise<void> {
   const {
@@ -217,21 +363,22 @@ export async function sendApplicationStatusChangedEmail(
     councilId,
     projectId,
   } = data;
-
   const ctaLink = `${baseUrl}/flow-councils/communications/${chainId}/${councilId}?channel=${projectId}`;
-  const unsubLink = `${baseUrl}/flow-councils/application/${chainId}/${councilId}`;
-
-  await sendTemplatedEmail(recipients, "flow-council-application-status", {
-    projectName,
-    roundName,
-    status,
-    ctaLink,
-    unsubLink,
-  });
+  await sendPersonalizedBatch(
+    recipients,
+    "flow-council-application-status",
+    {
+      projectName,
+      roundName,
+      status,
+      ctaLink,
+    },
+    baseUrl,
+  );
 }
 
 export async function sendChatMessageEmail(
-  recipients: string[],
+  recipients: ResolvedRecipient[],
   data: ChatMessageEmailData,
 ): Promise<void> {
   const {
@@ -244,41 +391,43 @@ export async function sendChatMessageEmail(
     councilId,
     projectId,
   } = data;
-
   const ctaLink = `${baseUrl}/flow-councils/communications/${chainId}/${councilId}?channel=${projectId}`;
-  const unsubLink = `${baseUrl}/flow-councils/application/${chainId}/${councilId}`;
-
-  await sendTemplatedEmail(recipients, "flow-council-message", {
-    projectName,
-    roundName,
-    sender,
-    messageContent: removeMarkdown(messageContent),
-    ctaLink,
-    unsubLink,
-  });
+  await sendPersonalizedBatch(
+    recipients,
+    "flow-council-message",
+    {
+      projectName,
+      roundName,
+      sender,
+      messageContent: removeMarkdown(messageContent),
+      ctaLink,
+    },
+    baseUrl,
+  );
 }
 
 export async function sendAnnouncementEmail(
-  recipients: string[],
+  recipients: ResolvedRecipient[],
   data: AnnouncementEmailData,
 ): Promise<void> {
   const { baseUrl, roundName, sender, messageContent, chainId, councilId } =
     data;
-
   const ctaLink = `${baseUrl}/flow-councils/communications/${chainId}/${councilId}?channel=announcements`;
-  const unsubLink = `${baseUrl}/flow-councils/application/${chainId}/${councilId}`;
-
-  await sendTemplatedEmail(recipients, "flow-council-announcement", {
-    roundName,
-    sender,
-    messageContent: removeMarkdown(messageContent),
-    ctaLink,
-    unsubLink,
-  });
+  await sendPersonalizedBatch(
+    recipients,
+    "flow-council-announcement",
+    {
+      roundName,
+      sender,
+      messageContent: removeMarkdown(messageContent),
+      ctaLink,
+    },
+    baseUrl,
+  );
 }
 
 export async function sendInternalCommentEmail(
-  recipients: string[],
+  recipients: ResolvedRecipient[],
   data: InternalCommentEmailData,
 ): Promise<void> {
   const {
@@ -291,18 +440,41 @@ export async function sendInternalCommentEmail(
     councilId,
     applicationId,
   } = data;
-
   const ctaLink = `${baseUrl}/flow-councils/review/${chainId}/${councilId}?application=${applicationId}`;
-  const unsubLink = `${baseUrl}/flow-councils/review/${chainId}/${councilId}`;
+  await sendPersonalizedBatch(
+    recipients,
+    "flow-council-internal-comment",
+    {
+      project_name: projectName,
+      round_name: roundName,
+      sender,
+      message_content: removeMarkdown(messageContent),
+      ctaLink,
+    },
+    baseUrl,
+  );
+}
 
-  await sendTemplatedEmail(recipients, "flow-council-internal-comment", {
-    project_name: projectName,
-    round_name: roundName,
-    sender,
-    message_content: removeMarkdown(messageContent),
-    ctaLink,
-    unsubLink,
-  });
+type PlatformMessageData = {
+  baseUrl: string;
+  subject: string;
+  content: string;
+};
+
+export async function sendPlatformMessageEmail(
+  recipients: ResolvedRecipient[],
+  data: PlatformMessageData,
+): Promise<void> {
+  const { baseUrl, subject, content } = data;
+  await sendPersonalizedBatch(
+    recipients,
+    "flow-state-platform-message",
+    {
+      subject,
+      content: removeMarkdown(content),
+    },
+    baseUrl,
+  );
 }
 
 export function formatSender(
@@ -313,7 +485,6 @@ export function formatSender(
   return displayName ? `${displayName} (${short})` : short;
 }
 
-// Helper to get project and round details for email
 export async function getProjectAndRoundDetails(
   projectId: number,
   roundId: number,
@@ -379,3 +550,4 @@ export async function getRoundDetails(roundId: number): Promise<{
     councilId: round.flowCouncilAddress,
   };
 }
+

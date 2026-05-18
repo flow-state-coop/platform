@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Address, encodeAbiParameters, encodeFunctionData } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "@wagmi/core";
@@ -160,6 +160,8 @@ export default function Review(props: ReviewProps) {
   const publicClient = usePublicClient();
   const wagmiConfig = useConfig();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const autoOpenedApplicationRef = useRef(false);
   const { address, chain: connectedChain } = useAccount();
   const { data: session } = useSession();
   const { handleSignIn } = useSiwe();
@@ -555,6 +557,25 @@ export default function Review(props: ReviewProps) {
     setReviewComment("");
     setError("");
   };
+
+  // Deep link from the inbox: /flow-councils/review/[chainId]/[councilId]
+  // ?applicationId=123 opens that application's review panel once the list
+  // has loaded. Guarded by a ref so it only fires once per mount.
+  useEffect(() => {
+    if (autoOpenedApplicationRef.current) return;
+    const param = searchParams.get("applicationId");
+    if (!param || applications.length === 0) return;
+    const applicationId = parseInt(param, 10);
+    if (isNaN(applicationId)) return;
+    const summary = applications.find((a) => a.id === applicationId);
+    if (!summary) return;
+    autoOpenedApplicationRef.current = true;
+    handleSelectApplication(summary);
+    topRef.current?.scrollIntoView({ behavior: "smooth" });
+    // handleSelectApplication is a stable closure recreated each render but
+    // safe to call here; excluded from deps to avoid re-triggering.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applications, searchParams]);
 
   const handleToggleEditsUnlocked = async (application: Application) => {
     if (!flowCouncil) return;

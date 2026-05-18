@@ -33,7 +33,6 @@ type ChatViewProps = {
   currentUserAddress?: string; // undefined for public read-only
 
   // UI options
-  showEmailCheckbox?: boolean;
   emptyMessage?: string;
   infoText?: string;
   newestFirst?: boolean;
@@ -52,7 +51,6 @@ export default function ChatView(props: ChatViewProps) {
     canWrite,
     canModerate,
     currentUserAddress,
-    showEmailCheckbox = false,
     emptyMessage = "No messages yet.",
     infoText,
     newestFirst = false,
@@ -171,7 +169,7 @@ export default function ChatView(props: ChatViewProps) {
     }
   }, [messages, newestFirst]);
 
-  const handleSendMessage = async (content: string, sendEmail?: boolean) => {
+  const handleSendMessage = async (content: string) => {
     if (!session?.address) return;
 
     try {
@@ -188,7 +186,6 @@ export default function ChatView(props: ChatViewProps) {
           applicationId,
           projectId,
           content,
-          sendEmail,
         }),
       });
 
@@ -288,7 +285,6 @@ export default function ChatView(props: ChatViewProps) {
     <MessageInput
       onSend={handleSendMessage}
       isSending={isSending}
-      showEmailCheckbox={showEmailCheckbox}
       disabled={!session?.address || !!onAuthRequired}
       placeholder={
         session?.address && !onAuthRequired

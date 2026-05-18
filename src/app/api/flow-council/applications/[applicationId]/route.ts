@@ -5,9 +5,11 @@ import { authOptions } from "../../../auth/[...nextauth]/route";
 import {
   sendApplicationSubmittedEmail,
   getProjectAndRoundDetails,
-  getRoundAdminEmailsExcludingAddress,
+  resolveRoundAdminRecipients,
+  resolveRoundAdminAddresses,
 } from "../../email";
 import { findRoundByCouncil, isAdmin } from "../../auth";
+import { writeInboxItems } from "@/lib/inboxWriter";
 import {
   validateDynamicAttestationDetails,
   validateDynamicRoundDetails,
@@ -336,20 +338,35 @@ export async function PATCH(
         })
         .execute();
 
-      // Send email notification to round admins (non-blocking)
+      // Send email notification to round admins + write inbox items (non-blocking)
       if (details) {
         const baseUrl = new URL(request.url).origin;
-        getRoundAdminEmailsExcludingAddress(updatedApplication.roundId)
-          .then((recipients) =>
-            sendApplicationSubmittedEmail(recipients, {
-              baseUrl,
-              projectName: details.projectName,
-              roundName: details.roundName,
-              chainId: details.chainId,
-              councilId: details.councilId,
-            }),
+        const roundId = updatedApplication.roundId;
+        Promise.all([
+          resolveRoundAdminRecipients(roundId, "application_eligibility"),
+          resolveRoundAdminAddresses(roundId),
+        ])
+          .then(([recipients, addresses]) =>
+            Promise.all([
+              sendApplicationSubmittedEmail(recipients, {
+                baseUrl,
+                projectName: details.projectName,
+                roundName: details.roundName,
+                chainId: details.chainId,
+                councilId: details.councilId,
+              }),
+              writeInboxItems(
+                addresses.map((address) => ({
+                  recipientAddress: address,
+                  category: "application_eligibility",
+                  sourceLabel: details.roundName,
+                  snippet: `${details.projectName} submitted their application for review`,
+                  applicationId: appId,
+                })),
+              ),
+            ]),
           )
-          .catch((err) =>
+          .catch((err: unknown) =>
             console.error("Failed to send submission email:", err),
           );
       }

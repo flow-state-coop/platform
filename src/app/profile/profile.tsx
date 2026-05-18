@@ -15,6 +15,7 @@ import Card from "react-bootstrap/Card";
 import Link from "next/link";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
 import useSiwe from "@/hooks/siwe";
+import { CONSENT_TEXT, CONSENT_VERSION } from "@/lib/consent";
 
 type ProfileForm = {
   displayName: string;
@@ -25,6 +26,16 @@ type ProfileForm = {
   farcaster: string;
   email: string;
   telegram: string;
+  consentChecked: boolean;
+  consentConfirmedAt: string | null;
+  notifyApplicationEligibility: boolean;
+  notifyProjectChannels: boolean;
+  notifyRoundAnnouncements: boolean;
+  notifyInternalReview: boolean;
+  notifyPlatform: boolean;
+  emailSuspendedAt: string | null;
+  emailSuspensionReason: string | null;
+  savedEmail: string | null;
 };
 
 const INITIAL_PROFILE: ProfileForm = {
@@ -36,10 +47,20 @@ const INITIAL_PROFILE: ProfileForm = {
   farcaster: "",
   email: "",
   telegram: "",
+  consentChecked: false,
+  consentConfirmedAt: null,
+  notifyApplicationEligibility: true,
+  notifyProjectChannels: true,
+  notifyRoundAnnouncements: true,
+  notifyInternalReview: true,
+  notifyPlatform: true,
+  emailSuspendedAt: null,
+  emailSuspensionReason: null,
+  savedEmail: null,
 };
 
 const SOCIAL_FIELDS: {
-  field: keyof ProfileForm;
+  field: "twitter" | "github" | "linkedin" | "farcaster";
   label: string;
   placeholder: string;
 }[] = [
@@ -65,9 +86,28 @@ const SOCIAL_FIELDS: {
   },
 ];
 
-function toProfileForm(
-  p: Partial<Record<keyof ProfileForm, unknown>>,
-): ProfileForm {
+const NOTIFICATION_FIELDS: {
+  field:
+    | "notifyApplicationEligibility"
+    | "notifyProjectChannels"
+    | "notifyRoundAnnouncements"
+    | "notifyInternalReview"
+    | "notifyPlatform";
+  label: string;
+}[] = [
+  {
+    field: "notifyApplicationEligibility",
+    label: "Application & eligibility updates",
+  },
+  { field: "notifyProjectChannels", label: "Project channel messages" },
+  { field: "notifyRoundAnnouncements", label: "Round announcements" },
+  { field: "notifyInternalReview", label: "Internal review comments" },
+  { field: "notifyPlatform", label: "Flow State Platform updates" },
+];
+
+function toProfileForm(p: Partial<Record<string, unknown>>): ProfileForm {
+  const email = (p.email as string) ?? "";
+  const consentConfirmedAt = (p.consentConfirmedAt as string | null) ?? null;
   return {
     displayName: (p.displayName as string) ?? "",
     bio: (p.bio as string) ?? "",
@@ -75,8 +115,22 @@ function toProfileForm(
     github: (p.github as string) ?? "",
     linkedin: (p.linkedin as string) ?? "",
     farcaster: (p.farcaster as string) ?? "",
-    email: (p.email as string) ?? "",
+    email,
     telegram: (p.telegram as string) ?? "",
+    consentChecked: consentConfirmedAt !== null,
+    consentConfirmedAt,
+    notifyApplicationEligibility:
+      (p.notifyApplicationEligibility as boolean | undefined) ?? true,
+    notifyProjectChannels:
+      (p.notifyProjectChannels as boolean | undefined) ?? true,
+    notifyRoundAnnouncements:
+      (p.notifyRoundAnnouncements as boolean | undefined) ?? true,
+    notifyInternalReview:
+      (p.notifyInternalReview as boolean | undefined) ?? true,
+    notifyPlatform: (p.notifyPlatform as boolean | undefined) ?? true,
+    emailSuspendedAt: (p.emailSuspendedAt as string | null) ?? null,
+    emailSuspensionReason: (p.emailSuspensionReason as string | null) ?? null,
+    savedEmail: email || null,
   };
 }
 
@@ -91,7 +145,7 @@ export default function Profile() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [saved, setSaved] = useState(false);
 
   const addresses = address ? [address] : [];
   const { ensByAddress } = useEnsResolution(addresses);
@@ -127,21 +181,54 @@ export default function Profile() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setSuccess("");
+    setSaved(false);
     setIsSaving(true);
+
+    const emailChanged = form.savedEmail !== form.email;
+    let consentConfirmedAt: string | null;
+    let consentVersion: string | null;
+    if (form.consentChecked) {
+      if (emailChanged || form.consentConfirmedAt === null) {
+        consentConfirmedAt = new Date().toISOString();
+      } else {
+        consentConfirmedAt = form.consentConfirmedAt;
+      }
+      consentVersion = CONSENT_VERSION;
+    } else {
+      consentConfirmedAt = null;
+      consentVersion = null;
+    }
+
+    const payload = {
+      displayName: form.displayName,
+      bio: form.bio,
+      twitter: form.twitter,
+      github: form.github,
+      linkedin: form.linkedin,
+      farcaster: form.farcaster,
+      email: form.email,
+      telegram: form.telegram,
+      consentConfirmedAt,
+      consentVersion,
+      notifyApplicationEligibility: form.notifyApplicationEligibility,
+      notifyProjectChannels: form.notifyProjectChannels,
+      notifyRoundAnnouncements: form.notifyRoundAnnouncements,
+      notifyInternalReview: form.notifyInternalReview,
+      notifyPlatform: form.notifyPlatform,
+    };
 
     try {
       const res = await fetch("/api/flow-council/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
 
       if (data.success) {
         setForm(toProfileForm(data.profile));
         setDirty(false);
-        setSuccess("Profile saved");
+        setSaved(true);
       } else {
         setError(data.error || "Failed to save");
       }
@@ -199,17 +286,25 @@ export default function Profile() {
     );
   }
 
-  const updateField = (field: keyof ProfileForm, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+  const updateField = <K extends keyof ProfileForm>(
+    field: K,
+    value: ProfileForm[K],
+  ) => {
+    setForm((prev) => {
+      const next: ProfileForm = { ...prev, [field]: value };
+      if (field === "email" && value !== prev.savedEmail) {
+        next.consentChecked = false;
+      }
+      return next;
+    });
     setDirty(true);
+    setSaved(false);
+    setError("");
   };
 
   return (
     <Container className="py-5" style={{ maxWidth: 600 }}>
       <h2 className="mb-4">Profile</h2>
-
-      {error && <Alert variant="danger">{error}</Alert>}
-      {success && <Alert variant="success">{success}</Alert>}
 
       <div className="mb-3">
         <Form.Label className="text-muted small mb-0">
@@ -317,12 +412,68 @@ export default function Profile() {
           </Form.Group>
         </Card>
 
+        <Card className="bg-lace-100 rounded-4 border-0 p-4 mb-4">
+          <h5 className="fw-bold mb-1">
+            Email Notifications{" "}
+            <Badge bg="secondary" className="ms-2 fw-normal">
+              Private
+            </Badge>
+          </h5>
+          <p className="text-muted small mb-3">
+            Choose which emails you want to receive from Flow State.
+          </p>
+
+          {form.emailSuspendedAt && (
+            <Alert variant="warning" className="rounded-3">
+              Your email has been suspended due to delivery problems. Update
+              your email to resume notifications.
+            </Alert>
+          )}
+
+          <Form.Group className="mb-3">
+            <Form.Check
+              type="checkbox"
+              id="consent"
+              checked={form.consentChecked}
+              disabled={!form.email}
+              onChange={(e) => updateField("consentChecked", e.target.checked)}
+              label={CONSENT_TEXT}
+            />
+            {!form.email && (
+              <Form.Text className="text-muted">
+                Add an email address above to enable notifications.
+              </Form.Text>
+            )}
+          </Form.Group>
+
+          <Stack gap={2}>
+            {NOTIFICATION_FIELDS.map(({ field, label }) => (
+              <Form.Check
+                key={field}
+                type="switch"
+                id={`switch-${field}`}
+                checked={form[field]}
+                disabled={!form.consentChecked}
+                onChange={(e) => updateField(field, e.target.checked)}
+                label={label}
+              />
+            ))}
+          </Stack>
+        </Card>
+
+        {error && (
+          <Alert variant="danger" className="rounded-3">
+            {error}
+          </Alert>
+        )}
+
         <Button
           type="submit"
+          variant={saved ? "success" : "primary"}
           disabled={isSaving || !form.displayName.trim() || !dirty}
           className="rounded-3 w-100"
         >
-          {isSaving ? <Spinner size="sm" /> : "Save"}
+          {isSaving ? <Spinner size="sm" /> : saved ? <>✓ Saved</> : "Save"}
         </Button>
       </Form>
     </Container>
