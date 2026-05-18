@@ -313,14 +313,21 @@ async function sendPersonalizedBatch(
   baseUrl: string,
 ): Promise<void> {
   if (recipients.length === 0) return;
-  const results = await Promise.allSettled(
-    recipients.map((r) =>
-      sendPersonalizedEmail(r, templateName, templateData, baseUrl),
-    ),
-  );
-  for (const r of results) {
-    if (r.status === "rejected") {
-      console.error("Personalized email send failed:", r.reason);
+  // Send in fixed-size chunks rather than one big parallel fan-out: a
+  // platform-wide blast (one SES call per recipient) would otherwise risk
+  // tripping SES rate limits / Lambda concurrency once the user base grows.
+  const CHUNK_SIZE = 50;
+  for (let i = 0; i < recipients.length; i += CHUNK_SIZE) {
+    const chunk = recipients.slice(i, i + CHUNK_SIZE);
+    const results = await Promise.allSettled(
+      chunk.map((r) =>
+        sendPersonalizedEmail(r, templateName, templateData, baseUrl),
+      ),
+    );
+    for (const r of results) {
+      if (r.status === "rejected") {
+        console.error("Personalized email send failed:", r.reason);
+      }
     }
   }
 }

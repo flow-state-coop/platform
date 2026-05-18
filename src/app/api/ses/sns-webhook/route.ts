@@ -126,7 +126,8 @@ export async function POST(request: Request) {
           );
           return ok({ ok: false, error: "Invalid SubscribeURL" }, 400);
         }
-        await fetch(url.toString());
+        // Pass the parsed-and-validated value explicitly (not the raw string).
+        await fetch(url.href);
       } catch (err) {
         console.error("[sns-webhook] Failed to confirm subscription", err);
       }

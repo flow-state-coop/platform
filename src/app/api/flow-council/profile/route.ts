@@ -121,6 +121,10 @@ export async function PUT(request: Request) {
       .where("address", "=", address)
       .executeTakeFirst();
 
+    // `|| null` (not `?? null`) is deliberate: it coerces an empty-string
+    // email to null so it matches `currentRow.email`, which is always stored
+    // as null (never "") thanks to the same normalization on write. The two
+    // operators are not equivalent in general — keep them aligned here.
     const normalizedEmail = data.email || null;
     const newConsentConfirmedAt =
       data.consentConfirmedAt === undefined

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -17,6 +17,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 export default function Header() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
+  const lastUnreadFetchRef = useRef(0);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -28,10 +29,18 @@ export default function Header() {
   useEffect(() => {
     if (!isAuthenticated) {
       setInboxUnreadCount(0);
+      lastUnreadFetchRef.current = 0;
       return;
     }
     let cancelled = false;
-    const refetch = async () => {
+    const refetch = async (force = false) => {
+      // Throttle navigation-triggered re-syncs: without this, a session
+      // with frequent client-side navigations would hammer the endpoint
+      // (it's a dep so the effect re-runs on every pathname change). The
+      // inbox:unread-changed event passes force=true to bypass the window.
+      const now = Date.now();
+      if (!force && now - lastUnreadFetchRef.current < 30_000) return;
+      lastUnreadFetchRef.current = now;
       try {
         const res = await fetch("/api/flow-council/inbox/unread-count");
         if (!res.ok) return;
@@ -46,10 +55,11 @@ export default function Header() {
     refetch();
     // Refresh when the inbox marks items read (same tab) so the badge
     // doesn't go stale until a hard reload.
-    window.addEventListener("inbox:unread-changed", refetch);
+    const onUnreadChanged = () => refetch(true);
+    window.addEventListener("inbox:unread-changed", onUnreadChanged);
     return () => {
       cancelled = true;
-      window.removeEventListener("inbox:unread-changed", refetch);
+      window.removeEventListener("inbox:unread-changed", onUnreadChanged);
     };
     // pathname dep: also re-sync on client navigation as a safety net.
   }, [isAuthenticated, pathname]);
