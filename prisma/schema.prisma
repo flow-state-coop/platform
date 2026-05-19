@@ -108,6 +108,7 @@ model Application {
   recipient          Recipient?
   messages           Message[]
   milestoneProgress  MilestoneProgress[]
+  inboxItems         InboxItem[]
   createdAt          DateTime             @default(now()) @map("created_at")
   updatedAt          DateTime             @default(now()) @updatedAt @map("updated_at")
 
@@ -167,6 +168,7 @@ model Message {
   project       Project?           @relation(fields: [projectId], references: [id])
   application   Application?       @relation(fields: [applicationId], references: [id])
   reactions     MessageReaction[]
+  inboxItems    InboxItem[]
 
   @@index([channelType, roundId, createdAt], name: "idx_messages_round_feed")
   @@index([channelType, projectId, createdAt], name: "idx_messages_project_feed")
@@ -187,18 +189,46 @@ model MessageReaction {
 }
 
 model UserProfile {
-  id          Int      @id @default(autoincrement())
-  address     String   @unique @db.VarChar(42)
-  displayName String   @map("display_name") @db.VarChar(50)
-  bio         String?  @db.VarChar(300)
-  twitter     String?  @db.VarChar(255)
-  github      String?  @db.VarChar(255)
-  linkedin    String?  @db.VarChar(255)
-  farcaster   String?  @db.VarChar(255)
-  email       String?  @db.VarChar(255)
-  telegram    String?  @db.VarChar(255)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+  id                            Int       @id @default(autoincrement())
+  address                       String    @unique @db.VarChar(42)
+  displayName                   String    @map("display_name") @db.VarChar(50)
+  bio                           String?   @db.VarChar(300)
+  twitter                       String?   @db.VarChar(255)
+  github                        String?   @db.VarChar(255)
+  linkedin                      String?   @db.VarChar(255)
+  farcaster                     String?   @db.VarChar(255)
+  email                         String?   @db.VarChar(255)
+  telegram                      String?   @db.VarChar(255)
+  notifyApplicationEligibility  Boolean   @default(true)  @map("notify_application_eligibility")
+  notifyProjectChannels         Boolean   @default(true)  @map("notify_project_channels")
+  notifyRoundAnnouncements      Boolean   @default(true)  @map("notify_round_announcements")
+  notifyInternalReview          Boolean   @default(true)  @map("notify_internal_review")
+  notifyPlatform                Boolean   @default(true)  @map("notify_platform")
+  consentConfirmedAt            DateTime? @map("consent_confirmed_at")
+  consentVersion                String?   @map("consent_version") @db.VarChar(20)
+  emailVersion                  Int       @default(0)     @map("email_version")
+  emailSuspendedAt              DateTime? @map("email_suspended_at")
+  emailSuspensionReason         String?   @map("email_suspension_reason") @db.VarChar(20)
+  createdAt                     DateTime  @default(now()) @map("created_at")
+  updatedAt                     DateTime  @default(now()) @updatedAt @map("updated_at")
 
   @@map("user_profiles")
+}
+
+model InboxItem {
+  id               Int          @id @default(autoincrement())
+  recipientAddress String       @map("recipient_address") @db.VarChar(42)
+  messageId        Int?         @map("message_id")
+  applicationId    Int?         @map("application_id")
+  category         String       @db.VarChar(50)
+  sourceLabel      String?      @map("source_label") @db.VarChar(255)
+  snippet          String?      @db.VarChar(500)
+  readAt           DateTime?    @map("read_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  message          Message?     @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  application      Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  @@index([recipientAddress, readAt], name: "idx_inbox_items_recipient_unread")
+  @@index([recipientAddress, category, createdAt], name: "idx_inbox_items_recipient_category")
+  @@map("inbox_items")
 }

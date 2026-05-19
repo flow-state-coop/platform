@@ -25,18 +25,10 @@ type RoundFeedViewProps = {
   roundId?: number;
   isAdmin: boolean;
   currentUserAddress?: string;
-  showEmailCheckbox?: boolean;
 };
 
 export default function RoundFeedView(props: RoundFeedViewProps) {
-  const {
-    chainId,
-    councilId,
-    roundId,
-    isAdmin,
-    currentUserAddress,
-    showEmailCheckbox = false,
-  } = props;
+  const { chainId, councilId, roundId, isAdmin, currentUserAddress } = props;
 
   const [messages, setMessages] = useState<RoundFeedMessage[]>([]);
   const [affiliations, setAffiliations] = useState<
@@ -119,7 +111,7 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
     fetchMessages();
   }, [fetchMessages]);
 
-  const handleSendMessage = async (content: string, sendEmail?: boolean) => {
+  const handleSendMessage = async (content: string) => {
     if (!session?.address) return;
 
     try {
@@ -134,7 +126,6 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
           councilId,
           roundId,
           content,
-          sendEmail,
         }),
       });
 
@@ -226,7 +217,6 @@ export default function RoundFeedView(props: RoundFeedViewProps) {
     <MessageInput
       onSend={handleSendMessage}
       isSending={isSending}
-      showEmailCheckbox={showEmailCheckbox}
       disabled={!session?.address}
       placeholder={
         session?.address

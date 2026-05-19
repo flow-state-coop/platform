@@ -25,18 +25,17 @@ export class PayloadTooLargeError extends Error {
 }
 
 /**
- * Reads and JSON-parses a request body with a hard byte cap.
- * Unlike `request.json()`, this streams the body and aborts if the
+ * Reads a request body as text with a hard byte cap.
+ * Unlike `request.text()`, this streams the body and aborts if the
  * total size exceeds `maxBytes`, so it is not defeated by a lying
  * or missing `Content-Length` header.
  *
- * Throws `PayloadTooLargeError` on size violation and `SyntaxError`
- * on invalid JSON.
+ * Throws `PayloadTooLargeError` on size violation.
  */
-export async function readJsonBody<T = unknown>(
+export async function readTextBody(
   request: Request,
   maxBytes: number,
-): Promise<T> {
+): Promise<string> {
   // Fast path: trust an honest Content-Length header to reject early.
   const contentLength = request.headers.get("content-length");
   if (contentLength !== null && Number(contentLength) > maxBytes) {
@@ -76,5 +75,19 @@ export async function readJsonBody<T = unknown>(
     combined.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return JSON.parse(new TextDecoder().decode(combined)) as T;
+  return new TextDecoder().decode(combined);
+}
+
+/**
+ * Reads and JSON-parses a request body with a hard byte cap. Streams
+ * the body via `readTextBody` so the cap is enforced mid-read.
+ *
+ * Throws `PayloadTooLargeError` on size violation and `SyntaxError`
+ * on invalid JSON.
+ */
+export async function readJsonBody<T = unknown>(
+  request: Request,
+  maxBytes: number,
+): Promise<T> {
+  return JSON.parse(await readTextBody(request, maxBytes)) as T;
 }

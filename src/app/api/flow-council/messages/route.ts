@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { isAddress } from "viem";
+import removeMarkdown from "remove-markdown";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { fetchDisplayNames, fetchReactions } from "../enrichment";
@@ -11,11 +12,15 @@ import {
   sendInternalCommentEmail,
   getProjectAndRoundDetails,
   getRoundDetails,
-  getRoundAdminEmailsExcludingAddress,
-  getAcceptedGranteeEmails,
-  getProjectEmails,
+  resolveRoundAdminRecipients,
+  resolveRoundAdminAddresses,
+  resolveAcceptedGranteeRecipients,
+  resolveAcceptedGranteeAddresses,
+  resolveProjectManagerRecipients,
+  resolveProjectManagerAddresses,
   formatSender,
 } from "../email";
+import { writeInboxItems } from "@/lib/inboxWriter";
 import {
   type AuthorAffiliation,
   type ChannelContext,
@@ -229,7 +234,6 @@ export async function POST(request: Request) {
       roundId,
       projectId,
       content,
-      sendEmail,
     } = body;
 
     const session = await getServerSession(authOptions);
@@ -373,6 +377,9 @@ export async function POST(request: Request) {
     if (effectiveRoundId) {
       const baseUrl = new URL(request.url).origin;
       const messageContent = content.trim();
+      // Inbox snippets are rendered as plain text — strip markdown so users
+      // don't see raw syntax (`**bold**`, `[link](url)`) in their inbox.
+      const inboxSnippet = removeMarkdown(messageContent);
       const displayNames = await fetchDisplayNames([session.address]);
       const sender = formatSender(
         session.address,
@@ -382,13 +389,28 @@ export async function POST(request: Request) {
       if (channelType === "GROUP_ANNOUNCEMENTS") {
         Promise.all([
           getRoundDetails(effectiveRoundId),
-          getRoundAdminEmailsExcludingAddress(
+          resolveRoundAdminRecipients(
             effectiveRoundId,
+            "round_announcements",
             session.address,
           ),
+          resolveAcceptedGranteeRecipients(
+            effectiveRoundId,
+            "round_announcements",
+            session.address,
+          ),
+          resolveRoundAdminAddresses(effectiveRoundId, session.address),
+          resolveAcceptedGranteeAddresses(effectiveRoundId, session.address),
         ])
-          .then(([details, adminEmails]) => {
-            if (details) {
+          .then(
+            ([
+              details,
+              adminRecipients,
+              granteeRecipients,
+              adminAddresses,
+              granteeAddresses,
+            ]) => {
+              if (!details) return;
               const emailData = {
                 baseUrl,
                 roundName: details.roundName,
@@ -397,34 +419,53 @@ export async function POST(request: Request) {
                 chainId: details.chainId,
                 councilId: details.councilId,
               };
-              const promises = [sendAnnouncementEmail(adminEmails, emailData)];
-              if (sendEmail === true) {
-                promises.push(
-                  getAcceptedGranteeEmails(
-                    effectiveRoundId,
-                    session.address,
-                  ).then((granteeEmails) =>
-                    sendAnnouncementEmail(granteeEmails, emailData),
-                  ),
-                );
-              }
-              return Promise.all(promises);
-            }
-          })
+              const inboxAddresses = Array.from(
+                new Set([...adminAddresses, ...granteeAddresses]),
+              );
+              // Dedupe email recipients by address — a user who is both a
+              // round admin and a project manager of an accepted project
+              // would otherwise receive two identical announcement emails.
+              const seenAddresses = new Set<string>();
+              const allRecipients = [
+                ...adminRecipients,
+                ...granteeRecipients,
+              ].filter((r) => {
+                const addr = r.address.toLowerCase();
+                if (seenAddresses.has(addr)) return false;
+                seenAddresses.add(addr);
+                return true;
+              });
+              return Promise.all([
+                sendAnnouncementEmail(allRecipients, emailData),
+                writeInboxItems(
+                  inboxAddresses.map((address) => ({
+                    recipientAddress: address,
+                    category: "round_announcements",
+                    sourceLabel: details.roundName,
+                    snippet: inboxSnippet,
+                    messageId: message.id,
+                  })),
+                ),
+              ]);
+            },
+          )
           .catch((err) =>
             console.error("Failed to send announcement email:", err),
           );
       } else if (channelType === "INTERNAL_APPLICATION" && applicationId) {
         Promise.all([
           getProjectAndRoundDetails(messageProjectId!, effectiveRoundId),
-          getRoundAdminEmailsExcludingAddress(
+          resolveRoundAdminRecipients(
             effectiveRoundId,
+            "internal_review",
             session.address,
           ),
+          resolveRoundAdminAddresses(effectiveRoundId, session.address),
         ])
-          .then(([details, adminEmails]) => {
-            if (details) {
-              return sendInternalCommentEmail(adminEmails, {
+          .then(([details, adminRecipients, adminAddresses]) => {
+            if (!details) return;
+            return Promise.all([
+              sendInternalCommentEmail(adminRecipients, {
                 baseUrl,
                 projectName: details.projectName,
                 roundName: details.roundName,
@@ -433,8 +474,18 @@ export async function POST(request: Request) {
                 chainId: details.chainId,
                 councilId: details.councilId,
                 applicationId,
-              });
-            }
+              }),
+              writeInboxItems(
+                adminAddresses.map((address) => ({
+                  recipientAddress: address,
+                  category: "internal_review",
+                  sourceLabel: details.projectName,
+                  snippet: inboxSnippet,
+                  messageId: message.id,
+                  applicationId,
+                })),
+              ),
+            ]);
           })
           .catch((err) =>
             console.error("Failed to send internal comment email:", err),
@@ -442,13 +493,28 @@ export async function POST(request: Request) {
       } else if (messageProjectId && channelType !== "PUBLIC_PROJECT") {
         Promise.all([
           getProjectAndRoundDetails(messageProjectId, effectiveRoundId),
-          getRoundAdminEmailsExcludingAddress(
+          resolveRoundAdminRecipients(
             effectiveRoundId,
+            "project_channels",
             session.address,
           ),
+          resolveProjectManagerRecipients(
+            messageProjectId,
+            "project_channels",
+            session.address,
+          ),
+          resolveRoundAdminAddresses(effectiveRoundId, session.address),
+          resolveProjectManagerAddresses(messageProjectId, session.address),
         ])
-          .then(([details, adminEmails]) => {
-            if (details) {
+          .then(
+            ([
+              details,
+              adminRecipients,
+              managerRecipients,
+              adminAddresses,
+              managerAddresses,
+            ]) => {
+              if (!details) return;
               const emailData = {
                 baseUrl,
                 projectName: details.projectName,
@@ -459,18 +525,36 @@ export async function POST(request: Request) {
                 councilId: details.councilId,
                 projectId: messageProjectId,
               };
-              const promises = [sendChatMessageEmail(adminEmails, emailData)];
-              if (sendEmail === true) {
-                promises.push(
-                  getProjectEmails(messageProjectId, session.address).then(
-                    (projectManagerEmails) =>
-                      sendChatMessageEmail(projectManagerEmails, emailData),
-                  ),
-                );
-              }
-              return Promise.all(promises);
-            }
-          })
+              const inboxAddresses = Array.from(
+                new Set([...adminAddresses, ...managerAddresses]),
+              );
+              // Dedupe email recipients by address — a user who is both a
+              // round admin and a project manager of the accepted project
+              // would otherwise receive two identical chat-message emails.
+              const seenAddresses = new Set<string>();
+              const allRecipients = [
+                ...adminRecipients,
+                ...managerRecipients,
+              ].filter((r) => {
+                const addr = r.address.toLowerCase();
+                if (seenAddresses.has(addr)) return false;
+                seenAddresses.add(addr);
+                return true;
+              });
+              return Promise.all([
+                sendChatMessageEmail(allRecipients, emailData),
+                writeInboxItems(
+                  inboxAddresses.map((address) => ({
+                    recipientAddress: address,
+                    category: "project_channels",
+                    sourceLabel: details.projectName,
+                    snippet: inboxSnippet,
+                    messageId: message.id,
+                  })),
+                ),
+              ]);
+            },
+          )
           .catch((err) =>
             console.error("Failed to send chat message email:", err),
           );

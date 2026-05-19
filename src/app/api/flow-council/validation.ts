@@ -667,6 +667,13 @@ export const profileSchema = z.object({
     .or(z.literal(""))
     .refine((val) => !val || isValidEmail(val), "Invalid email"),
   telegram: z.string().trim().max(255).optional().or(z.literal("")),
+  consentConfirmedAt: z.string().datetime().nullable().optional(),
+  consentVersion: z.string().max(20).nullable().optional(),
+  notifyApplicationEligibility: z.boolean().optional(),
+  notifyProjectChannels: z.boolean().optional(),
+  notifyRoundAnnouncements: z.boolean().optional(),
+  notifyInternalReview: z.boolean().optional(),
+  notifyPlatform: z.boolean().optional(),
 });
 
 type ProfileData = typeof profileSchema._output;

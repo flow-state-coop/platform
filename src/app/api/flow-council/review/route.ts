@@ -7,9 +7,11 @@ import { networks } from "@/lib/networks";
 import { ApplicationStatus } from "@/generated/kysely";
 import {
   sendApplicationStatusChangedEmail,
-  getProjectEmails,
+  resolveProjectManagerRecipients,
+  resolveProjectManagerAddresses,
   getProjectAndRoundDetails,
 } from "../email";
+import { writeInboxItems } from "@/lib/inboxWriter";
 import { errorResponse } from "../../utils";
 import { RECIPIENT_MANAGER_ROLE } from "@/app/flow-councils/lib/constants";
 import { findRoundByCouncil } from "../auth";
@@ -128,21 +130,47 @@ export async function POST(request: Request) {
     // Exclude the admin who made the status change
     const baseUrl = new URL(request.url).origin;
     Promise.all([
-      getProjectEmails(application.projectId, session.address),
+      resolveProjectManagerRecipients(
+        application.projectId,
+        "application_eligibility",
+        session.address,
+      ),
+      resolveProjectManagerAddresses(application.projectId, session.address),
       getProjectAndRoundDetails(application.projectId, round.id),
     ])
-      .then(([projectEmails, details]) => {
-        if (projectEmails.length > 0 && details) {
-          return sendApplicationStatusChangedEmail(projectEmails, {
-            baseUrl,
-            projectName: details.projectName,
-            roundName: details.roundName,
-            status: newStatus,
-            chainId: details.chainId,
-            councilId: details.councilId,
-            projectId: application.projectId,
-          });
+      .then(([recipients, inboxAddresses, details]) => {
+        // Bail before any writes if details are missing, matching the
+        // pattern in apply/route.ts and messages/route.ts (avoids inbox
+        // items with a null sourceLabel).
+        if (!details) return;
+        const tasks: Promise<unknown>[] = [];
+        if (recipients.length > 0) {
+          tasks.push(
+            sendApplicationStatusChangedEmail(recipients, {
+              baseUrl,
+              projectName: details.projectName,
+              roundName: details.roundName,
+              status: newStatus,
+              chainId: details.chainId,
+              councilId: details.councilId,
+              projectId: application.projectId,
+            }),
+          );
         }
+        if (inboxAddresses.length > 0) {
+          tasks.push(
+            writeInboxItems(
+              inboxAddresses.map((address) => ({
+                recipientAddress: address,
+                category: "application_eligibility",
+                sourceLabel: details.roundName,
+                snippet: `Status: ${newStatus}`,
+                applicationId: application.id,
+              })),
+            ),
+          );
+        }
+        return Promise.all(tasks);
       })
       .catch((err) =>
         console.error("Failed to send status change email:", err),
