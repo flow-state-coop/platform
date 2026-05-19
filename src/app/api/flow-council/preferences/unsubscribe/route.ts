@@ -1,7 +1,5 @@
 import { z } from "zod";
-import { isAddress } from "viem";
-import { db } from "../../db";
-import { verifyNotificationToken } from "@/lib/notificationToken";
+import { performUnsubscribe } from "./core";
 import { readJsonBody, PayloadTooLargeError } from "../../../utils";
 
 export const dynamic = "force-dynamic";
@@ -46,41 +44,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const { token, address: rawAddress } = parsed.data;
-    if (!isAddress(rawAddress)) {
-      return jsonResponse({ success: false, error: "Invalid address" }, 400);
+    const { token, address } = parsed.data;
+
+    const result = await performUnsubscribe(address, token);
+    if (!result.ok) {
+      return jsonResponse(
+        { success: false, error: result.error },
+        result.status,
+      );
     }
 
-    const address = rawAddress.toLowerCase();
-
-    const profile = await db
-      .selectFrom("userProfiles")
-      .select(["emailVersion"])
-      .where("address", "=", address)
-      .executeTakeFirst();
-
-    if (!profile) {
-      return jsonResponse({ success: false, error: "Not found" }, 404);
-    }
-
-    if (!verifyNotificationToken(address, profile.emailVersion, token)) {
-      return jsonResponse({ success: false, error: "Invalid token" }, 403);
-    }
-
-    await db
-      .updateTable("userProfiles")
-      .set({
-        notifyApplicationEligibility: false,
-        notifyProjectChannels: false,
-        notifyRoundAnnouncements: false,
-        notifyInternalReview: false,
-        notifyPlatform: false,
-        updatedAt: new Date(),
-      })
-      .where("address", "=", address)
-      .executeTakeFirst();
-
-    return jsonResponse({ success: true });
+    // Return the rotated token so a page kept open by the user (who just
+    // unsubscribed themselves) can still drive follow-up actions, while the
+    // link they arrived on is now dead.
+    return jsonResponse({ success: true, token: result.token });
   } catch (err) {
     console.error(err);
     return jsonResponse({ success: false, error: "Server error" }, 500);

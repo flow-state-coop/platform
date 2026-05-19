@@ -54,8 +54,8 @@ export default function ConsentGate() {
 
     const address = session.address.toLowerCase();
 
-    // UX-only gate: sessionStorage suppresses the modal after "remind me
-    // later" for the current browser session only. Closing the tab/browser
+    // UX-only gate: sessionStorage suppresses the modal after "Not now"
+    // for the current browser session only. Closing the tab/browser
     // re-prompts on next sign-in, matching the spec's "until they dismiss
     // + return" requirement. The authoritative gate remains server-side
     // (`consent_confirmed_at IS NOT NULL` in the dispatch pipeline) — do
@@ -98,7 +98,7 @@ export default function ConsentGate() {
     };
   }, [status, session?.address]);
 
-  const handleRemindLater = () => {
+  const handleNotNow = () => {
     if (session?.address) {
       sessionStorage.setItem(
         `${DISMISS_KEY_PREFIX}${session.address.toLowerCase()}`,
@@ -150,6 +150,15 @@ export default function ConsentGate() {
       if (!res.ok || !json?.success) {
         setError(json?.error || "Could not save preferences. Please try again.");
         return;
+      }
+
+      // Consent is now recorded server-side, so clear any prior "Not now"
+      // suppression flag. Leaving it would silently swallow a future
+      // re-prompt (e.g. on a consent-version bump).
+      if (session?.address) {
+        sessionStorage.removeItem(
+          `${DISMISS_KEY_PREFIX}${session.address.toLowerCase()}`,
+        );
       }
 
       setShow(false);
@@ -222,8 +231,8 @@ export default function ConsentGate() {
         )}
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="link" onClick={handleRemindLater} disabled={saving}>
-          Remind me later
+        <Button variant="link" onClick={handleNotNow} disabled={saving}>
+          Not now
         </Button>
         <Button
           variant="primary"

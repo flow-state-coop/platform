@@ -3,11 +3,20 @@
  * profile but no email recorded. Does NOT set consent — pre-populated emails
  * are inert until the user completes the first-login modal.
  *
- * Run: pnpm tsx scripts/migrate-project-emails.ts
+ * Run:         pnpm tsx scripts/migrate-project-emails.ts
+ * Dry run:     DRY_RUN=1 pnpm tsx scripts/migrate-project-emails.ts
+ *
+ * With DRY_RUN=1 the script runs read-only: it performs every lookup and
+ * logs what it would update (per address) without committing any UPDATE.
  */
 import { db } from "../src/app/api/flow-council/db";
 
+const DRY_RUN = process.env.DRY_RUN === "1";
+
 async function main() {
+  if (DRY_RUN) {
+    console.log("[DRY RUN] No rows will be updated.");
+  }
   const rows = await db
     .selectFrom("projectEmails")
     .select(["managerAddress", "email"])
@@ -53,19 +62,25 @@ async function main() {
       continue;
     }
 
-    await db
-      .updateTable("userProfiles")
-      .set({ email })
-      .where("address", "=", address)
-      .where((eb) =>
-        eb.or([eb("email", "is", null), eb("email", "=", "")]),
-      )
-      .execute();
+    if (DRY_RUN) {
+      console.log(`[DRY] Would update ${address} -> ${email}`);
+    } else {
+      await db
+        .updateTable("userProfiles")
+        .set({ email })
+        .where("address", "=", address)
+        .where((eb) =>
+          eb.or([eb("email", "is", null), eb("email", "=", "")]),
+        )
+        .execute();
+    }
     updated++;
   }
 
   console.log(
-    `Done. Updated: ${updated}, conflicts skipped: ${skippedConflict}, existing-email skipped: ${skippedExisting}`,
+    `${DRY_RUN ? "[DRY RUN] " : ""}Done. ${
+      DRY_RUN ? "Would update" : "Updated"
+    }: ${updated}, conflicts skipped: ${skippedConflict}, existing-email skipped: ${skippedExisting}`,
   );
 }
 

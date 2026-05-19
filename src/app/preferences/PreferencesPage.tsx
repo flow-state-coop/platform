@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Container from "react-bootstrap/Container";
 import Card from "react-bootstrap/Card";
@@ -23,6 +23,14 @@ type PreferencesResponse = {
   preferences: Preferences;
   emailSuspendedAt: string | null;
   emailSuspensionReason: string | null;
+  // POST responses rotate the token (email_version bumps on every
+  // mutation). GET responses omit it.
+  token?: string;
+};
+
+type UnsubscribeResponse = {
+  success: true;
+  token: string;
 };
 
 type ErrorKind = "invalid" | "notfound" | "missing" | "server" | null;
@@ -49,11 +57,16 @@ const ALL_OFF: Preferences = {
 export default function PreferencesPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get("address");
-  const token = searchParams.get("token");
+  // The URL token is only valid until the first mutation (every POST bumps
+  // email_version). `currentToken` tracks the rotated token returned by
+  // mutations so an open page keeps working; the GET on mount still uses
+  // the immutable URL token (it runs before any mutation).
+  const urlToken = searchParams.get("token");
   const action = searchParams.get("action");
   const isUnsubscribeAction = action === "unsubscribe";
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [currentToken, setCurrentToken] = useState<string | null>(urlToken);
+  const [isLoading, setIsLoading] = useState(!isUnsubscribeAction);
   const [preferences, setPreferences] = useState<Preferences | null>(null);
   const [emailSuspendedAt, setEmailSuspendedAt] = useState<string | null>(null);
   const [errorKind, setErrorKind] = useState<ErrorKind>(null);
@@ -65,10 +78,8 @@ export default function PreferencesPage() {
   const [showDetails, setShowDetails] = useState(false);
   const [actionError, setActionError] = useState<string>("");
 
-  const didRunUnsubscribeRef = useRef(false);
-
   const fetchPreferences = useCallback(async () => {
-    if (!address || !token) {
+    if (!address || !urlToken) {
       setErrorKind("missing");
       setIsLoading(false);
       return;
@@ -77,7 +88,7 @@ export default function PreferencesPage() {
       const res = await fetch(
         `/api/flow-council/preferences?address=${encodeURIComponent(
           address,
-        )}&token=${encodeURIComponent(token)}`,
+        )}&token=${encodeURIComponent(urlToken)}`,
       );
       if (res.status === 403) {
         setErrorKind("invalid");
@@ -101,60 +112,63 @@ export default function PreferencesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [address, token]);
+  }, [address, urlToken]);
 
-  // Unsubscribe-on-mount flow
+  // Unsubscribe-action flow: do NOT auto-POST on mount. Auto-unsubscribing
+  // here is the classic RFC 8058 footgun — link prefetchers, scanners and
+  // mail-security detonation chambers would silently fire the POST. We only
+  // validate params; the actual unsubscribe happens on explicit click of
+  // the confirmation button. Native mail-client "Unsubscribe" buttons go to
+  // the dedicated one-click endpoint instead (see ses.ts headers).
   useEffect(() => {
     if (!isUnsubscribeAction) return;
-    if (didRunUnsubscribeRef.current) return;
-    didRunUnsubscribeRef.current = true;
-
-    if (!address || !token) {
+    if (!address || !urlToken) {
       setErrorKind("missing");
-      setIsLoading(false);
-      return;
     }
+  }, [isUnsubscribeAction, address, urlToken]);
 
-    (async () => {
-      setIsUnsubscribing(true);
-      try {
-        const res = await fetch("/api/flow-council/preferences/unsubscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, address }),
-        });
-        if (res.status === 403) {
-          setErrorKind("invalid");
-          return;
-        }
-        if (res.status === 404) {
-          setErrorKind("notfound");
-          return;
-        }
-        if (!res.ok) {
-          setErrorKind("server");
-          return;
-        }
-        setUnsubscribed(true);
-        setPreferences(ALL_OFF);
-      } catch (err) {
-        console.error(err);
-        setErrorKind("server");
-      } finally {
-        setIsUnsubscribing(false);
-        setIsLoading(false);
-      }
-    })();
-  }, [isUnsubscribeAction, address, token]);
-
-  // Default flow: fetch preferences on mount
+  // Default flow: fetch preferences on mount.
   useEffect(() => {
     if (isUnsubscribeAction) return;
     fetchPreferences();
   }, [isUnsubscribeAction, fetchPreferences]);
 
+  const confirmUnsubscribe = async () => {
+    if (!address || !currentToken) return;
+    setActionError("");
+    setIsUnsubscribing(true);
+    try {
+      const res = await fetch("/api/flow-council/preferences/unsubscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: currentToken, address }),
+      });
+      if (res.status === 403) {
+        setErrorKind("invalid");
+        return;
+      }
+      if (res.status === 404) {
+        setErrorKind("notfound");
+        return;
+      }
+      if (!res.ok) {
+        setActionError("Failed to unsubscribe. Please try again.");
+        return;
+      }
+      const data = (await res.json()) as UnsubscribeResponse;
+      setCurrentToken(data.token);
+      setUnsubscribed(true);
+      setPreferences(ALL_OFF);
+    } catch (err) {
+      console.error(err);
+      setActionError("Failed to unsubscribe. Please try again.");
+    } finally {
+      setIsUnsubscribing(false);
+    }
+  };
+
   const handleToggle = async (field: keyof Preferences, newValue: boolean) => {
-    if (!address || !token || !preferences) return;
+    if (!address || !currentToken || !preferences) return;
     setActionError("");
     setSavingField(field);
     // optimistic update
@@ -165,7 +179,7 @@ export default function PreferencesPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          token,
+          token: currentToken,
           address,
           preferences: { [field]: newValue },
         }),
@@ -178,6 +192,7 @@ export default function PreferencesPage() {
       const data = (await res.json()) as PreferencesResponse;
       setPreferences(data.preferences);
       setEmailSuspendedAt(data.emailSuspendedAt);
+      if (data.token) setCurrentToken(data.token);
     } catch (err) {
       console.error(err);
       setPreferences(previous);
@@ -188,14 +203,14 @@ export default function PreferencesPage() {
   };
 
   const handleUnsubscribeAll = async () => {
-    if (!address || !token) return;
+    if (!address || !currentToken) return;
     setActionError("");
     setIsUnsubscribing(true);
     try {
       const res = await fetch("/api/flow-council/preferences/unsubscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, address }),
+        body: JSON.stringify({ token: currentToken, address }),
       });
       if (!res.ok) {
         setActionError(
@@ -203,6 +218,8 @@ export default function PreferencesPage() {
         );
         return;
       }
+      const data = (await res.json()) as UnsubscribeResponse;
+      setCurrentToken(data.token);
       setPreferences(ALL_OFF);
       setUnsubscribed(true);
     } catch (err) {
@@ -268,7 +285,35 @@ export default function PreferencesPage() {
     );
   }
 
-  // Unsubscribe-action confirmation (before user opts to view details)
+  // Unsubscribe-action: explicit confirmation before any POST (RFC 8058).
+  if (isUnsubscribeAction && !unsubscribed) {
+    return (
+      <Container className="py-5" style={{ maxWidth: 600 }}>
+        <h2 className="mb-4">Email Preferences</h2>
+        <Card className="bg-lace-100 rounded-4 border-0 p-4">
+          <h5 className="fw-bold mb-3">Unsubscribe from all notifications?</h5>
+          <p className="text-muted mb-4">
+            You&apos;ll stop receiving all email notifications from Flow State.
+            You can re-enable individual notification types afterwards.
+          </p>
+          {actionError && (
+            <Alert variant="danger" className="mb-3">
+              {actionError}
+            </Alert>
+          )}
+          <Button
+            variant="danger"
+            className="rounded-3"
+            onClick={confirmUnsubscribe}
+          >
+            Confirm unsubscribe
+          </Button>
+        </Card>
+      </Container>
+    );
+  }
+
+  // Unsubscribe confirmation (before user opts to view details).
   if (isUnsubscribeAction && unsubscribed && !showDetails) {
     return (
       <Container className="py-5" style={{ maxWidth: 600 }}>

@@ -1,7 +1,11 @@
 import { z } from "zod";
+import { sql } from "kysely";
 import { isAddress } from "viem";
 import { db } from "../db";
-import { verifyNotificationToken } from "@/lib/notificationToken";
+import {
+  generateNotificationToken,
+  verifyNotificationToken,
+} from "@/lib/notificationToken";
 import { readJsonBody, PayloadTooLargeError } from "../../utils";
 
 export const dynamic = "force-dynamic";
@@ -162,29 +166,45 @@ export async function POST(request: Request) {
       }
     }
 
+    const RETURN_COLUMNS = [
+      "notifyApplicationEligibility",
+      "notifyProjectChannels",
+      "notifyRoundAnnouncements",
+      "notifyInternalReview",
+      "notifyPlatform",
+      "emailSuspendedAt",
+      "emailSuspensionReason",
+      "emailVersion",
+    ] as const;
+
+    let updated;
     if (Object.keys(updates).length > 0) {
-      await db
+      // Bump email_version on every mutation so a forwarded or
+      // shared-history preference link can't be replayed after the user
+      // has changed their mind. The page that issued this request keeps
+      // working because it adopts the rotated token returned below.
+      updated = await db
         .updateTable("userProfiles")
-        .set({ ...updates, updatedAt: new Date() })
+        .set({
+          ...updates,
+          emailVersion: sql<number>`email_version + 1` as unknown as number,
+          updatedAt: new Date(),
+        })
         .where("address", "=", address)
-        .executeTakeFirst();
+        .returning([...RETURN_COLUMNS])
+        .executeTakeFirstOrThrow();
+    } else {
+      updated = await db
+        .selectFrom("userProfiles")
+        .select([...RETURN_COLUMNS])
+        .where("address", "=", address)
+        .executeTakeFirstOrThrow();
     }
 
-    const updated = await db
-      .selectFrom("userProfiles")
-      .select([
-        "notifyApplicationEligibility",
-        "notifyProjectChannels",
-        "notifyRoundAnnouncements",
-        "notifyInternalReview",
-        "notifyPlatform",
-        "emailSuspendedAt",
-        "emailSuspensionReason",
-      ])
-      .where("address", "=", address)
-      .executeTakeFirstOrThrow();
-
-    return jsonResponse(buildPreferencesPayload(updated));
+    return jsonResponse({
+      ...buildPreferencesPayload(updated),
+      token: generateNotificationToken(address, updated.emailVersion),
+    });
   } catch (err) {
     console.error(err);
     return jsonResponse({ success: false, error: "Server error" }, 500);
