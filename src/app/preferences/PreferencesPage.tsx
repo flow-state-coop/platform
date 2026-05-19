@@ -78,41 +78,45 @@ export default function PreferencesPage() {
   const [showDetails, setShowDetails] = useState(false);
   const [actionError, setActionError] = useState<string>("");
 
-  const fetchPreferences = useCallback(async () => {
-    if (!address || !urlToken) {
-      setErrorKind("missing");
-      setIsLoading(false);
-      return;
-    }
-    try {
-      const res = await fetch(
-        `/api/flow-council/preferences?address=${encodeURIComponent(
-          address,
-        )}&token=${encodeURIComponent(urlToken)}`,
-      );
-      if (res.status === 403) {
-        setErrorKind("invalid");
+  const fetchPreferences = useCallback(
+    async (token: string | null) => {
+      if (!address || !token) {
+        setErrorKind("missing");
+        setIsLoading(false);
         return;
       }
-      if (res.status === 404) {
-        setErrorKind("notfound");
-        return;
-      }
-      if (!res.ok) {
+      setIsLoading(true);
+      try {
+        const res = await fetch(
+          `/api/flow-council/preferences?address=${encodeURIComponent(
+            address,
+          )}&token=${encodeURIComponent(token)}`,
+        );
+        if (res.status === 403) {
+          setErrorKind("invalid");
+          return;
+        }
+        if (res.status === 404) {
+          setErrorKind("notfound");
+          return;
+        }
+        if (!res.ok) {
+          setErrorKind("server");
+          return;
+        }
+        const data = (await res.json()) as PreferencesResponse;
+        setPreferences(data.preferences);
+        setEmailSuspendedAt(data.emailSuspendedAt);
+        setErrorKind(null);
+      } catch (err) {
+        console.error(err);
         setErrorKind("server");
-        return;
+      } finally {
+        setIsLoading(false);
       }
-      const data = (await res.json()) as PreferencesResponse;
-      setPreferences(data.preferences);
-      setEmailSuspendedAt(data.emailSuspendedAt);
-      setErrorKind(null);
-    } catch (err) {
-      console.error(err);
-      setErrorKind("server");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [address, urlToken]);
+    },
+    [address],
+  );
 
   // Unsubscribe-action flow: do NOT auto-POST on mount. Auto-unsubscribing
   // here is the classic RFC 8058 footgun — link prefetchers, scanners and
@@ -130,8 +134,8 @@ export default function PreferencesPage() {
   // Default flow: fetch preferences on mount.
   useEffect(() => {
     if (isUnsubscribeAction) return;
-    fetchPreferences();
-  }, [isUnsubscribeAction, fetchPreferences]);
+    fetchPreferences(urlToken);
+  }, [isUnsubscribeAction, fetchPreferences, urlToken]);
 
   const confirmUnsubscribe = async () => {
     if (!address || !currentToken) return;
@@ -324,7 +328,14 @@ export default function PreferencesPage() {
         <Button
           variant="outline-primary"
           className="rounded-3"
-          onClick={() => setShowDetails(true)}
+          onClick={() => {
+            setShowDetails(true);
+            // Re-fetch so the displayed state (incl. emailSuspendedAt) is
+            // authoritative rather than assumed from ALL_OFF. The URL token
+            // is stale post-unsubscribe (email_version bumped), so use the
+            // rotated currentToken.
+            fetchPreferences(currentToken);
+          }}
         >
           View detailed preferences
         </Button>
