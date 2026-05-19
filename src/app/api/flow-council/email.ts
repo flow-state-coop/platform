@@ -272,9 +272,10 @@ export async function resolveAcceptedGranteeAddresses(
 //     platform *email* must not suppress the in-app inbox item, matching the
 //     resolve*Addresses() pattern the other notification paths use.
 //
-// Loads every profile into memory; the caller then issues a single bulk
-// INSERT into inbox_items. Fine at current scale — revisit with a chunked
-// insert (and a cursor here) if the user base grows by orders of magnitude.
+// Loads every profile into memory; the inbox write is now chunked
+// (writeInboxItems), so the remaining scale ceiling is this in-memory
+// resolve — revisit with a cursor if the user base grows by orders of
+// magnitude.
 export async function resolvePlatformTargets(): Promise<{
   recipients: ResolvedRecipient[];
   inboxAddresses: string[];
@@ -305,17 +306,21 @@ export async function resolvePlatformTargets(): Promise<{
   };
 }
 
+export type SendBatchResult = { sent: number; failed: number };
+
 async function sendPersonalizedBatch(
   recipients: ResolvedRecipient[],
   templateName: string,
   templateData: Record<string, string>,
   baseUrl: string,
-): Promise<void> {
-  if (recipients.length === 0) return;
+): Promise<SendBatchResult> {
+  if (recipients.length === 0) return { sent: 0, failed: 0 };
   // Send in fixed-size chunks rather than one big parallel fan-out: a
   // platform-wide blast (one SES call per recipient) would otherwise risk
   // tripping SES rate limits / Lambda concurrency once the user base grows.
   const CHUNK_SIZE = 50;
+  let sent = 0;
+  let failed = 0;
   for (let i = 0; i < recipients.length; i += CHUNK_SIZE) {
     const chunk = recipients.slice(i, i + CHUNK_SIZE);
     const results = await Promise.allSettled(
@@ -325,10 +330,14 @@ async function sendPersonalizedBatch(
     );
     for (const r of results) {
       if (r.status === "rejected") {
+        failed++;
         console.error("Personalized email send failed:", r.reason);
+      } else {
+        sent++;
       }
     }
   }
+  return { sent, failed };
 }
 
 export async function sendApplicationSubmittedEmail(
@@ -463,9 +472,9 @@ type PlatformMessageData = {
 export async function sendPlatformMessageEmail(
   recipients: ResolvedRecipient[],
   data: PlatformMessageData,
-): Promise<void> {
+): Promise<SendBatchResult> {
   const { baseUrl, subject, content } = data;
-  await sendPersonalizedBatch(
+  return sendPersonalizedBatch(
     recipients,
     "flow-state-platform-message",
     {

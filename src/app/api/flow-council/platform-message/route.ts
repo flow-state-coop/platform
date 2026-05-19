@@ -80,14 +80,14 @@ export async function POST(request: Request) {
 
     // Independent side effects — run in parallel so a SES failure doesn't
     // silently drop the inbox writes (and vice versa).
-    await Promise.all([
+    const [emailResult] = await Promise.all([
       recipients.length > 0
         ? sendPlatformMessageEmail(recipients, {
             baseUrl,
             subject,
             content,
           })
-        : Promise.resolve(),
+        : Promise.resolve({ sent: 0, failed: 0 }),
       writeInboxItems(
         inboxAddresses.map((address) => ({
           recipientAddress: address,
@@ -99,7 +99,15 @@ export async function POST(request: Request) {
       ),
     ]);
 
-    return Response.json({ success: true, recipientCount: recipients.length });
+    // Per-recipient SES failures are settled, not thrown, so surface a
+    // delivery summary instead of an unconditional success — recipientCount
+    // is attempted, sentCount/failedCount are the actual outcome.
+    return Response.json({
+      success: true,
+      recipientCount: recipients.length,
+      sentCount: emailResult.sent,
+      failedCount: emailResult.failed,
+    });
   } catch (error) {
     console.error("Failed to send platform message:", error);
     return Response.json(
