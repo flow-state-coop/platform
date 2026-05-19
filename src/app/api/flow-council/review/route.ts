@@ -139,8 +139,12 @@ export async function POST(request: Request) {
       getProjectAndRoundDetails(application.projectId, round.id),
     ])
       .then(([recipients, inboxAddresses, details]) => {
+        // Bail before any writes if details are missing, matching the
+        // pattern in apply/route.ts and messages/route.ts (avoids inbox
+        // items with a null sourceLabel).
+        if (!details) return;
         const tasks: Promise<unknown>[] = [];
-        if (recipients.length > 0 && details) {
+        if (recipients.length > 0) {
           tasks.push(
             sendApplicationStatusChangedEmail(recipients, {
               baseUrl,
@@ -159,7 +163,7 @@ export async function POST(request: Request) {
               inboxAddresses.map((address) => ({
                 recipientAddress: address,
                 category: "application_eligibility",
-                sourceLabel: details?.roundName ?? null,
+                sourceLabel: details.roundName,
                 snippet: `Status: ${newStatus}`,
                 applicationId: application.id,
               })),

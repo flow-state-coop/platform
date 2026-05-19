@@ -19,8 +19,10 @@ export const SES_CONFIGURATION_SET = process.env.SES_CONFIGURATION_SET;
 export type PersonalizedRecipient = {
   email: string;
   address: string;
-  unsubToken: string;
-  prefsToken: string;
+  // Single per-recipient notification token. The preferences page and the
+  // unsubscribe links (in-page + RFC 8058 one-click) all validate against
+  // the same email_version-derived token, so they cannot diverge.
+  token: string;
 };
 
 export function buildPrefsLink(
@@ -58,18 +60,18 @@ export async function sendPersonalizedEmail(
 ): Promise<void> {
   const data = {
     ...templateData,
-    prefsLink: buildPrefsLink(baseUrl, recipient.address, recipient.prefsToken),
+    prefsLink: buildPrefsLink(baseUrl, recipient.address, recipient.token),
     unsubscribeLink: buildUnsubscribeLink(
       baseUrl,
       recipient.address,
-      recipient.unsubToken,
+      recipient.token,
     ),
   };
 
   const oneClickLink = buildOneClickUnsubscribeLink(
     baseUrl,
     recipient.address,
-    recipient.unsubToken,
+    recipient.token,
   );
 
   const command = new SendEmailCommand({

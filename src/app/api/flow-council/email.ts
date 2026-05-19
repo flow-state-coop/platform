@@ -93,8 +93,7 @@ function toResolvedRecipients(
       address: row.address,
       email: row.email,
       emailVersion: row.emailVersion,
-      unsubToken: token,
-      prefsToken: token,
+      token,
     });
   }
   return out;

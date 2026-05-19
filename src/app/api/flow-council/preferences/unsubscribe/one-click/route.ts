@@ -1,4 +1,5 @@
 import { performUnsubscribe } from "../core";
+import { readTextBody, PayloadTooLargeError } from "@/app/api/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -33,11 +34,17 @@ export async function POST(request: Request) {
     }
 
     // Per RFC 8058 the body is `List-Unsubscribe=One-Click`. We read it
-    // defensively (size-capped) and verify the marker so arbitrary POSTs
-    // to this URL don't trigger an unsubscribe.
-    const rawBody = await request.text();
-    if (rawBody.length > MAX_BODY_SIZE) {
-      return textResponse("Payload too large", 413);
+    // defensively (streaming, size-capped mid-read) and verify the marker
+    // so arbitrary POSTs to this URL don't trigger an unsubscribe.
+    let rawBody: string;
+    try {
+      rawBody = await readTextBody(request, MAX_BODY_SIZE);
+    } catch (err) {
+      if (err instanceof PayloadTooLargeError) {
+        return textResponse("Payload too large", 413);
+      }
+      // Empty/unreadable body — not a valid one-click request.
+      return textResponse("Invalid one-click request", 400);
     }
     const params = new URLSearchParams(rawBody);
     if (params.get("List-Unsubscribe") !== "One-Click") {
