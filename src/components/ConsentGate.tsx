@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Modal, Button, Form } from "react-bootstrap";
 import { CONSENT_TEXT, CONSENT_VERSION } from "@/lib/consent";
-import { isValidEmail } from "@/app/api/flow-council/validation";
+import { isValidEmail } from "@/lib/email";
 
 // Shape of the profile returned by GET /api/flow-council/profile?includePrivate=true
 // for the authenticated owner. `emailVersion` is intentionally excluded server-side

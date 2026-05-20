@@ -9,7 +9,7 @@ import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import Toast from "react-bootstrap/Toast";
 import useRequireAuth from "@/hooks/requireAuth";
-import { isValidEmail } from "@/app/api/flow-council/validation";
+import { isValidEmail } from "@/lib/email";
 import {
   type RoundForm,
   type AttestationForm,

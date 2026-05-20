@@ -4,19 +4,16 @@ import { CHARACTER_LIMITS, MAX_MILESTONES } from "@/app/flow-councils/constants"
 import { ALLOWED_REACTIONS } from "@/app/flow-councils/lib/constants";
 import { STRUCTURAL_TYPES } from "@/app/flow-councils/types/formSchema";
 import { normalizeUrl } from "@/app/flow-councils/utils/normalizeUrl";
+import { isValidEmail } from "@/lib/email";
 import type {
   TeamMember,
   BuildMilestone,
   GrowthMilestone,
 } from "@/app/flow-councils/types/round";
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export { isValidEmail } from "@/lib/email";
 
 export const MAX_STRING_LENGTH = 10_000;
-
-export function isValidEmail(value: string): boolean {
-  return EMAIL_REGEX.test(value);
-}
 
 const smartContractSchema = z.object({
   type: z.enum(["projectAddress", "goodCollectivePool"]),
