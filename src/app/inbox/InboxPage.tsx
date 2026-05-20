@@ -33,6 +33,8 @@ type InboxItem = {
   createdAt: string;
   reviewChainId: number | null;
   reviewCouncilId: string | null;
+  reviewProjectId: number | null;
+  isProjectManager: boolean;
 };
 
 type InboxResponse = {
@@ -77,11 +79,13 @@ function formatTimestamp(value: string): string {
 }
 
 function getItemHref(item: InboxItem): string | null {
-  if (
-    item.applicationId != null &&
-    item.reviewChainId != null &&
-    item.reviewCouncilId != null
-  ) {
+  if (item.reviewChainId == null || item.reviewCouncilId == null) return null;
+  // Project managers can't access the admin-only recipient review page —
+  // send them to their project's comms channel instead.
+  if (item.isProjectManager && item.reviewProjectId != null) {
+    return `/flow-councils/communications/${item.reviewChainId}/${item.reviewCouncilId}?channel=${item.reviewProjectId}`;
+  }
+  if (item.applicationId != null) {
     return `/flow-councils/review/${item.reviewChainId}/${item.reviewCouncilId}?applicationId=${item.applicationId}`;
   }
   return null;

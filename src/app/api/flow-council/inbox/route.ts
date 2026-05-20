@@ -72,10 +72,18 @@ export async function GET(request: Request) {
     // Join applications → rounds so application-linked items can build a
     // valid deep link (/flow-councils/review/[chainId]/[councilId]). The
     // inbox_items table only carries the application_id FK, not chain/council.
+    // Also join projectManagers (scoped to this recipient) so the client can
+    // route project managers to the comms channel instead of the admin-only
+    // recipient review page.
     let query = db
       .selectFrom("inboxItems")
       .leftJoin("applications", "applications.id", "inboxItems.applicationId")
       .leftJoin("rounds", "rounds.id", "applications.roundId")
+      .leftJoin("projectManagers", (join) =>
+        join
+          .onRef("projectManagers.projectId", "=", "applications.projectId")
+          .on("projectManagers.managerAddress", "=", address),
+      )
       .select([
         "inboxItems.id",
         "inboxItems.recipientAddress",
@@ -88,6 +96,8 @@ export async function GET(request: Request) {
         "inboxItems.createdAt",
         "rounds.chainId as reviewChainId",
         "rounds.flowCouncilAddress as reviewCouncilId",
+        "applications.projectId as reviewProjectId",
+        sql<boolean>`project_managers.id IS NOT NULL`.as("isProjectManager"),
       ])
       .where("inboxItems.recipientAddress", "=", address)
       .orderBy("inboxItems.id", "desc")

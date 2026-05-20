@@ -33,17 +33,9 @@ export function buildPrefsLink(
   return `${baseUrl}/preferences?address=${encodeURIComponent(address)}&token=${encodeURIComponent(token)}`;
 }
 
-export function buildUnsubscribeLink(
-  baseUrl: string,
-  address: string,
-  token: string,
-): string {
-  return `${baseUrl}/preferences?address=${encodeURIComponent(address)}&token=${encodeURIComponent(token)}&action=unsubscribe`;
-}
-
 // RFC 8058 one-click target. Mail clients POST here server-to-server (no
 // browser), so it's immune to the prefetch/scanner footgun that the
-// in-page confirmation card guards against for the body link.
+// in-page Unsubscribe-from-all button guards against.
 export function buildOneClickUnsubscribeLink(
   baseUrl: string,
   address: string,
@@ -61,11 +53,6 @@ export async function sendPersonalizedEmail(
   const data = {
     ...templateData,
     prefsLink: buildPrefsLink(baseUrl, recipient.address, recipient.token),
-    unsubscribeLink: buildUnsubscribeLink(
-      baseUrl,
-      recipient.address,
-      recipient.token,
-    ),
   };
 
   const oneClickLink = buildOneClickUnsubscribeLink(

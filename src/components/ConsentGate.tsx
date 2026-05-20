@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Modal, Button, Form } from "react-bootstrap";
 import { CONSENT_TEXT, CONSENT_VERSION } from "@/lib/consent";
+import { isValidEmail } from "@/app/api/flow-council/validation";
 
 // Shape of the profile returned by GET /api/flow-council/profile?includePrivate=true
 // for the authenticated owner. `emailVersion` is intentionally excluded server-side
@@ -37,6 +38,7 @@ export default function ConsentGate() {
 
   const [show, setShow] = useState(false);
   const [profile, setProfile] = useState<ProfileShape | null>(null);
+  const [email, setEmail] = useState("");
   const [consentChecked, setConsentChecked] = useState(false);
   const [notifyApplicationEligibility, setNotifyApplicationEligibility] =
     useState(true);
@@ -81,11 +83,12 @@ export default function ConsentGate() {
 
         const p = json.profile;
 
-        // Only prompt when user has an email on file but hasn't confirmed
-        // consent yet. No email → handled inline on Profile page. Already
-        // consented → nothing to do.
-        if (p.email !== null && p.consentConfirmedAt === null) {
+        // Prompt whenever consent hasn't been recorded yet. If the user has
+        // no email on file, the modal collects it inline; otherwise the
+        // field is pre-filled and editable.
+        if (p.consentConfirmedAt === null) {
           setProfile(p);
+          setEmail(p.email ?? "");
           setShow(true);
         }
       } catch {
@@ -111,22 +114,34 @@ export default function ConsentGate() {
   const handleSave = async () => {
     if (!profile || !consentChecked) return;
 
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError("Please enter your email address.");
+      return;
+    }
+    if (!isValidEmail(trimmedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
     try {
       // PUT is a full upsert — pass existing identity/social fields through
       // unchanged so they aren't cleared. Server-managed fields (`address`,
-      // `emailSuspendedAt`, `emailSuspensionReason`) are not sent.
+      // `emailSuspendedAt`, `emailSuspensionReason`) are not sent. The Zod
+      // schema rejects null for string fields, so empty/missing values are
+      // sent as "" rather than null.
       const body = {
         displayName: profile.displayName,
-        bio: profile.bio,
-        twitter: profile.twitter,
-        github: profile.github,
-        linkedin: profile.linkedin,
-        farcaster: profile.farcaster,
-        email: profile.email,
-        telegram: profile.telegram,
+        bio: profile.bio ?? "",
+        twitter: profile.twitter ?? "",
+        github: profile.github ?? "",
+        linkedin: profile.linkedin ?? "",
+        farcaster: profile.farcaster ?? "",
+        email: trimmedEmail,
+        telegram: profile.telegram ?? "",
         consentConfirmedAt: new Date().toISOString(),
         consentVersion: CONSENT_VERSION,
         notifyApplicationEligibility,
@@ -173,14 +188,25 @@ export default function ConsentGate() {
 
   return (
     <Modal show={show} backdrop="static" keyboard={false} centered>
-      <Modal.Header>
+      <Modal.Header className="px-4 pt-4 pb-2 border-0">
         <Modal.Title>Email notification preferences</Modal.Title>
       </Modal.Header>
-      <Modal.Body>
+      <Modal.Body className="px-4 py-3">
         <p>
           We&apos;ve updated how email notifications work. Please confirm your
           email and choose what you want to hear about.
         </p>
+        <Form.Group className="mb-3" controlId="consent-modal-email">
+          <Form.Label>Email address</Form.Label>
+          <Form.Control
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your@email.com"
+            autoComplete="email"
+            required
+          />
+        </Form.Group>
         <Form.Check
           type="checkbox"
           id="consent-modal-checkbox"
@@ -230,7 +256,7 @@ export default function ConsentGate() {
           </div>
         )}
       </Modal.Body>
-      <Modal.Footer>
+      <Modal.Footer className="px-4 pb-4 pt-2 border-0">
         <Button variant="link" onClick={handleNotNow} disabled={saving}>
           Not now
         </Button>

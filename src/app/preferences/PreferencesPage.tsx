@@ -23,6 +23,8 @@ type PreferencesResponse = {
   preferences: Preferences;
   emailSuspendedAt: string | null;
   emailSuspensionReason: string | null;
+  email: string | null;
+  displayName: string | null;
   // POST responses rotate the token (email_version bumps on every
   // mutation). GET responses omit it.
   token?: string;
@@ -54,6 +56,25 @@ const ALL_OFF: Preferences = {
   notifyPlatform: false,
 };
 
+function redactAddress(address: string): string {
+  return `***${address.slice(-4)}`;
+}
+
+function redactEmail(email: string): string {
+  const atIdx = email.indexOf("@");
+  if (atIdx <= 0) return "***";
+  const local = email.slice(0, atIdx);
+  const domain = email.slice(atIdx);
+  const visible = local.slice(0, Math.min(2, local.length));
+  return `${visible}***${domain}`;
+}
+
+function redactName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return "";
+  return `${trimmed.slice(0, Math.min(2, trimmed.length))}***`;
+}
+
 export default function PreferencesPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get("address");
@@ -62,12 +83,12 @@ export default function PreferencesPage() {
   // mutations so an open page keeps working; the GET on mount still uses
   // the immutable URL token (it runs before any mutation).
   const urlToken = searchParams.get("token");
-  const action = searchParams.get("action");
-  const isUnsubscribeAction = action === "unsubscribe";
 
   const [currentToken, setCurrentToken] = useState<string | null>(urlToken);
-  const [isLoading, setIsLoading] = useState(!isUnsubscribeAction);
+  const [isLoading, setIsLoading] = useState(true);
   const [preferences, setPreferences] = useState<Preferences | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
   const [emailSuspendedAt, setEmailSuspendedAt] = useState<string | null>(null);
   const [errorKind, setErrorKind] = useState<ErrorKind>(null);
   const [savingField, setSavingField] = useState<keyof Preferences | null>(
@@ -75,7 +96,6 @@ export default function PreferencesPage() {
   );
   const [isUnsubscribing, setIsUnsubscribing] = useState(false);
   const [unsubscribed, setUnsubscribed] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
   const [actionError, setActionError] = useState<string>("");
 
   const fetchPreferences = useCallback(
@@ -107,6 +127,8 @@ export default function PreferencesPage() {
         const data = (await res.json()) as PreferencesResponse;
         setPreferences(data.preferences);
         setEmailSuspendedAt(data.emailSuspendedAt);
+        setEmail(data.email);
+        setDisplayName(data.displayName);
         setErrorKind(null);
       } catch (err) {
         console.error(err);
@@ -118,58 +140,9 @@ export default function PreferencesPage() {
     [address],
   );
 
-  // Unsubscribe-action flow: do NOT auto-POST on mount. Auto-unsubscribing
-  // here is the classic RFC 8058 footgun — link prefetchers, scanners and
-  // mail-security detonation chambers would silently fire the POST. We only
-  // validate params; the actual unsubscribe happens on explicit click of
-  // the confirmation button. Native mail-client "Unsubscribe" buttons go to
-  // the dedicated one-click endpoint instead (see ses.ts headers).
   useEffect(() => {
-    if (!isUnsubscribeAction) return;
-    if (!address || !urlToken) {
-      setErrorKind("missing");
-    }
-  }, [isUnsubscribeAction, address, urlToken]);
-
-  // Default flow: fetch preferences on mount.
-  useEffect(() => {
-    if (isUnsubscribeAction) return;
     fetchPreferences(urlToken);
-  }, [isUnsubscribeAction, fetchPreferences, urlToken]);
-
-  const confirmUnsubscribe = async () => {
-    if (!address || !currentToken) return;
-    setActionError("");
-    setIsUnsubscribing(true);
-    try {
-      const res = await fetch("/api/flow-council/preferences/unsubscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: currentToken, address }),
-      });
-      if (res.status === 403) {
-        setErrorKind("invalid");
-        return;
-      }
-      if (res.status === 404) {
-        setErrorKind("notfound");
-        return;
-      }
-      if (!res.ok) {
-        setActionError("Failed to unsubscribe. Please try again.");
-        return;
-      }
-      const data = (await res.json()) as UnsubscribeResponse;
-      setCurrentToken(data.token);
-      setUnsubscribed(true);
-      setPreferences(ALL_OFF);
-    } catch (err) {
-      console.error(err);
-      setActionError("Failed to unsubscribe. Please try again.");
-    } finally {
-      setIsUnsubscribing(false);
-    }
-  };
+  }, [fetchPreferences, urlToken]);
 
   const handleToggle = async (field: keyof Preferences, newValue: boolean) => {
     if (!address || !currentToken || !preferences) return;
@@ -248,7 +221,7 @@ export default function PreferencesPage() {
 
   if (errorKind === "missing") {
     return (
-      <Container className="py-5" style={{ maxWidth: 600 }}>
+      <Container className="py-5" style={{ maxWidth: 800 }}>
         <h2 className="mb-4">Email Preferences</h2>
         <Alert variant="danger">
           This preferences link is missing required parameters.
@@ -259,7 +232,7 @@ export default function PreferencesPage() {
 
   if (errorKind === "invalid") {
     return (
-      <Container className="py-5" style={{ maxWidth: 600 }}>
+      <Container className="py-5" style={{ maxWidth: 800 }}>
         <h2 className="mb-4">Email Preferences</h2>
         <Alert variant="danger">
           This preferences link is invalid or has expired. Please request a new
@@ -271,7 +244,7 @@ export default function PreferencesPage() {
 
   if (errorKind === "notfound") {
     return (
-      <Container className="py-5" style={{ maxWidth: 600 }}>
+      <Container className="py-5" style={{ maxWidth: 800 }}>
         <h2 className="mb-4">Email Preferences</h2>
         <Alert variant="danger">No profile found for this address.</Alert>
       </Container>
@@ -280,7 +253,7 @@ export default function PreferencesPage() {
 
   if (errorKind === "server") {
     return (
-      <Container className="py-5" style={{ maxWidth: 600 }}>
+      <Container className="py-5" style={{ maxWidth: 800 }}>
         <h2 className="mb-4">Email Preferences</h2>
         <Alert variant="danger">
           Something went wrong. Please try again later.
@@ -289,61 +262,6 @@ export default function PreferencesPage() {
     );
   }
 
-  // Unsubscribe-action: explicit confirmation before any POST (RFC 8058).
-  if (isUnsubscribeAction && !unsubscribed) {
-    return (
-      <Container className="py-5" style={{ maxWidth: 600 }}>
-        <h2 className="mb-4">Email Preferences</h2>
-        <Card className="bg-lace-100 rounded-4 border-0 p-4">
-          <h5 className="fw-bold mb-3">Unsubscribe from all notifications?</h5>
-          <p className="text-muted mb-4">
-            You&apos;ll stop receiving all email notifications from Flow State.
-            You can re-enable individual notification types afterwards.
-          </p>
-          {actionError && (
-            <Alert variant="danger" className="mb-3">
-              {actionError}
-            </Alert>
-          )}
-          <Button
-            variant="danger"
-            className="rounded-3"
-            onClick={confirmUnsubscribe}
-          >
-            Confirm unsubscribe
-          </Button>
-        </Card>
-      </Container>
-    );
-  }
-
-  // Unsubscribe confirmation (before user opts to view details).
-  if (isUnsubscribeAction && unsubscribed && !showDetails) {
-    return (
-      <Container className="py-5" style={{ maxWidth: 600 }}>
-        <h2 className="mb-4">Email Preferences</h2>
-        <Alert variant="success">
-          You&apos;ve been unsubscribed from all notifications.
-        </Alert>
-        <Button
-          variant="outline-primary"
-          className="rounded-3"
-          onClick={() => {
-            setShowDetails(true);
-            // Re-fetch so the displayed state (incl. emailSuspendedAt) is
-            // authoritative rather than assumed from ALL_OFF. The URL token
-            // is stale post-unsubscribe (email_version bumped), so use the
-            // rotated currentToken.
-            fetchPreferences(currentToken);
-          }}
-        >
-          View detailed preferences
-        </Button>
-      </Container>
-    );
-  }
-
-  // Detailed preferences view (default flow or after unsubscribe confirmation)
   if (!preferences) {
     return (
       <Container className="py-5 d-flex justify-content-center">
@@ -352,9 +270,20 @@ export default function PreferencesPage() {
     );
   }
 
+  const redactedParts = [
+    address ? redactAddress(address) : null,
+    email ? redactEmail(email) : null,
+    displayName ? redactName(displayName) : null,
+  ].filter((part): part is string => Boolean(part));
+
   return (
-    <Container className="py-5" style={{ maxWidth: 600 }}>
-      <h2 className="mb-4">Email Preferences</h2>
+    <Container className="py-5" style={{ maxWidth: 800 }}>
+      <h2 className="mb-2">Email Preferences</h2>
+      {redactedParts.length > 0 && (
+        <p className="text-muted small mb-4">
+          Editing preferences for {redactedParts.join(" · ")}
+        </p>
+      )}
 
       {unsubscribed && (
         <Alert variant="success">
