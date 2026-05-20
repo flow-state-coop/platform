@@ -21,6 +21,7 @@ function buildFlowCouncilResponse() {
         flowCouncilManagers: [
           { account: fx.walletAddress, role: RECIPIENT_MANAGER_ROLE },
         ],
+        voters: [],
         rounds: [],
       },
     },

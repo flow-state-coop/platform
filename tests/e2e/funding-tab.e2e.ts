@@ -6,10 +6,10 @@ test.beforeEach(async ({ page }) => {
   await installMockWallet(page);
 });
 
-// The seeded E2E council has no superappSplitterAddress and lives on Optimism
-// (chainId 10), where superAppSplitterFactory is the "0x" not-deployed
-// sentinel. Both conditions independently gate the Funding tab off; here we
-// assert the gate holds end-to-end.
+// The seeded E2E council has no superappSplitterAddress, which alone gates
+// the Funding tab off regardless of whether the chain's
+// superAppSplitterFactory is deployed. Here we assert the gate holds
+// end-to-end.
 test("Funding sidebar link is hidden when council has no splitter", async ({
   page,
 }) => {
