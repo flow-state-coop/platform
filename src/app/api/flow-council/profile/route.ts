@@ -216,11 +216,12 @@ export async function PUT(request: Request) {
     }
 
     if (shouldBumpEmailVersion) {
-      // Use a raw SQL expression so the increment is atomic at the SQL
-      // level (rather than computing `current + 1` in JS). The cast is
-      // necessary because Updateable narrows to the column type — Kysely
-      // accepts the raw expression at runtime via doUpdateSet.
-      updateSet.emailVersion = sql<number>`email_version + 1` as unknown as number;
+      // Atomic increment at the SQL level. The column must be qualified —
+      // inside `ON CONFLICT ... DO UPDATE SET`, an unqualified `email_version`
+      // is ambiguous (target row vs. EXCLUDED tuple) and Postgres aborts with
+      // 42702. `user_profiles.email_version` is the pre-update value, which
+      // is what we want to increment.
+      updateSet.emailVersion = sql<number>`user_profiles.email_version + 1` as unknown as number;
     }
 
     const profile = await db

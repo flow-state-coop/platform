@@ -51,6 +51,8 @@ function buildPreferencesPayload(row: {
   notifyPlatform: boolean;
   emailSuspendedAt: Date | null;
   emailSuspensionReason: string | null;
+  email?: string | null;
+  displayName?: string | null;
 }) {
   return {
     success: true,
@@ -63,6 +65,8 @@ function buildPreferencesPayload(row: {
     },
     emailSuspendedAt: row.emailSuspendedAt,
     emailSuspensionReason: row.emailSuspensionReason,
+    email: row.email ?? null,
+    displayName: row.displayName ?? null,
   };
 }
 
@@ -92,6 +96,8 @@ export async function GET(request: Request) {
         "notifyPlatform",
         "emailSuspendedAt",
         "emailSuspensionReason",
+        "email",
+        "displayName",
       ])
       .where("address", "=", address)
       .executeTakeFirst();

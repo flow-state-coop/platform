@@ -1,68 +1,24 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useParams } from "next/navigation";
-import { useSession } from "next-auth/react";
 import ConnectWallet from "@/components/ConnectWallet";
 import FlowCouncilWallet from "@/app/flow-councils/components/FlowCouncilWallet";
 import Nav from "react-bootstrap/Nav";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
-import Badge from "react-bootstrap/Badge";
 import Image from "react-bootstrap/Image";
 import Offcanvas from "react-bootstrap/Offcanvas";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
 export default function Header() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
-  const lastUnreadFetchRef = useRef(0);
 
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
   const { isMobile, isTablet, isSmallScreen } = useMediaQuery();
-  const { status: sessionStatus } = useSession();
-  const isAuthenticated = sessionStatus === "authenticated";
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setInboxUnreadCount(0);
-      lastUnreadFetchRef.current = 0;
-      return;
-    }
-    let cancelled = false;
-    const refetch = async (force = false) => {
-      // Throttle navigation-triggered re-syncs: without this, a session
-      // with frequent client-side navigations would hammer the endpoint
-      // (it's a dep so the effect re-runs on every pathname change). The
-      // inbox:unread-changed event passes force=true to bypass the window.
-      const now = Date.now();
-      if (!force && now - lastUnreadFetchRef.current < 30_000) return;
-      lastUnreadFetchRef.current = now;
-      try {
-        const res = await fetch("/api/flow-council/inbox/unread-count");
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled && typeof data?.unreadCount === "number") {
-          setInboxUnreadCount(data.unreadCount);
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    refetch();
-    // Refresh when the inbox marks items read (same tab) so the badge
-    // doesn't go stale until a hard reload.
-    const onUnreadChanged = () => refetch(true);
-    window.addEventListener("inbox:unread-changed", onUnreadChanged);
-    return () => {
-      cancelled = true;
-      window.removeEventListener("inbox:unread-changed", onUnreadChanged);
-    };
-    // pathname dep: also re-sync on client navigation as a safety net.
-  }, [isAuthenticated, pathname]);
 
   return (
     <header className="w-100">
@@ -147,19 +103,6 @@ export default function Header() {
                   >
                     Flow Caster
                   </Button>
-                  {isAuthenticated && (
-                    <Button
-                      variant="transparent"
-                      className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold border-0 d-inline-flex align-items-center gap-2`}
-                      style={{ whiteSpace: "nowrap" }}
-                      onClick={() => router.push("/inbox")}
-                    >
-                      Inbox
-                      {inboxUnreadCount > 0 && (
-                        <Badge bg="primary">{inboxUnreadCount}</Badge>
-                      )}
-                    </Button>
-                  )}
                 </Stack>
               )}
               <Stack direction="horizontal" gap={isSmallScreen ? 4 : 6}>
@@ -320,21 +263,6 @@ export default function Header() {
               >
                 Flow Caster
               </Button>
-              {isAuthenticated && (
-                <Button
-                  variant="transparent"
-                  className="px-10 py-4 fs-lg fw-bold border-0 d-inline-flex align-items-center gap-2"
-                  onClick={() => {
-                    router.push("/inbox");
-                    setShowMobileMenu(false);
-                  }}
-                >
-                  Inbox
-                  {inboxUnreadCount > 0 && (
-                    <Badge bg="primary">{inboxUnreadCount}</Badge>
-                  )}
-                </Button>
-              )}
             </>
           )}
           <Stack
