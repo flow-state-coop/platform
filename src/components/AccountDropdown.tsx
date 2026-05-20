@@ -9,6 +9,24 @@ import Stack from "react-bootstrap/Stack";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { useProfileDisplayName } from "@/hooks/useProfileDisplayName";
 
+function UnreadBadge({
+  count,
+  ariaLabel,
+}: {
+  count: number;
+  ariaLabel?: string;
+}) {
+  return (
+    <span
+      className="d-inline-flex align-items-center justify-content-center fw-bold text-white bg-danger rounded-circle"
+      style={{ width: 22, height: 22, fontSize: 12, lineHeight: 1 }}
+      aria-label={ariaLabel}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
 export default function AccountDropdown({
   fallbackDisplayName,
   hideNameOnMobile,
@@ -77,13 +95,10 @@ export default function AccountDropdown({
         style={{ whiteSpace: "nowrap" }}
       >
         {hasUnread ? (
-          <span
-            className="d-inline-flex align-items-center justify-content-center fw-bold text-white bg-danger rounded-circle"
-            style={{ width: 22, height: 22, fontSize: 12, lineHeight: 1 }}
-            aria-label={`${inboxUnreadCount} unread`}
-          >
-            {inboxUnreadCount > 99 ? "99+" : inboxUnreadCount}
-          </span>
+          <UnreadBadge
+            count={inboxUnreadCount}
+            ariaLabel={`${inboxUnreadCount} unread`}
+          />
         ) : (
           <span
             className="icon-currentcolor"
@@ -111,19 +126,7 @@ export default function AccountDropdown({
             className="p-3 fw-semi-bold text-dark d-flex align-items-center gap-2"
           >
             Inbox
-            {hasUnread && (
-              <span
-                className="d-inline-flex align-items-center justify-content-center fw-bold text-white bg-danger rounded-circle"
-                style={{
-                  width: 22,
-                  height: 22,
-                  fontSize: 12,
-                  lineHeight: 1,
-                }}
-              >
-                {inboxUnreadCount > 99 ? "99+" : inboxUnreadCount}
-              </span>
-            )}
+            {hasUnread && <UnreadBadge count={inboxUnreadCount} />}
           </Dropdown.Item>
         </Link>
         <Link href="/projects" className="text-decoration-none">

@@ -11,8 +11,8 @@ export const dynamic = "force-dynamic";
 // `List-Unsubscribe=One-Click` form field.
 //
 // This path takes no user confirmation — that is the point of one-click —
-// so it is deliberately separate from the body-link flow on
-// /preferences?action=unsubscribe, which now renders a confirmation card.
+// so it is deliberately separate from the in-app preferences page where
+// the user can selectively manage subscriptions.
 
 const MAX_BODY_SIZE = 1_000;
 
