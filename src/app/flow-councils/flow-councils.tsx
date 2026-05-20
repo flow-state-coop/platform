@@ -19,7 +19,7 @@ import { Network } from "@/types/network";
 import { Token } from "@/types/token";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
-import { networks } from "@/lib/networks";
+import { networks, isFlowCouncilNetwork } from "@/lib/networks";
 import { truncateStr } from "@/lib/utils";
 
 import { type FlowCouncilListing } from "./types/flowCouncil";
@@ -90,7 +90,8 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
   const supportedNetworkConnection = networks.find(
-    (network) => network.id === connectedChain?.id && network.label === "celo",
+    (network) =>
+      network.id === connectedChain?.id && isFlowCouncilNetwork(network),
   );
   const networkId = supportedNetworkConnection
     ? connectedChain?.id
@@ -400,28 +401,26 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
               {selectedNetwork.name}
             </Dropdown.Toggle>
             <Dropdown.Menu className="border-4 border-dark lh-lg">
-              {networks
-                .filter((network) => network.label === "celo")
-                .map((network, i) => (
-                  <Dropdown.Item
-                    key={i}
-                    className="fw-semi-bold"
-                    onClick={() => {
-                      if (!connectedChain && openConnectModal) {
-                        openConnectModal();
-                      } else if (connectedChain?.id !== network.id) {
-                        switchChain({ chainId: network.id });
-                      }
+              {networks.filter(isFlowCouncilNetwork).map((network, i) => (
+                <Dropdown.Item
+                  key={i}
+                  className="fw-semi-bold"
+                  onClick={() => {
+                    if (!connectedChain && openConnectModal) {
+                      openConnectModal();
+                    } else if (connectedChain?.id !== network.id) {
+                      switchChain({ chainId: network.id });
+                    }
 
-                      setSelectedNetwork(network);
-                      router.replace(`/flow-councils?chainId=${network.id}`, {
-                        scroll: false,
-                      });
-                    }}
-                  >
-                    {network.name}
-                  </Dropdown.Item>
-                ))}
+                    setSelectedNetwork(network);
+                    router.replace(`/flow-councils?chainId=${network.id}`, {
+                      scroll: false,
+                    });
+                  }}
+                >
+                  {network.name}
+                </Dropdown.Item>
+              ))}
             </Dropdown.Menu>
           </Dropdown>
           <div

@@ -1,7 +1,6 @@
 import { createPublicClient, http, parseAbi, Address } from "viem";
-import { celo } from "viem/chains";
 import { db } from "./db";
-import { networks } from "@/lib/networks";
+import { networks, getViemChain } from "@/lib/networks";
 import { ChannelType } from "@/generated/kysely";
 import {
   DEFAULT_ADMIN_ROLE,
@@ -32,7 +31,7 @@ export async function hasOnChainRole(
   if (!network) return false;
 
   const publicClient = createPublicClient({
-    chain: celo,
+    chain: getViemChain(network.id),
     transport: http(network.rpcUrl),
   });
 

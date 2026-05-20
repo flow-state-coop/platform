@@ -10,6 +10,33 @@ type BatchOp = {
   data: `0x${string}`;
 };
 
+// Inside a Host batchCall, ERC20_TRANSFER_FROM is dispatched as
+// SuperToken.operationTransferFrom(msgSender, sender, recipient, amount).
+// When sender == msgSender the SuperToken skips allowance checks, so we can
+// move the admin's own SuperTokens to the splitter as part of the same batch
+// without a separate approve.
+export function buildSuperTokenTransferBatchOp({
+  tokenAddress,
+  from,
+  to,
+  amount,
+}: {
+  tokenAddress: Address;
+  from: Address;
+  to: Address;
+  amount: bigint;
+}): BatchOp {
+  return prepareOperation({
+    operationType: OPERATION_TYPE.ERC20_TRANSFER_FROM,
+    target: tokenAddress,
+    data: encodeFunctionData({
+      abi: erc20Abi,
+      functionName: "transferFrom",
+      args: [from, to, amount],
+    }),
+  });
+}
+
 export function buildWrapCalls({
   tokenAddress,
   wrapAmountWei,

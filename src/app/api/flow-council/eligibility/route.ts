@@ -1,8 +1,7 @@
 import { Address, createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { celo } from "wagmi/chains";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
-import { networks } from "@/lib/networks";
+import { networks, getViemChain } from "@/lib/networks";
 import {
   GOODBUILDERS_COUNCIL_ADDRESSES,
   GOODDOLLAR_IDENTITY_ADDRESS,
@@ -40,9 +39,12 @@ export async function POST(request: Request) {
     }
 
     const celoNetwork = networks.find((network) => network.id === 42220);
+    if (!celoNetwork) {
+      return Response.json({ success: false, error: "Celo network missing" });
+    }
     const celoPublicClient = createPublicClient({
-      chain: celo,
-      transport: http(celoNetwork?.rpcUrl),
+      chain: getViemChain(celoNetwork.id),
+      transport: http(celoNetwork.rpcUrl),
     });
 
     const isWhitelisted = await celoPublicClient.readContract({
@@ -60,12 +62,13 @@ export async function POST(request: Request) {
       process.env.FLOW_STATE_ELIGIBILITY_PK as `0x${string}`,
     );
 
+    const viemChain = getViemChain(network.id);
     const publicClient = createPublicClient({
-      chain: celo,
+      chain: viemChain,
       transport: http(network.rpcUrl),
     });
     const walletClient = createWalletClient({
-      chain: celo,
+      chain: viemChain,
       transport: http(network.rpcUrl),
     });
 
