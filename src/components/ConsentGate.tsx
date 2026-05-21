@@ -214,42 +214,48 @@ export default function ConsentGate() {
           checked={consentChecked}
           onChange={(e) => setConsentChecked(e.target.checked)}
         />
-        {consentChecked && (
-          <div className="mt-3">
-            <Form.Switch
-              id="consent-modal-notify-application-eligibility"
-              label="Application & eligibility updates"
-              checked={notifyApplicationEligibility}
-              onChange={(e) =>
-                setNotifyApplicationEligibility(e.target.checked)
-              }
-            />
-            <Form.Switch
-              id="consent-modal-notify-project-channels"
-              label="Project channel messages"
-              checked={notifyProjectChannels}
-              onChange={(e) => setNotifyProjectChannels(e.target.checked)}
-            />
-            <Form.Switch
-              id="consent-modal-notify-round-announcements"
-              label="Round announcements"
-              checked={notifyRoundAnnouncements}
-              onChange={(e) => setNotifyRoundAnnouncements(e.target.checked)}
-            />
-            <Form.Switch
-              id="consent-modal-notify-internal-review"
-              label="Internal review comments"
-              checked={notifyInternalReview}
-              onChange={(e) => setNotifyInternalReview(e.target.checked)}
-            />
-            <Form.Switch
-              id="consent-modal-notify-platform"
-              label="Flow State Platform updates"
-              checked={notifyPlatform}
-              onChange={(e) => setNotifyPlatform(e.target.checked)}
-            />
-          </div>
-        )}
+        {/* Always show the categories up front so users can see what they'll
+            be able to choose. They stay disabled until consent is given. */}
+        <div className="mt-3">
+          <p className="text-muted small mb-2">
+            Choose what you&apos;d like to hear about:
+          </p>
+          <Form.Switch
+            id="consent-modal-notify-application-eligibility"
+            label="Application & eligibility updates"
+            checked={notifyApplicationEligibility}
+            disabled={!consentChecked}
+            onChange={(e) => setNotifyApplicationEligibility(e.target.checked)}
+          />
+          <Form.Switch
+            id="consent-modal-notify-project-channels"
+            label="Project channel messages"
+            checked={notifyProjectChannels}
+            disabled={!consentChecked}
+            onChange={(e) => setNotifyProjectChannels(e.target.checked)}
+          />
+          <Form.Switch
+            id="consent-modal-notify-round-announcements"
+            label="Round announcements"
+            checked={notifyRoundAnnouncements}
+            disabled={!consentChecked}
+            onChange={(e) => setNotifyRoundAnnouncements(e.target.checked)}
+          />
+          <Form.Switch
+            id="consent-modal-notify-internal-review"
+            label="Internal review comments"
+            checked={notifyInternalReview}
+            disabled={!consentChecked}
+            onChange={(e) => setNotifyInternalReview(e.target.checked)}
+          />
+          <Form.Switch
+            id="consent-modal-notify-platform"
+            label="Flow State Platform updates"
+            checked={notifyPlatform}
+            disabled={!consentChecked}
+            onChange={(e) => setNotifyPlatform(e.target.checked)}
+          />
+        </div>
         {error && (
           <div className="text-danger mt-3" role="alert">
             {error}

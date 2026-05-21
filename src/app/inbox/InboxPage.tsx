@@ -80,10 +80,22 @@ function formatTimestamp(value: string): string {
 
 function getItemHref(item: InboxItem): string | null {
   if (item.reviewChainId == null || item.reviewCouncilId == null) return null;
+  const commsBase = `/flow-councils/communications/${item.reviewChainId}/${item.reviewCouncilId}`;
+
+  // Round announcements point to the round's announcements channel.
+  if (item.category === "round_announcements") {
+    return `${commsBase}?channel=announcements`;
+  }
+  // Project channel messages point to that project's channel.
+  if (item.category === "project_channels") {
+    return item.reviewProjectId != null
+      ? `${commsBase}?channel=${item.reviewProjectId}`
+      : null;
+  }
   // Project managers can't access the admin-only recipient review page —
   // send them to their project's comms channel instead.
   if (item.isProjectManager && item.reviewProjectId != null) {
-    return `/flow-councils/communications/${item.reviewChainId}/${item.reviewCouncilId}?channel=${item.reviewProjectId}`;
+    return `${commsBase}?channel=${item.reviewProjectId}`;
   }
   if (item.applicationId != null) {
     return `/flow-councils/review/${item.reviewChainId}/${item.reviewCouncilId}?applicationId=${item.applicationId}`;
@@ -92,10 +104,22 @@ function getItemHref(item: InboxItem): string | null {
 }
 
 export default function InboxPage() {
-  const { status } = useSession();
-  const { address } = useAccount();
+  const { status, data: session } = useSession();
+  const { address, isConnecting, isReconnecting } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { handleSignIn } = useSiwe();
+
+  // Only treat the inbox as ready once the SIWE session and the connected
+  // wallet agree. While the wallet is reconnecting (page refresh) or has been
+  // switched to a different account, hold on the loading state instead of
+  // briefly flashing inbox content that belongs to a stale session — AuthSync
+  // resolves a mismatch by signing out (and reloading on a wallet switch).
+  const isWalletSettling = isConnecting || isReconnecting;
+  const sessionMatchesWallet =
+    status === "authenticated" &&
+    !!session?.address &&
+    !!address &&
+    session.address.toLowerCase() === address.toLowerCase();
 
   const [items, setItems] = useState<InboxItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -215,12 +239,14 @@ export default function InboxPage() {
     }
   };
 
-  if (status === "loading") {
-    return (
-      <Container className="py-5 d-flex justify-content-center">
-        <Spinner />
-      </Container>
-    );
+  const loadingView = (
+    <Container className="py-5 d-flex justify-content-center">
+      <Spinner />
+    </Container>
+  );
+
+  if (status === "loading" || isWalletSettling) {
+    return loadingView;
   }
 
   if (status === "unauthenticated") {
@@ -245,6 +271,13 @@ export default function InboxPage() {
         </Card>
       </Container>
     );
+  }
+
+  // Authenticated session whose address doesn't (yet) match the connected
+  // wallet — e.g. a wallet switch that AuthSync is signing out. Keep loading
+  // rather than flashing content from the previous session.
+  if (!sessionMatchesWallet) {
+    return loadingView;
   }
 
   return (

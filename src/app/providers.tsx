@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { SessionProvider, signOut, useSession } from "next-auth/react";
 import { http } from "viem";
@@ -120,14 +120,31 @@ function RainbowKitWithInitialChain({
 }
 
 function AuthSync() {
-  const { isDisconnected } = useAccount();
+  const { address, isDisconnected } = useAccount();
   const { data: session } = useSession();
+  const reloadingRef = useRef(false);
 
   useEffect(() => {
-    if (isDisconnected && session) {
+    if (!session?.address) return;
+
+    // Wallet fully disconnected — drop the stale session. No reload needed;
+    // the UI falls back to the connect / sign-in prompt.
+    if (isDisconnected) {
       signOut({ redirect: false });
+      return;
     }
-  }, [isDisconnected, session]);
+
+    // Wallet switched to a different account while signed in. The session
+    // still belongs to the previous address, so sign out and reload the page
+    // to rebuild all wallet-scoped state and require a fresh SIWE.
+    if (address && address.toLowerCase() !== session.address.toLowerCase()) {
+      if (reloadingRef.current) return;
+      reloadingRef.current = true;
+      signOut({ redirect: false }).then(() => {
+        window.location.reload();
+      });
+    }
+  }, [address, isDisconnected, session]);
 
   return null;
 }

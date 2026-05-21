@@ -69,16 +69,20 @@ export async function GET(request: Request) {
       beforeId = parsed;
     }
 
-    // Join applications → rounds so application-linked items can build a
-    // valid deep link (/flow-councils/review/[chainId]/[councilId]). The
-    // inbox_items table only carries the application_id FK, not chain/council.
-    // Also join projectManagers (scoped to this recipient) so the client can
-    // route project managers to the comms channel instead of the admin-only
-    // recipient review page.
+    // Resolve chain/council/project so each item can build a valid deep link.
+    // inbox_items only carries application_id and/or message_id FKs, not
+    // chain/council. Application-linked items (applications, internal review)
+    // resolve via applications → rounds; message-linked items with no
+    // application (project channels, round announcements) resolve via
+    // messages → rounds instead. Also join projectManagers (scoped to this
+    // recipient) so the client can route project managers to the comms
+    // channel instead of the admin-only recipient review page.
     let query = db
       .selectFrom("inboxItems")
       .leftJoin("applications", "applications.id", "inboxItems.applicationId")
       .leftJoin("rounds", "rounds.id", "applications.roundId")
+      .leftJoin("messages", "messages.id", "inboxItems.messageId")
+      .leftJoin("rounds as messageRounds", "messageRounds.id", "messages.roundId")
       .leftJoin("projectManagers", (join) =>
         join
           .onRef("projectManagers.projectId", "=", "applications.projectId")
@@ -94,9 +98,12 @@ export async function GET(request: Request) {
         "inboxItems.snippet",
         "inboxItems.readAt",
         "inboxItems.createdAt",
-        "rounds.chainId as reviewChainId",
-        "rounds.flowCouncilAddress as reviewCouncilId",
-        "applications.projectId as reviewProjectId",
+        "rounds.chainId as appChainId",
+        "rounds.flowCouncilAddress as appCouncilId",
+        "applications.projectId as appProjectId",
+        "messageRounds.chainId as msgChainId",
+        "messageRounds.flowCouncilAddress as msgCouncilId",
+        "messages.projectId as msgProjectId",
         sql<boolean>`project_managers.id IS NOT NULL`.as("isProjectManager"),
       ])
       .where("inboxItems.recipientAddress", "=", address)
@@ -110,11 +117,25 @@ export async function GET(request: Request) {
       query = query.where("inboxItems.id", "<", beforeId);
     }
 
-    const items = await query.execute();
+    const rows = await query.execute();
+    const items = rows.map(
+      ({
+        appChainId,
+        appCouncilId,
+        appProjectId,
+        msgChainId,
+        msgCouncilId,
+        msgProjectId,
+        ...rest
+      }) => ({
+        ...rest,
+        reviewChainId: appChainId ?? msgChainId,
+        reviewCouncilId: appCouncilId ?? msgCouncilId,
+        reviewProjectId: appProjectId ?? msgProjectId,
+      }),
+    );
     const nextCursor =
-      items.length === limit
-        ? String(items[items.length - 1].id)
-        : null;
+      items.length === limit ? String(items[items.length - 1].id) : null;
 
     const unreadCountRow = await db
       .selectFrom("inboxItems")
