@@ -118,6 +118,8 @@ export async function GET(request: Request) {
     }
 
     const rows = await query.execute();
+    // Application path wins when an item has both an application and a message
+    // (internal review) — in practice both reference the same round.
     const items = rows.map(
       ({
         appChainId,

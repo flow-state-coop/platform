@@ -140,9 +140,14 @@ function AuthSync() {
     if (address && address.toLowerCase() !== session.address.toLowerCase()) {
       if (reloadingRef.current) return;
       reloadingRef.current = true;
-      signOut({ redirect: false }).then(() => {
-        window.location.reload();
-      });
+      // Reload even if signOut rejects (e.g. a network blip on the NextAuth
+      // endpoint) — otherwise the ref stays set and the user is stuck with a
+      // session that no longer matches their connected wallet.
+      signOut({ redirect: false })
+        .catch(() => {})
+        .finally(() => {
+          window.location.reload();
+        });
     }
   }, [address, isDisconnected, session]);
 
