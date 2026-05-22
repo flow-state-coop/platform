@@ -43,7 +43,8 @@ export default function ConsentGate() {
   const [notifyApplicationEligibility, setNotifyApplicationEligibility] =
     useState(true);
   const [notifyProjectChannels, setNotifyProjectChannels] = useState(true);
-  const [notifyRoundAnnouncements, setNotifyRoundAnnouncements] = useState(true);
+  const [notifyRoundAnnouncements, setNotifyRoundAnnouncements] =
+    useState(true);
   const [notifyInternalReview, setNotifyInternalReview] = useState(true);
   const [notifyPlatform, setNotifyPlatform] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -62,7 +63,9 @@ export default function ConsentGate() {
     // + return" requirement. The authoritative gate remains server-side
     // (`consent_confirmed_at IS NOT NULL` in the dispatch pipeline) — do
     // not remove the server check thinking this is sufficient.
-    const dismissedAt = sessionStorage.getItem(`${DISMISS_KEY_PREFIX}${address}`);
+    const dismissedAt = sessionStorage.getItem(
+      `${DISMISS_KEY_PREFIX}${address}`,
+    );
     if (dismissedAt) {
       return;
     }
@@ -163,7 +166,9 @@ export default function ConsentGate() {
       } | null;
 
       if (!res.ok || !json?.success) {
-        setError(json?.error || "Could not save preferences. Please try again.");
+        setError(
+          json?.error || "Could not save preferences. Please try again.",
+        );
         return;
       }
 
@@ -214,42 +219,46 @@ export default function ConsentGate() {
           checked={consentChecked}
           onChange={(e) => setConsentChecked(e.target.checked)}
         />
-        {consentChecked && (
-          <div className="mt-3">
-            <Form.Switch
-              id="consent-modal-notify-application-eligibility"
-              label="Application & eligibility updates"
-              checked={notifyApplicationEligibility}
-              onChange={(e) =>
-                setNotifyApplicationEligibility(e.target.checked)
-              }
-            />
-            <Form.Switch
-              id="consent-modal-notify-project-channels"
-              label="Project channel messages"
-              checked={notifyProjectChannels}
-              onChange={(e) => setNotifyProjectChannels(e.target.checked)}
-            />
-            <Form.Switch
-              id="consent-modal-notify-round-announcements"
-              label="Round announcements"
-              checked={notifyRoundAnnouncements}
-              onChange={(e) => setNotifyRoundAnnouncements(e.target.checked)}
-            />
-            <Form.Switch
-              id="consent-modal-notify-internal-review"
-              label="Internal review comments"
-              checked={notifyInternalReview}
-              onChange={(e) => setNotifyInternalReview(e.target.checked)}
-            />
-            <Form.Switch
-              id="consent-modal-notify-platform"
-              label="Flow State Platform updates"
-              checked={notifyPlatform}
-              onChange={(e) => setNotifyPlatform(e.target.checked)}
-            />
-          </div>
-        )}
+        <div className="mt-3">
+          <p className="text-muted small mb-2">
+            Choose what you&apos;d like to hear about:
+          </p>
+          <Form.Switch
+            id="consent-modal-notify-application-eligibility"
+            label="Application & eligibility updates"
+            checked={notifyApplicationEligibility}
+            disabled={!consentChecked}
+            onChange={(e) => setNotifyApplicationEligibility(e.target.checked)}
+          />
+          <Form.Switch
+            id="consent-modal-notify-project-channels"
+            label="Project channel messages"
+            checked={notifyProjectChannels}
+            disabled={!consentChecked}
+            onChange={(e) => setNotifyProjectChannels(e.target.checked)}
+          />
+          <Form.Switch
+            id="consent-modal-notify-round-announcements"
+            label="Round announcements"
+            checked={notifyRoundAnnouncements}
+            disabled={!consentChecked}
+            onChange={(e) => setNotifyRoundAnnouncements(e.target.checked)}
+          />
+          <Form.Switch
+            id="consent-modal-notify-internal-review"
+            label="Internal review comments"
+            checked={notifyInternalReview}
+            disabled={!consentChecked}
+            onChange={(e) => setNotifyInternalReview(e.target.checked)}
+          />
+          <Form.Switch
+            id="consent-modal-notify-platform"
+            label="Flow State Platform updates"
+            checked={notifyPlatform}
+            disabled={!consentChecked}
+            onChange={(e) => setNotifyPlatform(e.target.checked)}
+          />
+        </div>
         {error && (
           <div className="text-danger mt-3" role="alert">
             {error}
