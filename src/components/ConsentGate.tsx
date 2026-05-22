@@ -43,7 +43,8 @@ export default function ConsentGate() {
   const [notifyApplicationEligibility, setNotifyApplicationEligibility] =
     useState(true);
   const [notifyProjectChannels, setNotifyProjectChannels] = useState(true);
-  const [notifyRoundAnnouncements, setNotifyRoundAnnouncements] = useState(true);
+  const [notifyRoundAnnouncements, setNotifyRoundAnnouncements] =
+    useState(true);
   const [notifyInternalReview, setNotifyInternalReview] = useState(true);
   const [notifyPlatform, setNotifyPlatform] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -62,7 +63,9 @@ export default function ConsentGate() {
     // + return" requirement. The authoritative gate remains server-side
     // (`consent_confirmed_at IS NOT NULL` in the dispatch pipeline) — do
     // not remove the server check thinking this is sufficient.
-    const dismissedAt = sessionStorage.getItem(`${DISMISS_KEY_PREFIX}${address}`);
+    const dismissedAt = sessionStorage.getItem(
+      `${DISMISS_KEY_PREFIX}${address}`,
+    );
     if (dismissedAt) {
       return;
     }
@@ -163,7 +166,9 @@ export default function ConsentGate() {
       } | null;
 
       if (!res.ok || !json?.success) {
-        setError(json?.error || "Could not save preferences. Please try again.");
+        setError(
+          json?.error || "Could not save preferences. Please try again.",
+        );
         return;
       }
 
@@ -214,8 +219,6 @@ export default function ConsentGate() {
           checked={consentChecked}
           onChange={(e) => setConsentChecked(e.target.checked)}
         />
-        {/* Always show the categories up front so users can see what they'll
-            be able to choose. They stay disabled until consent is given. */}
         <div className="mt-3">
           <p className="text-muted small mb-2">
             Choose what you&apos;d like to hear about:

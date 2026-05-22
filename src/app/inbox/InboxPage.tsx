@@ -56,7 +56,10 @@ const CATEGORY_LABELS: Record<InboxCategory, string> = {
 
 const CATEGORY_FILTERS: { key: CategoryFilter; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "application_eligibility", label: CATEGORY_LABELS.application_eligibility },
+  {
+    key: "application_eligibility",
+    label: CATEGORY_LABELS.application_eligibility,
+  },
   { key: "project_channels", label: CATEGORY_LABELS.project_channels },
   { key: "round_announcements", label: CATEGORY_LABELS.round_announcements },
   { key: "internal_review", label: CATEGORY_LABELS.internal_review },
@@ -82,11 +85,9 @@ function getItemHref(item: InboxItem): string | null {
   if (item.reviewChainId == null || item.reviewCouncilId == null) return null;
   const commsBase = `/flow-councils/communications/${item.reviewChainId}/${item.reviewCouncilId}`;
 
-  // Round announcements point to the round's announcements channel.
   if (item.category === "round_announcements") {
     return `${commsBase}?channel=announcements`;
   }
-  // Project channel messages point to that project's channel.
   if (item.category === "project_channels") {
     return item.reviewProjectId != null
       ? `${commsBase}?channel=${item.reviewProjectId}`
@@ -123,7 +124,8 @@ export default function InboxPage() {
 
   const [items, setItems] = useState<InboxItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
+  const [selectedCategory, setSelectedCategory] =
+    useState<CategoryFilter>("all");
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -346,8 +348,7 @@ export default function InboxPage() {
           {items.map((item) => {
             const isUnread = item.readAt === null;
             const href = getItemHref(item);
-            const title =
-              item.sourceLabel ?? getCategoryLabel(item.category);
+            const title = item.sourceLabel ?? getCategoryLabel(item.category);
             const rowContent = (
               <Card
                 className={`rounded-4 border-0 p-3 ${
@@ -364,14 +365,20 @@ export default function InboxPage() {
                 }}
                 style={{ cursor: "pointer" }}
               >
-                <Stack direction="horizontal" gap={3} className="align-items-start">
+                <Stack
+                  direction="horizontal"
+                  gap={3}
+                  className="align-items-start"
+                >
                   <span
                     aria-hidden="true"
                     className="d-inline-block rounded-circle mt-2"
                     style={{
                       width: 8,
                       height: 8,
-                      backgroundColor: isUnread ? "var(--bs-primary)" : "transparent",
+                      backgroundColor: isUnread
+                        ? "var(--bs-primary)"
+                        : "transparent",
                       flexShrink: 0,
                     }}
                   />

@@ -82,7 +82,11 @@ export async function GET(request: Request) {
       .leftJoin("applications", "applications.id", "inboxItems.applicationId")
       .leftJoin("rounds", "rounds.id", "applications.roundId")
       .leftJoin("messages", "messages.id", "inboxItems.messageId")
-      .leftJoin("rounds as messageRounds", "messageRounds.id", "messages.roundId")
+      .leftJoin(
+        "rounds as messageRounds",
+        "messageRounds.id",
+        "messages.roundId",
+      )
       .leftJoin("projectManagers", (join) =>
         join
           .onRef("projectManagers.projectId", "=", "applications.projectId")
