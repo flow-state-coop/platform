@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { SessionProvider, signOut, useSession } from "next-auth/react";
 import { http } from "viem";
@@ -18,6 +18,7 @@ import {
 import { createConfig, WagmiProvider, useAccount } from "wagmi";
 import { arbitrum, base, celo, optimism, optimismSepolia } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import Alert from "react-bootstrap/Alert";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { DonorParamsContextProvider } from "@/context/DonorParams";
@@ -119,10 +120,16 @@ function RainbowKitWithInitialChain({
   );
 }
 
+// Bound the wallet-switch sign-out retries so a sustained NextAuth outage
+// can't trap the user in an endless sign-out → reload loop.
+const SIGNOUT_ATTEMPTS_KEY = "wallet-switch-signout-attempts";
+const MAX_SIGNOUT_ATTEMPTS = 2;
+
 function AuthSync() {
   const { address, isDisconnected } = useAccount();
   const { data: session } = useSession();
   const reloadingRef = useRef(false);
+  const [signOutFailed, setSignOutFailed] = useState(false);
 
   useEffect(() => {
     if (!session?.address) return;
@@ -140,16 +147,55 @@ function AuthSync() {
     if (address && address.toLowerCase() !== session.address.toLowerCase()) {
       if (reloadingRef.current) return;
       reloadingRef.current = true;
-      // Reload even if signOut rejects (e.g. a network blip on the NextAuth
-      // endpoint) — otherwise the ref stays set and the user is stuck with a
-      // session that no longer matches their connected wallet.
       signOut({ redirect: false })
-        .catch(() => {})
-        .finally(() => {
+        .then(() => {
+          // Signed out cleanly — the stale cookie is gone, so the reload
+          // won't re-detect the mismatch. Clear the retry counter.
+          sessionStorage.removeItem(SIGNOUT_ATTEMPTS_KEY);
           window.location.reload();
+        })
+        .catch(() => {
+          // signOut rejected (e.g. the NextAuth endpoint is down). The stale
+          // cookie survives, so a reload re-detects the same mismatch and we
+          // retry — which loops forever on a sustained outage. Bound it:
+          // reload to ride out a transient blip, but after MAX_SIGNOUT_ATTEMPTS
+          // consecutive failures stop and surface an error instead.
+          const attempts =
+            Number(sessionStorage.getItem(SIGNOUT_ATTEMPTS_KEY) ?? "0") + 1;
+          if (attempts < MAX_SIGNOUT_ATTEMPTS) {
+            sessionStorage.setItem(SIGNOUT_ATTEMPTS_KEY, String(attempts));
+            window.location.reload();
+          } else {
+            sessionStorage.removeItem(SIGNOUT_ATTEMPTS_KEY);
+            reloadingRef.current = false;
+            setSignOutFailed(true);
+          }
         });
     }
   }, [address, isDisconnected, session]);
+
+  if (signOutFailed) {
+    return (
+      <Alert
+        variant="warning"
+        className="position-fixed top-0 start-50 translate-middle-x mt-3 shadow"
+        style={{ zIndex: 2000, maxWidth: "90vw" }}
+      >
+        Your connected wallet changed, but we couldn&apos;t refresh your
+        session.{" "}
+        <Alert.Link
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            window.location.reload();
+          }}
+        >
+          Reload the page
+        </Alert.Link>{" "}
+        to sign in again.
+      </Alert>
+    );
+  }
 
   return null;
 }
