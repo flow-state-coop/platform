@@ -24,6 +24,7 @@ import { PostHogProvider } from "posthog-js/react";
 import { DonorParamsContextProvider } from "@/context/DonorParams";
 import { FlowCouncilContextProvider } from "@/context/FlowCouncil";
 import ConsentGate from "@/components/ConsentGate";
+import useSiwe from "@/hooks/siwe";
 import { networks } from "@/lib/networks";
 import { WALLET_CONNECT_PROJECT_ID, DEFAULT_CHAIN_ID } from "@/lib/constants";
 import "@rainbow-me/rainbowkit/styles.css";
@@ -200,6 +201,38 @@ function AuthSync() {
   return null;
 }
 
+// Prompt for SIWE automatically the first time a wallet connects, so users land
+// authenticated without having to hunt for a button. The manual "Sign In With
+// Ethereum" buttons remain as a backup (e.g. if the user dismisses this prompt).
+// We prompt at most once per connected address per page load.
+function AutoSiwe() {
+  const { address, chain, isConnected } = useAccount();
+  const { status } = useSession();
+  const { handleSignIn } = useSiwe();
+  const promptedAddressRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    // No wallet connected — reset so a later (re)connect prompts again.
+    if (!isConnected || !address) {
+      promptedAddressRef.current = null;
+      return;
+    }
+    // Wait until the chain and the session state are known before deciding.
+    if (!chain || status === "loading") return;
+    // Already signed in. During a wallet switch the session still belongs to the
+    // previous address; AuthSync handles that case (sign out + reload), so we
+    // stay out of its way here.
+    if (status === "authenticated") return;
+    // Only auto-prompt once per address; a rejection falls back to the buttons.
+    if (promptedAddressRef.current === address) return;
+
+    promptedAddressRef.current = address;
+    handleSignIn();
+  }, [address, chain, isConnected, status, handleSignIn]);
+
+  return null;
+}
+
 export default function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
@@ -221,6 +254,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         <QueryClientProvider client={queryClient}>
           <SessionProvider>
             <AuthSync />
+            <AutoSiwe />
             <ConsentGate />
             <RainbowKitWithInitialChain>
               <PostHogProvider client={posthog}>
