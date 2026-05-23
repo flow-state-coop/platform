@@ -55,18 +55,20 @@ async function migrateDeploy(env: NodeJS.ProcessEnv): Promise<void> {
       const { stdout, stderr, signal } = error as {
         stdout?: string;
         stderr?: string;
-        signal?: string;
+        signal?: NodeJS.Signals;
       };
       const output = `${stdout ?? ""}${stderr ?? ""}`;
       process.stderr.write(output);
 
-      // signal !== null means execSync killed it at the timeout — a stuck/cold
+      // A defined signal means execSync killed it at the timeout — a stuck/cold
       // compute, also worth retrying.
       const transient =
-        signal != null || TRANSIENT_PATTERNS.some((p) => output.includes(p));
+        signal !== undefined ||
+        TRANSIENT_PATTERNS.some((p) => output.includes(p));
       if (!transient || attempt === maxAttempts) {
         throw new Error(
           `prisma migrate deploy failed after ${attempt} attempt(s)`,
+          { cause: error },
         );
       }
 
