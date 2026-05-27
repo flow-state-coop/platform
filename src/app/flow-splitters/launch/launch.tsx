@@ -27,12 +27,14 @@ import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { isNumber } from "@/lib/utils";
+import { serializeListed } from "@/lib/listedMetadata";
 
 type LaunchProps = { defaultNetwork: Network };
 
 type PoolConfig = {
   transferableUnits: boolean;
   immutable: boolean;
+  listed: boolean;
 };
 
 type Erc20Metadata = { name: string; symbol: string };
@@ -64,6 +66,7 @@ export default function Launch(props: LaunchProps) {
   const [poolConfig, setPoolConfig] = useState<PoolConfig>({
     transferableUnits: false,
     immutable: false,
+    listed: false,
   });
   const [customTokenEntry, setCustomTokenEntry] = useState<CustomTokenEntry>({
     address: "",
@@ -177,7 +180,7 @@ export default function Launch(props: LaunchProps) {
           poolConfig.immutable
             ? []
             : validAdmins.map((admin) => admin.address as Address),
-          "",
+          serializeListed(poolConfig.listed),
         ],
       });
 
@@ -990,6 +993,66 @@ export default function Launch(props: LaunchProps) {
             >
               Template
             </Card.Link>
+          </Card.Body>
+        </Card>
+        <Card className="bg-lace-100 rounded-4 border-0 mt-8 p-4">
+          <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-5 text-secondary fw-semi-bold">
+            Discovery Visibility
+            <InfoTooltip
+              position={{ top: true }}
+              target={
+                <Image
+                  src="/info.svg"
+                  alt="Info"
+                  width={18}
+                  height={18}
+                  className="align-top"
+                />
+              }
+              content={
+                <p className="m-0 p-2">
+                  Listed Flow Splitters may be surfaced on the Explore page.
+                  Unlisted ones stay accessible via direct link. You can change
+                  this later from the admin page.
+                </p>
+              }
+            />
+          </Card.Header>
+          <Card.Body className="p-0 mt-4">
+            <Form.Group>
+              <Stack direction="horizontal" gap={5}>
+                <FormCheck type="radio">
+                  <FormCheck.Input
+                    type="radio"
+                    checked={!poolConfig.listed}
+                    onChange={() =>
+                      setPoolConfig({
+                        ...poolConfig,
+                        listed: false,
+                      })
+                    }
+                  />
+                  <FormCheck.Label className="fw-semi-bold">
+                    Unlisted
+                  </FormCheck.Label>
+                </FormCheck>
+                <FormCheck type="radio">
+                  <FormCheck.Input
+                    type="radio"
+                    checked={!!poolConfig.listed}
+                    onChange={() =>
+                      setPoolConfig({
+                        ...poolConfig,
+                        listed: true,
+                      })
+                    }
+                  />
+                  <FormCheck.Label className="fw-semi-bold">
+                    Listed
+                  </FormCheck.Label>
+                </FormCheck>
+              </Stack>
+            </Form.Group>
           </Card.Body>
         </Card>
         <Stack direction="vertical" className="mt-6">

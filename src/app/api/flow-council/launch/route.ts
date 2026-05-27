@@ -15,6 +15,7 @@ export async function POST(request: Request) {
       name,
       description,
       logoUrl,
+      listed,
       superappSplitterAddress,
     } = await request.json();
 
@@ -87,7 +88,14 @@ export async function POST(request: Request) {
           chainId,
           flowCouncilAddress: flowCouncilAddress.toLowerCase(),
           superappSplitterAddress: validatedSplitterAddress,
-          details: JSON.stringify({ name, description, logoUrl }),
+          details: JSON.stringify({
+            name,
+            description,
+            logoUrl,
+            // Only persist a real boolean — the launch route has no Zod schema,
+            // so guard against a non-boolean `listed` reaching the JSON column.
+            ...(typeof listed === "boolean" ? { listed } : {}),
+          }),
         })
         .returning([
           "id",
