@@ -310,9 +310,28 @@ export default function Funding(props: FundingProps) {
   }, [additionalFlowRate, liquidationPeriod]);
 
   // ─── Projected Funding (read-only estimate) ───
+  // Coarse clock so "Remaining duration" and the projection stay current
+  // without riding the requestAnimationFrame path (i.e. without dancing).
+  const [nowSeconds, setNowSeconds] = useState(() =>
+    Math.floor(Date.now() / 1000),
+  );
+  useEffect(() => {
+    const id = setInterval(
+      () => setNowSeconds(Math.floor(Date.now() / 1000)),
+      30_000,
+    );
+    return () => clearInterval(id);
+  }, []);
+
+  // The Projected Funding figures depend on subgraph data; until the
+  // sender-outflows query resolves (or a wallet connects) `currentFlowRate`
+  // is null. Gate the display on this to avoid a flash of zero values.
+  const projectedFundingReady = currentFlowRate !== null;
+
   // Total already streamed by this wallet to the splitter, animated.
-  const sponsoredStreamedUntilUpdatedAt = BigInt(
-    sponsoredOutflow?.streamedUntilUpdatedAt ?? 0,
+  const sponsoredStreamedUntilUpdatedAt = useMemo(
+    () => BigInt(sponsoredOutflow?.streamedUntilUpdatedAt ?? 0),
+    [sponsoredOutflow],
   );
   const currentSponsored = useFlowingAmount(
     sponsoredStreamedUntilUpdatedAt,
@@ -321,23 +340,22 @@ export default function Funding(props: FundingProps) {
   );
 
   // Time left until the round closes. `null` when there is no end date set.
-  // Anchored on `roundEndsAt` so it does not recompute on animation frames.
   const remainingSeconds = useMemo<bigint | null>(() => {
     if (!roundEndsAt || roundEndsAt === 0n) return null;
-    const now = BigInt(Math.floor(Date.now() / 1000));
-    const remaining = roundEndsAt - now;
+    const remaining = roundEndsAt - BigInt(nowSeconds);
     return remaining > 0n ? remaining : 0n;
-  }, [roundEndsAt]);
+  }, [roundEndsAt, nowSeconds]);
 
-  // Snapshot of total streamed once at the pending rate over the remaining
-  // duration. Memoized (not animated) so this value stays put — the spec
-  // requires a static projection, not a dancing balance.
+  // Snapshot of the wallet's total streamed at round close. Memoized (not
+  // animated) so it stays put — the spec wants a static projection, not a
+  // dancing balance. Intentional rate switch: the already-streamed portion
+  // accrues at the current on-chain rate, while the remaining duration uses
+  // the pending input rate — i.e. "what my total becomes if I submit this".
   const projectedSponsored = useMemo<bigint | null>(() => {
     if (remainingSeconds === null) return null;
     const updatedAt = sponsoredOutflow?.updatedAtTimestamp ?? 0;
     const rate = currentFlowRate ?? 0n;
-    const now = BigInt(Math.floor(Date.now() / 1000));
-    const elapsed = updatedAt ? now - BigInt(updatedAt) : 0n;
+    const elapsed = updatedAt ? BigInt(nowSeconds) - BigInt(updatedAt) : 0n;
     const streamedSoFar =
       elapsed > 0n
         ? sponsoredStreamedUntilUpdatedAt + rate * elapsed
@@ -345,6 +363,7 @@ export default function Funding(props: FundingProps) {
     return streamedSoFar + streamFlowRate * remainingSeconds;
   }, [
     remainingSeconds,
+    nowSeconds,
     streamFlowRate,
     currentFlowRate,
     sponsoredOutflow,
@@ -1238,14 +1257,17 @@ export default function Funding(props: FundingProps) {
                     Remaining duration
                   </span>
                   <span className="fw-semi-bold">
-                    {remainingSeconds === null
-                      ? "No end date"
-                      : remainingSeconds === 0n
-                        ? "Round ended"
-                        : `${(Number(remainingSeconds) / 86400).toLocaleString(
-                            undefined,
-                            { maximumFractionDigits: 1 },
-                          )} days`}
+                    {roundStatus === "loading"
+                      ? "—"
+                      : remainingSeconds === null
+                        ? "No end date"
+                        : remainingSeconds === 0n
+                          ? "Round ended"
+                          : `${(
+                              Number(remainingSeconds) / 86400
+                            ).toLocaleString(undefined, {
+                              maximumFractionDigits: 1,
+                            })} days`}
                   </span>
                 </Stack>
                 <Stack
@@ -1254,10 +1276,12 @@ export default function Funding(props: FundingProps) {
                 >
                   <span className="text-info fw-semi-bold">Sponsored rate</span>
                   <span className="fw-semi-bold">
-                    {`${formatTokenAmount(
-                      streamFlowRate * BigInt(SECONDS_IN_MONTH),
-                      4,
-                    )} ${tokenSymbol}/mo`}
+                    {!projectedFundingReady
+                      ? "—"
+                      : `${formatTokenAmount(
+                          streamFlowRate * BigInt(SECONDS_IN_MONTH),
+                          4,
+                        )} ${tokenSymbol}/mo`}
                   </span>
                 </Stack>
                 <Stack
@@ -1268,7 +1292,9 @@ export default function Funding(props: FundingProps) {
                     Current sponsored
                   </span>
                   <span className="fw-semi-bold">
-                    {`${formatTokenAmount(currentSponsored)} ${tokenSymbol}`}
+                    {!projectedFundingReady
+                      ? "—"
+                      : `${formatTokenAmount(currentSponsored)} ${tokenSymbol}`}
                   </span>
                 </Stack>
                 <Stack
@@ -1279,7 +1305,7 @@ export default function Funding(props: FundingProps) {
                     Projected sponsored
                   </span>
                   <span className="fw-semi-bold">
-                    {projectedSponsored === null
+                    {!projectedFundingReady || projectedSponsored === null
                       ? "—"
                       : `${formatTokenAmount(projectedSponsored, 4)} ${tokenSymbol}`}
                   </span>
