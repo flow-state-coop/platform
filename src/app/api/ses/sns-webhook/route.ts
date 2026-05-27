@@ -111,7 +111,10 @@ export async function POST(request: Request) {
   // 3. Branch on payload.Type.
   const type = payload.Type;
 
-  if (type === "SubscriptionConfirmation" || type === "UnsubscribeConfirmation") {
+  if (
+    type === "SubscriptionConfirmation" ||
+    type === "UnsubscribeConfirmation"
+  ) {
     if (typeof payload.SubscribeURL === "string") {
       // Restrict the outbound fetch host to AWS SNS regional endpoints.
       // Without this, a verified-but-attacker-shaped payload could direct us

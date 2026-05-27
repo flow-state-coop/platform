@@ -112,11 +112,7 @@ describe("POST /api/ses/sns-webhook", () => {
       "=",
       "bouncer@example.com",
     );
-    expect(dbMock.where).toHaveBeenCalledWith(
-      "emailSuspendedAt",
-      "is",
-      null,
-    );
+    expect(dbMock.where).toHaveBeenCalledWith("emailSuspendedAt", "is", null);
     expect(dbMock.execute).toHaveBeenCalledTimes(1);
   });
 

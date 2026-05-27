@@ -33,9 +33,7 @@ export async function POST(request: Request) {
   }
 
   const authHeader = request.headers.get("authorization") ?? "";
-  const provided = authHeader.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : "";
+  const provided = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
   // Hash both sides first so the comparison is constant-length and
   // constant-time regardless of `provided` length — avoids leaking the
   // secret's length via a short-circuit on length mismatch.
