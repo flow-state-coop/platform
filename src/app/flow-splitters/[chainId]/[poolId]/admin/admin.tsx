@@ -1240,6 +1240,7 @@ export default function Admin(props: AdminProps) {
                     <FormCheck type="radio">
                       <FormCheck.Input
                         type="radio"
+                        name="discovery-visibility"
                         checked={!poolConfig.listed}
                         disabled={!isAdmin}
                         onChange={() =>
@@ -1253,6 +1254,7 @@ export default function Admin(props: AdminProps) {
                     <FormCheck type="radio">
                       <FormCheck.Input
                         type="radio"
+                        name="discovery-visibility"
                         checked={!!poolConfig.listed}
                         disabled={!isAdmin}
                         onChange={() =>

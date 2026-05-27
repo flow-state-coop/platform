@@ -344,6 +344,7 @@ export default function RoundMetadata(props: RoundMetadataProps) {
                 <FormCheck type="radio">
                   <FormCheck.Input
                     type="radio"
+                    name="discovery-visibility"
                     checked={!roundDetails.listed}
                     disabled={!session || session.address !== address}
                     onChange={() =>
@@ -357,6 +358,7 @@ export default function RoundMetadata(props: RoundMetadataProps) {
                 <FormCheck type="radio">
                   <FormCheck.Input
                     type="radio"
+                    name="discovery-visibility"
                     checked={!!roundDetails.listed}
                     disabled={!session || session.address !== address}
                     onChange={() =>

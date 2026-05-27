@@ -1024,6 +1024,7 @@ export default function Launch(props: LaunchProps) {
                 <FormCheck type="radio">
                   <FormCheck.Input
                     type="radio"
+                    name="discovery-visibility"
                     checked={!poolConfig.listed}
                     onChange={() =>
                       setPoolConfig({
@@ -1039,6 +1040,7 @@ export default function Launch(props: LaunchProps) {
                 <FormCheck type="radio">
                   <FormCheck.Input
                     type="radio"
+                    name="discovery-visibility"
                     checked={!!poolConfig.listed}
                     onChange={() =>
                       setPoolConfig({
