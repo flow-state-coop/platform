@@ -423,6 +423,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
             network={network}
             poolAddress={pool?.poolAddress}
             isConnected={!shouldConnect}
+            onSuccess={() => setShowConnectionModal(false)}
           />
         </Modal.Footer>
       </Modal>

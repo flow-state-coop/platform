@@ -391,6 +391,7 @@ export default function PoolDetail(props: PoolDetailProps) {
             network={network}
             poolAddress={poolAddress}
             isConnected={!shouldConnect}
+            onSuccess={() => setShowConnectionModal(false)}
           />
         </Modal.Footer>
       </Modal>
