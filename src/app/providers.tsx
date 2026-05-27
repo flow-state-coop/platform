@@ -24,6 +24,7 @@ import { PostHogProvider } from "posthog-js/react";
 import { DonorParamsContextProvider } from "@/context/DonorParams";
 import { FlowCouncilContextProvider } from "@/context/FlowCouncil";
 import ConsentGate from "@/components/ConsentGate";
+import useSiwe from "@/hooks/siwe";
 import { networks } from "@/lib/networks";
 import { WALLET_CONNECT_PROJECT_ID, DEFAULT_CHAIN_ID } from "@/lib/constants";
 import "@rainbow-me/rainbowkit/styles.css";
@@ -125,10 +126,13 @@ function RainbowKitWithInitialChain({
 const SIGNOUT_ATTEMPTS_KEY = "wallet-switch-signout-attempts";
 const MAX_SIGNOUT_ATTEMPTS = 2;
 
-function AuthSync() {
+function AuthSync({
+  switchInProgressRef,
+}: {
+  switchInProgressRef: React.RefObject<boolean>;
+}) {
   const { address, isDisconnected } = useAccount();
   const { data: session } = useSession();
-  const reloadingRef = useRef(false);
   const [signOutFailed, setSignOutFailed] = useState(false);
 
   useEffect(() => {
@@ -145,8 +149,8 @@ function AuthSync() {
     // still belongs to the previous address, so sign out and reload the page
     // to rebuild all wallet-scoped state and require a fresh SIWE.
     if (address && address.toLowerCase() !== session.address.toLowerCase()) {
-      if (reloadingRef.current) return;
-      reloadingRef.current = true;
+      if (switchInProgressRef.current) return;
+      switchInProgressRef.current = true;
       signOut({ redirect: false })
         .then(() => {
           // Signed out cleanly — the stale cookie is gone, so the reload
@@ -167,12 +171,12 @@ function AuthSync() {
             window.location.reload();
           } else {
             sessionStorage.removeItem(SIGNOUT_ATTEMPTS_KEY);
-            reloadingRef.current = false;
+            switchInProgressRef.current = false;
             setSignOutFailed(true);
           }
         });
     }
-  }, [address, isDisconnected, session]);
+  }, [address, isDisconnected, session, switchInProgressRef]);
 
   if (signOutFailed) {
     return (
@@ -200,7 +204,55 @@ function AuthSync() {
   return null;
 }
 
+// Prompt for SIWE automatically the first time a wallet connects, so users land
+// authenticated without having to hunt for a button. The manual "Sign In With
+// Ethereum" buttons remain as a backup (e.g. if the user dismisses this prompt).
+// We prompt at most once per connected address per page load.
+function AutoSiwe({
+  switchInProgressRef,
+}: {
+  switchInProgressRef: React.RefObject<boolean>;
+}) {
+  const { address, chain, isConnected } = useAccount();
+  const { status } = useSession();
+  const { handleSignIn } = useSiwe();
+  const promptedAddressRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    // No wallet connected — reset so a later (re)connect prompts again.
+    if (!isConnected || !address) {
+      promptedAddressRef.current = null;
+      return;
+    }
+    // Wait until the chain and the session state are known before deciding.
+    if (!chain || status === "loading") return;
+    // Already signed in. During a wallet switch the session still belongs to the
+    // previous address; AuthSync handles that case (sign out + reload), so we
+    // stay out of its way here.
+    if (status === "authenticated") return;
+    // AuthSync is mid wallet-switch: it has signed out (status is no longer
+    // "authenticated") and is about to reload the page. Prompting now would
+    // flash a SIWE popup that the reload immediately tears down, so defer to it.
+    if (switchInProgressRef.current) return;
+    // Only auto-prompt once per address; a rejection falls back to the buttons.
+    if (promptedAddressRef.current === address) return;
+
+    promptedAddressRef.current = address;
+    // Fire-and-forget on purpose: handleSignIn drives the wallet/SIWE flow and
+    // never updates this component's state, so there's nothing to abort or
+    // clean up if AutoSiwe unmounts mid-flow.
+    handleSignIn();
+  }, [address, chain, isConnected, status, handleSignIn, switchInProgressRef]);
+
+  return null;
+}
+
 export default function Providers({ children }: { children: React.ReactNode }) {
+  // Written by AuthSync while a wallet-switch sign-out + reload is in flight and
+  // read by AutoSiwe, so the auto-prompt doesn't fire in the brief window before
+  // the reload lands. A ref (not state) keeps the signal out of the render path.
+  const switchInProgressRef = useRef(false);
+
   useEffect(() => {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
       api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -220,7 +272,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <WagmiProvider config={config}>
         <QueryClientProvider client={queryClient}>
           <SessionProvider>
-            <AuthSync />
+            <AuthSync switchInProgressRef={switchInProgressRef} />
+            <AutoSiwe switchInProgressRef={switchInProgressRef} />
             <ConsentGate />
             <RainbowKitWithInitialChain>
               <PostHogProvider client={posthog}>
