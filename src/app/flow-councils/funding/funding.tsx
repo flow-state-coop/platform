@@ -38,6 +38,7 @@ import { TransactionCall } from "@/types/transactionCall";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 import { truncateStr, waitForReceipt } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import useFlowingAmount from "@/hooks/flowingAmount";
 import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useSuperTokenType from "@/hooks/superTokenType";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
@@ -68,6 +69,8 @@ const SF_SENDER_OUTFLOWS_QUERY = gql`
         receiver {
           id
         }
+        streamedUntilUpdatedAt
+        updatedAtTimestamp
         currentFlowRate
       }
     }
@@ -85,6 +88,12 @@ function formatMonthlyForInput(monthlyWei: bigint): string {
   const half = PRECISION_DIVISOR / 2n;
   const rounded = ((monthlyWei + half) / PRECISION_DIVISOR) * PRECISION_DIVISOR;
   return formatUnits(rounded, 18);
+}
+
+function formatTokenAmount(wei: bigint, maxDigits = 6): string {
+  return Number(formatUnits(wei, 18)).toLocaleString(undefined, {
+    maximumFractionDigits: maxDigits,
+  });
 }
 
 function SuccessCheckmark() {
@@ -176,15 +185,32 @@ export default function Funding(props: FundingProps) {
     pollInterval: 10000,
   });
 
+  const sponsoredOutflow = useMemo<{
+    streamedUntilUpdatedAt: string;
+    updatedAtTimestamp: number;
+    currentFlowRate: string;
+  } | null>(() => {
+    if (!address || !acceptedToken || !splitterAddress) return null;
+    if (!senderOutflowsRes) return null;
+    return (
+      senderOutflowsRes.account?.outflows?.find(
+        (o: { receiver: { id: string } }) =>
+          o.receiver.id === splitterAddress.toLowerCase(),
+      ) ?? null
+    );
+  }, [senderOutflowsRes, address, acceptedToken, splitterAddress]);
+
   const currentFlowRate = useMemo<bigint | null>(() => {
     if (!address || !acceptedToken || !splitterAddress) return null;
     if (!senderOutflowsRes) return null;
-    const outflow = senderOutflowsRes.account?.outflows?.find(
-      (o: { receiver: { id: string }; currentFlowRate: string }) =>
-        o.receiver.id === splitterAddress.toLowerCase(),
-    );
-    return outflow ? BigInt(outflow.currentFlowRate) : 0n;
-  }, [senderOutflowsRes, address, acceptedToken, splitterAddress]);
+    return sponsoredOutflow ? BigInt(sponsoredOutflow.currentFlowRate) : 0n;
+  }, [
+    senderOutflowsRes,
+    sponsoredOutflow,
+    address,
+    acceptedToken,
+    splitterAddress,
+  ]);
 
   const { balanceUntilUpdatedAt: adminBalanceRaw } = useSuperTokenBalanceOfNow({
     token: acceptedToken ?? undefined,
@@ -282,6 +308,48 @@ export default function Funding(props: FundingProps) {
     if (additionalFlowRate === 0n || !liquidationPeriod) return 0n;
     return additionalFlowRate * liquidationPeriod;
   }, [additionalFlowRate, liquidationPeriod]);
+
+  // ─── Projected Funding (read-only estimate) ───
+  // Total already streamed by this wallet to the splitter, animated.
+  const sponsoredStreamedUntilUpdatedAt = BigInt(
+    sponsoredOutflow?.streamedUntilUpdatedAt ?? 0,
+  );
+  const currentSponsored = useFlowingAmount(
+    sponsoredStreamedUntilUpdatedAt,
+    sponsoredOutflow?.updatedAtTimestamp ?? 0,
+    currentFlowRate ?? 0n,
+  );
+
+  // Time left until the round closes. `null` when there is no end date set.
+  // Anchored on `roundEndsAt` so it does not recompute on animation frames.
+  const remainingSeconds = useMemo<bigint | null>(() => {
+    if (!roundEndsAt || roundEndsAt === 0n) return null;
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    const remaining = roundEndsAt - now;
+    return remaining > 0n ? remaining : 0n;
+  }, [roundEndsAt]);
+
+  // Snapshot of total streamed once at the pending rate over the remaining
+  // duration. Memoized (not animated) so this value stays put — the spec
+  // requires a static projection, not a dancing balance.
+  const projectedSponsored = useMemo<bigint | null>(() => {
+    if (remainingSeconds === null) return null;
+    const updatedAt = sponsoredOutflow?.updatedAtTimestamp ?? 0;
+    const rate = currentFlowRate ?? 0n;
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    const elapsed = updatedAt ? now - BigInt(updatedAt) : 0n;
+    const streamedSoFar =
+      elapsed > 0n
+        ? sponsoredStreamedUntilUpdatedAt + rate * elapsed
+        : sponsoredStreamedUntilUpdatedAt;
+    return streamedSoFar + streamFlowRate * remainingSeconds;
+  }, [
+    remainingSeconds,
+    streamFlowRate,
+    currentFlowRate,
+    sponsoredOutflow,
+    sponsoredStreamedUntilUpdatedAt,
+  ]);
 
   const isStreamUpdate = (currentFlowRate ?? 0n) > 0n;
   const streamFlowRateUnchanged =
@@ -1154,6 +1222,69 @@ export default function Funding(props: FundingProps) {
                   />
                 </Form.Group>
               )}
+              <Stack
+                direction="vertical"
+                gap={2}
+                className="bg-white rounded-4 p-3"
+              >
+                <Card.Text className="mb-0 fw-semi-bold">
+                  Projected Funding
+                </Card.Text>
+                <Stack
+                  direction="horizontal"
+                  className="justify-content-between"
+                >
+                  <span className="text-info fw-semi-bold">
+                    Remaining duration
+                  </span>
+                  <span className="fw-semi-bold">
+                    {remainingSeconds === null
+                      ? "No end date"
+                      : remainingSeconds === 0n
+                        ? "Round ended"
+                        : `${(Number(remainingSeconds) / 86400).toLocaleString(
+                            undefined,
+                            { maximumFractionDigits: 1 },
+                          )} days`}
+                  </span>
+                </Stack>
+                <Stack
+                  direction="horizontal"
+                  className="justify-content-between"
+                >
+                  <span className="text-info fw-semi-bold">Sponsored rate</span>
+                  <span className="fw-semi-bold">
+                    {`${formatTokenAmount(
+                      streamFlowRate * BigInt(SECONDS_IN_MONTH),
+                      4,
+                    )} ${tokenSymbol}/mo`}
+                  </span>
+                </Stack>
+                <Stack
+                  direction="horizontal"
+                  className="justify-content-between"
+                >
+                  <span className="text-info fw-semi-bold">
+                    Current sponsored
+                  </span>
+                  <span className="fw-semi-bold">
+                    {`${formatTokenAmount(currentSponsored)} ${tokenSymbol}`}
+                  </span>
+                </Stack>
+                <Stack
+                  direction="horizontal"
+                  className="justify-content-between"
+                >
+                  <span className="text-info fw-semi-bold">
+                    Projected sponsored
+                  </span>
+                  <span className="fw-semi-bold">
+                    {projectedSponsored === null
+                      ? "—"
+                      : `${formatTokenAmount(projectedSponsored, 4)} ${tokenSymbol}`}
+                  </span>
+                </Stack>
+              </Stack>
               {streamWrapExceedsUnderlying ? (
                 <Alert variant="danger" className="mb-0 fw-semi-bold">
                   Wrap amount exceeds your underlying balance.
