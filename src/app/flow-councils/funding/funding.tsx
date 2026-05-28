@@ -24,6 +24,7 @@ import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
 import { hostAddress } from "@sfpro/sdk/abi/core";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
+import InfoTooltip from "@/components/InfoTooltip";
 import { getApolloClient } from "@/lib/apollo";
 import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
 import { superAppSplitterAbi } from "@/lib/abi/superAppSplitter";
@@ -201,8 +202,8 @@ export default function Funding(props: FundingProps) {
   }, [senderOutflowsRes, address, acceptedToken, splitterAddress]);
 
   const currentFlowRate = useMemo<bigint | null>(() => {
-    if (!address || !acceptedToken || !splitterAddress) return null;
-    if (!senderOutflowsRes) return null;
+    if (!address || !acceptedToken || !splitterAddress || !senderOutflowsRes)
+      return null;
     return sponsoredOutflow ? BigInt(sponsoredOutflow.currentFlowRate) : 0n;
   }, [
     senderOutflowsRes,
@@ -355,12 +356,15 @@ export default function Funding(props: FundingProps) {
     if (remainingSeconds === null) return null;
     const updatedAt = sponsoredOutflow?.updatedAtTimestamp ?? 0;
     const rate = currentFlowRate ?? 0n;
-    const elapsed = updatedAt ? BigInt(nowSeconds) - BigInt(updatedAt) : 0n;
-    const streamedSoFar =
-      elapsed > 0n
+    const streamedSoFarAt = (t: bigint) => {
+      const elapsed = updatedAt ? t - BigInt(updatedAt) : 0n;
+      return elapsed > 0n
         ? sponsoredStreamedUntilUpdatedAt + rate * elapsed
         : sponsoredStreamedUntilUpdatedAt;
-    return streamedSoFar + streamFlowRate * remainingSeconds;
+    };
+    return (
+      streamedSoFarAt(BigInt(nowSeconds)) + streamFlowRate * remainingSeconds
+    );
   }, [
     remainingSeconds,
     nowSeconds,
@@ -1278,10 +1282,18 @@ export default function Funding(props: FundingProps) {
                   <span className="fw-semi-bold">
                     {!projectedFundingReady
                       ? "—"
-                      : `${formatTokenAmount(
-                          streamFlowRate * BigInt(SECONDS_IN_MONTH),
-                          4,
-                        )} ${tokenSymbol}/mo`}
+                      : isStreamUpdate && additionalFlowRate > 0n
+                        ? `${formatTokenAmount(
+                            (currentFlowRate ?? 0n) * BigInt(SECONDS_IN_MONTH),
+                            4,
+                          )} + ${formatTokenAmount(
+                            additionalFlowRate * BigInt(SECONDS_IN_MONTH),
+                            4,
+                          )} ${tokenSymbol}/mo`
+                        : `${formatTokenAmount(
+                            streamFlowRate * BigInt(SECONDS_IN_MONTH),
+                            4,
+                          )} ${tokenSymbol}/mo`}
                   </span>
                 </Stack>
                 <Stack
@@ -1301,8 +1313,27 @@ export default function Funding(props: FundingProps) {
                   direction="horizontal"
                   className="justify-content-between"
                 >
-                  <span className="text-info fw-semi-bold">
+                  <span className="text-info fw-semi-bold d-flex align-items-center gap-1">
                     Projected sponsored
+                    <InfoTooltip
+                      position={{ top: true }}
+                      content={
+                        <>
+                          Your total streamed to the round when it ends, if you
+                          submit this rate now. The amount already streamed
+                          keeps accruing at your current rate; the remaining
+                          duration uses the new rate above.
+                        </>
+                      }
+                      target={
+                        <NextImage
+                          src="/info.svg"
+                          alt="More info"
+                          width={14}
+                          height={14}
+                        />
+                      }
+                    />
                   </span>
                   <span className="fw-semi-bold">
                     {!projectedFundingReady || projectedSponsored === null
