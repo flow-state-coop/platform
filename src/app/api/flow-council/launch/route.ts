@@ -29,6 +29,7 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return new Response(
         JSON.stringify({ success: false, error: "Invalid request" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 

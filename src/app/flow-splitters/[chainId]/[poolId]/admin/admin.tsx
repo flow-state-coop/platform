@@ -33,7 +33,7 @@ import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { isNumber, truncateStr } from "@/lib/utils";
-import { parseListed } from "@/lib/listedMetadata";
+import { parseListed, serializeListed } from "@/lib/listedMetadata";
 
 type AdminProps = {
   chainId: number;
@@ -484,32 +484,14 @@ export default function Admin(props: AdminProps) {
       setListedError("");
       setListedLoading(true);
 
-      // Preserve any other structured fields already in the metadata JSON and
-      // overwrite only `listed`. Legacy free-form (non-JSON) metadata has
-      // nothing to preserve and is replaced. The `"listed":<bool>` substring is
-      // always present, so the future subgraph metadata_contains filter matches.
-      let metadataObj: Record<string, unknown> = {};
-      try {
-        const parsed = JSON.parse(pool?.metadata ?? "");
-        if (
-          typeof parsed === "object" &&
-          parsed !== null &&
-          !Array.isArray(parsed)
-        ) {
-          metadataObj = parsed;
-        }
-      } catch {
-        // legacy free-form metadata — nothing to preserve
-      }
-
       const hash = await writeContract(wagmiConfig, {
         address: network.flowSplitter,
         abi: flowSplitterAbi,
         functionName: "updatePoolMetadata",
-        args: [
-          BigInt(poolId),
-          JSON.stringify({ ...metadataObj, listed: poolConfig.listed }),
-        ],
+        // serializeListed writes the canonical single-key blob — same as the
+        // create path (launch.tsx) and the helper's contract. Any legacy
+        // free-form metadata is replaced; only `listed` is stored.
+        args: [BigInt(poolId), serializeListed(poolConfig.listed)],
       });
 
       await waitForReceipt(publicClient, hash);
