@@ -7,6 +7,7 @@ import { useAccount, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
+import FormCheck from "react-bootstrap/FormCheck";
 import Toast from "react-bootstrap/Toast";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
@@ -58,6 +59,7 @@ type RoundDetails = {
   name: string;
   description: string;
   logoUrl: string;
+  listed: boolean;
 };
 
 export default function RoundMetadata(props: RoundMetadataProps) {
@@ -67,6 +69,7 @@ export default function RoundMetadata(props: RoundMetadataProps) {
     name: "",
     description: "",
     logoUrl: "",
+    listed: false,
   });
   const [logoBlob, setLogoBlob] = useState<Blob | null>(null);
   const [logoError, setLogoError] = useState("");
@@ -108,6 +111,7 @@ export default function RoundMetadata(props: RoundMetadataProps) {
             name: details?.name ?? "",
             description: details?.description ?? "",
             logoUrl: details?.logoUrl ?? "",
+            listed: details?.listed === true,
           });
           setRoundExists(true);
         }
@@ -167,6 +171,7 @@ export default function RoundMetadata(props: RoundMetadataProps) {
           name: roundDetails.name,
           description: roundDetails.description,
           logoUrl,
+          listed: roundDetails.listed,
         }),
       });
 
@@ -325,6 +330,45 @@ export default function RoundMetadata(props: RoundMetadataProps) {
                     </>
                   )
                 )}
+              </Stack>
+            </Form.Group>
+            <Form.Group className="d-flex flex-column mt-3">
+              <Form.Label className="fs-lg fw-semi-bold">
+                Discovery Visibility
+              </Form.Label>
+              <Card.Text className="m-0 mb-2 text-info small">
+                Listed rounds may be surfaced on the Explore page. Unlisted
+                rounds stay accessible via direct link.
+              </Card.Text>
+              <Stack direction="horizontal" gap={5}>
+                <FormCheck type="radio">
+                  <FormCheck.Input
+                    type="radio"
+                    name="discovery-visibility"
+                    checked={!roundDetails.listed}
+                    disabled={!session || session.address !== address}
+                    onChange={() =>
+                      setRoundDetails({ ...roundDetails, listed: false })
+                    }
+                  />
+                  <FormCheck.Label className="fw-semi-bold">
+                    Unlisted
+                  </FormCheck.Label>
+                </FormCheck>
+                <FormCheck type="radio">
+                  <FormCheck.Input
+                    type="radio"
+                    name="discovery-visibility"
+                    checked={!!roundDetails.listed}
+                    disabled={!session || session.address !== address}
+                    onChange={() =>
+                      setRoundDetails({ ...roundDetails, listed: true })
+                    }
+                  />
+                  <FormCheck.Label className="fw-semi-bold">
+                    Listed
+                  </FormCheck.Label>
+                </FormCheck>
               </Stack>
             </Form.Group>
           </Card.Body>

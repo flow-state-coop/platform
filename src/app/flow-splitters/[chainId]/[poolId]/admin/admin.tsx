@@ -33,6 +33,7 @@ import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { isNumber, truncateStr } from "@/lib/utils";
+import { parseListed, serializeListed } from "@/lib/listedMetadata";
 
 type AdminProps = {
   chainId: number;
@@ -42,6 +43,7 @@ type AdminProps = {
 type PoolConfig = {
   transferableUnits: boolean;
   immutable: boolean;
+  listed: boolean;
 };
 
 type AdminEntry = { address: string; validationError: string };
@@ -54,6 +56,7 @@ const FLOW_SPLITTER_POOL_QUERY = gql`
       name
       symbol
       token
+      metadata
       poolAdmins {
         address
       }
@@ -91,6 +94,7 @@ export default function Admin(props: AdminProps) {
   const [poolConfig, setPoolConfig] = useState<PoolConfig>({
     transferableUnits: false,
     immutable: false,
+    listed: false,
   });
   const [adminsEntry, setAdminsEntry] = useState<AdminEntry[]>([
     { address: "", validationError: "" },
@@ -102,6 +106,12 @@ export default function Admin(props: AdminProps) {
   const [transactionSuccess, setTransactionSuccess] = useState("");
   const [transactionError, setTransactionError] = useState("");
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
+  const [listedLoading, setListedLoading] = useState(false);
+  const [listedError, setListedError] = useState("");
+  // The listed value currently committed on-chain, used to detect unsaved
+  // changes for the Save Visibility button (kept in sync after a save so the
+  // button disables immediately, without waiting for the next subgraph poll).
+  const [committedListed, setCommittedListed] = useState(false);
 
   const { isMobile } = useMediaQuery();
   const { data: walletClient } = useWalletClient();
@@ -251,6 +261,13 @@ export default function Admin(props: AdminProps) {
           }),
         );
       }
+
+      // Initialize the listed toggle from the pool's on-chain metadata.
+      // parseListed defends against legacy free-form metadata (e.g. a bare
+      // label string) — anything not `{"listed":true}` reads as unlisted.
+      const listed = parseListed(pool?.metadata);
+      setPoolConfig((prev) => ({ ...prev, listed }));
+      setCommittedListed(listed);
     })();
   }, [flowSplitterPoolQueryLoading, pool, poolAdmins]);
 
@@ -438,7 +455,10 @@ export default function Admin(props: AdminProps) {
                     return { account: adminAddress, status: BigInt(1) };
                   }),
                 ),
-          "",
+          // Pass the current on-chain metadata through so a members/admins
+          // edit never clobbers the listed flag (the dedicated visibility
+          // action below owns metadata changes).
+          pool?.metadata ?? "",
         ],
       });
 
@@ -452,6 +472,38 @@ export default function Admin(props: AdminProps) {
 
       setTransactionError("Transaction Error");
       setIsTransactionLoading(false);
+    }
+  };
+
+  const handleUpdateMetadata = async () => {
+    if (!network || !address || !publicClient) {
+      return;
+    }
+
+    try {
+      setListedError("");
+      setListedLoading(true);
+
+      const hash = await writeContract(wagmiConfig, {
+        address: network.flowSplitter,
+        abi: flowSplitterAbi,
+        functionName: "updatePoolMetadata",
+        // serializeListed writes the canonical single-key blob — same as the
+        // create path (launch.tsx) and the helper's contract. Any legacy
+        // free-form metadata is replaced; only `listed` is stored.
+        args: [BigInt(poolId), serializeListed(poolConfig.listed)],
+      });
+
+      await waitForReceipt(publicClient, hash);
+
+      setListedLoading(false);
+      setCommittedListed(poolConfig.listed);
+      setTransactionSuccess("Visibility Updated Successfully");
+    } catch (err) {
+      console.error(err);
+
+      setListedError("Transaction Error");
+      setListedLoading(false);
     }
   };
 
@@ -1139,6 +1191,93 @@ export default function Admin(props: AdminProps) {
                 >
                   Template
                 </Card.Link>
+              </Card.Body>
+            </Card>
+            <Card className="bg-lace-100 rounded-4 border-0 mt-8 p-4">
+              <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-6 text-secondary fw-semi-bold">
+                Discovery Visibility
+                <InfoTooltip
+                  position={{ top: true }}
+                  target={
+                    <Image
+                      src="/info.svg"
+                      alt="Info"
+                      width={18}
+                      height={18}
+                      className="align-top"
+                    />
+                  }
+                  content={
+                    <p className="m-0 p-2">
+                      Listed Flow Splitters may be surfaced on the Explore page.
+                      Unlisted ones stay accessible via direct link. Changing
+                      this requires an on-chain transaction.
+                    </p>
+                  }
+                />
+              </Card.Header>
+              <Card.Body className="p-0 mt-4">
+                <Form.Group>
+                  <Stack direction="horizontal" gap={5}>
+                    <FormCheck type="radio">
+                      <FormCheck.Input
+                        type="radio"
+                        name="discovery-visibility"
+                        checked={!poolConfig.listed}
+                        disabled={!isAdmin}
+                        onChange={() =>
+                          setPoolConfig({ ...poolConfig, listed: false })
+                        }
+                      />
+                      <FormCheck.Label className="fw-semi-bold">
+                        Unlisted
+                      </FormCheck.Label>
+                    </FormCheck>
+                    <FormCheck type="radio">
+                      <FormCheck.Input
+                        type="radio"
+                        name="discovery-visibility"
+                        checked={!!poolConfig.listed}
+                        disabled={!isAdmin}
+                        onChange={() =>
+                          setPoolConfig({ ...poolConfig, listed: true })
+                        }
+                      />
+                      <FormCheck.Label className="fw-semi-bold">
+                        Listed
+                      </FormCheck.Label>
+                    </FormCheck>
+                  </Stack>
+                  <Button
+                    disabled={
+                      !isAdmin ||
+                      listedLoading ||
+                      poolConfig.listed === committedListed
+                    }
+                    className="mt-4 px-8 py-3 rounded-4 fw-semi-bold"
+                    onClick={() =>
+                      !address && openConnectModal
+                        ? openConnectModal()
+                        : connectedChain?.id !== chainId
+                          ? switchChain({ chainId })
+                          : handleUpdateMetadata()
+                    }
+                  >
+                    {listedLoading ? (
+                      <Spinner size="sm" className="ms-2" />
+                    ) : (
+                      "Save Visibility"
+                    )}
+                  </Button>
+                  {listedError ? (
+                    <Alert
+                      variant="danger"
+                      className="w-100 mt-4 p-4 fw-semi-bold"
+                    >
+                      {listedError}
+                    </Alert>
+                  ) : null}
+                </Form.Group>
               </Card.Body>
             </Card>
             <Stack direction="vertical" className="mt-8">

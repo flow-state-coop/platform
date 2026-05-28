@@ -28,6 +28,7 @@ const roundPatchSchema = z.object({
     )
     .optional()
     .or(z.literal("")),
+  listed: z.boolean().optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -120,7 +121,7 @@ export async function PATCH(request: Request) {
         { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
-    const { name, description, logoUrl } = parsed.data;
+    const { name, description, logoUrl, listed } = parsed.data;
 
     const round = await db
       .selectFrom("rounds")
@@ -150,7 +151,14 @@ export async function PATCH(request: Request) {
         ? JSON.parse(round.details)
         : (round.details ?? {});
 
-    const mergedDetails = { ...existingDetails, name, description, logoUrl };
+    const mergedDetails = {
+      ...existingDetails,
+      name,
+      description,
+      logoUrl,
+      // Omitting `listed` from the PATCH leaves the existing value untouched.
+      ...(listed !== undefined ? { listed } : {}),
+    };
 
     const updatedRound = await db
       .updateTable("rounds")

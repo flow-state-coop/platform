@@ -1,22 +1,47 @@
 import { getServerSession } from "next-auth/next";
+import { z } from "zod";
 import { createPublicClient, http, parseAbi, Address, isAddress } from "viem";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { networks, getViemChain } from "@/lib/networks";
 import { DEFAULT_ADMIN_ROLE } from "@/app/flow-councils/lib/constants";
 
+// Type-validate the body so `listed` is handled the same way as the rounds
+// PATCH route (z.boolean().optional()). Address/network/name are still checked
+// below with their existing business-rule error messages, so this schema only
+// enforces shapes and stays permissive on the optional metadata fields.
+const launchSchema = z.object({
+  chainId: z.number(),
+  flowCouncilAddress: z.string(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  logoUrl: z.string().optional(),
+  listed: z.boolean().optional(),
+  superappSplitterAddress: z.string().optional(),
+});
+
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    const parsed = launchSchema.safeParse(await request.json());
+
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid request" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
     const {
       chainId,
       flowCouncilAddress,
       name,
       description,
       logoUrl,
+      listed,
       superappSplitterAddress,
-    } = await request.json();
+    } = parsed.data;
 
     const session = await getServerSession(authOptions);
 
@@ -87,7 +112,14 @@ export async function POST(request: Request) {
           chainId,
           flowCouncilAddress: flowCouncilAddress.toLowerCase(),
           superappSplitterAddress: validatedSplitterAddress,
-          details: JSON.stringify({ name, description, logoUrl }),
+          details: JSON.stringify({
+            name,
+            description,
+            logoUrl,
+            // Omitting `listed` from the body leaves the new round unlisted
+            // (missing/non-true = unlisted), mirroring the rounds PATCH route.
+            ...(listed !== undefined ? { listed } : {}),
+          }),
         })
         .returning([
           "id",
