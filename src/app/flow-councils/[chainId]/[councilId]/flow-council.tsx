@@ -497,6 +497,7 @@ export default function FlowCouncil({
             network={network}
             poolAddress={distributionPool?.id ?? "0x"}
             isConnected={!shouldConnect}
+            onSuccess={() => setShowConnectionModal(false)}
           />
         </Modal.Footer>
       </Modal>

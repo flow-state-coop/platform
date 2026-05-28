@@ -4,6 +4,14 @@ on:
   push:
     branches: [main]
 
+# PR and main test jobs share one Neon test database (see tests/setup/global.ts).
+# Serialize them into a single global concurrency group so one run's resetDb
+# `truncate ... cascade` can't wipe another in-flight run's seed data mid-test
+# (which surfaces as FK-constraint violations). Don't cancel an in-progress run.
+concurrency:
+  group: shared-test-db
+  cancel-in-progress: false
+
 jobs:
   test:
     runs-on: ubuntu-latest

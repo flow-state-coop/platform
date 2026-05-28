@@ -540,6 +540,7 @@ export default function FlowGuild(props: FlowGuildProps) {
             network={network}
             poolAddress={pool?.poolAddress}
             isConnected={!shouldConnect}
+            onSuccess={() => setShowConnectionModal(false)}
           />
         </Modal.Footer>
       </Modal>
