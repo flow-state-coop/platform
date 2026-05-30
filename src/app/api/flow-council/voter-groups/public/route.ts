@@ -77,6 +77,6 @@ export async function GET(request: Request) {
     );
   } catch (err) {
     console.error(err);
-    return errorResponse(err);
+    return errorResponse("There was an error, please try again later");
   }
 }
