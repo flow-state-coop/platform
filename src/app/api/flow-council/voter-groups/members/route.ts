@@ -180,6 +180,13 @@ export async function DELETE(request: Request) {
       return errorResponse("No valid addresses", 400);
     }
 
+    if (lowered.length > MAX_BATCH_ADDRESSES) {
+      return errorResponse(
+        `Too many addresses (max ${MAX_BATCH_ADDRESSES} per request)`,
+        400,
+      );
+    }
+
     await db
       .deleteFrom("voterGroupMembers")
       .where("roundId", "=", auth.roundId)

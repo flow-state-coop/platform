@@ -17,7 +17,10 @@ import InfoTooltip from "@/components/InfoTooltip";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
-import { useChunkedTxQueue } from "@/app/flow-councils/hooks/useChunkedTxQueue";
+import {
+  useChunkedTxQueue,
+  splitIntoChunks,
+} from "@/app/flow-councils/hooks/useChunkedTxQueue";
 import {
   computeCastVotes,
   shareOfVotes,
@@ -56,6 +59,11 @@ type SubgraphVoter = {
 };
 
 const CELO_CHAIN_ID = 42220;
+
+// Chunk size for the deferred DB membership delete. Kept well under the API's
+// per-request cap so removing a large group (e.g. the auto-migrated Default
+// group) never trips the limit.
+const DELETE_BATCH = 1000;
 
 // Group detail needs the same voter list (for metrics) plus the managers list
 // (for isManager) the overview uses, so it runs the same query.
@@ -139,7 +147,10 @@ export default function GroupDetail(props: GroupDetailProps) {
     [q],
   );
 
-  const qForChildren = useMemo(() => ({ ...q, startQueue }), [q, startQueue]);
+  // Not memoized on purpose: `q` is a fresh object every render, so any memo
+  // here would recompute every render anyway (and children must see live queue
+  // state like isPending/completedCount).
+  const qForChildren = { ...q, startQueue };
 
   const isCelo = chainId === CELO_CHAIN_ID;
 
@@ -292,11 +303,15 @@ export default function GroupDetail(props: GroupDetailProps) {
         pendingRemovalRef.current = [];
 
         try {
-          await fetch("/api/flow-council/voter-groups/members", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chainId, councilId, addresses: removed }),
-          });
+          // Chunked so a very large group removal stays under the endpoint's
+          // per-request address cap.
+          for (const batch of splitIntoChunks(removed, DELETE_BATCH)) {
+            await fetch("/api/flow-council/voter-groups/members", {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chainId, councilId, addresses: batch }),
+            });
+          }
         } catch (err) {
           console.error(err);
         }
