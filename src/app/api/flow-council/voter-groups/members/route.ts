@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     );
   } catch (err) {
     console.error(err);
-    return errorResponse(err);
+    return errorResponse("There was an error, please try again later");
   }
 }
 
@@ -145,7 +145,7 @@ export async function PATCH(request: Request) {
     return new Response(JSON.stringify({ success: true }));
   } catch (err) {
     console.error(err);
-    return errorResponse(err);
+    return errorResponse("There was an error, please try again later");
   }
 }
 
@@ -196,6 +196,6 @@ export async function DELETE(request: Request) {
     return new Response(JSON.stringify({ success: true }));
   } catch (err) {
     console.error(err);
-    return errorResponse(err);
+    return errorResponse("There was an error, please try again later");
   }
 }
