@@ -135,7 +135,8 @@ export async function PUT(request: Request) {
 
     // Transition 1: email change (treat null === null as no-change).
     const emailChanged =
-      currentRow !== undefined && normalizedEmail !== (currentRow.email ?? null);
+      currentRow !== undefined &&
+      normalizedEmail !== (currentRow.email ?? null);
 
     // Transition 2: consent revocation (had consent → explicit null).
     // `undefined` means "field omitted" — must NOT count as revocation, or any
@@ -188,7 +189,8 @@ export async function PUT(request: Request) {
       values.consentVersion = data.consentVersion;
     }
     if (data.notifyApplicationEligibility !== undefined) {
-      updateSet.notifyApplicationEligibility = data.notifyApplicationEligibility;
+      updateSet.notifyApplicationEligibility =
+        data.notifyApplicationEligibility;
       values.notifyApplicationEligibility = data.notifyApplicationEligibility;
     }
     if (data.notifyProjectChannels !== undefined) {
@@ -221,7 +223,8 @@ export async function PUT(request: Request) {
       // is ambiguous (target row vs. EXCLUDED tuple) and Postgres aborts with
       // 42702. `user_profiles.email_version` is the pre-update value, which
       // is what we want to increment.
-      updateSet.emailVersion = sql<number>`user_profiles.email_version + 1` as unknown as number;
+      updateSet.emailVersion =
+        sql<number>`user_profiles.email_version + 1` as unknown as number;
     }
 
     const profile = await db

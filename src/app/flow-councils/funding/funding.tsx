@@ -24,6 +24,7 @@ import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
 import { hostAddress } from "@sfpro/sdk/abi/core";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
+import InfoTooltip from "@/components/InfoTooltip";
 import { getApolloClient } from "@/lib/apollo";
 import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
 import { superAppSplitterAbi } from "@/lib/abi/superAppSplitter";
@@ -38,6 +39,7 @@ import { TransactionCall } from "@/types/transactionCall";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 import { truncateStr, waitForReceipt } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import useFlowingAmount from "@/hooks/flowingAmount";
 import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useSuperTokenType from "@/hooks/superTokenType";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
@@ -68,6 +70,8 @@ const SF_SENDER_OUTFLOWS_QUERY = gql`
         receiver {
           id
         }
+        streamedUntilUpdatedAt
+        updatedAtTimestamp
         currentFlowRate
       }
     }
@@ -85,6 +89,12 @@ function formatMonthlyForInput(monthlyWei: bigint): string {
   const half = PRECISION_DIVISOR / 2n;
   const rounded = ((monthlyWei + half) / PRECISION_DIVISOR) * PRECISION_DIVISOR;
   return formatUnits(rounded, 18);
+}
+
+function formatTokenAmount(wei: bigint, maxDigits = 6): string {
+  return Number(formatUnits(wei, 18)).toLocaleString(undefined, {
+    maximumFractionDigits: maxDigits,
+  });
 }
 
 function SuccessCheckmark() {
@@ -176,15 +186,32 @@ export default function Funding(props: FundingProps) {
     pollInterval: 10000,
   });
 
-  const currentFlowRate = useMemo<bigint | null>(() => {
+  const sponsoredOutflow = useMemo<{
+    streamedUntilUpdatedAt: string;
+    updatedAtTimestamp: number;
+    currentFlowRate: string;
+  } | null>(() => {
     if (!address || !acceptedToken || !splitterAddress) return null;
     if (!senderOutflowsRes) return null;
-    const outflow = senderOutflowsRes.account?.outflows?.find(
-      (o: { receiver: { id: string }; currentFlowRate: string }) =>
-        o.receiver.id === splitterAddress.toLowerCase(),
+    return (
+      senderOutflowsRes.account?.outflows?.find(
+        (o: { receiver: { id: string } }) =>
+          o.receiver.id === splitterAddress.toLowerCase(),
+      ) ?? null
     );
-    return outflow ? BigInt(outflow.currentFlowRate) : 0n;
   }, [senderOutflowsRes, address, acceptedToken, splitterAddress]);
+
+  const currentFlowRate = useMemo<bigint | null>(() => {
+    if (!address || !acceptedToken || !splitterAddress || !senderOutflowsRes)
+      return null;
+    return sponsoredOutflow ? BigInt(sponsoredOutflow.currentFlowRate) : 0n;
+  }, [
+    senderOutflowsRes,
+    sponsoredOutflow,
+    address,
+    acceptedToken,
+    splitterAddress,
+  ]);
 
   const { balanceUntilUpdatedAt: adminBalanceRaw } = useSuperTokenBalanceOfNow({
     token: acceptedToken ?? undefined,
@@ -282,6 +309,70 @@ export default function Funding(props: FundingProps) {
     if (additionalFlowRate === 0n || !liquidationPeriod) return 0n;
     return additionalFlowRate * liquidationPeriod;
   }, [additionalFlowRate, liquidationPeriod]);
+
+  // ─── Projected Funding (read-only estimate) ───
+  // Coarse clock so "Remaining duration" and the projection stay current
+  // without riding the requestAnimationFrame path (i.e. without dancing).
+  const [nowSeconds, setNowSeconds] = useState(() =>
+    Math.floor(Date.now() / 1000),
+  );
+  useEffect(() => {
+    const id = setInterval(
+      () => setNowSeconds(Math.floor(Date.now() / 1000)),
+      30_000,
+    );
+    return () => clearInterval(id);
+  }, []);
+
+  // The Projected Funding figures depend on subgraph data; until the
+  // sender-outflows query resolves (or a wallet connects) `currentFlowRate`
+  // is null. Gate the display on this to avoid a flash of zero values.
+  const projectedFundingReady = currentFlowRate !== null;
+
+  // Total already streamed by this wallet to the splitter, animated.
+  const sponsoredStreamedUntilUpdatedAt = useMemo(
+    () => BigInt(sponsoredOutflow?.streamedUntilUpdatedAt ?? 0),
+    [sponsoredOutflow],
+  );
+  const currentSponsored = useFlowingAmount(
+    sponsoredStreamedUntilUpdatedAt,
+    sponsoredOutflow?.updatedAtTimestamp ?? 0,
+    currentFlowRate ?? 0n,
+  );
+
+  // Time left until the round closes. `null` when there is no end date set.
+  const remainingSeconds = useMemo<bigint | null>(() => {
+    if (!roundEndsAt || roundEndsAt === 0n) return null;
+    const remaining = roundEndsAt - BigInt(nowSeconds);
+    return remaining > 0n ? remaining : 0n;
+  }, [roundEndsAt, nowSeconds]);
+
+  // Snapshot of the wallet's total streamed at round close. Memoized (not
+  // animated) so it stays put — the spec wants a static projection, not a
+  // dancing balance. Intentional rate switch: the already-streamed portion
+  // accrues at the current on-chain rate, while the remaining duration uses
+  // the pending input rate — i.e. "what my total becomes if I submit this".
+  const projectedSponsored = useMemo<bigint | null>(() => {
+    if (remainingSeconds === null) return null;
+    const updatedAt = sponsoredOutflow?.updatedAtTimestamp ?? 0;
+    const rate = currentFlowRate ?? 0n;
+    const streamedSoFarAt = (t: bigint) => {
+      const elapsed = updatedAt ? t - BigInt(updatedAt) : 0n;
+      return elapsed > 0n
+        ? sponsoredStreamedUntilUpdatedAt + rate * elapsed
+        : sponsoredStreamedUntilUpdatedAt;
+    };
+    return (
+      streamedSoFarAt(BigInt(nowSeconds)) + streamFlowRate * remainingSeconds
+    );
+  }, [
+    remainingSeconds,
+    nowSeconds,
+    streamFlowRate,
+    currentFlowRate,
+    sponsoredOutflow,
+    sponsoredStreamedUntilUpdatedAt,
+  ]);
 
   const isStreamUpdate = (currentFlowRate ?? 0n) > 0n;
   const streamFlowRateUnchanged =
@@ -1154,6 +1245,103 @@ export default function Funding(props: FundingProps) {
                   />
                 </Form.Group>
               )}
+              <Stack
+                direction="vertical"
+                gap={2}
+                className="bg-white rounded-4 p-3"
+              >
+                <Card.Text className="mb-0 fw-semi-bold">
+                  Projected Funding
+                </Card.Text>
+                <Stack
+                  direction="horizontal"
+                  className="justify-content-between"
+                >
+                  <span className="text-info fw-semi-bold">
+                    Remaining duration
+                  </span>
+                  <span className="fw-semi-bold">
+                    {roundStatus === "loading"
+                      ? "—"
+                      : remainingSeconds === null
+                        ? "No end date"
+                        : remainingSeconds === 0n
+                          ? "Round ended"
+                          : `${(
+                              Number(remainingSeconds) / 86400
+                            ).toLocaleString(undefined, {
+                              maximumFractionDigits: 1,
+                            })} days`}
+                  </span>
+                </Stack>
+                <Stack
+                  direction="horizontal"
+                  className="justify-content-between"
+                >
+                  <span className="text-info fw-semi-bold">Sponsored rate</span>
+                  <span className="fw-semi-bold">
+                    {!projectedFundingReady
+                      ? "—"
+                      : isStreamUpdate && additionalFlowRate > 0n
+                        ? `${formatTokenAmount(
+                            (currentFlowRate ?? 0n) * BigInt(SECONDS_IN_MONTH),
+                            4,
+                          )} + ${formatTokenAmount(
+                            additionalFlowRate * BigInt(SECONDS_IN_MONTH),
+                            4,
+                          )} ${tokenSymbol}/mo`
+                        : `${formatTokenAmount(
+                            streamFlowRate * BigInt(SECONDS_IN_MONTH),
+                            4,
+                          )} ${tokenSymbol}/mo`}
+                  </span>
+                </Stack>
+                <Stack
+                  direction="horizontal"
+                  className="justify-content-between"
+                >
+                  <span className="text-info fw-semi-bold">
+                    Current sponsored
+                  </span>
+                  <span className="fw-semi-bold">
+                    {!projectedFundingReady
+                      ? "—"
+                      : `${formatTokenAmount(currentSponsored)} ${tokenSymbol}`}
+                  </span>
+                </Stack>
+                <Stack
+                  direction="horizontal"
+                  className="justify-content-between"
+                >
+                  <span className="text-info fw-semi-bold d-flex align-items-center gap-1">
+                    Projected sponsored
+                    <InfoTooltip
+                      position={{ top: true }}
+                      content={
+                        <>
+                          Your total streamed to the round when it ends, if you
+                          submit this rate now. The amount already streamed
+                          keeps accruing at your current rate; the remaining
+                          duration uses the new rate above.
+                        </>
+                      }
+                      target={
+                        <NextImage
+                          src="/info.svg"
+                          alt="More info"
+                          width={14}
+                          height={14}
+                        />
+                      }
+                    />
+                  </span>
+                  <span className="fw-semi-bold">
+                    {!projectedFundingReady || projectedSponsored === null
+                      ? "—"
+                      : `${formatTokenAmount(projectedSponsored, 4)} ${tokenSymbol}`}
+                  </span>
+                </Stack>
+              </Stack>
               {streamWrapExceedsUnderlying ? (
                 <Alert variant="danger" className="mb-0 fw-semi-bold">
                   Wrap amount exceeds your underlying balance.

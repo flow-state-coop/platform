@@ -1,8 +1,5 @@
 import removeMarkdown from "remove-markdown";
-import {
-  sendPersonalizedEmail,
-  type PersonalizedRecipient,
-} from "./ses";
+import { sendPersonalizedEmail, type PersonalizedRecipient } from "./ses";
 import { db } from "./db";
 import { generateNotificationToken } from "@/lib/notificationToken";
 import type { NotificationCategory } from "@/lib/consent";
@@ -172,11 +169,7 @@ export async function resolveRoundAdminRecipients(
     .where("userProfiles.emailSuspendedAt", "is", null)
     .where(`userProfiles.${col}`, "=", true);
   if (excludeAddress) {
-    q = q.where(
-      "roundAdmins.adminAddress",
-      "!=",
-      excludeAddress.toLowerCase(),
-    );
+    q = q.where("roundAdmins.adminAddress", "!=", excludeAddress.toLowerCase());
   }
   const rows = await q.execute();
   return toResolvedRecipients(rows);
@@ -558,4 +551,3 @@ export async function getRoundDetails(roundId: number): Promise<{
     councilId: round.flowCouncilAddress,
   };
 }
-

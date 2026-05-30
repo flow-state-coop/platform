@@ -105,10 +105,8 @@ export default function Review(props: ReviewProps) {
     hasAcceptedCloseLiquidationWarning,
     setHasAcceptedCloseLiquidationWarning,
   ] = useState(false);
-  const [
-    hasAcceptedSplitterCapWarning,
-    setHasAcceptedSplitterCapWarning,
-  ] = useState(false);
+  const [hasAcceptedSplitterCapWarning, setHasAcceptedSplitterCapWarning] =
+    useState(false);
 
   const wrapAmountForDisplay =
     areTransactionsLoading && transactionDetailsSnapshot
