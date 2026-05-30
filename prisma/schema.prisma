@@ -42,6 +42,8 @@ model Round {
   admins                   RoundAdmin[]
   applications             Application[]
   messages                 Message[]
+  voterGroups              VoterGroup[]
+  voterGroupMembers        VoterGroupMember[]
 
   @@unique([chainId, flowCouncilAddress])
   @@map("rounds")
@@ -68,6 +70,34 @@ model RoundAdminEmail {
 
   @@unique([roundAdminId, email])
   @@map("round_admin_emails")
+}
+
+model VoterGroup {
+  id                 Int                @id @default(autoincrement())
+  roundId            Int                @map("round_id")
+  name               String             @db.VarChar(100)
+  eligibilityMethod  String             @map("eligibility_method") @db.VarChar(50)
+  defaultVotingPower Int                @default(10) @map("default_voting_power")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @default(now()) @updatedAt @map("updated_at")
+  round              Round              @relation(fields: [roundId], references: [id])
+  members            VoterGroupMember[]
+
+  @@unique([roundId, name])
+  @@map("voter_groups")
+}
+
+model VoterGroupMember {
+  id           Int        @id @default(autoincrement())
+  voterGroupId Int        @map("voter_group_id")
+  roundId      Int        @map("round_id")
+  address      String     @db.VarChar(42)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  voterGroup   VoterGroup @relation(fields: [voterGroupId], references: [id])
+  round        Round      @relation(fields: [roundId], references: [id])
+
+  @@unique([roundId, address])
+  @@map("voter_group_members")
 }
 
 model Project {

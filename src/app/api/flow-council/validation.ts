@@ -700,3 +700,24 @@ export function validateReactionEmoji(
   }
   return { success: true, data: result.data };
 }
+
+// ---------------------------------------------------------------------------
+// Voter group schemas
+// Spec: POST /api/flow-council/voter-groups — create a new group
+//       PATCH /api/flow-council/voter-groups — update group metadata (all fields optional)
+// ---------------------------------------------------------------------------
+
+// Spec: "name" 1–100 chars; "eligibilityMethod" enum ["manual","gooddollar"];
+//       "defaultVotingPower" integer 1–1_000_000
+export const voterGroupCreateSchema = z.object({
+  name: z.string().min(1).max(100),
+  eligibilityMethod: z.enum(["manual", "gooddollar"]),
+  defaultVotingPower: z.number().int().min(1).max(1_000_000),
+});
+
+// Spec: PATCH — partial update; each field still validated when present
+export const voterGroupUpdateSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  eligibilityMethod: z.enum(["manual", "gooddollar"]).optional(),
+  defaultVotingPower: z.number().int().min(1).max(1_000_000).optional(),
+});

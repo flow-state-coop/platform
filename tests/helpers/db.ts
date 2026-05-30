@@ -56,6 +56,8 @@ const TABLES_TO_RESET = [
   "project_managers",
   "projects",
   "user_profiles",
+  "voter_group_members",
+  "voter_groups",
   "round_admin_emails",
   "round_admins",
   "rounds",

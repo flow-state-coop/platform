@@ -1,11 +1,16 @@
-import { Address, createPublicClient, createWalletClient, http } from "viem";
+import {
+  Address,
+  createPublicClient,
+  createWalletClient,
+  http,
+  isAddress,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { db } from "../db";
+import { findRoundByCouncil } from "../auth";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks, getViemChain } from "@/lib/networks";
-import {
-  GOODBUILDERS_COUNCIL_ADDRESSES,
-  GOODDOLLAR_IDENTITY_ADDRESS,
-} from "@/app/flow-councils/lib/constants";
+import { GOODDOLLAR_IDENTITY_ADDRESS } from "@/app/flow-councils/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -19,23 +24,83 @@ const IDENTITY_ABI = [
   },
 ] as const;
 
+type GoodDollarGroup = { id: number; defaultVotingPower: number };
+
+const GOODDOLLAR_GROUP_CACHE_TTL = 60_000;
+const goodDollarGroupCache = new Map<
+  string,
+  { value: GoodDollarGroup | null; expiry: number }
+>();
+
+/**
+ * Resolve the "gooddollar"-eligibility voter group for a council, if one
+ * exists. Cached with a short TTL so the hot self-claim path avoids a DB
+ * round-trip on every request.
+ */
+async function getGoodDollarGroup(
+  roundId: number,
+): Promise<GoodDollarGroup | null> {
+  const cacheKey = String(roundId);
+  const cached = goodDollarGroupCache.get(cacheKey);
+
+  if (cached && cached.expiry > Date.now()) {
+    return cached.value;
+  }
+
+  const group = await db
+    .selectFrom("voterGroups")
+    .select(["id", "defaultVotingPower"])
+    .where("roundId", "=", roundId)
+    .where("eligibilityMethod", "=", "gooddollar")
+    .orderBy("id", "asc")
+    .executeTakeFirst();
+
+  const value: GoodDollarGroup | null = group
+    ? { id: group.id, defaultVotingPower: group.defaultVotingPower }
+    : null;
+
+  goodDollarGroupCache.set(cacheKey, {
+    value,
+    expiry: Date.now() + GOODDOLLAR_GROUP_CACHE_TTL,
+  });
+
+  return value;
+}
+
 export async function POST(request: Request) {
   try {
     const { address, chainId, councilId } = await request.json();
 
-    if (
-      !address ||
-      !chainId ||
-      !councilId ||
-      !GOODBUILDERS_COUNCIL_ADDRESSES.includes(councilId.toLowerCase())
-    ) {
+    if (!address || !chainId || !councilId) {
       return Response.json({ success: false, error: "Invalid request" });
+    }
+
+    // Validate both as real addresses before they reach a viem contract call or
+    // a DB insert — a non-address string would otherwise be written verbatim
+    // into voter_group_members (VARCHAR(42) accepts any short string).
+    if (!isAddress(address) || !isAddress(councilId)) {
+      return Response.json({ success: false, error: "Invalid address" });
     }
 
     const network = networks.find((network) => network.id === chainId);
 
     if (!network) {
       return Response.json({ success: false, error: "Wrong network" });
+    }
+
+    const round = await findRoundByCouncil(chainId, councilId);
+
+    if (!round) {
+      return Response.json({ success: false, error: "Council not found" });
+    }
+
+    const goodDollarGroup = await getGoodDollarGroup(round.id);
+
+    if (!goodDollarGroup) {
+      return Response.json({
+        success: false,
+        error: "GoodDollar eligibility is not enabled for this council",
+      });
     }
 
     const celoNetwork = networks.find((network) => network.id === 42220);
@@ -58,6 +123,25 @@ export async function POST(request: Request) {
       return Response.json({ success: false, error: "Not whitelisted" });
     }
 
+    // Record group membership. The UNIQUE(round_id, address) constraint means
+    // an address already in any group on this council yields 0 inserted rows,
+    // in which case we skip the onchain addVoter call entirely (single-group
+    // membership: the existing group wins).
+    const inserted = await db
+      .insertInto("voterGroupMembers")
+      .values({
+        voterGroupId: goodDollarGroup.id,
+        roundId: round.id,
+        address: (address as string).toLowerCase(),
+      })
+      .onConflict((oc) => oc.columns(["roundId", "address"]).doNothing())
+      .returning(["id"])
+      .executeTakeFirst();
+
+    if (!inserted) {
+      return Response.json({ success: true });
+    }
+
     const account = privateKeyToAccount(
       process.env.FLOW_STATE_ELIGIBILITY_PK as `0x${string}`,
     );
@@ -72,15 +156,33 @@ export async function POST(request: Request) {
       transport: http(network.rpcUrl),
     });
 
-    const hash = await walletClient.writeContract({
-      account,
-      address: councilId as Address,
-      abi: flowCouncilAbi,
-      functionName: "addVoter",
-      args: [address as Address, BigInt(10)],
-    });
+    try {
+      const hash = await walletClient.writeContract({
+        account,
+        address: councilId as Address,
+        abi: flowCouncilAbi,
+        functionName: "addVoter",
+        args: [address as Address, BigInt(goodDollarGroup.defaultVotingPower)],
+      });
 
-    await publicClient.waitForTransactionReceipt({ hash, confirmations: 3 });
+      await publicClient.waitForTransactionReceipt({ hash, confirmations: 3 });
+    } catch (err) {
+      const errorMessage =
+        (err as Error)?.message ?? "There was an error, please try again later";
+
+      // Already added onchain: the membership row is recorded, treat as success.
+      if (errorMessage.includes("ALREADY_ADDED")) {
+        return Response.json({ success: true });
+      }
+
+      // Roll back the membership row so a retry can re-attempt the onchain call.
+      await db
+        .deleteFrom("voterGroupMembers")
+        .where("id", "=", inserted.id)
+        .execute();
+
+      return Response.json({ success: false, error: errorMessage });
+    }
 
     return Response.json({ success: true });
   } catch (err) {
