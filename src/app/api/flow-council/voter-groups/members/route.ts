@@ -1,64 +1,22 @@
 import { isAddress } from "viem";
-import { getServerSession } from "next-auth/next";
 import { db } from "../../db";
-import { networks } from "@/lib/networks";
 import { errorResponse } from "../../../utils";
-import { authOptions } from "../../../auth/[...nextauth]/route";
-import { findRoundByCouncil, hasOnChainRole } from "../../auth";
+import { authorizeCouncilManager } from "../../auth";
 
 export const dynamic = "force-dynamic";
 
-async function authorize(
-  chainId: unknown,
-  councilId: unknown,
-): Promise<
-  { ok: true; roundId: number } | { ok: false; error: string; status: number }
-> {
-  const network = networks.find((n) => n.id === chainId);
-
-  if (!network) {
-    return { ok: false, error: "Wrong network", status: 400 };
-  }
-
-  if (typeof councilId !== "string" || !isAddress(councilId)) {
-    return { ok: false, error: "Invalid council ID", status: 400 };
-  }
-
-  const session = await getServerSession(authOptions);
-
-  if (!session?.address) {
-    return { ok: false, error: "Unauthenticated", status: 401 };
-  }
-
-  const round = await findRoundByCouncil(chainId as number, councilId);
-
-  if (!round) {
-    return { ok: false, error: "Round not found", status: 404 };
-  }
-
-  const hasRole = await hasOnChainRole(
-    chainId as number,
-    councilId,
-    session.address,
-  );
-
-  if (!hasRole) {
-    return {
-      ok: false,
-      error: "Not authorized to manage this council",
-      status: 403,
-    };
-  }
-
-  return { ok: true, roundId: round.id };
-}
+// Upper bound on addresses accepted in a single batch add. Guards against a
+// pathologically large paste/CSV turning into one massive INSERT that could
+// time out or exhaust memory. Mirrors the profiles endpoint's 500 cap, scaled
+// up since this is an authenticated manager-only write.
+const MAX_BATCH_ADDRESSES = 5000;
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { chainId, councilId, groupId, address, addresses } = body;
 
-    const auth = await authorize(chainId, councilId);
+    const auth = await authorizeCouncilManager(chainId, councilId);
 
     if (!auth.ok) {
       return errorResponse(auth.error, auth.status);
@@ -78,6 +36,13 @@ export async function POST(request: Request) {
 
     if (valid.length === 0) {
       return errorResponse("No valid addresses", 400);
+    }
+
+    if (valid.length > MAX_BATCH_ADDRESSES) {
+      return errorResponse(
+        `Too many addresses (max ${MAX_BATCH_ADDRESSES} per request)`,
+        400,
+      );
     }
 
     if (!Number.isInteger(groupId) || groupId <= 0) {
@@ -132,7 +97,7 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const { chainId, councilId, address, newGroupId } = body;
 
-    const auth = await authorize(chainId, councilId);
+    const auth = await authorizeCouncilManager(chainId, councilId);
 
     if (!auth.ok) {
       return errorResponse(auth.error, auth.status);
@@ -189,7 +154,7 @@ export async function DELETE(request: Request) {
     const body = await request.json();
     const { chainId, councilId, address, addresses } = body;
 
-    const auth = await authorize(chainId, councilId);
+    const auth = await authorizeCouncilManager(chainId, councilId);
 
     if (!auth.ok) {
       return errorResponse(auth.error, auth.status);

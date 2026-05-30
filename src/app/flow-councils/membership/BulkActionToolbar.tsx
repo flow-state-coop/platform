@@ -30,6 +30,7 @@ type ChunkedQueue = {
   startQueue: (
     councilId: string,
     chunks: { args: Record<string, unknown> }[],
+    removalAddresses?: string[],
   ) => void;
   pause: () => void;
   resume: () => void;
@@ -40,28 +41,24 @@ type ChunkedQueue = {
 };
 
 type BulkActionToolbarProps = {
-  chainId: number;
   councilId: string;
   allGroupVoters: SubgraphVoter[];
   filteredVoters: SubgraphVoter[];
   isManager: boolean;
   q: ChunkedQueue;
   maxVotingSpread: number;
-  onRefresh: () => Promise<void> | void;
 };
 
 type Mode = "set" | "increment";
 
 export default function BulkActionToolbar(props: BulkActionToolbarProps) {
   const {
-    chainId,
     councilId,
     allGroupVoters,
     filteredVoters,
     isManager,
     q,
     maxVotingSpread,
-    onRefresh,
   } = props;
 
   const [value, setValue] = useState("");
@@ -143,8 +140,10 @@ export default function BulkActionToolbar(props: BulkActionToolbarProps) {
 
   // Bulk removal: set votingPower to 0 onchain via updateVoters (the batchable
   // primitive — the same path as a single-row remove, just many entries chunked
-  // 50/tx), then drop the DB classification rows in one batch DELETE. An empty
-  // group can then be deleted. maxVotingSpread is preserved on every chunk.
+  // 50/tx). The target addresses are handed to the queue so the parent drops
+  // their DB classification rows ONLY after the onchain queue fully completes —
+  // a partial failure never leaves the group empty while voters still hold
+  // onchain power. maxVotingSpread is preserved on every chunk.
   const enqueueRemove = (targets: SubgraphVoter[]) => {
     if (targets.length === 0) {
       return;
@@ -165,17 +164,11 @@ export default function BulkActionToolbar(props: BulkActionToolbarProps) {
       },
     }));
 
-    q.startQueue(councilId, chunks);
-
-    void fetch("/api/flow-council/voter-groups/members", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chainId,
-        councilId,
-        addresses: targets.map((v) => v.account),
-      }),
-    }).then(() => onRefresh());
+    q.startQueue(
+      councilId,
+      chunks,
+      targets.map((v) => v.account),
+    );
   };
 
   const confirmRemove = () => {

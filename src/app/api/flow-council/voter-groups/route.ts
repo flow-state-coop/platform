@@ -1,13 +1,11 @@
 import { z } from "zod";
 import { gql } from "@apollo/client";
 import { isAddress } from "viem";
-import { getServerSession } from "next-auth/next";
 import { db } from "../db";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { errorResponse } from "../../utils";
-import { authOptions } from "../../auth/[...nextauth]/route";
-import { findRoundByCouncil, hasOnChainRole } from "../auth";
+import { findRoundByCouncil, authorizeCouncilManager } from "../auth";
 import { voterGroupCreateSchema, voterGroupUpdateSchema } from "../validation";
 
 export const dynamic = "force-dynamic";
@@ -190,63 +188,12 @@ export async function GET(request: Request) {
   }
 }
 
-async function authorize(
-  chainId: unknown,
-  councilId: unknown,
-): Promise<
-  | { ok: true; roundId: number; chainId: number; councilId: string }
-  | { ok: false; error: string; status: number }
-> {
-  const network = networks.find((n) => n.id === chainId);
-
-  if (!network) {
-    return { ok: false, error: "Wrong network", status: 400 };
-  }
-
-  if (typeof councilId !== "string" || !isAddress(councilId)) {
-    return { ok: false, error: "Invalid council ID", status: 400 };
-  }
-
-  const session = await getServerSession(authOptions);
-
-  if (!session?.address) {
-    return { ok: false, error: "Unauthenticated", status: 401 };
-  }
-
-  const round = await findRoundByCouncil(chainId as number, councilId);
-
-  if (!round) {
-    return { ok: false, error: "Round not found", status: 404 };
-  }
-
-  const hasRole = await hasOnChainRole(
-    chainId as number,
-    councilId,
-    session.address,
-  );
-
-  if (!hasRole) {
-    return {
-      ok: false,
-      error: "Not authorized to manage this council",
-      status: 403,
-    };
-  }
-
-  return {
-    ok: true,
-    roundId: round.id,
-    chainId: chainId as number,
-    councilId,
-  };
-}
-
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { chainId, councilId } = body;
 
-    const auth = await authorize(chainId, councilId);
+    const auth = await authorizeCouncilManager(chainId, councilId);
 
     if (!auth.ok) {
       return errorResponse(auth.error, auth.status);
@@ -304,7 +251,7 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const { chainId, councilId } = body;
 
-    const auth = await authorize(chainId, councilId);
+    const auth = await authorizeCouncilManager(chainId, councilId);
 
     if (!auth.ok) {
       return errorResponse(auth.error, auth.status);
@@ -390,7 +337,7 @@ export async function DELETE(request: Request) {
     const body = await request.json();
     const { chainId, councilId } = body;
 
-    const auth = await authorize(chainId, councilId);
+    const auth = await authorizeCouncilManager(chainId, councilId);
 
     if (!auth.ok) {
       return errorResponse(auth.error, auth.status);

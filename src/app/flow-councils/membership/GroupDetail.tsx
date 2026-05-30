@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useConfig, useAccount, usePublicClient } from "wagmi";
@@ -115,6 +115,31 @@ export default function GroupDetail(props: GroupDetailProps) {
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
   const q = useChunkedTxQueue(wagmiConfig, publicClient, councilId);
+
+  // Addresses whose DB classification must be dropped once the CURRENT onchain
+  // removal queue finishes. A ref (not state) so recording it never triggers a
+  // render; it is read in the queue-completion effect below. Every startQueue
+  // call resets it (removals set it, every other operation clears it), so a
+  // non-removal queue can never trigger a stale DB delete.
+  const pendingRemovalRef = useRef<string[]>([]);
+
+  // Wrap the shared queue so children enqueue a removal atomically with the DB
+  // rows they intend to drop. The DB DELETE is deferred to queueDone (below) so
+  // a failed/paused onchain queue never leaves a group showing empty while the
+  // voters still hold onchain voting power.
+  const startQueue = useCallback(
+    (
+      cid: string,
+      chunks: { args: Record<string, unknown> }[],
+      removalAddresses?: string[],
+    ) => {
+      pendingRemovalRef.current = removalAddresses ?? [];
+      q.startQueue(cid, chunks);
+    },
+    [q],
+  );
+
+  const qForChildren = useMemo(() => ({ ...q, startQueue }), [q, startQueue]);
 
   const isCelo = chainId === CELO_CHAIN_ID;
 
@@ -244,16 +269,50 @@ export default function GroupDetail(props: GroupDetailProps) {
     await fetchGroups();
   }, [refetch, fetchGroups]);
 
-  // When the chunked queue transitions to fully complete, refresh once so the
-  // table reflects the new onchain allocations.
+  // When the chunked queue transitions to fully complete, drop any deferred DB
+  // classification rows (for a removal) and refresh once so the table reflects
+  // the new onchain state.
   const queueDone =
     q.totalCount > 0 && q.completedCount === q.totalCount && !q.isPending;
 
   useEffect(() => {
-    if (queueDone) {
-      refresh();
+    if (!queueDone) {
+      return;
     }
-  }, [queueDone, refresh]);
+
+    let cancelled = false;
+
+    const finalize = async () => {
+      const removed = pendingRemovalRef.current;
+
+      // Only now that the onchain removal queue has FULLY completed do we drop
+      // the DB classification rows. Clear the ref first so a transient effect
+      // re-run can't fire the DELETE twice.
+      if (removed.length > 0) {
+        pendingRemovalRef.current = [];
+
+        try {
+          await fetch("/api/flow-council/voter-groups/members", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chainId, councilId, addresses: removed }),
+          });
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      if (!cancelled) {
+        await refresh();
+      }
+    };
+
+    finalize();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [queueDone, refresh, chainId, councilId]);
 
   useEffect(() => {
     if (!flowCouncilQueryRes) {
@@ -662,14 +721,12 @@ export default function GroupDetail(props: GroupDetailProps) {
                 {isManager ? (
                   <>
                     <BulkActionToolbar
-                      chainId={chainId}
                       councilId={councilId}
                       allGroupVoters={groupVoters}
                       filteredVoters={filteredVoters}
                       isManager={isManager}
-                      q={q}
+                      q={qForChildren}
                       maxVotingSpread={maxVotingSpread}
-                      onRefresh={refresh}
                     />
                     <Stack
                       direction="horizontal"
@@ -692,7 +749,7 @@ export default function GroupDetail(props: GroupDetailProps) {
                   voters={groupVoters}
                   allGroups={groupOptions}
                   isManager={isManager}
-                  q={q}
+                  q={qForChildren}
                   maxVotingSpread={maxVotingSpread}
                   onRefresh={refresh}
                   onFilteredChange={setFilteredVoters}
@@ -740,7 +797,7 @@ export default function GroupDetail(props: GroupDetailProps) {
           groupId={groupId}
           defaultVotingPower={group.defaultVotingPower}
           existingOnchainAccounts={existingOnchainAccounts}
-          q={q}
+          q={qForChildren}
           maxVotingSpread={maxVotingSpread}
           onRefresh={refresh}
         />

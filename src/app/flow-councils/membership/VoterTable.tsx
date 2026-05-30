@@ -31,6 +31,7 @@ type ChunkedQueue = {
   startQueue: (
     councilId: string,
     chunks: { args: Record<string, unknown> }[],
+    removalAddresses?: string[],
   ) => void;
 };
 
@@ -116,7 +117,6 @@ export default function VoterTable(props: VoterTableProps) {
   const [moveSuccess, setMoveSuccess] = useState("");
 
   const [removeTarget, setRemoveTarget] = useState<SubgraphVoter | null>(null);
-  const [isRemoving, setIsRemoving] = useState(false);
   const [removeError, setRemoveError] = useState("");
 
   // Fetch display names for the visible addresses once the voter list loads.
@@ -274,19 +274,20 @@ export default function VoterTable(props: VoterTableProps) {
     }
   };
 
-  const handleRemove = async () => {
+  const handleRemove = () => {
     if (!removeTarget) {
       return;
     }
 
-    try {
-      setIsRemoving(true);
-      setRemoveError("");
-
-      // Onchain: removal sets votingPower to 0 via updateVoters — the same
-      // batchable primitive bulk-remove uses. maxVotingSpread is passed verbatim
-      // so a removal never disturbs the council-wide spread.
-      q.startQueue(councilId, [
+    // Onchain: removal sets votingPower to 0 via updateVoters — the same
+    // batchable primitive bulk-remove uses. maxVotingSpread is passed verbatim
+    // so a removal never disturbs the council-wide spread. The address is handed
+    // to the queue so the parent drops its DB classification row ONLY after the
+    // onchain queue completes — a failed/paused queue never leaves the voter
+    // classified-but-removed (or vice versa).
+    q.startQueue(
+      councilId,
+      [
         {
           args: {
             address: councilId as Address,
@@ -304,38 +305,45 @@ export default function VoterTable(props: VoterTableProps) {
             ],
           },
         },
-      ]);
+      ],
+      [removeTarget.account],
+    );
 
-      // Offchain: drop the DB classification immediately.
-      await fetch("/api/flow-council/voter-groups/members", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chainId,
-          councilId,
-          address: removeTarget.account,
-        }),
-      });
-
-      setRemoveTarget(null);
-      await onRefresh();
-    } catch (err) {
-      console.error(err);
-      setRemoveError("Failed to remove voter");
-    } finally {
-      setIsRemoving(false);
-    }
+    setRemoveTarget(null);
   };
 
+  // Show the first/last pages, the current page and its immediate neighbors,
+  // with ellipses for the gaps — so a group with hundreds of pages never renders
+  // a wall of buttons.
   const paginationItems = useMemo(() => {
-    const items = [];
+    if (pageCount <= 1) {
+      return [];
+    }
 
-    for (let p = 1; p <= pageCount; p++) {
+    const pages = new Set<number>([1, pageCount]);
+
+    for (let p = page - 1; p <= page + 1; p++) {
+      if (p >= 1 && p <= pageCount) {
+        pages.add(p);
+      }
+    }
+
+    const sorted = Array.from(pages).sort((a, b) => a - b);
+    const items = [];
+    let prev = 0;
+
+    for (const p of sorted) {
+      if (p - prev > 1) {
+        items.push(<Pagination.Ellipsis key={`gap-${p}`} disabled />);
+      }
+
       items.push(
         <Pagination.Item key={p} active={p === page} onClick={() => setPage(p)}>
           {p}
         </Pagination.Item>,
       );
+
+      prev = p;
     }
 
     return items;
@@ -554,7 +562,6 @@ export default function VoterTable(props: VoterTableProps) {
             variant="secondary"
             className="rounded-4 px-4 py-2 fw-semi-bold"
             onClick={() => setRemoveTarget(null)}
-            disabled={isRemoving}
           >
             Cancel
           </Button>
@@ -562,9 +569,8 @@ export default function VoterTable(props: VoterTableProps) {
             variant="danger"
             className="rounded-4 px-4 py-2 fw-semi-bold"
             onClick={handleRemove}
-            disabled={isRemoving}
           >
-            {isRemoving ? <Spinner size="sm" /> : "Remove"}
+            Remove
           </Button>
         </Modal.Footer>
       </Modal>

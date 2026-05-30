@@ -163,7 +163,15 @@ export async function POST(request: Request) {
         .where("id", "=", inserted.id)
         .execute();
 
-      return Response.json({ success: false, error: errorMessage });
+      // Log the raw error server-side only — RPC/contract errors can embed
+      // provider URLs, contract addresses, or revert data, so never return the
+      // message to the client.
+      console.error(err);
+
+      return Response.json({
+        success: false,
+        error: "There was an error, please try again later",
+      });
     }
 
     return Response.json({ success: true });
@@ -175,6 +183,11 @@ export async function POST(request: Request) {
       return Response.json({ success: true });
     }
 
-    return Response.json({ success: false, error: errorMessage });
+    console.error(err);
+
+    return Response.json({
+      success: false,
+      error: "There was an error, please try again later",
+    });
   }
 }

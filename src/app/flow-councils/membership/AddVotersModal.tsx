@@ -183,8 +183,10 @@ export default function AddVotersModal(props: AddVotersModalProps) {
       setSubmitError("");
 
       // Offchain: classify every new address into this group (DB) in a SINGLE
-      // batched request, before enqueuing the onchain allocation.
-      await fetch("/api/flow-council/voter-groups/members", {
+      // batched request, before enqueuing the onchain allocation. Bail out if
+      // the DB write fails (auth expired, group deleted, cap exceeded, …) so we
+      // never enqueue onchain allocations for voters with no group membership.
+      const res = await fetch("/api/flow-council/voter-groups/members", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -194,6 +196,12 @@ export default function AddVotersModal(props: AddVotersModalProps) {
           addresses: toAdd.map((row) => row.address),
         }),
       });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        setSubmitError(data?.error ?? "Failed to add voters");
+        return;
+      }
 
       // Onchain: set each new voter's allocation via the chunked queue. Pass the
       // council's CURRENT maxVotingSpread verbatim on every chunk.
