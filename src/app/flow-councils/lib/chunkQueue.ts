@@ -18,7 +18,9 @@ export const CHUNK_SIZE = 50;
  */
 export function splitIntoChunks<T>(items: T[], size: number): T[][] {
   if (size <= 0) {
-    throw new Error(`splitIntoChunks: size must be a positive integer, got ${size}`);
+    throw new Error(
+      `splitIntoChunks: size must be a positive integer, got ${size}`,
+    );
   }
 
   const chunks: T[][] = [];

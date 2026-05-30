@@ -27,7 +27,10 @@ type SubgraphVoter = {
 };
 
 type ChunkedQueue = {
-  startQueue: (councilId: string, chunks: { args: Record<string, unknown> }[]) => void;
+  startQueue: (
+    councilId: string,
+    chunks: { args: Record<string, unknown> }[],
+  ) => void;
   pause: () => void;
   resume: () => void;
   isPending: boolean;
@@ -194,7 +197,10 @@ export default function BulkActionToolbar(props: BulkActionToolbarProps) {
   const submittedCount = q.completedCount + (q.isPending ? 1 : 0);
   const progressPct =
     q.totalCount > 0 ? Math.min(100, (submittedCount / q.totalCount) * 100) : 0;
-  const showProgress = q.isPending || q.totalCount > 0;
+  // Hide progress once the queue is fully processed so a completed (but not yet
+  // cleared) queue never lingers as a permanent "Submitting N of N…" bar.
+  const showProgress =
+    q.isPending || (q.totalCount > 0 && q.completedCount < q.totalCount);
 
   const warningCount = useMemo(() => {
     if (!pendingTargets) {
@@ -270,11 +276,7 @@ export default function BulkActionToolbar(props: BulkActionToolbarProps) {
         <Button
           variant="outline-primary"
           className="rounded-4 px-4 py-2 fw-semi-bold"
-          disabled={
-            !valueValid ||
-            filteredVoters.length === 0 ||
-            q.isPending
-          }
+          disabled={!valueValid || filteredVoters.length === 0 || q.isPending}
           onClick={() => apply(filteredVoters)}
         >
           Apply to filtered ({filteredVoters.length})
@@ -367,16 +369,12 @@ export default function BulkActionToolbar(props: BulkActionToolbarProps) {
         onHide={() => setPendingRemove(null)}
       >
         <Modal.Header closeButton className="border-0 p-4">
-          <Modal.Title className="fs-5 fw-semi-bold">
-            Remove voters
-          </Modal.Title>
+          <Modal.Title className="fs-5 fw-semi-bold">Remove voters</Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-4 pt-0">
           <p className="mb-0">
             Remove{" "}
-            <span className="fw-semi-bold">
-              {pendingRemove?.length ?? 0}
-            </span>{" "}
+            <span className="fw-semi-bold">{pendingRemove?.length ?? 0}</span>{" "}
             voter(s)? This sets their allocation to 0 onchain (in batched
             transactions) and drops their group classification.
           </p>

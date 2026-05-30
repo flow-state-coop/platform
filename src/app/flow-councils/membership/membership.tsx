@@ -29,8 +29,15 @@ import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
 import useCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 import { useChunkedTxQueue } from "@/app/flow-councils/hooks/useChunkedTxQueue";
-import { computeCastVotes, shareOfVotes } from "@/app/flow-councils/lib/voterUtils";
-import { VOTER_MANAGER_ROLE } from "../lib/constants";
+import {
+  computeCastVotes,
+  shareOfVotes,
+} from "@/app/flow-councils/lib/voterUtils";
+import {
+  VOTER_MANAGER_ROLE,
+  RECIPIENT_MANAGER_ROLE,
+  DEFAULT_ADMIN_ROLE,
+} from "../lib/constants";
 
 type MembershipProps = { chainId?: number; councilId?: string };
 
@@ -111,7 +118,7 @@ export default function Membership(props: MembershipProps) {
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
-  const q = useChunkedTxQueue(wagmiConfig, publicClient);
+  const q = useChunkedTxQueue(wagmiConfig, publicClient, councilId);
 
   const {
     data: flowCouncilQueryRes,
@@ -140,16 +147,21 @@ export default function Membership(props: MembershipProps) {
   const flowCouncil = flowCouncilQueryRes?.flowCouncil ?? null;
 
   const isManager = useMemo(() => {
-    const flowCouncilManager = flowCouncil?.flowCouncilManagers.find(
+    // Mirror the server's authorization (hasOnChainRole): voter manager,
+    // recipient manager, or default admin can manage voter groups. Checking
+    // only VOTER_MANAGER_ROLE left a council's default admin with a read-only
+    // UI even though the API would accept their writes.
+    const managerRoles = [
+      VOTER_MANAGER_ROLE,
+      RECIPIENT_MANAGER_ROLE,
+      DEFAULT_ADMIN_ROLE,
+    ];
+
+    return !!flowCouncil?.flowCouncilManagers.find(
       (m: { account: string; role: string }) =>
-        m.account === address?.toLowerCase() && m.role === VOTER_MANAGER_ROLE,
+        m.account === address?.toLowerCase() &&
+        managerRoles.includes(m.role as `0x${string}`),
     );
-
-    if (flowCouncilManager) {
-      return true;
-    }
-
-    return false;
   }, [address, flowCouncil]);
 
   // Map of lowercased account -> subgraph voter for fast lookup in metrics.
@@ -232,14 +244,6 @@ export default function Membership(props: MembershipProps) {
     }
   }, [flowCouncil]);
 
-  // Drop a stale persisted queue belonging to a different council so its banner
-  // never shows here. (Task 11)
-  useEffect(() => {
-    if (q.councilId && councilId && q.councilId !== councilId) {
-      q.clear();
-    }
-  }, [q, councilId]);
-
   const hasMaxSpreadChange = useMemo(() => {
     if (!flowCouncil) {
       return false;
@@ -268,7 +272,10 @@ export default function Membership(props: MembershipProps) {
         address: councilId as Address,
         abi: flowCouncilAbi,
         functionName: "updateVoters",
-        args: [[], councilConfig.limitMaxAllocation ? Number(maxAllocation) : 0],
+        args: [
+          [],
+          councilConfig.limitMaxAllocation ? Number(maxAllocation) : 0,
+        ],
       });
 
       await waitForReceipt(publicClient, hash);
@@ -449,7 +456,9 @@ export default function Membership(props: MembershipProps) {
                   className="d-flex justify-content-between align-items-center bg-white text-dark border-0 py-4 fw-semi-bold"
                   style={{ width: 128 }}
                 >
-                  {councilConfig.limitMaxAllocation ? maxAllocation : "No Limit"}
+                  {councilConfig.limitMaxAllocation
+                    ? maxAllocation
+                    : "No Limit"}
                 </Dropdown.Toggle>
                 <Dropdown.Menu
                   className="overflow-auto border-0 lh-lg p-2"
@@ -539,7 +548,9 @@ export default function Membership(props: MembershipProps) {
                 <tbody>
                   {groups.map((group) => {
                     const memberVoters = group.members
-                      .map((member) => votersByAccount.get(member.toLowerCase()))
+                      .map((member) =>
+                        votersByAccount.get(member.toLowerCase()),
+                      )
                       .filter((voter): voter is SubgraphVoter => !!voter);
 
                     const assigned = memberVoters.reduce(
@@ -700,11 +711,11 @@ export default function Membership(props: MembershipProps) {
               onChange={(e) => {
                 const value = e.target.value;
 
+                // Digits only (matches the group-detail editor) so negatives
+                // and exponents can't be typed; the server still validates.
                 if (
                   value === "" ||
-                  (isNumber(value) &&
-                    !value.includes(".") &&
-                    Number(value) <= 1e6)
+                  (/^\d+$/.test(value) && Number(value) <= 1e6)
                 ) {
                   setNewGroupDefaultVotingPower(value);
                 }
@@ -716,8 +727,8 @@ export default function Membership(props: MembershipProps) {
           </Form.Group>
           {newGroupEligibility === "gooddollar" ? (
             <Alert variant="info" className="mb-0">
-              The Flow State bot must hold the Voter Manager role on this council
-              to add GoodDollar-verified voters.
+              The Flow State bot must hold the Voter Manager role on this
+              council to add GoodDollar-verified voters.
               {process.env.NEXT_PUBLIC_FLOW_STATE_BOT_ADDRESS ? (
                 <>
                   <br />

@@ -17,7 +17,10 @@ import {
 } from "@/app/flow-councils/hooks/useChunkedTxQueue";
 
 type ChunkedQueue = {
-  startQueue: (councilId: string, chunks: { args: Record<string, unknown> }[]) => void;
+  startQueue: (
+    councilId: string,
+    chunks: { args: Record<string, unknown> }[],
+  ) => void;
 };
 
 type AddVotersModalProps = {
@@ -146,7 +149,9 @@ export default function AddVotersModal(props: AddVotersModalProps) {
           // than silently sending a huge BigInt onchain. A missing/invalid power
           // simply falls back to the group default.
           const isPositiveInteger =
-            isNumber(rawPower) && !rawPower.includes(".") && Number(rawPower) > 0;
+            isNumber(rawPower) &&
+            !rawPower.includes(".") &&
+            Number(rawPower) > 0;
           const powerTooLarge = isPositiveInteger && Number(rawPower) > 1e6;
           const power = isPositiveInteger
             ? Number(rawPower)
@@ -323,7 +328,9 @@ export default function AddVotersModal(props: AddVotersModalProps) {
         <Button
           className="rounded-4 px-4 py-2 fw-semi-bold"
           onClick={handleAdd}
-          disabled={isSubmitting || toAdd.length === 0 || invalidRows.length > 0}
+          disabled={
+            isSubmitting || toAdd.length === 0 || invalidRows.length > 0
+          }
         >
           {isSubmitting ? <Spinner size="sm" /> : `Add ${toAdd.length}`}
         </Button>

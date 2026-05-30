@@ -26,27 +26,16 @@ const IDENTITY_ABI = [
 
 type GoodDollarGroup = { id: number; defaultVotingPower: number };
 
-const GOODDOLLAR_GROUP_CACHE_TTL = 60_000;
-const goodDollarGroupCache = new Map<
-  string,
-  { value: GoodDollarGroup | null; expiry: number }
->();
-
 /**
  * Resolve the "gooddollar"-eligibility voter group for a council, if one
- * exists. Cached with a short TTL so the hot self-claim path avoids a DB
- * round-trip on every request.
+ * exists. Queried directly with no in-memory cache: it is a single indexed read
+ * on a small table, and a process-local TTL cache went stale for up to a minute
+ * after an admin changed a group's eligibility method or default allocation
+ * (and wouldn't have been shared across serverless instances regardless).
  */
 async function getGoodDollarGroup(
   roundId: number,
 ): Promise<GoodDollarGroup | null> {
-  const cacheKey = String(roundId);
-  const cached = goodDollarGroupCache.get(cacheKey);
-
-  if (cached && cached.expiry > Date.now()) {
-    return cached.value;
-  }
-
   const group = await db
     .selectFrom("voterGroups")
     .select(["id", "defaultVotingPower"])
@@ -55,16 +44,9 @@ async function getGoodDollarGroup(
     .orderBy("id", "asc")
     .executeTakeFirst();
 
-  const value: GoodDollarGroup | null = group
+  return group
     ? { id: group.id, defaultVotingPower: group.defaultVotingPower }
     : null;
-
-  goodDollarGroupCache.set(cacheKey, {
-    value,
-    expiry: Date.now() + GOODDOLLAR_GROUP_CACHE_TTL,
-  });
-
-  return value;
 }
 
 export async function POST(request: Request) {

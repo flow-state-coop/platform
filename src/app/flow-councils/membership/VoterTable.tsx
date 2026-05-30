@@ -28,7 +28,10 @@ type SubgraphVoter = {
 };
 
 type ChunkedQueue = {
-  startQueue: (councilId: string, chunks: { args: Record<string, unknown> }[]) => void;
+  startQueue: (
+    councilId: string,
+    chunks: { args: Record<string, unknown> }[],
+  ) => void;
 };
 
 type GroupOption = { id: number; name: string };
@@ -69,7 +72,10 @@ function truncateAddress(address: string): string {
 // Parse the address-search box into a set of lowercased addresses when the user
 // pasted a newline/comma-separated list; otherwise treat the trimmed text as a
 // single substring needle.
-function parseAddressSearch(raw: string): { list: Set<string>; needle: string } {
+function parseAddressSearch(raw: string): {
+  list: Set<string>;
+  needle: string;
+} {
   const tokens = raw
     .split(/[\s,]+/)
     .map((t) => t.trim().toLowerCase())
@@ -326,11 +332,7 @@ export default function VoterTable(props: VoterTableProps) {
 
     for (let p = 1; p <= pageCount; p++) {
       items.push(
-        <Pagination.Item
-          key={p}
-          active={p === page}
-          onClick={() => setPage(p)}
-        >
+        <Pagination.Item key={p} active={p === page} onClick={() => setPage(p)}>
           {p}
         </Pagination.Item>,
       );
@@ -469,11 +471,7 @@ export default function VoterTable(props: VoterTableProps) {
         <Pagination className="mb-0 flex-wrap">{paginationItems}</Pagination>
       ) : null}
 
-      <Modal
-        show={!!moveTarget}
-        centered
-        onHide={() => setMoveTarget(null)}
-      >
+      <Modal show={!!moveTarget} centered onHide={() => setMoveTarget(null)}>
         <Modal.Header closeButton className="border-0 p-4">
           <Modal.Title className="fs-5 fw-semi-bold">Move to group</Modal.Title>
         </Modal.Header>
@@ -540,9 +538,9 @@ export default function VoterTable(props: VoterTableProps) {
           </p>
           {removeTarget && computeCastVotes(removeTarget) > 0 ? (
             <Alert variant="warning" className="mt-3 mb-0">
-              This voter has already cast {computeCastVotes(removeTarget)} vote(s).
-              Removing them caps future votes at 0 but does not retract votes
-              already cast.
+              This voter has already cast {computeCastVotes(removeTarget)}{" "}
+              vote(s). Removing them caps future votes at 0 but does not retract
+              votes already cast.
             </Alert>
           ) : null}
           {removeError ? (

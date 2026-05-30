@@ -25,7 +25,11 @@ import {
 import VoterTable from "./VoterTable";
 import BulkActionToolbar from "./BulkActionToolbar";
 import AddVotersModal from "./AddVotersModal";
-import { VOTER_MANAGER_ROLE } from "../lib/constants";
+import {
+  VOTER_MANAGER_ROLE,
+  RECIPIENT_MANAGER_ROLE,
+  DEFAULT_ADMIN_ROLE,
+} from "../lib/constants";
 
 type GroupDetailProps = {
   chainId: number;
@@ -110,7 +114,7 @@ export default function GroupDetail(props: GroupDetailProps) {
   const wagmiConfig = useConfig();
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
-  const q = useChunkedTxQueue(wagmiConfig, publicClient);
+  const q = useChunkedTxQueue(wagmiConfig, publicClient, councilId);
 
   const isCelo = chainId === CELO_CHAIN_ID;
 
@@ -128,12 +132,19 @@ export default function GroupDetail(props: GroupDetailProps) {
   const maxVotingSpread = flowCouncil?.maxVotingSpread ?? 0;
 
   const isManager = useMemo(() => {
-    const flowCouncilManager = flowCouncil?.flowCouncilManagers.find(
-      (m: { account: string; role: string }) =>
-        m.account === address?.toLowerCase() && m.role === VOTER_MANAGER_ROLE,
-    );
+    // Mirror the server's authorization (hasOnChainRole): voter manager,
+    // recipient manager, or default admin can manage voter groups.
+    const managerRoles = [
+      VOTER_MANAGER_ROLE,
+      RECIPIENT_MANAGER_ROLE,
+      DEFAULT_ADMIN_ROLE,
+    ];
 
-    return !!flowCouncilManager;
+    return !!flowCouncil?.flowCouncilManagers.find(
+      (m: { account: string; role: string }) =>
+        m.account === address?.toLowerCase() &&
+        managerRoles.includes(m.role as `0x${string}`),
+    );
   }, [address, flowCouncil]);
 
   const votersByAccount = useMemo(() => {
@@ -265,13 +276,6 @@ export default function GroupDetail(props: GroupDetailProps) {
     setEditDefaultVotingPower(String(group.defaultVotingPower));
   }, [group]);
 
-  // Drop a stale persisted queue from another council. (Task 11)
-  useEffect(() => {
-    if (q.councilId && councilId && q.councilId !== councilId) {
-      q.clear();
-    }
-  }, [q, councilId]);
-
   const metrics = useMemo(() => {
     if (!group) {
       return { assigned: 0, used: 0, usedPct: 0, share: 0 };
@@ -324,20 +328,17 @@ export default function GroupDetail(props: GroupDetailProps) {
       setSaveError("");
       setSaveSuccess(false);
 
-      const res = await fetch(
-        `/api/flow-council/voter-groups?id=${group.id}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chainId,
-            councilId,
-            name,
-            eligibilityMethod: editEligibility,
-            defaultVotingPower,
-          }),
-        },
-      );
+      const res = await fetch(`/api/flow-council/voter-groups?id=${group.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chainId,
+          councilId,
+          name,
+          eligibilityMethod: editEligibility,
+          defaultVotingPower,
+        }),
+      });
       const data = await res.json();
 
       if (!data.success) {
@@ -364,14 +365,11 @@ export default function GroupDetail(props: GroupDetailProps) {
       setIsDeleting(true);
       setDeleteError("");
 
-      const res = await fetch(
-        `/api/flow-council/voter-groups?id=${group.id}`,
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chainId, councilId }),
-        },
-      );
+      const res = await fetch(`/api/flow-council/voter-groups?id=${group.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chainId, councilId }),
+      });
       const data = await res.json();
 
       if (!data.success) {
@@ -496,7 +494,9 @@ export default function GroupDetail(props: GroupDetailProps) {
                   </Stack>
                   <Stack direction="vertical">
                     <span className="text-info fs-6">Valid votes assigned</span>
-                    <span className="fs-5 fw-semi-bold">{metrics.assigned}</span>
+                    <span className="fs-5 fw-semi-bold">
+                      {metrics.assigned}
+                    </span>
                   </Stack>
                   <Stack direction="vertical">
                     <span className="text-info fs-6">Votes used</span>

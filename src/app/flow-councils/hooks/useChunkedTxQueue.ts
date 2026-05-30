@@ -11,7 +11,15 @@ import { CHUNK_SIZE, splitIntoChunks } from "../lib/chunkQueue";
 // and never duplicate the chunk size / splitting logic.
 export { CHUNK_SIZE, splitIntoChunks };
 
-const STORAGE_KEY = "flow-council-tx-queue";
+// Persisted queues are keyed per council. An in-progress operation on one
+// council is therefore never clobbered (or displayed) while viewing another —
+// merely navigating between councils no longer discards a paused/incomplete
+// queue, which previously caused silent data loss.
+const STORAGE_KEY_PREFIX = "flow-council-tx-queue";
+
+function storageKeyFor(councilId: string): string {
+  return `${STORAGE_KEY_PREFIX}:${councilId.toLowerCase()}`;
+}
 
 // A single chunk is the second argument object passed to wagmi's
 // `writeContract(config, args)` — i.e. { address, abi, functionName, args }.
@@ -80,30 +88,34 @@ function deserializeQueue(raw: string): QueueState | null {
   }
 }
 
-function persist(state: QueueState | null) {
+function persist(key: string, state: QueueState | null) {
   if (typeof window === "undefined") {
     return;
   }
 
   if (state === null) {
-    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(key);
     return;
   }
 
-  window.localStorage.setItem(STORAGE_KEY, serializeQueue(state));
+  window.localStorage.setItem(key, serializeQueue(state));
 }
 
-function loadPersisted(): QueueState | null {
+function loadPersisted(key: string): QueueState | null {
   if (typeof window === "undefined") {
     return null;
   }
 
-  const raw = window.localStorage.getItem(STORAGE_KEY);
+  const raw = window.localStorage.getItem(key);
 
   return raw ? deserializeQueue(raw) : null;
 }
 
-export function useChunkedTxQueue(config: Config, publicClient?: PublicClient) {
+export function useChunkedTxQueue(
+  config: Config,
+  publicClient?: PublicClient,
+  councilId?: string,
+) {
   const [queue, setQueue] = useState<QueueState | null>(null);
   const [isPending, setIsPending] = useState(false);
   // On hydration we never auto-resume — start paused so the parent can render a
@@ -117,10 +129,18 @@ export function useChunkedTxQueue(config: Config, publicClient?: PublicClient) {
   const isPausedRef = useRef(true);
   const isRunningRef = useRef(false);
 
+  // Storage key tracks the current council; kept in a ref so the stable
+  // setQueueState callback always persists under the right key.
+  const storageKey = councilId ? storageKeyFor(councilId) : null;
+  const storageKeyRef = useRef(storageKey);
+  storageKeyRef.current = storageKey;
+
   const setQueueState = useCallback((next: QueueState | null) => {
     queueRef.current = next;
     setQueue(next);
-    persist(next);
+    if (storageKeyRef.current) {
+      persist(storageKeyRef.current, next);
+    }
   }, []);
 
   const setPausedState = useCallback((paused: boolean) => {
@@ -128,17 +148,32 @@ export function useChunkedTxQueue(config: Config, publicClient?: PublicClient) {
     setIsPaused(paused);
   }, []);
 
-  // Hydrate from localStorage on mount. NEVER auto-resume: leave isPaused=true.
+  // Hydrate this council's persisted queue on mount (and whenever the council
+  // changes, since the App Router reuses this component across [councilId]
+  // params). NEVER auto-resume: leave isPaused=true. A queue that already
+  // finished is discarded so a stale "100%" progress bar never rehydrates, and
+  // any in-memory queue carried over from a previously-viewed council is reset.
   useEffect(() => {
-    const persisted = loadPersisted();
+    if (!storageKey) {
+      return;
+    }
 
-    if (persisted) {
+    const persisted = loadPersisted(storageKey);
+
+    if (persisted && persisted.completedCount < persisted.chunks.length) {
       queueRef.current = persisted;
       setQueue(persisted);
+    } else {
+      if (persisted) {
+        persist(storageKey, null);
+      }
+      queueRef.current = null;
+      setQueue(null);
     }
-    // isPaused already defaults to true; nothing to resume here.
+
+    setPausedState(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [storageKey]);
 
   const executeNext = useCallback(async () => {
     // Guard against concurrent loops (e.g. resume called while one is running).

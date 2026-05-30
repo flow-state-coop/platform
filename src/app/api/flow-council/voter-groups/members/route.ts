@@ -12,29 +12,28 @@ async function authorize(
   chainId: unknown,
   councilId: unknown,
 ): Promise<
-  | { ok: true; roundId: number }
-  | { ok: false; error: string }
+  { ok: true; roundId: number } | { ok: false; error: string; status: number }
 > {
   const network = networks.find((n) => n.id === chainId);
 
   if (!network) {
-    return { ok: false, error: "Wrong network" };
+    return { ok: false, error: "Wrong network", status: 400 };
   }
 
   if (typeof councilId !== "string" || !isAddress(councilId)) {
-    return { ok: false, error: "Invalid council ID" };
+    return { ok: false, error: "Invalid council ID", status: 400 };
   }
 
   const session = await getServerSession(authOptions);
 
   if (!session?.address) {
-    return { ok: false, error: "Unauthenticated" };
+    return { ok: false, error: "Unauthenticated", status: 401 };
   }
 
   const round = await findRoundByCouncil(chainId as number, councilId);
 
   if (!round) {
-    return { ok: false, error: "Round not found" };
+    return { ok: false, error: "Round not found", status: 404 };
   }
 
   const hasRole = await hasOnChainRole(
@@ -44,7 +43,11 @@ async function authorize(
   );
 
   if (!hasRole) {
-    return { ok: false, error: "Not a voter manager of this council" };
+    return {
+      ok: false,
+      error: "Not authorized to manage this council",
+      status: 403,
+    };
   }
 
   return { ok: true, roundId: round.id };
@@ -58,9 +61,7 @@ export async function POST(request: Request) {
     const auth = await authorize(chainId, councilId);
 
     if (!auth.ok) {
-      return new Response(
-        JSON.stringify({ success: false, error: auth.error }),
-      );
+      return errorResponse(auth.error, auth.status);
     }
 
     // Accept either a single `address` or a batch `addresses` array so a bulk
@@ -76,15 +77,11 @@ export async function POST(request: Request) {
     );
 
     if (valid.length === 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: "No valid addresses" }),
-      );
+      return errorResponse("No valid addresses", 400);
     }
 
     if (!Number.isInteger(groupId) || groupId <= 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid group id" }),
-      );
+      return errorResponse("Invalid group id", 400);
     }
 
     const group = await db
@@ -95,9 +92,7 @@ export async function POST(request: Request) {
       .executeTakeFirst();
 
     if (!group) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Group not found" }),
-      );
+      return errorResponse("Group not found", 404);
     }
 
     // Dedupe within the request, then a single bulk insert. The
@@ -140,21 +135,15 @@ export async function PATCH(request: Request) {
     const auth = await authorize(chainId, councilId);
 
     if (!auth.ok) {
-      return new Response(
-        JSON.stringify({ success: false, error: auth.error }),
-      );
+      return errorResponse(auth.error, auth.status);
     }
 
     if (typeof address !== "string" || !isAddress(address)) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid address" }),
-      );
+      return errorResponse("Invalid address", 400);
     }
 
     if (!Number.isInteger(newGroupId) || newGroupId <= 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid group id" }),
-      );
+      return errorResponse("Invalid group id", 400);
     }
 
     // Single-membership is enforced by UNIQUE(roundId, address), so an address
@@ -167,9 +156,7 @@ export async function PATCH(request: Request) {
       .executeTakeFirst();
 
     if (!member) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Member not found" }),
-      );
+      return errorResponse("Member not found", 404);
     }
 
     const newGroup = await db
@@ -180,12 +167,7 @@ export async function PATCH(request: Request) {
       .executeTakeFirst();
 
     if (!newGroup) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Target group not found in this council",
-        }),
-      );
+      return errorResponse("Target group not found in this council", 404);
     }
 
     await db
@@ -210,9 +192,7 @@ export async function DELETE(request: Request) {
     const auth = await authorize(chainId, councilId);
 
     if (!auth.ok) {
-      return new Response(
-        JSON.stringify({ success: false, error: auth.error }),
-      );
+      return errorResponse(auth.error, auth.status);
     }
 
     // Accept a single `address` or a batch `addresses` array so a bulk remove
@@ -232,9 +212,7 @@ export async function DELETE(request: Request) {
     );
 
     if (lowered.length === 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: "No valid addresses" }),
-      );
+      return errorResponse("No valid addresses", 400);
     }
 
     await db

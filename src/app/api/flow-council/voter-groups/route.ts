@@ -8,10 +8,7 @@ import { getApolloClient } from "@/lib/apollo";
 import { errorResponse } from "../../utils";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { findRoundByCouncil, hasOnChainRole } from "../auth";
-import {
-  voterGroupCreateSchema,
-  voterGroupUpdateSchema,
-} from "../validation";
+import { voterGroupCreateSchema, voterGroupUpdateSchema } from "../validation";
 
 export const dynamic = "force-dynamic";
 
@@ -124,12 +121,7 @@ async function ensureDefaultGroup(
 async function loadGroupsWithMembers(roundId: number) {
   const groups = await db
     .selectFrom("voterGroups")
-    .select([
-      "id",
-      "name",
-      "eligibilityMethod",
-      "defaultVotingPower",
-    ])
+    .select(["id", "name", "eligibilityMethod", "defaultVotingPower"])
     .where("roundId", "=", roundId)
     .orderBy("id", "asc")
     .execute();
@@ -173,9 +165,7 @@ export async function GET(request: Request) {
 
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
-      return new Response(
-        JSON.stringify({ success: false, error: issue.message }),
-      );
+      return errorResponse(issue.message, 400);
     }
 
     const { chainId, councilId } = parsed.data;
@@ -205,28 +195,28 @@ async function authorize(
   councilId: unknown,
 ): Promise<
   | { ok: true; roundId: number; chainId: number; councilId: string }
-  | { ok: false; error: string }
+  | { ok: false; error: string; status: number }
 > {
   const network = networks.find((n) => n.id === chainId);
 
   if (!network) {
-    return { ok: false, error: "Wrong network" };
+    return { ok: false, error: "Wrong network", status: 400 };
   }
 
   if (typeof councilId !== "string" || !isAddress(councilId)) {
-    return { ok: false, error: "Invalid council ID" };
+    return { ok: false, error: "Invalid council ID", status: 400 };
   }
 
   const session = await getServerSession(authOptions);
 
   if (!session?.address) {
-    return { ok: false, error: "Unauthenticated" };
+    return { ok: false, error: "Unauthenticated", status: 401 };
   }
 
   const round = await findRoundByCouncil(chainId as number, councilId);
 
   if (!round) {
-    return { ok: false, error: "Round not found" };
+    return { ok: false, error: "Round not found", status: 404 };
   }
 
   const hasRole = await hasOnChainRole(
@@ -236,7 +226,11 @@ async function authorize(
   );
 
   if (!hasRole) {
-    return { ok: false, error: "Not a voter manager of this council" };
+    return {
+      ok: false,
+      error: "Not authorized to manage this council",
+      status: 403,
+    };
   }
 
   return {
@@ -255,9 +249,7 @@ export async function POST(request: Request) {
     const auth = await authorize(chainId, councilId);
 
     if (!auth.ok) {
-      return new Response(
-        JSON.stringify({ success: false, error: auth.error }),
-      );
+      return errorResponse(auth.error, auth.status);
     }
 
     const parsed = voterGroupCreateSchema.safeParse({
@@ -268,9 +260,7 @@ export async function POST(request: Request) {
 
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
-      return new Response(
-        JSON.stringify({ success: false, error: issue.message }),
-      );
+      return errorResponse(issue.message, 400);
     }
 
     const inserted = await db
@@ -295,9 +285,7 @@ export async function POST(request: Request) {
       );
     }
 
-    return new Response(
-      JSON.stringify({ success: true, id: inserted.id }),
-    );
+    return new Response(JSON.stringify({ success: true, id: inserted.id }));
   } catch (err) {
     console.error(err);
     return errorResponse(err);
@@ -310,9 +298,7 @@ export async function PATCH(request: Request) {
     const id = Number(searchParams.get("id"));
 
     if (!Number.isInteger(id) || id <= 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid group id" }),
-      );
+      return errorResponse("Invalid group id", 400);
     }
 
     const body = await request.json();
@@ -321,9 +307,7 @@ export async function PATCH(request: Request) {
     const auth = await authorize(chainId, councilId);
 
     if (!auth.ok) {
-      return new Response(
-        JSON.stringify({ success: false, error: auth.error }),
-      );
+      return errorResponse(auth.error, auth.status);
     }
 
     const parsed = voterGroupUpdateSchema.safeParse({
@@ -334,9 +318,7 @@ export async function PATCH(request: Request) {
 
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
-      return new Response(
-        JSON.stringify({ success: false, error: issue.message }),
-      );
+      return errorResponse(issue.message, 400);
     }
 
     const group = await db
@@ -347,9 +329,7 @@ export async function PATCH(request: Request) {
       .executeTakeFirst();
 
     if (!group) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Group not found" }),
-      );
+      return errorResponse("Group not found", 404);
     }
 
     const updates: {
@@ -404,9 +384,7 @@ export async function DELETE(request: Request) {
     const id = Number(searchParams.get("id"));
 
     if (!Number.isInteger(id) || id <= 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid group id" }),
-      );
+      return errorResponse("Invalid group id", 400);
     }
 
     const body = await request.json();
@@ -415,9 +393,7 @@ export async function DELETE(request: Request) {
     const auth = await authorize(chainId, councilId);
 
     if (!auth.ok) {
-      return new Response(
-        JSON.stringify({ success: false, error: auth.error }),
-      );
+      return errorResponse(auth.error, auth.status);
     }
 
     const group = await db
@@ -428,9 +404,7 @@ export async function DELETE(request: Request) {
       .executeTakeFirst();
 
     if (!group) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Group not found" }),
-      );
+      return errorResponse("Group not found", 404);
     }
 
     const memberCountRow = await db

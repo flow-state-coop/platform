@@ -21,18 +21,14 @@ export async function GET(request: Request) {
     }
 
     if (addresses.length > MAX_ADDRESSES) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: `At most ${MAX_ADDRESSES} addresses per request`,
-        }),
+      return errorResponse(
+        `At most ${MAX_ADDRESSES} addresses per request`,
+        400,
       );
     }
 
     if (!addresses.every((a) => isAddress(a))) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid address in list" }),
-      );
+      return errorResponse("Invalid address in list", 400);
     }
 
     const names = await fetchDisplayNames(addresses);

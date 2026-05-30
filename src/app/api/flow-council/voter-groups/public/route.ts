@@ -24,9 +24,7 @@ export async function GET(request: Request) {
 
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
-      return new Response(
-        JSON.stringify({ success: false, error: issue.message }),
-      );
+      return errorResponse(issue.message, 400);
     }
 
     const { chainId, councilId } = parsed.data;
