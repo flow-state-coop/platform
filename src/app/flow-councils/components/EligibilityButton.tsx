@@ -4,7 +4,10 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import useFlowCouncil from "../hooks/flowCouncil";
-import { GOODBUILDERS_COUNCIL_ADDRESSES } from "../lib/constants";
+import {
+  GOODBUILDERS_COUNCIL_ADDRESSES,
+  GOODDOLLAR_SELF_CLAIM_OPEN,
+} from "../lib/constants";
 
 type EligibilityStatus =
   | "idle"
@@ -73,7 +76,7 @@ export default function EligibilityButton({
     }
   }, [status, councilMember]);
 
-  if (!isGoodBuildersCouncil) {
+  if (!isGoodBuildersCouncil || !GOODDOLLAR_SELF_CLAIM_OPEN) {
     return null;
   }
 
