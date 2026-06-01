@@ -1052,88 +1052,91 @@ export default function Funding(props: FundingProps) {
               ) : null}
               {roundStatus === "closed" ? (
                 <Alert variant="danger" className="mb-0 fw-semi-bold">
-                  Round is already closed. New incoming streams will revert.
+                  This round ended on{" "}
+                  {roundEndsAtDate?.toLocaleString(undefined, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                  , so new incoming streams currently revert. Rescheduling to a
+                  future date (or removing the end date) will reopen the round —
+                  only do this if you intend to resume funding.
                 </Alert>
               ) : null}
-              {roundStatus !== "closed" ? (
-                <Form.Group>
-                  <Form.Label className="fw-semi-bold">
-                    Round end date and time
-                  </Form.Label>
-                  <Form.Control
-                    type="datetime-local"
-                    disabled={!canSubmitClose}
-                    value={roundEndDateInput}
-                    onChange={(e) => setRoundEndDateInput(e.target.value)}
-                    className={`border-0 rounded-4 bg-white py-4 fw-semi-bold w-auto ${!canSubmitClose ? "text-info" : ""}`}
-                    style={{ paddingTop: 12, paddingBottom: 12 }}
-                  />
-                </Form.Group>
-              ) : null}
+              <Form.Group>
+                <Form.Label className="fw-semi-bold">
+                  Round end date and time
+                </Form.Label>
+                <Form.Control
+                  type="datetime-local"
+                  disabled={!canSubmitClose}
+                  value={roundEndDateInput}
+                  onChange={(e) => setRoundEndDateInput(e.target.value)}
+                  className={`border-0 rounded-4 bg-white py-4 fw-semi-bold w-auto ${!canSubmitClose ? "text-info" : ""}`}
+                  style={{ paddingTop: 12, paddingBottom: 12 }}
+                />
+              </Form.Group>
               {roundEndError ? (
                 <Alert variant="danger" className="mb-0 fw-semi-bold">
                   {roundEndError}
                 </Alert>
               ) : null}
-              {roundStatus !== "closed" ? (
-                <Stack direction={isMobile ? "vertical" : "horizontal"} gap={3}>
+              <Stack direction={isMobile ? "vertical" : "horizontal"} gap={3}>
+                <Button
+                  variant={scheduleFlashSuccess ? "success" : "primary"}
+                  disabled={
+                    !scheduleFlashSuccess &&
+                    (!canSubmitClose ||
+                      isSchedulingRoundEnd ||
+                      isCancellingRoundEnd ||
+                      !roundEndDateInput)
+                  }
+                  style={{
+                    pointerEvents: scheduleFlashSuccess ? "none" : "auto",
+                  }}
+                  className="fs-lg fw-semi-bold py-4 rounded-4 flex-grow-1"
+                  onClick={handleScheduleRoundEnd}
+                >
+                  {scheduleFlashSuccess ? (
+                    <SuccessCheckmark />
+                  ) : isSchedulingRoundEnd ? (
+                    <Spinner size="sm" />
+                  ) : roundEndsAtDate ? (
+                    "Reschedule"
+                  ) : (
+                    "Schedule"
+                  )}
+                </Button>
+                {roundEndsAtDate ? (
                   <Button
-                    variant={scheduleFlashSuccess ? "success" : "primary"}
+                    variant={
+                      cancelScheduleFlashSuccess
+                        ? "success"
+                        : "outline-secondary"
+                    }
                     disabled={
-                      !scheduleFlashSuccess &&
+                      !cancelScheduleFlashSuccess &&
                       (!canSubmitClose ||
                         isSchedulingRoundEnd ||
-                        isCancellingRoundEnd ||
-                        !roundEndDateInput)
+                        isCancellingRoundEnd)
                     }
                     style={{
-                      pointerEvents: scheduleFlashSuccess ? "none" : "auto",
+                      pointerEvents: cancelScheduleFlashSuccess
+                        ? "none"
+                        : "auto",
                     }}
                     className="fs-lg fw-semi-bold py-4 rounded-4 flex-grow-1"
-                    onClick={handleScheduleRoundEnd}
+                    onClick={handleCancelRoundEnd}
                   >
-                    {scheduleFlashSuccess ? (
+                    {cancelScheduleFlashSuccess ? (
                       <SuccessCheckmark />
-                    ) : isSchedulingRoundEnd ? (
+                    ) : isCancellingRoundEnd ? (
                       <Spinner size="sm" />
-                    ) : roundStatus === "scheduled" ? (
-                      "Reschedule"
                     ) : (
-                      "Schedule"
+                      "Remove End Date"
                     )}
                   </Button>
-                  {roundStatus === "scheduled" ? (
-                    <Button
-                      variant={
-                        cancelScheduleFlashSuccess
-                          ? "success"
-                          : "outline-secondary"
-                      }
-                      disabled={
-                        !cancelScheduleFlashSuccess &&
-                        (!canSubmitClose ||
-                          isSchedulingRoundEnd ||
-                          isCancellingRoundEnd)
-                      }
-                      style={{
-                        pointerEvents: cancelScheduleFlashSuccess
-                          ? "none"
-                          : "auto",
-                      }}
-                      className="fs-lg fw-semi-bold py-4 rounded-4 flex-grow-1"
-                      onClick={handleCancelRoundEnd}
-                    >
-                      {cancelScheduleFlashSuccess ? (
-                        <SuccessCheckmark />
-                      ) : isCancellingRoundEnd ? (
-                        <Spinner size="sm" />
-                      ) : (
-                        "Remove End Date"
-                      )}
-                    </Button>
-                  ) : null}
-                </Stack>
-              ) : null}
+                ) : null}
+              </Stack>
             </Stack>
           </Card.Body>
         </Card>
