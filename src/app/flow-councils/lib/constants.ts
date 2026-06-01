@@ -10,6 +10,13 @@ export const GOODBUILDERS_COUNCIL_ADDRESSES: `0x${string}`[] = [
   "0xfabef1abae4998146e8a8422813eb787caa26ec2",
 ];
 
+// GoodBuilders S3 has ended: the GoodDollar voter self-claim flow is closed.
+// This gates both the "Check Voter Eligibility" button (EligibilityButton.tsx)
+// and the bot-driven addVoter endpoint (api/flow-council/eligibility). Set back
+// to true to reopen self-claim. The onchain kill switch is revoking the bot's
+// VOTER_MANAGER_ROLE on the council.
+export const GOODDOLLAR_SELF_CLAIM_OPEN = false;
+
 export const GOODDOLLAR_IDENTITY_ADDRESS: `0x${string}` =
   "0xC361A6E67822a0EDc17D899227dd9FC50BD62F42";
 
