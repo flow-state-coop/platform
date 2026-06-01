@@ -148,7 +148,6 @@ export default function Funding(props: FundingProps) {
     hasStreamAdminRole,
     hasDefaultAdminRole,
     roundEndsAt,
-    isRoundClosed,
     refetchRoundEnd,
   } = splitterReads;
 
@@ -451,11 +450,13 @@ export default function Funding(props: FundingProps) {
   const roundStatus = useMemo<
     "open" | "scheduled" | "closed" | "loading"
   >(() => {
-    if (isRoundClosed === null || roundEndsAt === null) return "loading";
-    if (isRoundClosed) return "closed";
-    if (roundEndsAt > 0n) return "scheduled";
-    return "open";
-  }, [isRoundClosed, roundEndsAt]);
+    if (roundEndsAt === null) return "loading";
+    if (roundEndsAt === 0n) return "open";
+    // Mirror the contract's isRoundClosed(): roundEndsAt != 0 && now >= roundEndsAt.
+    // Deriving from roundEndsAt (rather than a separate on-chain read) keeps the
+    // badge consistent with the value an admin just wrote and updates as the clock ticks.
+    return BigInt(nowSeconds) >= roundEndsAt ? "closed" : "scheduled";
+  }, [roundEndsAt, nowSeconds]);
 
   const roundEndsAtDate = useMemo(() => {
     if (!roundEndsAt || roundEndsAt === 0n) return null;
@@ -1029,8 +1030,9 @@ export default function Funding(props: FundingProps) {
             </Card.Title>
             <Card.Text className="text-info mb-0">
               Set an end to your round (in your local time zone). After this
-              passes, streams into the round can only be closed. You can do this
-              for all active streams at the bottom of this page.
+              passes, streams into the round can only be closed (you can do this
+              for all active streams at the bottom of this page). A concluded
+              round can be reopened by rescheduling or removing the end date.
             </Card.Text>
           </Card.Header>
           <Card.Body className="p-0 mt-4">
@@ -1051,7 +1053,7 @@ export default function Funding(props: FundingProps) {
                 </Alert>
               ) : null}
               {roundStatus === "closed" ? (
-                <Alert variant="danger" className="mb-0 fw-semi-bold">
+                <Alert variant="warning" className="mb-0 fw-semi-bold">
                   This round ended on{" "}
                   {roundEndsAtDate?.toLocaleString(undefined, {
                     dateStyle: "medium",

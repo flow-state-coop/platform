@@ -21,7 +21,6 @@ export type SplitterReads = {
   hasStreamAdminRole: boolean | null;
   hasDefaultAdminRole: boolean | null;
   roundEndsAt: bigint | null;
-  isRoundClosed: boolean | null;
   refetchRoundEnd: () => void;
 };
 
@@ -109,15 +108,6 @@ export default function useSplitterReads({
     },
   );
 
-  const { data: isRoundClosedRaw, refetch: refetchIsRoundClosed } =
-    useReadContract({
-      address: splitterAddress ?? undefined,
-      abi: superAppSplitterAbi,
-      functionName: "isRoundClosed",
-      chainId,
-      query: { enabled: !!splitterAddress, refetchInterval: 10000 },
-    });
-
   // FEE_PORTION is encoded as permille on the splitter contract (e.g. 50 -> 5%).
   const feePortion =
     feePortionRaw !== undefined && feePortionRaw !== null
@@ -140,7 +130,6 @@ export default function useSplitterReads({
 
   const refetchRoundEnd = () => {
     refetchRoundEndsAt();
-    refetchIsRoundClosed();
   };
 
   return {
@@ -157,8 +146,6 @@ export default function useSplitterReads({
       roundEndsAtRaw !== undefined && roundEndsAtRaw !== null
         ? BigInt(roundEndsAtRaw)
         : null,
-    isRoundClosed:
-      isRoundClosedRaw === undefined ? null : Boolean(isRoundClosedRaw),
     refetchRoundEnd,
   };
 }
