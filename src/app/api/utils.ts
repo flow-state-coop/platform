@@ -10,10 +10,13 @@ export function getErrorMessage(err: unknown): string {
   return "An unexpected error occurred";
 }
 
-export function errorResponse(error: unknown, status: number = 200): Response {
+export function errorResponse(error: unknown, status: number = 500): Response {
   return new Response(
     JSON.stringify({ success: false, error: getErrorMessage(error) }),
-    { status },
+    {
+      status,
+      headers: { "Content-Type": "application/json" },
+    },
   );
 }
 
