@@ -3,7 +3,9 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useConfig, useAccount, usePublicClient } from "wagmi";
+import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
+import { writeContract } from "@wagmi/core";
+import { Address, isAddress } from "viem";
 import { gql, useQuery } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
@@ -11,12 +13,12 @@ import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
-import Image from "react-bootstrap/Image";
 import Modal from "react-bootstrap/Modal";
-import InfoTooltip from "@/components/InfoTooltip";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import { waitForReceipt } from "@/lib/utils";
 import { getApolloClient } from "@/lib/apollo";
+import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import {
   useChunkedTxQueue,
   splitIntoChunks,
@@ -121,7 +123,8 @@ export default function GroupDetail(props: GroupDetailProps) {
   const publicClient = usePublicClient();
   const wagmiConfig = useConfig();
   const { isMobile } = useMediaQuery();
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
+  const { switchChain } = useSwitchChain();
   const q = useChunkedTxQueue(wagmiConfig, publicClient, councilId);
 
   // Addresses whose DB classification must be dropped once the CURRENT onchain
@@ -182,6 +185,42 @@ export default function GroupDetail(props: GroupDetailProps) {
         managerRoles.includes(m.role as `0x${string}`),
     );
   }, [address, flowCouncil]);
+
+  // Only a council default admin can call updateManagers onchain, so the bot
+  // role grant folded into "Save" is gated on this.
+  const isAdmin = useMemo(
+    () =>
+      !!flowCouncil?.flowCouncilManagers.find(
+        (m: { account: string; role: string }) =>
+          m.account === address?.toLowerCase() && m.role === DEFAULT_ADMIN_ROLE,
+      ),
+    [address, flowCouncil],
+  );
+
+  const botAddress = process.env.NEXT_PUBLIC_FLOW_STATE_BOT_ADDRESS;
+
+  const botHasVoterManagerRole = useMemo(() => {
+    if (!botAddress) {
+      return false;
+    }
+
+    const botLower = botAddress.toLowerCase();
+
+    return !!flowCouncil?.flowCouncilManagers.find(
+      (m: { account: string; role: string }) =>
+        m.account === botLower && m.role === VOTER_MANAGER_ROLE,
+    );
+  }, [botAddress, flowCouncil]);
+
+  // True when saving should also grant the Flow State bot the Voter Manager
+  // role onchain (GoodDollar eligibility, the bot lacks it, connected wallet
+  // is an admin able to grant it).
+  const needsBotGrant =
+    editEligibility === "gooddollar" &&
+    !!botAddress &&
+    isAddress(botAddress) &&
+    !botHasVoterManagerRole &&
+    isAdmin;
 
   const votersByAccount = useMemo(() => {
     const map = new Map<string, SubgraphVoter>();
@@ -379,6 +418,9 @@ export default function GroupDetail(props: GroupDetailProps) {
     }
 
     const name = editName.trim();
+    // Manual groups don't expose the field; their stored default is left
+    // untouched. Only the GoodDollar value is user-editable and validated/sent.
+    const isGoodDollar = editEligibility === "gooddollar";
     const defaultVotingPower = Number(editDefaultVotingPower);
 
     if (!name) {
@@ -387,11 +429,12 @@ export default function GroupDetail(props: GroupDetailProps) {
     }
 
     if (
-      editDefaultVotingPower === "" ||
-      editDefaultVotingPower.includes(".") ||
-      Number.isNaN(defaultVotingPower) ||
-      defaultVotingPower < 1 ||
-      defaultVotingPower > 1e6
+      isGoodDollar &&
+      (editDefaultVotingPower === "" ||
+        editDefaultVotingPower.includes(".") ||
+        Number.isNaN(defaultVotingPower) ||
+        defaultVotingPower < 1 ||
+        defaultVotingPower > 1e6)
     ) {
       setSaveError("Default votes must be an integer between 1 and 1M");
       return;
@@ -402,6 +445,34 @@ export default function GroupDetail(props: GroupDetailProps) {
       setSaveError("");
       setSaveSuccess(false);
 
+      // Grant the bot the Voter Manager role onchain first so a rejected wallet
+      // prompt aborts the save cleanly.
+      if (needsBotGrant) {
+        if (!publicClient) {
+          setSaveError("Wallet not ready");
+          return;
+        }
+
+        const hash = await writeContract(wagmiConfig, {
+          address: councilId as Address,
+          abi: flowCouncilAbi,
+          functionName: "updateManagers",
+          // status 0 = Status.ADDED (mirrors the Permissions page).
+          args: [
+            [
+              {
+                account: botAddress as Address,
+                role: VOTER_MANAGER_ROLE,
+                status: 0,
+              },
+            ],
+          ],
+        });
+
+        await waitForReceipt(publicClient, hash);
+        await refetch();
+      }
+
       const res = await fetch(`/api/flow-council/voter-groups?id=${group.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -410,7 +481,8 @@ export default function GroupDetail(props: GroupDetailProps) {
           councilId,
           name,
           eligibilityMethod: editEligibility,
-          defaultVotingPower,
+          // Omit for manual so the PATCH leaves the stored default unchanged.
+          ...(isGoodDollar ? { defaultVotingPower } : {}),
         }),
       });
       const data = await res.json();
@@ -424,7 +496,11 @@ export default function GroupDetail(props: GroupDetailProps) {
       await fetchGroups();
     } catch (err) {
       console.error(err);
-      setSaveError("Failed to save group");
+      setSaveError(
+        needsBotGrant
+          ? "Failed to grant the bot role. Please try again."
+          : "Failed to save group",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -606,27 +682,8 @@ export default function GroupDetail(props: GroupDetailProps) {
                   />
                 </Form.Group>
                 <Form.Group className="mb-3">
-                  <Form.Label className="d-flex align-items-center gap-2 fw-semi-bold">
+                  <Form.Label className="fw-semi-bold">
                     Eligibility method
-                    {!isCelo ? (
-                      <InfoTooltip
-                        position={{ top: true }}
-                        target={
-                          <Image
-                            src="/info.svg"
-                            alt="Info"
-                            width={14}
-                            height={14}
-                            className="align-top"
-                          />
-                        }
-                        content={
-                          <p className="m-0 p-2">
-                            GoodDollar ID eligibility is only available on Celo.
-                          </p>
-                        }
-                      />
-                    ) : null}
                   </Form.Label>
                   <Form.Select
                     value={editEligibility}
@@ -641,53 +698,57 @@ export default function GroupDetail(props: GroupDetailProps) {
                     </option>
                   </Form.Select>
                 </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label className="fw-semi-bold">
-                    Default vote allocation
-                  </Form.Label>
-                  <Form.Control
-                    type="text"
-                    inputMode="numeric"
-                    value={editDefaultVotingPower}
-                    disabled={!isManager || isSaving}
-                    onChange={(e) => {
-                      const value = e.target.value;
+                {editEligibility === "gooddollar" ? (
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-semi-bold">
+                      Default vote allocation
+                    </Form.Label>
+                    <Form.Control
+                      type="text"
+                      inputMode="numeric"
+                      value={editDefaultVotingPower}
+                      disabled={!isManager || isSaving}
+                      onChange={(e) => {
+                        const value = e.target.value;
 
-                      if (
-                        value === "" ||
-                        (/^\d+$/.test(value) && Number(value) <= 1e6)
-                      ) {
-                        setEditDefaultVotingPower(value);
-                      }
-                    }}
-                  />
-                  <Form.Text className="text-info">
-                    Applied only to voters added through this group after the
-                    change — existing members are not updated.
-                  </Form.Text>
-                </Form.Group>
+                        if (
+                          value === "" ||
+                          (/^\d+$/.test(value) && Number(value) <= 1e6)
+                        ) {
+                          setEditDefaultVotingPower(value);
+                        }
+                      }}
+                    />
+                    <Form.Text className="text-info">
+                      Applied only to voters added through this group after the
+                      change — existing members are not updated.
+                    </Form.Text>
+                  </Form.Group>
+                ) : null}
 
                 {editEligibility === "gooddollar" ? (
-                  <Alert variant="info">
-                    The Flow State bot must hold the Voter Manager role on this
-                    council to add GoodDollar-verified voters.
-                    {process.env.NEXT_PUBLIC_FLOW_STATE_BOT_ADDRESS ? (
-                      <>
-                        <br />
-                        Bot address:{" "}
-                        <span className="text-break">
-                          {process.env.NEXT_PUBLIC_FLOW_STATE_BOT_ADDRESS}
-                        </span>
-                      </>
-                    ) : null}
-                    <br />
-                    <Link
-                      href={`/flow-councils/permissions/${chainId}/${councilId}`}
-                      className="text-primary fw-semi-bold text-decoration-none"
-                    >
-                      Manage permissions
-                    </Link>
-                  </Alert>
+                  botHasVoterManagerRole ? (
+                    <Alert variant="success">
+                      The Flow State bot already holds the Voter Manager role on
+                      this council.
+                    </Alert>
+                  ) : (
+                    <Alert variant="info">
+                      The Flow State bot needs the Voter Manager role on this
+                      council to add GoodDollar-verified voters.
+                      {botAddress ? (
+                        <>
+                          <br />
+                          Bot address:{" "}
+                          <span className="text-break">{botAddress}</span>
+                        </>
+                      ) : null}
+                      <br />
+                      {needsBotGrant
+                        ? "Saving will prompt you to grant it."
+                        : "A council admin must grant it from the Permissions page."}
+                    </Alert>
+                  )
                 ) : null}
 
                 {saveError ? (
@@ -704,9 +765,21 @@ export default function GroupDetail(props: GroupDetailProps) {
                 <Button
                   className="rounded-4 px-4 py-2 fw-semi-bold"
                   disabled={!isManager || isSaving}
-                  onClick={handleSave}
+                  onClick={() => {
+                    if (needsBotGrant && connectedChain?.id !== chainId) {
+                      switchChain({ chainId });
+                    } else {
+                      handleSave();
+                    }
+                  }}
                 >
-                  {isSaving ? <Spinner size="sm" /> : "Save"}
+                  {isSaving ? (
+                    <Spinner size="sm" />
+                  ) : needsBotGrant && connectedChain?.id !== chainId ? (
+                    "Switch Network"
+                  ) : (
+                    "Save"
+                  )}
                 </Button>
               </Card.Body>
             </Card>

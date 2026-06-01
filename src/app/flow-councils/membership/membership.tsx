@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Address } from "viem";
+import { Address, isAddress } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "@wagmi/core";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -164,6 +164,43 @@ export default function Membership(props: MembershipProps) {
     );
   }, [address, flowCouncil]);
 
+  // Only a council default admin can call updateManagers onchain, so the bot
+  // role grant folded into "Create" is gated on this (a plain voter manager can
+  // still create the group, just not grant the role here).
+  const isAdmin = useMemo(
+    () =>
+      !!flowCouncil?.flowCouncilManagers.find(
+        (m: { account: string; role: string }) =>
+          m.account === address?.toLowerCase() && m.role === DEFAULT_ADMIN_ROLE,
+      ),
+    [address, flowCouncil],
+  );
+
+  const botAddress = process.env.NEXT_PUBLIC_FLOW_STATE_BOT_ADDRESS;
+
+  const botHasVoterManagerRole = useMemo(() => {
+    if (!botAddress) {
+      return false;
+    }
+
+    const botLower = botAddress.toLowerCase();
+
+    return !!flowCouncil?.flowCouncilManagers.find(
+      (m: { account: string; role: string }) =>
+        m.account === botLower && m.role === VOTER_MANAGER_ROLE,
+    );
+  }, [botAddress, flowCouncil]);
+
+  // True when creating this group should also grant the Flow State bot the
+  // Voter Manager role onchain (GoodDollar groups need it, the bot lacks it,
+  // and the connected wallet is an admin able to grant it).
+  const needsBotGrant =
+    newGroupEligibility === "gooddollar" &&
+    !!botAddress &&
+    isAddress(botAddress) &&
+    !botHasVoterManagerRole &&
+    isAdmin;
+
   // Map of lowercased account -> subgraph voter for fast lookup in metrics.
   const votersByAccount = useMemo(() => {
     const map = new Map<string, SubgraphVoter>();
@@ -305,7 +342,13 @@ export default function Membership(props: MembershipProps) {
     }
 
     const name = newGroupName.trim();
-    const defaultVotingPower = Number(newGroupDefaultVotingPower);
+    const isGoodDollar = newGroupEligibility === "gooddollar";
+    // Manual groups don't expose the field; they fall back to the default of 10
+    // (the per-voter fallback used by the Add voters modal). Only the GoodDollar
+    // value is user-editable, so only that one is validated.
+    const defaultVotingPower = isGoodDollar
+      ? Number(newGroupDefaultVotingPower)
+      : 10;
 
     if (!name) {
       setCreateGroupError("Name is required");
@@ -313,10 +356,11 @@ export default function Membership(props: MembershipProps) {
     }
 
     if (
-      !isNumber(newGroupDefaultVotingPower) ||
-      newGroupDefaultVotingPower.includes(".") ||
-      defaultVotingPower < 1 ||
-      defaultVotingPower > 1e6
+      isGoodDollar &&
+      (!isNumber(newGroupDefaultVotingPower) ||
+        newGroupDefaultVotingPower.includes(".") ||
+        defaultVotingPower < 1 ||
+        defaultVotingPower > 1e6)
     ) {
       setCreateGroupError("Default votes must be an integer between 1 and 1M");
       return;
@@ -325,6 +369,35 @@ export default function Membership(props: MembershipProps) {
     try {
       setIsCreatingGroup(true);
       setCreateGroupError("");
+
+      // Grant the bot the Voter Manager role onchain first. Doing it before the
+      // DB write means a rejected wallet prompt aborts cleanly without leaving
+      // an orphan group (a retry would otherwise create a duplicate).
+      if (needsBotGrant) {
+        if (!publicClient) {
+          setCreateGroupError("Wallet not ready");
+          return;
+        }
+
+        const hash = await writeContract(wagmiConfig, {
+          address: councilId as Address,
+          abi: flowCouncilAbi,
+          functionName: "updateManagers",
+          // status 0 = Status.ADDED (mirrors the Permissions page).
+          args: [
+            [
+              {
+                account: botAddress as Address,
+                role: VOTER_MANAGER_ROLE,
+                status: 0,
+              },
+            ],
+          ],
+        });
+
+        await waitForReceipt(publicClient, hash);
+        await refetch();
+      }
 
       const res = await fetch("/api/flow-council/voter-groups", {
         method: "POST",
@@ -349,7 +422,11 @@ export default function Membership(props: MembershipProps) {
       await fetchGroups();
     } catch (err) {
       console.error(err);
-      setCreateGroupError("Failed to create group");
+      setCreateGroupError(
+        needsBotGrant
+          ? "Failed to grant the bot role. Please try again."
+          : "Failed to create group",
+      );
     } finally {
       setIsCreatingGroup(false);
     }
@@ -663,28 +740,7 @@ export default function Membership(props: MembershipProps) {
             />
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label className="d-flex align-items-center gap-2 fw-semi-bold">
-              Eligibility method
-              {!isCelo ? (
-                <InfoTooltip
-                  position={{ top: true }}
-                  target={
-                    <Image
-                      src="/info.svg"
-                      alt="Info"
-                      width={14}
-                      height={14}
-                      className="align-top"
-                    />
-                  }
-                  content={
-                    <p className="m-0 p-2">
-                      GoodDollar ID eligibility is only available on Celo.
-                    </p>
-                  }
-                />
-              ) : null}
-            </Form.Label>
+            <Form.Label className="fw-semi-bold">Eligibility method</Form.Label>
             <Form.Select
               value={newGroupEligibility}
               disabled={isCreatingGroup}
@@ -698,54 +754,58 @@ export default function Membership(props: MembershipProps) {
               </option>
             </Form.Select>
           </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Label className="fw-semi-bold">
-              Default vote allocation
-            </Form.Label>
-            <Form.Control
-              type="text"
-              inputMode="numeric"
-              placeholder="10"
-              value={newGroupDefaultVotingPower}
-              disabled={isCreatingGroup}
-              onChange={(e) => {
-                const value = e.target.value;
-
-                // Digits only (matches the group-detail editor) so negatives
-                // and exponents can't be typed; the server still validates.
-                if (
-                  value === "" ||
-                  (/^\d+$/.test(value) && Number(value) <= 1e6)
-                ) {
-                  setNewGroupDefaultVotingPower(value);
-                }
-              }}
-            />
-            <Form.Text className="text-info">
-              Votes a voter receives when first added through this group.
-            </Form.Text>
-          </Form.Group>
           {newGroupEligibility === "gooddollar" ? (
-            <Alert variant="info" className="mb-0">
-              The Flow State bot must hold the Voter Manager role on this
-              council to add GoodDollar-verified voters.
-              {process.env.NEXT_PUBLIC_FLOW_STATE_BOT_ADDRESS ? (
-                <>
-                  <br />
-                  Bot address:{" "}
-                  <span className="text-break">
-                    {process.env.NEXT_PUBLIC_FLOW_STATE_BOT_ADDRESS}
-                  </span>
-                </>
-              ) : null}
-              <br />
-              <Link
-                href={`/flow-councils/permissions/${chainId}/${councilId}`}
-                className="text-primary fw-semi-bold text-decoration-none"
-              >
-                Manage permissions
-              </Link>
-            </Alert>
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-semi-bold">
+                Default vote allocation
+              </Form.Label>
+              <Form.Control
+                type="text"
+                inputMode="numeric"
+                placeholder="10"
+                value={newGroupDefaultVotingPower}
+                disabled={isCreatingGroup}
+                onChange={(e) => {
+                  const value = e.target.value;
+
+                  // Digits only (matches the group-detail editor) so negatives
+                  // and exponents can't be typed; the server still validates.
+                  if (
+                    value === "" ||
+                    (/^\d+$/.test(value) && Number(value) <= 1e6)
+                  ) {
+                    setNewGroupDefaultVotingPower(value);
+                  }
+                }}
+              />
+              <Form.Text className="text-info">
+                Votes a voter receives when first added through this group.
+              </Form.Text>
+            </Form.Group>
+          ) : null}
+          {newGroupEligibility === "gooddollar" ? (
+            botHasVoterManagerRole ? (
+              <Alert variant="success" className="mb-0">
+                The Flow State bot already holds the Voter Manager role on this
+                council.
+              </Alert>
+            ) : (
+              <Alert variant="info" className="mb-0">
+                The Flow State bot needs the Voter Manager role on this council
+                to add GoodDollar-verified voters.
+                {botAddress ? (
+                  <>
+                    <br />
+                    Bot address:{" "}
+                    <span className="text-break">{botAddress}</span>
+                  </>
+                ) : null}
+                <br />
+                {needsBotGrant
+                  ? "Creating this group will prompt you to grant it."
+                  : "A council admin must grant it from the Permissions page."}
+              </Alert>
+            )
           ) : null}
           {createGroupError ? (
             <Alert variant="danger" className="mt-3 mb-0">
@@ -764,10 +824,22 @@ export default function Membership(props: MembershipProps) {
           </Button>
           <Button
             className="rounded-4 px-4 py-2 fw-semi-bold"
-            onClick={handleCreateGroup}
+            onClick={() => {
+              if (needsBotGrant && connectedChain?.id !== chainId) {
+                switchChain({ chainId });
+              } else {
+                handleCreateGroup();
+              }
+            }}
             disabled={!isManager || isCreatingGroup}
           >
-            {isCreatingGroup ? <Spinner size="sm" /> : "Create"}
+            {isCreatingGroup ? (
+              <Spinner size="sm" />
+            ) : needsBotGrant && connectedChain?.id !== chainId ? (
+              "Switch Network"
+            ) : (
+              "Create"
+            )}
           </Button>
         </Modal.Footer>
       </Modal>
