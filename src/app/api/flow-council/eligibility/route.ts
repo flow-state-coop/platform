@@ -10,7 +10,10 @@ import { db } from "../db";
 import { findRoundByCouncil } from "../auth";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks, getViemChain } from "@/lib/networks";
-import { GOODDOLLAR_IDENTITY_ADDRESS } from "@/app/flow-councils/lib/constants";
+import {
+  GOODDOLLAR_IDENTITY_ADDRESS,
+  GOODDOLLAR_SELF_CLAIM_OPEN,
+} from "@/app/flow-councils/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +53,15 @@ async function getGoodDollarGroup(
 }
 
 export async function POST(request: Request) {
+  // GoodBuilders S3 has ended: the GoodDollar voter self-claim flow is closed,
+  // so the bot no longer adds voters. Re-enable via GOODDOLLAR_SELF_CLAIM_OPEN.
+  if (!GOODDOLLAR_SELF_CLAIM_OPEN) {
+    return Response.json({
+      success: false,
+      error: "Voter eligibility self-claim is closed",
+    });
+  }
+
   try {
     const { address, chainId, councilId } = await request.json();
 
