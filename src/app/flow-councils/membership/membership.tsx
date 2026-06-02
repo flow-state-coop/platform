@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Address, isAddress } from "viem";
+import { Address } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "@wagmi/core";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -37,6 +37,7 @@ import {
   VOTER_MANAGER_ROLE,
   RECIPIENT_MANAGER_ROLE,
   DEFAULT_ADMIN_ROLE,
+  FLOW_STATE_BOT_ADDRESS,
 } from "../lib/constants";
 
 type MembershipProps = { chainId?: number; councilId?: string };
@@ -176,30 +177,20 @@ export default function Membership(props: MembershipProps) {
     [address, flowCouncil],
   );
 
-  const botAddress = process.env.NEXT_PUBLIC_FLOW_STATE_BOT_ADDRESS;
-
   const botHasVoterManagerRole = useMemo(() => {
-    if (!botAddress) {
-      return false;
-    }
-
-    const botLower = botAddress.toLowerCase();
+    const botLower = FLOW_STATE_BOT_ADDRESS.toLowerCase();
 
     return !!flowCouncil?.flowCouncilManagers.find(
       (m: { account: string; role: string }) =>
         m.account === botLower && m.role === VOTER_MANAGER_ROLE,
     );
-  }, [botAddress, flowCouncil]);
+  }, [flowCouncil]);
 
   // True when creating this group should also grant the Flow State bot the
   // Voter Manager role onchain (GoodDollar groups need it, the bot lacks it,
   // and the connected wallet is an admin able to grant it).
   const needsBotGrant =
-    newGroupEligibility === "gooddollar" &&
-    !!botAddress &&
-    isAddress(botAddress) &&
-    !botHasVoterManagerRole &&
-    isAdmin;
+    newGroupEligibility === "gooddollar" && !botHasVoterManagerRole && isAdmin;
 
   // Map of lowercased account -> subgraph voter for fast lookup in metrics.
   const votersByAccount = useMemo(() => {
@@ -387,7 +378,7 @@ export default function Membership(props: MembershipProps) {
           args: [
             [
               {
-                account: botAddress as Address,
+                account: FLOW_STATE_BOT_ADDRESS,
                 role: VOTER_MANAGER_ROLE,
                 status: 0,
               },
@@ -793,17 +784,13 @@ export default function Membership(props: MembershipProps) {
               <Alert variant="info" className="mb-0">
                 The Flow State bot needs the Voter Manager role on this council
                 to add GoodDollar-verified voters.
-                {botAddress ? (
-                  <>
-                    <br />
-                    Bot address:{" "}
-                    <span className="text-break">{botAddress}</span>
-                  </>
-                ) : null}
+                <br />
+                Bot address:{" "}
+                <span className="text-break">{FLOW_STATE_BOT_ADDRESS}</span>
                 <br />
                 {needsBotGrant
                   ? "Creating this group will prompt you to grant it."
-                  : "A council admin must grant it from the Permissions page."}
+                  : "A council admin must grant this role to the address above."}
               </Alert>
             )
           ) : null}

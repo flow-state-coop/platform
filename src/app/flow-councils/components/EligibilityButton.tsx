@@ -4,10 +4,6 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import useFlowCouncil from "../hooks/flowCouncil";
-import {
-  GOODBUILDERS_COUNCIL_ADDRESSES,
-  GOODDOLLAR_SELF_CLAIM_OPEN,
-} from "../lib/constants";
 
 type EligibilityStatus =
   | "idle"
@@ -30,10 +26,9 @@ export default function EligibilityButton({
   const { councilMember, dispatchShowBallot } = useFlowCouncil();
   const [status, setStatus] = useState<EligibilityStatus>("idle");
   const [pendingCheck, setPendingCheck] = useState(false);
-
-  const isGoodBuildersCouncil = GOODBUILDERS_COUNCIL_ADDRESSES.includes(
-    councilId.toLowerCase() as `0x${string}`,
-  );
+  // Self-claim is opt-in per council: only surface the button when an admin has
+  // created a "gooddollar" voter group for this council.
+  const [hasGoodDollarGroup, setHasGoodDollarGroup] = useState(false);
 
   const checkEligibility = useCallback(async () => {
     setStatus("checking");
@@ -76,7 +71,36 @@ export default function EligibilityButton({
     }
   }, [status, councilMember]);
 
-  if (!isGoodBuildersCouncil || !GOODDOLLAR_SELF_CLAIM_OPEN) {
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/flow-council/voter-groups/public?chainId=${chainId}&councilId=${councilId}`,
+        );
+        const data = await res.json();
+
+        if (!cancelled) {
+          setHasGoodDollarGroup(
+            Array.isArray(data.groups) &&
+              data.groups.some(
+                (group: { eligibilityMethod: string }) =>
+                  group.eligibilityMethod === "gooddollar",
+              ),
+          );
+        }
+      } catch {
+        // Leave the button hidden on a failed lookup.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [chainId, councilId]);
+
+  if (!hasGoodDollarGroup) {
     return null;
   }
 
