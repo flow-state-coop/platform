@@ -119,6 +119,9 @@ export default function GroupDetail(props: GroupDetailProps) {
   // The voter table reports its current client-side filtered subset up so the
   // bulk toolbar's "Apply to filtered" can target it.
   const [filteredVoters, setFilteredVoters] = useState<SubgraphVoter[]>([]);
+  // Surfaces a failure of the deferred DB classification cleanup that runs after
+  // an onchain removal queue completes (the onchain removal itself succeeded).
+  const [cleanupError, setCleanupError] = useState("");
 
   const router = useRouter();
   const publicClient = usePublicClient();
@@ -146,6 +149,7 @@ export default function GroupDetail(props: GroupDetailProps) {
       removalAddresses?: string[],
     ) => {
       pendingRemovalRef.current = removalAddresses ?? [];
+      setCleanupError("");
       q.startQueue(cid, chunks);
     },
     [q],
@@ -332,18 +336,37 @@ export default function GroupDetail(props: GroupDetailProps) {
       if (removed.length > 0) {
         pendingRemovalRef.current = [];
 
-        try {
-          // Chunked so a very large group removal stays under the endpoint's
-          // per-request address cap.
-          for (const batch of splitIntoChunks(removed, DELETE_BATCH)) {
-            await fetch("/api/flow-council/voter-groups/members", {
+        // Chunked so a very large group removal stays under the endpoint's
+        // per-request address cap. Each batch is checked on its own: a failed
+        // batch (thrown, or a non-ok / !success response) is collected and
+        // surfaced so the admin knows those classifications weren't cleared,
+        // while the remaining batches still run.
+        const failed: string[] = [];
+
+        for (const batch of splitIntoChunks(removed, DELETE_BATCH)) {
+          try {
+            const res = await fetch("/api/flow-council/voter-groups/members", {
               method: "DELETE",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ chainId, councilId, addresses: batch }),
             });
+            const data = await res.json().catch(() => null);
+
+            if (!res.ok || !data?.success) {
+              failed.push(...batch);
+            }
+          } catch (err) {
+            console.error(err);
+            failed.push(...batch);
           }
-        } catch (err) {
-          console.error(err);
+        }
+
+        if (failed.length > 0 && !cancelled) {
+          setCleanupError(
+            `Voters were removed onchain, but ${failed.length} could not be ` +
+              `cleared from this group's records. Refresh and remove them ` +
+              `again to retry.`,
+          );
         }
       }
 
@@ -793,6 +816,16 @@ export default function GroupDetail(props: GroupDetailProps) {
                     >
                       Retry
                     </Button>
+                  </Alert>
+                ) : null}
+                {cleanupError ? (
+                  <Alert
+                    variant="danger"
+                    dismissible
+                    onClose={() => setCleanupError("")}
+                    className="fw-semi-bold"
+                  >
+                    {cleanupError}
                   </Alert>
                 ) : null}
                 {isManager ? (
