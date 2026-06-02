@@ -316,9 +316,9 @@ function Sidebar() {
         className="overflow-hidden border-4 border-dark lh-sm"
         style={{ width: isMobile || isTablet ? 300 : "auto" }}
       >
-        {councils?.map((council: Council, i: number) => (
+        {councils?.map((council: Council) => (
           <Dropdown.Item
-            key={i}
+            key={council.id}
             className="text-truncate fw-semi-bold"
             onClick={() =>
               router.push(
