@@ -260,19 +260,19 @@ function Sidebar() {
         className="overflow-hidden border-4 border-dark lh-sm"
         style={{ width: isMobile || isTablet ? 300 : "auto" }}
       >
-        {networks.filter(isFlowCouncilNetwork).map((network, i) => (
+        {networks.filter(isFlowCouncilNetwork).map((network) => (
           <Dropdown.Item
-            key={i}
+            key={network.id}
             className="text-truncate fw-semi-bold"
             onClick={() => {
+              // Only point the sidebar at a network once a wallet is connected
+              // on it — when switching (after a confirmed `onSuccess`) or when
+              // already on it. A disconnected pick just opens the connect modal.
               if (!connectedChain) {
                 if (openConnectModal) {
                   openConnectModal();
                 }
-                setSelectedNetwork(network);
               } else if (connectedChain.id !== network.id) {
-                // Only follow the wallet to the new network once the switch is
-                // confirmed, so a rejected prompt doesn't desync the query.
                 switchChain(
                   { chainId: network.id },
                   { onSuccess: () => setSelectedNetwork(network) },
