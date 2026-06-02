@@ -14,7 +14,6 @@ import Image from "react-bootstrap/Image";
 import { Network } from "@/types/network";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
-import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 import {
   networks,
   isSplitterFactoryDeployed,
@@ -131,7 +130,7 @@ function Sidebar() {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [councils, setCouncils] = useState<Council[]>([]);
   const [selectedNetwork, setSelectedNetwork] = useState<Network>(
-    networks.find((network) => network.id === DEFAULT_CHAIN_ID) ?? networks[0],
+    networks.find((network) => network.label === "celo")!,
   );
 
   const pathname = usePathname();
@@ -235,7 +234,7 @@ function Sidebar() {
     };
   }, [councilIdsKey, selectedNetwork.id]);
 
-  const NetworkDropdown = () => (
+  const renderNetworkDropdown = () => (
     <Dropdown className="position-static w-75 overflow-hidden">
       <Dropdown.Toggle
         variant="transparent"
@@ -266,13 +265,21 @@ function Sidebar() {
             key={i}
             className="text-truncate fw-semi-bold"
             onClick={() => {
-              if (!connectedChain && openConnectModal) {
-                openConnectModal();
-              } else if (connectedChain && connectedChain.id !== network.id) {
-                switchChain({ chainId: network.id });
+              if (!connectedChain) {
+                if (openConnectModal) {
+                  openConnectModal();
+                }
+                setSelectedNetwork(network);
+              } else if (connectedChain.id !== network.id) {
+                // Only follow the wallet to the new network once the switch is
+                // confirmed, so a rejected prompt doesn't desync the query.
+                switchChain(
+                  { chainId: network.id },
+                  { onSuccess: () => setSelectedNetwork(network) },
+                );
+              } else {
+                setSelectedNetwork(network);
               }
-
-              setSelectedNetwork(network);
             }}
           >
             <Stack
@@ -294,7 +301,7 @@ function Sidebar() {
     </Dropdown>
   );
 
-  const CouncilsDropdown = () => (
+  const renderCouncilsDropdown = () => (
     <Dropdown className="position-static w-75 overflow-hidden">
       <Dropdown.Toggle
         disabled={!address}
@@ -376,8 +383,8 @@ function Sidebar() {
           </Offcanvas.Title>
         </Offcanvas.Header>
         <Offcanvas.Body className="d-flex flex-column gap-4 px-3 py-4 fs-6">
-          <NetworkDropdown />
-          <CouncilsDropdown />
+          {renderNetworkDropdown()}
+          {renderCouncilsDropdown()}
           <SidebarLinks
             chainId={chainId}
             selectedCouncil={selectedCouncil}
@@ -395,8 +402,8 @@ function Sidebar() {
       className="w-33 h-100 rounded-4 bg-lace-100 ms-12 ms-xxl-16 p-4 fs-5 me-10"
     >
       <h1 className="fs-5 fw-semi-bold">Flow Council Admin</h1>
-      <NetworkDropdown />
-      <CouncilsDropdown />
+      {renderNetworkDropdown()}
+      {renderCouncilsDropdown()}
       <SidebarLinks
         chainId={chainId}
         selectedCouncil={selectedCouncil}
