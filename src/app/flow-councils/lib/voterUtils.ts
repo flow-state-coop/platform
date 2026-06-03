@@ -91,3 +91,12 @@ export function shareOfVotes(
 export function totalPages(filteredCount: number, pageSize: number): number {
   return Math.max(1, Math.ceil(filteredCount / pageSize));
 }
+
+/**
+ * A valid vote allocation: a positive integer in [1, 1,000,000]. 0 is not an
+ * edit — removal is how a voter is zeroed — so the value stays meaningful as an
+ * allocation.
+ */
+export function isValidVotes(value: string): boolean {
+  return /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 1e6;
+}

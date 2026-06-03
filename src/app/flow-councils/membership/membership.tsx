@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Address } from "viem";
@@ -35,6 +35,7 @@ import {
   shareOfVotes,
 } from "@/app/flow-councils/lib/voterUtils";
 import EligibilityManagerField from "./EligibilityManagerField";
+import SuccessCheckmark from "@/app/flow-councils/components/SuccessCheckmark";
 import {
   VOTER_MANAGER_ROLE,
   RECIPIENT_MANAGER_ROLE,
@@ -90,23 +91,6 @@ const FLOW_COUNCIL_QUERY = gql`
 function prettyEligibility(method: EligibilityMethod): string {
   return method === "gooddollar" ? "GoodDollar ID" : "Manual";
 }
-
-// Platform-standard tx-button confirmation icon (matches Ballot/Funding).
-function SuccessCheckmark() {
-  return (
-    <Image
-      src="/success.svg"
-      alt="Success"
-      width={20}
-      height={20}
-      style={{
-        filter:
-          "brightness(0) saturate(100%) invert(85%) sepia(8%) saturate(138%) hue-rotate(138deg) brightness(93%) contrast(106%)",
-      }}
-    />
-  );
-}
-
 export default function Membership(props: MembershipProps) {
   const { chainId, councilId } = props;
 
@@ -130,6 +114,9 @@ export default function Membership(props: MembershipProps) {
   const [createGroupError, setCreateGroupError] = useState("");
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [createGroupSuccess, setCreateGroupSuccess] = useState(false);
+  // Tracks the post-create-success close timer so it's cleared if the component
+  // unmounts before it fires (avoids setState on an unmounted component).
+  const createSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const router = useRouter();
   const publicClient = usePublicClient();
@@ -139,6 +126,15 @@ export default function Membership(props: MembershipProps) {
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
   const q = useChunkedTxQueue(wagmiConfig, publicClient, councilId);
+
+  useEffect(
+    () => () => {
+      if (createSuccessTimer.current) {
+        clearTimeout(createSuccessTimer.current);
+      }
+    },
+    [],
+  );
 
   const {
     data: flowCouncilQueryRes,
@@ -420,7 +416,7 @@ export default function Membership(props: MembershipProps) {
       // then the modal closes.
       setCreateGroupSuccess(true);
 
-      setTimeout(() => {
+      createSuccessTimer.current = setTimeout(() => {
         setShowNewGroupModal(false);
         resetNewGroupModal();
         fetchGroups();

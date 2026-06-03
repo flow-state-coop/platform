@@ -56,5 +56,5 @@ export function useGrantBotVoterManager(councilId: string) {
     }
   }, [wagmiConfig, publicClient, councilId]);
 
-  return { grant, isGranting, error, setError };
+  return { grant, isGranting, error };
 }

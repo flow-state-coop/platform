@@ -15,11 +15,8 @@ import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
 import Table from "react-bootstrap/Table";
 import Dropdown from "react-bootstrap/Dropdown";
-import Modal from "react-bootstrap/Modal";
 import Alert from "react-bootstrap/Alert";
-import Spinner from "react-bootstrap/Spinner";
 import Pagination from "react-bootstrap/Pagination";
-import Image from "react-bootstrap/Image";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import {
   CHUNK_SIZE,
@@ -31,33 +28,18 @@ import {
   pctCast,
   passesPctFilter,
   totalPages,
+  isValidVotes,
 } from "@/app/flow-councils/lib/voterUtils";
-
-type SubgraphVoter = {
-  id: string;
-  account: string;
-  votingPower: string;
-  ballot?: { votes?: { amount: string }[] };
-};
-
-type ChunkedQueue = {
-  startQueue: (
-    councilId: string,
-    chunks: { args: Record<string, unknown> }[],
-    removalAddresses?: string[],
-  ) => void;
-  resume: () => void;
-  clear: () => void;
-  isPending: boolean;
-  completedCount: number;
-  totalCount: number;
-  error: Error | null;
-};
-
-type GroupOption = { id: number; name: string };
-
-// A pending new voter row the admin is composing (or that CSV import staged).
-type NewRow = { id: number; address: string; votes: string };
+import MoveVoterModal from "./MoveVoterModal";
+import SaveConfirmModal from "./SaveConfirmModal";
+import { computeCsvSync, buildCsvRows } from "./voterCsv";
+import type {
+  ChunkedQueue,
+  GroupOption,
+  NewRow,
+  SubgraphVoter,
+  SubmitPhase,
+} from "./voterTableTypes";
 
 type VoterTableProps = {
   chainId: number;
@@ -89,22 +71,6 @@ function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
-// Platform-standard tx-button confirmation icon (matches membership/Ballot/Funding).
-function SuccessCheckmark() {
-  return (
-    <Image
-      src="/success.svg"
-      alt="Success"
-      width={20}
-      height={20}
-      style={{
-        filter:
-          "brightness(0) saturate(100%) invert(85%) sepia(8%) saturate(138%) hue-rotate(138deg) brightness(93%) contrast(106%)",
-      }}
-    />
-  );
-}
-
 // Row-actions dropdown toggle: a plain three-dots button with no caret (the
 // default Dropdown.Toggle renders a ▼ via its ::after pseudo-element).
 const RowActionsToggle = forwardRef<
@@ -121,12 +87,6 @@ const RowActionsToggle = forwardRef<
   </button>
 ));
 RowActionsToggle.displayName = "RowActionsToggle";
-
-// Votes are a positive integer capped at 1M (0 is not an edit — removal is how a
-// voter is zeroed, so the value stays meaningful as an allocation).
-function isValidVotes(value: string): boolean {
-  return /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 1e6;
-}
 
 // Parse the address-search box into a set of lowercased addresses when the user
 // pasted a newline/comma-separated list; otherwise treat the trimmed text as a
@@ -178,20 +138,21 @@ export default function VoterTable(props: VoterTableProps) {
   const [newRows, setNewRows] = useState<NewRow[]>([]);
   const newRowId = useRef(0);
 
+  // Addresses this Save freshly inserted into the group (DB) before the onchain
+  // queue ran. If that queue fails and the admin discards it, these are rolled
+  // back so a discarded add never lingers as a classified-but-not-onchain
+  // member. Only addresses we actually inserted are tracked (see handleSave), so
+  // the rollback can never touch another group's membership.
+  const postedNewAddressesRef = useRef<string[]>([]);
+
   const [bulkValue, setBulkValue] = useState("");
   const [bulkMode, setBulkMode] = useState<"set" | "increment">("set");
 
   const [importNote, setImportNote] = useState("");
 
-  // Save lifecycle, surfaced entirely inside the confirm modal so the flow
-  // matches the rest of the platform (spinner → green checkmark → close):
-  //   idle       — modal open, awaiting confirmation
-  //   saving     — offchain DB write in flight
-  //   submitting — onchain chunk queue running (or stopped on q.error)
-  //   done        — queue fully complete; modal auto-closes shortly after
-  const [submitPhase, setSubmitPhase] = useState<
-    "idle" | "saving" | "submitting" | "done"
-  >("idle");
+  // Save lifecycle (see SubmitPhase), surfaced entirely inside the confirm modal
+  // so the flow matches the rest of the platform (spinner → checkmark → close).
+  const [submitPhase, setSubmitPhase] = useState<SubmitPhase>("idle");
   const [saveError, setSaveError] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -547,67 +508,23 @@ export default function VoterTable(props: VoterTableProps) {
 
   // Sync this group's roster to the uploaded file: rows in the file are
   // added/updated; existing members absent from the file are staged for removal.
+  // The roster-sync math lives in voterCsv (pure + unit tested); here we only
+  // assign row ids and surface the import summary.
   const handleCsvImport = (file: File) => {
     Papa.parse(file, {
       complete: (results: { data: string[][] }) => {
-        const desired = new Map<string, string>();
-        let skipped = 0;
-
-        for (const row of results.data) {
-          const address = (row[0] ?? "").trim();
-
-          if (address === "") {
-            continue;
-          }
-
-          if (!isAddress(address)) {
-            skipped++;
-            continue;
-          }
-
-          desired.set(address.toLowerCase(), (row[1] ?? "").trim());
-        }
-
-        const groupAccts = new Set(voters.map((v) => v.account.toLowerCase()));
-        const nextEdited: Record<string, string> = {};
-        const nextRemoved = new Set<string>();
-        const nextNew: NewRow[] = [];
-
-        // Existing members: update to the file's votes, or remove if absent.
-        for (const voter of voters) {
-          const acct = voter.account.toLowerCase();
-
-          if (desired.has(acct)) {
-            const raw = desired.get(acct)!;
-            const votes = isValidVotes(raw) ? raw : String(defaultVotingPower);
-
-            if (Number(votes) !== Number(voter.votingPower)) {
-              nextEdited[acct] = votes;
-            }
-          } else {
-            nextRemoved.add(acct);
-          }
-        }
-
-        // File addresses not in this group and not already onchain → add.
-        for (const [acct, raw] of desired) {
-          if (groupAccts.has(acct) || existingOnchainSet.has(acct)) {
-            if (!groupAccts.has(acct)) {
-              skipped++;
-            }
-            continue;
-          }
-
-          nextNew.push({
-            id: ++newRowId.current,
-            address: acct,
-            votes: isValidVotes(raw) ? raw : String(defaultVotingPower),
-          });
-        }
+        const { nextEdited, nextRemoved, nextNew, skipped } = computeCsvSync(
+          results.data,
+          voters,
+          existingOnchainSet,
+          defaultVotingPower,
+        );
 
         setEditedPower(nextEdited);
         setRemoved(nextRemoved);
-        setNewRows(nextNew);
+        setNewRows(
+          nextNew.map((row) => ({ id: ++newRowId.current, ...row })),
+        );
 
         const changed = Object.keys(nextEdited).length;
         setImportNote(
@@ -620,20 +537,7 @@ export default function VoterTable(props: VoterTableProps) {
   };
 
   const handleCsvExport = () => {
-    const rows: string[][] = [];
-
-    for (const voter of voters) {
-      if (removed.has(voter.account.toLowerCase())) {
-        continue;
-      }
-
-      rows.push([voter.account, shownVotes(voter)]);
-    }
-
-    for (const row of validNewRows) {
-      rows.push([row.address, row.votes]);
-    }
-
+    const rows = buildCsvRows(voters, removed, shownVotes, validNewRows);
     const csv = Papa.unparse(rows);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -704,6 +608,7 @@ export default function VoterTable(props: VoterTableProps) {
     try {
       setSubmitPhase("saving");
       setSaveError("");
+      postedNewAddressesRef.current = [];
 
       const byAccount = new Map(
         voters.map((v) => [v.account.toLowerCase(), v]),
@@ -729,6 +634,16 @@ export default function VoterTable(props: VoterTableProps) {
           setSaveError(data?.error ?? "Failed to add voters");
           setSubmitPhase("idle");
           return;
+        }
+
+        // Track these for a possible discard-rollback — but only when every
+        // address was a fresh insert (insertedCount === sent). A skip means the
+        // address already belonged to another group on this council, so rolling
+        // it back would delete that group's row; in that case skip the rollback.
+        if (data.insertedCount === validNewRows.length) {
+          postedNewAddressesRef.current = validNewRows.map((row) =>
+            row.address.toLowerCase(),
+          );
         }
       }
 
@@ -805,6 +720,8 @@ export default function VoterTable(props: VoterTableProps) {
       setImportNote("");
       setShowConfirm(false);
       setSubmitPhase("idle");
+      // Committed — there is nothing to roll back on a later discard.
+      postedNewAddressesRef.current = [];
     }, 1200);
 
     return () => clearTimeout(timeout);
@@ -817,10 +734,48 @@ export default function VoterTable(props: VoterTableProps) {
     submitPhase === "done" ||
     (submitPhase === "submitting" && !q.error);
 
+  // Roll back DB classifications written during a Save whose onchain queue then
+  // failed and was discarded — mirrors the eligibility route's insert→try→
+  // rollback so a discarded add never lingers as a classified-but-not-onchain
+  // member. Best-effort; a failure is surfaced on the page-level saveError.
+  // (Residual edge: across a >50-change multi-chunk save, adds in chunks that
+  // did commit before the failure are rolled back too; re-add them.)
+  const rollbackAddedMembers = async (addresses: string[]) => {
+    try {
+      for (const batch of splitIntoChunks(addresses, CHUNK_SIZE)) {
+        const res = await fetch("/api/flow-council/voter-groups/members", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chainId, councilId, addresses: batch }),
+        });
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok || !data?.success) {
+          throw new Error("rollback failed");
+        }
+      }
+
+      await onRefresh();
+    } catch (err) {
+      console.error(err);
+      setSaveError(
+        "The transaction was discarded, but some newly added voters could " +
+          "not be cleared from this group. Refresh and remove them to retry.",
+      );
+    }
+  };
+
   const closeConfirm = () => {
     // Dismissing a stopped (failed) queue discards it so no stale "resume"
     // banner lingers; the staged edits remain so the admin can retry via Save.
     if (q.error) {
+      const rollback = postedNewAddressesRef.current;
+      postedNewAddressesRef.current = [];
+
+      if (rollback.length > 0) {
+        void rollbackAddedMembers(rollback);
+      }
+
       q.clear();
     }
 
@@ -1256,149 +1211,31 @@ export default function VoterTable(props: VoterTableProps) {
       ) : null}
 
       {/* Move modal */}
-      <Modal show={!!moveTarget} centered onHide={() => setMoveTarget(null)}>
-        <Modal.Header closeButton className="border-0 p-4">
-          <Modal.Title className="fs-5 fw-semi-bold">Move to group</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="p-4 pt-0">
-          <p className="text-info">
-            Moving a voter changes their group classification only. Their vote
-            allocation is unchanged and no transaction is sent.
-          </p>
-          <Form.Group>
-            <Form.Label className="fw-semi-bold">Target group</Form.Label>
-            <Form.Select
-              value={moveToGroupId}
-              disabled={isMoving}
-              onChange={(e) => setMoveToGroupId(e.target.value)}
-            >
-              {otherGroups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </Form.Select>
-          </Form.Group>
-          {moveError ? (
-            <Alert variant="danger" className="mt-3 mb-0">
-              {moveError}
-            </Alert>
-          ) : null}
-        </Modal.Body>
-        <Modal.Footer className="border-0 p-4 pt-0">
-          <Button
-            variant="secondary"
-            className="rounded-4 px-4 py-2 fw-semi-bold"
-            onClick={() => setMoveTarget(null)}
-            disabled={isMoving}
-          >
-            Cancel
-          </Button>
-          <Button
-            className="rounded-4 px-4 py-2 fw-semi-bold"
-            onClick={handleMove}
-            disabled={isMoving || !moveToGroupId}
-          >
-            {isMoving ? <Spinner size="sm" /> : "Move"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <MoveVoterModal
+        target={moveTarget}
+        otherGroups={otherGroups}
+        selectedGroupId={moveToGroupId}
+        isMoving={isMoving}
+        error={moveError}
+        onSelectGroup={setMoveToGroupId}
+        onCancel={() => setMoveTarget(null)}
+        onMove={handleMove}
+      />
 
       {/* Save confirm modal */}
-      <Modal
+      <SaveConfirmModal
         show={showConfirm}
-        centered
-        onHide={() => {
-          if (!submitBusy) {
-            closeConfirm();
-          }
-        }}
-      >
-        <Modal.Header closeButton className="border-0 p-4">
-          <Modal.Title className="fs-5 fw-semi-bold">Save changes</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="p-4 pt-0">
-          <p className="mb-2">This will submit onchain transaction(s) to:</p>
-          <ul className="mb-0">
-            {validNewRows.length > 0 ? (
-              <li>
-                <span className="fw-semi-bold">Add {validNewRows.length}</span>{" "}
-                voter(s)
-              </li>
-            ) : null}
-            {changedAccounts.length > 0 ? (
-              <li>
-                <span className="fw-semi-bold">
-                  Change {changedAccounts.length}
-                </span>{" "}
-                allocation(s)
-              </li>
-            ) : null}
-            {removedAccounts.length > 0 ? (
-              <li>
-                <span className="fw-semi-bold">
-                  Remove {removedAccounts.length}
-                </span>{" "}
-                voter(s)
-              </li>
-            ) : null}
-          </ul>
-          {castWarningCount > 0 ? (
-            <Alert variant="warning" className="mt-3 mb-0">
-              {castWarningCount} affected voter(s) have already cast and would
-              be reduced below their cast count. Cast votes remain; only future
-              votes are capped.
-            </Alert>
-          ) : null}
-          {saveError ? (
-            <Alert variant="danger" className="mt-3 mb-0">
-              {saveError}
-            </Alert>
-          ) : submitPhase === "submitting" && q.error ? (
-            <Alert variant="danger" className="mt-3 mb-0">
-              {q.error.message} — some transaction(s) didn&apos;t complete.
-              Retry to finish, or discard to start over.
-            </Alert>
-          ) : null}
-        </Modal.Body>
-        <Modal.Footer className="border-0 p-4 pt-0">
-          <Button
-            variant="secondary"
-            className="rounded-4 px-4 py-2 fw-semi-bold"
-            onClick={closeConfirm}
-            disabled={submitBusy}
-          >
-            {submitPhase === "submitting" && q.error ? "Discard" : "Cancel"}
-          </Button>
-          <Button
-            variant={submitPhase === "done" ? "success" : "primary"}
-            className="rounded-4 px-4 py-2 fw-semi-bold"
-            onClick={
-              submitPhase === "submitting" && q.error
-                ? () => q.resume()
-                : handleSave
-            }
-            disabled={submitBusy}
-          >
-            {submitPhase === "saving" ? (
-              <Spinner size="sm" />
-            ) : submitPhase === "submitting" && q.error ? (
-              "Retry"
-            ) : submitPhase === "submitting" ? (
-              <>
-                <Spinner size="sm" />
-                {q.totalCount > 1
-                  ? ` ${Math.min(q.completedCount + 1, q.totalCount)}/${q.totalCount}`
-                  : ""}
-              </>
-            ) : submitPhase === "done" ? (
-              <SuccessCheckmark />
-            ) : (
-              "Confirm"
-            )}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+        addCount={validNewRows.length}
+        changeCount={changedAccounts.length}
+        removeCount={removedAccounts.length}
+        castWarningCount={castWarningCount}
+        submitPhase={submitPhase}
+        saveError={saveError}
+        submitBusy={submitBusy}
+        q={q}
+        onConfirm={handleSave}
+        onClose={closeConfirm}
+      />
     </Stack>
   );
 }

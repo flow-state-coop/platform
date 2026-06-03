@@ -28,6 +28,7 @@ import {
 } from "@/app/flow-councils/lib/voterUtils";
 import VoterTable from "./VoterTable";
 import EligibilityManagerField from "./EligibilityManagerField";
+import type { ChunkedQueue } from "./voterTableTypes";
 import {
   VOTER_MANAGER_ROLE,
   RECIPIENT_MANAGER_ROLE,
@@ -133,6 +134,17 @@ export default function GroupDetail(props: GroupDetailProps) {
   // non-removal queue can never trigger a stale DB delete.
   const pendingRemovalRef = useRef<string[]>([]);
 
+  // Guards the queue-completion finalize effect so it runs exactly once per
+  // queue: set when finalize starts, reset by startQueue when a new operation
+  // begins. `queueDone` (below) is derived and stays true after completion, so
+  // without this a stray re-render could re-enter the effect.
+  const hasFinalizedRef = useRef(false);
+
+  // The hook returns a stable `startQueue` reference, so capture it directly
+  // instead of depending on the whole `q` object (a fresh object every render).
+  // This keeps our wrapper — and `qForChildren` below — stable across renders.
+  const queueStart = q.startQueue;
+
   // Wrap the shared queue so children enqueue a removal atomically with the DB
   // rows they intend to drop. The DB DELETE is deferred to queueDone (below) so
   // a failed/paused onchain queue never leaves a group showing empty while the
@@ -144,16 +156,36 @@ export default function GroupDetail(props: GroupDetailProps) {
       removalAddresses?: string[],
     ) => {
       pendingRemovalRef.current = removalAddresses ?? [];
+      hasFinalizedRef.current = false;
       setCleanupError("");
-      q.startQueue(cid, chunks);
+      queueStart(cid, chunks);
     },
-    [q],
+    [queueStart],
   );
 
-  // Not memoized on purpose: `q` is a fresh object every render, so any memo
-  // here would recompute every render anyway (and children must see live queue
-  // state like isPending/completedCount).
-  const qForChildren = { ...q, startQueue };
+  // Stabilized on the queue's individual fields rather than the hook's
+  // render-fresh object, so children (VoterTable) only re-render when queue
+  // state they actually read changes; the callbacks are stable hook references.
+  const qForChildren = useMemo<ChunkedQueue>(
+    () => ({
+      startQueue,
+      resume: q.resume,
+      clear: q.clear,
+      isPending: q.isPending,
+      completedCount: q.completedCount,
+      totalCount: q.totalCount,
+      error: q.error,
+    }),
+    [
+      startQueue,
+      q.resume,
+      q.clear,
+      q.isPending,
+      q.completedCount,
+      q.totalCount,
+      q.error,
+    ],
+  );
 
   const isCelo = chainId === CELO_CHAIN_ID;
 
@@ -329,9 +361,11 @@ export default function GroupDetail(props: GroupDetailProps) {
     q.totalCount > 0 && q.completedCount === q.totalCount && !q.isPending;
 
   useEffect(() => {
-    if (!queueDone) {
+    if (!queueDone || hasFinalizedRef.current) {
       return;
     }
+
+    hasFinalizedRef.current = true;
 
     let cancelled = false;
 
