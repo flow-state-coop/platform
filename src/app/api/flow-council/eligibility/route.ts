@@ -180,13 +180,9 @@ export async function POST(request: Request) {
 
     return Response.json({ success: true });
   } catch (err) {
-    const errorMessage =
-      (err as Error)?.message ?? "There was an error, please try again later";
-
-    if (errorMessage.includes("ALREADY_ADDED")) {
-      return Response.json({ success: true });
-    }
-
+    // Only errors before the onchain call reach here (JSON parse, address
+    // validation, DB queries) — none produce ALREADY_ADDED, which the inner
+    // catch around writeContract handles.
     console.error(err);
 
     return Response.json({

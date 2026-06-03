@@ -208,13 +208,25 @@ export default function VoterTable(props: VoterTableProps) {
     [existingOnchainAccounts],
   );
 
+  // Stable signature of the voter set: the `voters` prop is a new array on every
+  // parent render / Apollo re-poll even when the addresses are unchanged, so the
+  // profile fetch keys off this string to avoid redundant network calls.
+  const voterAddressKey = useMemo(
+    () =>
+      voters
+        .map((v) => v.account.toLowerCase())
+        .sort()
+        .join(","),
+    [voters],
+  );
+
   // Fetch display names for the visible addresses once the voter list loads.
   useEffect(() => {
-    const addresses = voters.map((v) => v.account.toLowerCase());
-
-    if (addresses.length === 0) {
+    if (voterAddressKey === "") {
       return;
     }
+
+    const addresses = voterAddressKey.split(",");
 
     let cancelled = false;
 
@@ -250,7 +262,7 @@ export default function VoterTable(props: VoterTableProps) {
     return () => {
       cancelled = true;
     };
-  }, [voters]);
+  }, [voterAddressKey]);
 
   // The votes currently shown for an existing voter: the staged edit if any,
   // else the committed onchain value.

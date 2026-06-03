@@ -80,6 +80,19 @@ async function ensureDefaultGroup(
   chainId: number,
   councilId: string,
 ): Promise<void> {
+  // Read the onchain voter list before creating anything: if the subgraph is
+  // slow or down, bail out so the next first-access retries the whole
+  // migration. Creating the group here first would leave an empty Default group
+  // that subsequent accesses skip (groups.length > 0), permanently losing the
+  // seed.
+  let voters: string[];
+  try {
+    voters = await fetchAllActiveVoters(chainId, councilId);
+  } catch (err) {
+    console.error(err);
+    return;
+  }
+
   await db
     .insertInto("voterGroups")
     .values({
@@ -90,6 +103,8 @@ async function ensureDefaultGroup(
     .onConflict((oc) => oc.columns(["roundId", "name"]).doNothing())
     .execute();
 
+  if (voters.length === 0) return;
+
   const defaultGroup = await db
     .selectFrom("voterGroups")
     .select("id")
@@ -98,10 +113,6 @@ async function ensureDefaultGroup(
     .executeTakeFirst();
 
   if (!defaultGroup) return;
-
-  const voters = await fetchAllActiveVoters(chainId, councilId);
-
-  if (voters.length === 0) return;
 
   await db
     .insertInto("voterGroupMembers")
