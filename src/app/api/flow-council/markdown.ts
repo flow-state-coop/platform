@@ -15,6 +15,12 @@ import rehypeStringify from "rehype-stringify";
 // types in a message is treated as text, not markup. `rehype-sanitize` runs
 // before stringify as defense-in-depth, dropping unsafe attributes and
 // clamping link protocols (e.g. `javascript:` hrefs).
+//
+// Ordering invariant: `rehype-sanitize` must run *last* among transforms that
+// touch user-derived content. `rehype-externalLinks` runs after it here only
+// because it adds fixed, trusted `target`/`rel` values that don't depend on the
+// message. Any future rehype plugin whose output can be influenced by user
+// content must be inserted *before* `rehype-sanitize`, or it bypasses it.
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
