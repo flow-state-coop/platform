@@ -29,10 +29,12 @@ import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
 import useCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 import { useChunkedTxQueue } from "@/app/flow-councils/hooks/useChunkedTxQueue";
+import { useGrantBotVoterManager } from "@/app/flow-councils/hooks/useGrantBotVoterManager";
 import {
   computeCastVotes,
   shareOfVotes,
 } from "@/app/flow-councils/lib/voterUtils";
+import EligibilityManagerField from "./EligibilityManagerField";
 import {
   VOTER_MANAGER_ROLE,
   RECIPIENT_MANAGER_ROLE,
@@ -89,6 +91,22 @@ function prettyEligibility(method: EligibilityMethod): string {
   return method === "gooddollar" ? "GoodDollar ID" : "Manual";
 }
 
+// Platform-standard tx-button confirmation icon (matches Ballot/Funding).
+function SuccessCheckmark() {
+  return (
+    <Image
+      src="/success.svg"
+      alt="Success"
+      width={20}
+      height={20}
+      style={{
+        filter:
+          "brightness(0) saturate(100%) invert(85%) sepia(8%) saturate(138%) hue-rotate(138deg) brightness(93%) contrast(106%)",
+      }}
+    />
+  );
+}
+
 export default function Membership(props: MembershipProps) {
   const { chainId, councilId } = props;
 
@@ -111,6 +129,7 @@ export default function Membership(props: MembershipProps) {
     useState("10");
   const [createGroupError, setCreateGroupError] = useState("");
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [createGroupSuccess, setCreateGroupSuccess] = useState(false);
 
   const router = useRouter();
   const publicClient = usePublicClient();
@@ -165,8 +184,8 @@ export default function Membership(props: MembershipProps) {
     );
   }, [address, flowCouncil]);
 
-  // Only a council default admin can call updateManagers onchain, so the bot
-  // role grant folded into "Create" is gated on this (a plain voter manager can
+  // Only a council default admin can call updateManagers onchain, so the
+  // "Add Permissions" bot-role grant is gated on this (a plain voter manager can
   // still create the group, just not grant the role here).
   const isAdmin = useMemo(
     () =>
@@ -186,11 +205,28 @@ export default function Membership(props: MembershipProps) {
     );
   }, [flowCouncil]);
 
-  // True when creating this group should also grant the Flow State bot the
-  // Voter Manager role onchain (GoodDollar groups need it, the bot lacks it,
-  // and the connected wallet is an admin able to grant it).
-  const needsBotGrant =
-    newGroupEligibility === "gooddollar" && !botHasVoterManagerRole && isAdmin;
+  const {
+    grant,
+    isGranting,
+    error: grantError,
+  } = useGrantBotVoterManager(councilId ?? "");
+
+  const handleAddPermissions = async () => {
+    if (!chainId) {
+      return;
+    }
+
+    if (connectedChain?.id !== chainId) {
+      switchChain({ chainId });
+      return;
+    }
+
+    const ok = await grant();
+
+    if (ok) {
+      await refetch();
+    }
+  };
 
   // Map of lowercased account -> subgraph voter for fast lookup in metrics.
   const votersByAccount = useMemo(() => {
@@ -325,6 +361,7 @@ export default function Membership(props: MembershipProps) {
     setNewGroupEligibility("manual");
     setNewGroupDefaultVotingPower("10");
     setCreateGroupError("");
+    setCreateGroupSuccess(false);
   };
 
   const handleCreateGroup = async () => {
@@ -361,35 +398,6 @@ export default function Membership(props: MembershipProps) {
       setIsCreatingGroup(true);
       setCreateGroupError("");
 
-      // Grant the bot the Voter Manager role onchain first. Doing it before the
-      // DB write means a rejected wallet prompt aborts cleanly without leaving
-      // an orphan group (a retry would otherwise create a duplicate).
-      if (needsBotGrant) {
-        if (!publicClient) {
-          setCreateGroupError("Wallet not ready");
-          return;
-        }
-
-        const hash = await writeContract(wagmiConfig, {
-          address: councilId as Address,
-          abi: flowCouncilAbi,
-          functionName: "updateManagers",
-          // status 0 = Status.ADDED (mirrors the Permissions page).
-          args: [
-            [
-              {
-                account: FLOW_STATE_BOT_ADDRESS,
-                role: VOTER_MANAGER_ROLE,
-                status: 0,
-              },
-            ],
-          ],
-        });
-
-        await waitForReceipt(publicClient, hash);
-        await refetch();
-      }
-
       const res = await fetch("/api/flow-council/voter-groups", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -408,16 +416,18 @@ export default function Membership(props: MembershipProps) {
         return;
       }
 
-      setShowNewGroupModal(false);
-      resetNewGroupModal();
-      await fetchGroups();
+      // Platform-standard confirmation: the button turns green with a checkmark,
+      // then the modal closes.
+      setCreateGroupSuccess(true);
+
+      setTimeout(() => {
+        setShowNewGroupModal(false);
+        resetNewGroupModal();
+        fetchGroups();
+      }, 1500);
     } catch (err) {
       console.error(err);
-      setCreateGroupError(
-        needsBotGrant
-          ? "Failed to grant the bot role. Please try again."
-          : "Failed to create group",
-      );
+      setCreateGroupError("Failed to create group");
     } finally {
       setIsCreatingGroup(false);
     }
@@ -463,14 +473,16 @@ export default function Membership(props: MembershipProps) {
                 size="sm"
                 className="fw-semi-bold"
                 onClick={() => q.resume()}
+                disabled={q.isPending}
               >
-                Resume
+                {q.isPending ? <Spinner size="sm" /> : "Resume"}
               </Button>
               <Button
                 size="sm"
                 variant="outline-secondary"
                 className="fw-semi-bold"
                 onClick={() => q.clear()}
+                disabled={q.isPending}
               >
                 Discard
               </Button>
@@ -775,24 +787,21 @@ export default function Membership(props: MembershipProps) {
             </Form.Group>
           ) : null}
           {newGroupEligibility === "gooddollar" ? (
-            botHasVoterManagerRole ? (
-              <Alert variant="success" className="mb-0">
-                The Flow State bot already holds the Voter Manager role on this
-                council.
-              </Alert>
-            ) : (
-              <Alert variant="info" className="mb-0">
-                The Flow State bot needs the Voter Manager role on this council
-                to add GoodDollar-verified voters.
-                <br />
-                Bot address:{" "}
-                <span className="text-break">{FLOW_STATE_BOT_ADDRESS}</span>
-                <br />
-                {needsBotGrant
-                  ? "Creating this group will prompt you to grant it."
-                  : "A council admin must grant this role to the address above."}
-              </Alert>
-            )
+            <div>
+              <EligibilityManagerField
+                chainId={chainId}
+                botHasRole={botHasVoterManagerRole}
+                isAdmin={isAdmin}
+                isWrongChain={connectedChain?.id !== chainId}
+                isGranting={isGranting}
+                onAddPermissions={handleAddPermissions}
+              />
+              {grantError ? (
+                <Alert variant="danger" className="mt-3 mb-0">
+                  {grantError}
+                </Alert>
+              ) : null}
+            </div>
           ) : null}
           {createGroupError ? (
             <Alert variant="danger" className="mt-3 mb-0">
@@ -805,25 +814,21 @@ export default function Membership(props: MembershipProps) {
             variant="secondary"
             className="rounded-4 px-4 py-2 fw-semi-bold"
             onClick={() => setShowNewGroupModal(false)}
-            disabled={isCreatingGroup}
+            disabled={isCreatingGroup || createGroupSuccess}
           >
             Cancel
           </Button>
           <Button
+            variant={createGroupSuccess ? "success" : "primary"}
             className="rounded-4 px-4 py-2 fw-semi-bold"
-            onClick={() => {
-              if (needsBotGrant && connectedChain?.id !== chainId) {
-                switchChain({ chainId });
-              } else {
-                handleCreateGroup();
-              }
-            }}
-            disabled={!isManager || isCreatingGroup}
+            style={{ pointerEvents: createGroupSuccess ? "none" : "auto" }}
+            onClick={handleCreateGroup}
+            disabled={!isManager || isCreatingGroup || createGroupSuccess}
           >
-            {isCreatingGroup ? (
+            {createGroupSuccess ? (
+              <SuccessCheckmark />
+            ) : isCreatingGroup ? (
               <Spinner size="sm" />
-            ) : needsBotGrant && connectedChain?.id !== chainId ? (
-              "Switch Network"
             ) : (
               "Create"
             )}

@@ -4,8 +4,6 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
-import { writeContract } from "@wagmi/core";
-import { Address } from "viem";
 import { gql, useQuery } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
@@ -14,22 +12,22 @@ import Spinner from "react-bootstrap/Spinner";
 import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
 import Modal from "react-bootstrap/Modal";
+import Image from "react-bootstrap/Image";
+import InfoTooltip from "@/components/InfoTooltip";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-import { waitForReceipt } from "@/lib/utils";
 import { getApolloClient } from "@/lib/apollo";
-import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import {
   useChunkedTxQueue,
   splitIntoChunks,
 } from "@/app/flow-councils/hooks/useChunkedTxQueue";
+import { useGrantBotVoterManager } from "@/app/flow-councils/hooks/useGrantBotVoterManager";
 import {
   computeCastVotes,
   shareOfVotes,
 } from "@/app/flow-councils/lib/voterUtils";
 import VoterTable from "./VoterTable";
-import BulkActionToolbar from "./BulkActionToolbar";
-import AddVotersModal from "./AddVotersModal";
+import EligibilityManagerField from "./EligibilityManagerField";
 import {
   VOTER_MANAGER_ROLE,
   RECIPIENT_MANAGER_ROLE,
@@ -110,15 +108,12 @@ export default function GroupDetail(props: GroupDetailProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
-  const [showAddVoters, setShowAddVoters] = useState(false);
-  // The voter table reports its current client-side filtered subset up so the
-  // bulk toolbar's "Apply to filtered" can target it.
-  const [filteredVoters, setFilteredVoters] = useState<SubgraphVoter[]>([]);
   // Surfaces a failure of the deferred DB classification cleanup that runs after
   // an onchain removal queue completes (the onchain removal itself succeeded).
   const [cleanupError, setCleanupError] = useState("");
@@ -191,8 +186,8 @@ export default function GroupDetail(props: GroupDetailProps) {
     );
   }, [address, flowCouncil]);
 
-  // Only a council default admin can call updateManagers onchain, so the bot
-  // role grant folded into "Save" is gated on this.
+  // Only a council default admin can call updateManagers onchain, so the
+  // "Add Permissions" bot-role grant is gated on this.
   const isAdmin = useMemo(
     () =>
       !!flowCouncil?.flowCouncilManagers.find(
@@ -211,11 +206,24 @@ export default function GroupDetail(props: GroupDetailProps) {
     );
   }, [flowCouncil]);
 
-  // True when saving should also grant the Flow State bot the Voter Manager
-  // role onchain (GoodDollar eligibility, the bot lacks it, connected wallet
-  // is an admin able to grant it).
-  const needsBotGrant =
-    editEligibility === "gooddollar" && !botHasVoterManagerRole && isAdmin;
+  const {
+    grant,
+    isGranting,
+    error: grantError,
+  } = useGrantBotVoterManager(councilId);
+
+  const handleAddPermissions = async () => {
+    if (connectedChain?.id !== chainId) {
+      switchChain({ chainId });
+      return;
+    }
+
+    const ok = await grant();
+
+    if (ok) {
+      await refetch();
+    }
+  };
 
   const votersByAccount = useMemo(() => {
     const map = new Map<string, SubgraphVoter>();
@@ -392,16 +400,17 @@ export default function GroupDetail(props: GroupDetailProps) {
     });
   }, [flowCouncilQueryRes, fetchMore]);
 
-  // Seed the editable form from the loaded group.
+  // Seed the editable form from the loaded group. Skipped while editing so a
+  // background refresh (e.g. after a voter change) can't clobber unsaved edits.
   useEffect(() => {
-    if (!group) {
+    if (!group || isEditing) {
       return;
     }
 
     setEditName(group.name);
     setEditEligibility(group.eligibilityMethod);
     setEditDefaultVotingPower(String(group.defaultVotingPower));
-  }, [group]);
+  }, [group, isEditing]);
 
   const metrics = useMemo(() => {
     if (!group) {
@@ -426,14 +435,36 @@ export default function GroupDetail(props: GroupDetailProps) {
     return { assigned, used, usedPct, share };
   }, [group, votersByAccount, totalCouncilAssigned]);
 
+  const enterEditMode = () => {
+    if (!group) {
+      return;
+    }
+
+    setEditName(group.name);
+    setEditEligibility(group.eligibilityMethod);
+    setEditDefaultVotingPower(String(group.defaultVotingPower));
+    setSaveError("");
+    setSaveSuccess(false);
+    setIsEditing(true);
+  };
+
+  const cancelEdit = () => {
+    if (group) {
+      setEditName(group.name);
+      setEditEligibility(group.eligibilityMethod);
+      setEditDefaultVotingPower(String(group.defaultVotingPower));
+    }
+
+    setSaveError("");
+    setIsEditing(false);
+  };
+
   const handleSave = async () => {
     if (!group) {
       return;
     }
 
     const name = editName.trim();
-    // Manual groups don't expose the field; their stored default is left
-    // untouched. Only the GoodDollar value is user-editable and validated/sent.
     const isGoodDollar = editEligibility === "gooddollar";
     const defaultVotingPower = Number(editDefaultVotingPower);
 
@@ -459,34 +490,6 @@ export default function GroupDetail(props: GroupDetailProps) {
       setSaveError("");
       setSaveSuccess(false);
 
-      // Grant the bot the Voter Manager role onchain first so a rejected wallet
-      // prompt aborts the save cleanly.
-      if (needsBotGrant) {
-        if (!publicClient) {
-          setSaveError("Wallet not ready");
-          return;
-        }
-
-        const hash = await writeContract(wagmiConfig, {
-          address: councilId as Address,
-          abi: flowCouncilAbi,
-          functionName: "updateManagers",
-          // status 0 = Status.ADDED (mirrors the Permissions page).
-          args: [
-            [
-              {
-                account: FLOW_STATE_BOT_ADDRESS,
-                role: VOTER_MANAGER_ROLE,
-                status: 0,
-              },
-            ],
-          ],
-        });
-
-        await waitForReceipt(publicClient, hash);
-        await refetch();
-      }
-
       const res = await fetch(`/api/flow-council/voter-groups?id=${group.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -495,7 +498,6 @@ export default function GroupDetail(props: GroupDetailProps) {
           councilId,
           name,
           eligibilityMethod: editEligibility,
-          // Omit for manual so the PATCH leaves the stored default unchanged.
           ...(isGoodDollar ? { defaultVotingPower } : {}),
         }),
       });
@@ -507,14 +509,11 @@ export default function GroupDetail(props: GroupDetailProps) {
       }
 
       setSaveSuccess(true);
+      setIsEditing(false);
       await fetchGroups();
     } catch (err) {
       console.error(err);
-      setSaveError(
-        needsBotGrant
-          ? "Failed to grant the bot role. Please try again."
-          : "Failed to save group",
-      );
+      setSaveError("Failed to save group");
     } finally {
       setIsSaving(false);
     }
@@ -552,8 +551,17 @@ export default function GroupDetail(props: GroupDetailProps) {
   };
 
   const isLastGroup = groups.length <= 1;
-  const deleteDisabled =
-    !isManager || !group || group.memberCount > 0 || isLastGroup;
+
+  // Reason the delete action is unavailable (rendered as a tooltip on the
+  // disabled trash icon). Mirrors the server guards: a group must be empty and
+  // a council must keep at least one group.
+  const deleteBlockedReason = !group
+    ? null
+    : group.memberCount > 0
+      ? "Group must be empty to be deleted."
+      : isLastGroup
+        ? "A council must always have at least one group."
+        : null;
 
   const showResumeBanner =
     q.totalCount > 0 &&
@@ -605,14 +613,16 @@ export default function GroupDetail(props: GroupDetailProps) {
                 size="sm"
                 className="fw-semi-bold"
                 onClick={() => q.resume()}
+                disabled={q.isPending}
               >
-                Resume
+                {q.isPending ? <Spinner size="sm" /> : "Resume"}
               </Button>
               <Button
                 size="sm"
                 variant="outline-secondary"
                 className="fw-semi-bold"
                 onClick={() => q.clear()}
+                disabled={q.isPending}
               >
                 Discard
               </Button>
@@ -637,12 +647,184 @@ export default function GroupDetail(props: GroupDetailProps) {
                 >
                   ← Back to groups
                 </Link>
-                <Card.Title className="fs-5 fw-semi-bold mt-2">
-                  {group.name}
-                </Card.Title>
-                <Card.Text className="text-info mb-0">
-                  {prettyEligibility(group.eligibilityMethod)} eligibility
-                </Card.Text>
+                {isEditing ? (
+                  <Stack direction="vertical" gap={3} className="mt-3">
+                    <Form.Group>
+                      <Form.Label className="fw-semi-bold">Name</Form.Label>
+                      <Form.Control
+                        type="text"
+                        value={editName}
+                        maxLength={100}
+                        disabled={isSaving}
+                        onChange={(e) => setEditName(e.target.value)}
+                      />
+                    </Form.Group>
+                    <Form.Group>
+                      <Form.Label className="fw-semi-bold">
+                        Eligibility method
+                      </Form.Label>
+                      <Form.Select
+                        value={editEligibility}
+                        disabled={isSaving}
+                        onChange={(e) =>
+                          setEditEligibility(
+                            e.target.value as EligibilityMethod,
+                          )
+                        }
+                      >
+                        <option value="manual">Manual</option>
+                        <option value="gooddollar" disabled={!isCelo}>
+                          GoodDollar ID{!isCelo ? " (Celo only)" : ""}
+                        </option>
+                      </Form.Select>
+                    </Form.Group>
+
+                    {editEligibility === "gooddollar" ? (
+                      <>
+                        <Form.Group>
+                          <Form.Label className="fw-semi-bold">
+                            Default vote allocation
+                          </Form.Label>
+                          <Form.Control
+                            type="text"
+                            inputMode="numeric"
+                            style={{ maxWidth: 120 }}
+                            value={editDefaultVotingPower}
+                            disabled={isSaving}
+                            onChange={(e) => {
+                              const value = e.target.value;
+
+                              if (
+                                value === "" ||
+                                (/^\d+$/.test(value) && Number(value) <= 1e6)
+                              ) {
+                                setEditDefaultVotingPower(value);
+                              }
+                            }}
+                          />
+                          <Form.Text className="text-info">
+                            Applied only to voters added through this group
+                            after the change — existing members are not updated.
+                          </Form.Text>
+                        </Form.Group>
+
+                        <EligibilityManagerField
+                          chainId={chainId}
+                          botHasRole={botHasVoterManagerRole}
+                          isAdmin={isAdmin}
+                          isWrongChain={connectedChain?.id !== chainId}
+                          isGranting={isGranting}
+                          onAddPermissions={handleAddPermissions}
+                        />
+
+                        {grantError ? (
+                          <Alert variant="danger" className="mb-0">
+                            {grantError}
+                          </Alert>
+                        ) : null}
+                      </>
+                    ) : null}
+
+                    {saveError ? (
+                      <Alert variant="danger" className="mb-0">
+                        {saveError}
+                      </Alert>
+                    ) : null}
+
+                    <Stack direction="horizontal" gap={2}>
+                      <Button
+                        className="rounded-4 px-4 py-2 fw-semi-bold"
+                        disabled={!isManager || isSaving}
+                        onClick={handleSave}
+                      >
+                        {isSaving ? <Spinner size="sm" /> : "Save"}
+                      </Button>
+                      <Button
+                        variant="outline-secondary"
+                        className="rounded-4 px-4 py-2 fw-semi-bold"
+                        disabled={isSaving}
+                        onClick={cancelEdit}
+                      >
+                        Cancel
+                      </Button>
+                    </Stack>
+                  </Stack>
+                ) : (
+                  <Stack
+                    direction="horizontal"
+                    className="justify-content-between align-items-start gap-2 mt-2"
+                  >
+                    <div>
+                      <Card.Title className="fs-5 fw-semi-bold mb-1">
+                        {group.name}
+                      </Card.Title>
+                      <Card.Text className="text-info mb-0">
+                        {prettyEligibility(group.eligibilityMethod)} eligibility
+                      </Card.Text>
+                    </div>
+                    {isManager ? (
+                      <Stack
+                        direction="horizontal"
+                        gap={1}
+                        className="flex-shrink-0"
+                      >
+                        <Button
+                          variant="transparent"
+                          className="p-2 border-0"
+                          aria-label="Edit group"
+                          onClick={enterEditMode}
+                        >
+                          <Image
+                            src="/edit.svg"
+                            alt="Edit group"
+                            width={20}
+                            height={20}
+                          />
+                        </Button>
+                        {deleteBlockedReason ? (
+                          <InfoTooltip
+                            position={{ top: true }}
+                            content={
+                              <p className="m-0 p-2">{deleteBlockedReason}</p>
+                            }
+                            target={
+                              <Button
+                                variant="transparent"
+                                className="p-2 border-0"
+                                aria-label="Delete group"
+                                disabled
+                              >
+                                <Image
+                                  src="/trash.svg"
+                                  alt="Delete group"
+                                  width={20}
+                                  height={20}
+                                />
+                              </Button>
+                            }
+                          />
+                        ) : (
+                          <Button
+                            variant="transparent"
+                            className="p-2 border-0"
+                            aria-label="Delete group"
+                            onClick={() => {
+                              setDeleteError("");
+                              setShowDeleteModal(true);
+                            }}
+                          >
+                            <Image
+                              src="/trash.svg"
+                              alt="Delete group"
+                              width={20}
+                              height={20}
+                            />
+                          </Button>
+                        )}
+                      </Stack>
+                    ) : null}
+                  </Stack>
+                )}
               </Card.Header>
               <Card.Body className="p-0 mt-4">
                 <Stack
@@ -675,128 +857,21 @@ export default function GroupDetail(props: GroupDetailProps) {
                     </span>
                   </Stack>
                 </Stack>
-              </Card.Body>
-            </Card>
 
-            <Card className="bg-lace-100 rounded-4 border-0 p-4 mt-4">
-              <Card.Header className="bg-transparent border-0 rounded-4 p-0">
-                <Card.Title className="fs-6 fw-semi-bold">
-                  Group settings
-                </Card.Title>
-              </Card.Header>
-              <Card.Body className="p-0 mt-3">
-                <Form.Group className="mb-3">
-                  <Form.Label className="fw-semi-bold">Name</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={editName}
-                    maxLength={100}
-                    disabled={!isManager || isSaving}
-                    onChange={(e) => setEditName(e.target.value)}
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label className="fw-semi-bold">
-                    Eligibility method
-                  </Form.Label>
-                  <Form.Select
-                    value={editEligibility}
-                    disabled={!isManager || isSaving}
-                    onChange={(e) =>
-                      setEditEligibility(e.target.value as EligibilityMethod)
-                    }
+                {saveSuccess && !isEditing ? (
+                  <Alert
+                    variant="success"
+                    dismissible
+                    onClose={() => setSaveSuccess(false)}
+                    className="mt-4 mb-0"
                   >
-                    <option value="manual">Manual</option>
-                    <option value="gooddollar" disabled={!isCelo}>
-                      GoodDollar ID{!isCelo ? " (Celo only)" : ""}
-                    </option>
-                  </Form.Select>
-                </Form.Group>
-                {editEligibility === "gooddollar" ? (
-                  <Form.Group className="mb-3">
-                    <Form.Label className="fw-semi-bold">
-                      Default vote allocation
-                    </Form.Label>
-                    <Form.Control
-                      type="text"
-                      inputMode="numeric"
-                      value={editDefaultVotingPower}
-                      disabled={!isManager || isSaving}
-                      onChange={(e) => {
-                        const value = e.target.value;
-
-                        if (
-                          value === "" ||
-                          (/^\d+$/.test(value) && Number(value) <= 1e6)
-                        ) {
-                          setEditDefaultVotingPower(value);
-                        }
-                      }}
-                    />
-                    <Form.Text className="text-info">
-                      Applied only to voters added through this group after the
-                      change — existing members are not updated.
-                    </Form.Text>
-                  </Form.Group>
-                ) : null}
-
-                {editEligibility === "gooddollar" ? (
-                  botHasVoterManagerRole ? (
-                    <Alert variant="success">
-                      The Flow State bot already holds the Voter Manager role on
-                      this council.
-                    </Alert>
-                  ) : (
-                    <Alert variant="info">
-                      The Flow State bot needs the Voter Manager role on this
-                      council to add GoodDollar-verified voters.
-                      <br />
-                      Bot address:{" "}
-                      <span className="text-break">
-                        {FLOW_STATE_BOT_ADDRESS}
-                      </span>
-                      <br />
-                      {needsBotGrant
-                        ? "Saving will prompt you to grant it."
-                        : "A council admin must grant this role to the address above."}
-                    </Alert>
-                  )
-                ) : null}
-
-                {saveError ? (
-                  <Alert variant="danger" className="mb-3">
-                    {saveError}
-                  </Alert>
-                ) : null}
-                {saveSuccess ? (
-                  <Alert variant="success" className="mb-3">
                     Group updated.
                   </Alert>
                 ) : null}
-
-                <Button
-                  className="rounded-4 px-4 py-2 fw-semi-bold"
-                  disabled={!isManager || isSaving}
-                  onClick={() => {
-                    if (needsBotGrant && connectedChain?.id !== chainId) {
-                      switchChain({ chainId });
-                    } else {
-                      handleSave();
-                    }
-                  }}
-                >
-                  {isSaving ? (
-                    <Spinner size="sm" />
-                  ) : needsBotGrant && connectedChain?.id !== chainId ? (
-                    "Switch Network"
-                  ) : (
-                    "Save"
-                  )}
-                </Button>
               </Card.Body>
             </Card>
 
-            <Card className="bg-lace-100 rounded-4 border-0 p-4 mt-4">
+            <Card className="bg-lace-100 rounded-4 border-0 p-4 mt-4 mb-30">
               <Card.Header className="bg-transparent border-0 rounded-4 p-0">
                 <Card.Title className="fs-6 fw-semi-bold">Voters</Card.Title>
               </Card.Header>
@@ -828,90 +903,24 @@ export default function GroupDetail(props: GroupDetailProps) {
                     {cleanupError}
                   </Alert>
                 ) : null}
-                {isManager ? (
-                  <>
-                    <BulkActionToolbar
-                      councilId={councilId}
-                      allGroupVoters={groupVoters}
-                      filteredVoters={filteredVoters}
-                      isManager={isManager}
-                      q={qForChildren}
-                      maxVotingSpread={maxVotingSpread}
-                    />
-                    <Stack
-                      direction="horizontal"
-                      className="justify-content-end mb-3"
-                    >
-                      <Button
-                        className="rounded-4 px-4 py-2 fw-semi-bold"
-                        onClick={() => setShowAddVoters(true)}
-                      >
-                        Add voters
-                      </Button>
-                    </Stack>
-                  </>
-                ) : null}
                 <VoterTable
                   chainId={chainId}
                   councilId={councilId}
                   groupId={groupId}
-                  groupMembers={group.members}
+                  defaultVotingPower={group.defaultVotingPower}
                   voters={groupVoters}
                   allGroups={groupOptions}
+                  existingOnchainAccounts={existingOnchainAccounts}
                   isManager={isManager}
                   q={qForChildren}
                   maxVotingSpread={maxVotingSpread}
                   onRefresh={refresh}
-                  onFilteredChange={setFilteredVoters}
                 />
-              </Card.Body>
-            </Card>
-
-            <Card className="bg-lace-100 rounded-4 border-0 p-4 mt-4 mb-30">
-              <Card.Header className="bg-transparent border-0 rounded-4 p-0">
-                <Card.Title className="fs-6 fw-semi-bold">
-                  Delete group
-                </Card.Title>
-                <Card.Text className="text-info mb-0">
-                  {isLastGroup
-                    ? "A council must always have at least one group."
-                    : group.memberCount > 0
-                      ? "Remove all voters from this group before deleting it."
-                      : "Permanently removes this group's classification. No onchain effect."}
-                </Card.Text>
-              </Card.Header>
-              <Card.Body className="p-0 mt-3">
-                <Button
-                  variant="danger"
-                  className="rounded-4 px-4 py-2 fw-semi-bold"
-                  disabled={deleteDisabled}
-                  onClick={() => {
-                    setDeleteError("");
-                    setShowDeleteModal(true);
-                  }}
-                >
-                  Delete group
-                </Button>
               </Card.Body>
             </Card>
           </>
         )}
       </Stack>
-
-      {group ? (
-        <AddVotersModal
-          show={showAddVoters}
-          onHide={() => setShowAddVoters(false)}
-          chainId={chainId}
-          councilId={councilId}
-          groupId={groupId}
-          defaultVotingPower={group.defaultVotingPower}
-          existingOnchainAccounts={existingOnchainAccounts}
-          q={qForChildren}
-          maxVotingSpread={maxVotingSpread}
-          onRefresh={refresh}
-        />
-      ) : null}
 
       <Modal
         show={showDeleteModal}
@@ -944,7 +953,7 @@ export default function GroupDetail(props: GroupDetailProps) {
           </Button>
           <Button
             variant="danger"
-            className="rounded-4 px-4 py-2 fw-semi-bold"
+            className="rounded-4 px-4 py-2 fw-semi-bold text-white"
             onClick={handleDelete}
             disabled={isDeleting}
           >

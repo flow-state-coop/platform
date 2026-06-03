@@ -1,7 +1,15 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
-import { Address } from "viem";
+import {
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+  useRef,
+  forwardRef,
+} from "react";
+import { Address, isAddress } from "viem";
+import Papa from "papaparse";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
@@ -11,10 +19,15 @@ import Modal from "react-bootstrap/Modal";
 import Alert from "react-bootstrap/Alert";
 import Spinner from "react-bootstrap/Spinner";
 import Pagination from "react-bootstrap/Pagination";
+import Image from "react-bootstrap/Image";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
-import { splitIntoChunks } from "@/app/flow-councils/hooks/useChunkedTxQueue";
+import {
+  CHUNK_SIZE,
+  splitIntoChunks,
+} from "@/app/flow-councils/hooks/useChunkedTxQueue";
 import {
   computeCastVotes,
+  computeNewVotingPower,
   pctCast,
   passesPctFilter,
   totalPages,
@@ -33,30 +46,36 @@ type ChunkedQueue = {
     chunks: { args: Record<string, unknown> }[],
     removalAddresses?: string[],
   ) => void;
+  resume: () => void;
+  clear: () => void;
+  isPending: boolean;
+  completedCount: number;
+  totalCount: number;
+  error: Error | null;
 };
 
 type GroupOption = { id: number; name: string };
+
+// A pending new voter row the admin is composing (or that CSV import staged).
+type NewRow = { id: number; address: string; votes: string };
 
 type VoterTableProps = {
   chainId: number;
   councilId: string;
   groupId: number;
-  groupMembers: string[];
+  defaultVotingPower: number;
   voters: SubgraphVoter[];
   allGroups: GroupOption[];
+  existingOnchainAccounts: string[];
   isManager: boolean;
   q: ChunkedQueue;
   maxVotingSpread: number;
   onRefresh: () => Promise<void> | void;
-  onFilteredChange: (filtered: SubgraphVoter[]) => void;
 };
 
 const PAGE_SIZE = 50;
 const PROFILE_BATCH = 500;
 
-// The "% cast" select. "100%" is implemented as pctCast >= 100 (special-cased
-// below) rather than a strict-greater threshold; everything else uses the
-// strict ">" passesPctFilter predicate.
 const PCT_OPTIONS = [
   { value: "all", label: "All" },
   { value: "0", label: "> 0%" },
@@ -68,6 +87,45 @@ const PCT_OPTIONS = [
 
 function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+// Platform-standard tx-button confirmation icon (matches membership/Ballot/Funding).
+function SuccessCheckmark() {
+  return (
+    <Image
+      src="/success.svg"
+      alt="Success"
+      width={20}
+      height={20}
+      style={{
+        filter:
+          "brightness(0) saturate(100%) invert(85%) sepia(8%) saturate(138%) hue-rotate(138deg) brightness(93%) contrast(106%)",
+      }}
+    />
+  );
+}
+
+// Row-actions dropdown toggle: a plain three-dots button with no caret (the
+// default Dropdown.Toggle renders a ▼ via its ::after pseudo-element).
+const RowActionsToggle = forwardRef<
+  HTMLButtonElement,
+  React.ComponentPropsWithoutRef<"button">
+>(({ className = "", children, ...props }, ref) => (
+  <button
+    type="button"
+    ref={ref}
+    className={`btn btn-sm btn-outline-secondary fw-semi-bold border-0 ${className}`}
+    {...props}
+  >
+    {children}
+  </button>
+));
+RowActionsToggle.displayName = "RowActionsToggle";
+
+// Votes are a positive integer capped at 1M (0 is not an edit — removal is how a
+// voter is zeroed, so the value stays meaningful as an allocation).
+function isValidVotes(value: string): boolean {
+  return /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 1e6;
 }
 
 // Parse the address-search box into a set of lowercased addresses when the user
@@ -94,13 +152,14 @@ export default function VoterTable(props: VoterTableProps) {
     chainId,
     councilId,
     groupId,
+    defaultVotingPower,
     voters,
     allGroups,
+    existingOnchainAccounts,
     isManager,
     q,
     maxVotingSpread,
     onRefresh,
-    onFilteredChange,
   } = props;
 
   const [names, setNames] = useState<Record<string, string>>({});
@@ -110,17 +169,46 @@ export default function VoterTable(props: VoterTableProps) {
   const [pctFilter, setPctFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
 
+  // Staged edits — committed together by Save.
+  // editedPower: acct(lowercase) -> new votes string (only present when changed).
+  // removed: accts staged for removal (onchain power → 0 + DB classification drop).
+  // newRows: pending add rows with their own editable address + votes.
+  const [editedPower, setEditedPower] = useState<Record<string, string>>({});
+  const [removed, setRemoved] = useState<Set<string>>(new Set());
+  const [newRows, setNewRows] = useState<NewRow[]>([]);
+  const newRowId = useRef(0);
+
+  const [bulkValue, setBulkValue] = useState("");
+  const [bulkMode, setBulkMode] = useState<"set" | "increment">("set");
+
+  const [importNote, setImportNote] = useState("");
+
+  // Save lifecycle, surfaced entirely inside the confirm modal so the flow
+  // matches the rest of the platform (spinner → green checkmark → close):
+  //   idle       — modal open, awaiting confirmation
+  //   saving     — offchain DB write in flight
+  //   submitting — onchain chunk queue running (or stopped on q.error)
+  //   done        — queue fully complete; modal auto-closes shortly after
+  const [submitPhase, setSubmitPhase] = useState<
+    "idle" | "saving" | "submitting" | "done"
+  >("idle");
+  const [saveError, setSaveError] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const [moveTarget, setMoveTarget] = useState<SubgraphVoter | null>(null);
   const [moveToGroupId, setMoveToGroupId] = useState<string>("");
   const [isMoving, setIsMoving] = useState(false);
   const [moveError, setMoveError] = useState("");
   const [moveSuccess, setMoveSuccess] = useState("");
 
-  const [removeTarget, setRemoveTarget] = useState<SubgraphVoter | null>(null);
-  const [removeError, setRemoveError] = useState("");
+  // Lowercased accounts already onchain (any group) — CSV sync and new-row save
+  // skip these so we never re-add (or clobber another group's) existing voter.
+  const existingOnchainSet = useMemo(
+    () => new Set(existingOnchainAccounts.map((a) => a.toLowerCase())),
+    [existingOnchainAccounts],
+  );
 
   // Fetch display names for the visible addresses once the voter list loads.
-  // Chunk the request so we never exceed the profiles endpoint's per-call cap.
   useEffect(() => {
     const addresses = voters.map((v) => v.account.toLowerCase());
 
@@ -164,6 +252,14 @@ export default function VoterTable(props: VoterTableProps) {
     };
   }, [voters]);
 
+  // The votes currently shown for an existing voter: the staged edit if any,
+  // else the committed onchain value.
+  const shownVotes = useCallback(
+    (voter: SubgraphVoter): string =>
+      editedPower[voter.account.toLowerCase()] ?? voter.votingPower,
+    [editedPower],
+  );
+
   const filteredVoters = useMemo(() => {
     const { list, needle } = parseAddressSearch(addressSearch);
     const nameNeedle = nameSearch.trim().toLowerCase();
@@ -172,7 +268,6 @@ export default function VoterTable(props: VoterTableProps) {
       const account = voter.account.toLowerCase();
       const profileName = names[account] ?? "";
 
-      // Address filter: either match against the pasted list, or substring.
       if (list.size > 0) {
         if (!list.has(account)) {
           return false;
@@ -181,12 +276,10 @@ export default function VoterTable(props: VoterTableProps) {
         return false;
       }
 
-      // Profile name filter (substring, case-insensitive).
       if (nameNeedle && !profileName.toLowerCase().includes(nameNeedle)) {
         return false;
       }
 
-      // % cast filter.
       if (pctFilter !== "all") {
         const cast = computeCastVotes(voter);
         const allocation = Number(voter.votingPower);
@@ -204,14 +297,8 @@ export default function VoterTable(props: VoterTableProps) {
     });
   }, [voters, addressSearch, nameSearch, pctFilter, names]);
 
-  // Expose the filtered set so the bulk toolbar's "Apply to filtered" targets it.
-  useEffect(() => {
-    onFilteredChange(filteredVoters);
-  }, [filteredVoters, onFilteredChange]);
-
   const pageCount = totalPages(filteredVoters.length, PAGE_SIZE);
 
-  // Clamp the current page when the filtered set shrinks below it.
   useEffect(() => {
     setPage((prev) => Math.min(prev, pageCount));
   }, [pageCount]);
@@ -226,6 +313,327 @@ export default function VoterTable(props: VoterTableProps) {
     () => allGroups.filter((g) => g.id !== groupId),
     [allGroups, groupId],
   );
+
+  // --- Staged-change accounting --------------------------------------------
+
+  // New rows the admin actually intends to add: non-empty, valid address, not
+  // already onchain, deduped within the staged set.
+  const validNewRows = useMemo(() => {
+    const seen = new Set<string>();
+    const valid: NewRow[] = [];
+
+    for (const row of newRows) {
+      const addr = row.address.trim().toLowerCase();
+
+      if (
+        !isAddress(row.address.trim()) ||
+        !isValidVotes(row.votes) ||
+        existingOnchainSet.has(addr) ||
+        seen.has(addr)
+      ) {
+        continue;
+      }
+
+      seen.add(addr);
+      valid.push(row);
+    }
+
+    return valid;
+  }, [newRows, existingOnchainSet]);
+
+  // A new row is "problematic" when it has content but isn't a clean, addable
+  // entry — surfaced so Save can be blocked and the row flagged.
+  const newRowErrors = useMemo(() => {
+    const errors: Record<number, string> = {};
+    const seen = new Set<string>();
+
+    for (const row of newRows) {
+      const address = row.address.trim();
+      const addr = address.toLowerCase();
+
+      if (address === "" && row.votes.trim() === "") {
+        continue;
+      }
+
+      if (!isAddress(address)) {
+        errors[row.id] = "Invalid address";
+      } else if (existingOnchainSet.has(addr)) {
+        errors[row.id] = "Already a voter";
+      } else if (seen.has(addr)) {
+        errors[row.id] = "Duplicate";
+      } else if (!isValidVotes(row.votes)) {
+        errors[row.id] = "Votes must be 1–1M";
+      }
+
+      if (isAddress(address)) {
+        seen.add(addr);
+      }
+    }
+
+    return errors;
+  }, [newRows, existingOnchainSet]);
+
+  // Existing voters whose staged votes differ from the committed value (and that
+  // aren't being removed).
+  const changedAccounts = useMemo(() => {
+    const changed: string[] = [];
+
+    for (const voter of voters) {
+      const acct = voter.account.toLowerCase();
+      const edit = editedPower[acct];
+
+      if (
+        edit !== undefined &&
+        !removed.has(acct) &&
+        isValidVotes(edit) &&
+        Number(edit) !== Number(voter.votingPower)
+      ) {
+        changed.push(acct);
+      }
+    }
+
+    return changed;
+  }, [voters, editedPower, removed]);
+
+  // Accounts actually staged for removal that still belong to this group.
+  const removedAccounts = useMemo(() => {
+    const groupAccts = new Set(voters.map((v) => v.account.toLowerCase()));
+
+    return Array.from(removed).filter((acct) => groupAccts.has(acct));
+  }, [voters, removed]);
+
+  const hasChanges =
+    validNewRows.length > 0 ||
+    changedAccounts.length > 0 ||
+    removedAccounts.length > 0;
+
+  const hasErrors = Object.keys(newRowErrors).length > 0;
+
+  // Voters affected by the pending change that have already cast — the mid-round
+  // warning surfaced in the confirm dialog.
+  const castWarningCount = useMemo(() => {
+    const byAccount = new Map(voters.map((v) => [v.account.toLowerCase(), v]));
+    let count = 0;
+
+    for (const acct of removedAccounts) {
+      if (computeCastVotes(byAccount.get(acct)!) > 0) {
+        count++;
+      }
+    }
+
+    for (const acct of changedAccounts) {
+      const voter = byAccount.get(acct)!;
+      const cast = computeCastVotes(voter);
+
+      if (cast > 0 && Number(editedPower[acct]) < cast) {
+        count++;
+      }
+    }
+
+    return count;
+  }, [voters, removedAccounts, changedAccounts, editedPower]);
+
+  // --- Staged-edit handlers -------------------------------------------------
+
+  const setExistingVotes = (voter: SubgraphVoter, value: string) => {
+    if (value !== "" && !(/^\d+$/.test(value) && Number(value) <= 1e6)) {
+      return;
+    }
+
+    setEditedPower((prev) => ({
+      ...prev,
+      [voter.account.toLowerCase()]: value,
+    }));
+  };
+
+  // Stage every currently-filtered voter for removal. The Save preview shows the
+  // count before anything is committed.
+  const removeFiltered = () => {
+    setRemoved((prev) => {
+      const next = new Set(prev);
+
+      for (const voter of filteredVoters) {
+        next.add(voter.account.toLowerCase());
+      }
+
+      return next;
+    });
+  };
+
+  const toggleRemove = (voter: SubgraphVoter) => {
+    setRemoved((prev) => {
+      const next = new Set(prev);
+      const acct = voter.account.toLowerCase();
+
+      if (next.has(acct)) {
+        next.delete(acct);
+      } else {
+        next.add(acct);
+      }
+
+      return next;
+    });
+  };
+
+  const addNewRow = () => {
+    setNewRows((prev) => [
+      ...prev,
+      {
+        id: ++newRowId.current,
+        address: "",
+        votes: String(defaultVotingPower),
+      },
+    ]);
+  };
+
+  const updateNewRow = (id: number, patch: Partial<NewRow>) => {
+    setNewRows((prev) =>
+      prev.map((row) => (row.id === id ? { ...row, ...patch } : row)),
+    );
+  };
+
+  const removeNewRow = (id: number) => {
+    setNewRows((prev) => prev.filter((row) => row.id !== id));
+  };
+
+  // Apply the bulk votes value (set or increment) to a set of existing voters,
+  // staged only. "Apply to all" also fills the pending new rows.
+  const applyBulk = (targets: SubgraphVoter[], includeNewRows: boolean) => {
+    const value = Number(bulkValue);
+
+    if (!isValidVotes(bulkValue)) {
+      return;
+    }
+
+    setEditedPower((prev) => {
+      const next = { ...prev };
+
+      for (const voter of targets) {
+        const acct = voter.account.toLowerCase();
+        const current = Number(next[acct] ?? voter.votingPower);
+
+        next[acct] = String(computeNewVotingPower(current, value, bulkMode));
+      }
+
+      return next;
+    });
+
+    if (includeNewRows) {
+      setNewRows((prev) =>
+        prev.map((row) => ({
+          ...row,
+          votes:
+            bulkMode === "set"
+              ? String(value)
+              : String(Number(row.votes || 0) + value),
+        })),
+      );
+    }
+  };
+
+  // --- CSV ------------------------------------------------------------------
+
+  // Sync this group's roster to the uploaded file: rows in the file are
+  // added/updated; existing members absent from the file are staged for removal.
+  const handleCsvImport = (file: File) => {
+    Papa.parse(file, {
+      complete: (results: { data: string[][] }) => {
+        const desired = new Map<string, string>();
+        let skipped = 0;
+
+        for (const row of results.data) {
+          const address = (row[0] ?? "").trim();
+
+          if (address === "") {
+            continue;
+          }
+
+          if (!isAddress(address)) {
+            skipped++;
+            continue;
+          }
+
+          desired.set(address.toLowerCase(), (row[1] ?? "").trim());
+        }
+
+        const groupAccts = new Set(voters.map((v) => v.account.toLowerCase()));
+        const nextEdited: Record<string, string> = {};
+        const nextRemoved = new Set<string>();
+        const nextNew: NewRow[] = [];
+
+        // Existing members: update to the file's votes, or remove if absent.
+        for (const voter of voters) {
+          const acct = voter.account.toLowerCase();
+
+          if (desired.has(acct)) {
+            const raw = desired.get(acct)!;
+            const votes = isValidVotes(raw) ? raw : String(defaultVotingPower);
+
+            if (Number(votes) !== Number(voter.votingPower)) {
+              nextEdited[acct] = votes;
+            }
+          } else {
+            nextRemoved.add(acct);
+          }
+        }
+
+        // File addresses not in this group and not already onchain → add.
+        for (const [acct, raw] of desired) {
+          if (groupAccts.has(acct) || existingOnchainSet.has(acct)) {
+            if (!groupAccts.has(acct)) {
+              skipped++;
+            }
+            continue;
+          }
+
+          nextNew.push({
+            id: ++newRowId.current,
+            address: acct,
+            votes: isValidVotes(raw) ? raw : String(defaultVotingPower),
+          });
+        }
+
+        setEditedPower(nextEdited);
+        setRemoved(nextRemoved);
+        setNewRows(nextNew);
+
+        const changed = Object.keys(nextEdited).length;
+        setImportNote(
+          `Imported: ${nextNew.length} to add, ${changed} changed, ` +
+            `${nextRemoved.size} to remove` +
+            (skipped > 0 ? ` (${skipped} row(s) skipped)` : ""),
+        );
+      },
+    });
+  };
+
+  const handleCsvExport = () => {
+    const rows: string[][] = [];
+
+    for (const voter of voters) {
+      if (removed.has(voter.account.toLowerCase())) {
+        continue;
+      }
+
+      rows.push([voter.account, shownVotes(voter)]);
+    }
+
+    for (const row of validNewRows) {
+      rows.push([row.address, row.votes]);
+    }
+
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "voters.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // --- Move (offchain, immediate) ------------------------------------------
 
   const openMoveModal = useCallback(
     (voter: SubgraphVoter) => {
@@ -274,47 +682,140 @@ export default function VoterTable(props: VoterTableProps) {
     }
   };
 
-  const handleRemove = () => {
-    if (!removeTarget) {
+  // --- Save (single commit) -------------------------------------------------
+
+  const handleSave = async () => {
+    if (!hasChanges || hasErrors) {
       return;
     }
 
-    // Onchain: removal sets votingPower to 0 via updateVoters — the same
-    // batchable primitive bulk-remove uses. maxVotingSpread is passed verbatim
-    // so a removal never disturbs the council-wide spread. The address is handed
-    // to the queue so the parent drops its DB classification row ONLY after the
-    // onchain queue completes — a failed/paused queue never leaves the voter
-    // classified-but-removed (or vice versa).
-    q.startQueue(
-      councilId,
-      [
-        {
-          args: {
-            address: councilId as Address,
-            abi: flowCouncilAbi,
-            functionName: "updateVoters",
-            args: [
-              [
-                {
-                  account: removeTarget.account as Address,
-                  votingPower: BigInt(0),
-                  votes: [],
-                },
-              ],
-              maxVotingSpread,
-            ],
-          },
-        },
-      ],
-      [removeTarget.account],
-    );
+    try {
+      setSubmitPhase("saving");
+      setSaveError("");
 
-    setRemoveTarget(null);
+      const byAccount = new Map(
+        voters.map((v) => [v.account.toLowerCase(), v]),
+      );
+
+      // Offchain: classify every new address into this group (DB) in one batched
+      // request before the onchain queue. Bail out on failure so we never enqueue
+      // onchain allocations for voters with no group membership.
+      if (validNewRows.length > 0) {
+        const res = await fetch("/api/flow-council/voter-groups/members", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chainId,
+            councilId,
+            groupId,
+            addresses: validNewRows.map((row) => row.address),
+          }),
+        });
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok || !data?.success) {
+          setSaveError(data?.error ?? "Failed to add voters");
+          setSubmitPhase("idle");
+          return;
+        }
+      }
+
+      // Onchain: one updateVoters covering adds (set power), edits (new power)
+      // and removals (power 0). maxVotingSpread is passed verbatim on every chunk
+      // so a paused/failed queue never resets the council-wide spread.
+      const entries = [
+        ...validNewRows.map((row) => ({
+          account: row.address as Address,
+          votingPower: BigInt(row.votes),
+          votes: [] as [],
+        })),
+        ...changedAccounts.map((acct) => ({
+          account: byAccount.get(acct)!.account as Address,
+          votingPower: BigInt(editedPower[acct]),
+          votes: [] as [],
+        })),
+        ...removedAccounts.map((acct) => ({
+          account: byAccount.get(acct)!.account as Address,
+          votingPower: BigInt(0),
+          votes: [] as [],
+        })),
+      ];
+
+      const chunks = splitIntoChunks(entries, CHUNK_SIZE).map((slice) => ({
+        args: {
+          address: councilId as Address,
+          abi: flowCouncilAbi,
+          functionName: "updateVoters",
+          args: [slice, maxVotingSpread],
+        },
+      }));
+
+      // Hand removed addresses to the queue so the parent drops their DB
+      // classification rows ONLY after the onchain queue fully completes.
+      q.startQueue(councilId, chunks, removedAccounts);
+
+      // Progress, completion and failure are now driven by the queue state and
+      // observed in the effects below; the modal stays open as the surface.
+      setSubmitPhase("submitting");
+    } catch (err) {
+      console.error(err);
+      setSaveError("Failed to save changes");
+      setSubmitPhase("idle");
+    }
   };
 
-  // Show the first/last pages, the current page and its immediate neighbors,
-  // with ellipses for the gaps — so a group with hundreds of pages never renders
-  // a wall of buttons.
+  // --- Submission lifecycle -------------------------------------------------
+
+  // While the onchain queue runs, advance to "done" once every chunk has
+  // settled. A queue failure (q.error) is left in "submitting" so the modal can
+  // offer Retry; clearing the error and resuming re-enters this check.
+  useEffect(() => {
+    if (submitPhase !== "submitting" || q.error) {
+      return;
+    }
+
+    if (q.totalCount > 0 && q.completedCount === q.totalCount && !q.isPending) {
+      setSubmitPhase("done");
+    }
+  }, [submitPhase, q.error, q.totalCount, q.completedCount, q.isPending]);
+
+  // After a successful submission, briefly show the green checkmark, then close
+  // the modal and drop the now-committed staged edits.
+  useEffect(() => {
+    if (submitPhase !== "done") {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      setNewRows([]);
+      setEditedPower({});
+      setRemoved(new Set());
+      setImportNote("");
+      setShowConfirm(false);
+      setSubmitPhase("idle");
+    }, 1200);
+
+    return () => clearTimeout(timeout);
+  }, [submitPhase]);
+
+  // True whenever the confirm modal is mid-submission and must not be dismissed
+  // or re-triggered (an in-flight queue error is the one interactive exception).
+  const submitBusy =
+    submitPhase === "saving" ||
+    submitPhase === "done" ||
+    (submitPhase === "submitting" && !q.error);
+
+  const closeConfirm = () => {
+    // Dismissing a stopped (failed) queue discards it so no stale "resume"
+    // banner lingers; the staged edits remain so the admin can retry via Save.
+    if (q.error) {
+      q.clear();
+    }
+
+    setSubmitPhase("idle");
+    setShowConfirm(false);
+  };
+
   const paginationItems = useMemo(() => {
     if (pageCount <= 1) {
       return [];
@@ -349,8 +850,133 @@ export default function VoterTable(props: VoterTableProps) {
     return items;
   }, [pageCount, page]);
 
+  const bulkValid = isValidVotes(bulkValue);
+
   return (
     <Stack direction="vertical" gap={3}>
+      {/* Bulk apply + CSV toolbar */}
+      {isManager ? (
+        <Stack direction="vertical" gap={2}>
+          <Stack
+            direction="horizontal"
+            gap={3}
+            className="flex-wrap align-items-end"
+          >
+            <Form.Group style={{ minWidth: 120 }}>
+              <Form.Label className="fw-semi-bold mb-1">Votes</Form.Label>
+              <Form.Control
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 10"
+                value={bulkValue}
+                disabled={q.isPending}
+                onChange={(e) => {
+                  const v = e.target.value;
+
+                  if (v === "" || (/^\d+$/.test(v) && Number(v) <= 1e6)) {
+                    setBulkValue(v);
+                  }
+                }}
+              />
+            </Form.Group>
+            <Form.Group>
+              <Form.Label className="fw-semi-bold mb-1 d-block">
+                Mode
+              </Form.Label>
+              <Stack direction="horizontal" gap={3}>
+                <Form.Check
+                  type="radio"
+                  id="bulk-mode-set"
+                  name="bulk-mode"
+                  label="Set"
+                  checked={bulkMode === "set"}
+                  onChange={() => setBulkMode("set")}
+                />
+                <Form.Check
+                  type="radio"
+                  id="bulk-mode-increment"
+                  name="bulk-mode"
+                  label="Increment"
+                  checked={bulkMode === "increment"}
+                  onChange={() => setBulkMode("increment")}
+                />
+              </Stack>
+            </Form.Group>
+            <Button
+              variant="outline-primary"
+              className="rounded-4 px-3 py-2 fw-semi-bold"
+              disabled={!bulkValid || voters.length === 0 || q.isPending}
+              onClick={() => applyBulk(voters, true)}
+            >
+              Apply to all
+            </Button>
+            <Button
+              variant="outline-primary"
+              className="rounded-4 px-3 py-2 fw-semi-bold"
+              disabled={
+                !bulkValid || filteredVoters.length === 0 || q.isPending
+              }
+              onClick={() => applyBulk(filteredVoters, false)}
+            >
+              Apply to filtered ({filteredVoters.length})
+            </Button>
+            <Button
+              variant="outline-danger"
+              className="rounded-4 px-3 py-2 fw-semi-bold ms-auto"
+              disabled={filteredVoters.length === 0 || q.isPending}
+              onClick={removeFiltered}
+              title="Removes the currently filtered voters from the council. Clear filters to remove the whole group."
+            >
+              Remove filtered ({filteredVoters.length})
+            </Button>
+          </Stack>
+
+          <Stack direction="horizontal" gap={2} className="flex-wrap">
+            <Button
+              variant="primary"
+              className="rounded-4 px-3 py-2 fw-semi-bold"
+              disabled={q.isPending}
+              onClick={addNewRow}
+            >
+              + Add row
+            </Button>
+            <Form.Label
+              htmlFor="voters-csv"
+              className={`bg-primary text-white text-center m-0 px-3 py-2 rounded-4 fw-semi-bold ${
+                q.isPending ? "opacity-50" : "cursor-pointer"
+              }`}
+            >
+              Import CSV
+            </Form.Label>
+            <Form.Control
+              type="file"
+              id="voters-csv"
+              accept=".csv"
+              hidden
+              disabled={q.isPending}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                if (e.target.files && e.target.files[0]) {
+                  handleCsvImport(e.target.files[0]);
+                  e.target.value = "";
+                }
+              }}
+            />
+            <Button
+              variant="outline-secondary"
+              className="rounded-4 px-3 py-2 fw-semi-bold"
+              onClick={handleCsvExport}
+            >
+              Export CSV
+            </Button>
+            <span className="text-info small align-self-center">
+              CSV: address,votingPower — import replaces this group with the
+              file.
+            </span>
+          </Stack>
+        </Stack>
+      ) : null}
+
+      {/* Search / filter */}
       <Stack
         direction="horizontal"
         gap={2}
@@ -389,14 +1015,24 @@ export default function VoterTable(props: VoterTableProps) {
         </Form.Group>
       </Stack>
 
+      {importNote ? (
+        <Alert
+          variant="info"
+          dismissible
+          onClose={() => setImportNote("")}
+          className="mb-0"
+        >
+          {importNote}
+        </Alert>
+      ) : null}
       {moveSuccess ? (
         <Alert variant="success" className="mb-0">
           {moveSuccess}
         </Alert>
       ) : null}
-      {removeError ? (
+      {saveError ? (
         <Alert variant="danger" className="mb-0">
-          {removeError}
+          {saveError}
         </Alert>
       ) : null}
 
@@ -411,7 +1047,71 @@ export default function VoterTable(props: VoterTableProps) {
           </tr>
         </thead>
         <tbody>
-          {pageVoters.length === 0 ? (
+          {/* Pending new rows — always visible, above the paginated list. */}
+          {isManager
+            ? newRows.map((row) => {
+                const error = newRowErrors[row.id];
+
+                return (
+                  <tr key={`new-${row.id}`} className="table-light">
+                    <td>
+                      <Form.Control
+                        type="text"
+                        size="sm"
+                        placeholder="0x… (new)"
+                        value={row.address}
+                        isInvalid={!!error}
+                        disabled={q.isPending}
+                        onChange={(e) =>
+                          updateNewRow(row.id, { address: e.target.value })
+                        }
+                      />
+                    </td>
+                    <td className="text-info align-middle">
+                      {error ? (
+                        <span className="text-danger small">{error}</span>
+                      ) : (
+                        "New voter"
+                      )}
+                    </td>
+                    <td className="text-end" style={{ maxWidth: 120 }}>
+                      <Form.Control
+                        type="text"
+                        inputMode="numeric"
+                        size="sm"
+                        className="text-end"
+                        value={row.votes}
+                        disabled={q.isPending}
+                        onChange={(e) => {
+                          const v = e.target.value;
+
+                          if (
+                            v === "" ||
+                            (/^\d+$/.test(v) && Number(v) <= 1e6)
+                          ) {
+                            updateNewRow(row.id, { votes: v });
+                          }
+                        }}
+                      />
+                    </td>
+                    <td className="text-end text-info align-middle">—</td>
+                    <td className="text-end align-middle">
+                      <Button
+                        variant="transparent"
+                        size="sm"
+                        className="text-danger border-0 fw-semi-bold"
+                        disabled={q.isPending}
+                        onClick={() => removeNewRow(row.id)}
+                      >
+                        ✕
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })
+            : null}
+
+          {pageVoters.length === 0 && newRows.length === 0 ? (
             <tr>
               <td colSpan={isManager ? 5 : 4} className="text-info text-center">
                 No voters match.
@@ -421,9 +1121,14 @@ export default function VoterTable(props: VoterTableProps) {
             pageVoters.map((voter) => {
               const account = voter.account.toLowerCase();
               const name = names[account];
+              const isRemoved = removed.has(account);
+              const cast = computeCastVotes(voter);
 
               return (
-                <tr key={voter.id}>
+                <tr
+                  key={voter.id}
+                  className={isRemoved ? "text-decoration-line-through" : ""}
+                >
                   <td>
                     <span className="text-break">
                       {truncateAddress(account)}
@@ -434,38 +1139,69 @@ export default function VoterTable(props: VoterTableProps) {
                       {name ? name : truncateAddress(account)}
                     </span>
                   </td>
-                  <td className="text-end">{voter.votingPower}</td>
+                  <td className="text-end" style={{ maxWidth: 120 }}>
+                    {isManager && !isRemoved ? (
+                      <Form.Control
+                        type="text"
+                        inputMode="numeric"
+                        size="sm"
+                        className="text-end"
+                        value={shownVotes(voter)}
+                        disabled={q.isPending}
+                        onChange={(e) =>
+                          setExistingVotes(voter, e.target.value)
+                        }
+                      />
+                    ) : (
+                      shownVotes(voter)
+                    )}
+                  </td>
                   <td className="text-end">
-                    {computeCastVotes(voter)} / {voter.votingPower}
+                    {cast} / {shownVotes(voter)}
                   </td>
                   {isManager ? (
                     <td className="text-end">
-                      <Dropdown align="end">
-                        <Dropdown.Toggle
+                      {isRemoved ? (
+                        <Button
+                          variant="transparent"
                           size="sm"
-                          variant="outline-secondary"
-                          className="fw-semi-bold border-0"
+                          className="text-primary border-0 fw-semi-bold"
+                          disabled={q.isPending}
+                          onClick={() => toggleRemove(voter)}
                         >
-                          ⋯
-                        </Dropdown.Toggle>
-                        <Dropdown.Menu className="border-0">
-                          <Dropdown.Item
-                            disabled={otherGroups.length === 0}
-                            onClick={() => openMoveModal(voter)}
+                          Undo
+                        </Button>
+                      ) : (
+                        <Dropdown align="end">
+                          <Dropdown.Toggle
+                            as={RowActionsToggle}
+                            disabled={q.isPending}
                           >
-                            Move to group…
-                          </Dropdown.Item>
-                          <Dropdown.Item
-                            className="text-danger"
-                            onClick={() => {
-                              setRemoveError("");
-                              setRemoveTarget(voter);
-                            }}
+                            ⋯
+                          </Dropdown.Toggle>
+                          {/* strategy:"fixed" lets the menu escape the
+                              responsive table's overflow so the last row's
+                              menu is never clipped. */}
+                          <Dropdown.Menu
+                            className="border-0"
+                            renderOnMount
+                            popperConfig={{ strategy: "fixed" }}
                           >
-                            Remove
-                          </Dropdown.Item>
-                        </Dropdown.Menu>
-                      </Dropdown>
+                            <Dropdown.Item
+                              disabled={otherGroups.length === 0}
+                              onClick={() => openMoveModal(voter)}
+                            >
+                              Move to group…
+                            </Dropdown.Item>
+                            <Dropdown.Item
+                              className="text-danger"
+                              onClick={() => toggleRemove(voter)}
+                            >
+                              Remove
+                            </Dropdown.Item>
+                          </Dropdown.Menu>
+                        </Dropdown>
+                      )}
                     </td>
                   ) : null}
                 </tr>
@@ -479,6 +1215,35 @@ export default function VoterTable(props: VoterTableProps) {
         <Pagination className="mb-0 flex-wrap">{paginationItems}</Pagination>
       ) : null}
 
+      {/* Save bar */}
+      {isManager ? (
+        <Stack
+          direction="horizontal"
+          gap={2}
+          className="flex-wrap align-items-center justify-content-end"
+        >
+          {hasChanges ? (
+            <span className="text-info me-auto">
+              {validNewRows.length} to add · {changedAccounts.length} changed ·{" "}
+              {removedAccounts.length} to remove
+            </span>
+          ) : null}
+          <Button
+            className="rounded-4 px-4 py-2 fw-semi-bold"
+            disabled={
+              !hasChanges || hasErrors || q.isPending || submitPhase !== "idle"
+            }
+            onClick={() => {
+              setSaveError("");
+              setShowConfirm(true);
+            }}
+          >
+            Save changes
+          </Button>
+        </Stack>
+      ) : null}
+
+      {/* Move modal */}
       <Modal show={!!moveTarget} centered onHide={() => setMoveTarget(null)}>
         <Modal.Header closeButton className="border-0 p-4">
           <Modal.Title className="fs-5 fw-semi-bold">Move to group</Modal.Title>
@@ -527,33 +1292,60 @@ export default function VoterTable(props: VoterTableProps) {
         </Modal.Footer>
       </Modal>
 
+      {/* Save confirm modal */}
       <Modal
-        show={!!removeTarget}
+        show={showConfirm}
         centered
-        onHide={() => setRemoveTarget(null)}
+        onHide={() => {
+          if (!submitBusy) {
+            closeConfirm();
+          }
+        }}
       >
         <Modal.Header closeButton className="border-0 p-4">
-          <Modal.Title className="fs-5 fw-semi-bold">Remove voter</Modal.Title>
+          <Modal.Title className="fs-5 fw-semi-bold">Save changes</Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-4 pt-0">
-          <p className="mb-0">
-            Remove{" "}
-            <span className="fw-semi-bold text-break">
-              {removeTarget ? truncateAddress(removeTarget.account) : ""}
-            </span>{" "}
-            from this council? This sets their allocation to 0 onchain and drops
-            their group classification.
-          </p>
-          {removeTarget && computeCastVotes(removeTarget) > 0 ? (
+          <p className="mb-2">This will submit onchain transaction(s) to:</p>
+          <ul className="mb-0">
+            {validNewRows.length > 0 ? (
+              <li>
+                <span className="fw-semi-bold">Add {validNewRows.length}</span>{" "}
+                voter(s)
+              </li>
+            ) : null}
+            {changedAccounts.length > 0 ? (
+              <li>
+                <span className="fw-semi-bold">
+                  Change {changedAccounts.length}
+                </span>{" "}
+                allocation(s)
+              </li>
+            ) : null}
+            {removedAccounts.length > 0 ? (
+              <li>
+                <span className="fw-semi-bold">
+                  Remove {removedAccounts.length}
+                </span>{" "}
+                voter(s)
+              </li>
+            ) : null}
+          </ul>
+          {castWarningCount > 0 ? (
             <Alert variant="warning" className="mt-3 mb-0">
-              This voter has already cast {computeCastVotes(removeTarget)}{" "}
-              vote(s). Removing them caps future votes at 0 but does not retract
-              votes already cast.
+              {castWarningCount} affected voter(s) have already cast and would
+              be reduced below their cast count. Cast votes remain; only future
+              votes are capped.
             </Alert>
           ) : null}
-          {removeError ? (
+          {saveError ? (
             <Alert variant="danger" className="mt-3 mb-0">
-              {removeError}
+              {saveError}
+            </Alert>
+          ) : submitPhase === "submitting" && q.error ? (
+            <Alert variant="danger" className="mt-3 mb-0">
+              {q.error.message} — some transaction(s) didn&apos;t complete.
+              Retry to finish, or discard to start over.
             </Alert>
           ) : null}
         </Modal.Body>
@@ -561,16 +1353,37 @@ export default function VoterTable(props: VoterTableProps) {
           <Button
             variant="secondary"
             className="rounded-4 px-4 py-2 fw-semi-bold"
-            onClick={() => setRemoveTarget(null)}
+            onClick={closeConfirm}
+            disabled={submitBusy}
           >
-            Cancel
+            {submitPhase === "submitting" && q.error ? "Discard" : "Cancel"}
           </Button>
           <Button
-            variant="danger"
+            variant={submitPhase === "done" ? "success" : "primary"}
             className="rounded-4 px-4 py-2 fw-semi-bold"
-            onClick={handleRemove}
+            onClick={
+              submitPhase === "submitting" && q.error
+                ? () => q.resume()
+                : handleSave
+            }
+            disabled={submitBusy}
           >
-            Remove
+            {submitPhase === "saving" ? (
+              <Spinner size="sm" />
+            ) : submitPhase === "submitting" && q.error ? (
+              "Retry"
+            ) : submitPhase === "submitting" ? (
+              <>
+                <Spinner size="sm" />
+                {q.totalCount > 1
+                  ? ` ${Math.min(q.completedCount + 1, q.totalCount)}/${q.totalCount}`
+                  : ""}
+              </>
+            ) : submitPhase === "done" ? (
+              <SuccessCheckmark />
+            ) : (
+              "Confirm"
+            )}
           </Button>
         </Modal.Footer>
       </Modal>

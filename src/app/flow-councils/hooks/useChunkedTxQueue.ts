@@ -118,14 +118,15 @@ export function useChunkedTxQueue(
 ) {
   const [queue, setQueue] = useState<QueueState | null>(null);
   const [isPending, setIsPending] = useState(false);
-  // On hydration we never auto-resume — start paused so the parent can render a
-  // resume banner instead of triggering surprise wallet prompts.
-  const [isPaused, setIsPaused] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   // Refs mirror state so the recursive executeNext loop reads fresh values
   // without being re-created on every render (avoids stale closures).
   const queueRef = useRef<QueueState | null>(null);
+  // On hydration we never auto-resume — start paused so the parent can render a
+  // resume banner instead of triggering surprise wallet prompts. Pausing is
+  // internal-only (there is no user-facing pause control): it backs both the
+  // never-auto-resume-on-hydration behavior and the resume banners.
   const isPausedRef = useRef(true);
   const isRunningRef = useRef(false);
 
@@ -145,7 +146,6 @@ export function useChunkedTxQueue(
 
   const setPausedState = useCallback((paused: boolean) => {
     isPausedRef.current = paused;
-    setIsPaused(paused);
   }, []);
 
   // Hydrate this council's persisted queue on mount (and whenever the council
@@ -257,11 +257,6 @@ export function useChunkedTxQueue(
     void executeNext();
   }, [executeNext, setPausedState]);
 
-  const pause = useCallback(() => {
-    // Checked before each chunk in executeNext; an in-flight tx still settles.
-    setPausedState(true);
-  }, [setPausedState]);
-
   const clear = useCallback(() => {
     setPausedState(true);
     setError(null);
@@ -271,10 +266,8 @@ export function useChunkedTxQueue(
   return {
     startQueue,
     resume,
-    pause,
     clear,
     isPending,
-    isPaused,
     completedCount: queue?.completedCount ?? 0,
     totalCount: queue?.chunks.length ?? 0,
     councilId: queue?.councilId,
