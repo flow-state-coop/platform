@@ -1,5 +1,5 @@
-import removeMarkdown from "remove-markdown";
 import { sendPersonalizedEmail, type PersonalizedRecipient } from "./ses";
+import { renderMarkdownToHtml } from "./markdown";
 import { db } from "./db";
 import { generateNotificationToken } from "@/lib/notificationToken";
 import type { NotificationCategory } from "@/lib/consent";
@@ -400,7 +400,7 @@ export async function sendChatMessageEmail(
       projectName,
       roundName,
       sender,
-      messageContent: removeMarkdown(messageContent),
+      messageContentHtml: await renderMarkdownToHtml(messageContent),
       ctaLink,
     },
     baseUrl,
@@ -420,7 +420,7 @@ export async function sendAnnouncementEmail(
     {
       roundName,
       sender,
-      messageContent: removeMarkdown(messageContent),
+      messageContentHtml: await renderMarkdownToHtml(messageContent),
       ctaLink,
     },
     baseUrl,
@@ -449,7 +449,8 @@ export async function sendInternalCommentEmail(
       project_name: projectName,
       round_name: roundName,
       sender,
-      message_content: removeMarkdown(messageContent),
+      message_content: messageContent,
+      message_content_html: await renderMarkdownToHtml(messageContent),
       ctaLink,
     },
     baseUrl,
@@ -472,7 +473,8 @@ export async function sendPlatformMessageEmail(
     "flow-state-platform-message",
     {
       subject,
-      content: removeMarkdown(content),
+      content,
+      content_html: await renderMarkdownToHtml(content),
     },
     baseUrl,
   );
