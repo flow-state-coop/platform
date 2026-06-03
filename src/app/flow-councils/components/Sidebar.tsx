@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
 import { useQuery, gql } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
@@ -10,10 +11,14 @@ import Offcanvas from "react-bootstrap/Offcanvas";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
+import { Network } from "@/types/network";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
-import { DEFAULT_CHAIN_ID } from "@/lib/constants";
-import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
+import {
+  networks,
+  isSplitterFactoryDeployed,
+  isFlowCouncilNetwork,
+} from "@/lib/networks";
 import useCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 
 const FLOW_COUNCIL_MANAGER_QUERY = gql`
@@ -124,6 +129,9 @@ function SidebarLinks({
 function Sidebar() {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [councils, setCouncils] = useState<Council[]>([]);
+  const [selectedNetwork, setSelectedNetwork] = useState<Network>(
+    networks.find((network) => network.label === "celo")!,
+  );
 
   const pathname = usePathname();
   const router = useRouter();
@@ -138,10 +146,24 @@ function Sidebar() {
     }
     return { chainId: null, councilId: null };
   }, [pathname]);
-  const { address } = useAccount();
+  const { address, chain: connectedChain } = useAccount();
+  const { switchChain } = useSwitchChain();
+  const { openConnectModal } = useConnectModal();
   const { isMobile, isTablet } = useMediaQuery();
+
+  // Keep the network dropdown in sync with the council currently open in the URL.
+  useEffect(() => {
+    if (!chainId) {
+      return;
+    }
+    const network = networks.find((n) => n.id === chainId);
+    if (network && isFlowCouncilNetwork(network)) {
+      setSelectedNetwork(network);
+    }
+  }, [chainId]);
+
   const { data: flowCouncilsQueryRes } = useQuery(FLOW_COUNCIL_MANAGER_QUERY, {
-    client: getApolloClient("flowCouncil", chainId ?? DEFAULT_CHAIN_ID),
+    client: getApolloClient("flowCouncil", selectedNetwork.id),
     variables: {
       address: address?.toLowerCase(),
     },
@@ -175,7 +197,7 @@ function Sidebar() {
           let roundName = "Flow Council";
           try {
             const res = await fetch(
-              `/api/flow-council/rounds?chainId=${chainId}&flowCouncilAddress=${id}`,
+              `/api/flow-council/rounds?chainId=${selectedNetwork.id}&flowCouncilAddress=${id}`,
             );
             const data = await res.json();
             if (data.success && data.round?.details) {
@@ -210,9 +232,76 @@ function Sidebar() {
     return () => {
       cancelled = true;
     };
-  }, [councilIdsKey, chainId]);
+  }, [councilIdsKey, selectedNetwork.id]);
 
-  const CouncilsDropdown = () => (
+  const renderNetworkDropdown = () => (
+    <Dropdown className="position-static w-75 overflow-hidden">
+      <Dropdown.Toggle
+        variant="transparent"
+        className="d-flex justify-content-between align-items-center w-100 border border-4 border-dark fw-semi-bold py-4 overflow-hidden"
+      >
+        <Stack
+          direction="horizontal"
+          gap={2}
+          className="align-items-center overflow-hidden"
+        >
+          <Image
+            src={selectedNetwork.icon}
+            alt="Network Icon"
+            width={18}
+            height={18}
+          />
+          <span className="d-inline-block text-truncate">
+            {selectedNetwork.name}
+          </span>
+        </Stack>
+      </Dropdown.Toggle>
+      <Dropdown.Menu
+        className="overflow-hidden border-4 border-dark lh-sm"
+        style={{ width: isMobile || isTablet ? 300 : "auto" }}
+      >
+        {networks.filter(isFlowCouncilNetwork).map((network) => (
+          <Dropdown.Item
+            key={network.id}
+            className="text-truncate fw-semi-bold"
+            onClick={() => {
+              // Only point the sidebar at a network once a wallet is connected
+              // on it — when switching (after a confirmed `onSuccess`) or when
+              // already on it. A disconnected pick just opens the connect modal.
+              if (!connectedChain) {
+                if (openConnectModal) {
+                  openConnectModal();
+                }
+              } else if (connectedChain.id !== network.id) {
+                switchChain(
+                  { chainId: network.id },
+                  { onSuccess: () => setSelectedNetwork(network) },
+                );
+              } else {
+                setSelectedNetwork(network);
+              }
+            }}
+          >
+            <Stack
+              direction="horizontal"
+              gap={2}
+              className="align-items-center"
+            >
+              <Image
+                src={network.icon}
+                alt="Network Icon"
+                width={16}
+                height={16}
+              />
+              {network.name}
+            </Stack>
+          </Dropdown.Item>
+        ))}
+      </Dropdown.Menu>
+    </Dropdown>
+  );
+
+  const renderCouncilsDropdown = () => (
     <Dropdown className="position-static w-75 overflow-hidden">
       <Dropdown.Toggle
         disabled={!address}
@@ -227,13 +316,13 @@ function Sidebar() {
         className="overflow-hidden border-4 border-dark lh-sm"
         style={{ width: isMobile || isTablet ? 300 : "auto" }}
       >
-        {councils?.map((council: Council, i: number) => (
+        {councils?.map((council: Council) => (
           <Dropdown.Item
-            key={i}
+            key={council.id}
             className="text-truncate fw-semi-bold"
             onClick={() =>
               router.push(
-                `/flow-councils/membership/${chainId ?? DEFAULT_CHAIN_ID}/${council.id}`,
+                `/flow-councils/membership/${selectedNetwork.id}/${council.id}`,
               )
             }
           >
@@ -294,7 +383,8 @@ function Sidebar() {
           </Offcanvas.Title>
         </Offcanvas.Header>
         <Offcanvas.Body className="d-flex flex-column gap-4 px-3 py-4 fs-6">
-          <CouncilsDropdown />
+          {renderNetworkDropdown()}
+          {renderCouncilsDropdown()}
           <SidebarLinks
             chainId={chainId}
             selectedCouncil={selectedCouncil}
@@ -312,7 +402,8 @@ function Sidebar() {
       className="w-33 h-100 rounded-4 bg-lace-100 ms-12 ms-xxl-16 p-4 fs-5 me-10"
     >
       <h1 className="fs-5 fw-semi-bold">Flow Council Admin</h1>
-      <CouncilsDropdown />
+      {renderNetworkDropdown()}
+      {renderCouncilsDropdown()}
       <SidebarLinks
         chainId={chainId}
         selectedCouncil={selectedCouncil}
