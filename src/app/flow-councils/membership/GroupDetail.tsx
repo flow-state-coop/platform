@@ -28,12 +28,18 @@ import {
 } from "@/app/flow-councils/lib/voterUtils";
 import VoterTable from "./VoterTable";
 import EligibilityManagerField from "./EligibilityManagerField";
-import type { ChunkedQueue, SubgraphVoter } from "./voterTableTypes";
+import type {
+  ChunkedQueue,
+  EligibilityMethod,
+  SubgraphVoter,
+  VoterGroup,
+} from "./voterTableTypes";
 import {
   VOTER_MANAGER_ROLE,
   RECIPIENT_MANAGER_ROLE,
   DEFAULT_ADMIN_ROLE,
   FLOW_STATE_BOT_ADDRESS,
+  CELO_CHAIN_ID,
 } from "../lib/constants";
 
 type GroupDetailProps = {
@@ -41,19 +47,6 @@ type GroupDetailProps = {
   councilId: string;
   groupId: number;
 };
-
-type EligibilityMethod = "manual" | "gooddollar";
-
-type VoterGroup = {
-  id: number;
-  name: string;
-  eligibilityMethod: EligibilityMethod;
-  defaultVotingPower: number;
-  memberCount: number;
-  members: string[];
-};
-
-const CELO_CHAIN_ID = 42220;
 
 // Chunk size for the deferred DB membership delete. Kept well under the API's
 // per-request cap so removing a large group (e.g. the auto-migrated Default

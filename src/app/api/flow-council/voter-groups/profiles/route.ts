@@ -17,7 +17,7 @@ export async function GET(request: Request) {
       .filter((a) => a.length > 0);
 
     if (addresses.length === 0) {
-      return new Response(JSON.stringify({ success: true, names: {} }));
+      return Response.json({ success: true, names: {} });
     }
 
     if (addresses.length > MAX_ADDRESSES) {
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
     const names = await fetchDisplayNames(addresses);
 
-    return new Response(JSON.stringify({ success: true, names }));
+    return Response.json({ success: true, names });
   } catch (err) {
     console.error(err);
     return errorResponse("There was an error, please try again later", 500);

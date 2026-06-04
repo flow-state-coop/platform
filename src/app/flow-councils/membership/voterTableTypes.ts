@@ -1,5 +1,18 @@
-// Shared types for the group voter table and its extracted modal / CSV helpers
-// (VoterTable.tsx, MoveVoterModal.tsx, SaveConfirmModal.tsx, voterCsv.ts).
+// Shared types for the Flow Council membership UI: the group overview, the
+// per-group detail page, and the voter table with its extracted modal / CSV
+// helpers (membership.tsx, GroupDetail.tsx, VoterTable.tsx, MoveVoterModal.tsx,
+// SaveConfirmModal.tsx, voterCsv.ts).
+
+export type EligibilityMethod = "manual" | "gooddollar";
+
+export type VoterGroup = {
+  id: number;
+  name: string;
+  eligibilityMethod: EligibilityMethod;
+  defaultVotingPower: number;
+  memberCount: number;
+  members: string[];
+};
 
 export type SubgraphVoter = {
   id: string;

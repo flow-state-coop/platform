@@ -40,29 +40,15 @@ import {
   RECIPIENT_MANAGER_ROLE,
   DEFAULT_ADMIN_ROLE,
   FLOW_STATE_BOT_ADDRESS,
+  CELO_CHAIN_ID,
 } from "../lib/constants";
+import type {
+  EligibilityMethod,
+  SubgraphVoter,
+  VoterGroup,
+} from "./voterTableTypes";
 
 type MembershipProps = { chainId?: number; councilId?: string };
-
-type EligibilityMethod = "manual" | "gooddollar";
-
-type VoterGroup = {
-  id: number;
-  name: string;
-  eligibilityMethod: EligibilityMethod;
-  defaultVotingPower: number;
-  memberCount: number;
-  members: string[];
-};
-
-type SubgraphVoter = {
-  id: string;
-  account: string;
-  votingPower: string;
-  ballot?: { votes?: { amount: string }[] };
-};
-
-const CELO_CHAIN_ID = 42220;
 
 const FLOW_COUNCIL_QUERY = gql`
   query FlowCouncilVotersQuery($councilId: String!, $skip: Int = 0) {
@@ -390,6 +376,9 @@ export default function Membership(props: MembershipProps) {
       if (newGroupEligibility === "gooddollar" && !botHasVoterManagerRole) {
         if (connectedChain?.id !== chainId) {
           switchChain({ chainId });
+          setCreateGroupError(
+            "Switch your wallet to the council's network, then click Create again.",
+          );
           return;
         }
 

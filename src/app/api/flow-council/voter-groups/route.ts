@@ -182,7 +182,7 @@ export async function GET(request: Request) {
     const round = await findRoundByCouncil(chainId, councilId);
 
     if (!round) {
-      return new Response(JSON.stringify({ success: true, groups: [] }));
+      return Response.json({ success: true, groups: [] });
     }
 
     let groups = await loadGroupsWithMembers(round.id);
@@ -192,7 +192,7 @@ export async function GET(request: Request) {
       groups = await loadGroupsWithMembers(round.id);
     }
 
-    return new Response(JSON.stringify({ success: true, groups }));
+    return Response.json({ success: true, groups });
   } catch (err) {
     console.error(err);
     return errorResponse("There was an error, please try again later", 500);
@@ -243,7 +243,7 @@ export async function POST(request: Request) {
       );
     }
 
-    return new Response(JSON.stringify({ success: true, id: inserted.id }));
+    return Response.json({ success: true, id: inserted.id });
   } catch (err) {
     console.error(err);
     return errorResponse("There was an error, please try again later", 500);
@@ -305,7 +305,7 @@ export async function PATCH(request: Request) {
     }
 
     if (Object.keys(updates).length === 0) {
-      return new Response(JSON.stringify({ success: true }));
+      return Response.json({ success: true });
     }
 
     try {
@@ -329,7 +329,7 @@ export async function PATCH(request: Request) {
       throw err;
     }
 
-    return new Response(JSON.stringify({ success: true }));
+    return Response.json({ success: true });
   } catch (err) {
     console.error(err);
     return errorResponse("There was an error, please try again later", 500);
@@ -403,7 +403,7 @@ export async function DELETE(request: Request) {
       .where("roundId", "=", auth.roundId)
       .execute();
 
-    return new Response(JSON.stringify({ success: true }));
+    return Response.json({ success: true });
   } catch (err) {
     console.error(err);
     return errorResponse("There was an error, please try again later", 500);

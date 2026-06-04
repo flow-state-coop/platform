@@ -5,6 +5,9 @@ export const VOTER_MANAGER_ROLE: `0x${string}` =
 export const RECIPIENT_MANAGER_ROLE: `0x${string}` =
   "0xe555445334ab5a223b26b938f3d289a9b846cb309abebf4aa790d6e1a6141c2e";
 
+// Celo mainnet chain ID — GoodDollar eligibility is Celo-only.
+export const CELO_CHAIN_ID = 42220;
+
 export const GOODBUILDERS_COUNCIL_ADDRESSES: `0x${string}`[] = [
   "0x714d013c073d6276b47f475549dae4559d898a77",
   "0xfabef1abae4998146e8a8422813eb787caa26ec2",

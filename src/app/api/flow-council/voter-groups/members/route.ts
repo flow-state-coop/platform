@@ -78,14 +78,12 @@ export async function POST(request: Request) {
       .returning(["id"])
       .execute();
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        inserted: insertedRows.length > 0,
-        insertedCount: insertedRows.length,
-        skippedCount: unique.length - insertedRows.length,
-      }),
-    );
+    return Response.json({
+      success: true,
+      inserted: insertedRows.length > 0,
+      insertedCount: insertedRows.length,
+      skippedCount: unique.length - insertedRows.length,
+    });
   } catch (err) {
     console.error(err);
     return errorResponse("There was an error, please try again later", 500);
@@ -142,7 +140,7 @@ export async function PATCH(request: Request) {
       .where("address", "=", address.toLowerCase())
       .execute();
 
-    return new Response(JSON.stringify({ success: true }));
+    return Response.json({ success: true });
   } catch (err) {
     console.error(err);
     return errorResponse("There was an error, please try again later", 500);
@@ -193,7 +191,7 @@ export async function DELETE(request: Request) {
       .where("address", "in", lowered)
       .execute();
 
-    return new Response(JSON.stringify({ success: true }));
+    return Response.json({ success: true });
   } catch (err) {
     console.error(err);
     return errorResponse("There was an error, please try again later", 500);

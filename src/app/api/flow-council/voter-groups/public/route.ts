@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     const round = await findRoundByCouncil(chainId, councilId);
 
     if (!round) {
-      return new Response(JSON.stringify({ groups: [] }));
+      return Response.json({ groups: [] });
     }
 
     const rows = await db
@@ -72,9 +72,7 @@ export async function GET(request: Request) {
       }
     }
 
-    return new Response(
-      JSON.stringify({ groups: Array.from(byGroup.values()) }),
-    );
+    return Response.json({ groups: Array.from(byGroup.values()) });
   } catch (err) {
     console.error(err);
     return errorResponse("There was an error, please try again later", 500);
