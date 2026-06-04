@@ -34,7 +34,6 @@ import {
   computeCastVotes,
   shareOfVotes,
 } from "@/app/flow-councils/lib/voterUtils";
-import EligibilityManagerField from "./EligibilityManagerField";
 import SuccessCheckmark from "@/app/flow-councils/components/SuccessCheckmark";
 import {
   VOTER_MANAGER_ROLE,
@@ -207,23 +206,6 @@ export default function Membership(props: MembershipProps) {
     error: grantError,
   } = useGrantBotVoterManager(councilId ?? "");
 
-  const handleAddPermissions = async () => {
-    if (!chainId) {
-      return;
-    }
-
-    if (connectedChain?.id !== chainId) {
-      switchChain({ chainId });
-      return;
-    }
-
-    const ok = await grant();
-
-    if (ok) {
-      await refetch();
-    }
-  };
-
   // Map of lowercased account -> subgraph voter for fast lookup in metrics.
   const votersByAccount = useMemo(() => {
     const map = new Map<string, SubgraphVoter>();
@@ -390,9 +372,28 @@ export default function Membership(props: MembershipProps) {
       return;
     }
 
+    setIsCreatingGroup(true);
+    setCreateGroupError("");
+
     try {
-      setIsCreatingGroup(true);
-      setCreateGroupError("");
+      // GoodDollar groups rely on the Flow State bot holding VOTER_MANAGER_ROLE
+      // to auto-add self-claiming voters. Grant it as part of creation so a
+      // group can't exist without the permissions that make it work. Skipped
+      // when the bot already holds the role for this council.
+      if (newGroupEligibility === "gooddollar" && !botHasVoterManagerRole) {
+        if (connectedChain?.id !== chainId) {
+          switchChain({ chainId });
+          return;
+        }
+
+        const granted = await grant();
+
+        if (!granted) {
+          return;
+        }
+
+        refetch();
+      }
 
       const res = await fetch("/api/flow-council/voter-groups", {
         method: "POST",
@@ -413,12 +414,13 @@ export default function Membership(props: MembershipProps) {
       }
 
       // Platform-standard confirmation: the button turns green with a checkmark,
-      // then the modal closes.
+      // then the modal closes. The form/success state is reset in the modal's
+      // onExited handler so the button never flashes back to "Create" while the
+      // modal is still animating closed.
       setCreateGroupSuccess(true);
 
       createSuccessTimer.current = setTimeout(() => {
         setShowNewGroupModal(false);
-        resetNewGroupModal();
         fetchGroups();
       }, 1500);
     } catch (err) {
@@ -447,6 +449,12 @@ export default function Membership(props: MembershipProps) {
     q.totalCount > 0 &&
     q.completedCount < q.totalCount &&
     q.councilId === councilId;
+
+  // Granting the bot role is a DEFAULT_ADMIN-only onchain call, so a non-admin
+  // manager can't complete a GoodDollar create that still needs the grant.
+  const goodDollarNeedsGrant =
+    newGroupEligibility === "gooddollar" && !botHasVoterManagerRole;
+  const goodDollarBlockedForNonAdmin = goodDollarNeedsGrant && !isAdmin;
 
   return (
     <>
@@ -722,6 +730,7 @@ export default function Membership(props: MembershipProps) {
         show={showNewGroupModal}
         centered
         onHide={() => setShowNewGroupModal(false)}
+        onExited={resetNewGroupModal}
       >
         <Modal.Header closeButton className="border-0 p-4">
           <Modal.Title className="fs-5 fw-semi-bold">New group</Modal.Title>
@@ -783,21 +792,23 @@ export default function Membership(props: MembershipProps) {
             </Form.Group>
           ) : null}
           {newGroupEligibility === "gooddollar" ? (
-            <div>
-              <EligibilityManagerField
-                chainId={chainId}
-                botHasRole={botHasVoterManagerRole}
-                isAdmin={isAdmin}
-                isWrongChain={connectedChain?.id !== chainId}
-                isGranting={isGranting}
-                onAddPermissions={handleAddPermissions}
-              />
-              {grantError ? (
-                <Alert variant="danger" className="mt-3 mb-0">
-                  {grantError}
-                </Alert>
-              ) : null}
-            </div>
+            <Alert variant="info" className="mb-3">
+              Automated eligibility is managed by a Flow State-sponsored bot.{" "}
+              {goodDollarNeedsGrant
+                ? "Creating this group will trigger a transaction to grant the necessary voter management permissions."
+                : "It already holds the voter management permissions it needs for this council."}
+            </Alert>
+          ) : null}
+          {goodDollarBlockedForNonAdmin ? (
+            <Alert variant="warning" className="mb-3">
+              Only a council admin can grant these permissions. Ask a council
+              admin to create this group.
+            </Alert>
+          ) : null}
+          {newGroupEligibility === "gooddollar" && grantError ? (
+            <Alert variant="danger" className="mb-3">
+              {grantError}
+            </Alert>
           ) : null}
           {createGroupError ? (
             <Alert variant="danger" className="mt-3 mb-0">
@@ -819,11 +830,17 @@ export default function Membership(props: MembershipProps) {
             className="rounded-4 px-4 py-2 fw-semi-bold"
             style={{ pointerEvents: createGroupSuccess ? "none" : "auto" }}
             onClick={handleCreateGroup}
-            disabled={!isManager || isCreatingGroup || createGroupSuccess}
+            disabled={
+              !isManager ||
+              isCreatingGroup ||
+              isGranting ||
+              createGroupSuccess ||
+              goodDollarBlockedForNonAdmin
+            }
           >
             {createGroupSuccess ? (
               <SuccessCheckmark />
-            ) : isCreatingGroup ? (
+            ) : isCreatingGroup || isGranting ? (
               <Spinner size="sm" />
             ) : (
               "Create"
