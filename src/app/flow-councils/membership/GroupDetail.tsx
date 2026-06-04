@@ -673,16 +673,132 @@ export default function GroupDetail(props: GroupDetailProps) {
           </Stack>
         ) : (
           <>
-            <Card className="bg-lace-100 rounded-4 border-0 p-4 mt-3">
+            <Link
+              href={`/flow-councils/membership/${chainId}/${councilId}`}
+              className="text-primary text-decoration-none fw-semi-bold align-self-start mt-3 mb-1"
+            >
+              ← Back to groups
+            </Link>
+
+            <Card className="bg-lace-100 rounded-4 border-0 p-4">
               <Card.Header className="bg-transparent border-0 rounded-4 p-0">
-                <Link
-                  href={`/flow-councils/membership/${chainId}/${councilId}`}
-                  className="text-primary text-decoration-none fw-semi-bold"
+                {/* Static structure — stays fixed whether or not we're editing,
+                    so entering edit mode only expands the card downward. */}
+                <Stack
+                  direction="horizontal"
+                  className="justify-content-between align-items-center gap-2"
                 >
-                  ← Back to groups
-                </Link>
+                  <div>
+                    <Card.Title className="fs-5 fw-semi-bold mb-1">
+                      {group.name}
+                    </Card.Title>
+                    <Card.Text className="text-info mb-0">
+                      {prettyEligibility(group.eligibilityMethod)} eligibility
+                    </Card.Text>
+                  </div>
+                  {isManager && !isEditing ? (
+                    <Stack
+                      direction="horizontal"
+                      gap={1}
+                      className="flex-shrink-0"
+                    >
+                      <Button
+                        variant="transparent"
+                        className="p-2 border-0"
+                        aria-label="Edit group"
+                        onClick={enterEditMode}
+                      >
+                        <Image
+                          src="/edit.svg"
+                          alt="Edit group"
+                          width={20}
+                          height={20}
+                          className="d-block"
+                        />
+                      </Button>
+                      {deleteBlockedReason ? (
+                        <InfoTooltip
+                          position={{ top: true }}
+                          content={
+                            <p className="m-0 p-2">{deleteBlockedReason}</p>
+                          }
+                          target={
+                            <Button
+                              variant="transparent"
+                              className="p-2 border-0"
+                              aria-label="Delete group"
+                              disabled
+                            >
+                              <Image
+                                src="/trash.svg"
+                                alt="Delete group"
+                                width={20}
+                                height={20}
+                                className="d-block"
+                              />
+                            </Button>
+                          }
+                        />
+                      ) : (
+                        <Button
+                          variant="transparent"
+                          className="p-2 border-0"
+                          aria-label="Delete group"
+                          onClick={() => {
+                            setDeleteError("");
+                            setShowDeleteModal(true);
+                          }}
+                        >
+                          <Image
+                            src="/trash.svg"
+                            alt="Delete group"
+                            width={20}
+                            height={20}
+                            className="d-block"
+                          />
+                        </Button>
+                      )}
+                    </Stack>
+                  ) : null}
+                </Stack>
+
+                {/* Automated-eligibility groups surface their default allocation
+                    and manager (with the grant action) read-only here, so an
+                    admin can see/repair bot permissions without entering edit
+                    mode. */}
+                {group.eligibilityMethod === "gooddollar" ? (
+                  <Stack direction="vertical" gap={3} className="mt-4">
+                    <div>
+                      <span className="fw-semi-bold d-block mb-1">
+                        Default vote allocation
+                      </span>
+                      <span>{group.defaultVotingPower}</span>
+                    </div>
+                    <EligibilityManagerField
+                      chainId={chainId}
+                      botHasRole={botHasVoterManagerRole}
+                      isAdmin={isAdmin}
+                      isWrongChain={connectedChain?.id !== chainId}
+                      isGranting={isGranting}
+                      onAddPermissions={handleAddPermissions}
+                    />
+                    {grantError ? (
+                      <Alert variant="danger" className="mb-0">
+                        {grantError}
+                      </Alert>
+                    ) : null}
+                  </Stack>
+                ) : null}
+
+                {/* Editable fields — revealed below the static structure. The
+                    Eligibility Manager is intentionally not editable here; its
+                    grant action lives in the static block above. */}
                 {isEditing ? (
-                  <Stack direction="vertical" gap={3} className="mt-3">
+                  <Stack
+                    direction="vertical"
+                    gap={3}
+                    className="mt-4 pt-4 border-top"
+                  >
                     <Form.Group>
                       <Form.Label className="fw-semi-bold">Name</Form.Label>
                       <Form.Control
@@ -714,49 +830,32 @@ export default function GroupDetail(props: GroupDetailProps) {
                     </Form.Group>
 
                     {editEligibility === "gooddollar" ? (
-                      <>
-                        <Form.Group>
-                          <Form.Label className="fw-semi-bold">
-                            Default vote allocation
-                          </Form.Label>
-                          <Form.Control
-                            type="text"
-                            inputMode="numeric"
-                            style={{ maxWidth: 120 }}
-                            value={editDefaultVotingPower}
-                            disabled={isSaving}
-                            onChange={(e) => {
-                              const value = e.target.value;
+                      <Form.Group>
+                        <Form.Label className="fw-semi-bold">
+                          Default vote allocation
+                        </Form.Label>
+                        <Form.Control
+                          type="text"
+                          inputMode="numeric"
+                          style={{ maxWidth: 120 }}
+                          value={editDefaultVotingPower}
+                          disabled={isSaving}
+                          onChange={(e) => {
+                            const value = e.target.value;
 
-                              if (
-                                value === "" ||
-                                (/^\d+$/.test(value) && Number(value) <= 1e6)
-                              ) {
-                                setEditDefaultVotingPower(value);
-                              }
-                            }}
-                          />
-                          <Form.Text className="text-info">
-                            Applied only to voters added through this group
-                            after the change — existing members are not updated.
-                          </Form.Text>
-                        </Form.Group>
-
-                        <EligibilityManagerField
-                          chainId={chainId}
-                          botHasRole={botHasVoterManagerRole}
-                          isAdmin={isAdmin}
-                          isWrongChain={connectedChain?.id !== chainId}
-                          isGranting={isGranting}
-                          onAddPermissions={handleAddPermissions}
+                            if (
+                              value === "" ||
+                              (/^\d+$/.test(value) && Number(value) <= 1e6)
+                            ) {
+                              setEditDefaultVotingPower(value);
+                            }
+                          }}
                         />
-
-                        {grantError ? (
-                          <Alert variant="danger" className="mb-0">
-                            {grantError}
-                          </Alert>
-                        ) : null}
-                      </>
+                        <Form.Text className="text-info">
+                          Applied only to voters added through this group after
+                          the change — existing members are not updated.
+                        </Form.Text>
+                      </Form.Group>
                     ) : null}
 
                     {saveError ? (
@@ -767,7 +866,7 @@ export default function GroupDetail(props: GroupDetailProps) {
 
                     <Stack direction="horizontal" gap={2}>
                       <Button
-                        className="rounded-4 px-4 py-2 fw-semi-bold"
+                        className="rounded-4 px-4 py-2 fw-semi-bold flex-fill"
                         disabled={!isManager || isSaving}
                         onClick={handleSave}
                       >
@@ -775,7 +874,7 @@ export default function GroupDetail(props: GroupDetailProps) {
                       </Button>
                       <Button
                         variant="outline-secondary"
-                        className="rounded-4 px-4 py-2 fw-semi-bold"
+                        className="rounded-4 px-4 py-2 fw-semi-bold flex-fill"
                         disabled={isSaving}
                         onClick={cancelEdit}
                       >
@@ -783,82 +882,7 @@ export default function GroupDetail(props: GroupDetailProps) {
                       </Button>
                     </Stack>
                   </Stack>
-                ) : (
-                  <Stack
-                    direction="horizontal"
-                    className="justify-content-between align-items-start gap-2 mt-2"
-                  >
-                    <div>
-                      <Card.Title className="fs-5 fw-semi-bold mb-1">
-                        {group.name}
-                      </Card.Title>
-                      <Card.Text className="text-info mb-0">
-                        {prettyEligibility(group.eligibilityMethod)} eligibility
-                      </Card.Text>
-                    </div>
-                    {isManager ? (
-                      <Stack
-                        direction="horizontal"
-                        gap={1}
-                        className="flex-shrink-0"
-                      >
-                        <Button
-                          variant="transparent"
-                          className="p-2 border-0"
-                          aria-label="Edit group"
-                          onClick={enterEditMode}
-                        >
-                          <Image
-                            src="/edit.svg"
-                            alt="Edit group"
-                            width={20}
-                            height={20}
-                          />
-                        </Button>
-                        {deleteBlockedReason ? (
-                          <InfoTooltip
-                            position={{ top: true }}
-                            content={
-                              <p className="m-0 p-2">{deleteBlockedReason}</p>
-                            }
-                            target={
-                              <Button
-                                variant="transparent"
-                                className="p-2 border-0"
-                                aria-label="Delete group"
-                                disabled
-                              >
-                                <Image
-                                  src="/trash.svg"
-                                  alt="Delete group"
-                                  width={20}
-                                  height={20}
-                                />
-                              </Button>
-                            }
-                          />
-                        ) : (
-                          <Button
-                            variant="transparent"
-                            className="p-2 border-0"
-                            aria-label="Delete group"
-                            onClick={() => {
-                              setDeleteError("");
-                              setShowDeleteModal(true);
-                            }}
-                          >
-                            <Image
-                              src="/trash.svg"
-                              alt="Delete group"
-                              width={20}
-                              height={20}
-                            />
-                          </Button>
-                        )}
-                      </Stack>
-                    ) : null}
-                  </Stack>
-                )}
+                ) : null}
               </Card.Header>
               <Card.Body className="p-0 mt-4">
                 <Stack
@@ -906,10 +930,7 @@ export default function GroupDetail(props: GroupDetailProps) {
             </Card>
 
             <Card className="bg-lace-100 rounded-4 border-0 p-4 mt-4 mb-30">
-              <Card.Header className="bg-transparent border-0 rounded-4 p-0">
-                <Card.Title className="fs-6 fw-semi-bold">Voters</Card.Title>
-              </Card.Header>
-              <Card.Body className="p-0 mt-3">
+              <Card.Body className="p-0">
                 {q.error ? (
                   <Alert
                     variant="danger"
