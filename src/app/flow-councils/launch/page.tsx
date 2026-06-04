@@ -15,5 +15,7 @@ export default async function Page({
   const network =
     matchedNetwork ?? networks.find((network) => network.label === "celo")!;
 
-  return <Launch defaultNetwork={network} explicitChainId={!!matchedNetwork} />;
+  return (
+    <Launch defaultNetwork={network} isChainIdExplicit={!!matchedNetwork} />
+  );
 }

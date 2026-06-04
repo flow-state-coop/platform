@@ -38,7 +38,7 @@ const SUPERAPP_SPLITTER_FEE_PORTION = BigInt(50);
 type LaunchProps = {
   defaultNetwork: Network;
   councilId?: string;
-  explicitChainId?: boolean;
+  isChainIdExplicit?: boolean;
 };
 
 const FLOW_COUNCIL_QUERY = gql`
@@ -51,7 +51,7 @@ const FLOW_COUNCIL_QUERY = gql`
 `;
 
 export default function Launch(props: LaunchProps) {
-  const { defaultNetwork, councilId, explicitChainId } = props;
+  const { defaultNetwork, councilId, isChainIdExplicit } = props;
 
   const [selectedNetwork, setSelectedNetwork] =
     useState<Network>(defaultNetwork);
@@ -91,7 +91,7 @@ export default function Launch(props: LaunchProps) {
     selectedNetwork.tokens[0];
 
   useEffect(() => {
-    if (councilId || explicitChainId || !connectedChain) {
+    if (councilId || isChainIdExplicit || !connectedChain) {
       return;
     }
 
@@ -102,7 +102,7 @@ export default function Launch(props: LaunchProps) {
     if (userNetwork) {
       setSelectedNetwork(userNetwork);
     }
-  }, [councilId, explicitChainId, connectedChain, launchNetworks]);
+  }, [councilId, isChainIdExplicit, connectedChain, launchNetworks]);
 
   const handleSubmit = async () => {
     if (!address || !publicClient) {
