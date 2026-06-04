@@ -162,10 +162,17 @@ export async function POST(request: Request) {
       }
 
       // Roll back the membership row so a retry can re-attempt the onchain call.
-      await db
-        .deleteFrom("voterGroupMembers")
-        .where("id", "=", inserted.id)
-        .execute();
+      // Guard the rollback itself: if it throws, log it but still surface the
+      // original onchain error below, rather than letting the rollback failure
+      // propagate to the outer catch (which would lose the onchain error).
+      try {
+        await db
+          .deleteFrom("voterGroupMembers")
+          .where("id", "=", inserted.id)
+          .execute();
+      } catch (rollbackErr) {
+        console.error("Failed to roll back voter membership row:", rollbackErr);
+      }
 
       // Log the raw error server-side only — RPC/contract errors can embed
       // provider URLs, contract addresses, or revert data, so never return the

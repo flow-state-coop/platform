@@ -28,7 +28,7 @@ import {
 } from "@/app/flow-councils/lib/voterUtils";
 import VoterTable from "./VoterTable";
 import EligibilityManagerField from "./EligibilityManagerField";
-import type { ChunkedQueue } from "./voterTableTypes";
+import type { ChunkedQueue, SubgraphVoter } from "./voterTableTypes";
 import {
   VOTER_MANAGER_ROLE,
   RECIPIENT_MANAGER_ROLE,
@@ -51,13 +51,6 @@ type VoterGroup = {
   defaultVotingPower: number;
   memberCount: number;
   members: string[];
-};
-
-type SubgraphVoter = {
-  id: string;
-  account: string;
-  votingPower: string;
-  ballot?: { votes?: { amount: string }[] };
 };
 
 const CELO_CHAIN_ID = 42220;

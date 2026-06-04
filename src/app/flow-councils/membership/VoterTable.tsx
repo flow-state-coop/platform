@@ -57,6 +57,10 @@ type VoterTableProps = {
 
 const PAGE_SIZE = 50;
 const PROFILE_BATCH = 500;
+// Offchain DB-delete batch for the discard rollback. Sized to the members
+// DELETE endpoint's capacity (not the 50/tx onchain CHUNK_SIZE), so a large
+// discarded add rolls back in one request instead of many.
+const ROLLBACK_DELETE_BATCH = 1000;
 
 const PCT_OPTIONS = [
   { value: "all", label: "All" },
@@ -742,7 +746,7 @@ export default function VoterTable(props: VoterTableProps) {
   // did commit before the failure are rolled back too; re-add them.)
   const rollbackAddedMembers = async (addresses: string[]) => {
     try {
-      for (const batch of splitIntoChunks(addresses, CHUNK_SIZE)) {
+      for (const batch of splitIntoChunks(addresses, ROLLBACK_DELETE_BATCH)) {
         const res = await fetch("/api/flow-council/voter-groups/members", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
