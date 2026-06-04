@@ -9,9 +9,11 @@ export default async function Page({
 }) {
   const { chainId } = await searchParams;
 
+  const matchedNetwork = networks.find(
+    (network) => network.id === Number(chainId),
+  );
   const network =
-    networks.find((network) => network.id === Number(chainId)) ??
-    networks.find((network) => network.label === "celo")!;
+    matchedNetwork ?? networks.find((network) => network.label === "celo")!;
 
-  return <Launch defaultNetwork={network} />;
+  return <Launch defaultNetwork={network} explicitChainId={!!matchedNetwork} />;
 }
