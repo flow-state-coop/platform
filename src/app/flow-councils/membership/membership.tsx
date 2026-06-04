@@ -263,14 +263,21 @@ export default function Membership(props: MembershipProps) {
     fetchGroups();
   }, [fetchGroups]);
 
+  // The query pages 1000 voters per request (`first: 1000` above). Fetch the
+  // next page only while the loaded count is a full multiple of that page size:
+  // a full last page means there may be more, a partial/empty page means we've
+  // reached the end and stops the recursion (also avoiding a redundant trailing
+  // request). This loads every voter for councils larger than one page.
   useEffect(() => {
     if (!flowCouncilQueryRes) {
       return;
     }
 
-    fetchMore({
-      variables: { skip: flowCouncilQueryRes.flowCouncil.voters.length },
-    });
+    const loaded = flowCouncilQueryRes.flowCouncil.voters.length;
+
+    if (loaded > 0 && loaded % 1000 === 0) {
+      fetchMore({ variables: { skip: loaded } });
+    }
   }, [flowCouncilQueryRes, fetchMore]);
 
   useEffect(() => {

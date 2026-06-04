@@ -10,7 +10,11 @@ export function getErrorMessage(err: unknown): string {
   return "An unexpected error occurred";
 }
 
-export function errorResponse(error: unknown, status: number = 500): Response {
+// Default status is 200 for backward compatibility: long-standing callers
+// (mint-nft, mailinglist, applications, review, apply, …) omit the status in
+// their catch blocks and have always returned 200 with `{ success: false }`.
+// New routes that want correct HTTP error semantics pass an explicit status.
+export function errorResponse(error: unknown, status: number = 200): Response {
   return new Response(
     JSON.stringify({ success: false, error: getErrorMessage(error) }),
     {
