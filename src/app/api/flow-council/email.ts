@@ -1,5 +1,6 @@
 import removeMarkdown from "remove-markdown";
 import { sendPersonalizedEmail, type PersonalizedRecipient } from "./ses";
+import { renderMarkdownToHtml } from "./markdown";
 import { db } from "./db";
 import { generateNotificationToken } from "@/lib/notificationToken";
 import type { NotificationCategory } from "@/lib/consent";
@@ -393,6 +394,8 @@ export async function sendChatMessageEmail(
     projectId,
   } = data;
   const ctaLink = `${baseUrl}/flow-councils/communications/${chainId}/${councilId}?channel=${projectId}`;
+  // The flow-council-message template is HTML-only (no Text part), so only the
+  // rendered HTML variable is sent — no stripped plain-text fallback is needed.
   await sendPersonalizedBatch(
     recipients,
     "flow-council-message",
@@ -400,7 +403,7 @@ export async function sendChatMessageEmail(
       projectName,
       roundName,
       sender,
-      messageContent: removeMarkdown(messageContent),
+      messageContentHtml: await renderMarkdownToHtml(messageContent),
       ctaLink,
     },
     baseUrl,
@@ -414,13 +417,15 @@ export async function sendAnnouncementEmail(
   const { baseUrl, roundName, sender, messageContent, chainId, councilId } =
     data;
   const ctaLink = `${baseUrl}/flow-councils/communications/${chainId}/${councilId}?channel=announcements`;
+  // The flow-council-announcement template is HTML-only (no Text part), so only
+  // the rendered HTML variable is sent — no stripped plain-text fallback needed.
   await sendPersonalizedBatch(
     recipients,
     "flow-council-announcement",
     {
       roundName,
       sender,
-      messageContent: removeMarkdown(messageContent),
+      messageContentHtml: await renderMarkdownToHtml(messageContent),
       ctaLink,
     },
     baseUrl,
@@ -449,7 +454,9 @@ export async function sendInternalCommentEmail(
       project_name: projectName,
       round_name: roundName,
       sender,
+      // Plain-text part of the template — keep it tag-free by stripping markdown.
       message_content: removeMarkdown(messageContent),
+      message_content_html: await renderMarkdownToHtml(messageContent),
       ctaLink,
     },
     baseUrl,
@@ -472,7 +479,9 @@ export async function sendPlatformMessageEmail(
     "flow-state-platform-message",
     {
       subject,
+      // Plain-text part of the template — keep it tag-free by stripping markdown.
       content: removeMarkdown(content),
+      content_html: await renderMarkdownToHtml(content),
     },
     baseUrl,
   );
