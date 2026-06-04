@@ -332,7 +332,7 @@ function Sidebar() {
         <Dropdown.Item
           className="text-truncate fw-semi-bold"
           onClick={() => {
-            router.push("/flow-councils/launch");
+            router.push(`/flow-councils/launch?chainId=${selectedNetwork.id}`);
           }}
         >
           Create New
