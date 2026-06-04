@@ -338,6 +338,10 @@ blockquote {
   cursor: pointer;
 }
 
+.no-caret::after {
+  display: none !important;
+}
+
 .hero-background {
   background-image: url("/hero-background.svg");
   background-size: 100% auto;

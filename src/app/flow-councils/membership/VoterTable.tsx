@@ -71,8 +71,10 @@ function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
-// Row-actions dropdown toggle: a plain three-dots button with no caret (the
-// default Dropdown.Toggle renders a ▼ via its ::after pseudo-element).
+// Row-actions dropdown toggle: a plain three-dots button. react-bootstrap's
+// DropdownToggle always merges the `dropdown-toggle` class (even with `as`),
+// which renders a ▼ via its ::after pseudo-element; the `no-caret` class
+// suppresses it (see styles.scss).
 const RowActionsToggle = forwardRef<
   HTMLButtonElement,
   React.ComponentPropsWithoutRef<"button">
@@ -80,7 +82,7 @@ const RowActionsToggle = forwardRef<
   <button
     type="button"
     ref={ref}
-    className={`btn btn-sm btn-outline-secondary fw-semi-bold border-0 ${className}`}
+    className={`btn btn-sm btn-outline-secondary fw-semi-bold border-0 no-caret ${className}`}
     {...props}
   >
     {children}
@@ -522,9 +524,7 @@ export default function VoterTable(props: VoterTableProps) {
 
         setEditedPower(nextEdited);
         setRemoved(nextRemoved);
-        setNewRows(
-          nextNew.map((row) => ({ id: ++newRowId.current, ...row })),
-        );
+        setNewRows(nextNew.map((row) => ({ id: ++newRowId.current, ...row })));
 
         const changed = Object.keys(nextEdited).length;
         setImportNote(
@@ -783,6 +783,16 @@ export default function VoterTable(props: VoterTableProps) {
     setShowConfirm(false);
   };
 
+  // Discard every staged edit (new rows, vote changes, removals) and the import
+  // summary, returning the table to the committed onchain state.
+  const discardStaged = () => {
+    setNewRows([]);
+    setEditedPower({});
+    setRemoved(new Set());
+    setImportNote("");
+    setSaveError("");
+  };
+
   const paginationItems = useMemo(() => {
     if (pageCount <= 1) {
       return [];
@@ -821,125 +831,76 @@ export default function VoterTable(props: VoterTableProps) {
 
   return (
     <Stack direction="vertical" gap={3}>
-      {/* Bulk apply + CSV toolbar */}
+      {/* Bulk apply toolbar */}
       {isManager ? (
-        <Stack direction="vertical" gap={2}>
-          <Stack
-            direction="horizontal"
-            gap={3}
-            className="flex-wrap align-items-end"
-          >
-            <Form.Group style={{ minWidth: 120 }}>
-              <Form.Label className="fw-semi-bold mb-1">Votes</Form.Label>
-              <Form.Control
-                type="text"
-                inputMode="numeric"
-                placeholder="e.g. 10"
-                value={bulkValue}
-                disabled={q.isPending}
-                onChange={(e) => {
-                  const v = e.target.value;
-
-                  if (v === "" || (/^\d+$/.test(v) && Number(v) <= 1e6)) {
-                    setBulkValue(v);
-                  }
-                }}
-              />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label className="fw-semi-bold mb-1 d-block">
-                Mode
-              </Form.Label>
-              <Stack direction="horizontal" gap={3}>
-                <Form.Check
-                  type="radio"
-                  id="bulk-mode-set"
-                  name="bulk-mode"
-                  label="Set"
-                  checked={bulkMode === "set"}
-                  onChange={() => setBulkMode("set")}
-                />
-                <Form.Check
-                  type="radio"
-                  id="bulk-mode-increment"
-                  name="bulk-mode"
-                  label="Increment"
-                  checked={bulkMode === "increment"}
-                  onChange={() => setBulkMode("increment")}
-                />
-              </Stack>
-            </Form.Group>
-            <Button
-              variant="outline-primary"
-              className="rounded-4 px-3 py-2 fw-semi-bold"
-              disabled={!bulkValid || voters.length === 0 || q.isPending}
-              onClick={() => applyBulk(voters, true)}
-            >
-              Apply to all
-            </Button>
-            <Button
-              variant="outline-primary"
-              className="rounded-4 px-3 py-2 fw-semi-bold"
-              disabled={
-                !bulkValid || filteredVoters.length === 0 || q.isPending
-              }
-              onClick={() => applyBulk(filteredVoters, false)}
-            >
-              Apply to filtered ({filteredVoters.length})
-            </Button>
-            <Button
-              variant="outline-danger"
-              className="rounded-4 px-3 py-2 fw-semi-bold ms-auto"
-              disabled={filteredVoters.length === 0 || q.isPending}
-              onClick={removeFiltered}
-              title="Removes the currently filtered voters from the council. Clear filters to remove the whole group."
-            >
-              Remove filtered ({filteredVoters.length})
-            </Button>
-          </Stack>
-
-          <Stack direction="horizontal" gap={2} className="flex-wrap">
-            <Button
-              variant="primary"
-              className="rounded-4 px-3 py-2 fw-semi-bold"
-              disabled={q.isPending}
-              onClick={addNewRow}
-            >
-              + Add row
-            </Button>
-            <Form.Label
-              htmlFor="voters-csv"
-              className={`bg-primary text-white text-center m-0 px-3 py-2 rounded-4 fw-semi-bold ${
-                q.isPending ? "opacity-50" : "cursor-pointer"
-              }`}
-            >
-              Import CSV
-            </Form.Label>
+        <Stack
+          direction="horizontal"
+          gap={3}
+          className="flex-wrap align-items-end"
+        >
+          <Form.Group style={{ minWidth: 120 }}>
+            <Form.Label className="fw-semi-bold mb-1">Vote Updates</Form.Label>
             <Form.Control
-              type="file"
-              id="voters-csv"
-              accept=".csv"
-              hidden
+              type="text"
+              inputMode="numeric"
+              placeholder="e.g. 10"
+              value={bulkValue}
               disabled={q.isPending}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                if (e.target.files && e.target.files[0]) {
-                  handleCsvImport(e.target.files[0]);
-                  e.target.value = "";
+              onChange={(e) => {
+                const v = e.target.value;
+
+                if (v === "" || (/^\d+$/.test(v) && Number(v) <= 1e6)) {
+                  setBulkValue(v);
                 }
               }}
             />
-            <Button
-              variant="outline-secondary"
-              className="rounded-4 px-3 py-2 fw-semi-bold"
-              onClick={handleCsvExport}
-            >
-              Export CSV
-            </Button>
-            <span className="text-info small align-self-center">
-              CSV: address,votingPower — import replaces this group with the
-              file.
-            </span>
-          </Stack>
+          </Form.Group>
+          <Form.Group>
+            <Form.Label className="fw-semi-bold mb-1 d-block">Mode</Form.Label>
+            <Stack direction="horizontal" gap={3}>
+              <Form.Check
+                type="radio"
+                id="bulk-mode-set"
+                name="bulk-mode"
+                label="Set"
+                checked={bulkMode === "set"}
+                onChange={() => setBulkMode("set")}
+              />
+              <Form.Check
+                type="radio"
+                id="bulk-mode-increment"
+                name="bulk-mode"
+                label="Increment"
+                checked={bulkMode === "increment"}
+                onChange={() => setBulkMode("increment")}
+              />
+            </Stack>
+          </Form.Group>
+          <Button
+            variant="outline-primary"
+            className="rounded-4 px-3 py-2 fw-semi-bold"
+            disabled={!bulkValid || voters.length === 0 || q.isPending}
+            onClick={() => applyBulk(voters, true)}
+          >
+            Apply to all
+          </Button>
+          <Button
+            variant="outline-primary"
+            className="rounded-4 px-3 py-2 fw-semi-bold"
+            disabled={!bulkValid || filteredVoters.length === 0 || q.isPending}
+            onClick={() => applyBulk(filteredVoters, false)}
+          >
+            Apply to filtered ({filteredVoters.length})
+          </Button>
+          <Button
+            variant="danger"
+            className="rounded-4 px-3 py-2 fw-semi-bold text-white ms-auto"
+            disabled={filteredVoters.length === 0 || q.isPending}
+            onClick={removeFiltered}
+            title="Removes the currently filtered voters from the council. Clear filters to remove the whole group."
+          >
+            Remove filtered ({filteredVoters.length})
+          </Button>
         </Stack>
       ) : null}
 
@@ -1182,21 +1143,73 @@ export default function VoterTable(props: VoterTableProps) {
         <Pagination className="mb-0 flex-wrap">{paginationItems}</Pagination>
       ) : null}
 
-      {/* Save bar */}
+      {/* New-voter actions: add a row inline, or bulk import/export via CSV. */}
       {isManager ? (
-        <Stack
-          direction="horizontal"
-          gap={2}
-          className="flex-wrap align-items-center justify-content-end"
-        >
+        <Stack direction="vertical" gap={1}>
+          <Stack
+            direction="horizontal"
+            gap={2}
+            className="flex-wrap align-items-center"
+          >
+            <Button
+              variant="transparent"
+              className="p-0 text-primary text-decoration-underline fw-semi-bold me-auto"
+              disabled={q.isPending}
+              onClick={addNewRow}
+            >
+              Add another member
+            </Button>
+            <Button
+              variant="secondary"
+              className="rounded-4 px-8 py-3 fw-semi-bold text-light"
+              onClick={handleCsvExport}
+            >
+              Export Current
+            </Button>
+            <Form.Label
+              htmlFor="voters-csv"
+              className={`bg-primary text-white text-center m-0 px-8 py-3 rounded-4 fw-semi-bold ${
+                q.isPending ? "opacity-50" : "cursor-pointer"
+              }`}
+            >
+              Upload CSV
+            </Form.Label>
+            <Form.Control
+              type="file"
+              id="voters-csv"
+              accept=".csv"
+              hidden
+              disabled={q.isPending}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                if (e.target.files && e.target.files[0]) {
+                  handleCsvImport(e.target.files[0]);
+                  e.target.value = "";
+                }
+              }}
+            />
+          </Stack>
+          <a
+            href="https://docs.google.com/spreadsheets/d/1BKo20lc4ZdRWKjvxQuTcOldQo_qL7Y5tXOvhFMJlwug/edit?gid=0#gid=0"
+            target="_blank"
+            rel="noreferrer"
+            className="align-self-end pe-1 text-primary text-decoration-none fw-semi-bold"
+          >
+            Template
+          </a>
+        </Stack>
+      ) : null}
+
+      {/* Submit / Cancel */}
+      {isManager ? (
+        <Stack direction="vertical" gap={2}>
           {hasChanges ? (
-            <span className="text-info me-auto">
+            <span className="text-info text-center">
               {validNewRows.length} to add · {changedAccounts.length} changed ·{" "}
               {removedAccounts.length} to remove
             </span>
           ) : null}
           <Button
-            className="rounded-4 px-4 py-2 fw-semi-bold"
+            className="fs-lg fw-semi-bold py-4 rounded-4"
             disabled={
               !hasChanges || hasErrors || q.isPending || submitPhase !== "idle"
             }
@@ -1205,7 +1218,15 @@ export default function VoterTable(props: VoterTableProps) {
               setShowConfirm(true);
             }}
           >
-            Save changes
+            Submit
+          </Button>
+          <Button
+            variant="secondary"
+            className="fs-lg fw-semi-bold py-4 rounded-4"
+            disabled={!hasChanges || q.isPending || submitPhase !== "idle"}
+            onClick={discardStaged}
+          >
+            Cancel
           </Button>
         </Stack>
       ) : null}
