@@ -31,6 +31,17 @@ const SUBGRAPH_VOTERS_QUERY = gql`
 
 const PAGE_SIZE = 1000;
 
+// Carries an HTTP status out of a transaction callback so a guard violation
+// maps to the right response instead of the generic 500 in the outer catch.
+class HttpError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 type SubgraphVoter = { account: string; votingPower: string };
 
 /**
@@ -354,57 +365,52 @@ export async function DELETE(request: Request) {
       return errorResponse(auth.error, auth.status);
     }
 
-    const group = await db
-      .selectFrom("voterGroups")
-      .select("id")
-      .where("id", "=", id)
-      .where("roundId", "=", auth.roundId)
-      .executeTakeFirst();
+    // Run the existence / emptiness / "at least one group" guards and the
+    // delete in one transaction, locking the council's group rows up front.
+    // Without the lock two concurrent deletes could both read count >= 2 and
+    // both delete, leaving the council with zero groups.
+    await db.transaction().execute(async (trx) => {
+      const groups = await trx
+        .selectFrom("voterGroups")
+        .select("id")
+        .where("roundId", "=", auth.roundId)
+        .forUpdate()
+        .execute();
 
-    if (!group) {
-      return errorResponse("Group not found", 404);
-    }
+      if (!groups.some((g) => g.id === id)) {
+        throw new HttpError("Group not found", 404);
+      }
 
-    const memberCountRow = await db
-      .selectFrom("voterGroupMembers")
-      .select((eb) => eb.fn.countAll<number>().as("count"))
-      .where("voterGroupId", "=", id)
-      .executeTakeFirst();
+      if (groups.length < 2) {
+        throw new HttpError(
+          "A council must always have at least one group",
+          400,
+        );
+      }
 
-    if (Number(memberCountRow?.count ?? 0) > 0) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Group must be empty before it can be deleted",
-        }),
-        { status: 400 },
-      );
-    }
+      const memberCountRow = await trx
+        .selectFrom("voterGroupMembers")
+        .select((eb) => eb.fn.countAll<number>().as("count"))
+        .where("voterGroupId", "=", id)
+        .executeTakeFirst();
 
-    const groupCountRow = await db
-      .selectFrom("voterGroups")
-      .select((eb) => eb.fn.countAll<number>().as("count"))
-      .where("roundId", "=", auth.roundId)
-      .executeTakeFirst();
+      if (Number(memberCountRow?.count ?? 0) > 0) {
+        throw new HttpError("Group must be empty before it can be deleted", 400);
+      }
 
-    if (Number(groupCountRow?.count ?? 0) < 2) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "A council must always have at least one group",
-        }),
-        { status: 400 },
-      );
-    }
-
-    await db
-      .deleteFrom("voterGroups")
-      .where("id", "=", id)
-      .where("roundId", "=", auth.roundId)
-      .execute();
+      await trx
+        .deleteFrom("voterGroups")
+        .where("id", "=", id)
+        .where("roundId", "=", auth.roundId)
+        .execute();
+    });
 
     return Response.json({ success: true });
   } catch (err) {
+    if (err instanceof HttpError) {
+      return errorResponse(err.message, err.status);
+    }
+
     console.error(err);
     return errorResponse("There was an error, please try again later", 500);
   }

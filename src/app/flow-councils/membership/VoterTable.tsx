@@ -741,9 +741,9 @@ export default function VoterTable(props: VoterTableProps) {
   // Roll back DB classifications written during a Save whose onchain queue then
   // failed and was discarded — mirrors the eligibility route's insert→try→
   // rollback so a discarded add never lingers as a classified-but-not-onchain
-  // member. Best-effort; a failure is surfaced on the page-level saveError.
-  // (Residual edge: across a >50-change multi-chunk save, adds in chunks that
-  // did commit before the failure are rolled back too; re-add them.)
+  // member. The caller passes only adds whose chunk never committed onchain, so
+  // committed adds keep their membership. Best-effort; a failure is surfaced on
+  // the page-level saveError.
   const rollbackAddedMembers = async (addresses: string[]) => {
     try {
       for (const batch of splitIntoChunks(addresses, ROLLBACK_DELETE_BATCH)) {
@@ -773,7 +773,24 @@ export default function VoterTable(props: VoterTableProps) {
     // Dismissing a stopped (failed) queue discards it so no stale "resume"
     // banner lingers; the staged edits remain so the admin can retry via Save.
     if (q.error) {
-      const rollback = postedNewAddressesRef.current;
+      // Adds live at the front of `entries`, so the first
+      // `completedCount * CHUNK_SIZE` onchain entries that landed cover the
+      // first that-many new rows. Those already hold onchain voting power —
+      // keep their DB membership and roll back only the adds that never
+      // committed, so a partial multi-chunk failure can't strand a voter with
+      // onchain power but no group.
+      const committedAddCount = Math.min(
+        q.completedCount * CHUNK_SIZE,
+        validNewRows.length,
+      );
+      const committedAddrs = new Set(
+        validNewRows
+          .slice(0, committedAddCount)
+          .map((row) => row.address.toLowerCase()),
+      );
+      const rollback = postedNewAddressesRef.current.filter(
+        (addr) => !committedAddrs.has(addr),
+      );
       postedNewAddressesRef.current = [];
 
       if (rollback.length > 0) {
