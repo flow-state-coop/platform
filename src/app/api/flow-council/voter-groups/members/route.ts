@@ -75,14 +75,21 @@ export async function POST(request: Request) {
         })),
       )
       .onConflict((oc) => oc.columns(["roundId", "address"]).doNothing())
-      .returning(["id"])
+      .returning(["address"])
       .execute();
+
+    // Return the addresses that were actually inserted (conflicts are skipped
+    // and not returned) so the caller can roll back exactly those rows on a
+    // later failure — skipped addresses belong to another group and must not be
+    // touched.
+    const insertedAddresses = insertedRows.map((row) => row.address);
 
     return Response.json({
       success: true,
-      inserted: insertedRows.length > 0,
-      insertedCount: insertedRows.length,
-      skippedCount: unique.length - insertedRows.length,
+      inserted: insertedAddresses.length > 0,
+      insertedCount: insertedAddresses.length,
+      insertedAddresses,
+      skippedCount: unique.length - insertedAddresses.length,
     });
   } catch (err) {
     console.error(err);

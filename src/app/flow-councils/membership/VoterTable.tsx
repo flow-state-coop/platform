@@ -640,13 +640,13 @@ export default function VoterTable(props: VoterTableProps) {
           return;
         }
 
-        // Track these for a possible discard-rollback — but only when every
-        // address was a fresh insert (insertedCount === sent). A skip means the
-        // address already belonged to another group on this council, so rolling
-        // it back would delete that group's row; in that case skip the rollback.
-        if (data.insertedCount === validNewRows.length) {
-          postedNewAddressesRef.current = validNewRows.map((row) =>
-            row.address.toLowerCase(),
+        // Track the addresses actually inserted (returned by the endpoint) for a
+        // possible discard-rollback. Skipped addresses already belonged to
+        // another group on this council, so rolling them back would delete that
+        // group's row — they are excluded server-side, never tracked here.
+        if (Array.isArray(data.insertedAddresses)) {
+          postedNewAddressesRef.current = data.insertedAddresses.map(
+            (addr: string) => addr.toLowerCase(),
           );
         }
       }

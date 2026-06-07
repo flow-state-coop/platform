@@ -10,7 +10,10 @@ import { db } from "../db";
 import { findRoundByCouncil } from "../auth";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks, getViemChain } from "@/lib/networks";
-import { GOODDOLLAR_IDENTITY_ADDRESS } from "@/app/flow-councils/lib/constants";
+import {
+  CELO_CHAIN_ID,
+  GOODDOLLAR_IDENTITY_ADDRESS,
+} from "@/app/flow-councils/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -89,7 +92,9 @@ export async function POST(request: Request) {
       });
     }
 
-    const celoNetwork = networks.find((network) => network.id === 42220);
+    const celoNetwork = networks.find(
+      (network) => network.id === CELO_CHAIN_ID,
+    );
     if (!celoNetwork) {
       return Response.json({ success: false, error: "Celo network missing" });
     }
