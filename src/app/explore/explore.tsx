@@ -92,7 +92,6 @@ export default function Explore(props: ExploreProps) {
             activeStreamCount={flowCasterArbFlowInfo.donors}
             tokenSymbol="USDN"
             link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
-            showSupRewards
           />
           <RoundCard
             name="Core Contributors"
@@ -106,7 +105,6 @@ export default function Explore(props: ExploreProps) {
             activeStreamCount={coreInflow?.activeIncomingStreamCount}
             tokenSymbol="ETHx"
             link="/flow-guilds/core"
-            showSupRewards
           />
           <RoundCard
             name="Cracked Devs"
@@ -131,7 +129,6 @@ export default function Explore(props: ExploreProps) {
             activeStreamCount={guildGuildInflow?.activeIncomingStreamCount}
             tokenSymbol="ETHx"
             link="/flow-guilds/guild-guild"
-            showSupRewards
           />
         </div>
         <span className="fs-4 fw-semi-bold">Completed</span>
