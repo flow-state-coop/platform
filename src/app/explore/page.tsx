@@ -6,6 +6,7 @@ import { gql, request } from "graphql-request";
 import { Inflow } from "@/types/inflow";
 import { GDAPool } from "@/types/gdaPool";
 import { networks } from "@/lib/networks";
+import { getFlowStateMarkee } from "./lib/getFlowStateMarkee";
 
 const FLOW_GUILD_QUERY = gql`
   query FlowGuildQuery($safeAddress: String, $token: String) {
@@ -114,6 +115,7 @@ export default async function Page() {
     flowCasterArbTeamQueryRes,
     flowCasterBaseCrackedDevsQueryRes,
     flowCasterBaseTeamQueryRes,
+    markee,
   ] = await Promise.all([
     request<{ account: Account }>(baseSubgraph, FLOW_GUILD_QUERY, {
       safeAddress: FLOW_GUILD_ADDRESSES["core"].safeAddress,
@@ -150,6 +152,7 @@ export default async function Page() {
     request<{ pool: GDAPool }>(baseSubgraph, GDA_POOL_QUERY, {
       gdaPool: FLOW_CASTER_BASE_POOLS[1],
     }),
+    getFlowStateMarkee(),
   ]);
 
   const now = (Date.now() / 1000) | 0;
@@ -176,6 +179,7 @@ export default async function Page() {
       }
       flowCasterArbFlowInfo={flowCasterArbFlowInfo}
       flowCasterFlowInfo={flowCasterFlowInfo}
+      markee={markee}
     />
   );
 }
