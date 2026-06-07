@@ -64,11 +64,11 @@ const ROLLBACK_DELETE_BATCH = 1000;
 
 const PCT_OPTIONS = [
   { value: "all", label: "All" },
-  { value: "0", label: "> 0%" },
-  { value: "25", label: "> 25%" },
-  { value: "50", label: "> 50%" },
-  { value: "80", label: "> 80%" },
-  { value: "100", label: "100%" },
+  { value: "0", label: "> 0% cast" },
+  { value: "25", label: "> 25% cast" },
+  { value: "50", label: "> 50% cast" },
+  { value: "80", label: "> 80% cast" },
+  { value: "100", label: "100% cast" },
 ] as const;
 
 function truncateAddress(address: string): string {
@@ -840,10 +840,12 @@ export default function VoterTable(props: VoterTableProps) {
         <Stack
           direction="horizontal"
           gap={3}
-          className="flex-wrap align-items-end"
+          className="flex-wrap align-items-end mb-3"
         >
           <Form.Group style={{ minWidth: 120 }}>
-            <Form.Label className="fw-semi-bold mb-1">Vote Updates</Form.Label>
+            <Form.Label className="fw-semi-bold mb-1">
+              Batch Vote Updates
+            </Form.Label>
             <Form.Control
               type="text"
               inputMode="numeric"
@@ -908,23 +910,23 @@ export default function VoterTable(props: VoterTableProps) {
         </Stack>
       ) : null}
 
-      {/* Search / filter */}
+      {/* Filter — one labelled section; each control's placeholder/options
+          explain what it does (address list, profile name, % of votes cast). */}
       <Stack
         direction="horizontal"
         gap={2}
         className="flex-wrap align-items-end"
       >
         <Form.Group style={{ minWidth: 220, flex: "1 1 220px" }}>
-          <Form.Label className="fw-semi-bold mb-1">Search address</Form.Label>
+          <Form.Label className="fw-semi-bold mb-1">Filter</Form.Label>
           <Form.Control
             type="text"
-            placeholder="0x… or paste a list"
+            placeholder="0x123…5678 or paste a list"
             value={addressSearch}
             onChange={(e) => setAddressSearch(e.target.value)}
           />
         </Form.Group>
         <Form.Group style={{ minWidth: 180, flex: "1 1 180px" }}>
-          <Form.Label className="fw-semi-bold mb-1">Search name</Form.Label>
           <Form.Control
             type="text"
             placeholder="Profile name"
@@ -933,7 +935,6 @@ export default function VoterTable(props: VoterTableProps) {
           />
         </Form.Group>
         <Form.Group style={{ minWidth: 140 }}>
-          <Form.Label className="fw-semi-bold mb-1">% cast</Form.Label>
           <Form.Select
             value={pctFilter}
             onChange={(e) => setPctFilter(e.target.value)}
@@ -1140,6 +1141,23 @@ export default function VoterTable(props: VoterTableProps) {
               );
             })
           )}
+
+          {/* Inline add row — kept adjacent to the roster so adding a member
+              reads as part of the table, not a detached action below it. */}
+          {isManager ? (
+            <tr>
+              <td colSpan={5} className="p-0">
+                <Button
+                  variant="transparent"
+                  className="p-2 text-primary text-decoration-underline fw-semi-bold"
+                  disabled={q.isPending}
+                  onClick={addNewRow}
+                >
+                  + Add another member
+                </Button>
+              </td>
+            </tr>
+          ) : null}
         </tbody>
       </Table>
 
@@ -1147,22 +1165,15 @@ export default function VoterTable(props: VoterTableProps) {
         <Pagination className="mb-0 flex-wrap">{paginationItems}</Pagination>
       ) : null}
 
-      {/* New-voter actions: add a row inline, or bulk import/export via CSV. */}
+      {/* Bulk import/export via CSV. (Add another member lives inline in the
+          table above.) */}
       {isManager ? (
         <Stack direction="vertical" gap={1}>
           <Stack
             direction="horizontal"
             gap={2}
-            className="flex-wrap align-items-center"
+            className="flex-wrap align-items-center justify-content-end"
           >
-            <Button
-              variant="transparent"
-              className="p-0 text-primary text-decoration-underline fw-semi-bold me-auto"
-              disabled={q.isPending}
-              onClick={addNewRow}
-            >
-              Add another member
-            </Button>
             <Button
               variant="secondary"
               className="rounded-4 px-8 py-3 fw-semi-bold text-light"
@@ -1196,7 +1207,7 @@ export default function VoterTable(props: VoterTableProps) {
             href="https://docs.google.com/spreadsheets/d/1BKo20lc4ZdRWKjvxQuTcOldQo_qL7Y5tXOvhFMJlwug/edit?gid=0#gid=0"
             target="_blank"
             rel="noreferrer"
-            className="align-self-end pe-1 text-primary text-decoration-none fw-semi-bold"
+            className="align-self-end pe-1 text-primary text-decoration-underline fw-semi-bold"
           >
             Template
           </a>
@@ -1225,8 +1236,8 @@ export default function VoterTable(props: VoterTableProps) {
             Submit
           </Button>
           <Button
-            variant="secondary"
-            className="fs-lg fw-semi-bold py-4 rounded-4"
+            variant="danger"
+            className="fs-lg fw-semi-bold py-4 rounded-4 text-white"
             disabled={!hasChanges || q.isPending || submitPhase !== "idle"}
             onClick={discardStaged}
           >

@@ -712,6 +712,7 @@ export default function GroupDetail(props: GroupDetailProps) {
                       {deleteBlockedReason ? (
                         <InfoTooltip
                           position={{ top: true }}
+                          wrapperClassName="d-flex"
                           content={
                             <p className="m-0 p-2">{deleteBlockedReason}</p>
                           }
@@ -782,10 +783,55 @@ export default function GroupDetail(props: GroupDetailProps) {
                     ) : null}
                   </Stack>
                 ) : null}
+              </Card.Header>
+              <Card.Body className="p-0 mt-4">
+                <Stack
+                  direction={isMobile ? "vertical" : "horizontal"}
+                  gap={4}
+                  className="flex-wrap"
+                >
+                  <Stack direction="vertical">
+                    <span className="text-info fs-6">Voters</span>
+                    <span className="fs-5 fw-semi-bold">
+                      {group.memberCount}
+                    </span>
+                  </Stack>
+                  <Stack direction="vertical">
+                    <span className="text-info fs-6">Valid votes assigned</span>
+                    <span className="fs-5 fw-semi-bold">
+                      {metrics.assigned}
+                    </span>
+                  </Stack>
+                  <Stack direction="vertical">
+                    <span className="text-info fs-6">Votes used</span>
+                    <span className="fs-5 fw-semi-bold">
+                      {metrics.used} ({metrics.usedPct.toFixed(0)}%)
+                    </span>
+                  </Stack>
+                  <Stack direction="vertical">
+                    <span className="text-info fs-6">Share of votes</span>
+                    <span className="fs-5 fw-semi-bold">
+                      {metrics.share.toFixed(1)}%
+                    </span>
+                  </Stack>
+                </Stack>
 
-                {/* Editable fields — revealed below the static structure. The
-                    Eligibility Manager is intentionally not editable here; its
-                    grant action lives in the static block above. */}
+                {saveSuccess && !isEditing ? (
+                  <Alert
+                    variant="success"
+                    dismissible
+                    onClose={() => setSaveSuccess(false)}
+                    className="mt-4 mb-0"
+                  >
+                    Group updated.
+                  </Alert>
+                ) : null}
+
+                {/* Editable fields — revealed below the voter-stats anchor so
+                    entering edit mode only expands the card downward, leaving
+                    the title + stats fixed. The Eligibility Manager is
+                    intentionally not editable here; its grant action lives in
+                    the static GoodDollar block above. */}
                 {isEditing ? (
                   <Stack
                     direction="vertical"
@@ -857,17 +903,17 @@ export default function GroupDetail(props: GroupDetailProps) {
                       </Alert>
                     ) : null}
 
-                    <Stack direction="horizontal" gap={2}>
+                    <Stack direction="vertical" gap={2}>
                       <Button
-                        className="rounded-4 px-4 py-2 fw-semi-bold flex-fill"
+                        className="fs-lg fw-semi-bold py-4 rounded-4"
                         disabled={!isManager || isSaving}
                         onClick={handleSave}
                       >
                         {isSaving ? <Spinner size="sm" /> : "Save"}
                       </Button>
                       <Button
-                        variant="outline-secondary"
-                        className="rounded-4 px-4 py-2 fw-semi-bold flex-fill"
+                        variant="danger"
+                        className="fs-lg fw-semi-bold py-4 rounded-4 text-white"
                         disabled={isSaving}
                         onClick={cancelEdit}
                       >
@@ -875,49 +921,6 @@ export default function GroupDetail(props: GroupDetailProps) {
                       </Button>
                     </Stack>
                   </Stack>
-                ) : null}
-              </Card.Header>
-              <Card.Body className="p-0 mt-4">
-                <Stack
-                  direction={isMobile ? "vertical" : "horizontal"}
-                  gap={4}
-                  className="flex-wrap"
-                >
-                  <Stack direction="vertical">
-                    <span className="text-info fs-6">Voters</span>
-                    <span className="fs-5 fw-semi-bold">
-                      {group.memberCount}
-                    </span>
-                  </Stack>
-                  <Stack direction="vertical">
-                    <span className="text-info fs-6">Valid votes assigned</span>
-                    <span className="fs-5 fw-semi-bold">
-                      {metrics.assigned}
-                    </span>
-                  </Stack>
-                  <Stack direction="vertical">
-                    <span className="text-info fs-6">Votes used</span>
-                    <span className="fs-5 fw-semi-bold">
-                      {metrics.used} ({metrics.usedPct.toFixed(0)}%)
-                    </span>
-                  </Stack>
-                  <Stack direction="vertical">
-                    <span className="text-info fs-6">Share of votes</span>
-                    <span className="fs-5 fw-semi-bold">
-                      {metrics.share.toFixed(1)}%
-                    </span>
-                  </Stack>
-                </Stack>
-
-                {saveSuccess && !isEditing ? (
-                  <Alert
-                    variant="success"
-                    dismissible
-                    onClose={() => setSaveSuccess(false)}
-                    className="mt-4 mb-0"
-                  >
-                    Group updated.
-                  </Alert>
                 ) : null}
               </Card.Body>
             </Card>
