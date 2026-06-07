@@ -25,7 +25,7 @@ export default function MarkeeBanner({
       const data = (await res.json().catch(() => null)) as {
         markee: MarkeeInfo | null;
       } | null;
-      if (active && data?.markee) {
+      if (active && data) {
         setMarkee(data.markee);
       }
     };

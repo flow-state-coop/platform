@@ -65,13 +65,11 @@ export async function getFlowStateMarkee(): Promise<MarkeeInfo | null> {
       ],
     });
 
-    const minimumPrice = (priceRes.result as bigint) ?? 0n;
-    const top = topRes.result as
-      | readonly [readonly `0x${string}`[], readonly bigint[]]
-      | undefined;
-    if (!top) return null;
+    if (topRes.status !== "success") return null;
 
-    const [topAddresses, topFunds] = top;
+    const minimumPrice =
+      priceRes.status === "success" ? priceRes.result : 0n;
+    const [topAddresses, topFunds] = topRes.result;
     const topIdx = topFunds.findIndex((f) => f > 0n);
     if (topIdx < 0 || !topAddresses[topIdx]) return null;
 
@@ -87,12 +85,12 @@ export async function getFlowStateMarkee(): Promise<MarkeeInfo | null> {
       ],
     });
 
-    const message = (msgRes.result as string) ?? "";
+    const message = msgRes.status === "success" ? msgRes.result : "";
     if (!message) return null;
 
     return {
       message,
-      owner: (ownerRes.result as string) ?? "",
+      owner: ownerRes.status === "success" ? ownerRes.result : "",
       priceEth: parseFloat(formatEther(buyPrice)).toFixed(3),
     };
   } catch {
