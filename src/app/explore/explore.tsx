@@ -2,6 +2,8 @@
 
 import Stack from "react-bootstrap/Stack";
 import RoundCard from "./components/RoundCard";
+import MarkeeBanner from "./components/MarkeeBanner";
+import { MarkeeInfo } from "./lib/markee";
 import { Inflow } from "@/types/inflow";
 import { GDAPool } from "@/types/gdaPool";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -22,6 +24,7 @@ type ExploreProps = {
   goodBuildersS3Inflow: Inflow;
   flowCasterArbFlowInfo: PoolPairFlowInfo;
   flowCasterFlowInfo: PoolPairFlowInfo;
+  markee: MarkeeInfo | null;
 };
 
 // Octant round snapshot (round concluded)
@@ -41,6 +44,7 @@ export default function Explore(props: ExploreProps) {
     goodBuildersS3Inflow,
     flowCasterArbFlowInfo,
     flowCasterFlowInfo,
+    markee,
   } = props;
 
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
@@ -65,6 +69,7 @@ export default function Explore(props: ExploreProps) {
         </h2>
       </Stack>
       <div className="px-2 pb-20 px-lg-30 px-xxl-52">
+        <MarkeeBanner markee={markee} />
         <span className="fs-4 fw-semi-bold">Active</span>
         <div
           className="mt-2 mb-6"
