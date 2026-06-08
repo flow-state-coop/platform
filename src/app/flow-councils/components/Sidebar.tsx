@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAccount, useSwitchChain } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
@@ -135,6 +135,7 @@ function Sidebar() {
 
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const { chainId, councilId } = useMemo(() => {
     const segments = pathname?.split("/").filter(Boolean) ?? [];
@@ -146,6 +147,9 @@ function Sidebar() {
     }
     return { chainId: null, councilId: null };
   }, [pathname]);
+  // The launch "Create New" page carries the chosen network in the `?chainId=`
+  // query string rather than a path segment, so fall back to it there.
+  const queryChainId = Number(searchParams?.get("chainId")) || null;
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
@@ -153,14 +157,15 @@ function Sidebar() {
 
   // Keep the network dropdown in sync with the council currently open in the URL.
   useEffect(() => {
-    if (!chainId) {
+    const targetChainId = chainId ?? queryChainId;
+    if (!targetChainId) {
       return;
     }
-    const network = networks.find((n) => n.id === chainId);
+    const network = networks.find((n) => n.id === targetChainId);
     if (network && isFlowCouncilNetwork(network)) {
       setSelectedNetwork(network);
     }
-  }, [chainId]);
+  }, [chainId, queryChainId]);
 
   const { data: flowCouncilsQueryRes } = useQuery(FLOW_COUNCIL_MANAGER_QUERY, {
     client: getApolloClient("flowCouncil", selectedNetwork.id),
