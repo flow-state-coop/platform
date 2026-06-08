@@ -387,7 +387,11 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
   return (
     <Stack direction="vertical" className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52">
       <h1 className="mt-5 mb-0 fs-3">{councilMetadata.name}</h1>
-      <Stack direction="horizontal" gap={1} className="align-items-center mb-4">
+      <Stack
+        direction="horizontal"
+        gap={1}
+        className="align-items-center mb-4 text-info"
+      >
         Distributing{" "}
         {!!councilToken.icon && (
           <Image src={councilToken.icon} alt="" width={18} height={18} />
@@ -418,9 +422,7 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
           />
         </Button>
       </Stack>
-      <Markdown className="fs-6 text-info">
-        {councilMetadata.description}
-      </Markdown>
+      <Markdown className="fs-6">{councilMetadata.description}</Markdown>
       <h2 className="mt-5 mb-2 fw-bold fs-3">
         {applicationsClosed
           ? "Applications Closed"
