@@ -31,6 +31,10 @@ const SUBGRAPH_VOTERS_QUERY = gql`
 
 const PAGE_SIZE = 1000;
 
+// Cap on rows per INSERT for the lazy seed migration. A council with thousands
+// of onchain voters would otherwise produce one enormous statement.
+const SEED_INSERT_BATCH = 500;
+
 // Carries an HTTP status out of a transaction callback so a guard violation
 // maps to the right response instead of the generic 500 in the outer catch.
 class HttpError extends Error {
@@ -125,17 +129,21 @@ async function ensureDefaultGroup(
 
   if (!defaultGroup) return;
 
-  await db
-    .insertInto("voterGroupMembers")
-    .values(
-      voters.map((address) => ({
-        voterGroupId: defaultGroup.id,
-        roundId,
-        address,
-      })),
-    )
-    .onConflict((oc) => oc.columns(["roundId", "address"]).doNothing())
-    .execute();
+  // Chunked so a council with thousands of voters doesn't seed in one giant
+  // INSERT. onConflict + doNothing keeps each batch idempotent.
+  for (let i = 0; i < voters.length; i += SEED_INSERT_BATCH) {
+    await db
+      .insertInto("voterGroupMembers")
+      .values(
+        voters.slice(i, i + SEED_INSERT_BATCH).map((address) => ({
+          voterGroupId: defaultGroup.id,
+          roundId,
+          address,
+        })),
+      )
+      .onConflict((oc) => oc.columns(["roundId", "address"]).doNothing())
+      .execute();
+  }
 }
 
 async function loadGroupsWithMembers(roundId: number) {

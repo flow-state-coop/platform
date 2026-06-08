@@ -157,7 +157,7 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const body = await request.json();
-    const { chainId, councilId, address, addresses } = body;
+    const { chainId, councilId, address, addresses, groupId } = body;
 
     const auth = await authorizeCouncilManager(chainId, councilId);
 
@@ -192,11 +192,20 @@ export async function DELETE(request: Request) {
       );
     }
 
-    await db
+    let query = db
       .deleteFrom("voterGroupMembers")
       .where("roundId", "=", auth.roundId)
-      .where("address", "in", lowered)
-      .execute();
+      .where("address", "in", lowered);
+
+    // Optionally scope the delete to one group. Single-membership means an
+    // address sits in at most one group per council, but scoping makes the
+    // contract precise: a caller removing from group A never deletes a row that
+    // was concurrently moved to group B. Omitted → council-wide (back-compat).
+    if (Number.isInteger(groupId) && groupId > 0) {
+      query = query.where("voterGroupId", "=", groupId);
+    }
+
+    await query.execute();
 
     return Response.json({ success: true });
   } catch (err) {

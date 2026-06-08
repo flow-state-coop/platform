@@ -343,8 +343,10 @@ export default function GroupDetail(props: GroupDetailProps) {
   // When the chunked queue transitions to fully complete, drop any deferred DB
   // classification rows (for a removal) and refresh once so the table reflects
   // the new onchain state.
-  const queueDone =
-    q.totalCount > 0 && q.completedCount === q.totalCount && !q.isPending;
+  const queueDone = useMemo(
+    () => q.totalCount > 0 && q.completedCount === q.totalCount && !q.isPending,
+    [q.totalCount, q.completedCount, q.isPending],
+  );
 
   useEffect(() => {
     if (!queueDone || hasFinalizedRef.current) {
@@ -376,7 +378,12 @@ export default function GroupDetail(props: GroupDetailProps) {
             const res = await fetch("/api/flow-council/voter-groups/members", {
               method: "DELETE",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chainId, councilId, addresses: batch }),
+              body: JSON.stringify({
+                chainId,
+                councilId,
+                groupId,
+                addresses: batch,
+              }),
             });
             const data = await res.json().catch(() => null);
 
@@ -408,7 +415,7 @@ export default function GroupDetail(props: GroupDetailProps) {
     return () => {
       cancelled = true;
     };
-  }, [queueDone, refresh, chainId, councilId]);
+  }, [queueDone, refresh, chainId, councilId, groupId]);
 
   // The query pages 1000 voters per request (`first: 1000` above). Fetch the
   // next page only while the loaded count is a full multiple of that page size:

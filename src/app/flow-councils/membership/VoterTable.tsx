@@ -56,7 +56,11 @@ type VoterTableProps = {
 };
 
 const PAGE_SIZE = 50;
-const PROFILE_BATCH = 500;
+// Display-name lookups go out as a GET with the addresses in the query string.
+// At ~43 chars per address this keeps the URL well under the ~8KB some
+// proxies/CDNs truncate at (150 × 43 ≈ 6.5KB), while the endpoint stays
+// ISR-cacheable. The profiles route still accepts up to 500 per request.
+const PROFILE_BATCH = 150;
 // Offchain DB-delete batch for the discard rollback. Sized to the members
 // DELETE endpoint's capacity (not the 50/tx onchain CHUNK_SIZE), so a large
 // discarded add rolls back in one request instead of many.
@@ -750,7 +754,7 @@ export default function VoterTable(props: VoterTableProps) {
         const res = await fetch("/api/flow-council/voter-groups/members", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chainId, councilId, addresses: batch }),
+          body: JSON.stringify({ chainId, councilId, groupId, addresses: batch }),
         });
         const data = await res.json().catch(() => null);
 
