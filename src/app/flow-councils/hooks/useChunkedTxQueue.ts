@@ -139,7 +139,7 @@ export function useChunkedTxQueue(
   const isRunningRef = useRef(false);
 
   // Storage key tracks the current council; kept in a ref so the stable
-  // setQueueState callback always persists under the right key.
+  // setQueueState clears under the current council's key.
   const storageKey = councilId ? storageKeyFor(councilId) : null;
   const storageKeyRef = useRef(storageKey);
   storageKeyRef.current = storageKey;
@@ -147,8 +147,14 @@ export function useChunkedTxQueue(
   const setQueueState = useCallback((next: QueueState | null) => {
     queueRef.current = next;
     setQueue(next);
-    if (storageKeyRef.current) {
-      persist(storageKeyRef.current, next);
+
+    if (next) {
+      // Key off the queue's OWN councilId, not the render-fresh prop-derived
+      // ref: a setQueueState that fires after a rapid council change (stale
+      // closure) would otherwise persist this queue under the new council's key.
+      persist(storageKeyFor(next.councilId), next);
+    } else if (storageKeyRef.current) {
+      persist(storageKeyRef.current, null);
     }
   }, []);
 

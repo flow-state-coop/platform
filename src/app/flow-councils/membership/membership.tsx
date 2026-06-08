@@ -401,7 +401,9 @@ export default function Membership(props: MembershipProps) {
           return;
         }
 
-        refetch();
+        // Await so botHasVoterManagerRole reflects the just-granted role before
+        // the POST/modal close (matches GroupDetail's handleAddPermissions).
+        await refetch();
       }
 
       const res = await fetch("/api/flow-council/voter-groups", {

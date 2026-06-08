@@ -11,6 +11,10 @@ export const dynamic = "force-dynamic";
 // up since this is an authenticated manager-only write.
 const MAX_BATCH_ADDRESSES = 5000;
 
+// Rows per INSERT statement. Mirrors the lazy-seed migration's batch so a large
+// add (up to MAX_BATCH_ADDRESSES) never emits one multi-thousand-row statement.
+const INSERT_BATCH = 500;
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -60,29 +64,35 @@ export async function POST(request: Request) {
       return errorResponse("Group not found", 404);
     }
 
-    // Dedupe within the request, then a single bulk insert. The
-    // UNIQUE(roundId, address) constraint + doNothing skips any address already
-    // in another group on this council (single-membership: existing wins).
+    // Dedupe within the request, then insert in chunks inside one transaction:
+    // the batch stays all-or-nothing without ever emitting a single
+    // multi-thousand-row statement. The UNIQUE(roundId, address) constraint +
+    // doNothing skips any address already in another group on this council
+    // (single-membership: existing wins). The inserted addresses (conflicts are
+    // skipped and not returned) are accumulated so the caller can roll back
+    // exactly those rows on a later failure — skipped addresses belong to
+    // another group and must not be touched.
     const unique = Array.from(new Set(valid.map((a) => a.toLowerCase())));
+    const insertedAddresses: string[] = [];
 
-    const insertedRows = await db
-      .insertInto("voterGroupMembers")
-      .values(
-        unique.map((addr) => ({
-          voterGroupId: groupId,
-          roundId: auth.roundId,
-          address: addr,
-        })),
-      )
-      .onConflict((oc) => oc.columns(["roundId", "address"]).doNothing())
-      .returning(["address"])
-      .execute();
+    await db.transaction().execute(async (trx) => {
+      for (let i = 0; i < unique.length; i += INSERT_BATCH) {
+        const rows = await trx
+          .insertInto("voterGroupMembers")
+          .values(
+            unique.slice(i, i + INSERT_BATCH).map((addr) => ({
+              voterGroupId: groupId,
+              roundId: auth.roundId,
+              address: addr,
+            })),
+          )
+          .onConflict((oc) => oc.columns(["roundId", "address"]).doNothing())
+          .returning(["address"])
+          .execute();
 
-    // Return the addresses that were actually inserted (conflicts are skipped
-    // and not returned) so the caller can roll back exactly those rows on a
-    // later failure — skipped addresses belong to another group and must not be
-    // touched.
-    const insertedAddresses = insertedRows.map((row) => row.address);
+        insertedAddresses.push(...rows.map((row) => row.address));
+      }
+    });
 
     return Response.json({
       success: true,

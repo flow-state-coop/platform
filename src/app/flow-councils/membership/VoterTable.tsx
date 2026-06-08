@@ -170,15 +170,20 @@ export default function VoterTable(props: VoterTableProps) {
 
   // Stable signature of the voter set: the `voters` prop is a new array on every
   // parent render / Apollo re-poll even when the addresses are unchanged, so the
-  // profile fetch keys off this string to avoid redundant network calls.
-  const voterAddressKey = useMemo(
-    () =>
-      voters
-        .map((v) => v.account.toLowerCase())
-        .sort()
-        .join(","),
+  // profile fetch keys off the joined string to avoid redundant network calls.
+  const sortedAddresses = useMemo(
+    () => voters.map((v) => v.account.toLowerCase()).sort(),
     [voters],
   );
+  const voterAddressKey = useMemo(
+    () => sortedAddresses.join(","),
+    [sortedAddresses],
+  );
+
+  // Read the array directly in the effect (via a ref) so it gates on the stable
+  // key but never round-trips the (potentially large) string back through split.
+  const sortedAddressesRef = useRef(sortedAddresses);
+  sortedAddressesRef.current = sortedAddresses;
 
   // Fetch display names for the visible addresses once the voter list loads.
   useEffect(() => {
@@ -186,7 +191,7 @@ export default function VoterTable(props: VoterTableProps) {
       return;
     }
 
-    const addresses = voterAddressKey.split(",");
+    const addresses = sortedAddressesRef.current;
 
     let cancelled = false;
 
