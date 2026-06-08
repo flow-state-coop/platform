@@ -246,6 +246,11 @@ export default function GroupDetail(props: GroupDetailProps) {
       const res = await fetch(
         `/api/flow-council/voter-groups?chainId=${chainId}&councilId=${councilId}`,
       );
+
+      if (!res.ok) {
+        return;
+      }
+
       const data = await res.json();
 
       if (data.success) {

@@ -97,6 +97,20 @@ function deserializeQueue(raw: string): QueueState | null {
       return null;
     }
 
+    // Every chunk must carry an `args` object; a corrupted/tampered entry that
+    // passed JSON.parse is rejected here rather than blowing up at writeContract.
+    const chunksValid = parsed.chunks.every(
+      (chunk) =>
+        chunk !== null &&
+        typeof chunk === "object" &&
+        typeof (chunk as QueueChunk).args === "object" &&
+        (chunk as QueueChunk).args !== null,
+    );
+
+    if (!chunksValid) {
+      return null;
+    }
+
     return {
       councilId: parsed.councilId,
       chunks: parsed.chunks as QueueChunk[],

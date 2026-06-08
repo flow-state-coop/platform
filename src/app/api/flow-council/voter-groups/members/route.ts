@@ -18,7 +18,10 @@ const INSERT_BATCH = 500;
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { chainId, councilId, groupId, address, addresses } = body;
+    const { chainId, councilId, address, addresses } = body;
+    // Coerce so a JSON-string id ("1") from a direct API caller validates the
+    // same as a number; Number.isInteger below still rejects NaN/non-integers.
+    const groupId = Number(body.groupId);
 
     const auth = await authorizeCouncilManager(chainId, councilId);
 
@@ -110,7 +113,8 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { chainId, councilId, address, newGroupId } = body;
+    const { chainId, councilId, address } = body;
+    const newGroupId = Number(body.newGroupId);
 
     const auth = await authorizeCouncilManager(chainId, councilId);
 
@@ -167,7 +171,9 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const body = await request.json();
-    const { chainId, councilId, address, addresses, groupId } = body;
+    const { chainId, councilId, address, addresses } = body;
+    // Optional scope; Number(undefined) → NaN keeps the delete council-wide.
+    const groupId = Number(body.groupId);
 
     const auth = await authorizeCouncilManager(chainId, councilId);
 
