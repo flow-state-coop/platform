@@ -64,6 +64,12 @@ export async function POST(request: Request) {
       return Response.json({ success: false, error: "Invalid request" });
     }
 
+    const numericChainId = Number(chainId);
+
+    if (!Number.isInteger(numericChainId)) {
+      return Response.json({ success: false, error: "Invalid chainId" });
+    }
+
     // Validate both as real addresses before they reach a viem contract call or
     // a DB insert — a non-address string would otherwise be written verbatim
     // into voter_group_members (VARCHAR(42) accepts any short string).
@@ -71,13 +77,13 @@ export async function POST(request: Request) {
       return Response.json({ success: false, error: "Invalid address" });
     }
 
-    const network = networks.find((network) => network.id === chainId);
+    const network = networks.find((network) => network.id === numericChainId);
 
     if (!network) {
       return Response.json({ success: false, error: "Wrong network" });
     }
 
-    const round = await findRoundByCouncil(chainId, councilId);
+    const round = await findRoundByCouncil(numericChainId, councilId);
 
     if (!round) {
       return Response.json({ success: false, error: "Council not found" });

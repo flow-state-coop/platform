@@ -66,12 +66,24 @@ function serializeQueue(state: QueueState): string {
 function deserializeQueue(raw: string): QueueState | null {
   try {
     const parsed = JSON.parse(raw, (_key, value) => {
+      // Only the serializer's exact { __bigint__: "<int>" } shape, so a crafted
+      // lookalike object isn't silently coerced into a BigInt.
       if (
         value !== null &&
         typeof value === "object" &&
-        typeof (value as Record<string, unknown>)[BIGINT_TAG] === "string"
+        !Array.isArray(value)
       ) {
-        return BigInt((value as Record<string, string>)[BIGINT_TAG]);
+        const keys = Object.keys(value);
+        const tag = (value as Record<string, unknown>)[BIGINT_TAG];
+
+        if (
+          keys.length === 1 &&
+          keys[0] === BIGINT_TAG &&
+          typeof tag === "string" &&
+          /^-?\d+$/.test(tag)
+        ) {
+          return BigInt(tag);
+        }
       }
       return value;
     }) as Partial<QueueState> | null;
