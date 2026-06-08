@@ -219,6 +219,22 @@ describe("voter-groups group CRUD", () => {
     expect(body.success).toBe(false);
   });
 
+  it("rejects a GoodDollar group on a non-Celo chain (400)", async () => {
+    // base.chainId is TEST_CHAIN_ID (non-Celo), so the API guard rejects it
+    // even though the schema accepts the "gooddollar" method.
+    const res = await groupsPost(
+      jsonRequest("POST", BASE, {
+        ...base,
+        name: "GD",
+        eligibilityMethod: "gooddollar",
+        defaultVotingPower: 10,
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = await readJson(res);
+    expect(body.success).toBe(false);
+  });
+
   it("PATCH renames a group", async () => {
     const id = await createGroup("Old name");
     const res = await groupsPatch(

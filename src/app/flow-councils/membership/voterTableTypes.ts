@@ -21,14 +21,33 @@ export type SubgraphVoter = {
   ballot?: { votes?: { amount: string }[] };
 };
 
+// Offchain cleanup data persisted alongside the onchain chunk queue (as its
+// `meta`) so it survives a navigation/remount. `useVoterGroupQueueCleanup`
+// reads it to finalize a removal (drop DB classification rows once the queue
+// fully completes) or to roll back a discarded add (drop the DB rows it inserted
+// for chunks that never landed onchain). All addresses are lowercased.
+export type VoterGroupQueueMeta = {
+  chainId: number;
+  councilId: string;
+  groupId: number;
+  // Removed voters whose DB classification is dropped only after full completion.
+  removalAddresses: string[];
+  // Added voters in onchain-entry order (adds occupy the front of the queue), so
+  // a partial failure's committed prefix can be derived from completedCount.
+  addedOrder: string[];
+  // The subset of `addedOrder` actually inserted into the DB (conflicts skipped),
+  // i.e. the only rows a discard may roll back.
+  insertedAddresses: string[];
+};
+
 // The subset of the chunked-tx-queue hook the voter table consumes. The parent
-// (GroupDetail) wraps the raw hook to defer DB cleanup, so this is the wrapped
-// shape passed down as the `q` prop.
+// wraps the raw hook so `clear` performs the discard rollback, so this is the
+// wrapped shape passed down as the `q` prop.
 export type ChunkedQueue = {
   startQueue: (
     councilId: string,
     chunks: { args: Record<string, unknown> }[],
-    removalAddresses?: string[],
+    meta?: VoterGroupQueueMeta,
   ) => void;
   resume: () => void;
   clear: () => void;

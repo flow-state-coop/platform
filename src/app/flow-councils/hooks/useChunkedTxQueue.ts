@@ -35,6 +35,13 @@ export type QueueState = {
   councilId: string;
   chunks: QueueChunk[];
   completedCount: number;
+  // Opaque per-operation payload the queue persists verbatim alongside the
+  // chunks. The queue never reads it; callers hydrate it (post-remount) to run
+  // deferred offchain cleanup tied to the onchain queue's outcome (e.g. dropping
+  // DB classification rows once a removal completes, or rolling back DB inserts
+  // for a discarded add). Persisting it here is what lets that cleanup survive a
+  // navigation/remount instead of dying with a component-local ref.
+  meta?: unknown;
 };
 
 // --- BigInt-safe (de)serialization ------------------------------------------
@@ -82,6 +89,7 @@ function deserializeQueue(raw: string): QueueState | null {
       councilId: parsed.councilId,
       chunks: parsed.chunks as QueueChunk[],
       completedCount: parsed.completedCount,
+      meta: parsed.meta,
     };
   } catch {
     return null;
@@ -148,11 +156,10 @@ export function useChunkedTxQueue(
     isPausedRef.current = paused;
   }, []);
 
-  // Hydrate this council's persisted queue on mount (and whenever the council
-  // changes, since the App Router reuses this component across [councilId]
-  // params). NEVER auto-resume: leave isPaused=true. A queue that already
-  // finished is discarded so a stale "100%" progress bar never rehydrates, and
-  // any in-memory queue carried over from a previously-viewed council is reset.
+  // Hydrate this council's persisted queue on mount / council change. NEVER
+  // auto-resume (leave isPaused=true). A finished queue is discarded so a stale
+  // "100%" never rehydrates, and any queue carried over from a previously-viewed
+  // council is reset.
   useEffect(() => {
     if (!storageKey) {
       return;
@@ -234,8 +241,8 @@ export function useChunkedTxQueue(
   }, [config, publicClient, setQueueState]);
 
   const startQueue = useCallback(
-    (councilId: string, chunks: QueueChunk[]) => {
-      const next: QueueState = { councilId, chunks, completedCount: 0 };
+    (councilId: string, chunks: QueueChunk[], meta?: unknown) => {
+      const next: QueueState = { councilId, chunks, completedCount: 0, meta };
 
       setError(null);
       setQueueState(next);
@@ -271,6 +278,7 @@ export function useChunkedTxQueue(
     completedCount: queue?.completedCount ?? 0,
     totalCount: queue?.chunks.length ?? 0,
     councilId: queue?.councilId,
+    meta: queue?.meta,
     error,
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
@@ -17,10 +17,8 @@ import InfoTooltip from "@/components/InfoTooltip";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
-import {
-  useChunkedTxQueue,
-  splitIntoChunks,
-} from "@/app/flow-councils/hooks/useChunkedTxQueue";
+import { useChunkedTxQueue } from "@/app/flow-councils/hooks/useChunkedTxQueue";
+import { useVoterGroupQueueCleanup } from "@/app/flow-councils/hooks/useVoterGroupQueueCleanup";
 import { useGrantBotVoterManager } from "@/app/flow-councils/hooks/useGrantBotVoterManager";
 import {
   computeCastVotes,
@@ -33,6 +31,7 @@ import type {
   EligibilityMethod,
   SubgraphVoter,
   VoterGroup,
+  VoterGroupQueueMeta,
 } from "./voterTableTypes";
 import {
   VOTER_MANAGER_ROLE,
@@ -47,11 +46,6 @@ type GroupDetailProps = {
   councilId: string;
   groupId: number;
 };
-
-// Chunk size for the deferred DB membership delete. Kept well under the API's
-// per-request cap so removing a large group (e.g. the auto-migrated Default
-// group) never trips the limit.
-const DELETE_BATCH = 1000;
 
 // Group detail needs the same voter list (for metrics) plus the managers list
 // (for isManager) the overview uses, so it runs the same query.
@@ -101,10 +95,6 @@ export default function GroupDetail(props: GroupDetailProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
-  // Surfaces a failure of the deferred DB classification cleanup that runs after
-  // an onchain removal queue completes (the onchain removal itself succeeded).
-  const [cleanupError, setCleanupError] = useState("");
-
   const router = useRouter();
   const publicClient = usePublicClient();
   const wagmiConfig = useConfig();
@@ -112,66 +102,6 @@ export default function GroupDetail(props: GroupDetailProps) {
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const q = useChunkedTxQueue(wagmiConfig, publicClient, councilId);
-
-  // Addresses whose DB classification must be dropped once the CURRENT onchain
-  // removal queue finishes. A ref (not state) so recording it never triggers a
-  // render; it is read in the queue-completion effect below. Every startQueue
-  // call resets it (removals set it, every other operation clears it), so a
-  // non-removal queue can never trigger a stale DB delete.
-  const pendingRemovalRef = useRef<string[]>([]);
-
-  // Guards the queue-completion finalize effect so it runs exactly once per
-  // queue: set when finalize starts, reset by startQueue when a new operation
-  // begins. `queueDone` (below) is derived and stays true after completion, so
-  // without this a stray re-render could re-enter the effect.
-  const hasFinalizedRef = useRef(false);
-
-  // The hook returns a stable `startQueue` reference, so capture it directly
-  // instead of depending on the whole `q` object (a fresh object every render).
-  // This keeps our wrapper — and `qForChildren` below — stable across renders.
-  const queueStart = q.startQueue;
-
-  // Wrap the shared queue so children enqueue a removal atomically with the DB
-  // rows they intend to drop. The DB DELETE is deferred to queueDone (below) so
-  // a failed/paused onchain queue never leaves a group showing empty while the
-  // voters still hold onchain voting power.
-  const startQueue = useCallback(
-    (
-      cid: string,
-      chunks: { args: Record<string, unknown> }[],
-      removalAddresses?: string[],
-    ) => {
-      pendingRemovalRef.current = removalAddresses ?? [];
-      hasFinalizedRef.current = false;
-      setCleanupError("");
-      queueStart(cid, chunks);
-    },
-    [queueStart],
-  );
-
-  // Stabilized on the queue's individual fields rather than the hook's
-  // render-fresh object, so children (VoterTable) only re-render when queue
-  // state they actually read changes; the callbacks are stable hook references.
-  const qForChildren = useMemo<ChunkedQueue>(
-    () => ({
-      startQueue,
-      resume: q.resume,
-      clear: q.clear,
-      isPending: q.isPending,
-      completedCount: q.completedCount,
-      totalCount: q.totalCount,
-      error: q.error,
-    }),
-    [
-      startQueue,
-      q.resume,
-      q.clear,
-      q.isPending,
-      q.completedCount,
-      q.totalCount,
-      q.error,
-    ],
-  );
 
   const isCelo = chainId === CELO_CHAIN_ID;
 
@@ -333,89 +263,62 @@ export default function GroupDetail(props: GroupDetailProps) {
   }, [fetchGroups]);
 
   // Re-pull both the subgraph voters and the DB groups. Children call this after
-  // offchain changes; the parent also calls it once when the onchain queue
-  // finishes (effect below).
+  // offchain changes; the cleanup hook also calls it once when the onchain queue
+  // finishes.
   const refresh = useCallback(async () => {
     await refetch();
     await fetchGroups();
   }, [refetch, fetchGroups]);
 
-  // When the chunked queue transitions to fully complete, drop any deferred DB
-  // classification rows (for a removal) and refresh once so the table reflects
-  // the new onchain state.
-  const queueDone = useMemo(
-    () => q.totalCount > 0 && q.completedCount === q.totalCount && !q.isPending,
-    [q.totalCount, q.completedCount, q.isPending],
+  // Finalize-on-complete (drop removed voters' DB rows) and discard-with-rollback
+  // are driven by the queue's persisted meta, so they survive a remount and work
+  // from either page that mounts the queue.
+  const { discard, cleanupError, clearCleanupError } = useVoterGroupQueueCleanup(
+    q,
+    refresh,
   );
 
-  useEffect(() => {
-    if (!queueDone || hasFinalizedRef.current) {
-      return;
-    }
+  // Capture the hook's stable startQueue reference so the wrapper below depends
+  // on it directly instead of the render-fresh `q` object.
+  const queueStart = q.startQueue;
 
-    hasFinalizedRef.current = true;
+  // Clear any stale cleanup error when a new operation begins; the meta is
+  // forwarded verbatim so the cleanup hook can act on it later.
+  const startQueue = useCallback(
+    (
+      cid: string,
+      chunks: { args: Record<string, unknown> }[],
+      meta?: VoterGroupQueueMeta,
+    ) => {
+      clearCleanupError();
+      queueStart(cid, chunks, meta);
+    },
+    [queueStart, clearCleanupError],
+  );
 
-    let cancelled = false;
-
-    const finalize = async () => {
-      const removed = pendingRemovalRef.current;
-
-      // Only now that the onchain removal queue has FULLY completed do we drop
-      // the DB classification rows. Clear the ref first so a transient effect
-      // re-run can't fire the DELETE twice.
-      if (removed.length > 0) {
-        pendingRemovalRef.current = [];
-
-        // Chunked so a very large group removal stays under the endpoint's
-        // per-request address cap. Each batch is checked on its own: a failed
-        // batch (thrown, or a non-ok / !success response) is collected and
-        // surfaced so the admin knows those classifications weren't cleared,
-        // while the remaining batches still run.
-        const failed: string[] = [];
-
-        for (const batch of splitIntoChunks(removed, DELETE_BATCH)) {
-          try {
-            const res = await fetch("/api/flow-council/voter-groups/members", {
-              method: "DELETE",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                chainId,
-                councilId,
-                groupId,
-                addresses: batch,
-              }),
-            });
-            const data = await res.json().catch(() => null);
-
-            if (!res.ok || !data?.success) {
-              failed.push(...batch);
-            }
-          } catch (err) {
-            console.error(err);
-            failed.push(...batch);
-          }
-        }
-
-        if (failed.length > 0 && !cancelled) {
-          setCleanupError(
-            `Voters were removed onchain, but ${failed.length} could not be ` +
-              `cleared from this group's records. Refresh and remove them ` +
-              `again to retry.`,
-          );
-        }
-      }
-
-      if (!cancelled) {
-        await refresh();
-      }
-    };
-
-    finalize();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [queueDone, refresh, chainId, councilId, groupId]);
+  // Stabilized on the queue's individual fields rather than the hook's
+  // render-fresh object, so children (VoterTable) only re-render when queue
+  // state they actually read changes. `clear` is the rollback-aware discard.
+  const qForChildren = useMemo<ChunkedQueue>(
+    () => ({
+      startQueue,
+      resume: q.resume,
+      clear: discard,
+      isPending: q.isPending,
+      completedCount: q.completedCount,
+      totalCount: q.totalCount,
+      error: q.error,
+    }),
+    [
+      startQueue,
+      q.resume,
+      discard,
+      q.isPending,
+      q.completedCount,
+      q.totalCount,
+      q.error,
+    ],
+  );
 
   // The query pages 1000 voters per request (`first: 1000` above). Fetch the
   // next page only while the loaded count is a full multiple of that page size:
@@ -655,7 +558,7 @@ export default function GroupDetail(props: GroupDetailProps) {
                 size="sm"
                 variant="outline-secondary"
                 className="fw-semi-bold"
-                onClick={() => q.clear()}
+                onClick={() => discard()}
                 disabled={q.isPending}
               >
                 Discard
@@ -938,7 +841,7 @@ export default function GroupDetail(props: GroupDetailProps) {
                   <Alert
                     variant="danger"
                     dismissible
-                    onClose={() => q.clear()}
+                    onClose={() => discard()}
                     className="d-flex flex-wrap align-items-center justify-content-between gap-2"
                   >
                     <span className="fw-semi-bold">{q.error.message}</span>
@@ -955,7 +858,7 @@ export default function GroupDetail(props: GroupDetailProps) {
                   <Alert
                     variant="danger"
                     dismissible
-                    onClose={() => setCleanupError("")}
+                    onClose={() => clearCleanupError()}
                     className="fw-semi-bold"
                   >
                     {cleanupError}

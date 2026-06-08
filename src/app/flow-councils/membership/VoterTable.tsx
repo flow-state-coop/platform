@@ -61,10 +61,6 @@ const PAGE_SIZE = 50;
 // proxies/CDNs truncate at (150 × 43 ≈ 6.5KB), while the endpoint stays
 // ISR-cacheable. The profiles route still accepts up to 500 per request.
 const PROFILE_BATCH = 150;
-// Offchain DB-delete batch for the discard rollback. Sized to the members
-// DELETE endpoint's capacity (not the 50/tx onchain CHUNK_SIZE), so a large
-// discarded add rolls back in one request instead of many.
-const ROLLBACK_DELETE_BATCH = 1000;
 
 const PCT_OPTIONS = [
   { value: "all", label: "All" },
@@ -147,13 +143,6 @@ export default function VoterTable(props: VoterTableProps) {
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   const [newRows, setNewRows] = useState<NewRow[]>([]);
   const newRowId = useRef(0);
-
-  // Addresses this Save freshly inserted into the group (DB) before the onchain
-  // queue ran. If that queue fails and the admin discards it, these are rolled
-  // back so a discarded add never lingers as a classified-but-not-onchain
-  // member. Only addresses we actually inserted are tracked (see handleSave), so
-  // the rollback can never touch another group's membership.
-  const postedNewAddressesRef = useRef<string[]>([]);
 
   const [bulkValue, setBulkValue] = useState("");
   const [bulkMode, setBulkMode] = useState<"set" | "increment">("set");
@@ -616,7 +605,6 @@ export default function VoterTable(props: VoterTableProps) {
     try {
       setSubmitPhase("saving");
       setSaveError("");
-      postedNewAddressesRef.current = [];
 
       const byAccount = new Map(
         voters.map((v) => [v.account.toLowerCase(), v]),
@@ -625,6 +613,8 @@ export default function VoterTable(props: VoterTableProps) {
       // Offchain: classify every new address into this group (DB) in one batched
       // request before the onchain queue. Bail out on failure so we never enqueue
       // onchain allocations for voters with no group membership.
+      let insertedAddresses: string[] = [];
+
       if (validNewRows.length > 0) {
         const res = await fetch("/api/flow-council/voter-groups/members", {
           method: "POST",
@@ -649,8 +639,8 @@ export default function VoterTable(props: VoterTableProps) {
         // another group on this council, so rolling them back would delete that
         // group's row — they are excluded server-side, never tracked here.
         if (Array.isArray(data.insertedAddresses)) {
-          postedNewAddressesRef.current = data.insertedAddresses.map(
-            (addr: string) => addr.toLowerCase(),
+          insertedAddresses = data.insertedAddresses.map((addr: string) =>
+            addr.toLowerCase(),
           );
         }
       }
@@ -685,9 +675,19 @@ export default function VoterTable(props: VoterTableProps) {
         },
       }));
 
-      // Hand removed addresses to the queue so the parent drops their DB
-      // classification rows ONLY after the onchain queue fully completes.
-      q.startQueue(councilId, chunks, removedAccounts);
+      // Persist everything the deferred DB cleanup needs alongside the queue so
+      // it survives a remount: removals are dropped only after full completion,
+      // inserted adds are rolled back on discard. `addedOrder` matches the
+      // onchain-entry order (adds first) so a partial failure's committed prefix
+      // is derivable from the queue's completedCount.
+      q.startQueue(councilId, chunks, {
+        chainId,
+        councilId,
+        groupId,
+        removalAddresses: removedAccounts,
+        addedOrder: validNewRows.map((row) => row.address.toLowerCase()),
+        insertedAddresses,
+      });
 
       // Progress, completion and failure are now driven by the queue state and
       // observed in the effects below; the modal stays open as the surface.
@@ -728,8 +728,6 @@ export default function VoterTable(props: VoterTableProps) {
       setImportNote("");
       setShowConfirm(false);
       setSubmitPhase("idle");
-      // Committed — there is nothing to roll back on a later discard.
-      postedNewAddressesRef.current = [];
     }, 1200);
 
     return () => clearTimeout(timeout);
@@ -742,65 +740,12 @@ export default function VoterTable(props: VoterTableProps) {
     submitPhase === "done" ||
     (submitPhase === "submitting" && !q.error);
 
-  // Roll back DB classifications written during a Save whose onchain queue then
-  // failed and was discarded — mirrors the eligibility route's insert→try→
-  // rollback so a discarded add never lingers as a classified-but-not-onchain
-  // member. The caller passes only adds whose chunk never committed onchain, so
-  // committed adds keep their membership. Best-effort; a failure is surfaced on
-  // the page-level saveError.
-  const rollbackAddedMembers = async (addresses: string[]) => {
-    try {
-      for (const batch of splitIntoChunks(addresses, ROLLBACK_DELETE_BATCH)) {
-        const res = await fetch("/api/flow-council/voter-groups/members", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chainId, councilId, groupId, addresses: batch }),
-        });
-        const data = await res.json().catch(() => null);
-
-        if (!res.ok || !data?.success) {
-          throw new Error("rollback failed");
-        }
-      }
-
-      await onRefresh();
-    } catch (err) {
-      console.error(err);
-      setSaveError(
-        "The transaction was discarded, but some newly added voters could " +
-          "not be cleared from this group. Refresh and remove them to retry.",
-      );
-    }
-  };
-
   const closeConfirm = () => {
     // Dismissing a stopped (failed) queue discards it so no stale "resume"
     // banner lingers; the staged edits remain so the admin can retry via Save.
+    // The wrapped clear (q.clear === the parent's rollback-aware discard) drops
+    // the DB rows inserted for adds whose chunk never landed onchain.
     if (q.error) {
-      // Adds live at the front of `entries`, so the first
-      // `completedCount * CHUNK_SIZE` onchain entries that landed cover the
-      // first that-many new rows. Those already hold onchain voting power —
-      // keep their DB membership and roll back only the adds that never
-      // committed, so a partial multi-chunk failure can't strand a voter with
-      // onchain power but no group.
-      const committedAddCount = Math.min(
-        q.completedCount * CHUNK_SIZE,
-        validNewRows.length,
-      );
-      const committedAddrs = new Set(
-        validNewRows
-          .slice(0, committedAddCount)
-          .map((row) => row.address.toLowerCase()),
-      );
-      const rollback = postedNewAddressesRef.current.filter(
-        (addr) => !committedAddrs.has(addr),
-      );
-      postedNewAddressesRef.current = [];
-
-      if (rollback.length > 0) {
-        void rollbackAddedMembers(rollback);
-      }
-
       q.clear();
     }
 

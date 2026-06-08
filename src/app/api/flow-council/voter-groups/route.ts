@@ -7,6 +7,7 @@ import { getApolloClient } from "@/lib/apollo";
 import { errorResponse } from "../../utils";
 import { findRoundByCouncil, authorizeCouncilManager } from "../auth";
 import { voterGroupCreateSchema, voterGroupUpdateSchema } from "../validation";
+import { CELO_CHAIN_ID } from "@/app/flow-councils/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -240,6 +241,18 @@ export async function POST(request: Request) {
       return errorResponse(issue.message, 400);
     }
 
+    // GoodDollar eligibility is Celo-only (the bot signs addVoter on Celo). The
+    // UI already gates this, but guard the API surface too.
+    if (
+      parsed.data.eligibilityMethod === "gooddollar" &&
+      Number(chainId) !== CELO_CHAIN_ID
+    ) {
+      return errorResponse(
+        "GoodDollar eligibility is only available on Celo",
+        400,
+      );
+    }
+
     const inserted = await db
       .insertInto("voterGroups")
       .values({
@@ -296,6 +309,18 @@ export async function PATCH(request: Request) {
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
       return errorResponse(issue.message, 400);
+    }
+
+    // GoodDollar eligibility is Celo-only; guard the API surface even though the
+    // UI gates it (a direct call could otherwise switch a group on another chain).
+    if (
+      parsed.data.eligibilityMethod === "gooddollar" &&
+      Number(chainId) !== CELO_CHAIN_ID
+    ) {
+      return errorResponse(
+        "GoodDollar eligibility is only available on Celo",
+        400,
+      );
     }
 
     const group = await db

@@ -20,8 +20,7 @@ import Image from "react-bootstrap/Image";
 import Table from "react-bootstrap/Table";
 import Modal from "react-bootstrap/Modal";
 import InfoTooltip from "@/components/InfoTooltip";
-import { waitForReceipt } from "@/lib/utils";
-import { isNumber } from "@/lib/utils";
+import { waitForReceipt, isNumber } from "@/lib/utils";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
@@ -29,6 +28,7 @@ import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
 import useCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 import { useChunkedTxQueue } from "@/app/flow-councils/hooks/useChunkedTxQueue";
+import { useVoterGroupQueueCleanup } from "@/app/flow-councils/hooks/useVoterGroupQueueCleanup";
 import { useGrantBotVoterManager } from "@/app/flow-councils/hooks/useGrantBotVoterManager";
 import {
   computeCastVotes,
@@ -248,6 +248,19 @@ export default function Membership(props: MembershipProps) {
   useEffect(() => {
     fetchGroups();
   }, [fetchGroups]);
+
+  // The overview also mounts the chunked queue (for its cross-navigation resume
+  // banner), so wire the same DB cleanup here: resuming or discarding from this
+  // banner must finalize/roll back just like the group-detail page does.
+  const refresh = useCallback(async () => {
+    await refetch();
+    await fetchGroups();
+  }, [refetch, fetchGroups]);
+
+  const { discard, cleanupError, clearCleanupError } = useVoterGroupQueueCleanup(
+    q,
+    refresh,
+  );
 
   // The query pages 1000 voters per request (`first: 1000` above). Fetch the
   // next page only while the loaded count is a full multiple of that page size:
@@ -481,12 +494,22 @@ export default function Membership(props: MembershipProps) {
                 size="sm"
                 variant="outline-secondary"
                 className="fw-semi-bold"
-                onClick={() => q.clear()}
+                onClick={() => discard()}
                 disabled={q.isPending}
               >
                 Discard
               </Button>
             </Stack>
+          </Alert>
+        ) : null}
+        {cleanupError ? (
+          <Alert
+            variant="danger"
+            dismissible
+            onClose={() => clearCleanupError()}
+            className="fw-semi-bold mt-3 mb-0"
+          >
+            {cleanupError}
           </Alert>
         ) : null}
         <Card className="bg-lace-100 rounded-4 border-0 p-4">
