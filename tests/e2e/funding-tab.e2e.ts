@@ -1,9 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { installMockWallet, readFixture } from "./helpers/setup";
+import { installSubgraphMock } from "./helpers/subgraphMock";
 import { enterAuthenticated } from "./helpers/signIn";
 
 test.beforeEach(async ({ page }) => {
   await installMockWallet(page);
+  await installSubgraphMock(page);
 });
 
 // The seeded E2E council has no superappSplitterAddress, which alone gates

@@ -262,11 +262,13 @@ export default function Membership(props: MembershipProps) {
   // reached the end and stops the recursion (also avoiding a redundant trailing
   // request). This loads every voter for councils larger than one page.
   useEffect(() => {
-    if (!flowCouncilQueryRes) {
+    const voters = flowCouncilQueryRes?.flowCouncil?.voters;
+
+    if (!voters) {
       return;
     }
 
-    const loaded = flowCouncilQueryRes.flowCouncil.voters.length;
+    const loaded = voters.length;
 
     if (loaded > 0 && loaded % 1000 === 0) {
       fetchMore({ variables: { skip: loaded } });
