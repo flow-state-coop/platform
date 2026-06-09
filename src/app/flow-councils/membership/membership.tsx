@@ -29,6 +29,7 @@ import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
 import useCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 import { useChunkedTxQueue } from "@/app/flow-councils/hooks/useChunkedTxQueue";
 import { useVoterGroupQueueCleanup } from "@/app/flow-councils/hooks/useVoterGroupQueueCleanup";
+import { fetchVoterGroups } from "@/app/flow-councils/lib/fetchVoterGroups";
 import { useGrantBotVoterManager } from "@/app/flow-councils/hooks/useGrantBotVoterManager";
 import {
   computeCastVotes,
@@ -227,22 +228,15 @@ export default function Membership(props: MembershipProps) {
       return;
     }
 
-    try {
-      setGroupsLoading(true);
+    setGroupsLoading(true);
 
-      const res = await fetch(
-        `/api/flow-council/voter-groups?chainId=${chainId}&councilId=${councilId}`,
-      );
-      const data = await res.json();
+    const result = await fetchVoterGroups(chainId, councilId);
 
-      if (data.success) {
-        setGroups(data.groups);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setGroupsLoading(false);
+    if (result) {
+      setGroups(result);
     }
+
+    setGroupsLoading(false);
   }, [chainId, councilId]);
 
   useEffect(() => {

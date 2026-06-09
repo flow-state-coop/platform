@@ -19,6 +19,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { useChunkedTxQueue } from "@/app/flow-councils/hooks/useChunkedTxQueue";
 import { useVoterGroupQueueCleanup } from "@/app/flow-councils/hooks/useVoterGroupQueueCleanup";
+import { fetchVoterGroups } from "@/app/flow-councils/lib/fetchVoterGroups";
 import { useGrantBotVoterManager } from "@/app/flow-councils/hooks/useGrantBotVoterManager";
 import {
   computeCastVotes,
@@ -240,27 +241,15 @@ export default function GroupDetail(props: GroupDetailProps) {
       return;
     }
 
-    try {
-      setGroupsLoading(true);
+    setGroupsLoading(true);
 
-      const res = await fetch(
-        `/api/flow-council/voter-groups?chainId=${chainId}&councilId=${councilId}`,
-      );
+    const result = await fetchVoterGroups(chainId, councilId);
 
-      if (!res.ok) {
-        return;
-      }
-
-      const data = await res.json();
-
-      if (data.success) {
-        setGroups(data.groups);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setGroupsLoading(false);
+    if (result) {
+      setGroups(result);
     }
+
+    setGroupsLoading(false);
   }, [chainId, councilId]);
 
   useEffect(() => {

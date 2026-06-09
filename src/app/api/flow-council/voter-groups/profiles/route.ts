@@ -2,19 +2,19 @@ import { isAddress } from "viem";
 import { fetchDisplayNames } from "../../enrichment";
 import { errorResponse } from "../../../utils";
 
-export const revalidate = 60;
-
 const MAX_ADDRESSES = 500;
 
-export async function GET(request: Request) {
+// POST (not GET) so the address list travels in the body: a full page of
+// checksummed addresses is several KB, past the URL-length limits some
+// CDNs/proxies enforce.
+export async function POST(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const raw = searchParams.get("addresses") ?? "";
+    const body = await request.json().catch(() => null);
+    const raw: unknown = body?.addresses;
 
-    const addresses = raw
-      .split(",")
-      .map((a) => a.trim())
-      .filter((a) => a.length > 0);
+    const addresses = Array.isArray(raw)
+      ? raw.map((a) => String(a).trim()).filter((a) => a.length > 0)
+      : [];
 
     if (addresses.length === 0) {
       return Response.json({ success: true, names: {} });

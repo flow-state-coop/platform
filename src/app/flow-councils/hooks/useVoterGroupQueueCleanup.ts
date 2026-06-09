@@ -97,7 +97,9 @@ export function useVoterGroupQueueCleanup(
       }
     };
 
-    finalize();
+    // Fire-and-forget: guard the chain so a throw (e.g. from refresh()) can't
+    // surface as an unhandled rejection.
+    void finalize().catch((err) => console.error(err));
 
     return () => {
       cancelled = true;

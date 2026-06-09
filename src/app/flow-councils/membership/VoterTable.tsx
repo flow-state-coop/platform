@@ -200,9 +200,11 @@ export default function VoterTable(props: VoterTableProps) {
 
       for (const batch of splitIntoChunks(addresses, PROFILE_BATCH)) {
         try {
-          const res = await fetch(
-            `/api/flow-council/voter-groups/profiles?addresses=${batch.join(",")}`,
-          );
+          const res = await fetch("/api/flow-council/voter-groups/profiles", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ addresses: batch }),
+          });
           const data = await res.json();
 
           if (data.success && data.names) {
