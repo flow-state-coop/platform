@@ -64,9 +64,7 @@ describe("PATCH /api/flow-council/rounds — listed flag", () => {
 
   it("rejects unauthenticated requests", async () => {
     mockUnauthenticated();
-    const res = await PATCH(
-      patchRequest({ ...basePayload, listed: true }),
-    );
+    const res = await PATCH(patchRequest({ ...basePayload, listed: true }));
     const body = await readJson(res);
     expect(body.success).toBe(false);
     expect(body.error).toBe("Unauthenticated");
@@ -74,9 +72,7 @@ describe("PATCH /api/flow-council/rounds — listed flag", () => {
 
   it("rejects a non-admin from changing listed", async () => {
     mockSession(TEST_OUTSIDER_ADDRESS);
-    const res = await PATCH(
-      patchRequest({ ...basePayload, listed: true }),
-    );
+    const res = await PATCH(patchRequest({ ...basePayload, listed: true }));
     const body = await readJson(res);
     expect(body.success).toBe(false);
   });
@@ -84,9 +80,7 @@ describe("PATCH /api/flow-council/rounds — listed flag", () => {
   // Spec: "PATCH with listed:true stores listed in the details JSON"
   it("stores listed:true in rounds.details when admin sends listed:true", async () => {
     mockSession(TEST_ADMIN_ADDRESS);
-    const res = await PATCH(
-      patchRequest({ ...basePayload, listed: true }),
-    );
+    const res = await PATCH(patchRequest({ ...basePayload, listed: true }));
     const body = await readJson(res);
     expect(body.success).toBe(true);
 
@@ -94,11 +88,7 @@ describe("PATCH /api/flow-council/rounds — listed flag", () => {
       .selectFrom("rounds")
       .select("details")
       .where("chainId", "=", TEST_CHAIN_ID)
-      .where(
-        "flowCouncilAddress",
-        "=",
-        TEST_COUNCIL_ADDRESS.toLowerCase(),
-      )
+      .where("flowCouncilAddress", "=", TEST_COUNCIL_ADDRESS.toLowerCase())
       .executeTakeFirstOrThrow();
 
     const details =
@@ -111,9 +101,7 @@ describe("PATCH /api/flow-council/rounds — listed flag", () => {
   // Spec: "PATCH with listed:false updates it"
   it("stores listed:false in rounds.details when admin sends listed:false", async () => {
     mockSession(TEST_ADMIN_ADDRESS);
-    const res = await PATCH(
-      patchRequest({ ...basePayload, listed: false }),
-    );
+    const res = await PATCH(patchRequest({ ...basePayload, listed: false }));
     const body = await readJson(res);
     expect(body.success).toBe(true);
 
@@ -121,11 +109,7 @@ describe("PATCH /api/flow-council/rounds — listed flag", () => {
       .selectFrom("rounds")
       .select("details")
       .where("chainId", "=", TEST_CHAIN_ID)
-      .where(
-        "flowCouncilAddress",
-        "=",
-        TEST_COUNCIL_ADDRESS.toLowerCase(),
-      )
+      .where("flowCouncilAddress", "=", TEST_COUNCIL_ADDRESS.toLowerCase())
       .executeTakeFirstOrThrow();
 
     const details =
@@ -154,11 +138,7 @@ describe("PATCH /api/flow-council/rounds — listed flag", () => {
       .selectFrom("rounds")
       .select("details")
       .where("chainId", "=", TEST_CHAIN_ID)
-      .where(
-        "flowCouncilAddress",
-        "=",
-        TEST_COUNCIL_ADDRESS.toLowerCase(),
-      )
+      .where("flowCouncilAddress", "=", TEST_COUNCIL_ADDRESS.toLowerCase())
       .executeTakeFirstOrThrow();
 
     const details =
@@ -176,11 +156,7 @@ describe("PATCH /api/flow-council/rounds — listed flag", () => {
       .selectFrom("rounds")
       .select("details")
       .where("chainId", "=", TEST_CHAIN_ID)
-      .where(
-        "flowCouncilAddress",
-        "=",
-        TEST_COUNCIL_ADDRESS.toLowerCase(),
-      )
+      .where("flowCouncilAddress", "=", TEST_COUNCIL_ADDRESS.toLowerCase())
       .executeTakeFirstOrThrow();
 
     const details =
@@ -194,21 +170,30 @@ describe("PATCH /api/flow-council/rounds — listed flag", () => {
   it("does not alter other fields in details when updating listed", async () => {
     // Set name and description first
     mockSession(TEST_ADMIN_ADDRESS);
-    await PATCH(patchRequest({ ...basePayload, name: "My Round", description: "My desc" }));
+    await PATCH(
+      patchRequest({
+        ...basePayload,
+        name: "My Round",
+        description: "My desc",
+      }),
+    );
 
     // Now set listed:true
     mockSession(TEST_ADMIN_ADDRESS);
-    await PATCH(patchRequest({ ...basePayload, name: "My Round", description: "My desc", listed: true }));
+    await PATCH(
+      patchRequest({
+        ...basePayload,
+        name: "My Round",
+        description: "My desc",
+        listed: true,
+      }),
+    );
 
     const stored = await db
       .selectFrom("rounds")
       .select("details")
       .where("chainId", "=", TEST_CHAIN_ID)
-      .where(
-        "flowCouncilAddress",
-        "=",
-        TEST_COUNCIL_ADDRESS.toLowerCase(),
-      )
+      .where("flowCouncilAddress", "=", TEST_COUNCIL_ADDRESS.toLowerCase())
       .executeTakeFirstOrThrow();
 
     const details =

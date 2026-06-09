@@ -117,7 +117,7 @@ describe("serializeListed", () => {
     expect(result).not.toMatch(/\s/);
   });
 
-  it('listed:true output contains the substring \'"listed":true\'', () => {
+  it("listed:true output contains the substring '\"listed\":true'", () => {
     // Confirms the future subgraph metadata_contains filter will match
     expect(serializeListed(true)).toContain('"listed":true');
   });

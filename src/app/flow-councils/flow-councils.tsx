@@ -443,7 +443,9 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
               style={{ height: 400 }}
               onClick={() => {
                 if (address) {
-                  router.push("/flow-councils/launch");
+                  router.push(
+                    `/flow-councils/launch?chainId=${selectedNetwork.id}`,
+                  );
                 } else if (openConnectModal) {
                   openConnectModal();
                 }
