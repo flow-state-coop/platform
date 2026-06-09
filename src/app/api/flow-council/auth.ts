@@ -1,7 +1,9 @@
-import { createPublicClient, http, parseAbi, Address } from "viem";
+import { createPublicClient, http, parseAbi, Address, isAddress } from "viem";
+import { getServerSession } from "next-auth/next";
 import { db } from "./db";
 import { networks, getViemChain } from "@/lib/networks";
 import { ChannelType } from "@/generated/kysely";
+import { authOptions } from "../auth/[...nextauth]/route";
 import {
   DEFAULT_ADMIN_ROLE,
   VOTER_MANAGER_ROLE,
@@ -131,6 +133,59 @@ export async function findRoundByCouncil(
     .where("chainId", "=", chainId)
     .where("flowCouncilAddress", "=", councilAddress.toLowerCase())
     .executeTakeFirst();
+}
+
+export type CouncilManagerAuth =
+  | { ok: true; roundId: number }
+  | { ok: false; error: string; status: number };
+
+/**
+ * SIWE + on-chain-role gate shared by the voter-group management routes.
+ * Validates the network and council address, requires an authenticated session,
+ * resolves the round, and confirms the caller holds a managing role on the
+ * council. Returns the round id on success or a typed error + HTTP status.
+ */
+export async function authorizeCouncilManager(
+  chainId: unknown,
+  councilId: unknown,
+): Promise<CouncilManagerAuth> {
+  const network = networks.find((n) => n.id === chainId);
+
+  if (!network) {
+    return { ok: false, error: "Wrong network", status: 400 };
+  }
+
+  if (typeof councilId !== "string" || !isAddress(councilId)) {
+    return { ok: false, error: "Invalid council ID", status: 400 };
+  }
+
+  const session = await getServerSession(authOptions);
+
+  if (!session?.address) {
+    return { ok: false, error: "Unauthenticated", status: 401 };
+  }
+
+  const round = await findRoundByCouncil(chainId as number, councilId);
+
+  if (!round) {
+    return { ok: false, error: "Round not found", status: 404 };
+  }
+
+  const hasRole = await hasOnChainRole(
+    chainId as number,
+    councilId,
+    session.address,
+  );
+
+  if (!hasRole) {
+    return {
+      ok: false,
+      error: "Not authorized to manage this council",
+      status: 403,
+    };
+  }
+
+  return { ok: true, roundId: round.id };
 }
 
 export const adminCache = new Map<string, { value: boolean; expiry: number }>();

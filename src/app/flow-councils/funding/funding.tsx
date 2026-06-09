@@ -24,6 +24,7 @@ import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
 import { hostAddress } from "@sfpro/sdk/abi/core";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
+import SuccessCheckmark from "@/app/flow-councils/components/SuccessCheckmark";
 import InfoTooltip from "@/components/InfoTooltip";
 import { getApolloClient } from "@/lib/apollo";
 import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
@@ -95,21 +96,6 @@ function formatTokenAmount(wei: bigint, maxDigits = 6): string {
   return Number(formatUnits(wei, 18)).toLocaleString(undefined, {
     maximumFractionDigits: maxDigits,
   });
-}
-
-function SuccessCheckmark() {
-  return (
-    <NextImage
-      src="/success.svg"
-      alt="Success"
-      width={20}
-      height={20}
-      style={{
-        filter:
-          "brightness(0) saturate(100%) invert(85%) sepia(8%) saturate(138%) hue-rotate(138deg) brightness(93%) contrast(106%)",
-      }}
-    />
-  );
 }
 
 export default function Funding(props: FundingProps) {

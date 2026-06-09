@@ -1,0 +1,222 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Config } from "wagmi";
+import type { PublicClient } from "viem";
+import { writeContract } from "@wagmi/core";
+import { waitForReceipt } from "@/lib/utils";
+import { CHUNK_SIZE, splitIntoChunks } from "../lib/chunkQueue";
+import {
+  deserializeQueue,
+  serializeQueue,
+  type QueueChunk,
+  type QueueState,
+} from "../lib/queueStorage";
+
+// Re-export so callers have a single import site for the chunking primitives
+// and the persisted queue shape, and never duplicate them.
+export { CHUNK_SIZE, splitIntoChunks };
+export type { QueueState };
+
+// Persisted queues are keyed per council. An in-progress operation on one
+// council is therefore never clobbered (or displayed) while viewing another —
+// merely navigating between councils no longer discards a paused/incomplete
+// queue, which previously caused silent data loss.
+const STORAGE_KEY_PREFIX = "flow-council-tx-queue";
+
+function storageKeyFor(councilId: string): string {
+  return `${STORAGE_KEY_PREFIX}:${councilId.toLowerCase()}`;
+}
+
+function persist(key: string, state: QueueState | null) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (state === null) {
+    window.localStorage.removeItem(key);
+    return;
+  }
+
+  window.localStorage.setItem(key, serializeQueue(state));
+}
+
+function loadPersisted(key: string): QueueState | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(key);
+
+  return raw ? deserializeQueue(raw) : null;
+}
+
+export function useChunkedTxQueue(
+  config: Config,
+  publicClient?: PublicClient,
+  councilId?: string,
+) {
+  const [queue, setQueue] = useState<QueueState | null>(null);
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  // Refs mirror state so the recursive executeNext loop reads fresh values
+  // without being re-created on every render (avoids stale closures).
+  const queueRef = useRef<QueueState | null>(null);
+  // On hydration we never auto-resume — start paused so the parent can render a
+  // resume banner instead of triggering surprise wallet prompts. Pausing is
+  // internal-only (there is no user-facing pause control): it backs both the
+  // never-auto-resume-on-hydration behavior and the resume banners.
+  const isPausedRef = useRef(true);
+  const isRunningRef = useRef(false);
+
+  // Storage key tracks the current council; kept in a ref so the stable
+  // setQueueState clears under the current council's key.
+  const storageKey = councilId ? storageKeyFor(councilId) : null;
+  const storageKeyRef = useRef(storageKey);
+  storageKeyRef.current = storageKey;
+
+  const setQueueState = useCallback((next: QueueState | null) => {
+    queueRef.current = next;
+    setQueue(next);
+
+    if (next) {
+      // Key off the queue's OWN councilId, not the render-fresh prop-derived
+      // ref: a setQueueState that fires after a rapid council change (stale
+      // closure) would otherwise persist this queue under the new council's key.
+      persist(storageKeyFor(next.councilId), next);
+    } else if (storageKeyRef.current) {
+      persist(storageKeyRef.current, null);
+    }
+  }, []);
+
+  const setPausedState = useCallback((paused: boolean) => {
+    isPausedRef.current = paused;
+  }, []);
+
+  // Hydrate this council's persisted queue on mount / council change. NEVER
+  // auto-resume (leave isPaused=true). A finished queue is discarded so a stale
+  // "100%" never rehydrates, and any queue carried over from a previously-viewed
+  // council is reset.
+  useEffect(() => {
+    if (!storageKey) {
+      return;
+    }
+
+    const persisted = loadPersisted(storageKey);
+
+    if (persisted && persisted.completedCount < persisted.chunks.length) {
+      queueRef.current = persisted;
+      setQueue(persisted);
+    } else {
+      if (persisted) {
+        persist(storageKey, null);
+      }
+      queueRef.current = null;
+      setQueue(null);
+    }
+
+    setPausedState(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey]);
+
+  const executeNext = useCallback(async () => {
+    // Guard against concurrent loops (e.g. resume called while one is running).
+    if (isRunningRef.current) {
+      return;
+    }
+
+    isRunningRef.current = true;
+    setIsPending(true);
+
+    try {
+      // Loop instead of true recursion so we don't grow the call stack and so a
+      // pause mid-flight is observed before each chunk. Continues while a queue
+      // exists, isn't paused, and has unprocessed chunks remaining.
+      let current = queueRef.current;
+
+      while (
+        current &&
+        !isPausedRef.current &&
+        current.completedCount < current.chunks.length
+      ) {
+        if (!publicClient) {
+          throw new Error("Public client unavailable");
+        }
+
+        const index = current.completedCount;
+
+        const chunk = current.chunks[index];
+
+        const hash = await writeContract(
+          config,
+          // The persisted arg object is a valid writeContract parameter set; we
+          // assert the type here because the queue is generic over contracts.
+          chunk.args as Parameters<typeof writeContract>[1],
+        );
+
+        await waitForReceipt(publicClient, hash);
+
+        const advanced: QueueState = {
+          ...current,
+          completedCount: current.completedCount + 1,
+        };
+
+        setQueueState(advanced);
+
+        // Re-read from the ref so the next iteration sees the advanced count and
+        // any pause/clear that arrived while the tx was settling.
+        current = queueRef.current;
+      }
+    } catch (err) {
+      // Stop without advancing; the failed chunk index stays at completedCount
+      // so resume() retries it. Setting the same votingPower is idempotent.
+      setError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      isRunningRef.current = false;
+      setIsPending(false);
+    }
+  }, [config, publicClient, setQueueState]);
+
+  const startQueue = useCallback(
+    (councilId: string, chunks: QueueChunk[], meta?: unknown) => {
+      const next: QueueState = { councilId, chunks, completedCount: 0, meta };
+
+      setError(null);
+      setQueueState(next);
+      setPausedState(false);
+
+      void executeNext();
+    },
+    [executeNext, setQueueState, setPausedState],
+  );
+
+  const resume = useCallback(() => {
+    if (!queueRef.current) {
+      return;
+    }
+
+    setError(null);
+    setPausedState(false);
+
+    void executeNext();
+  }, [executeNext, setPausedState]);
+
+  const clear = useCallback(() => {
+    setPausedState(true);
+    setError(null);
+    setQueueState(null);
+  }, [setQueueState, setPausedState]);
+
+  return {
+    startQueue,
+    resume,
+    clear,
+    isPending,
+    completedCount: queue?.completedCount ?? 0,
+    totalCount: queue?.chunks.length ?? 0,
+    councilId: queue?.councilId,
+    meta: queue?.meta,
+    error,
+  };
+}

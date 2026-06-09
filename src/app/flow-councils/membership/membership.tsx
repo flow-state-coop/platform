@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Address, isAddress } from "viem";
+import { Address } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "@wagmi/core";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -17,25 +17,39 @@ import Spinner from "react-bootstrap/Spinner";
 import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
 import Image from "react-bootstrap/Image";
+import Table from "react-bootstrap/Table";
+import Modal from "react-bootstrap/Modal";
 import InfoTooltip from "@/components/InfoTooltip";
-import { waitForReceipt } from "@/lib/utils";
+import { waitForReceipt, isNumber } from "@/lib/utils";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
 import useCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
-import { VOTER_MANAGER_ROLE } from "../lib/constants";
-import Papa from "papaparse";
-import { isNumber } from "@/lib/utils";
+import { useChunkedTxQueue } from "@/app/flow-councils/hooks/useChunkedTxQueue";
+import { useVoterGroupQueueCleanup } from "@/app/flow-councils/hooks/useVoterGroupQueueCleanup";
+import { fetchVoterGroups } from "@/app/flow-councils/lib/fetchVoterGroups";
+import { useGrantBotVoterManager } from "@/app/flow-councils/hooks/useGrantBotVoterManager";
+import {
+  computeCastVotes,
+  shareOfVotes,
+} from "@/app/flow-councils/lib/voterUtils";
+import SuccessCheckmark from "@/app/flow-councils/components/SuccessCheckmark";
+import {
+  VOTER_MANAGER_ROLE,
+  RECIPIENT_MANAGER_ROLE,
+  DEFAULT_ADMIN_ROLE,
+  FLOW_STATE_BOT_ADDRESS,
+  CELO_CHAIN_ID,
+} from "../lib/constants";
+import type {
+  EligibilityMethod,
+  SubgraphVoter,
+  VoterGroup,
+} from "./voterTableTypes";
 
 type MembershipProps = { chainId?: number; councilId?: string };
-type MemberEntry = {
-  address: string;
-  votingPower: string;
-  addressValidationError: string;
-  votesValidationError: string;
-};
 
 const FLOW_COUNCIL_QUERY = gql`
   query FlowCouncilVotersQuery($councilId: String!, $skip: Int = 0) {
@@ -50,11 +64,19 @@ const FLOW_COUNCIL_QUERY = gql`
         id
         account
         votingPower
+        ballot {
+          votes {
+            amount
+          }
+        }
       }
     }
   }
 `;
 
+function prettyEligibility(method: EligibilityMethod): string {
+  return method === "gooddollar" ? "GoodDollar ID" : "Manual";
+}
 export default function Membership(props: MembershipProps) {
   const { chainId, councilId } = props;
 
@@ -65,16 +87,22 @@ export default function Membership(props: MembershipProps) {
     limitMaxAllocation: false,
   });
   const [maxAllocation, setMaxAllocation] = useState("");
-  const [votingPowerForAll, setVotingPowerForAll] = useState("");
-  const [membersEntry, setMembersEntry] = useState<MemberEntry[]>([
-    {
-      address: "",
-      votingPower: "",
-      addressValidationError: "",
-      votesValidationError: "",
-    },
-  ]);
-  const [membersToRemove, setMembersToRemove] = useState<MemberEntry[]>([]);
+
+  const [groups, setGroups] = useState<VoterGroup[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(true);
+
+  const [showNewGroupModal, setShowNewGroupModal] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupEligibility, setNewGroupEligibility] =
+    useState<EligibilityMethod>("manual");
+  const [newGroupDefaultVotingPower, setNewGroupDefaultVotingPower] =
+    useState("10");
+  const [createGroupError, setCreateGroupError] = useState("");
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [createGroupSuccess, setCreateGroupSuccess] = useState(false);
+  // Tracks the post-create-success close timer so it's cleared if the component
+  // unmounts before it fires (avoids setState on an unmounted component).
+  const createSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const router = useRouter();
   const publicClient = usePublicClient();
@@ -83,6 +111,17 @@ export default function Membership(props: MembershipProps) {
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
+  const q = useChunkedTxQueue(wagmiConfig, publicClient, councilId);
+
+  useEffect(
+    () => () => {
+      if (createSuccessTimer.current) {
+        clearTimeout(createSuccessTimer.current);
+      }
+    },
+    [],
+  );
+
   const {
     data: flowCouncilQueryRes,
     loading: flowCouncilQueryResLoading,
@@ -105,214 +144,163 @@ export default function Membership(props: MembershipProps) {
   const hasSplitter =
     isSplitterFactoryDeployed(network) &&
     !!councilMetadata.superappSplitterAddress;
+  const isCelo = chainId === CELO_CHAIN_ID;
 
   const flowCouncil = flowCouncilQueryRes?.flowCouncil ?? null;
-  const isValidMembersEntry = membersEntry.every(
-    (memberEntry) =>
-      memberEntry.addressValidationError === "" &&
-      memberEntry.votesValidationError === "" &&
-      memberEntry.address !== "" &&
-      memberEntry.votingPower !== "" &&
-      memberEntry.votingPower !== "0",
-  );
+
   const isManager = useMemo(() => {
-    const flowCouncilManager = flowCouncil?.flowCouncilManagers.find(
+    // Mirror the server's authorization (hasOnChainRole): voter manager,
+    // recipient manager, or default admin can manage voter groups. Checking
+    // only VOTER_MANAGER_ROLE left a council's default admin with a read-only
+    // UI even though the API would accept their writes.
+    const managerRoles = [
+      VOTER_MANAGER_ROLE,
+      RECIPIENT_MANAGER_ROLE,
+      DEFAULT_ADMIN_ROLE,
+    ];
+
+    return !!flowCouncil?.flowCouncilManagers.find(
       (m: { account: string; role: string }) =>
-        m.account === address?.toLowerCase() && m.role === VOTER_MANAGER_ROLE,
+        m.account === address?.toLowerCase() &&
+        managerRoles.includes(m.role as `0x${string}`),
     );
-
-    if (flowCouncilManager) {
-      return true;
-    }
-
-    return false;
   }, [address, flowCouncil]);
 
-  const hasChanges = useMemo(() => {
-    const compareArrays = (a: string[], b: string[]) =>
-      a.length === b.length && a.every((elem, i) => elem === b[i]);
+  // Only a council default admin can call updateManagers onchain, so the
+  // "Add Permissions" bot-role grant is gated on this (a plain voter manager can
+  // still create the group, just not grant the role here).
+  const isAdmin = useMemo(
+    () =>
+      !!flowCouncil?.flowCouncilManagers.find(
+        (m: { account: string; role: string }) =>
+          m.account === address?.toLowerCase() && m.role === DEFAULT_ADMIN_ROLE,
+      ),
+    [address, flowCouncil],
+  );
 
-    const sortedFlowCouncilVoters = flowCouncil?.voters?.toSorted(
-      (a: { account: string }, b: { account: string }) =>
-        a.account > b.account ? -1 : 1,
-    );
-    const sortedMembersEntry = membersEntry.toSorted((a, b) =>
-      a.address.toLowerCase() > b.address.toLowerCase() ? -1 : 1,
-    );
-    const hasChangesMembers =
-      sortedFlowCouncilVoters &&
-      (!compareArrays(
-        sortedFlowCouncilVoters
-          .filter(
-            (member: { votingPower: string }) => member.votingPower !== "0",
-          )
-          .map((member: { account: string }) => member.account),
-        sortedMembersEntry.map((member) => member.address.toLowerCase()),
-      ) ||
-        !compareArrays(
-          sortedFlowCouncilVoters
-            .filter(
-              (member: { votingPower: string }) => member.votingPower !== "0",
-            )
-            .map((member: { votingPower: string }) => member.votingPower),
-          sortedMembersEntry.map((member) => member.votingPower),
-        ));
+  const botHasVoterManagerRole = useMemo(() => {
+    const botLower = FLOW_STATE_BOT_ADDRESS.toLowerCase();
 
-    return (
-      (!councilConfig.limitMaxAllocation &&
-        flowCouncil?.maxVotingSpread !== 0) ||
-      (councilConfig.limitMaxAllocation &&
-        Number(maxAllocation) !== flowCouncil?.maxVotingSpread) ||
-      hasChangesMembers
+    return !!flowCouncil?.flowCouncilManagers.find(
+      (m: { account: string; role: string }) =>
+        m.account === botLower && m.role === VOTER_MANAGER_ROLE,
     );
-  }, [councilConfig, maxAllocation, flowCouncil, membersEntry]);
+  }, [flowCouncil]);
 
+  const {
+    grant,
+    isGranting,
+    error: grantError,
+  } = useGrantBotVoterManager(councilId ?? "");
+
+  // Map of lowercased account -> subgraph voter for fast lookup in metrics.
+  const votersByAccount = useMemo(() => {
+    const map = new Map<string, SubgraphVoter>();
+
+    for (const voter of (flowCouncil?.voters ?? []) as SubgraphVoter[]) {
+      map.set(voter.account.toLowerCase(), voter);
+    }
+
+    return map;
+  }, [flowCouncil]);
+
+  // Total voting power assigned across every group's members (council-wide
+  // denominator for each group's share). Uses subgraph votingPower so it
+  // reflects the onchain reality, not the DB default.
+  const totalCouncilAssigned = useMemo(() => {
+    let total = 0;
+
+    for (const group of groups) {
+      for (const member of group.members) {
+        const voter = votersByAccount.get(member.toLowerCase());
+
+        if (voter) {
+          total += Number(voter.votingPower);
+        }
+      }
+    }
+
+    return total;
+  }, [groups, votersByAccount]);
+
+  const fetchGroups = useCallback(async () => {
+    if (!chainId || !councilId) {
+      return;
+    }
+
+    setGroupsLoading(true);
+
+    const result = await fetchVoterGroups(chainId, councilId);
+
+    if (result) {
+      setGroups(result);
+    }
+
+    setGroupsLoading(false);
+  }, [chainId, councilId]);
+
+  useEffect(() => {
+    fetchGroups();
+  }, [fetchGroups]);
+
+  // The overview also mounts the chunked queue (for its cross-navigation resume
+  // banner), so wire the same DB cleanup here: resuming or discarding from this
+  // banner must finalize/roll back just like the group-detail page does.
+  const refresh = useCallback(async () => {
+    await refetch();
+    await fetchGroups();
+  }, [refetch, fetchGroups]);
+
+  const { discard, cleanupError, clearCleanupError } = useVoterGroupQueueCleanup(
+    q,
+    refresh,
+  );
+
+  // The query pages 1000 voters per request (`first: 1000` above). Fetch the
+  // next page only while the loaded count is a full multiple of that page size:
+  // a full last page means there may be more, a partial/empty page means we've
+  // reached the end and stops the recursion (also avoiding a redundant trailing
+  // request). This loads every voter for councils larger than one page.
   useEffect(() => {
     if (!flowCouncilQueryRes) {
       return;
     }
 
-    fetchMore({
-      variables: { skip: flowCouncilQueryRes.flowCouncil.voters.length },
-    });
+    const loaded = flowCouncilQueryRes.flowCouncil.voters.length;
+
+    if (loaded > 0 && loaded % 1000 === 0) {
+      fetchMore({ variables: { skip: loaded } });
+    }
   }, [flowCouncilQueryRes, fetchMore]);
 
   useEffect(() => {
-    (async () => {
-      if (!flowCouncil) {
-        return;
-      }
-
-      const membersEntry = flowCouncil.voters
-        .filter((member: { votingPower: string }) => member.votingPower !== "0")
-        .map((member: { account: string; votingPower: string }) => {
-          return {
-            address: member.account,
-            votingPower: member.votingPower,
-            addressValidationError: "",
-            votesValidationError: "",
-          };
-        });
-
-      setMembersEntry(
-        membersEntry.length > 0
-          ? membersEntry
-          : [
-              {
-                address: "",
-                votingPower: "",
-                addressValidationError: "",
-                votesValidationError: "",
-              },
-            ],
-      );
-
-      if (flowCouncil.maxVotingSpread === 0) {
-        setCouncilConfig((prev) => {
-          return { ...prev, limitMaxAllocation: false };
-        });
-      } else {
-        setCouncilConfig((prev) => {
-          return { ...prev, limitMaxAllocation: true };
-        });
-        setMaxAllocation(flowCouncil.maxVotingSpread);
-      }
-    })();
-  }, [flowCouncil]);
-
-  const removeMemberEntry = (memberEntry: MemberEntry, memberIndex: number) => {
-    setMembersEntry((prev) =>
-      prev.filter(
-        (_, prevMemberEntryIndex) => prevMemberEntryIndex !== memberIndex,
-      ),
-    );
-
-    const existingVoter = flowCouncil?.voters?.find(
-      (member: { account: string }) =>
-        member.account === memberEntry.address.toLowerCase(),
-    );
-
-    if (
-      !memberEntry.addressValidationError &&
-      !memberEntry.votesValidationError &&
-      existingVoter &&
-      existingVoter.votingPower !== "0"
-    ) {
-      setMembersToRemove(membersToRemove.concat(memberEntry));
-    }
-  };
-
-  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) {
+    if (!flowCouncil) {
       return;
     }
 
-    Papa?.parse(e.target.files[0], {
-      complete: (results: { data: string[] }) => {
-        const { data } = results;
+    if (flowCouncil.maxVotingSpread === 0) {
+      setCouncilConfig((prev) => ({ ...prev, limitMaxAllocation: false }));
+    } else {
+      setCouncilConfig((prev) => ({ ...prev, limitMaxAllocation: true }));
+      setMaxAllocation(String(flowCouncil.maxVotingSpread));
+    }
+  }, [flowCouncil]);
 
-        const newMembersEntry: MemberEntry[] = [];
+  const hasMaxSpreadChange = useMemo(() => {
+    if (!flowCouncil) {
+      return false;
+    }
 
-        for (const row of data) {
-          if (!row[0]) {
-            continue;
-          }
+    const nextSpread = councilConfig.limitMaxAllocation
+      ? Number(maxAllocation)
+      : 0;
 
-          newMembersEntry.push({
-            address: row[0],
-            votingPower:
-              isNumber(row[1]) && !row[1].includes(".")
-                ? row[1].replace(/\s/g, "")
-                : "",
-            addressValidationError: !isAddress(row[0])
-              ? "Invalid Address"
-              : newMembersEntry
-                    .map((memberEntry) => memberEntry.address.toLowerCase())
-                    .includes(row[0].toLowerCase())
-                ? "Address already added"
-                : "",
-            votesValidationError:
-              !isNumber(row[1]) || row[1].includes(".")
-                ? "Must be a number"
-                : Number(row[1]) === 0
-                  ? "Must be > 0"
-                  : Number(row[1]) > 1e6
-                    ? "Must be ≤ 1M"
-                    : "",
-          });
-        }
+    return nextSpread !== flowCouncil.maxVotingSpread;
+  }, [councilConfig, maxAllocation, flowCouncil]);
 
-        const csvMembersToRemove: MemberEntry[] = [];
-
-        const csvAddresses = data.map((row) => row[0]?.toLowerCase());
-        const existingVoters = flowCouncil?.voters?.filter(
-          (member: { votingPower: string }) => member.votingPower !== "0",
-        );
-
-        if (existingVoters) {
-          for (const existingVoter of existingVoters) {
-            if (
-              !csvAddresses.includes(
-                (existingVoter as { account: string }).account,
-              )
-            ) {
-              csvMembersToRemove.push({
-                address: (existingVoter as { account: string }).account,
-                votingPower: (existingVoter as { votingPower: string })
-                  .votingPower,
-                addressValidationError: "",
-                votesValidationError: "",
-              });
-            }
-          }
-        }
-
-        setMembersEntry(newMembersEntry);
-        setMembersToRemove(csvMembersToRemove);
-      },
-    });
-  };
-
+  // The overview Submit now only updates the council-wide Max Voting Spread.
+  // It mirrors the existing updateVoters writeContract shape with an empty
+  // voters array so no per-voter allocation changes here. (Task 6)
   const handleSubmit = async () => {
     if (!address || !publicClient || !councilId) {
       return;
@@ -322,46 +310,18 @@ export default function Membership(props: MembershipProps) {
       setTransactionError("");
       setIsTransactionLoading(true);
 
-      const validMembers = membersEntry.filter(
-        (memberEntry) =>
-          memberEntry.addressValidationError === "" &&
-          memberEntry.votesValidationError === "" &&
-          memberEntry.address !== "" &&
-          !flowCouncil?.voters.some(
-            (member: { account: string; votingPower: string }) =>
-              member.account === memberEntry.address.toLowerCase() &&
-              member.votingPower === memberEntry.votingPower,
-          ),
-      );
       const hash = await writeContract(wagmiConfig, {
         address: councilId as Address,
         abi: flowCouncilAbi,
         functionName: "updateVoters",
         args: [
-          validMembers
-            .map((member) => {
-              return {
-                account: member.address as Address,
-                votingPower: BigInt(member.votingPower),
-                votes: [],
-              };
-            })
-            .concat(
-              membersToRemove.map((member) => {
-                return {
-                  account: member.address as Address,
-                  votingPower: BigInt(0),
-                  votes: [],
-                };
-              }),
-            ),
+          [],
           councilConfig.limitMaxAllocation ? Number(maxAllocation) : 0,
         ],
       });
 
       await waitForReceipt(publicClient, hash);
 
-      setMembersToRemove([]);
       setTransactionSuccess(true);
       setIsTransactionLoading(false);
 
@@ -371,6 +331,108 @@ export default function Membership(props: MembershipProps) {
 
       setTransactionError("Transaction Error");
       setIsTransactionLoading(false);
+    }
+  };
+
+  const resetNewGroupModal = () => {
+    setNewGroupName("");
+    setNewGroupEligibility("manual");
+    setNewGroupDefaultVotingPower("10");
+    setCreateGroupError("");
+    setCreateGroupSuccess(false);
+  };
+
+  const handleCreateGroup = async () => {
+    if (!chainId || !councilId) {
+      return;
+    }
+
+    const name = newGroupName.trim();
+    const isGoodDollar = newGroupEligibility === "gooddollar";
+    // Manual groups don't expose the field; they fall back to the default of 10
+    // (the per-voter fallback used by the Add voters modal). Only the GoodDollar
+    // value is user-editable, so only that one is validated.
+    const defaultVotingPower = isGoodDollar
+      ? Number(newGroupDefaultVotingPower)
+      : 10;
+
+    if (!name) {
+      setCreateGroupError("Name is required");
+      return;
+    }
+
+    if (
+      isGoodDollar &&
+      (!isNumber(newGroupDefaultVotingPower) ||
+        newGroupDefaultVotingPower.includes(".") ||
+        defaultVotingPower < 1 ||
+        defaultVotingPower > 1e6)
+    ) {
+      setCreateGroupError("Default votes must be an integer between 1 and 1M");
+      return;
+    }
+
+    setIsCreatingGroup(true);
+    setCreateGroupError("");
+
+    try {
+      // GoodDollar groups rely on the Flow State bot holding VOTER_MANAGER_ROLE
+      // to auto-add self-claiming voters. Grant it as part of creation so a
+      // group can't exist without the permissions that make it work. Skipped
+      // when the bot already holds the role for this council.
+      if (newGroupEligibility === "gooddollar" && !botHasVoterManagerRole) {
+        if (connectedChain?.id !== chainId) {
+          switchChain({ chainId });
+          setCreateGroupError(
+            "Switch your wallet to the council's network, then click Create again.",
+          );
+          return;
+        }
+
+        const granted = await grant();
+
+        if (!granted) {
+          return;
+        }
+
+        // Await so botHasVoterManagerRole reflects the just-granted role before
+        // the POST/modal close (matches GroupDetail's handleAddPermissions).
+        await refetch();
+      }
+
+      const res = await fetch("/api/flow-council/voter-groups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chainId,
+          councilId,
+          name,
+          eligibilityMethod: newGroupEligibility,
+          defaultVotingPower,
+        }),
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        setCreateGroupError(data.error ?? "Failed to create group");
+        return;
+      }
+
+      // Platform-standard confirmation: the button turns green with a checkmark,
+      // then the modal closes. The form/success state is reset in the modal's
+      // onExited handler so the button never flashes back to "Create" while the
+      // modal is still animating closed.
+      setCreateGroupSuccess(true);
+
+      createSuccessTimer.current = setTimeout(() => {
+        setShowNewGroupModal(false);
+        fetchGroups();
+      }, 1500);
+    } catch (err) {
+      console.error(err);
+      setCreateGroupError("Failed to create group");
+    } finally {
+      setIsCreatingGroup(false);
     }
   };
 
@@ -388,6 +450,17 @@ export default function Membership(props: MembershipProps) {
     );
   }
 
+  const showResumeBanner =
+    q.totalCount > 0 &&
+    q.completedCount < q.totalCount &&
+    q.councilId === councilId;
+
+  // Granting the bot role is a DEFAULT_ADMIN-only onchain call, so a non-admin
+  // manager can't complete a GoodDollar create that still needs the grant.
+  const goodDollarNeedsGrant =
+    newGroupEligibility === "gooddollar" && !botHasVoterManagerRole;
+  const goodDollarBlockedForNonAdmin = goodDollarNeedsGrant && !isAdmin;
+
   return (
     <>
       <Sidebar />
@@ -395,6 +468,46 @@ export default function Membership(props: MembershipProps) {
         direction="vertical"
         className={!isMobile ? "w-75 px-5" : "w-100 px-4"}
       >
+        {showResumeBanner ? (
+          <Alert
+            variant="warning"
+            className="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 mb-0"
+          >
+            <span className="fw-semi-bold">
+              You have an in-progress operation for this council (
+              {q.completedCount} of {q.totalCount} transactions submitted).
+            </span>
+            <Stack direction="horizontal" gap={2}>
+              <Button
+                size="sm"
+                className="fw-semi-bold"
+                onClick={() => q.resume()}
+                disabled={q.isPending}
+              >
+                {q.isPending ? <Spinner size="sm" /> : "Resume"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline-secondary"
+                className="fw-semi-bold"
+                onClick={() => discard()}
+                disabled={q.isPending}
+              >
+                Discard
+              </Button>
+            </Stack>
+          </Alert>
+        ) : null}
+        {cleanupError ? (
+          <Alert
+            variant="danger"
+            dismissible
+            onClose={() => clearCleanupError()}
+            className="fw-semi-bold mt-3 mb-0"
+          >
+            {cleanupError}
+          </Alert>
+        ) : null}
         <Card className="bg-lace-100 rounded-4 border-0 p-4">
           <Card.Header className="bg-transparent border-0 rounded-4 p-0">
             <Card.Title className="fs-5 fw-semi-bold">
@@ -486,309 +599,98 @@ export default function Membership(props: MembershipProps) {
                 </Dropdown.Menu>
               </Dropdown>
             </Stack>
+
             <Stack
               direction="horizontal"
-              className="justify-content-end my-3"
-              gap={isMobile ? 2 : 4}
+              className="justify-content-between align-items-center mt-5 mb-3"
             >
-              <span className="w-75" />
-              <Form.Control
-                type="text"
-                disabled={!isManager}
-                inputMode="numeric"
-                placeholder="Votes"
-                value={votingPowerForAll}
-                className="text-center rounded-4 py-4 fw-semi-bold flex-grow-0 flex-shrink-0 border-0"
-                style={{
-                  width: isMobile ? 100 : 128,
-                  paddingTop: 12,
-                  paddingBottom: 12,
-                }}
-                onChange={(e) => {
-                  if (
-                    e.target.value === "" ||
-                    (isNumber(e.target.value) &&
-                      e.target.value !== "0." &&
-                      Number(e.target.value) <= 1e6)
-                  ) {
-                    setVotingPowerForAll(e.target.value);
-                  }
-                }}
-              />
+              <Card.Title className="fs-6 fw-semi-bold mb-0">
+                Voter Groups
+              </Card.Title>
               <Button
-                variant="transparent"
                 disabled={!isManager}
-                className="text-primary text-decoration-underline p-0 flex-grow-0 flex-shrink-0 border-0 fw-semi-bold"
-                style={{ width: 80, fontSize: "0.9rem" }}
-                onClick={() =>
-                  setMembersEntry((prev) => {
-                    return prev.map((memberEntry) => {
-                      return { ...memberEntry, votingPower: votingPowerForAll };
-                    });
-                  })
-                }
+                className="fw-semi-bold rounded-4 px-4 py-2"
+                onClick={() => {
+                  resetNewGroupModal();
+                  setShowNewGroupModal(true);
+                }}
               >
-                Apply All
+                New group
               </Button>
             </Stack>
-            {membersEntry.map((memberEntry, i) => (
+
+            {groupsLoading ? (
               <Stack
                 direction="horizontal"
-                gap={isMobile ? 2 : 4}
-                className="justify-content-end my-3"
-                key={i}
+                className="justify-content-center py-5"
               >
-                <Stack direction="vertical" className="position-relative w-75">
-                  <Form.Control
-                    type="text"
-                    placeholder="Member Address"
-                    value={memberEntry.address}
-                    disabled={
-                      !isManager ||
-                      membersToRemove
-                        .map((member: { address: string }) =>
-                          member.address.toLowerCase(),
-                        )
-                        .includes(memberEntry.address.toLowerCase())
-                    }
-                    className="border-0 rounded-4 bg-white py-4 fw-semi-bold"
-                    style={{
-                      paddingTop: 12,
-                      paddingBottom: 12,
-                    }}
-                    onChange={(e) => {
-                      const prevMembersEntry = [...membersEntry];
-                      const value = e.target.value;
-
-                      if (!isAddress(value)) {
-                        prevMembersEntry[i].addressValidationError =
-                          "Invalid Address";
-                      } else if (
-                        prevMembersEntry
-                          .map((prevMember) => prevMember.address.toLowerCase())
-                          .includes(value.toLowerCase())
-                      ) {
-                        prevMembersEntry[i].addressValidationError =
-                          "Address already added";
-                      } else {
-                        prevMembersEntry[i].addressValidationError = "";
-                      }
-
-                      prevMembersEntry[i].address = value;
-
-                      setMembersEntry(prevMembersEntry);
-                    }}
-                  />
-                  {memberEntry.addressValidationError ? (
-                    <Card.Text
-                      className="position-absolute mt-1 mb-0 ms-2 ps-1 text-danger fw-semi-bold"
-                      style={{ bottom: 1, fontSize: "0.7rem" }}
-                    >
-                      {memberEntry.addressValidationError}
-                    </Card.Text>
-                  ) : null}
-                </Stack>
-                <Stack
-                  direction="vertical"
-                  className="position-relative flex-grow-0 flex-shrink-0"
-                  style={{
-                    width: isMobile ? 100 : 128,
-                  }}
-                >
-                  <Form.Control
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="Votes"
-                    value={memberEntry.votingPower}
-                    disabled={
-                      !isManager ||
-                      membersToRemove
-                        .map((member: { address: string }) =>
-                          member.address.toLowerCase(),
-                        )
-                        .includes(memberEntry.address.toLowerCase())
-                    }
-                    className="flex-grow-0 text-center border-0 rounded-4 bg-white py-4 fw-semi-bold"
-                    style={{
-                      paddingTop: 12,
-                      paddingBottom: 12,
-                    }}
-                    onChange={(e) => {
-                      const prevMembersEntry = [...membersEntry];
-                      const value = e.target.value;
-
-                      if (!!value && !isNumber(value)) {
-                        prevMembersEntry[i].votesValidationError =
-                          "Must be a number";
-                      } else if (Number(value) === 0) {
-                        prevMembersEntry[i].votesValidationError =
-                          "Must be > 0";
-                      } else if (Number(value) > 1e6) {
-                        prevMembersEntry[i].votesValidationError =
-                          "Must be ≤ 1M";
-                      } else if (value.includes(".")) {
-                        prevMembersEntry[i].votesValidationError =
-                          "Must be an integer";
-                      } else {
-                        prevMembersEntry[i].votesValidationError = "";
-                      }
-
-                      prevMembersEntry[i].votingPower = value;
-
-                      setMembersEntry(prevMembersEntry);
-                    }}
-                  />
-                  {memberEntry.votesValidationError ? (
-                    <Card.Text
-                      className="position-absolute w-100 mt-1 mb-0 text-center text-danger fw-semi-bold"
-                      style={{ bottom: 1, fontSize: "0.7rem" }}
-                    >
-                      {memberEntry.votesValidationError}
-                    </Card.Text>
-                  ) : null}
-                </Stack>
-                <Button
-                  variant="transparent"
-                  disabled={!isManager}
-                  className="p-0 flex-grow-0 flex-shrink-0 border-0"
-                  style={{
-                    width: 80,
-                    pointerEvents: isTransactionLoading ? "none" : "auto",
-                  }}
-                  onClick={() => {
-                    removeMemberEntry(memberEntry, i);
-                  }}
-                >
-                  <Image
-                    src="/delete.svg"
-                    alt="Remove"
-                    width={36}
-                    height={36}
-                  />
-                </Button>
+                <Spinner />
               </Stack>
-            ))}
-            {membersToRemove.map((memberEntry, i) => (
-              <Stack
-                direction="horizontal"
-                gap={isMobile ? 2 : 4}
-                className="justify-content-end mb-3"
-                key={i}
-              >
-                <Stack direction="vertical" className="w-75">
-                  <Form.Control
-                    disabled
-                    type="text"
-                    value={memberEntry.address}
-                    className="border-0 rounded-4 bg-white py-4 fw-semi-bold"
-                    style={{ paddingTop: 12, paddingBottom: 12 }}
-                  />
-                </Stack>
-                <Form.Control
-                  type="text"
-                  disabled
-                  value="Removed"
-                  className="text-center flex-grow-0 rounded-4 py-4 fw-semi-bold bg-light border-0 flex-shrink-0"
-                  style={{
-                    width: isMobile ? 100 : 128,
-                    paddingTop: 12,
-                    paddingBottom: 12,
-                  }}
-                />
-                <Button
-                  variant="transparent"
-                  disabled={!isManager}
-                  className="p-0 flex-grow-0 flex-shrink-0 border-0"
-                  style={{ width: 80 }}
-                  onClick={() => {
-                    setMembersToRemove((prev) =>
-                      prev.filter(
-                        (_, prevMemberEntryIndex) => prevMemberEntryIndex !== i,
-                      ),
+            ) : groups.length === 0 ? (
+              <Card.Text className="text-info py-4 text-center mb-0">
+                No voter groups yet.
+              </Card.Text>
+            ) : (
+              <Table responsive hover className="bg-white rounded-4 mb-0">
+                <thead>
+                  <tr>
+                    <th className="fw-semi-bold">Group</th>
+                    <th className="fw-semi-bold">Eligibility</th>
+                    <th className="fw-semi-bold text-end">Voters</th>
+                    <th className="fw-semi-bold text-end">
+                      Valid votes assigned
+                    </th>
+                    <th className="fw-semi-bold text-end">Votes used</th>
+                    <th className="fw-semi-bold text-end">Share of votes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groups.map((group) => {
+                    const memberVoters = group.members
+                      .map((member) =>
+                        votersByAccount.get(member.toLowerCase()),
+                      )
+                      .filter((voter): voter is SubgraphVoter => !!voter);
+
+                    const assigned = memberVoters.reduce(
+                      (sum, voter) => sum + Number(voter.votingPower),
+                      0,
                     );
-                    setMembersEntry(membersEntry.concat(memberEntry));
-                  }}
-                >
-                  <Image
-                    src="/add-circle.svg"
-                    alt="Add"
-                    width={36}
-                    height={36}
-                  />
-                </Button>
-              </Stack>
-            ))}
-            <Stack direction="horizontal" gap={isMobile ? 2 : 4}>
-              <Button
-                variant="transparent"
-                disabled={!isManager}
-                className="d-flex align-items-center w-100 p-0 fw-semi-bold text-primary text-decoration-underline border-0"
-                onClick={() =>
-                  setMembersEntry((prev) =>
-                    prev.concat({
-                      address: "",
-                      votingPower: "",
-                      addressValidationError: "",
-                      votesValidationError: "",
-                    }),
-                  )
-                }
-              >
-                <Card.Text className="mb-0">
-                  {isMobile ? "Add member" : "Add another member"}
-                </Card.Text>
-              </Button>
-            </Stack>
-            <Stack
-              direction="horizontal"
-              gap={2}
-              className="justify-content-end mt-3"
-            >
-              <Card.Link
-                href={URL.createObjectURL(
-                  new Blob([
-                    Papa.unparse(
-                      membersEntry.map((memberEntry) => {
-                        return [memberEntry.address, memberEntry.votingPower];
-                      }),
-                    ),
-                  ]),
-                )}
-                target="_blank"
-                download="Flow_Council.csv"
-                className="m-0 bg-secondary px-10 py-4 rounded-4 text-light fw-semi-bold text-decoration-none"
-              >
-                Export Current
-              </Card.Link>
-              <>
-                <Form.Label
-                  htmlFor="upload-council-csv"
-                  className={`text-white fw-semi-bold text-center m-0 px-10 py-4 rounded-4 ${isManager ? "bg-primary cursor-pointer" : "bg-info opacity-75"}`}
-                >
-                  Upload CSV
-                </Form.Label>
-                <Form.Control
-                  type="file"
-                  id="upload-council-csv"
-                  accept=".csv"
-                  hidden
-                  disabled={!isManager}
-                  onChange={handleCsvUpload}
-                />
-              </>
-            </Stack>
-            <Card.Link
-              href="https://docs.google.com/spreadsheets/d/1BKo20lc4ZdRWKjvxQuTcOldQo_qL7Y5tXOvhFMJlwug/edit?gid=0#gid=0"
-              target="_blank"
-              className="float-end mt-2 pe-1 text-primary fw-semi-bold"
-            >
-              Template
-            </Card.Link>
+                    const used = memberVoters.reduce(
+                      (sum, voter) => sum + computeCastVotes(voter),
+                      0,
+                    );
+                    const usedPct = assigned > 0 ? (used / assigned) * 100 : 0;
+                    const share = shareOfVotes(assigned, totalCouncilAssigned);
+
+                    return (
+                      <tr key={group.id}>
+                        <td>
+                          <Link
+                            href={`/flow-councils/membership/${chainId}/${councilId}/${group.id}`}
+                            className="text-primary text-decoration-none fw-semi-bold"
+                          >
+                            {group.name}
+                          </Link>
+                        </td>
+                        <td>{prettyEligibility(group.eligibilityMethod)}</td>
+                        <td className="text-end">{group.memberCount}</td>
+                        <td className="text-end">{assigned}</td>
+                        <td className="text-end">
+                          {used} ({usedPct.toFixed(0)}%)
+                        </td>
+                        <td className="text-end">{share.toFixed(1)}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            )}
           </Card.Body>
         </Card>
         <Stack direction="vertical" gap={3} className="mt-6 mb-30">
           <Button
-            disabled={!isManager || !hasChanges || !isValidMembersEntry}
+            disabled={!isManager || !hasMaxSpreadChange}
             className="fs-lg fw-semi-bold py-4 rounded-4"
             onClick={() => {
               !address && openConnectModal
@@ -838,6 +740,129 @@ export default function Membership(props: MembershipProps) {
           ) : null}
         </Stack>
       </Stack>
+
+      <Modal
+        show={showNewGroupModal}
+        centered
+        onHide={() => setShowNewGroupModal(false)}
+        onExited={resetNewGroupModal}
+      >
+        <Modal.Header closeButton className="border-0 p-4">
+          <Modal.Title className="fs-5 fw-semi-bold">New group</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4 pt-0">
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-semi-bold">Name</Form.Label>
+            <Form.Control
+              type="text"
+              placeholder="Group name"
+              value={newGroupName}
+              maxLength={100}
+              disabled={isCreatingGroup}
+              onChange={(e) => setNewGroupName(e.target.value)}
+            />
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-semi-bold">Eligibility method</Form.Label>
+            <Form.Select
+              value={newGroupEligibility}
+              disabled={isCreatingGroup}
+              onChange={(e) =>
+                setNewGroupEligibility(e.target.value as EligibilityMethod)
+              }
+            >
+              <option value="manual">Manual</option>
+              <option value="gooddollar" disabled={!isCelo}>
+                GoodDollar ID{!isCelo ? " (Celo only)" : ""}
+              </option>
+            </Form.Select>
+          </Form.Group>
+          {newGroupEligibility === "gooddollar" ? (
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-semi-bold">
+                Default vote allocation
+              </Form.Label>
+              <Form.Control
+                type="text"
+                inputMode="numeric"
+                placeholder="10"
+                value={newGroupDefaultVotingPower}
+                disabled={isCreatingGroup}
+                onChange={(e) => {
+                  const value = e.target.value;
+
+                  // Digits only (matches the group-detail editor) so negatives
+                  // and exponents can't be typed; the server still validates.
+                  if (
+                    value === "" ||
+                    (/^\d+$/.test(value) && Number(value) <= 1e6)
+                  ) {
+                    setNewGroupDefaultVotingPower(value);
+                  }
+                }}
+              />
+              <Form.Text className="text-info">
+                Votes a voter receives when first added through this group.
+              </Form.Text>
+            </Form.Group>
+          ) : null}
+          {newGroupEligibility === "gooddollar" ? (
+            <Alert variant="info" className="mb-3">
+              Automated eligibility is managed by a Flow State-sponsored bot.{" "}
+              {goodDollarNeedsGrant
+                ? "Creating this group will trigger a transaction to grant the necessary voter management permissions."
+                : "It already holds the voter management permissions it needs for this council."}
+            </Alert>
+          ) : null}
+          {goodDollarBlockedForNonAdmin ? (
+            <Alert variant="warning" className="mb-3">
+              Only a council admin can grant these permissions. Ask a council
+              admin to create this group.
+            </Alert>
+          ) : null}
+          {newGroupEligibility === "gooddollar" && grantError ? (
+            <Alert variant="danger" className="mb-3">
+              {grantError}
+            </Alert>
+          ) : null}
+          {createGroupError ? (
+            <Alert variant="danger" className="mt-3 mb-0">
+              {createGroupError}
+            </Alert>
+          ) : null}
+        </Modal.Body>
+        <Modal.Footer className="border-0 p-4 pt-0">
+          <Button
+            variant="secondary"
+            className="rounded-4 px-4 py-2 fw-semi-bold"
+            onClick={() => setShowNewGroupModal(false)}
+            disabled={isCreatingGroup || createGroupSuccess}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant={createGroupSuccess ? "success" : "primary"}
+            className="rounded-4 px-4 py-2 fw-semi-bold"
+            style={{ pointerEvents: createGroupSuccess ? "none" : "auto" }}
+            onClick={handleCreateGroup}
+            disabled={
+              !isManager ||
+              isCreatingGroup ||
+              isGranting ||
+              createGroupSuccess ||
+              goodDollarBlockedForNonAdmin
+            }
+          >
+            {createGroupSuccess ? (
+              <SuccessCheckmark />
+            ) : isCreatingGroup || isGranting ? (
+              <Spinner size="sm" />
+            ) : (
+              "Create"
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 }

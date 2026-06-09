@@ -149,6 +149,22 @@ export type UserProfile = {
   createdAt: Generated<Timestamp>;
   updatedAt: Generated<Timestamp>;
 };
+export type VoterGroup = {
+  id: Generated<number>;
+  roundId: number;
+  name: string;
+  eligibilityMethod: string;
+  defaultVotingPower: Generated<number>;
+  createdAt: Generated<Timestamp>;
+  updatedAt: Generated<Timestamp>;
+};
+export type VoterGroupMember = {
+  id: Generated<number>;
+  voterGroupId: number;
+  roundId: number;
+  address: string;
+  createdAt: Generated<Timestamp>;
+};
 export type DB = {
   applications: Application;
   inboxItems: InboxItem;
@@ -163,4 +179,6 @@ export type DB = {
   roundAdmins: RoundAdmin;
   rounds: Round;
   userProfiles: UserProfile;
+  voterGroupMembers: VoterGroupMember;
+  voterGroups: VoterGroup;
 };

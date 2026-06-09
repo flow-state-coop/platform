@@ -6,10 +6,17 @@ export type InfoTooltipProps = {
   target: React.JSX.Element;
   position?: { top?: boolean; bottom?: boolean; right?: boolean };
   tooltipStyle?: React.CSSProperties;
+  wrapperClassName?: string;
 };
 
 function InfoTooltip(props: InfoTooltipProps) {
-  const { content, target, position, tooltipStyle } = props;
+  const {
+    content,
+    target,
+    position,
+    tooltipStyle,
+    wrapperClassName = "align-self-start",
+  } = props;
 
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -49,7 +56,7 @@ function InfoTooltip(props: InfoTooltipProps) {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onTouchEnd={handleTouchEnd}
-        className="align-self-start"
+        className={wrapperClassName}
       >
         {target}
       </span>
