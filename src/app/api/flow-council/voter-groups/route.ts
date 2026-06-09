@@ -32,6 +32,10 @@ const SUBGRAPH_VOTERS_QUERY = gql`
 
 const PAGE_SIZE = 1000;
 
+// Hard cap on subgraph pages so a buggy endpoint that always returns a full
+// page can't spin forever. 100 pages = 100k voters, far beyond any real council.
+const MAX_PAGES = 100;
+
 // Cap on rows per INSERT for the lazy seed migration. A council with thousands
 // of onchain voters would otherwise produce one enormous statement.
 const SEED_INSERT_BATCH = 500;
@@ -62,8 +66,9 @@ async function fetchAllActiveVoters(
   const client = getApolloClient("flowCouncil", chainId);
   const active: string[] = [];
   let skip = 0;
+  let page = 0;
 
-  for (;;) {
+  for (; page < MAX_PAGES; page++) {
     const { data } = await client.query({
       query: SUBGRAPH_VOTERS_QUERY,
       variables: { councilId: councilId.toLowerCase(), skip },
@@ -80,6 +85,13 @@ async function fetchAllActiveVoters(
 
     if (voters.length < PAGE_SIZE) break;
     skip += PAGE_SIZE;
+  }
+
+  if (page === MAX_PAGES) {
+    console.warn(
+      `fetchAllActiveVoters: hit MAX_PAGES (${MAX_PAGES}) for council ` +
+        `${councilId}; voter list may be truncated`,
+    );
   }
 
   return active;
@@ -109,42 +121,50 @@ async function ensureDefaultGroup(
     return;
   }
 
-  await db
-    .insertInto("voterGroups")
-    .values({
-      roundId,
-      name: "Default",
-      eligibilityMethod: "manual",
-    })
-    .onConflict((oc) => oc.columns(["roundId", "name"]).doNothing())
-    .execute();
-
-  if (voters.length === 0) return;
-
-  const defaultGroup = await db
-    .selectFrom("voterGroups")
-    .select("id")
-    .where("roundId", "=", roundId)
-    .where("name", "=", "Default")
-    .executeTakeFirst();
-
-  if (!defaultGroup) return;
-
-  // Chunked so a council with thousands of voters doesn't seed in one giant
-  // INSERT. onConflict + doNothing keeps each batch idempotent.
-  for (let i = 0; i < voters.length; i += SEED_INSERT_BATCH) {
-    await db
-      .insertInto("voterGroupMembers")
-      .values(
-        voters.slice(i, i + SEED_INSERT_BATCH).map((address) => ({
-          voterGroupId: defaultGroup.id,
-          roundId,
-          address,
-        })),
-      )
-      .onConflict((oc) => oc.columns(["roundId", "address"]).doNothing())
+  // Create the group and seed its members in one transaction. If a member batch
+  // fails mid-seed, the group insert rolls back with it — otherwise a half-seeded
+  // Default group would survive (groups.length > 0), making every later access
+  // skip the migration and leaving the group permanently under-seeded. The
+  // subgraph fetch is kept outside the transaction so it never holds a DB
+  // connection open across a slow external call.
+  await db.transaction().execute(async (trx) => {
+    await trx
+      .insertInto("voterGroups")
+      .values({
+        roundId,
+        name: "Default",
+        eligibilityMethod: "manual",
+      })
+      .onConflict((oc) => oc.columns(["roundId", "name"]).doNothing())
       .execute();
-  }
+
+    if (voters.length === 0) return;
+
+    const defaultGroup = await trx
+      .selectFrom("voterGroups")
+      .select("id")
+      .where("roundId", "=", roundId)
+      .where("name", "=", "Default")
+      .executeTakeFirst();
+
+    if (!defaultGroup) return;
+
+    // Chunked so a council with thousands of voters doesn't seed in one giant
+    // INSERT. onConflict + doNothing keeps each batch idempotent.
+    for (let i = 0; i < voters.length; i += SEED_INSERT_BATCH) {
+      await trx
+        .insertInto("voterGroupMembers")
+        .values(
+          voters.slice(i, i + SEED_INSERT_BATCH).map((address) => ({
+            voterGroupId: defaultGroup.id,
+            roundId,
+            address,
+          })),
+        )
+        .onConflict((oc) => oc.columns(["roundId", "address"]).doNothing())
+        .execute();
+    }
+  });
 }
 
 async function loadGroupsWithMembers(roundId: number) {
