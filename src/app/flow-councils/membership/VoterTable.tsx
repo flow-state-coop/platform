@@ -681,15 +681,18 @@ export default function VoterTable(props: VoterTableProps) {
       }));
 
       // Persist everything the deferred DB cleanup needs alongside the queue so
-      // it survives a remount: removals are dropped only after full completion,
-      // inserted adds are rolled back on discard. `addedOrder` matches the
-      // onchain-entry order (adds first) so a partial failure's committed prefix
-      // is derivable from the queue's completedCount.
+      // it survives a remount: removed voters' DB rows are dropped once their
+      // removal lands onchain, inserted adds are rolled back on discard. The
+      // entry order (adds, then edits, then removals) lets the cleanup derive a
+      // partial failure's committed prefix from the queue's completedCount —
+      // `addedOrder` for the leading adds, `removalOffset` for the trailing
+      // removals.
       q.startQueue(councilId, chunks, {
         chainId,
         councilId,
         groupId,
         removalAddresses: removedAccounts,
+        removalOffset: entries.length - removedAccounts.length,
         addedOrder: validNewRows.map((row) => row.address.toLowerCase()),
         insertedAddresses,
       });

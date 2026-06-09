@@ -30,8 +30,14 @@ export type VoterGroupQueueMeta = {
   chainId: number;
   councilId: string;
   groupId: number;
-  // Removed voters whose DB classification is dropped only after full completion.
+  // Removed voters whose DB classification is dropped after the removal lands
+  // onchain — on full completion (finalize) or, for the committed prefix, on
+  // discard (the leading `completedCount*CHUNK_SIZE - removalOffset` of them).
   removalAddresses: string[];
+  // Count of non-removal entries (adds + edits) ahead of the removal block in
+  // the onchain queue. Removals occupy the back, so this is where their slice of
+  // the committed prefix begins.
+  removalOffset: number;
   // Added voters in onchain-entry order (adds occupy the front of the queue), so
   // a partial failure's committed prefix can be derived from completedCount.
   addedOrder: string[];

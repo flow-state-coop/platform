@@ -104,31 +104,53 @@ export function useVoterGroupQueueCleanup(
     };
   }, [queueDone, q.meta, refresh]);
 
-  // Roll back only inserted rows past the committed prefix (the first
-  // completedCount*CHUNK_SIZE adds that landed onchain keep their membership).
+  // Reconcile the DB with what actually landed onchain in the committed prefix
+  // (the first completedCount*CHUNK_SIZE entries), then clear the queue:
+  //  - inserted adds PAST the prefix never landed, so their DB rows are rolled
+  //    back (the adds within the prefix keep their membership);
+  //  - removals WITHIN the prefix were already zeroed onchain, so their DB rows
+  //    are dropped here (discard can't un-zero them) — otherwise they linger as
+  //    counted-but-zero-power members. Removals past the prefix keep their full
+  //    onchain power and DB membership untouched.
   const discard = useCallback(async () => {
     const cur = qRef.current;
     const meta = cur.meta as VoterGroupQueueMeta | undefined;
 
-    if (meta && meta.insertedAddresses.length > 0) {
-      const committedAddCount = Math.min(
-        cur.completedCount * CHUNK_SIZE,
-        meta.addedOrder.length,
-      );
-      const committed = new Set(meta.addedOrder.slice(0, committedAddCount));
-      const rollback = meta.insertedAddresses.filter(
-        (addr) => !committed.has(addr),
-      );
+    if (meta) {
+      const committedEntries = cur.completedCount * CHUNK_SIZE;
+      const toDelete: string[] = [];
 
-      if (rollback.length > 0) {
+      if (meta.insertedAddresses.length > 0) {
+        const committedAddCount = Math.min(
+          committedEntries,
+          meta.addedOrder.length,
+        );
+        const committed = new Set(meta.addedOrder.slice(0, committedAddCount));
+        toDelete.push(
+          ...meta.insertedAddresses.filter((addr) => !committed.has(addr)),
+        );
+      }
+
+      if (meta.removalAddresses.length > 0) {
+        const committedRemovalCount = Math.max(
+          0,
+          Math.min(
+            committedEntries - meta.removalOffset,
+            meta.removalAddresses.length,
+          ),
+        );
+        toDelete.push(...meta.removalAddresses.slice(0, committedRemovalCount));
+      }
+
+      if (toDelete.length > 0) {
         // Await before clear(): clearing wipes the meta a retry would need.
-        const failed = await deleteGroupMembers(meta, rollback);
+        const failed = await deleteGroupMembers(meta, toDelete);
 
         if (failed.length > 0) {
           setCleanupError(
-            "The transaction was discarded, but some newly added voters " +
-              "could not be cleared from this group. Refresh and remove " +
-              "them to retry.",
+            "The transaction was discarded, but some voters could not be " +
+              "cleared from this group's records. Refresh and remove them " +
+              "again to retry.",
           );
         }
       }
