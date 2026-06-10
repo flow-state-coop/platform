@@ -39,7 +39,7 @@ jobs:
 
       - name: Mirror docs/ into the docs site
         run: |
-          rsync -a --delete \
+          rsync -a --checksum --delete \
             --exclude='.git/' \
             platform/docs/ docs-site/docs/
 

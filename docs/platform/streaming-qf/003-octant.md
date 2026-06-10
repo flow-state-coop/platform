@@ -58,7 +58,7 @@ Others interested in participating can get their voter badge by [earning a role 
 
 ## Opening Donation Streams
 
-Check out our full donor guide docs [here](https://www.notion.so/Donors-Voters-f58ffb144269455da3f343db8cd21058?pvs=21) or watch the transaction walkthroughs below to learn how to support your favorite grantees in Octant Accelerator SQF:
+Check out our full [donor guide](001-donors.md) or watch the transaction walkthroughs below to learn how to support your favorite grantees in Octant Accelerator SQF:
 
 !(https://www.youtube.com/embed/xZ8ojwyWC8I)
 
@@ -70,7 +70,7 @@ Base is an Ethereum L2 network. To participate as a donor in the Octant Accelera
 
 There’s a plethora of options these days, but here are a few links for your convenience (info purposes only, no affiliation):
 
-- Bridge - [Across](https://www.notion.so/How-to-Donate-to-Flow-State-during-the-Q2-Zuzalu-Round-469a4dd54e8142a7a9a5aa9c20685e46?pvs=21) or other [Superchain Bridges](https://bridge.base.org/deposit) can quickly move your ETH from Ethereum Mainnet or another L2 to Base.
+- Bridge - [Across](https://app.across.to) or other [Superchain Bridges](https://bridge.base.org/deposit) can quickly move your ETH from Ethereum Mainnet or another L2 to Base.
 - Centralized Exchange - [Coinbase](https://help.coinbase.com/en/coinbase/trading-and-funding/cryptocurrency-trading-pairs/how-to-send-and-receive-cryptocurrency#send) & most major exchanges have the ability to send directly to your address on Base.
 - Decentralized Exchange - If you just need a little bit more ETH and have other funds, swap them with [DeFi Llama](https://swap.defillama.com/?chain=base&from=0x0000000000000000000000000000000000000000&tab=swap&to=) or your favorite DEX.
 - Fiat Onramp - [Ramp](https://ramp.network/buy?defaultAsset=BASE_ETH) or your wallet may have one built in. Fees apply.

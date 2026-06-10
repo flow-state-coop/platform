@@ -96,7 +96,7 @@ Let's make this concrete with an example:
 
 | **Member** | **Units** | **Dividend Received** |
 | --- | --- | --- |
-| **Member A** | 7 | 75 units × $100 = **$7,500** |
+| **Member A** | 75 | 75 units × $100 = **$7,500** |
 | **Member B** | 25 | 25 units × $100 = **$2,500** |
 | **Non-Member C** | 0 | **$0** (not a member, no redeemed Cred) |
 
