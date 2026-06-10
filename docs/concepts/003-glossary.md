@@ -37,9 +37,9 @@ Key terms used across Flow State and the underlying Superfluid protocol. Protoco
 
 ## Streaming Quadratic Funding
 
-**Round** — A funding cycle. With Streaming Quadratic Funding, a round can be open-ended or run far longer than a traditional periodic round, since matching is distributed continuously rather than only after the round closes. See [Streaming Quadratic Funding](../platform/streaming-qf/index.md).
+**Round** — A funding cycle. With Streaming Quadratic Funding, a round can be open-ended or run far longer than a traditional periodic round, since matching is distributed continuously rather than only after the round closes. See [Streaming Quadratic Funding](../platform/streaming-qf.md).
 
-**Streaming Quadratic Funding (SQF)** — Quadratic funding with a streaming architecture. Donations are structured as open-ended money flows rather than one-off transfers, and a quadratic matching formula continuously allocates pool funds based on these streamed "votes." Donors can change their streams anytime, and the matching streams update in real time. See [Streaming Quadratic Funding](../platform/streaming-qf/index.md).
+**Streaming Quadratic Funding (SQF)** — Quadratic funding with a streaming architecture. Donations are structured as open-ended money flows rather than one-off transfers, and a quadratic matching formula continuously allocates pool funds based on these streamed "votes." Donors can change their streams anytime, and the matching streams update in real time. See [Streaming Quadratic Funding](../platform/streaming-qf.md).
 
 ## Discovery
 

@@ -7,7 +7,7 @@ description: Track and report milestone progress for your project
 
 **Milestones** are the deliverables you commit to when you apply to a round. They live on the **Milestones** tab of your project, grouped by the round each set of milestones belongs to.
 
-The round operator decides what milestones look like. When they build the application form in the no-code form builder, they add **milestone questions** that define each milestone's label, the kind of items it tracks, and how many you must provide. Your answers at application time become the milestones shown on this tab. See [Applications & Review](../flow-councils/006-applications.md) for how the form is built and reviewed.
+The round operator decides what milestones look like. When they build the application form in the no-code form builder, they add **milestone questions** that define each milestone's label, the kind of items it tracks, and how many you must provide. Your answers at application time become the milestones shown on this tab. See [Applications & Review](../flow-councils/operators/003-applications.md) for how the form is built and reviewed.
 
 ## Reporting progress
 

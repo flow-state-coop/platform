@@ -1,9 +1,13 @@
 ---
-description: Introduction to Streaming Quadratic Funding and its benefits.
+description: Introduction to Streaming Quadratic Funding as a concept.
 sidebar_position: 3
 ---
 
 # Streaming Quadratic Funding
+
+:::info[Concept only]
+There is no Streaming QF round live on Flow State today—this page introduces the mechanism as a concept. For live, participatory streaming allocation, see [Flow Councils](flow-councils/index.md). Interested in running an SQF round? [Reach out on Telegram](https://t.me/flowstatecoop).
+:::
 
 Streaming quadratic funding (SQF) is a novel implementation of [quadratic funding (QF)](https://www.wtfisqf.com/?grant=&grant=&grant=&grant=&match=1000), the public goods funding mechanism [introduced by Vitalik Buterin, Zoe Hitzig, & Glen Weyl](https://arxiv.org/pdf/1809.06421) and popularized in web3 by [Gitcoin](https://www.gitcoin.co/).
 

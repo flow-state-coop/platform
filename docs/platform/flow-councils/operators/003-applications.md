@@ -1,12 +1,12 @@
 ---
 slug: /flow-councils/applications
-description: Building application forms, applying for funding, and reviewing applicants
+description: Building application forms and reviewing applicants
 ---
 
 # Applications & Review
-Every Flow Council has its own application form. Round operators design it with a no-code builder, applicants fill it out, and reviewers decide who joins the [funding pool](004-recipients.md). This page walks through all three.
+Every Flow Council has its own application form. Round operators design it with a no-code builder, applicants fill it out (see [Applying](../participants/001-applying.md)), and reviewers decide who joins the [funding pool](../participants/003-receiving-funding.md). This page covers the operator side: building the form and reviewing submissions.
 
-## For round operators — the form builder
+## The form builder
 The **Form Builder** lets you configure the questions applicants answer when applying to your round—no code required. You'll find it on the **Form Builder** page of the Flow Council launchpad. Add elements, drag to reorder them, expand a card to edit its settings, and hit **Save** when you're done.
 
 The form is split into three tabs:
@@ -53,21 +53,8 @@ Milestone questions are **always required**—the Required toggle is hidden for 
 ### Templates
 Press **Start from Template** to begin from a **Minimal** form or the richer **GoodBuilders** form, then customize. Loading a template replaces the current form, so save anything you want to keep first.
 
-## For applicants — applying
-You apply with a **project**. Create a project once and reuse it across as many rounds as you like—your project details, branding, and links carry over.
-
-Head to the council's application page at `https://flowstate.network/flow-councils/application/<chainId>/<councilId>`, sign in with your wallet, then pick an existing project or **Create Project**. Want to draft your answers offline first? Use **Download Application Template** to grab a markdown copy of every question.
-
-The application has three tabs that mirror the form builder:
-
-1. **Project** – your standardized project profile.
-2. **Round** – the operator's custom questions, plus the wallet that will receive funding.
-3. **Attestation** – the round's commitments and acknowledgements.
-
-You can save your progress and come back later; submitting moves the application to **Submitted** for review. After you submit, the form is locked—but if a reviewer **unlocks edits**, you can update and resubmit. If you haven't filled in a display name and email on your [profile](https://flowstate.network/profile), the form nudges you to, so contact details auto-fill across applications.
-
-## For reviewers — review & acceptance
-Reviewing happens on the **Manage Recipients** page. It's gated to addresses holding the **Recipient Review** role (see [Permissions](007-permissions.md)); without it, the module is read-only.
+## Review & acceptance
+Reviewing happens on the **Manage Recipients** page. It's gated to addresses holding the **Recipient Review** role (see [Permissions](002-permissions.md)); without it, the module is read-only.
 
 Each council exposes a shareable **Application Link** to hand out to prospective applicants, and an **applications open/closed** toggle to stop accepting new submissions. The applications table lists every project with its status; export everything to CSV at any time.
 
@@ -78,7 +65,7 @@ Open a **Submitted** application to review it across four tabs—**Project**, **
 
 Set a **New Status** and submit your decision:
 
-- **Accepted** – adds the project's funding wallet to the onchain distribution pool as a [recipient](004-recipients.md).
+- **Accepted** – adds the project's funding wallet to the onchain distribution pool as a [recipient](../participants/003-receiving-funding.md).
 - **Changes Requested** – asks the applicant to revise (pair this with unlocking edits).
 - **Rejected** – declines the application.
 
