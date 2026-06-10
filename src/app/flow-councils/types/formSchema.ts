@@ -132,9 +132,31 @@ export const MINIMAL_TEMPLATE: FormSchema = {
   ],
   attestation: [
     {
-      id: "b2c3d4e5-f6a7-8901-bcde-f12345678901",
-      type: "email",
-      label: "Contact Email",
+      id: "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      type: "boolean",
+      label:
+        "I consent to the collection and use of my data for the purposes of participating in this round and receiving funding via the Flow State platform.",
+      required: true,
+    },
+    {
+      id: "d4e5f6a7-b8c9-0123-defa-234567890123",
+      type: "boolean",
+      label:
+        "I confirm that the information provided in this application is true and accurate to the best of my knowledge.",
+      required: true,
+    },
+    {
+      id: "e5f6a7b8-c9d0-1234-efab-345678901234",
+      type: "boolean",
+      label:
+        "I am at least 18 years old (or the age of majority in my jurisdiction) and have the legal authority to accept these funds.",
+      required: true,
+    },
+    {
+      id: "f6a7b8c9-d0e1-2345-fabc-456789012345",
+      type: "boolean",
+      label:
+        "I attest that I am not a citizen or resident of, nor located or operating my business in, any country or territory subject to comprehensive sanctions or embargoes (including those administered by the U.S. Office of Foreign Assets Control (OFAC), the United Nations, the European Union, or the United Kingdom), and that I am not subject to such sanctions nor listed on any government restricted- or denied-persons list.",
       required: true,
     },
   ],
