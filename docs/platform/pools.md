@@ -1,7 +1,7 @@
 ---
 slug: /pools
 description: View and manage raw Superfluid distribution pools
-sidebar_position: 7
+sidebar_position: 6
 ---
 
 # Pools

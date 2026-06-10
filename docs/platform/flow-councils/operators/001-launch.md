@@ -8,9 +8,11 @@ You can deploy a Flow Council yourself—no code required—from the [launchpad]
 
 Each Flow Council is configured to distribute a single [Superfluid Super Token](https://docs.superfluid.org/docs/concepts/overview/super-tokens). Flow State natively supports many popular Super Tokens, but also allows deployers to set any [valid Super Token contract address](https://explorer.superfluid.org/arbitrum-one/supertokens) as the distribution currency. Once deployed, this token selection cannot be changed.
 
-[Starting the funding flow is not an admin function](005-grow-the-pie.md) and is done only once recipients are accepted to the Flow Council. It follows that the funding flow rate can also be updated anytime as (hopefully) more funding becomes available or circumstance change.
+On networks where the SuperApp Splitter factory is deployed (currently Celo), launching a council also deploys a **SuperApp Splitter**—the contract incoming funding streams route through. After launch, operators manage the round's funding from the [Funding](005-funding.md) page: sponsoring the funding stream, topping up the splitter, and scheduling or closing the round. Anyone can add to the funding anytime by [Growing the Pie](../participants/004-grow-the-pie.md).
 
-By default, Flow Councils are open-ended (i.e., there is no "round end date"). It is recommended that operators communicate the expectations the funding amount and duration when a public round is launched.
+By default, Flow Councils are open-ended. On councils with a splitter, operators can schedule a round end date from the [Funding](005-funding.md) page—once it passes, the round stops accepting incoming streams.
+
+From the **Metadata** page, operators set the round's public name and description and choose whether it is **Listed** (surfaced on public discovery pages) or **Unlisted** (fully functional, reachable by direct link). New rounds default to Unlisted.
 
 ## Permissions
 
@@ -20,4 +22,4 @@ The deploying address is set as the Flow Council **Super Admin** by default. Fro
 - **Voter Review** — manages Council membership and voter groups.
 - **Recipient Review** — reviews applications and manages the recipients in the distribution pool.
 
-Once a voting policy has been set and recipients have been added to the Flow Council, a Super Admin can remove themselves and all other admins to make the configuration immutable. See [Permissions](007-permissions.md) for details.
+Once a voting policy has been set and recipients have been added to the Flow Council, a Super Admin can remove themselves and all other admins to make the configuration immutable. See [Permissions](002-permissions.md) for details.

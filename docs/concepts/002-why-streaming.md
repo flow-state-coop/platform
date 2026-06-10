@@ -23,7 +23,7 @@ Flow State turns streaming money into tools you can launch without writing contr
 
 - **[Flow Councils](../platform/flow-councils/index.md)** make allocation continuous and participatory. **Council Members** vote to split a single stream across an arbitrary number of recipients, and they can re-allocate in real time as priorities evolve and results are demonstrated. It's a fit for grants programs, organizational budgeting, and any collective allocation process that should be able to adapt.
 - **[Flow Splitters](../platform/flow-splitters/index.md)** make one-to-many payouts effortless. Built on Superfluid distribution pools, they proportionally split an incoming stream across recipients by the `shares` each holds. Settlement is passive and gasless — once a recipient connects their shares, distributions arrive in real time with no manual withdrawals.
-- **[Streaming Quadratic Funding](../platform/streaming-qf/index.md)** makes public-goods funding open-ended. Donations become continuous flows instead of one-off votes, and a quadratic matching formula continuously allocates the pool. Rounds can run indefinitely, grantees get steadier funding, and the democratic outcome adjusts to changing preferences in real time.
+- **[Streaming Quadratic Funding](../platform/streaming-qf.md)** makes public-goods funding open-ended. Donations become continuous flows instead of one-off votes, and a quadratic matching formula continuously allocates the pool. Rounds can run indefinitely, grantees get steadier funding, and the democratic outcome adjusts to changing preferences in real time.
 
 Each is a different application of the same idea: money that moves like information, so funding can respond as fast as the world it's funding.
 
