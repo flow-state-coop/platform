@@ -1,58 +1,28 @@
 # Flow State Platform
 
-### Getting Started
+The open-source app behind [flowstate.network](https://flowstate.network) — continuous funding apps, payment tools, and incentive systems powered by [Superfluid](https://superfluid.finance): Flow Councils, Flow Splitters, Streaming Quadratic Funding, and more.
 
-Start by setting up the local environment variables
+## Documentation
 
-```
+Full documentation lives at **[docs.flowstate.network](https://docs.flowstate.network)**:
+
+- [User guide](https://docs.flowstate.network/) — how to use the platform
+- [Developer docs](https://docs.flowstate.network/developers) — run, build, and contribute
+- [Public API](https://docs.flowstate.network/developers/public-api) — unauthenticated endpoints for building on Flow State data
+- [Concepts](https://docs.flowstate.network/concepts) — why streaming, glossary
+
+The docs source lives in [`docs/`](./docs) in this repo and is the single source of truth — it's mirrored to the docs site on merge to `main`. Edit it here, not in the docs repo. See [Contributing](https://docs.flowstate.network/developers/contributing).
+
+## Quick start
+
+```bash
 cp .env.sample .env
-```
-
-#### Install Dependencies
-
-```
 pnpm install
-```
-
-#### Run
-
-To run locally
-
-```
 pnpm dev
 ```
 
-### Public APIs
+The app runs at [http://localhost:3000](http://localhost:3000). See [Getting Started](https://docs.flowstate.network/developers/getting-started) for prerequisites, environment variables, and the database workflow.
 
-#### Flow Council voter groups
+## License
 
-Returns the voter group membership lists for a council. Unauthenticated. ISR-cached for 60 seconds.
-
-```
-GET /api/flow-council/voter-groups/public?chainId={chainId}&councilId={address}
-```
-
-Response:
-
-```json
-{
-  "groups": [
-    {
-      "name": "Core Contributors",
-      "eligibilityMethod": "manual",
-      "members": ["0xabc...", "0xdef..."]
-    },
-    {
-      "name": "GoodDollar Holders",
-      "eligibilityMethod": "gooddollar",
-      "members": ["0x123..."]
-    }
-  ]
-}
-```
-
-- `eligibilityMethod` is `"manual"` or `"gooddollar"` at launch.
-- An unknown `councilId` (not in the platform DB) returns `{ "groups": [] }`.
-- Per-voter allocations and cast-vote counts are not included; compute these from existing subgraph data combined with the membership lists.
-
-This endpoint is consumed by the [GoodBuilders dashboard](https://github.com/flow-state-coop/goodbuilders-dashboard).
+[MIT](./LICENSE)

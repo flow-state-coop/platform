@@ -1,0 +1,63 @@
+name: Sync docs to docs site
+
+# Mirrors this repo's docs/ tree into flow-state-coop/docs (the Docusaurus site
+# deployed to docs.flowstate.network). platform/docs is the single source of
+# truth; this opens a PR on the docs repo, which Vercel builds a preview for and
+# publishes on merge. Only the markdown tree is mirrored — the Docusaurus
+# scaffolding (sidebars.js, docusaurus.config.js, src/, static/) is never touched.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - ".github/workflows/sync-docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-docs
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout platform
+        uses: actions/checkout@v4
+        with:
+          path: platform
+
+      - name: Checkout docs site
+        uses: actions/checkout@v4
+        with:
+          repository: flow-state-coop/docs
+          token: ${{ secrets.DOCS_SYNC_TOKEN }}
+          path: docs-site
+
+      - name: Mirror docs/ into the docs site
+        run: |
+          rsync -a --checksum --delete \
+            --exclude='.git/' \
+            platform/docs/ docs-site/docs/
+
+      - name: Open sync PR on the docs site
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.DOCS_SYNC_TOKEN }}
+          path: docs-site
+          branch: sync/platform-docs
+          base: main
+          delete-branch: true
+          commit-message: "docs: sync from platform@${{ github.sha }}"
+          title: "docs: sync from platform repo"
+          body: |
+            Automated sync of `docs/**` from
+            [`flow-state-coop/platform`](https://github.com/flow-state-coop/platform).
+
+            **Source commit:** ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+
+            > ⚠️ Do not edit `docs/**` in this repo directly — it is generated.
+            > Edit `docs/` in the **platform** repo; the `sync-docs` workflow mirrors it here.
