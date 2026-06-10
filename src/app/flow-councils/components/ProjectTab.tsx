@@ -15,6 +15,7 @@ import SmartContractRow from "./SmartContractRow";
 import OtherLinkRow from "./OtherLinkRow";
 import { type SmartContract, type OtherLink } from "@/types/project";
 import { CHARACTER_LIMITS } from "../constants";
+import { ALLOWED_IMAGE_TYPES } from "../lib/constants";
 import useSiwe from "@/hooks/siwe";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import { normalizeUrl } from "@/app/flow-councils/utils/normalizeUrl";
@@ -231,7 +232,9 @@ export default function ProjectTab(props: ProjectTabProps) {
   const handleFileUploadLogo = () => {
     if (!fileInputRefLogo.current?.files) return;
     const file = fileInputRefLogo.current.files[0];
-    if (file.size > 256000) {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setLogoError("Invalid file type (PNG, JPEG, or WebP only)");
+    } else if (file.size > 256000) {
       setLogoError("Size too large (max 256KB)");
     } else {
       setLogoBlob(file);
@@ -243,7 +246,9 @@ export default function ProjectTab(props: ProjectTabProps) {
   const handleFileUploadBanner = () => {
     if (!fileInputRefBanner.current?.files) return;
     const file = fileInputRefBanner.current.files[0];
-    if (file.size > 1000000) {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setBannerError("Invalid file type (PNG, JPEG, or WebP only)");
+    } else if (file.size > 1000000) {
       setBannerError("Size too large (max 1MB)");
     } else {
       setBannerBlob(file);
@@ -338,7 +343,11 @@ export default function ProjectTab(props: ProjectTabProps) {
       });
     } catch (err) {
       console.error(err);
-      setError("Failed to save project");
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : "Failed to save project",
+      );
       setIsSubmitting(false);
     }
   };
@@ -448,7 +457,7 @@ export default function ProjectTab(props: ProjectTabProps) {
         <Form.Control
           type="file"
           hidden
-          accept=".png,.jpeg,.jpg"
+          accept=".png,.jpeg,.jpg,.webp"
           ref={fileInputRefLogo}
           onChange={handleFileUploadLogo}
         />
@@ -505,7 +514,7 @@ export default function ProjectTab(props: ProjectTabProps) {
         <Form.Control
           type="file"
           hidden
-          accept=".png,.jpeg,.jpg"
+          accept=".png,.jpeg,.jpg,.webp"
           ref={fileInputRefBanner}
           onChange={handleFileUploadBanner}
         />

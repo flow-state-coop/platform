@@ -29,6 +29,13 @@ export const GOODBUILDERS_S2_POOL_ADDRESS: `0x${string}` =
 export const GOODBUILDERS_S2_FEE_ADDRESS: `0x${string}` =
   "0x0d9d26375b882e0ddb38a781a40e80945e3d0b9b";
 
+export const ALLOWED_IMAGE_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/webp",
+];
+
 export const ALLOWED_REACTIONS = [
   "\u{1F44D}",
   "\u{2764}\u{FE0F}",

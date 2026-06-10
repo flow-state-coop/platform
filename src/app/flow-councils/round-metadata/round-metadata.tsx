@@ -18,6 +18,7 @@ import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useSiwe from "@/hooks/siwe";
 import MarkdownEditor from "@/components/MarkdownEditor";
+import { ALLOWED_IMAGE_TYPES } from "@/app/flow-councils/lib/constants";
 
 async function uploadToS3(file: Blob, fileName: string): Promise<string> {
   const presignRes = await fetch("/api/flow-council/images", {
@@ -130,7 +131,9 @@ export default function RoundMetadata(props: RoundMetadataProps) {
 
     const file = fileInputRef.current.files[0];
 
-    if (file.size > 1000000) {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setLogoError("Invalid file type (PNG, JPEG, or WebP only)");
+    } else if (file.size > 1000000) {
       setLogoError("Size too large (max 1MB)");
     } else {
       setLogoBlob(file);
@@ -270,7 +273,7 @@ export default function RoundMetadata(props: RoundMetadataProps) {
               <Form.Control
                 type="file"
                 hidden
-                accept=".png,.jpeg,.jpg"
+                accept=".png,.jpeg,.jpg,.webp"
                 ref={fileInputRef}
                 onChange={handleFileUpload}
               />

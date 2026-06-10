@@ -3,11 +3,11 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { s3Client, S3_BUCKET, S3_PUBLIC_URL } from "../s3";
+import { ALLOWED_IMAGE_TYPES } from "@/app/flow-councils/lib/constants";
 
 export const dynamic = "force-dynamic";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
 
 export async function POST(request: Request) {
   try {
@@ -23,6 +23,10 @@ export async function POST(request: Request) {
     const { fileName, contentType, fileSize } = await request.json();
 
     if (!fileName || !contentType) {
+      console.warn("Rejected image upload: missing fileName or contentType", {
+        fileName,
+        contentType,
+      });
       return new Response(
         JSON.stringify({
           success: false,
@@ -32,7 +36,11 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!ALLOWED_TYPES.includes(contentType)) {
+    if (!ALLOWED_IMAGE_TYPES.includes(contentType)) {
+      console.warn("Rejected image upload: invalid file type", {
+        fileName,
+        contentType,
+      });
       return new Response(
         JSON.stringify({
           success: false,
@@ -43,6 +51,11 @@ export async function POST(request: Request) {
     }
 
     if (fileSize && fileSize > MAX_FILE_SIZE) {
+      console.warn("Rejected image upload: file too large", {
+        fileName,
+        contentType,
+        fileSize,
+      });
       return new Response(
         JSON.stringify({ success: false, error: "File too large. Max 5MB" }),
         { status: 400 },
