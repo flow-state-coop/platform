@@ -67,6 +67,8 @@ const SUPERTOKEN_QUERY = gql`
   }
 `;
 
+const TOKEN_VALIDATING_MESSAGE = "Validating...";
+
 function getDefaultToken(network: Network): Token {
   return network.tokens.find((t) => t.symbol === "G$") ?? network.tokens[0];
 }
@@ -435,38 +437,51 @@ export default function Launch(props: LaunchProps) {
                       const value = e.target.value;
                       const requestId = ++customTokenRequestIdRef.current;
 
-                      let validationError = "";
-                      let symbol = "";
-
                       if (!isAddress(value)) {
-                        validationError = "Invalid Address";
-                      } else {
-                        const { data: superTokenQueryRes } =
-                          await checkSuperToken({
-                            variables: { token: value.toLowerCase() },
-                          });
+                        setCustomTokenEntry({
+                          address: value,
+                          symbol: "",
+                          validationError: "Invalid Address",
+                        });
 
-                        if (requestId !== customTokenRequestIdRef.current) {
-                          return;
-                        }
-
-                        if (!superTokenQueryRes?.token?.isSuperToken) {
-                          validationError = "Not a SuperToken";
-                        } else {
-                          symbol = superTokenQueryRes.token.symbol;
-                        }
+                        return;
                       }
 
                       setCustomTokenEntry({
                         address: value,
-                        symbol,
-                        validationError,
+                        symbol: "",
+                        validationError: TOKEN_VALIDATING_MESSAGE,
+                      });
+
+                      const { data: superTokenQueryRes } =
+                        await checkSuperToken({
+                          variables: { token: value.toLowerCase() },
+                        });
+
+                      if (requestId !== customTokenRequestIdRef.current) {
+                        return;
+                      }
+
+                      const isSuperToken =
+                        !!superTokenQueryRes?.token?.isSuperToken;
+
+                      setCustomTokenEntry({
+                        address: value,
+                        symbol: isSuperToken
+                          ? superTokenQueryRes.token.symbol
+                          : "",
+                        validationError: isSuperToken ? "" : "Not a SuperToken",
                       });
                     }}
                   />
                   {customTokenEntry.validationError && (
                     <Card.Text
-                      className="position-absolute mb-0 ms-2 ps-1 text-danger"
+                      className={`position-absolute mb-0 ms-2 ps-1 ${
+                        customTokenEntry.validationError ===
+                        TOKEN_VALIDATING_MESSAGE
+                          ? "text-info"
+                          : "text-danger"
+                      }`}
                       style={{ bottom: 1, fontSize: "0.7rem" }}
                     >
                       {customTokenEntry.validationError}
