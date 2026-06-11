@@ -26,6 +26,8 @@ import {
   DEFAULT_ADMIN_ROLE,
   VOTER_MANAGER_ROLE,
   RECIPIENT_MANAGER_ROLE,
+  FLOW_STATE_BOT_ADDRESS,
+  KNOWN_ADDRESS_NAMES,
 } from "../lib/constants";
 
 type PermissionsProps = {
@@ -223,6 +225,25 @@ export default function Permissions(props: PermissionsProps) {
     return false;
   }, [flowCouncil, managersEntry, findChangedEntry]);
 
+  const isRemovingBotVoterManager = useMemo(() => {
+    for (const managerEntry of managersEntry) {
+      const changedEntries = findChangedEntry(managerEntry);
+
+      if (
+        changedEntries.find(
+          (c) =>
+            c.account.toLowerCase() === FLOW_STATE_BOT_ADDRESS.toLowerCase() &&
+            c.role === VOTER_MANAGER_ROLE &&
+            c.status === StatusChange.REMOVED,
+        )
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [managersEntry, findChangedEntry]);
+
   useEffect(() => {
     (async () => {
       if (!flowCouncil) {
@@ -408,7 +429,11 @@ export default function Permissions(props: PermissionsProps) {
                 className="justify-content-end align-items-center mt-1 mb-3"
                 key={i}
               >
-                <Stack direction="vertical" className="position-relative w-50">
+                <Stack
+                  direction="vertical"
+                  className="position-relative flex-grow-1"
+                  style={{ minWidth: 0 }}
+                >
                   <Form.Control
                     type="text"
                     disabled={!isAdmin}
@@ -454,6 +479,21 @@ export default function Permissions(props: PermissionsProps) {
                     </Card.Text>
                   ) : null}
                 </Stack>
+                <Form.Control
+                  type="text"
+                  disabled
+                  placeholder="Name"
+                  value={
+                    KNOWN_ADDRESS_NAMES[managerEntry.address.toLowerCase()] ??
+                    ""
+                  }
+                  className="flex-shrink-0 border-0 bg-white py-4 rounded-4 fw-semi-bold"
+                  style={{
+                    width: isMobile ? 90 : 180,
+                    paddingTop: 12,
+                    paddingBottom: 12,
+                  }}
+                />
                 <Stack direction="horizontal" gap={2}>
                   <Form.Check
                     className="d-flex justify-content-center"
@@ -565,6 +605,12 @@ export default function Permissions(props: PermissionsProps) {
           <Card.Text className="text-danger mt-4 mb-0">
             Warning: You've removed your only SuperAdmin. If you proceed, you
             won't be able to make any further changes to permissions
+          </Card.Text>
+        )}
+        {isRemovingBotVoterManager && (
+          <Card.Text className="text-danger mt-4 mb-0">
+            You have an active automated voter eligibility method. Removing this
+            address will cause this to stop working.
           </Card.Text>
         )}
         <Stack direction="vertical" gap={3} className="mt-4 mb-30">

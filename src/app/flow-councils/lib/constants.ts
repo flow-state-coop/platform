@@ -23,6 +23,10 @@ export const GOODDOLLAR_IDENTITY_ADDRESS: `0x${string}` =
 export const FLOW_STATE_BOT_ADDRESS: `0x${string}` =
   "0x7F0a04F131B8395e4e0bCf4c77E47845c952f49D";
 
+export const KNOWN_ADDRESS_NAMES: Record<string, string> = {
+  [FLOW_STATE_BOT_ADDRESS.toLowerCase()]: "F(S) Automation Bot",
+};
+
 export const GOODBUILDERS_S2_POOL_ADDRESS: `0x${string}` =
   "0xafcab1ab378354b8ce0dbd0ae2e2c0dea01dcf0b";
 
