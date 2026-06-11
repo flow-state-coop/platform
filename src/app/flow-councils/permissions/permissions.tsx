@@ -391,7 +391,11 @@ export default function Permissions(props: PermissionsProps) {
               gap={isMobile ? 2 : 4}
               className="justify-content-end align-items-center"
             >
-              <span className="w-50" />
+              <span className="flex-grow-1" />
+              <span
+                className="flex-shrink-0"
+                style={{ width: isMobile ? 90 : 180 }}
+              />
               <Stack direction="horizontal" gap={2}>
                 <Card.Text
                   className="m-0 text-center flex-shrink-0"
@@ -487,7 +491,7 @@ export default function Permissions(props: PermissionsProps) {
                     KNOWN_ADDRESS_NAMES[managerEntry.address.toLowerCase()] ??
                     ""
                   }
-                  className="flex-shrink-0 border-0 bg-white py-4 rounded-4 fw-semi-bold"
+                  className="flex-shrink-0 border-0 bg-white rounded-4 fw-semi-bold"
                   style={{
                     width: isMobile ? 90 : 180,
                     paddingTop: 12,
