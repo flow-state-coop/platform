@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Address, parseEventLogs, isAddress } from "viem";
@@ -87,6 +87,8 @@ export default function Launch(props: LaunchProps) {
   });
   const [success, setSuccess] = useState(false);
 
+  const customTokenRequestIdRef = useRef(0);
+
   const router = useRouter();
   const publicClient = usePublicClient();
   const wagmiConfig = useConfig();
@@ -153,10 +155,16 @@ export default function Launch(props: LaunchProps) {
       return;
     }
 
+    let cancelled = false;
+
     (async () => {
       const { data: superTokenQueryRes } = await checkSuperToken({
         variables: { token: flowCouncil.superToken.toLowerCase() },
       });
+
+      if (cancelled) {
+        return;
+      }
 
       setCustomTokenSelection(true);
       setCustomTokenEntry({
@@ -165,10 +173,18 @@ export default function Launch(props: LaunchProps) {
         validationError: "",
       });
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [flowCouncil?.superToken, selectedNetwork.tokens, checkSuperToken]);
 
   const handleSubmit = async () => {
     if (!address || !publicClient) {
+      return;
+    }
+
+    if (customTokenSelection && !isAddress(customTokenEntry.address)) {
       return;
     }
 
@@ -372,9 +388,9 @@ export default function Launch(props: LaunchProps) {
                   </Stack>
                 </Dropdown.Toggle>
                 <Dropdown.Menu className="border-0 p-2 lh-lg">
-                  {selectedNetwork.tokens.map((token, i) => (
+                  {selectedNetwork.tokens.map((token) => (
                     <Dropdown.Item
-                      key={i}
+                      key={token.address}
                       className="fw-semi-bold"
                       onClick={() => {
                         setCustomTokenSelection(false);
@@ -417,6 +433,7 @@ export default function Launch(props: LaunchProps) {
                     }}
                     onChange={async (e) => {
                       const value = e.target.value;
+                      const requestId = ++customTokenRequestIdRef.current;
 
                       let validationError = "";
                       let symbol = "";
@@ -428,6 +445,10 @@ export default function Launch(props: LaunchProps) {
                           await checkSuperToken({
                             variables: { token: value.toLowerCase() },
                           });
+
+                        if (requestId !== customTokenRequestIdRef.current) {
+                          return;
+                        }
 
                         if (!superTokenQueryRes?.token?.isSuperToken) {
                           validationError = "Not a SuperToken";
