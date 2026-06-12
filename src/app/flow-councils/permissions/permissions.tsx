@@ -19,6 +19,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
+import { splitIntoChunks } from "@/app/flow-councils/hooks/useChunkedTxQueue";
 import { waitForReceipt } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
@@ -47,6 +48,8 @@ enum StatusChange {
   ADDED,
   REMOVED,
 }
+
+const PROFILE_BATCH = 150;
 
 const FLOW_COUNCIL_QUERY = gql`
   query FlowCouncilQuery($councilId: String!) {
@@ -276,29 +279,31 @@ export default function Permissions(props: PermissionsProps) {
     let cancelled = false;
 
     (async () => {
-      try {
-        const res = await fetch("/api/flow-council/voter-groups/profiles", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ addresses: managerAddresses }),
-        });
-        const data = await res.json();
+      const names: Record<string, string> = {};
 
-        if (cancelled || !data.success || !data.names) {
-          return;
+      for (const batch of splitIntoChunks(managerAddresses, PROFILE_BATCH)) {
+        try {
+          const res = await fetch("/api/flow-council/voter-groups/profiles", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ addresses: batch }),
+          });
+          const data = await res.json();
+
+          if (data.success && data.names) {
+            for (const [managerAddress, name] of Object.entries(
+              data.names as Record<string, string>,
+            )) {
+              names[managerAddress.toLowerCase()] = name;
+            }
+          }
+        } catch (err) {
+          console.error(err);
         }
+      }
 
-        const names: Record<string, string> = {};
-
-        for (const [managerAddress, name] of Object.entries(
-          data.names as Record<string, string>,
-        )) {
-          names[managerAddress.toLowerCase()] = name;
-        }
-
+      if (!cancelled) {
         setProfileNames(names);
-      } catch (err) {
-        console.error(err);
       }
     })();
 
@@ -523,7 +528,7 @@ export default function Permissions(props: PermissionsProps) {
                     disabled={!isAdmin}
                     placeholder="Manager Address"
                     value={managerEntry.address}
-                    className="border-0 bg-white py-4 rounded-4 fw-semi-bold"
+                    className="border-0 bg-white rounded-4 fw-semi-bold"
                     style={{
                       paddingTop: 12,
                       paddingBottom: 12,
