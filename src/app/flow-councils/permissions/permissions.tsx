@@ -10,6 +10,7 @@ import { writeContract } from "@wagmi/core";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { gql, useQuery } from "@apollo/client";
 import useSiwe from "@/hooks/siwe";
+import { useEnsResolution } from "@/hooks/useEnsResolution";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
@@ -66,6 +67,7 @@ export default function Permissions(props: PermissionsProps) {
   const [transactionSuccess, setTransactionSuccess] = useState(false);
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
   const [managersEntry, setManagersEntry] = useState<ManagerEntry[]>([]);
+  const [profileNames, setProfileNames] = useState<Record<string, string>>({});
 
   const router = useRouter();
   const publicClient = usePublicClient();
@@ -244,6 +246,78 @@ export default function Permissions(props: PermissionsProps) {
     return false;
   }, [managersEntry, findChangedEntry]);
 
+  // Joined-string key: managersEntry gets a new identity on every keystroke,
+  // so name lookups gate on the stable key instead of the array.
+  const managerAddressKey = useMemo(
+    () =>
+      [
+        ...new Set(
+          managersEntry
+            .map((managerEntry) => managerEntry.address.trim().toLowerCase())
+            .filter((managerAddress) => isAddress(managerAddress)),
+        ),
+      ]
+        .sort()
+        .join(","),
+    [managersEntry],
+  );
+  const managerAddresses = useMemo(
+    () => (managerAddressKey === "" ? [] : managerAddressKey.split(",")),
+    [managerAddressKey],
+  );
+
+  const { ensByAddress } = useEnsResolution(managerAddresses);
+
+  useEffect(() => {
+    if (managerAddresses.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/flow-council/voter-groups/profiles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ addresses: managerAddresses }),
+        });
+        const data = await res.json();
+
+        if (cancelled || !data.success || !data.names) {
+          return;
+        }
+
+        const names: Record<string, string> = {};
+
+        for (const [managerAddress, name] of Object.entries(
+          data.names as Record<string, string>,
+        )) {
+          names[managerAddress.toLowerCase()] = name;
+        }
+
+        setProfileNames(names);
+      } catch (err) {
+        console.error(err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [managerAddresses]);
+
+  const managerDisplayName = (managerAddress: string) => {
+    const account = managerAddress.trim().toLowerCase();
+
+    return (
+      KNOWN_ADDRESS_NAMES[account] ??
+      profileNames[account] ??
+      ensByAddress?.[account]?.name ??
+      ""
+    );
+  };
+
   useEffect(() => {
     (async () => {
       if (!flowCouncil) {
@@ -391,10 +465,16 @@ export default function Permissions(props: PermissionsProps) {
               gap={isMobile ? 2 : 4}
               className="justify-content-end align-items-center"
             >
-              <span className="flex-grow-1" />
               <span
-                className="flex-shrink-0"
-                style={{ width: isMobile ? 90 : 180 }}
+                className="flex-grow-1"
+                style={{ maxWidth: isMobile ? undefined : 460 }}
+              />
+              <span
+                style={
+                  isMobile
+                    ? { width: 90, flexShrink: 0 }
+                    : { flex: "1 1 180px", minWidth: 0 }
+                }
               />
               <Stack direction="horizontal" gap={2}>
                 <Card.Text
@@ -436,7 +516,7 @@ export default function Permissions(props: PermissionsProps) {
                 <Stack
                   direction="vertical"
                   className="position-relative flex-grow-1"
-                  style={{ minWidth: 0 }}
+                  style={{ minWidth: 0, maxWidth: isMobile ? undefined : 460 }}
                 >
                   <Form.Control
                     type="text"
@@ -487,13 +567,12 @@ export default function Permissions(props: PermissionsProps) {
                   type="text"
                   disabled
                   placeholder="Name"
-                  value={
-                    KNOWN_ADDRESS_NAMES[managerEntry.address.toLowerCase()] ??
-                    ""
-                  }
-                  className="flex-shrink-0 border-0 bg-white rounded-4 fw-semi-bold"
+                  value={managerDisplayName(managerEntry.address)}
+                  className="border-0 bg-white rounded-4 fw-semi-bold"
                   style={{
-                    width: isMobile ? 90 : 180,
+                    ...(isMobile
+                      ? { width: 90, flexShrink: 0 }
+                      : { flex: "1 1 180px", minWidth: 0 }),
                     paddingTop: 12,
                     paddingBottom: 12,
                   }}
