@@ -35,6 +35,8 @@ import { flowCouncilFactoryAbi } from "@/lib/abi/flowCouncilFactory";
 import { superAppSplitterFactoryAbi } from "@/lib/abi/superAppSplitterFactory";
 
 const SUPERAPP_SPLITTER_FEE_PORTION = BigInt(50);
+const COUNCIL_INDEXING_POLL_MS = 2000;
+const COUNCIL_INDEXING_MAX_ATTEMPTS = 60;
 
 type LaunchProps = {
   defaultNetwork: Network;
@@ -73,6 +75,30 @@ function getDefaultToken(network: Network): Token {
   return network.tokens.find((t) => t.symbol === "G$") ?? network.tokens[0];
 }
 
+async function waitForCouncilIndexing(chainId: number, councilId: string) {
+  const client = getApolloClient("flowCouncil", chainId);
+
+  for (let attempt = 0; attempt < COUNCIL_INDEXING_MAX_ATTEMPTS; attempt++) {
+    try {
+      const { data } = await client.query({
+        query: FLOW_COUNCIL_QUERY,
+        variables: { councilId },
+        fetchPolicy: "network-only",
+      });
+
+      if (data?.flowCouncil) {
+        return;
+      }
+    } catch {
+      // Transient subgraph errors shouldn't abort the wait
+    }
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, COUNCIL_INDEXING_POLL_MS),
+    );
+  }
+}
+
 export default function Launch(props: LaunchProps) {
   const { defaultNetwork, councilId, isChainIdExplicit } = props;
 
@@ -87,6 +113,7 @@ export default function Launch(props: LaunchProps) {
     symbol: "",
     validationError: "",
   });
+  const [isIndexing, setIsIndexing] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const customTokenRequestIdRef = useRef(0);
@@ -272,11 +299,19 @@ export default function Launch(props: LaunchProps) {
         }),
       });
 
+      setIsIndexing(true);
+      await waitForCouncilIndexing(
+        selectedNetwork.id,
+        flowCouncilAddress.toLowerCase(),
+      );
+      setIsIndexing(false);
+
       router.push(
         `/flow-councils/launch/${selectedNetwork.id}/${flowCouncilAddress}`,
       );
       setSuccess(true);
     } catch {
+      setIsIndexing(false);
       // Error state is handled by useTransactionsQueue
     }
   };
@@ -509,6 +544,8 @@ export default function Launch(props: LaunchProps) {
           <Button
             disabled={
               !!councilId ||
+              areTransactionsLoading ||
+              isIndexing ||
               (customTokenSelection &&
                 (customTokenEntry.address === "" ||
                   customTokenEntry.validationError !== ""))
@@ -524,7 +561,7 @@ export default function Launch(props: LaunchProps) {
                     : handleSubmit()
             }
           >
-            {areTransactionsLoading ? (
+            {areTransactionsLoading || isIndexing ? (
               <>
                 <Spinner size="sm" className="ms-2" />
                 {completedTransactions > 0 &&
