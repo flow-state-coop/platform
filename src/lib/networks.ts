@@ -70,7 +70,7 @@ const networks: Network[] = [
     gda: "0x1e299701792a2aF01408B122419d65Fd2dF0Ba02",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
-    superAppSplitterFactory: "0x",
+    superAppSplitterFactory: "0x80F471302dc0e3D7ADc09C3808b9CB2b7C76232b",
     tokens: [
       {
         symbol: "ETHx",
@@ -121,7 +121,7 @@ const networks: Network[] = [
     gda: "0xfE6c87BE05feDB2059d2EC41bA0A09826C9FD7aa",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
-    superAppSplitterFactory: "0x",
+    superAppSplitterFactory: "0x80F471302dc0e3D7ADc09C3808b9CB2b7C76232b",
     tokens: [
       {
         symbol: "ETHx",
@@ -203,7 +203,7 @@ const networks: Network[] = [
     gda: "0x68Ae17fa7a31b86F306c383277552fd4813b0d35",
     gdaForwarder: "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
     cfaForwarder: "0xcfA132E353cB4E398080B9700609bb008eceB125",
-    superAppSplitterFactory: "0x",
+    superAppSplitterFactory: "0x80F471302dc0e3D7ADc09C3808b9CB2b7C76232b",
     tokens: [
       {
         symbol: "ETHx",
