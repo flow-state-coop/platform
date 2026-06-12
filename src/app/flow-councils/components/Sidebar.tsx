@@ -14,12 +14,7 @@ import Image from "react-bootstrap/Image";
 import { Network } from "@/types/network";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
-import {
-  networks,
-  isSplitterFactoryDeployed,
-  isFlowCouncilNetwork,
-} from "@/lib/networks";
-import useCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
+import { networks, isFlowCouncilNetwork } from "@/lib/networks";
 
 const FLOW_COUNCIL_MANAGER_QUERY = gql`
   query FlowCouncilManagerQuery($address: String!) {
@@ -38,7 +33,6 @@ const SIDEBAR_LINK_DEFS: {
   path: string;
   label: string;
   alwaysEnabled?: boolean;
-  requiresSplitterFactory?: boolean;
 }[] = [
   { path: "launch", label: "Launch", alwaysEnabled: true },
   { path: "round-metadata", label: "Metadata" },
@@ -46,7 +40,7 @@ const SIDEBAR_LINK_DEFS: {
   { path: "form-builder", label: "Form Builder" },
   { path: "review", label: "Recipients" },
   { path: "membership", label: "Voters" },
-  { path: "funding", label: "Funding", requiresSplitterFactory: true },
+  { path: "funding", label: "Funding" },
   { path: "communications", label: "Communications" },
 ];
 
@@ -61,21 +55,9 @@ function SidebarLinks({
   selectedCouncil,
   pathname,
 }: SidebarLinksProps) {
-  const network = chainId ? networks.find((n) => n.id === chainId) : undefined;
-  const splitterFactoryDeployed = isSplitterFactoryDeployed(network);
-  const councilMetadata = useCouncilMetadata(
-    chainId ?? 0,
-    selectedCouncil?.id ?? "",
-  );
-  const hasSplitter =
-    splitterFactoryDeployed && !!councilMetadata.superappSplitterAddress;
-
   return (
     <Stack direction="vertical" gap={3} className="rounded-4 flex-grow-0 mt-3">
-      {SIDEBAR_LINK_DEFS.filter(
-        ({ requiresSplitterFactory }) =>
-          !requiresSplitterFactory || hasSplitter,
-      ).map(({ path, label, alwaysEnabled }) => {
+      {SIDEBAR_LINK_DEFS.map(({ path, label, alwaysEnabled }) => {
         const href =
           alwaysEnabled && chainId && selectedCouncil
             ? `/flow-councils/${path}/${chainId}/${selectedCouncil.id}`
