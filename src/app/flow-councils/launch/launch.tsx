@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Address, parseEventLogs } from "viem";
+import { Address, parseEventLogs, isAddress } from "viem";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "@wagmi/core";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { gql, useQuery } from "@apollo/client";
+import { gql, useQuery, useLazyQuery } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
 import Toast from "react-bootstrap/Toast";
@@ -24,6 +24,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useSiwe from "@/hooks/siwe";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import { Network } from "@/types/network";
+import { Token } from "@/types/token";
 import { getApolloClient } from "@/lib/apollo";
 import {
   networks,
@@ -34,11 +35,19 @@ import { flowCouncilFactoryAbi } from "@/lib/abi/flowCouncilFactory";
 import { superAppSplitterFactoryAbi } from "@/lib/abi/superAppSplitterFactory";
 
 const SUPERAPP_SPLITTER_FEE_PORTION = BigInt(50);
+const COUNCIL_INDEXING_POLL_MS = 2000;
+const COUNCIL_INDEXING_MAX_ATTEMPTS = 60;
 
 type LaunchProps = {
   defaultNetwork: Network;
   councilId?: string;
   isChainIdExplicit?: boolean;
+};
+
+type CustomTokenEntry = {
+  address: string;
+  symbol: string;
+  validationError: string;
 };
 
 const FLOW_COUNCIL_QUERY = gql`
@@ -50,12 +59,64 @@ const FLOW_COUNCIL_QUERY = gql`
   }
 `;
 
+const SUPERTOKEN_QUERY = gql`
+  query SupertokenQuery($token: String!) {
+    token(id: $token) {
+      id
+      isSuperToken
+      symbol
+    }
+  }
+`;
+
+const TOKEN_VALIDATING_MESSAGE = "Validating...";
+
+function getDefaultToken(network: Network): Token {
+  return network.tokens.find((t) => t.symbol === "G$") ?? network.tokens[0];
+}
+
+async function waitForCouncilIndexing(chainId: number, councilId: string) {
+  const client = getApolloClient("flowCouncil", chainId);
+
+  for (let attempt = 0; attempt < COUNCIL_INDEXING_MAX_ATTEMPTS; attempt++) {
+    try {
+      const { data } = await client.query({
+        query: FLOW_COUNCIL_QUERY,
+        variables: { councilId },
+        fetchPolicy: "network-only",
+      });
+
+      if (data?.flowCouncil) {
+        return;
+      }
+    } catch {
+      // Transient subgraph errors shouldn't abort the wait
+    }
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, COUNCIL_INDEXING_POLL_MS),
+    );
+  }
+}
+
 export default function Launch(props: LaunchProps) {
   const { defaultNetwork, councilId, isChainIdExplicit } = props;
 
   const [selectedNetwork, setSelectedNetwork] =
     useState<Network>(defaultNetwork);
+  const [selectedToken, setSelectedToken] = useState<Token>(
+    getDefaultToken(defaultNetwork),
+  );
+  const [customTokenSelection, setCustomTokenSelection] = useState(false);
+  const [customTokenEntry, setCustomTokenEntry] = useState<CustomTokenEntry>({
+    address: "",
+    symbol: "",
+    validationError: "",
+  });
+  const [isIndexing, setIsIndexing] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  const customTokenRequestIdRef = useRef(0);
 
   const router = useRouter();
   const publicClient = usePublicClient();
@@ -79,6 +140,9 @@ export default function Launch(props: LaunchProps) {
       pollInterval: 4000,
       skip: !councilId,
     });
+  const [checkSuperToken] = useLazyQuery(SUPERTOKEN_QUERY, {
+    client: getApolloClient("superfluid", selectedNetwork.id),
+  });
 
   const flowCouncil = flowCouncilQueryRes?.flowCouncil;
 
@@ -86,9 +150,6 @@ export default function Launch(props: LaunchProps) {
     () => networks.filter(isFlowCouncilNetwork),
     [],
   );
-  const defaultToken =
-    selectedNetwork.tokens.find((t) => t.symbol === "G$") ??
-    selectedNetwork.tokens[0];
 
   useEffect(() => {
     if (councilId || isChainIdExplicit || !connectedChain) {
@@ -101,15 +162,64 @@ export default function Launch(props: LaunchProps) {
 
     if (userNetwork) {
       setSelectedNetwork(userNetwork);
+      setCustomTokenSelection(false);
+      setSelectedToken(getDefaultToken(userNetwork));
     }
   }, [councilId, isChainIdExplicit, connectedChain, launchNetworks]);
+
+  useEffect(() => {
+    if (!flowCouncil?.superToken) {
+      return;
+    }
+
+    const matchedToken = selectedNetwork.tokens.find(
+      (token) =>
+        token.address.toLowerCase() === flowCouncil.superToken.toLowerCase(),
+    );
+
+    if (matchedToken) {
+      setCustomTokenSelection(false);
+      setSelectedToken(matchedToken);
+
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      const { data: superTokenQueryRes } = await checkSuperToken({
+        variables: { token: flowCouncil.superToken.toLowerCase() },
+      });
+
+      if (cancelled) {
+        return;
+      }
+
+      setCustomTokenSelection(true);
+      setCustomTokenEntry({
+        address: flowCouncil.superToken,
+        symbol: superTokenQueryRes?.token?.symbol ?? "",
+        validationError: "",
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [flowCouncil?.superToken, selectedNetwork.tokens, checkSuperToken]);
 
   const handleSubmit = async () => {
     if (!address || !publicClient) {
       return;
     }
 
-    const token = defaultToken.address;
+    if (customTokenSelection && !isAddress(customTokenEntry.address)) {
+      return;
+    }
+
+    const token = customTokenSelection
+      ? (customTokenEntry.address as Address)
+      : selectedToken.address;
 
     try {
       let flowCouncilAddress: Address = "" as Address;
@@ -189,11 +299,19 @@ export default function Launch(props: LaunchProps) {
         }),
       });
 
+      setIsIndexing(true);
+      await waitForCouncilIndexing(
+        selectedNetwork.id,
+        flowCouncilAddress.toLowerCase(),
+      );
+      setIsIndexing(false);
+
       router.push(
         `/flow-councils/launch/${selectedNetwork.id}/${flowCouncilAddress}`,
       );
       setSuccess(true);
     } catch {
+      setIsIndexing(false);
       // Error state is handled by useTransactionsQueue
     }
   };
@@ -254,6 +372,8 @@ export default function Launch(props: LaunchProps) {
                     className="fw-semi-bold"
                     onClick={() => {
                       setSelectedNetwork(network);
+                      setCustomTokenSelection(false);
+                      setSelectedToken(getDefaultToken(network));
                       router.replace(
                         `/flow-councils/launch?chainId=${network.id}`,
                         { scroll: false },
@@ -278,38 +398,158 @@ export default function Launch(props: LaunchProps) {
               gap={isMobile ? 1 : 3}
               className="align-items-start mt-2"
             >
-              <Stack
-                direction="horizontal"
-                gap={1}
-                className="align-items-center bg-white py-4 fw-semi-bold text-dark rounded-2 px-3"
-                style={{ width: 256, paddingTop: 12, paddingBottom: 12 }}
-              >
-                <Image
-                  src={defaultToken.icon}
-                  alt="Token"
-                  width={18}
-                  height={18}
-                />
-                {defaultToken.symbol}
-              </Stack>
-              <Stack direction="vertical" className="align-self-sm-end">
-                <Form.Control
-                  type="text"
-                  disabled
-                  value={defaultToken.address}
-                  className="border-0 fs-lg fw-semi-bold"
-                  style={{
-                    paddingTop: 12,
-                    paddingBottom: 12,
-                  }}
-                />
-              </Stack>
+              <Dropdown>
+                <Dropdown.Toggle
+                  disabled={!!councilId}
+                  className="d-flex justify-content-between align-items-center bg-white py-4 fw-semi-bold text-dark border-0"
+                  style={{ width: 256, paddingTop: 12, paddingBottom: 12 }}
+                >
+                  <Stack
+                    direction="horizontal"
+                    gap={1}
+                    className="align-items-center"
+                  >
+                    {!customTokenSelection && (
+                      <Image
+                        src={selectedToken.icon}
+                        alt="Token Icon"
+                        width={18}
+                        height={18}
+                      />
+                    )}
+                    {customTokenSelection && customTokenEntry.symbol
+                      ? customTokenEntry.symbol
+                      : customTokenSelection
+                        ? "Custom"
+                        : selectedToken.symbol}
+                  </Stack>
+                </Dropdown.Toggle>
+                <Dropdown.Menu className="border-0 p-2 lh-lg">
+                  {selectedNetwork.tokens.map((token) => (
+                    <Dropdown.Item
+                      key={token.address}
+                      className="fw-semi-bold"
+                      onClick={() => {
+                        setCustomTokenSelection(false);
+                        setSelectedToken(token);
+                      }}
+                    >
+                      <Stack direction="horizontal" gap={1}>
+                        <Image
+                          src={token.icon}
+                          alt="Token Icon"
+                          width={16}
+                          height={16}
+                        />
+                        {token.symbol}
+                      </Stack>
+                    </Dropdown.Item>
+                  ))}
+                  <Dropdown.Item
+                    className="fw-semi-bold"
+                    onClick={() => setCustomTokenSelection(true)}
+                  >
+                    Custom
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown>
+              {customTokenSelection ? (
+                <Stack
+                  direction="vertical"
+                  className="position-relative align-self-sm-end"
+                >
+                  <Form.Control
+                    type="text"
+                    disabled={!!councilId}
+                    placeholder="SuperToken Address"
+                    value={customTokenEntry.address}
+                    className="border-0 fs-lg fw-semi-bold"
+                    style={{
+                      paddingTop: 12,
+                      paddingBottom: 12,
+                    }}
+                    onChange={async (e) => {
+                      const value = e.target.value;
+                      const requestId = ++customTokenRequestIdRef.current;
+
+                      if (!isAddress(value)) {
+                        setCustomTokenEntry({
+                          address: value,
+                          symbol: "",
+                          validationError: "Invalid Address",
+                        });
+
+                        return;
+                      }
+
+                      setCustomTokenEntry({
+                        address: value,
+                        symbol: "",
+                        validationError: TOKEN_VALIDATING_MESSAGE,
+                      });
+
+                      const { data: superTokenQueryRes } =
+                        await checkSuperToken({
+                          variables: { token: value.toLowerCase() },
+                        });
+
+                      if (requestId !== customTokenRequestIdRef.current) {
+                        return;
+                      }
+
+                      const isSuperToken =
+                        !!superTokenQueryRes?.token?.isSuperToken;
+
+                      setCustomTokenEntry({
+                        address: value,
+                        symbol: isSuperToken
+                          ? superTokenQueryRes.token.symbol
+                          : "",
+                        validationError: isSuperToken ? "" : "Not a SuperToken",
+                      });
+                    }}
+                  />
+                  {customTokenEntry.validationError && (
+                    <Card.Text
+                      className={`position-absolute mb-0 ms-2 ps-1 ${
+                        customTokenEntry.validationError ===
+                        TOKEN_VALIDATING_MESSAGE
+                          ? "text-info"
+                          : "text-danger"
+                      }`}
+                      style={{ bottom: 1, fontSize: "0.7rem" }}
+                    >
+                      {customTokenEntry.validationError}
+                    </Card.Text>
+                  )}
+                </Stack>
+              ) : (
+                <Stack direction="vertical" className="align-self-sm-end">
+                  <Form.Control
+                    type="text"
+                    disabled
+                    value={selectedToken.address}
+                    className="border-0 fs-lg fw-semi-bold"
+                    style={{
+                      paddingTop: 12,
+                      paddingBottom: 12,
+                    }}
+                  />
+                </Stack>
+              )}
             </Stack>
           </Card.Body>
         </Card>
         <Stack direction="vertical" gap={3} className="mt-4 mb-30">
           <Button
-            disabled={!!councilId}
+            disabled={
+              !!councilId ||
+              areTransactionsLoading ||
+              isIndexing ||
+              (customTokenSelection &&
+                (customTokenEntry.address === "" ||
+                  customTokenEntry.validationError !== ""))
+            }
             className="fs-lg fw-semi-bold rounded-4 px-10 py-4"
             onClick={() =>
               !address && openConnectModal
@@ -321,7 +561,7 @@ export default function Launch(props: LaunchProps) {
                     : handleSubmit()
             }
           >
-            {areTransactionsLoading ? (
+            {areTransactionsLoading || isIndexing ? (
               <>
                 <Spinner size="sm" className="ms-2" />
                 {completedTransactions > 0 &&

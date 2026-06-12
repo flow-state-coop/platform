@@ -7,8 +7,10 @@ describe("isSplitterFactoryDeployed", () => {
   });
 
   it('returns false for the "0x" sentinel', () => {
-    const network = networks.find((n) => n.label === "base");
-    expect(network?.superAppSplitterFactory).toBe("0x");
+    const network = {
+      ...networks[0],
+      superAppSplitterFactory: "0x" as const,
+    };
     expect(isSplitterFactoryDeployed(network)).toBe(false);
   });
 
@@ -21,7 +23,7 @@ describe("isSplitterFactoryDeployed", () => {
     expect(isSplitterFactoryDeployed(network)).toBe(false);
   });
 
-  it.each(["celo", "optimism-sepolia"])(
+  it.each(["arbitrum-one", "base", "celo", "optimism", "optimism-sepolia"])(
     "returns true for a real factory address on %s",
     (label) => {
       const network = networks.find((n) => n.label === label);

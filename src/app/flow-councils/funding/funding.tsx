@@ -27,7 +27,7 @@ import Sidebar from "@/app/flow-councils/components/Sidebar";
 import SuccessCheckmark from "@/app/flow-councils/components/SuccessCheckmark";
 import InfoTooltip from "@/components/InfoTooltip";
 import { getApolloClient } from "@/lib/apollo";
-import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
+import { networks } from "@/lib/networks";
 import { superAppSplitterAbi } from "@/lib/abi/superAppSplitter";
 import {
   buildBatchCall,
@@ -113,11 +113,10 @@ export default function Funding(props: FundingProps) {
     () => networks.find((n) => n.id === chainId),
     [chainId],
   );
-  const factoryDeployed = isSplitterFactoryDeployed(network);
 
   const councilMetadata = useCouncilMetadata(chainId ?? 0, councilId ?? "");
   const splitterAddress = councilMetadata.superappSplitterAddress;
-  const hasSplitter = !!splitterAddress && factoryDeployed;
+  const hasSplitter = !!splitterAddress;
 
   const splitterReads = useSplitterReads({
     splitterAddress,
