@@ -573,7 +573,7 @@ export default function Permissions(props: PermissionsProps) {
                   disabled
                   placeholder="Name"
                   value={managerDisplayName(managerEntry.address)}
-                  className="border-0 bg-white rounded-4 fw-semi-bold"
+                  className="border-0 bg-white rounded-4 fw-semi-bold text-info"
                   style={{
                     ...(isMobile
                       ? { width: 90, flexShrink: 0 }
