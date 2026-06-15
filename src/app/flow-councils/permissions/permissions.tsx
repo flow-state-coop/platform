@@ -10,6 +10,7 @@ import { writeContract } from "@wagmi/core";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { gql, useQuery } from "@apollo/client";
 import useSiwe from "@/hooks/siwe";
+import { useEnsResolution } from "@/hooks/useEnsResolution";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
@@ -18,6 +19,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
+import { splitIntoChunks } from "@/app/flow-councils/hooks/useChunkedTxQueue";
 import { waitForReceipt } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
@@ -26,6 +28,8 @@ import {
   DEFAULT_ADMIN_ROLE,
   VOTER_MANAGER_ROLE,
   RECIPIENT_MANAGER_ROLE,
+  FLOW_STATE_BOT_ADDRESS,
+  KNOWN_ADDRESS_NAMES,
 } from "../lib/constants";
 
 type PermissionsProps = {
@@ -44,6 +48,8 @@ enum StatusChange {
   ADDED,
   REMOVED,
 }
+
+const PROFILE_BATCH = 150;
 
 const FLOW_COUNCIL_QUERY = gql`
   query FlowCouncilQuery($councilId: String!) {
@@ -64,6 +70,7 @@ export default function Permissions(props: PermissionsProps) {
   const [transactionSuccess, setTransactionSuccess] = useState(false);
   const [isTransactionLoading, setIsTransactionLoading] = useState(false);
   const [managersEntry, setManagersEntry] = useState<ManagerEntry[]>([]);
+  const [profileNames, setProfileNames] = useState<Record<string, string>>({});
 
   const router = useRouter();
   const publicClient = usePublicClient();
@@ -223,6 +230,99 @@ export default function Permissions(props: PermissionsProps) {
     return false;
   }, [flowCouncil, managersEntry, findChangedEntry]);
 
+  const isRemovingBotVoterManager = useMemo(() => {
+    for (const managerEntry of managersEntry) {
+      const changedEntries = findChangedEntry(managerEntry);
+
+      if (
+        changedEntries.find(
+          (c) =>
+            c.account.toLowerCase() === FLOW_STATE_BOT_ADDRESS.toLowerCase() &&
+            c.role === VOTER_MANAGER_ROLE &&
+            c.status === StatusChange.REMOVED,
+        )
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [managersEntry, findChangedEntry]);
+
+  // Joined-string key: managersEntry gets a new identity on every keystroke,
+  // so name lookups gate on the stable key instead of the array.
+  const managerAddressKey = useMemo(
+    () =>
+      [
+        ...new Set(
+          managersEntry
+            .map((managerEntry) => managerEntry.address.trim().toLowerCase())
+            .filter((managerAddress) => isAddress(managerAddress)),
+        ),
+      ]
+        .sort()
+        .join(","),
+    [managersEntry],
+  );
+  const managerAddresses = useMemo(
+    () => (managerAddressKey === "" ? [] : managerAddressKey.split(",")),
+    [managerAddressKey],
+  );
+
+  const { ensByAddress } = useEnsResolution(managerAddresses);
+
+  useEffect(() => {
+    if (managerAddresses.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      const names: Record<string, string> = {};
+
+      for (const batch of splitIntoChunks(managerAddresses, PROFILE_BATCH)) {
+        try {
+          const res = await fetch("/api/flow-council/voter-groups/profiles", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ addresses: batch }),
+          });
+          const data = await res.json();
+
+          if (data.success && data.names) {
+            for (const [managerAddress, name] of Object.entries(
+              data.names as Record<string, string>,
+            )) {
+              names[managerAddress.toLowerCase()] = name;
+            }
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      if (!cancelled) {
+        setProfileNames(names);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [managerAddresses]);
+
+  const managerDisplayName = (managerAddress: string) => {
+    const account = managerAddress.trim().toLowerCase();
+
+    return (
+      KNOWN_ADDRESS_NAMES[account] ??
+      profileNames[account] ??
+      ensByAddress?.[account]?.name ??
+      ""
+    );
+  };
+
   useEffect(() => {
     (async () => {
       if (!flowCouncil) {
@@ -370,7 +470,17 @@ export default function Permissions(props: PermissionsProps) {
               gap={isMobile ? 2 : 4}
               className="justify-content-end align-items-center"
             >
-              <span className="w-50" />
+              <span
+                className="flex-grow-1"
+                style={{ maxWidth: isMobile ? undefined : 460 }}
+              />
+              <span
+                style={
+                  isMobile
+                    ? { width: 90, flexShrink: 0 }
+                    : { flex: "1 1 180px", minWidth: 0 }
+                }
+              />
               <Stack direction="horizontal" gap={2}>
                 <Card.Text
                   className="m-0 text-center flex-shrink-0"
@@ -408,13 +518,17 @@ export default function Permissions(props: PermissionsProps) {
                 className="justify-content-end align-items-center mt-1 mb-3"
                 key={i}
               >
-                <Stack direction="vertical" className="position-relative w-50">
+                <Stack
+                  direction="vertical"
+                  className="position-relative flex-grow-1"
+                  style={{ minWidth: 0, maxWidth: isMobile ? undefined : 460 }}
+                >
                   <Form.Control
                     type="text"
                     disabled={!isAdmin}
                     placeholder="Manager Address"
                     value={managerEntry.address}
-                    className="border-0 bg-white py-4 rounded-4 fw-semi-bold"
+                    className="border-0 bg-white rounded-4 fw-semi-bold"
                     style={{
                       paddingTop: 12,
                       paddingBottom: 12,
@@ -454,6 +568,20 @@ export default function Permissions(props: PermissionsProps) {
                     </Card.Text>
                   ) : null}
                 </Stack>
+                <Form.Control
+                  type="text"
+                  disabled
+                  placeholder="Name"
+                  value={managerDisplayName(managerEntry.address)}
+                  className="border-0 bg-white rounded-4 fw-semi-bold text-info"
+                  style={{
+                    ...(isMobile
+                      ? { width: 90, flexShrink: 0 }
+                      : { flex: "1 1 180px", minWidth: 0 }),
+                    paddingTop: 12,
+                    paddingBottom: 12,
+                  }}
+                />
                 <Stack direction="horizontal" gap={2}>
                   <Form.Check
                     className="d-flex justify-content-center"
@@ -565,6 +693,12 @@ export default function Permissions(props: PermissionsProps) {
           <Card.Text className="text-danger mt-4 mb-0">
             Warning: You've removed your only SuperAdmin. If you proceed, you
             won't be able to make any further changes to permissions
+          </Card.Text>
+        )}
+        {isRemovingBotVoterManager && (
+          <Card.Text className="text-danger mt-4 mb-0">
+            You have an active automated voter eligibility method. Removing this
+            address will cause this to stop working.
           </Card.Text>
         )}
         <Stack direction="vertical" gap={3} className="mt-4 mb-30">
