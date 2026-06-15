@@ -65,7 +65,9 @@ batched (up to 1,000 streams per transaction), so very large rounds may need
 more than one pass. You'll be asked to type a confirmation before the
 transaction is submitted.
 
-:::note[Splitter roles] The splitter has its own onchain roles, separate from
-the [council roles](002-permissions.md). The deploying wallet is set as the
+:::note[Splitter roles]
+The splitter has its own onchain roles, separate from the
+[council roles](002-permissions.md). The deploying wallet is set as the
 splitter's admin and stream admin at launch; scheduling the round end and
-closing all streams require one of those roles. :::
+closing all streams require one of those roles.
+:::

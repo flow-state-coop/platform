@@ -75,7 +75,10 @@ function getDefaultToken(network: Network): Token {
   return network.tokens.find((t) => t.symbol === "G$") ?? network.tokens[0];
 }
 
-async function waitForCouncilIndexing(chainId: number, councilId: string) {
+async function waitForCouncilIndexing(
+  chainId: number,
+  councilId: string,
+): Promise<boolean> {
   const client = getApolloClient("flowCouncil", chainId);
 
   for (let attempt = 0; attempt < COUNCIL_INDEXING_MAX_ATTEMPTS; attempt++) {
@@ -87,7 +90,7 @@ async function waitForCouncilIndexing(chainId: number, councilId: string) {
       });
 
       if (data?.flowCouncil) {
-        return;
+        return true;
       }
     } catch {
       // Transient subgraph errors shouldn't abort the wait
@@ -97,6 +100,8 @@ async function waitForCouncilIndexing(chainId: number, councilId: string) {
       setTimeout(resolve, COUNCIL_INDEXING_POLL_MS),
     );
   }
+
+  return false;
 }
 
 export default function Launch(props: LaunchProps) {
@@ -300,7 +305,7 @@ export default function Launch(props: LaunchProps) {
       });
 
       setIsIndexing(true);
-      await waitForCouncilIndexing(
+      const indexed = await waitForCouncilIndexing(
         selectedNetwork.id,
         flowCouncilAddress.toLowerCase(),
       );
@@ -309,7 +314,10 @@ export default function Launch(props: LaunchProps) {
       router.push(
         `/flow-councils/launch/${selectedNetwork.id}/${flowCouncilAddress}`,
       );
-      setSuccess(true);
+
+      if (indexed) {
+        setSuccess(true);
+      }
     } catch {
       setIsIndexing(false);
       // Error state is handled by useTransactionsQueue
