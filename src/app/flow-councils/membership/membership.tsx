@@ -25,7 +25,6 @@ import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
-import { networks, isSplitterFactoryDeployed } from "@/lib/networks";
 import useCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 import { useChunkedTxQueue } from "@/app/flow-councils/hooks/useChunkedTxQueue";
 import { useVoterGroupQueueCleanup } from "@/app/flow-councils/hooks/useVoterGroupQueueCleanup";
@@ -137,13 +136,6 @@ export default function Membership(props: MembershipProps) {
   });
 
   const councilMetadata = useCouncilMetadata(chainId ?? 0, councilId ?? "");
-  const network = useMemo(
-    () => networks.find((n) => n.id === chainId),
-    [chainId],
-  );
-  const hasSplitter =
-    isSplitterFactoryDeployed(network) &&
-    !!councilMetadata.superappSplitterAddress;
   const isCelo = chainId === CELO_CHAIN_ID;
 
   const flowCouncil = flowCouncilQueryRes?.flowCouncil ?? null;
@@ -251,10 +243,8 @@ export default function Membership(props: MembershipProps) {
     await fetchGroups();
   }, [refetch, fetchGroups]);
 
-  const { discard, cleanupError, clearCleanupError } = useVoterGroupQueueCleanup(
-    q,
-    refresh,
-  );
+  const { discard, cleanupError, clearCleanupError } =
+    useVoterGroupQueueCleanup(q, refresh);
 
   // The query pages 1000 voters per request (`first: 1000` above). Fetch the
   // next page only while the loaded count is a full multiple of that page size:
@@ -714,11 +704,7 @@ export default function Membership(props: MembershipProps) {
             disabled={councilMetadata.isPending}
             style={{ pointerEvents: isTransactionLoading ? "none" : "auto" }}
             onClick={() => {
-              router.push(
-                hasSplitter
-                  ? `/flow-councils/funding/${chainId}/${councilId}`
-                  : `/flow-councils/communications/${chainId}/${councilId}`,
-              );
+              router.push(`/flow-councils/funding/${chainId}/${councilId}`);
             }}
           >
             Next
