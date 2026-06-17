@@ -707,17 +707,47 @@ export function validateReactionEmoji(
 //       PATCH /api/flow-council/voter-groups — update group metadata (all fields optional)
 // ---------------------------------------------------------------------------
 
-// Spec: "name" 1–100 chars; "eligibilityMethod" enum ["manual","gooddollar"];
+// Spec: "name" 1–100 chars; "eligibilityMethod" enum ["manual","gooddollar","metrics"];
 //       "defaultVotingPower" integer 1–1_000_000
 export const voterGroupCreateSchema = z.object({
   name: z.string().min(1).max(100),
-  eligibilityMethod: z.enum(["manual", "gooddollar"]),
+  eligibilityMethod: z.enum(["manual", "gooddollar", "metrics"]),
   defaultVotingPower: z.number().int().min(1).max(1_000_000),
 });
 
 // Spec: PATCH — partial update; each field still validated when present
 export const voterGroupUpdateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  eligibilityMethod: z.enum(["manual", "gooddollar"]).optional(),
+  eligibilityMethod: z.enum(["manual", "gooddollar", "metrics"]).optional(),
   defaultVotingPower: z.number().int().min(1).max(1_000_000).optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Metrics voter group schemas
+// A "metrics" group adds the Flow State bot as an on-chain voter; an external
+// caller pushes ballots via POST /api/flow-council/metrics/ballot (Bearer key)
+// and admins mint keys via POST /api/flow-council/metrics/keys (SIWE).
+// ---------------------------------------------------------------------------
+
+// Per-recipient relative weights — the server normalizes these to the bot's
+// current on-chain voting power, so the caller never tracks governance config.
+const MAX_METRICS_BALLOT_ENTRIES = 1000;
+
+export const metricsBallotSchema = z.object({
+  votes: z
+    .array(
+      z.object({
+        recipient: z.string().refine(isAddress, "Invalid recipient address"),
+        weight: z.number().finite().nonnegative(),
+      }),
+    )
+    .min(1)
+    .max(MAX_METRICS_BALLOT_ENTRIES)
+    .refine((votes) => votes.some((v) => v.weight > 0), {
+      message: "At least one recipient must have a positive weight",
+    }),
+});
+
+export const metricsKeyCreateSchema = z.object({
+  label: z.string().min(1).max(100),
 });

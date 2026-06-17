@@ -273,6 +273,23 @@ export async function POST(request: Request) {
       );
     }
 
+    // One metrics group per council: the bot is a single per-council voter.
+    if (parsed.data.eligibilityMethod === "metrics") {
+      const existing = await db
+        .selectFrom("voterGroups")
+        .select("id")
+        .where("roundId", "=", auth.roundId)
+        .where("eligibilityMethod", "=", "metrics")
+        .executeTakeFirst();
+
+      if (existing) {
+        return errorResponse(
+          "This council already has a metrics voter group",
+          400,
+        );
+      }
+    }
+
     const inserted = await db
       .insertInto("voterGroups")
       .values({
@@ -341,6 +358,24 @@ export async function PATCH(request: Request) {
         "GoodDollar eligibility is only available on Celo",
         400,
       );
+    }
+
+    // One metrics group per council: the bot is a single per-council voter.
+    if (parsed.data.eligibilityMethod === "metrics") {
+      const existing = await db
+        .selectFrom("voterGroups")
+        .select("id")
+        .where("roundId", "=", auth.roundId)
+        .where("eligibilityMethod", "=", "metrics")
+        .where("id", "!=", id)
+        .executeTakeFirst();
+
+      if (existing) {
+        return errorResponse(
+          "This council already has a metrics voter group",
+          400,
+        );
+      }
     }
 
     const group = await db
@@ -448,7 +483,10 @@ export async function DELETE(request: Request) {
         .executeTakeFirst();
 
       if (Number(memberCountRow?.count ?? 0) > 0) {
-        throw new HttpError("Group must be empty before it can be deleted", 400);
+        throw new HttpError(
+          "Group must be empty before it can be deleted",
+          400,
+        );
       }
 
       await trx

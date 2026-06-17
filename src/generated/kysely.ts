@@ -70,6 +70,17 @@ export type MessageReaction = {
   emoji: string;
   createdAt: Generated<Timestamp>;
 };
+export type MetricsApiKey = {
+  id: Generated<number>;
+  roundId: number;
+  voterGroupId: number;
+  keyHash: string;
+  keyPrefix: string;
+  label: string;
+  lastUsedAt: Timestamp | null;
+  revokedAt: Timestamp | null;
+  createdAt: Generated<Timestamp>;
+};
 export type MilestoneProgress = {
   id: Generated<number>;
   applicationId: number;
@@ -155,6 +166,7 @@ export type VoterGroup = {
   name: string;
   eligibilityMethod: string;
   defaultVotingPower: Generated<number>;
+  lastBallotAt: Timestamp | null;
   createdAt: Generated<Timestamp>;
   updatedAt: Generated<Timestamp>;
 };
@@ -170,6 +182,7 @@ export type DB = {
   inboxItems: InboxItem;
   messageReactions: MessageReaction;
   messages: Message;
+  metricsApiKeys: MetricsApiKey;
   milestoneProgress: MilestoneProgress;
   projectEmails: ProjectEmail;
   projectManagers: ProjectManager;

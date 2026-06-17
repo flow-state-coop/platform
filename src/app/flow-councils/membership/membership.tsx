@@ -74,7 +74,9 @@ const FLOW_COUNCIL_QUERY = gql`
 `;
 
 function prettyEligibility(method: EligibilityMethod): string {
-  return method === "gooddollar" ? "GoodDollar ID" : "Manual";
+  if (method === "gooddollar") return "GoodDollar ID";
+  if (method === "metrics") return "Metrics";
+  return "Manual";
 }
 export default function Membership(props: MembershipProps) {
   const { chainId, councilId } = props;
@@ -341,10 +343,13 @@ export default function Membership(props: MembershipProps) {
 
     const name = newGroupName.trim();
     const isGoodDollar = newGroupEligibility === "gooddollar";
+    const isMetrics = newGroupEligibility === "metrics";
     // Manual groups don't expose the field; they fall back to the default of 10
-    // (the per-voter fallback used by the Add voters modal). Only the GoodDollar
-    // value is user-editable, so only that one is validated.
-    const defaultVotingPower = isGoodDollar
+    // (the per-voter fallback used by the Add voters modal). GoodDollar's default
+    // allocation and the metrics bot's vote power are user-editable, so those are
+    // validated.
+    const usesVotePower = isGoodDollar || isMetrics;
+    const defaultVotingPower = usesVotePower
       ? Number(newGroupDefaultVotingPower)
       : 10;
 
@@ -354,13 +359,21 @@ export default function Membership(props: MembershipProps) {
     }
 
     if (
-      isGoodDollar &&
+      usesVotePower &&
       (!isNumber(newGroupDefaultVotingPower) ||
         newGroupDefaultVotingPower.includes(".") ||
         defaultVotingPower < 1 ||
         defaultVotingPower > 1e6)
     ) {
-      setCreateGroupError("Default votes must be an integer between 1 and 1M");
+      setCreateGroupError(
+        isMetrics
+          ? "Vote power must be an integer between 1 and 1M"
+          : "Default votes must be an integer between 1 and 1M",
+      );
+      return;
+    }
+
+    if (isMetrics && !publicClient) {
       return;
     }
 
@@ -392,6 +405,37 @@ export default function Membership(props: MembershipProps) {
         await refetch();
       }
 
+      // Metrics groups add the Flow State bot as a council voter with the
+      // configured vote power. The bot needs no role (unlike GoodDollar) — it
+      // only casts ballots — so an admin with voter-manager rights signs the
+      // addVoter directly. editVoter covers the rare case where the bot is
+      // already a voter (e.g. a recreated metrics group).
+      if (isMetrics && publicClient) {
+        if (connectedChain?.id !== chainId) {
+          switchChain({ chainId });
+          setCreateGroupError(
+            "Switch your wallet to the council's network, then click Create again.",
+          );
+          return;
+        }
+
+        const botVoter = await publicClient.readContract({
+          address: councilId as Address,
+          abi: flowCouncilAbi,
+          functionName: "getVoter",
+          args: [FLOW_STATE_BOT_ADDRESS],
+        });
+
+        const hash = await writeContract(wagmiConfig, {
+          address: councilId as Address,
+          abi: flowCouncilAbi,
+          functionName: botVoter.votingPower === 0n ? "addVoter" : "editVoter",
+          args: [FLOW_STATE_BOT_ADDRESS, BigInt(defaultVotingPower)],
+        });
+
+        await waitForReceipt(publicClient, hash);
+      }
+
       const res = await fetch("/api/flow-council/voter-groups", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -408,6 +452,23 @@ export default function Membership(props: MembershipProps) {
       if (!data.success) {
         setCreateGroupError(data.error ?? "Failed to create group");
         return;
+      }
+
+      // Record the bot's group membership so it appears in the metrics group's
+      // voter list. Best-effort and cosmetic: the ballot API reads the bot's
+      // power on-chain, not from this row, so a failure here doesn't block
+      // creation.
+      if (isMetrics && data.id) {
+        await fetch("/api/flow-council/voter-groups/members", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chainId,
+            councilId,
+            groupId: data.id,
+            address: FLOW_STATE_BOT_ADDRESS,
+          }),
+        });
       }
 
       // Platform-standard confirmation: the button turns green with a checkmark,
@@ -452,6 +513,8 @@ export default function Membership(props: MembershipProps) {
   const goodDollarNeedsGrant =
     newGroupEligibility === "gooddollar" && !botHasVoterManagerRole;
   const goodDollarBlockedForNonAdmin = goodDollarNeedsGrant && !isAdmin;
+  const newGroupUsesVotePower =
+    newGroupEligibility === "gooddollar" || newGroupEligibility === "metrics";
 
   return (
     <>
@@ -763,12 +826,15 @@ export default function Membership(props: MembershipProps) {
               <option value="gooddollar" disabled={!isCelo}>
                 GoodDollar ID{!isCelo ? " (Celo only)" : ""}
               </option>
+              <option value="metrics">Metrics</option>
             </Form.Select>
           </Form.Group>
-          {newGroupEligibility === "gooddollar" ? (
+          {newGroupUsesVotePower ? (
             <Form.Group className="mb-3">
               <Form.Label className="fw-semi-bold">
-                Default vote allocation
+                {newGroupEligibility === "metrics"
+                  ? "Vote power"
+                  : "Default vote allocation"}
               </Form.Label>
               <Form.Control
                 type="text"
@@ -790,9 +856,19 @@ export default function Membership(props: MembershipProps) {
                 }}
               />
               <Form.Text className="text-info">
-                Votes a voter receives when first added through this group.
+                {newGroupEligibility === "metrics"
+                  ? "Total votes the metrics bot can allocate across recipients."
+                  : "Votes a voter receives when first added through this group."}
               </Form.Text>
             </Form.Group>
+          ) : null}
+          {newGroupEligibility === "metrics" ? (
+            <Alert variant="info" className="mb-3">
+              Creating this group adds a Flow State-sponsored bot as a council
+              voter with the vote power above (one transaction). You can then
+              mint an API key on the group page to submit ballots
+              programmatically.
+            </Alert>
           ) : null}
           {newGroupEligibility === "gooddollar" ? (
             <Alert variant="info" className="mb-3">

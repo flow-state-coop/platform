@@ -3,7 +3,7 @@
 // helpers (membership.tsx, GroupDetail.tsx, VoterTable.tsx, MoveVoterModal.tsx,
 // SaveConfirmModal.tsx, voterCsv.ts).
 
-export type EligibilityMethod = "manual" | "gooddollar";
+export type EligibilityMethod = "manual" | "gooddollar" | "metrics";
 
 export type VoterGroup = {
   id: number;

@@ -1,0 +1,92 @@
+import crypto from "crypto";
+import { createPublicClient, createWalletClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { db } from "../db";
+import { getViemChain } from "@/lib/networks";
+import type { Network } from "@/types/network";
+
+/**
+ * Resolve the "metrics"-eligibility voter group for a council, if one exists.
+ * A council has at most one (the bot is a single per-council voter). Mirrors
+ * `getGoodDollarGroup` in the eligibility route — a single indexed read, no
+ * cache (it would go stale across serverless instances after an admin edit).
+ */
+export function getMetricsGroup(roundId: number) {
+  return db
+    .selectFrom("voterGroups")
+    .select(["id", "defaultVotingPower", "lastBallotAt"])
+    .where("roundId", "=", roundId)
+    .where("eligibilityMethod", "=", "metrics")
+    .orderBy("id", "asc")
+    .executeTakeFirst();
+}
+
+function buildMetricsSigner(network: Network) {
+  const account = privateKeyToAccount(
+    process.env.FLOW_STATE_ELIGIBILITY_PK as `0x${string}`,
+  );
+  const viemChain = getViemChain(network.id);
+  const publicClient = createPublicClient({
+    chain: viemChain,
+    transport: http(network.rpcUrl),
+  });
+  const walletClient = createWalletClient({
+    chain: viemChain,
+    transport: http(network.rpcUrl),
+  });
+  return { account, publicClient, walletClient };
+}
+
+const signerCache = new Map<number, ReturnType<typeof buildMetricsSigner>>();
+
+/**
+ * Resolve the viem account + clients that sign on-chain actions as the Flow
+ * State bot, memoized per chain so the ballot hot path doesn't rebuild HTTP
+ * transports and re-derive the key on every request. Single seam for the wallet
+ * model: today one centralized key signs for every council; a future per-council
+ * HD wallet would be derived here from `network`/round instead.
+ */
+export function getMetricsSigner(network: Network) {
+  const cached = signerCache.get(network.id);
+  if (cached) return cached;
+
+  const signer = buildMetricsSigner(network);
+  signerCache.set(network.id, signer);
+  return signer;
+}
+
+function getApiKeySecret(): string {
+  const secret = process.env.METRICS_API_KEY_SECRET;
+  if (!secret) {
+    throw new Error("METRICS_API_KEY_SECRET is not configured");
+  }
+  return secret;
+}
+
+/**
+ * Keyed hash of an API token, for both storage and lookup. HMAC rather than a
+ * bare sha256 so a leaked `metrics_api_keys` table can't be used to forge usable
+ * tokens without also holding the server secret.
+ */
+export function hashApiKey(token: string): string {
+  return crypto
+    .createHmac("sha256", getApiKeySecret())
+    .update(token)
+    .digest("hex");
+}
+
+const API_KEY_PREFIX = "metrics_";
+
+/**
+ * Mint a new API key. The plaintext `token` is returned to the caller exactly
+ * once; only the keyed `hash` is persisted, and `prefix` (the leading 16 chars,
+ * non-secret) is stored for display in the management UI.
+ */
+export function generateApiKey(): {
+  token: string;
+  hash: string;
+  prefix: string;
+} {
+  const token = `${API_KEY_PREFIX}${crypto.randomBytes(32).toString("base64url")}`;
+  return { token, hash: hashApiKey(token), prefix: token.slice(0, 16) };
+}

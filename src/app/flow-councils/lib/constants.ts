@@ -8,6 +8,11 @@ export const RECIPIENT_MANAGER_ROLE: `0x${string}` =
 // Celo mainnet chain ID — GoodDollar eligibility is Celo-only.
 export const CELO_CHAIN_ID = 42220;
 
+// Minimum gap between metrics ballot submissions for a council. Each ballot is
+// an on-chain tx; metrics update on a cadence, so this caps gas spend and
+// prevents bursts from racing the bot's nonce.
+export const METRICS_MIN_INTERVAL_MS = 60_000;
+
 export const GOODBUILDERS_COUNCIL_ADDRESSES: `0x${string}`[] = [
   "0x714d013c073d6276b47f475549dae4559d898a77",
   "0xfabef1abae4998146e8a8422813eb787caa26ec2",

@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useConfig, useAccount, usePublicClient, useSwitchChain } from "wagmi";
+import { writeContract } from "@wagmi/core";
+import { Address } from "viem";
 import { gql, useQuery } from "@apollo/client";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
@@ -17,6 +19,8 @@ import InfoTooltip from "@/components/InfoTooltip";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
+import { waitForReceipt } from "@/lib/utils";
+import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { useChunkedTxQueue } from "@/app/flow-councils/hooks/useChunkedTxQueue";
 import { useVoterGroupQueueCleanup } from "@/app/flow-councils/hooks/useVoterGroupQueueCleanup";
 import { fetchVoterGroups } from "@/app/flow-councils/lib/fetchVoterGroups";
@@ -27,6 +31,7 @@ import {
 } from "@/app/flow-councils/lib/voterUtils";
 import VoterTable from "./VoterTable";
 import EligibilityManagerField from "./EligibilityManagerField";
+import MetricsApiKeysPanel from "./MetricsApiKeysPanel";
 import type {
   ChunkedQueue,
   EligibilityMethod,
@@ -74,7 +79,9 @@ const FLOW_COUNCIL_QUERY = gql`
 `;
 
 function prettyEligibility(method: EligibilityMethod): string {
-  return method === "gooddollar" ? "GoodDollar ID" : "Manual";
+  if (method === "gooddollar") return "GoodDollar ID";
+  if (method === "metrics") return "Metrics";
+  return "Manual";
 }
 
 export default function GroupDetail(props: GroupDetailProps) {
@@ -267,10 +274,8 @@ export default function GroupDetail(props: GroupDetailProps) {
   // Finalize-on-complete (drop removed voters' DB rows) and discard-with-rollback
   // are driven by the queue's persisted meta, so they survive a remount and work
   // from either page that mounts the queue.
-  const { discard, cleanupError, clearCleanupError } = useVoterGroupQueueCleanup(
-    q,
-    refresh,
-  );
+  const { discard, cleanupError, clearCleanupError } =
+    useVoterGroupQueueCleanup(q, refresh);
 
   // Capture the hook's stable startQueue reference so the wrapper below depends
   // on it directly instead of the render-fresh `q` object.
@@ -397,6 +402,8 @@ export default function GroupDetail(props: GroupDetailProps) {
 
     const name = editName.trim();
     const isGoodDollar = editEligibility === "gooddollar";
+    const isMetrics = editEligibility === "metrics";
+    const usesVotePower = isGoodDollar || isMetrics;
     const defaultVotingPower = Number(editDefaultVotingPower);
 
     if (!name) {
@@ -405,21 +412,54 @@ export default function GroupDetail(props: GroupDetailProps) {
     }
 
     if (
-      isGoodDollar &&
+      usesVotePower &&
       (editDefaultVotingPower === "" ||
         editDefaultVotingPower.includes(".") ||
         Number.isNaN(defaultVotingPower) ||
         defaultVotingPower < 1 ||
         defaultVotingPower > 1e6)
     ) {
-      setSaveError("Default votes must be an integer between 1 and 1M");
+      setSaveError(
+        isMetrics
+          ? "Vote power must be an integer between 1 and 1M"
+          : "Default votes must be an integer between 1 and 1M",
+      );
       return;
     }
+
+    let onChainApplied = false;
 
     try {
       setIsSaving(true);
       setSaveError("");
       setSaveSuccess(false);
+
+      // A metrics group's vote power IS the bot's on-chain voting power (it is
+      // the single voter), so a change must be written on-chain — unlike
+      // GoodDollar, where defaultVotingPower only seeds future voters.
+      if (
+        isMetrics &&
+        publicClient &&
+        defaultVotingPower !== group.defaultVotingPower
+      ) {
+        if (connectedChain?.id !== chainId) {
+          switchChain({ chainId });
+          setSaveError(
+            "Switch your wallet to the council's network, then click Save again.",
+          );
+          return;
+        }
+
+        const hash = await writeContract(wagmiConfig, {
+          address: councilId as Address,
+          abi: flowCouncilAbi,
+          functionName: "editVoter",
+          args: [FLOW_STATE_BOT_ADDRESS, BigInt(defaultVotingPower)],
+        });
+
+        await waitForReceipt(publicClient, hash);
+        onChainApplied = true;
+      }
 
       const res = await fetch(`/api/flow-council/voter-groups?id=${group.id}`, {
         method: "PATCH",
@@ -429,13 +469,17 @@ export default function GroupDetail(props: GroupDetailProps) {
           councilId,
           name,
           eligibilityMethod: editEligibility,
-          ...(isGoodDollar ? { defaultVotingPower } : {}),
+          ...(usesVotePower ? { defaultVotingPower } : {}),
         }),
       });
       const data = await res.json();
 
       if (!data.success) {
-        setSaveError(data.error ?? "Failed to save group");
+        setSaveError(
+          onChainApplied
+            ? "Vote power was updated on-chain, but saving failed — click Save again to finish."
+            : (data.error ?? "Failed to save group"),
+        );
         return;
       }
 
@@ -444,7 +488,11 @@ export default function GroupDetail(props: GroupDetailProps) {
       await fetchGroups();
     } catch (err) {
       console.error(err);
-      setSaveError("Failed to save group");
+      setSaveError(
+        onChainApplied
+          ? "Vote power was updated on-chain, but saving failed — click Save again to finish."
+          : "Failed to save group",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -482,6 +530,10 @@ export default function GroupDetail(props: GroupDetailProps) {
   };
 
   const isLastGroup = groups.length <= 1;
+  // A metrics group's method is locked after creation: switching away would
+  // require removing the bot voter, and switching to it requires adding the bot
+  // (done only in the create flow).
+  const isMetricsGroup = group?.eligibilityMethod === "metrics";
 
   // Reason the delete action is unavailable (rendered as a tooltip on the
   // disabled trash icon). Mirrors the server guards: a group must be empty and
@@ -687,6 +739,25 @@ export default function GroupDetail(props: GroupDetailProps) {
                     ) : null}
                   </Stack>
                 ) : null}
+
+                {/* Metrics groups surface the bot's vote power and the API key
+                    manager read-only here, so an admin can mint/revoke keys and
+                    copy the ballot endpoint without entering edit mode. */}
+                {group.eligibilityMethod === "metrics" ? (
+                  <Stack direction="vertical" gap={3} className="mt-4">
+                    <div>
+                      <span className="fw-semi-bold d-block mb-1">
+                        Vote power
+                      </span>
+                      <span>{group.defaultVotingPower}</span>
+                    </div>
+                    <MetricsApiKeysPanel
+                      chainId={chainId}
+                      councilId={councilId}
+                      isManager={isManager}
+                    />
+                  </Stack>
+                ) : null}
               </Card.Header>
               <Card.Body className="p-0 mt-4">
                 <Stack
@@ -758,7 +829,7 @@ export default function GroupDetail(props: GroupDetailProps) {
                       </Form.Label>
                       <Form.Select
                         value={editEligibility}
-                        disabled={isSaving}
+                        disabled={isSaving || isMetricsGroup}
                         onChange={(e) =>
                           setEditEligibility(
                             e.target.value as EligibilityMethod,
@@ -769,13 +840,25 @@ export default function GroupDetail(props: GroupDetailProps) {
                         <option value="gooddollar" disabled={!isCelo}>
                           GoodDollar ID{!isCelo ? " (Celo only)" : ""}
                         </option>
+                        <option value="metrics" disabled={!isMetricsGroup}>
+                          Metrics
+                        </option>
                       </Form.Select>
+                      {isMetricsGroup ? (
+                        <Form.Text className="text-info">
+                          Metrics groups can&apos;t change their eligibility
+                          method.
+                        </Form.Text>
+                      ) : null}
                     </Form.Group>
 
-                    {editEligibility === "gooddollar" ? (
+                    {editEligibility === "gooddollar" ||
+                    editEligibility === "metrics" ? (
                       <Form.Group>
                         <Form.Label className="fw-semi-bold">
-                          Default vote allocation
+                          {editEligibility === "metrics"
+                            ? "Vote power"
+                            : "Default vote allocation"}
                         </Form.Label>
                         <Form.Control
                           type="text"
@@ -795,8 +878,9 @@ export default function GroupDetail(props: GroupDetailProps) {
                           }}
                         />
                         <Form.Text className="text-info">
-                          Applied only to voters added through this group after
-                          the change — existing members are not updated.
+                          {editEligibility === "metrics"
+                            ? "Total votes the bot allocates across recipients. Changing this submits an on-chain transaction."
+                            : "Applied only to voters added through this group after the change — existing members are not updated."}
                         </Form.Text>
                       </Form.Group>
                     ) : null}

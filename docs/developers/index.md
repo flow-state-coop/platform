@@ -15,9 +15,10 @@ These pages are written for developers who want to run the app locally, understa
 - **[Getting Started](002-getting-started.md)** — prerequisites, environment variables, and running the app and database locally.
 - **[Architecture](003-architecture.md)** — the stack, the `src/` layout, the data model, and the supported networks.
 - **[Public API](004-public-api.md)** — the unauthenticated endpoints you can build against.
-- **[Contracts](005-contracts.md)** — the on-chain contracts the platform reads and writes.
-- **[Testing](006-testing.md)** — unit, integration, and end-to-end test workflows.
-- **[Contributing](007-contributing.md)** — how to open a PR and where the docs live.
+- **[Metrics API](005-metrics-api.md)** — the authenticated endpoint for pushing automated ballots to a metrics voter group.
+- **[Contracts](006-contracts.md)** — the on-chain contracts the platform reads and writes.
+- **[Testing](007-testing.md)** — unit, integration, and end-to-end test workflows.
+- **[Contributing](008-contributing.md)** — how to open a PR and where the docs live.
 
 :::tip
 The package manager is **pnpm**. Every command in these docs assumes you have it installed.
