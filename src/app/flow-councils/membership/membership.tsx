@@ -380,6 +380,8 @@ export default function Membership(props: MembershipProps) {
     setIsCreatingGroup(true);
     setCreateGroupError("");
 
+    let onChainApplied = false;
+
     try {
       // GoodDollar groups rely on the Flow State bot holding VOTER_MANAGER_ROLE
       // to auto-add self-claiming voters. Grant it as part of creation so a
@@ -434,6 +436,7 @@ export default function Membership(props: MembershipProps) {
         });
 
         await waitForReceipt(publicClient, hash);
+        onChainApplied = true;
       }
 
       const res = await fetch("/api/flow-council/voter-groups", {
@@ -450,7 +453,11 @@ export default function Membership(props: MembershipProps) {
       const data = await res.json();
 
       if (!data.success) {
-        setCreateGroupError(data.error ?? "Failed to create group");
+        setCreateGroupError(
+          onChainApplied
+            ? "The bot was added on-chain, but saving the group failed — click Create again to finish."
+            : (data.error ?? "Failed to create group"),
+        );
         return;
       }
 
@@ -483,7 +490,11 @@ export default function Membership(props: MembershipProps) {
       }, 1500);
     } catch (err) {
       console.error(err);
-      setCreateGroupError("Failed to create group");
+      setCreateGroupError(
+        onChainApplied
+          ? "The bot was added on-chain, but saving the group failed — click Create again to finish."
+          : "Failed to create group",
+      );
     } finally {
       setIsCreatingGroup(false);
     }

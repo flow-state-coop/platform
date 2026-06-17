@@ -15,6 +15,9 @@ export function normalizeWeightsToVotingPower(
   maxVotingSpread: number,
 ): BallotVote[] {
   if (votingPower <= 0n) return [];
+  if (votingPower > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new Error("Voting power exceeds the safe normalization range");
+  }
 
   const positive = votes.filter((v) => v.weight > 0);
   if (positive.length === 0) return [];

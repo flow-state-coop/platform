@@ -2,6 +2,11 @@
 ALTER TABLE "voter_groups"
   ADD COLUMN IF NOT EXISTS "last_ballot_at" TIMESTAMPTZ;
 
+-- At most one metrics group per council: DB-level backstop for the check-then-insert
+-- in POST /api/flow-council/voter-groups, which two concurrent requests could race.
+CREATE UNIQUE INDEX IF NOT EXISTS "voter_groups_round_metrics_unique"
+  ON "voter_groups"("round_id") WHERE "eligibility_method" = 'metrics';
+
 -- CreateTable metrics_api_keys
 CREATE TABLE IF NOT EXISTS "metrics_api_keys" (
   "id"             SERIAL PRIMARY KEY,

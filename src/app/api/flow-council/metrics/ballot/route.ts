@@ -93,6 +93,7 @@ export async function POST(request: Request) {
   const { account, publicClient, walletClient } = getMetricsSigner(network);
 
   let claimed = false;
+  let claimedAt: Date | null = null;
 
   try {
     // 6. Read the bot's current voting power, the council's spread limit, and
@@ -176,10 +177,11 @@ export async function POST(request: Request) {
 
     // 10. Atomically claim the rate-limit window. A lost claim means a
     //     concurrent submission won — reject so the bot's nonce isn't raced.
-    const threshold = new Date(Date.now() - METRICS_MIN_INTERVAL_MS);
+    claimedAt = new Date();
+    const threshold = new Date(claimedAt.getTime() - METRICS_MIN_INTERVAL_MS);
     const claim = await db
       .updateTable("voterGroups")
-      .set({ lastBallotAt: new Date() })
+      .set({ lastBallotAt: claimedAt })
       .where("id", "=", group.id)
       .where((eb) =>
         eb.or([
@@ -226,11 +228,12 @@ export async function POST(request: Request) {
     // No ballot landed, so release the rate-limit window claimed in step 10 —
     // otherwise a transient RPC error or revert locks the caller out for the
     // full interval.
-    if (claimed) {
+    if (claimed && claimedAt) {
       await db
         .updateTable("voterGroups")
         .set({ lastBallotAt: group.lastBallotAt })
         .where("id", "=", group.id)
+        .where("lastBallotAt", "=", claimedAt)
         .execute()
         .catch((resetErr) => console.error(resetErr));
     }

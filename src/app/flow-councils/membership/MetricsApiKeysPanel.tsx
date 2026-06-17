@@ -119,11 +119,10 @@ export default function MetricsApiKeysPanel(props: MetricsApiKeysPanelProps) {
     setRevokeError("");
 
     try {
-      const res = await fetch(`/api/flow-council/metrics/keys?id=${id}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chainId, councilId }),
-      });
+      const res = await fetch(
+        `/api/flow-council/metrics/keys?id=${id}&chainId=${chainId}&councilId=${councilId}`,
+        { method: "DELETE" },
+      );
       const data = await res.json();
 
       if (!data.success) {

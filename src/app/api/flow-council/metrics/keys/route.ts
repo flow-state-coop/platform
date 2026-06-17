@@ -150,12 +150,10 @@ export async function DELETE(request: Request) {
       return errorResponse("Invalid key id", 400);
     }
 
-    const parsedBody = await parseBody(request);
-    if (!parsedBody.ok) {
-      return parsedBody.response;
-    }
-
-    const params = queryParamsSchema.safeParse(parsedBody.body);
+    const params = queryParamsSchema.safeParse({
+      chainId: searchParams.get("chainId"),
+      councilId: searchParams.get("councilId"),
+    });
     if (!params.success) {
       return errorResponse(params.error.issues[0].message, 400);
     }
