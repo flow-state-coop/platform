@@ -8,11 +8,12 @@ test.beforeEach(async ({ page }) => {
   await installSubgraphMock(page);
 });
 
-// The seeded E2E council has no superappSplitterAddress, which alone gates
-// the Funding tab off regardless of whether the chain's
-// superAppSplitterFactory is deployed. Here we assert the gate holds
-// end-to-end.
-test("Funding sidebar link is hidden when council has no splitter", async ({
+// The Funding tab is always shown in the sidebar regardless of whether the
+// council has a superappSplitterAddress or the chain's superAppSplitterFactory
+// is deployed. The seeded E2E council has no splitter, yet the link must still
+// render; the funding page itself surfaces a graceful empty state (asserted
+// below).
+test("Funding sidebar link is shown even when council has no splitter", async ({
   page,
 }) => {
   const fx = readFixture();
@@ -21,11 +22,8 @@ test("Funding sidebar link is hidden when council has no splitter", async ({
     `/flow-councils/membership/${fx.chainId}/${fx.councilAddress}`,
   );
 
-  // The other wizard tabs in SIDEBAR_LINK_DEFS render unconditionally; if any
-  // of them is visible we know the sidebar mounted before we check that
-  // Funding is missing.
   await expect(page.getByRole("link", { name: "Voters" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Funding" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Funding" })).toBeVisible();
 });
 
 test("Funding page shows graceful empty state when no splitter is configured", async ({
