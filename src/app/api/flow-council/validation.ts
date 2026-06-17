@@ -745,7 +745,13 @@ export const metricsBallotSchema = z.object({
     .max(MAX_METRICS_BALLOT_ENTRIES)
     .refine((votes) => votes.some((v) => v.weight > 0), {
       message: "At least one recipient must have a positive weight",
-    }),
+    })
+    .refine(
+      (votes) =>
+        new Set(votes.map((v) => v.recipient.toLowerCase())).size ===
+        votes.length,
+      { message: "Duplicate recipient addresses are not allowed" },
+    ),
 });
 
 export const metricsKeyCreateSchema = z.object({
