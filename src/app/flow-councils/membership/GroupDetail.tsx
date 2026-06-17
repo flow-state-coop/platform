@@ -39,6 +39,7 @@ import type {
   VoterGroup,
   VoterGroupQueueMeta,
 } from "./voterTableTypes";
+import { prettyEligibility } from "./voterTableTypes";
 import {
   VOTER_MANAGER_ROLE,
   RECIPIENT_MANAGER_ROLE,
@@ -77,12 +78,6 @@ const FLOW_COUNCIL_QUERY = gql`
     }
   }
 `;
-
-function prettyEligibility(method: EligibilityMethod): string {
-  if (method === "gooddollar") return "GoodDollar ID";
-  if (method === "metrics") return "Metrics";
-  return "Manual";
-}
 
 export default function GroupDetail(props: GroupDetailProps) {
   const { chainId, councilId, groupId } = props;
@@ -424,6 +419,18 @@ export default function GroupDetail(props: GroupDetailProps) {
           ? "Vote power must be an integer between 1 and 1M"
           : "Default votes must be an integer between 1 and 1M",
       );
+      return;
+    }
+
+    // A metrics group's vote power must be written on-chain (the bot is the
+    // single voter), so refuse the change rather than letting the DB drift from
+    // the bot's actual on-chain power when no wallet client is available.
+    if (
+      isMetrics &&
+      defaultVotingPower !== group.defaultVotingPower &&
+      !publicClient
+    ) {
+      setSaveError("Connect your wallet to change a metrics group's vote power.");
       return;
     }
 

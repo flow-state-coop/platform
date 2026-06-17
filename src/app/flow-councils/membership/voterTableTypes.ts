@@ -5,6 +5,12 @@
 
 export type EligibilityMethod = "manual" | "gooddollar" | "metrics";
 
+export function prettyEligibility(method: EligibilityMethod): string {
+  if (method === "gooddollar") return "GoodDollar ID";
+  if (method === "metrics") return "Metrics";
+  return "Manual";
+}
+
 export type VoterGroup = {
   id: number;
   name: string;

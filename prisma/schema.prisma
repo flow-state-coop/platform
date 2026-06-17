@@ -88,6 +88,10 @@ model VoterGroup {
 
   @@unique([roundId, name])
   @@map("voter_groups")
+  // Also has the partial unique index `voter_groups_round_metrics_unique`
+  // (round_id WHERE eligibility_method = 'metrics'), defined in raw SQL in the
+  // 20260617000000_add_metrics_voter migration. Prisma can't model partial
+  // indexes, so keep it in the migration — do not let `migrate dev` drop it.
 }
 
 model MetricsApiKey {

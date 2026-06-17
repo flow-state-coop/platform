@@ -47,6 +47,7 @@ import type {
   SubgraphVoter,
   VoterGroup,
 } from "./voterTableTypes";
+import { prettyEligibility } from "./voterTableTypes";
 
 type MembershipProps = { chainId?: number; councilId?: string };
 
@@ -73,11 +74,6 @@ const FLOW_COUNCIL_QUERY = gql`
   }
 `;
 
-function prettyEligibility(method: EligibilityMethod): string {
-  if (method === "gooddollar") return "GoodDollar ID";
-  if (method === "metrics") return "Metrics";
-  return "Manual";
-}
 export default function Membership(props: MembershipProps) {
   const { chainId, councilId } = props;
 

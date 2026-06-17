@@ -53,6 +53,13 @@ export default function MetricsApiKeysPanel(props: MetricsApiKeysPanelProps) {
   const ballotEndpoint = `${origin}/api/flow-council/metrics/ballot`;
 
   const loadKeys = useCallback(async () => {
+    // Listing keys requires a council manager; non-managers would only get a 403,
+    // so skip the fetch and leave the panel showing the endpoint alone.
+    if (!isManager) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setLoadError("");
 
@@ -73,7 +80,7 @@ export default function MetricsApiKeysPanel(props: MetricsApiKeysPanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [chainId, councilId]);
+  }, [chainId, councilId, isManager]);
 
   useEffect(() => {
     loadKeys();

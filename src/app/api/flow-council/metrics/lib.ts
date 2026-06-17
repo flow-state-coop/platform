@@ -22,9 +22,11 @@ export function getMetricsGroup(roundId: number) {
 }
 
 function buildMetricsSigner(network: Network) {
-  const account = privateKeyToAccount(
-    process.env.FLOW_STATE_ELIGIBILITY_PK as `0x${string}`,
-  );
+  const pk = process.env.FLOW_STATE_ELIGIBILITY_PK;
+  if (!pk) {
+    throw new Error("FLOW_STATE_ELIGIBILITY_PK is not configured");
+  }
+  const account = privateKeyToAccount(pk as `0x${string}`);
   const viemChain = getViemChain(network.id);
   const publicClient = createPublicClient({
     chain: viemChain,

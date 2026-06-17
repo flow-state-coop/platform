@@ -29,8 +29,7 @@ function unauthorized() {
 }
 
 export async function POST(request: Request) {
-  // 1. Authenticate the Bearer API key (hash → indexed lookup). Revoked keys
-  //    are treated as missing.
+  // Revoked keys are treated as missing.
   const authHeader = request.headers.get("authorization") ?? "";
   const provided = authHeader.startsWith("Bearer ")
     ? authHeader.slice(7).trim()
@@ -45,7 +44,6 @@ export async function POST(request: Request) {
 
   if (!keyRow || keyRow.revokedAt) return unauthorized();
 
-  // 2. Resolve the council (chain + address) the key is scoped to.
   const round = await db
     .selectFrom("rounds")
     .select(["id", "chainId", "flowCouncilAddress"])
@@ -57,7 +55,6 @@ export async function POST(request: Request) {
   const network = networks.find((n) => n.id === round.chainId);
   if (!network) return errorResponse("Wrong network", 500);
 
-  // 3. Parse and validate the body.
   let votes: { recipient: string; weight: number }[];
   try {
     const json = await readJsonBody(request, MAX_BODY_SIZE);
@@ -73,14 +70,13 @@ export async function POST(request: Request) {
     return errorResponse("Invalid request body", 400);
   }
 
-  // 4. The council must have a metrics group enabled.
   const group = await getMetricsGroup(round.id);
   if (!group) {
     return errorResponse("Metrics voting is not enabled for this council", 400);
   }
 
-  // 5. Cheap rate-limit pre-check (avoids RPC work for hammered keys). The
-  //    atomic claim in step 9 is the real guard against concurrent bursts.
+  // Cheap rate-limit pre-check (avoids RPC work for hammered keys); the atomic
+  // claim below is the real guard against concurrent bursts.
   if (
     group.lastBallotAt &&
     Date.now() - new Date(group.lastBallotAt).getTime() <
@@ -94,10 +90,11 @@ export async function POST(request: Request) {
 
   let claimed = false;
   let claimedAt: Date | null = null;
+  let broadcast = false;
 
   try {
-    // 6. Read the bot's current voting power, the council's spread limit, and
-    //    the bot's current on-chain ballot in one round-trip.
+    // Bot's voting power, the council's spread limit, and its current ballot in
+    // a single round-trip.
     const [voter, maxVotingSpread, currentVotes] = await publicClient.multicall(
       {
         allowFailure: false,
@@ -130,7 +127,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // 7. Normalize the weights to the bot's voting power under the spread cap.
     const target = normalizeWeightsToVotingPower(
       votes,
       voter.votingPower,
@@ -141,8 +137,24 @@ export async function POST(request: Request) {
       return errorResponse("No allocatable votes in ballot", 400);
     }
 
-    // 8. Reject ballots referencing addresses that are not council recipients,
-    //    rather than letting the on-chain call revert opaquely.
+    // Skip the tx when the computed ballot already matches the on-chain one.
+    // Checked before recipient validation so a stable, repeatedly-polled ballot
+    // doesn't run the per-recipient multicall on every request.
+    const current: BallotVote[] = currentVotes.map((v) => ({
+      recipient: v.recipient.toLowerCase() as `0x${string}`,
+      amount: v.amount,
+    }));
+    if (votesEqual(target, current)) {
+      await db
+        .updateTable("metricsApiKeys")
+        .set({ lastUsedAt: new Date() })
+        .where("id", "=", keyRow.id)
+        .execute();
+      return Response.json({ success: true, skipped: true });
+    }
+
+    // Reject ballots referencing addresses that are not council recipients,
+    // rather than letting the on-chain call revert opaquely.
     const recipientIds = await publicClient.multicall({
       allowFailure: false,
       contracts: target.map((v) => ({
@@ -161,22 +173,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // 9. Skip the tx when the computed ballot already matches the on-chain one.
-    const current: BallotVote[] = currentVotes.map((v) => ({
-      recipient: v.recipient.toLowerCase() as `0x${string}`,
-      amount: v.amount,
-    }));
-    if (votesEqual(target, current)) {
-      await db
-        .updateTable("metricsApiKeys")
-        .set({ lastUsedAt: new Date() })
-        .where("id", "=", keyRow.id)
-        .execute();
-      return Response.json({ success: true, skipped: true });
-    }
-
-    // 10. Atomically claim the rate-limit window. A lost claim means a
-    //     concurrent submission won — reject so the bot's nonce isn't raced.
+    // Atomically claim the rate-limit window. A lost claim means a concurrent
+    // submission won — reject so the bot's nonce isn't raced.
     claimedAt = new Date();
     const threshold = new Date(claimedAt.getTime() - METRICS_MIN_INTERVAL_MS);
     const claim = await db
@@ -196,7 +194,6 @@ export async function POST(request: Request) {
     }
     claimed = true;
 
-    // 11. Submit the ballot as the bot.
     const hash = await walletClient.writeContract({
       account,
       address: council,
@@ -204,6 +201,7 @@ export async function POST(request: Request) {
       functionName: "vote",
       args: [target.map((v) => ({ recipient: v.recipient, amount: v.amount }))],
     });
+    broadcast = true;
 
     const receipt = await publicClient.waitForTransactionReceipt({
       hash,
@@ -225,10 +223,10 @@ export async function POST(request: Request) {
     // RPC/contract errors can embed provider URLs and revert data — log
     // server-side only, return a generic message.
     console.error(err);
-    // No ballot landed, so release the rate-limit window claimed in step 10 —
-    // otherwise a transient RPC error or revert locks the caller out for the
-    // full interval.
-    if (claimed && claimedAt) {
+    // Release the rate-limit window only if the tx was never broadcast (the
+    // failure was in a read/claim step). Once broadcast, the tx may still land,
+    // so keep the window held — otherwise a retry could submit a second ballot.
+    if (claimed && claimedAt && !broadcast) {
       await db
         .updateTable("voterGroups")
         .set({ lastBallotAt: group.lastBallotAt })
