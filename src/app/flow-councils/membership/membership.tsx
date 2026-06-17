@@ -374,6 +374,7 @@ export default function Membership(props: MembershipProps) {
     }
 
     if (isMetrics && !publicClient) {
+      setCreateGroupError("Connect your wallet to create a metrics group.");
       return;
     }
 
