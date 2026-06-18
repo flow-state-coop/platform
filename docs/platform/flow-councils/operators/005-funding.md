@@ -13,6 +13,10 @@ SuperApp Splitter—every council launched going forward has one.
 
 ## The SuperApp Splitter
 
+![Funding page](./img/funding.png)
+
+*The SuperApp Splitter and round scheduling controls.*
+
 Launching a council also deploys its **SuperApp Splitter**—a stream-forwarding
 contract that sits between funders and the council's distribution pool. All
 incoming funding streams—the operator's sponsor stream and permissionless

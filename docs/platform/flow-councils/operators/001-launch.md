@@ -9,6 +9,10 @@ You can deploy a Flow Council yourself—no code required—from the
 [launchpad](https://flowstate.network/flow-councils/launch). Flow Councils are
 available on Arbitrum One, Base, Celo, and OP Mainnet.
 
+![Launch wizard, set distribution](./img/launch.png)
+
+*Choosing the distribution token in the launch flow.*
+
 Each Flow Council is configured to distribute a single
 [Superfluid Super Token](https://docs.superfluid.org/docs/concepts/overview/super-tokens).
 Flow State natively supports many popular Super Tokens, but also allows
@@ -31,6 +35,10 @@ From the **Metadata** page, operators set the round's public name and
 description and choose whether it is **Listed** (surfaced on public discovery
 pages) or **Unlisted** (fully functional, reachable by direct link). New rounds
 default to Unlisted.
+
+![Round metadata](./img/metadata.png)
+
+*Setting the round name, description, and visibility.*
 
 ## Permissions
 

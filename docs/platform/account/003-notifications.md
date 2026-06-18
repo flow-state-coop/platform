@@ -25,6 +25,10 @@ The toggles are disabled until you've added an email and given consent.
 
 ## Managing preferences and unsubscribing
 
+![Notification preferences](./img/notifications.png)
+
+*Email notification preferences.*
+
 Every Flow State email includes a preferences link to the `/preferences` page. Opening it from the email link lets you adjust the same notification toggles without signing in, and offers a one-click **Unsubscribe from all** that turns off every type at once.
 
 :::note

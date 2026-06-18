@@ -7,6 +7,10 @@ description: A unified inbox for applications, channels, and announcements
 
 The **Inbox** at [`flowstate.network/inbox`](https://flowstate.network/inbox) collects every notification tied to your wallet in one place. Connect your wallet and **Sign In With Ethereum** to view it.
 
+![Inbox](./img/inbox.png)
+
+*The inbox with category filters.*
+
 ## Categories
 
 Items are tagged by category, and you can filter the list with the pills at the top:

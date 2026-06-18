@@ -7,6 +7,11 @@ description: Building application forms and reviewing applicants
 Every Flow Council has its own application form. Round operators design it with a no-code builder, applicants fill it out (see [Applying](../participants/001-applying.md)), and reviewers decide who joins the [funding pool](../participants/003-receiving-funding.md). This page covers the operator side: building the form and reviewing submissions.
 
 ## The form builder
+
+![Form builder](./img/form-builder.png)
+
+*Building the application form.*
+
 The **Form Builder** lets you configure the questions applicants answer when applying to your round—no code required. You'll find it on the **Form Builder** page of the Flow Council launchpad. Add elements, drag to reorder them, expand a card to edit its settings, and hit **Save** when you're done.
 
 The form is split into three tabs:
@@ -54,6 +59,11 @@ Milestone questions are **always required**—the Required toggle is hidden for 
 Press **Start from Template** to begin from a **Minimal** form or the richer **GoodBuilders** form, then customize. Loading a template replaces the current form, so save anything you want to keep first.
 
 ## Review & acceptance
+
+![Manage recipients](./img/review.png)
+
+*Reviewing and accepting applications.*
+
 Reviewing happens on the **Manage Recipients** page. It's gated to addresses holding the **Recipient Review** role (see [Permissions](002-permissions.md)); without it, the module is read-only.
 
 Each council exposes a shareable **Application Link** to hand out to prospective applicants, and an **applications open/closed** toggle to stop accepting new submissions. The applications table lists every project with its status; export everything to CSV at any time.

@@ -6,6 +6,10 @@ description: How to vote in a Flow Council
 # Voting
 Flow Councils are dynamic. They empower voters to incorporate new information and evolving preferences for more efficient resource allocation.
 
+![Council voting](./img/voting.png)
+
+*Allocating votes across grantees from the council page.*
+
 Every time a vote is (re)cast, funding flows will adapt.
 
 `payout_rate = (recipient votes / total votes) × funding stream`
