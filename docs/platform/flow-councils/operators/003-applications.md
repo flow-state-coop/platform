@@ -60,10 +60,6 @@ Press **Start from Template** to begin from a **Minimal** form or the richer **G
 
 ## Review & acceptance
 
-![Manage recipients](./img/review.png)
-
-*Reviewing and accepting applications.*
-
 Reviewing happens on the **Manage Recipients** page. It's gated to addresses holding the **Recipient Review** role (see [Permissions](002-permissions.md)); without it, the module is read-only.
 
 Each council exposes a shareable **Application Link** to hand out to prospective applicants, and an **applications open/closed** toggle to stop accepting new submissions. The applications table lists every project with its status; export everything to CSV at any time.

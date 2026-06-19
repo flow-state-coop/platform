@@ -448,7 +448,10 @@ export async function DELETE(request: Request) {
         .executeTakeFirst();
 
       if (Number(memberCountRow?.count ?? 0) > 0) {
-        throw new HttpError("Group must be empty before it can be deleted", 400);
+        throw new HttpError(
+          "Group must be empty before it can be deleted",
+          400,
+        );
       }
 
       await trx
