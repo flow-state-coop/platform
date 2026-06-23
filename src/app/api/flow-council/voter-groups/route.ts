@@ -385,13 +385,27 @@ export async function PATCH(request: Request) {
 
     const group = await db
       .selectFrom("voterGroups")
-      .select("id")
+      .select(["id", "eligibilityMethod"])
       .where("id", "=", id)
       .where("roundId", "=", auth.roundId)
       .executeTakeFirst();
 
     if (!group) {
       return errorResponse("Group not found", 404);
+    }
+
+    // A metrics group owns an on-chain bot voter and its API keys, so its
+    // eligibility method is locked after creation. The UI disables the dropdown;
+    // guard the API too so a direct call can't orphan the bot or keys.
+    if (
+      group.eligibilityMethod === "metrics" &&
+      parsed.data.eligibilityMethod !== undefined &&
+      parsed.data.eligibilityMethod !== "metrics"
+    ) {
+      return errorResponse(
+        "A metrics voter group's eligibility method cannot be changed",
+        400,
+      );
     }
 
     const updates: {

@@ -424,6 +424,24 @@ export default function Membership(props: MembershipProps) {
       // rejected create can never orphan a bot voter on-chain. On a retry the id
       // is reused so we skip straight to the on-chain step.
       if (newGroupId === null) {
+        // A prior attempt may have created the DB group before its on-chain tx
+        // failed; if the modal was closed since, createdGroupId is gone. Reuse
+        // the existing metrics group so the retry resumes from the on-chain step
+        // instead of hitting the partial unique index with a second insert.
+        if (isMetrics) {
+          const existingGroups = await fetchVoterGroups(chainId, councilId);
+          const existingMetrics = existingGroups?.find(
+            (group) => group.eligibilityMethod === "metrics",
+          );
+
+          if (existingMetrics) {
+            newGroupId = existingMetrics.id;
+            setCreatedGroupId(newGroupId);
+          }
+        }
+      }
+
+      if (newGroupId === null) {
         const res = await fetch("/api/flow-council/voter-groups", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
