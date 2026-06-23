@@ -470,17 +470,25 @@ export default function Permissions(props: PermissionsProps) {
               gap={isMobile ? 2 : 4}
               className="justify-content-end align-items-center"
             >
-              <span
-                className="flex-grow-1"
-                style={{ maxWidth: isMobile ? undefined : 460 }}
-              />
-              <span
+              <Card.Text
+                className="m-0 flex-grow-1 ps-3"
+                style={{
+                  maxWidth: isMobile ? undefined : 460,
+                  fontSize: isMobile ? "0.7rem" : "inherit",
+                }}
+              >
+                Address
+              </Card.Text>
+              <Card.Text
+                className="m-0 ps-3"
                 style={
                   isMobile
-                    ? { width: 90, flexShrink: 0 }
+                    ? { width: 90, flexShrink: 0, fontSize: "0.7rem" }
                     : { flex: "1 1 180px", minWidth: 0 }
                 }
-              />
+              >
+                Profile Name
+              </Card.Text>
               <Stack direction="horizontal" gap={2}>
                 <Card.Text
                   className="m-0 text-center flex-shrink-0"
@@ -571,8 +579,7 @@ export default function Permissions(props: PermissionsProps) {
                 <Form.Control
                   type="text"
                   disabled
-                  placeholder="Name"
-                  value={managerDisplayName(managerEntry.address)}
+                  value={managerDisplayName(managerEntry.address) || "N/A"}
                   className="border-0 bg-white rounded-4 fw-semi-bold text-info"
                   style={{
                     ...(isMobile
