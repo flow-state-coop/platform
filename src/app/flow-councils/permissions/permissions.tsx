@@ -76,6 +76,7 @@ export default function Permissions(props: PermissionsProps) {
   const publicClient = usePublicClient();
   const wagmiConfig = useConfig();
   const { isMobile } = useMediaQuery();
+  const headerFontSize = isMobile ? "0.7rem" : "inherit";
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
@@ -474,7 +475,7 @@ export default function Permissions(props: PermissionsProps) {
                 className="m-0 flex-grow-1 ps-3"
                 style={{
                   maxWidth: isMobile ? undefined : 460,
-                  fontSize: isMobile ? "0.7rem" : "inherit",
+                  fontSize: headerFontSize,
                 }}
               >
                 Address
@@ -483,7 +484,7 @@ export default function Permissions(props: PermissionsProps) {
                 className="m-0 ps-3"
                 style={
                   isMobile
-                    ? { width: 90, flexShrink: 0, fontSize: "0.7rem" }
+                    ? { width: 90, flexShrink: 0, fontSize: headerFontSize }
                     : { flex: "1 1 180px", minWidth: 0 }
                 }
               >
@@ -494,7 +495,7 @@ export default function Permissions(props: PermissionsProps) {
                   className="m-0 text-center flex-shrink-0"
                   style={{
                     width: isMobile ? 52 : 70,
-                    fontSize: isMobile ? "0.7rem" : "inherit",
+                    fontSize: headerFontSize,
                   }}
                 >
                   Super Admin
@@ -503,7 +504,7 @@ export default function Permissions(props: PermissionsProps) {
                   className="m-0 text-center flex-shrink-0"
                   style={{
                     width: isMobile ? 52 : 70,
-                    fontSize: isMobile ? "0.7rem" : "inherit",
+                    fontSize: headerFontSize,
                   }}
                 >
                   Voter Review
@@ -512,7 +513,7 @@ export default function Permissions(props: PermissionsProps) {
                   className="m-0 text-center flex-shrink-0"
                   style={{
                     width: isMobile ? 52 : 70,
-                    fontSize: isMobile ? "0.7rem" : "inherit",
+                    fontSize: headerFontSize,
                   }}
                 >
                   Recipient Review
