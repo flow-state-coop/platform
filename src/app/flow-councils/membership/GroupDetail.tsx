@@ -19,7 +19,7 @@ import InfoTooltip from "@/components/InfoTooltip";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
-import { waitForReceipt } from "@/lib/utils";
+import { waitForReceipt, truncateAddress } from "@/lib/utils";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { useChunkedTxQueue } from "@/app/flow-councils/hooks/useChunkedTxQueue";
 import { useVoterGroupQueueCleanup } from "@/app/flow-councils/hooks/useVoterGroupQueueCleanup";
@@ -28,6 +28,7 @@ import { useGrantBotVoterManager } from "@/app/flow-councils/hooks/useGrantBotVo
 import {
   computeCastVotes,
   shareOfVotes,
+  validateVotePowerInput,
 } from "@/app/flow-councils/lib/voterUtils";
 import { networks } from "@/lib/networks";
 import VoterTable from "./VoterTable";
@@ -221,7 +222,7 @@ export default function GroupDetail(props: GroupDetailProps) {
       .filter((voter): voter is SubgraphVoter => !!voter);
   }, [group, votersByAccount]);
 
-  // Lowercased accounts already onchain with a non-zero allocation — the add
+  // Lowercased accounts already onchain with a non-zero allocation, the add
   // flow skips these so it never re-adds an existing voter.
   const existingOnchainAccounts = useMemo<string[]>(() => {
     const accounts: string[] = [];
@@ -416,20 +417,16 @@ export default function GroupDetail(props: GroupDetailProps) {
       return;
     }
 
-    if (
-      usesVotePower &&
-      (editDefaultVotingPower === "" ||
-        editDefaultVotingPower.includes(".") ||
-        Number.isNaN(defaultVotingPower) ||
-        defaultVotingPower < 1 ||
-        defaultVotingPower > 1e6)
-    ) {
-      setSaveError(
-        isMetrics
-          ? "Vote power must be an integer between 1 and 1M"
-          : "Default votes must be an integer between 1 and 1M",
+    if (usesVotePower) {
+      const votePowerError = validateVotePowerInput(
+        editDefaultVotingPower,
+        isMetrics,
       );
-      return;
+
+      if (votePowerError) {
+        setSaveError(votePowerError);
+        return;
+      }
     }
 
     // A metrics group's vote power must be written on-chain (the bot is the
@@ -447,6 +444,8 @@ export default function GroupDetail(props: GroupDetailProps) {
     }
 
     let onChainApplied = false;
+    const onChainSaveFailed =
+      "Vote power was updated on-chain, but saving failed. Click Save again to finish.";
 
     try {
       setIsSaving(true);
@@ -454,7 +453,7 @@ export default function GroupDetail(props: GroupDetailProps) {
       setSaveSuccess(false);
 
       // A metrics group's vote power IS the bot's on-chain voting power (it is
-      // the single voter), so a change must be written on-chain — unlike
+      // the single voter), so a change must be written on-chain, unlike
       // GoodDollar, where defaultVotingPower only seeds future voters.
       if (
         isMetrics &&
@@ -487,7 +486,12 @@ export default function GroupDetail(props: GroupDetailProps) {
           chainId,
           councilId,
           name,
-          eligibilityMethod: editEligibility,
+          // Only send the method when it actually changed. Re-asserting it on a
+          // name-only edit needlessly re-runs the server's uniqueness check and
+          // keeps a latent path for switching a locked metrics group's method.
+          ...(editEligibility !== group.eligibilityMethod
+            ? { eligibilityMethod: editEligibility }
+            : {}),
           ...(usesVotePower ? { defaultVotingPower } : {}),
         }),
       });
@@ -495,9 +499,7 @@ export default function GroupDetail(props: GroupDetailProps) {
 
       if (!data.success) {
         setSaveError(
-          onChainApplied
-            ? "Vote power was updated on-chain, but saving failed — click Save again to finish."
-            : (data.error ?? "Failed to save group"),
+          onChainApplied ? onChainSaveFailed : (data.error ?? "Failed to save group"),
         );
         return;
       }
@@ -507,11 +509,7 @@ export default function GroupDetail(props: GroupDetailProps) {
       await fetchGroups();
     } catch (err) {
       console.error(err);
-      setSaveError(
-        onChainApplied
-          ? "Vote power was updated on-chain, but saving failed — click Save again to finish."
-          : "Failed to save group",
-      );
+      setSaveError(onChainApplied ? onChainSaveFailed : "Failed to save group");
     } finally {
       setIsSaving(false);
     }
@@ -524,6 +522,8 @@ export default function GroupDetail(props: GroupDetailProps) {
 
     const isMetrics = group.eligibilityMethod === "metrics";
     let onChainApplied = false;
+    const onChainDeleteFailed =
+      "The voter was removed on-chain, but deleting the group failed. Click Delete again to finish.";
 
     try {
       setIsDeleting(true);
@@ -539,6 +539,18 @@ export default function GroupDetail(props: GroupDetailProps) {
       if (isMetrics) {
         if (!publicClient) {
           setDeleteError("Connect your wallet to delete a metrics group.");
+          setIsDeleting(false);
+          return;
+        }
+
+        // maxVotingSpread falls back to 0 until the subgraph query resolves, and
+        // updateVoters writes it council-wide, so deleting before it loads would
+        // silently reset the council's spread to unlimited. Refuse until the
+        // council's real value is available.
+        if (!flowCouncil) {
+          setDeleteError(
+            "Council settings are still loading, please try again in a moment.",
+          );
           setIsDeleting(false);
           return;
         }
@@ -581,9 +593,7 @@ export default function GroupDetail(props: GroupDetailProps) {
 
       if (!data.success) {
         setDeleteError(
-          onChainApplied
-            ? "The voter was removed on-chain, but deleting the group failed. Click Delete again to finish."
-            : (data.error ?? "Failed to delete group"),
+          onChainApplied ? onChainDeleteFailed : (data.error ?? "Failed to delete group"),
         );
         setIsDeleting(false);
         return;
@@ -594,9 +604,7 @@ export default function GroupDetail(props: GroupDetailProps) {
     } catch (err) {
       console.error(err);
       setDeleteError(
-        onChainApplied
-          ? "The voter was removed on-chain, but deleting the group failed. Click Delete again to finish."
-          : "Failed to delete group",
+        onChainApplied ? onChainDeleteFailed : "Failed to delete group",
       );
       setIsDeleting(false);
     }
@@ -705,7 +713,7 @@ export default function GroupDetail(props: GroupDetailProps) {
 
             <Card className="bg-lace-100 rounded-4 border-0 p-4">
               <Card.Header className="bg-transparent border-0 rounded-4 p-0">
-                {/* Static structure — stays fixed whether or not we're editing,
+                {/* Static structure, stays fixed whether or not we're editing,
                     so entering edit mode only expands the card downward. */}
                 <Stack
                   direction="horizontal"
@@ -844,10 +852,7 @@ export default function GroupDetail(props: GroupDetailProps) {
                           rel="noreferrer"
                           className="fs-5 fw-semi-bold text-primary text-decoration-none"
                         >
-                          {`${FLOW_STATE_BOT_ADDRESS.slice(
-                            0,
-                            6,
-                          )}…${FLOW_STATE_BOT_ADDRESS.slice(-4)}`}
+                          {truncateAddress(FLOW_STATE_BOT_ADDRESS)}
                         </Link>
                       </>
                     ) : (
@@ -890,7 +895,7 @@ export default function GroupDetail(props: GroupDetailProps) {
                   </Alert>
                 ) : null}
 
-                {/* Editable fields — revealed below the voter-stats anchor so
+                {/* Editable fields, revealed below the voter-stats anchor so
                     entering edit mode only expands the card downward, leaving
                     the title + stats fixed. The Eligibility Manager is
                     intentionally not editable here; its grant action lives in
@@ -968,7 +973,7 @@ export default function GroupDetail(props: GroupDetailProps) {
                         <Form.Text className="text-info">
                           {editEligibility === "metrics"
                             ? "Total votes the bot allocates across recipients. Changing this submits an on-chain transaction."
-                            : "Applied only to voters added through this group after the change — existing members are not updated."}
+                            : "Applied only to voters added through this group after the change. Existing members are not updated."}
                         </Form.Text>
                       </Form.Group>
                     ) : null}

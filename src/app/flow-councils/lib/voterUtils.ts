@@ -100,3 +100,20 @@ export function totalPages(filteredCount: number, pageSize: number): number {
 export function isValidVotes(value: string): boolean {
   return /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 1e6;
 }
+
+/**
+ * Validate a user-entered vote power (the metrics bot's allocation) or default
+ * vote allocation (GoodDollar), returning an error message or null. Shared by
+ * the group create and edit flows so their bounds and wording can't drift apart;
+ * `isMetrics` only tunes the wording.
+ */
+export function validateVotePowerInput(
+  value: string,
+  isMetrics: boolean,
+): string | null {
+  if (isValidVotes(value)) return null;
+
+  return isMetrics
+    ? "Vote power must be an integer between 1 and 1M"
+    : "Default votes must be an integer between 1 and 1M";
+}

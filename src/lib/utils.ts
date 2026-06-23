@@ -23,6 +23,11 @@ export function isNumber(value: string) {
   return !isNaN(Number(value)) && !isNaN(parseFloat(value));
 }
 
+// Shorten an address for display as 0x1234…cdef.
+export function truncateAddress(address: string): string {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
 export function extractGithubUsername(url: string) {
   if (!url) {
     return null;

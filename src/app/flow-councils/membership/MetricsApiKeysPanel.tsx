@@ -164,7 +164,7 @@ export default function MetricsApiKeysPanel(props: MetricsApiKeysPanelProps) {
           className="mb-3"
         >
           <p className="fw-semi-bold mb-1">
-            Copy your key now — it won&apos;t be shown again.
+            Copy your key now. It won&apos;t be shown again.
           </p>
           <CopyTooltip
             contentClick="Copied"

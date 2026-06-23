@@ -78,6 +78,7 @@ export type MetricsApiKey = {
   keyPrefix: string;
   label: string;
   lastUsedAt: Timestamp | null;
+  cooldownUntil: Timestamp | null;
   revokedAt: Timestamp | null;
   createdAt: Generated<Timestamp>;
 };

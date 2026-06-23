@@ -8,7 +8,7 @@ import type { Network } from "@/types/network";
 /**
  * Resolve the "metrics"-eligibility voter group for a council, if one exists.
  * A council has at most one (the bot is a single per-council voter). Mirrors
- * `getGoodDollarGroup` in the eligibility route — a single indexed read, no
+ * `getGoodDollarGroup` in the eligibility route, a single indexed read, no
  * cache (it would go stale across serverless instances after an admin edit).
  */
 export function getMetricsGroup(roundId: number) {
@@ -55,6 +55,29 @@ export function getMetricsSigner(network: Network) {
   const signer = buildMetricsSigner(network);
   signerCache.set(network.id, signer);
   return signer;
+}
+
+const publicClientCache = new Map<
+  number,
+  ReturnType<typeof createPublicClient>
+>();
+
+/**
+ * Read-only viem public client for a network, memoized per chain. Unlike
+ * getMetricsSigner it needs no signing key, so council reads (e.g. verifying the
+ * bot is zeroed on-chain before a metrics group is deleted) don't depend on
+ * FLOW_STATE_ELIGIBILITY_PK being configured.
+ */
+export function getCouncilPublicClient(network: Network) {
+  const cached = publicClientCache.get(network.id);
+  if (cached) return cached;
+
+  const client = createPublicClient({
+    chain: getViemChain(network.id),
+    transport: http(network.rpcUrl),
+  });
+  publicClientCache.set(network.id, client);
+  return client;
 }
 
 function getApiKeySecret(): string {

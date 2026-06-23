@@ -6,6 +6,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Table from "react-bootstrap/Table";
 import CopyTooltip from "@/components/CopyTooltip";
 import { networks } from "@/lib/networks";
+import { truncateAddress } from "@/lib/utils";
 import useCouncilQuery from "@/app/flow-councils/hooks/councilQuery";
 import useRecipientsQuery from "@/app/flow-councils/hooks/recipientsQuery";
 import useBallotQuery from "@/app/flow-councils/hooks/ballotQuery";
@@ -18,10 +19,6 @@ type MetricsIntegrationPanelProps = {
   chainId: number;
   councilId: string;
 };
-
-function truncate(address: string): string {
-  return `${address.slice(0, 6)}…${address.slice(-4)}`;
-}
 
 export default function MetricsIntegrationPanel(
   props: MetricsIntegrationPanelProps,
@@ -159,7 +156,7 @@ Content-Type: application/json
                     <CopyTooltip
                       contentClick="Copied"
                       contentHover="Copy address"
-                      target={<code>{truncate(row.address)}</code>}
+                      target={<code>{truncateAddress(row.address)}</code>}
                       handleCopy={() =>
                         navigator.clipboard.writeText(row.address)
                       }

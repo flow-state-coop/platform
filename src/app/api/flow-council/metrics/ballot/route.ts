@@ -4,6 +4,7 @@ import { networks } from "@/lib/networks";
 import {
   FLOW_STATE_BOT_ADDRESS,
   METRICS_MIN_INTERVAL_MS,
+  METRICS_KEY_COOLDOWN_MS,
 } from "@/app/flow-councils/lib/constants";
 import { db } from "../../db";
 import {
@@ -28,6 +29,22 @@ function unauthorized() {
   return errorResponse("Unauthorized", 401);
 }
 
+// Per-key backpressure after a request the caller could have avoided: a ballot
+// whose content is deterministically bad (an unknown recipient, or weights that
+// normalize to nothing) gets the key throttled, while the group's atomic claim
+// stays the real guard against double submissions. Reserved for caller-content
+// faults: transient/infra failures and config states never call this, so a
+// healthy integration is never penalized. Best-effort, so a write failure is
+// logged and ignored rather than blocking the response.
+async function coolDownKey(keyId: number) {
+  await db
+    .updateTable("metricsApiKeys")
+    .set({ cooldownUntil: new Date(Date.now() + METRICS_KEY_COOLDOWN_MS) })
+    .where("id", "=", keyId)
+    .execute()
+    .catch((err) => console.error(err));
+}
+
 export async function POST(request: Request) {
   // Revoked keys are treated as missing.
   const authHeader = request.headers.get("authorization") ?? "";
@@ -38,11 +55,17 @@ export async function POST(request: Request) {
 
   const keyRow = await db
     .selectFrom("metricsApiKeys")
-    .select(["id", "roundId", "revokedAt"])
+    .select(["id", "roundId", "revokedAt", "cooldownUntil"])
     .where("keyHash", "=", hashApiKey(provided))
     .executeTakeFirst();
 
   if (!keyRow || keyRow.revokedAt) return unauthorized();
+
+  // Reject before any RPC work if this key is still cooling down from a prior
+  // failed request.
+  if (keyRow.cooldownUntil && new Date(keyRow.cooldownUntil) > new Date()) {
+    return errorResponse("Too many ballots, please retry later", 429);
+  }
 
   const round = await db
     .selectFrom("rounds")
@@ -85,6 +108,17 @@ export async function POST(request: Request) {
     return errorResponse("Too many ballots, please retry later", 429);
   }
 
+  // Record activity for every request that passes rate-limiting and proceeds to
+  // do work, so the management UI's "Last used" reflects an active key even when
+  // its ballots fail validation or revert. Best-effort so it never fails the
+  // request.
+  await db
+    .updateTable("metricsApiKeys")
+    .set({ lastUsedAt: new Date() })
+    .where("id", "=", keyRow.id)
+    .execute()
+    .catch((err) => console.error(err));
+
   const council = round.flowCouncilAddress as Address;
   const { account, publicClient, walletClient } = getMetricsSigner(network);
 
@@ -121,6 +155,8 @@ export async function POST(request: Request) {
     );
 
     if (voter.votingPower === 0n) {
+      // A transient/config state (admin mid-edit, or just after a
+      // delete/recreate), not the key misbehaving, so don't cool it down.
       return errorResponse(
         "The metrics voter has no voting power on this council",
         400,
@@ -134,22 +170,24 @@ export async function POST(request: Request) {
     );
 
     if (target.length === 0) {
+      await coolDownKey(keyRow.id);
       return errorResponse("No allocatable votes in ballot", 400);
     }
 
     // Skip the tx when the computed ballot already matches the on-chain one.
     // Checked before recipient validation so a stable, repeatedly-polled ballot
-    // doesn't run the per-recipient multicall on every request.
-    const current: BallotVote[] = currentVotes.map((v) => ({
-      recipient: v.recipient.toLowerCase() as `0x${string}`,
-      amount: v.amount,
-    }));
+    // doesn't run the per-recipient multicall on every request. getVotes keeps a
+    // 0-amount entry for every recipient ever voted on (vote() never prunes
+    // them), so compare against the positive subset only, otherwise a single
+    // dropped recipient would make the computed ballot (positive amounts only)
+    // never match and force a redundant tx on every poll.
+    const current: BallotVote[] = currentVotes
+      .filter((v) => v.amount > 0n)
+      .map((v) => ({
+        recipient: v.recipient.toLowerCase() as `0x${string}`,
+        amount: v.amount,
+      }));
     if (votesEqual(target, current)) {
-      await db
-        .updateTable("metricsApiKeys")
-        .set({ lastUsedAt: new Date() })
-        .where("id", "=", keyRow.id)
-        .execute();
       return Response.json({ success: true, skipped: true });
     }
 
@@ -167,14 +205,24 @@ export async function POST(request: Request) {
 
     const unknown = target.find((_, i) => recipientIds[i] === 0n);
     if (unknown) {
+      await coolDownKey(keyRow.id);
       return errorResponse(
         `Address ${unknown.recipient} is not a council recipient`,
         400,
       );
     }
 
+    // vote() only updates recipients present in the array, so a previously-voted
+    // recipient dropped from the new ballot keeps its on-chain amount and would
+    // push totalVotes over votingPower (revert). Explicitly zero those out.
+    const targetRecipients = new Set(target.map((v) => v.recipient));
+    const cleared = current
+      .filter((v) => !targetRecipients.has(v.recipient))
+      .map((v) => ({ recipient: v.recipient, amount: 0n }));
+    const submission = [...target, ...cleared];
+
     // Atomically claim the rate-limit window. A lost claim means a concurrent
-    // submission won — reject so the bot's nonce isn't raced.
+    // submission won, so reject to keep the bot's nonce from being raced.
     claimedAt = new Date();
     const threshold = new Date(claimedAt.getTime() - METRICS_MIN_INTERVAL_MS);
     const claim = await db
@@ -199,7 +247,9 @@ export async function POST(request: Request) {
       address: council,
       abi: flowCouncilAbi,
       functionName: "vote",
-      args: [target.map((v) => ({ recipient: v.recipient, amount: v.amount }))],
+      args: [
+        submission.map((v) => ({ recipient: v.recipient, amount: v.amount })),
+      ],
     });
     broadcast = true;
 
@@ -212,20 +262,17 @@ export async function POST(request: Request) {
       throw new Error(`Ballot transaction reverted: ${hash}`);
     }
 
-    await db
-      .updateTable("metricsApiKeys")
-      .set({ lastUsedAt: new Date() })
-      .where("id", "=", keyRow.id)
-      .execute();
-
     return Response.json({ success: true, txHash: hash });
   } catch (err) {
-    // RPC/contract errors can embed provider URLs and revert data — log
-    // server-side only, return a generic message.
+    // RPC/contract errors can embed provider URLs and revert data, so log
+    // server-side only and return a generic message. These are infra or
+    // chain-state failures (and the tx may still land), not the key
+    // misbehaving, so the key is not cooled down here; the group's rate-limit
+    // window still throttles retries.
     console.error(err);
     // Release the rate-limit window only if the tx was never broadcast (the
     // failure was in a read/claim step). Once broadcast, the tx may still land,
-    // so keep the window held — otherwise a retry could submit a second ballot.
+    // so keep the window held, otherwise a retry could submit a second ballot.
     if (claimed && claimedAt && !broadcast) {
       await db
         .updateTable("voterGroups")

@@ -1,13 +1,18 @@
 import { z } from "zod";
 import { gql } from "@apollo/client";
-import { isAddress } from "viem";
+import { isAddress, Address } from "viem";
 import { db } from "../db";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { errorResponse } from "../../utils";
 import { findRoundByCouncil, authorizeCouncilManager } from "../auth";
 import { voterGroupCreateSchema, voterGroupUpdateSchema } from "../validation";
-import { CELO_CHAIN_ID } from "@/app/flow-councils/lib/constants";
+import { getCouncilPublicClient } from "../metrics/lib";
+import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
+import {
+  CELO_CHAIN_ID,
+  FLOW_STATE_BOT_ADDRESS,
+} from "@/app/flow-councils/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -122,7 +127,7 @@ async function ensureDefaultGroup(
   }
 
   // Create the group and seed its members in one transaction. If a member batch
-  // fails mid-seed, the group insert rolls back with it — otherwise a half-seeded
+  // fails mid-seed, the group insert rolls back with it, otherwise a half-seeded
   // Default group would survive (groups.length > 0), making every later access
   // skip the migration and leaving the group permanently under-seeded. The
   // subgraph fetch is kept outside the transaction so it never holds a DB
@@ -451,6 +456,40 @@ export async function DELETE(request: Request) {
 
     if (!auth.ok) {
       return errorResponse(auth.error, auth.status);
+    }
+
+    // A metrics group owns the single bot voter. Deleting the DB group also
+    // cascades its API keys, so confirm the bot was actually zeroed on-chain
+    // first (the client removes it before calling DELETE). Done outside the
+    // transaction below so the RPC read never holds the row locks. Without this,
+    // a skipped/failed removal tx (or a direct DELETE) would leave the bot
+    // voting on-chain with no DB record and no key left to manage it.
+    const targetGroup = await db
+      .selectFrom("voterGroups")
+      .select(["id", "eligibilityMethod"])
+      .where("id", "=", id)
+      .where("roundId", "=", auth.roundId)
+      .executeTakeFirst();
+
+    if (targetGroup?.eligibilityMethod === "metrics") {
+      const network = networks.find((n) => n.id === chainId);
+      if (!network) {
+        return errorResponse("Wrong network", 400);
+      }
+
+      const voter = await getCouncilPublicClient(network).readContract({
+        address: councilId as Address,
+        abi: flowCouncilAbi,
+        functionName: "getVoter",
+        args: [FLOW_STATE_BOT_ADDRESS],
+      });
+
+      if (voter.votingPower !== 0n) {
+        return errorResponse(
+          "Remove the metrics voter on-chain before deleting this group",
+          409,
+        );
+      }
     }
 
     // Run the existence / emptiness / "at least one group" guards and the

@@ -100,6 +100,55 @@ describe("normalizeWeightsToVotingPower", () => {
     ).toEqual([]);
   });
 
+  it("apportions exactly at uint96-scale power (above MAX_SAFE_INTEGER)", () => {
+    const power = (1n << 96n) - 1n;
+    const result = normalizeWeightsToVotingPower(
+      [
+        { recipient: A, weight: 3 },
+        { recipient: B, weight: 1 },
+      ],
+      power,
+      0,
+    );
+    expect(sum(result)).toBe(power);
+    expect(result.every((v) => v.amount > 0n && v.amount <= power)).toBe(true);
+    const byAddr = new Map(result.map((v) => [v.recipient, v.amount]));
+    expect(byAddr.get(A)! > byAddr.get(B)! * 2n).toBe(true);
+    expect(byAddr.get(A)! < byAddr.get(B)! * 4n).toBe(true);
+  });
+
+  it("handles very large finite weights without overflowing to empty", () => {
+    // Summing these would be Infinity; scaling relative to the max keeps the
+    // ballot valid and proportional.
+    const result = normalizeWeightsToVotingPower(
+      [
+        { recipient: A, weight: 1e308 },
+        { recipient: B, weight: 1e308 },
+      ],
+      100n,
+      0,
+    );
+    expect(sum(result)).toBe(100n);
+    const byAddr = new Map(result.map((v) => [v.recipient, v.amount]));
+    expect(byAddr.get(A)).toBe(50n);
+    expect(byAddr.get(B)).toBe(50n);
+  });
+
+  it("preserves proportions across a huge weight spread", () => {
+    const result = normalizeWeightsToVotingPower(
+      [
+        { recipient: A, weight: 1e300 },
+        { recipient: B, weight: 3e300 },
+      ],
+      100n,
+      0,
+    );
+    expect(sum(result)).toBe(100n);
+    const byAddr = new Map(result.map((v) => [v.recipient, v.amount]));
+    expect(byAddr.get(A)).toBe(25n);
+    expect(byAddr.get(B)).toBe(75n);
+  });
+
   it("is deterministic regardless of input order", () => {
     const a = normalizeWeightsToVotingPower(
       [
