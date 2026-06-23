@@ -21,6 +21,7 @@ const queryParamsSchema = z.object({
 });
 
 const MAX_BODY_SIZE = 4 * 1024;
+const MAX_ACTIVE_KEYS_PER_COUNCIL = 10;
 
 async function parseBody(request: Request) {
   try {
@@ -116,6 +117,20 @@ export async function POST(request: Request) {
     const group = await getMetricsGroup(auth.roundId);
     if (!group) {
       return errorResponse("This council has no metrics voter group", 409);
+    }
+
+    const activeKeys = await db
+      .selectFrom("metricsApiKeys")
+      .select((eb) => eb.fn.countAll<number>().as("count"))
+      .where("voterGroupId", "=", group.id)
+      .where("revokedAt", "is", null)
+      .executeTakeFirst();
+
+    if (Number(activeKeys?.count ?? 0) >= MAX_ACTIVE_KEYS_PER_COUNCIL) {
+      return errorResponse(
+        `This council has reached the limit of ${MAX_ACTIVE_KEYS_PER_COUNCIL} active keys. Revoke an existing key before minting a new one.`,
+        409,
+      );
     }
 
     const { token, hash, prefix } = generateApiKey();

@@ -6,6 +6,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Table from "react-bootstrap/Table";
 import CopyTooltip from "@/components/CopyTooltip";
 import { networks } from "@/lib/networks";
+import { Network } from "@/types/network";
 import { truncateAddress } from "@/lib/utils";
 import useCouncilQuery from "@/app/flow-councils/hooks/councilQuery";
 import useRecipientsQuery from "@/app/flow-councils/hooks/recipientsQuery";
@@ -25,7 +26,22 @@ export default function MetricsIntegrationPanel(
 ) {
   const { chainId, councilId } = props;
 
-  const network = networks.find((n) => n.id === chainId)!;
+  const network = networks.find((n) => n.id === chainId);
+
+  if (!network) {
+    return null;
+  }
+
+  return (
+    <MetricsIntegrationPanelContent network={network} councilId={councilId} />
+  );
+}
+
+function MetricsIntegrationPanelContent(props: {
+  network: Network;
+  councilId: string;
+}) {
+  const { network, councilId } = props;
 
   const council = useCouncilQuery(network, councilId);
   const projects = useRecipientsQuery(network, council?.recipients, councilId);
