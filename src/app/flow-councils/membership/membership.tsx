@@ -472,7 +472,7 @@ export default function Membership(props: MembershipProps) {
             groupId: data.id,
             address: FLOW_STATE_BOT_ADDRESS,
           }),
-        });
+        }).catch(() => {});
       }
 
       // Platform-standard confirmation: the button turns green with a checkmark,
@@ -483,7 +483,7 @@ export default function Membership(props: MembershipProps) {
 
       createSuccessTimer.current = setTimeout(() => {
         setShowNewGroupModal(false);
-        fetchGroups();
+        refresh();
       }, 1500);
     } catch (err) {
       console.error(err);
@@ -700,9 +700,7 @@ export default function Membership(props: MembershipProps) {
                     <th className="fw-semi-bold">Group</th>
                     <th className="fw-semi-bold">Eligibility</th>
                     <th className="fw-semi-bold text-end">Voters</th>
-                    <th className="fw-semi-bold text-end">
-                      Valid votes assigned
-                    </th>
+                    <th className="fw-semi-bold text-end">Votes assigned</th>
                     <th className="fw-semi-bold text-end">Votes used</th>
                     <th className="fw-semi-bold text-end">Share of votes</th>
                   </tr>
