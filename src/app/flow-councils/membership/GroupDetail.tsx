@@ -499,7 +499,9 @@ export default function GroupDetail(props: GroupDetailProps) {
 
       if (!data.success) {
         setSaveError(
-          onChainApplied ? onChainSaveFailed : (data.error ?? "Failed to save group"),
+          onChainApplied
+            ? onChainSaveFailed
+            : (data.error ?? "Failed to save group"),
         );
         return;
       }
@@ -564,23 +566,37 @@ export default function GroupDetail(props: GroupDetailProps) {
           return;
         }
 
-        const hash = await writeContract(wagmiConfig, {
+        // Idempotent retry: if a prior attempt removed the voter on-chain but
+        // the server DELETE failed, the bot is already at 0 power. Re-running
+        // updateVoters against a removed voter can revert, so skip straight to
+        // the server delete (mirrors the create flow's getVoter check).
+        const botVoter = await publicClient.readContract({
           address: councilId as Address,
           abi: flowCouncilAbi,
-          functionName: "updateVoters",
-          args: [
-            [
-              {
-                account: FLOW_STATE_BOT_ADDRESS,
-                votingPower: 0n,
-                votes: [],
-              },
-            ],
-            maxVotingSpread,
-          ],
+          functionName: "getVoter",
+          args: [FLOW_STATE_BOT_ADDRESS],
         });
 
-        await waitForReceipt(publicClient, hash);
+        if (botVoter.votingPower !== 0n) {
+          const hash = await writeContract(wagmiConfig, {
+            address: councilId as Address,
+            abi: flowCouncilAbi,
+            functionName: "updateVoters",
+            args: [
+              [
+                {
+                  account: FLOW_STATE_BOT_ADDRESS,
+                  votingPower: 0n,
+                  votes: [],
+                },
+              ],
+              maxVotingSpread,
+            ],
+          });
+
+          await waitForReceipt(publicClient, hash);
+        }
+
         onChainApplied = true;
       }
 
@@ -593,7 +609,9 @@ export default function GroupDetail(props: GroupDetailProps) {
 
       if (!data.success) {
         setDeleteError(
-          onChainApplied ? onChainDeleteFailed : (data.error ?? "Failed to delete group"),
+          onChainApplied
+            ? onChainDeleteFailed
+            : (data.error ?? "Failed to delete group"),
         );
         setIsDeleting(false);
         return;
