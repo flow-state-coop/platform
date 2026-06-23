@@ -180,7 +180,10 @@ export async function POST(request: Request) {
     // 0-amount entry for every recipient ever voted on (vote() never prunes
     // them), so compare against the positive subset only, otherwise a single
     // dropped recipient would make the computed ballot (positive amounts only)
-    // never match and force a redundant tx on every poll.
+    // never match and force a redundant tx on every poll. Skipping a match is
+    // safe even if a recipient was since removed: the state already equals the
+    // request, so nothing new is written; a ballot that drops that recipient
+    // won't match and takes the validation + clear path below.
     const current: BallotVote[] = currentVotes
       .filter((v) => v.amount > 0n)
       .map((v) => ({

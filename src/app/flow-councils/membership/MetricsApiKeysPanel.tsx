@@ -190,7 +190,11 @@ export default function MetricsApiKeysPanel(props: MetricsApiKeysPanelProps) {
           <Spinner size="sm" />
         </Stack>
       ) : keys.length === 0 ? (
-        <p className="text-info mb-3">No API keys yet.</p>
+        <p className="text-info mb-3">
+          {isManager
+            ? "No API keys yet."
+            : "Only council managers can view API keys."}
+        </p>
       ) : (
         <Table responsive hover className="bg-white rounded-4 mb-3">
           <thead>
