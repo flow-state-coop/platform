@@ -460,12 +460,14 @@ export async function DELETE(request: Request) {
     await db.transaction().execute(async (trx) => {
       const groups = await trx
         .selectFrom("voterGroups")
-        .select("id")
+        .select(["id", "eligibilityMethod"])
         .where("roundId", "=", auth.roundId)
         .forUpdate()
         .execute();
 
-      if (!groups.some((g) => g.id === id)) {
+      const target = groups.find((g) => g.id === id);
+
+      if (!target) {
         throw new HttpError("Group not found", 404);
       }
 
@@ -476,18 +478,29 @@ export async function DELETE(request: Request) {
         );
       }
 
-      const memberCountRow = await trx
-        .selectFrom("voterGroupMembers")
-        .select((eb) => eb.fn.countAll<number>().as("count"))
-        .where("voterGroupId", "=", id)
-        .executeTakeFirst();
+      // A metrics group owns a single bot voter that the client zeroes on-chain
+      // as part of deletion, so it may be deleted while still "populated"; its
+      // membership row is cleared below. Every other method must be emptied
+      // first.
+      if (target.eligibilityMethod !== "metrics") {
+        const memberCountRow = await trx
+          .selectFrom("voterGroupMembers")
+          .select((eb) => eb.fn.countAll<number>().as("count"))
+          .where("voterGroupId", "=", id)
+          .executeTakeFirst();
 
-      if (Number(memberCountRow?.count ?? 0) > 0) {
-        throw new HttpError(
-          "Group must be empty before it can be deleted",
-          400,
-        );
+        if (Number(memberCountRow?.count ?? 0) > 0) {
+          throw new HttpError(
+            "Group must be empty before it can be deleted",
+            400,
+          );
+        }
       }
+
+      await trx
+        .deleteFrom("voterGroupMembers")
+        .where("voterGroupId", "=", id)
+        .execute();
 
       await trx
         .deleteFrom("voterGroups")

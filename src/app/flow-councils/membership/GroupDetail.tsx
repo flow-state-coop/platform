@@ -29,9 +29,11 @@ import {
   computeCastVotes,
   shareOfVotes,
 } from "@/app/flow-councils/lib/voterUtils";
+import { networks } from "@/lib/networks";
 import VoterTable from "./VoterTable";
 import EligibilityManagerField from "./EligibilityManagerField";
 import MetricsApiKeysPanel from "./MetricsApiKeysPanel";
+import MetricsIntegrationPanel from "./MetricsIntegrationPanel";
 import type {
   ChunkedQueue,
   EligibilityMethod,
@@ -107,6 +109,7 @@ export default function GroupDetail(props: GroupDetailProps) {
   const q = useChunkedTxQueue(wagmiConfig, publicClient, councilId);
 
   const isCelo = chainId === CELO_CHAIN_ID;
+  const network = networks.find((n) => n.id === chainId);
 
   const {
     data: flowCouncilQueryRes,
@@ -352,10 +355,17 @@ export default function GroupDetail(props: GroupDetailProps) {
       .map((member) => votersByAccount.get(member.toLowerCase()))
       .filter((voter): voter is SubgraphVoter => !!voter);
 
-    const assigned = memberVoters.reduce(
-      (sum, voter) => sum + Number(voter.votingPower),
-      0,
-    );
+    // A metrics group's assignment is the bot's on-chain voting power, which is
+    // written on-chain (addVoter/editVoter) and mirrored to defaultVotingPower.
+    // Read it from there rather than the subgraph so the number is correct
+    // immediately, before the subgraph has indexed the new voter.
+    const assigned =
+      group.eligibilityMethod === "metrics"
+        ? group.defaultVotingPower
+        : memberVoters.reduce(
+            (sum, voter) => sum + Number(voter.votingPower),
+            0,
+          );
     const used = memberVoters.reduce(
       (sum, voter) => sum + computeCastVotes(voter),
       0,
@@ -430,7 +440,9 @@ export default function GroupDetail(props: GroupDetailProps) {
       defaultVotingPower !== group.defaultVotingPower &&
       !publicClient
     ) {
-      setSaveError("Connect your wallet to change a metrics group's vote power.");
+      setSaveError(
+        "Connect your wallet to change a metrics group's vote power.",
+      );
       return;
     }
 
@@ -510,9 +522,55 @@ export default function GroupDetail(props: GroupDetailProps) {
       return;
     }
 
+    const isMetrics = group.eligibilityMethod === "metrics";
+    let onChainApplied = false;
+
     try {
       setIsDeleting(true);
       setDeleteError("");
+
+      // A metrics group owns the single bot voter. Remove it on-chain first (the
+      // server then clears the membership row and the group), so the admin
+      // deletes the group without a separate "remove voter" step. Removal goes
+      // through updateVoters with power 0 (which the contract routes to
+      // removeVoter) to match the rest of the app and to pass maxVotingSpread
+      // verbatim so the council-wide spread is never reset. editVoter can't be
+      // used here: the contract reverts INVALID on a 0 voting power.
+      if (isMetrics) {
+        if (!publicClient) {
+          setDeleteError("Connect your wallet to delete a metrics group.");
+          setIsDeleting(false);
+          return;
+        }
+
+        if (connectedChain?.id !== chainId) {
+          switchChain({ chainId });
+          setDeleteError(
+            "Switch your wallet to the council's network, then click Delete again.",
+          );
+          setIsDeleting(false);
+          return;
+        }
+
+        const hash = await writeContract(wagmiConfig, {
+          address: councilId as Address,
+          abi: flowCouncilAbi,
+          functionName: "updateVoters",
+          args: [
+            [
+              {
+                account: FLOW_STATE_BOT_ADDRESS,
+                votingPower: 0n,
+                votes: [],
+              },
+            ],
+            maxVotingSpread,
+          ],
+        });
+
+        await waitForReceipt(publicClient, hash);
+        onChainApplied = true;
+      }
 
       const res = await fetch(`/api/flow-council/voter-groups?id=${group.id}`, {
         method: "DELETE",
@@ -522,7 +580,11 @@ export default function GroupDetail(props: GroupDetailProps) {
       const data = await res.json();
 
       if (!data.success) {
-        setDeleteError(data.error ?? "Failed to delete group");
+        setDeleteError(
+          onChainApplied
+            ? "The voter was removed on-chain, but deleting the group failed. Click Delete again to finish."
+            : (data.error ?? "Failed to delete group"),
+        );
         setIsDeleting(false);
         return;
       }
@@ -531,7 +593,11 @@ export default function GroupDetail(props: GroupDetailProps) {
       router.push(`/flow-councils/membership/${chainId}/${councilId}`);
     } catch (err) {
       console.error(err);
-      setDeleteError("Failed to delete group");
+      setDeleteError(
+        onChainApplied
+          ? "The voter was removed on-chain, but deleting the group failed. Click Delete again to finish."
+          : "Failed to delete group",
+      );
       setIsDeleting(false);
     }
   };
@@ -543,14 +609,15 @@ export default function GroupDetail(props: GroupDetailProps) {
   const isMetricsGroup = group?.eligibilityMethod === "metrics";
 
   // Reason the delete action is unavailable (rendered as a tooltip on the
-  // disabled trash icon). Mirrors the server guards: a group must be empty and
-  // a council must keep at least one group.
+  // disabled trash icon). Mirrors the server guards: a council must keep at
+  // least one group, and a non-metrics group must be empty. A metrics group can
+  // be deleted with its single bot voter present (deletion zeroes it on-chain).
   const deleteBlockedReason = !group
     ? null
-    : group.memberCount > 0
-      ? "Group must be empty to be deleted."
-      : isLastGroup
-        ? "A council must always have at least one group."
+    : isLastGroup
+      ? "A council must always have at least one group."
+      : !isMetricsGroup && group.memberCount > 0
+        ? "Group must be empty to be deleted."
         : null;
 
   const showResumeBanner =
@@ -747,17 +814,12 @@ export default function GroupDetail(props: GroupDetailProps) {
                   </Stack>
                 ) : null}
 
-                {/* Metrics groups surface the bot's vote power and the API key
-                    manager read-only here, so an admin can mint/revoke keys and
-                    copy the ballot endpoint without entering edit mode. */}
+                {/* Metrics groups surface the API key manager read-only here,
+                    so an admin can mint/revoke keys and copy the ballot endpoint
+                    without entering edit mode. The bot's vote power is shown in
+                    the "Votes assigned" stat below, so it isn't repeated here. */}
                 {group.eligibilityMethod === "metrics" ? (
                   <Stack direction="vertical" gap={3} className="mt-4">
-                    <div>
-                      <span className="fw-semi-bold d-block mb-1">
-                        Vote power
-                      </span>
-                      <span>{group.defaultVotingPower}</span>
-                    </div>
                     <MetricsApiKeysPanel
                       chainId={chainId}
                       councilId={councilId}
@@ -773,13 +835,32 @@ export default function GroupDetail(props: GroupDetailProps) {
                   className="flex-wrap"
                 >
                   <Stack direction="vertical">
-                    <span className="text-info fs-6">Voters</span>
-                    <span className="fs-5 fw-semi-bold">
-                      {group.memberCount}
-                    </span>
+                    {isMetricsGroup ? (
+                      <>
+                        <span className="text-info fs-6">Voter</span>
+                        <Link
+                          href={`${network?.blockExplorer}/address/${FLOW_STATE_BOT_ADDRESS}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="fs-5 fw-semi-bold text-primary text-decoration-none"
+                        >
+                          {`${FLOW_STATE_BOT_ADDRESS.slice(
+                            0,
+                            6,
+                          )}…${FLOW_STATE_BOT_ADDRESS.slice(-4)}`}
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-info fs-6">Voters</span>
+                        <span className="fs-5 fw-semi-bold">
+                          {group.memberCount}
+                        </span>
+                      </>
+                    )}
                   </Stack>
                   <Stack direction="vertical">
-                    <span className="text-info fs-6">Valid votes assigned</span>
+                    <span className="text-info fs-6">Votes assigned</span>
                     <span className="fs-5 fw-semi-bold">
                       {metrics.assigned}
                     </span>
@@ -922,46 +1003,59 @@ export default function GroupDetail(props: GroupDetailProps) {
 
             <Card className="bg-lace-100 rounded-4 border-0 p-4 mt-4 mb-30">
               <Card.Body className="p-0">
-                {q.error ? (
-                  <Alert
-                    variant="danger"
-                    dismissible
-                    onClose={() => discard()}
-                    className="d-flex flex-wrap align-items-center justify-content-between gap-2"
-                  >
-                    <span className="fw-semi-bold">{q.error.message}</span>
-                    <Button
-                      size="sm"
-                      className="fw-semi-bold"
-                      onClick={() => q.resume()}
-                    >
-                      Retry
-                    </Button>
-                  </Alert>
-                ) : null}
-                {cleanupError ? (
-                  <Alert
-                    variant="danger"
-                    dismissible
-                    onClose={() => clearCleanupError()}
-                    className="fw-semi-bold"
-                  >
-                    {cleanupError}
-                  </Alert>
-                ) : null}
-                <VoterTable
-                  chainId={chainId}
-                  councilId={councilId}
-                  groupId={groupId}
-                  defaultVotingPower={group.defaultVotingPower}
-                  voters={groupVoters}
-                  allGroups={groupOptions}
-                  existingOnchainAccounts={existingOnchainAccounts}
-                  isManager={isManager}
-                  q={qForChildren}
-                  maxVotingSpread={maxVotingSpread}
-                  onRefresh={refresh}
-                />
+                {/* A metrics group has a single bot voter driven entirely by the
+                    ballot API, so the batch voter table is replaced with the
+                    integration spec and the bot's current per-recipient
+                    allocation. */}
+                {isMetricsGroup ? (
+                  <MetricsIntegrationPanel
+                    chainId={chainId}
+                    councilId={councilId}
+                  />
+                ) : (
+                  <>
+                    {q.error ? (
+                      <Alert
+                        variant="danger"
+                        dismissible
+                        onClose={() => discard()}
+                        className="d-flex flex-wrap align-items-center justify-content-between gap-2"
+                      >
+                        <span className="fw-semi-bold">{q.error.message}</span>
+                        <Button
+                          size="sm"
+                          className="fw-semi-bold"
+                          onClick={() => q.resume()}
+                        >
+                          Retry
+                        </Button>
+                      </Alert>
+                    ) : null}
+                    {cleanupError ? (
+                      <Alert
+                        variant="danger"
+                        dismissible
+                        onClose={() => clearCleanupError()}
+                        className="fw-semi-bold"
+                      >
+                        {cleanupError}
+                      </Alert>
+                    ) : null}
+                    <VoterTable
+                      chainId={chainId}
+                      councilId={councilId}
+                      groupId={groupId}
+                      defaultVotingPower={group.defaultVotingPower}
+                      voters={groupVoters}
+                      allGroups={groupOptions}
+                      existingOnchainAccounts={existingOnchainAccounts}
+                      isManager={isManager}
+                      q={qForChildren}
+                      maxVotingSpread={maxVotingSpread}
+                      onRefresh={refresh}
+                    />
+                  </>
+                )}
               </Card.Body>
             </Card>
           </>
@@ -982,6 +1076,12 @@ export default function GroupDetail(props: GroupDetailProps) {
             <span className="fw-semi-bold">{group?.name}</span>? This cannot be
             undone.
           </p>
+          {isMetricsGroup ? (
+            <p className="mt-3 mb-0">
+              Deleting this group will remove the metrics voter. You must sign
+              an onchain transaction to complete this action.
+            </p>
+          ) : null}
           {deleteError ? (
             <Alert variant="danger" className="mt-3 mb-0">
               {deleteError}
