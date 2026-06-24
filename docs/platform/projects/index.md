@@ -12,6 +12,10 @@ Your projects live at [`flowstate.network/projects`](https://flowstate.network/p
 
 ## Creating a project
 
+![Projects](./img/projects.png)
+
+*Your projects.*
+
 From the projects page, click **Create Project**. You'll be prompted to connect your wallet and **Sign In With Ethereum** if you haven't already, then a form opens with these sections:
 
 - **Admin** — the **Project Name**, the **Manager Addresses** (every manager can edit the project; your signed-in address is locked as the primary manager), and a **Default Funding Address** (an EOA or Safe that receives ongoing funding outside of sponsored rounds).
@@ -27,6 +31,10 @@ Editing is only available to a project manager. If you're not signed in with a m
 :::
 
 ## The project page
+
+![A project page](./img/project-page.png)
+
+*A project page with its links and tabs.*
 
 Each project page shows the banner, logo, name, manager address, and your linked website and social profiles, followed by three tabs:
 

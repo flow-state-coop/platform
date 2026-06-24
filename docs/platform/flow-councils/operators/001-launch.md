@@ -32,6 +32,10 @@ description and choose whether it is **Listed** (surfaced on public discovery
 pages) or **Unlisted** (fully functional, reachable by direct link). New rounds
 default to Unlisted.
 
+![Round metadata](./img/metadata.png)
+
+*Setting the round name, description, and visibility.*
+
 ## Permissions
 
 The deploying address is set as the Flow Council **Super Admin** by default.

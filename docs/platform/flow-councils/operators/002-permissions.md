@@ -11,6 +11,11 @@ A Flow Council's privileged actions are gated by onchain roles. The **Council Pe
 - **Recipient Review** (`RECIPIENT_MANAGER_ROLE`) – reviews [applications](003-applications.md) and manages recipients in the distribution pool.
 
 ## Granting roles
+
+![Permissions table](./img/permissions.png)
+
+*Granting roles to addresses on the Permissions page.*
+
 On the **Council Permissions** page, a Super Admin enters a **Manager Address** and checks the box for each role that address should hold. Add as many addresses as you need with **Add another admin**, then **Submit** to write the changes onchain.
 
 A single address can hold any combination of roles. Checking **Super Admin** implies the other two—a Super Admin can do everything a Voter Review and Recipient Review manager can.

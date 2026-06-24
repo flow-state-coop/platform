@@ -54,7 +54,9 @@ const okFetch = (): Mock =>
 const deletedAddresses = (fetchMock: Mock): string[] =>
   fetchMock.mock.calls
     .filter(([, init]) => init?.method === "DELETE")
-    .flatMap(([, init]) => JSON.parse(init.body as string).addresses as string[]);
+    .flatMap(
+      ([, init]) => JSON.parse(init.body as string).addresses as string[],
+    );
 
 beforeEach(() => {
   vi.restoreAllMocks();

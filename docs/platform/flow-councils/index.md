@@ -9,6 +9,10 @@ sidebar_position: 1
 ## Overview
 **Flow Councils** are a tool for continuous, participatory funding allocation. **Council Members** vote to split a stream of money across an arbitrary number of recipients. 
 
+![A live Flow Council](./img/council-page.png)
+
+*A Flow Council page with its funding stream and grantees.*
+
 Flow Councils enable real-time (re)allocation of budgets based on new information, evolving priorities, and demonstrated results. The streaming structure offers adaptability and efficiency for allocators; for recipients, capital velocity and budget predictability.
 
 Flow Councils are a great tool for grants programs, organizational budgeting, and any collective allocation process to become more dynamic and effective.

@@ -267,10 +267,8 @@ export default function GroupDetail(props: GroupDetailProps) {
   // Finalize-on-complete (drop removed voters' DB rows) and discard-with-rollback
   // are driven by the queue's persisted meta, so they survive a remount and work
   // from either page that mounts the queue.
-  const { discard, cleanupError, clearCleanupError } = useVoterGroupQueueCleanup(
-    q,
-    refresh,
-  );
+  const { discard, cleanupError, clearCleanupError } =
+    useVoterGroupQueueCleanup(q, refresh);
 
   // Capture the hook's stable startQueue reference so the wrapper below depends
   // on it directly instead of the render-fresh `q` object.
