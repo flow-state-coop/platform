@@ -89,10 +89,7 @@ export async function GET(request: Request) {
     });
 
     if (!parsed.success) {
-      const issue = parsed.error.issues[0];
-      return new Response(
-        JSON.stringify({ success: false, error: issue.message }),
-      );
+      return errorResponse(parsed.error.issues[0].message, 400);
     }
 
     const { chainId, councilId } = parsed.data;
@@ -100,7 +97,7 @@ export async function GET(request: Request) {
     const addresses = await fetchRecipientAddresses(chainId, councilId);
 
     if (addresses.length === 0) {
-      return new Response(JSON.stringify({ success: true, recipients: [] }));
+      return Response.json({ success: true, recipients: [] });
     }
 
     const round = await findRoundByCouncil(chainId, councilId);
@@ -134,9 +131,9 @@ export async function GET(request: Request) {
       name: nameByAddress.get(address) ?? null,
     }));
 
-    return new Response(JSON.stringify({ success: true, recipients }));
+    return Response.json({ success: true, recipients });
   } catch (err) {
     console.error(err);
-    return errorResponse(err);
+    return errorResponse(err, 500);
   }
 }
