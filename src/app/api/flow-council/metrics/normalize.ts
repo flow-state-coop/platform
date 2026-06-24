@@ -9,16 +9,26 @@ export type BallotVote = { recipient: `0x${string}`; amount: bigint };
 const WEIGHT_PRECISION = 2 ** 53;
 
 /**
- * Convert relative per-recipient weights into an on-chain ballot whose integer
- * amounts sum to exactly `votingPower`, using largest-remainder (Hamilton)
- * apportionment in BigInt. `votingPower` and the returned amounts are the
- * FlowCouncil `uint96` vote type; the integer math is exact across that whole
- * range and the sum never exceeds `votingPower`, so `vote()` cannot revert with
- * NOT_ENOUGH_VOTING_POWER. Zero/negative weights are dropped; when more
- * recipients carry weight than `maxVotingSpread` (0 = unlimited), only the
- * top-weighted ones are kept. Recipients that round to 0 votes are omitted. The
- * result is sorted by lowercased recipient address so it is deterministic and
- * comparable.
+ * Convert relative per-recipient weights into an on-chain ballot, using
+ * largest-remainder (Hamilton) apportionment in BigInt. `votingPower` and the
+ * returned amounts are the FlowCouncil `uint96` vote type; the integer math is
+ * exact across that whole range and the sum never exceeds `votingPower`, so
+ * `vote()` cannot revert with NOT_ENOUGH_VOTING_POWER.
+ *
+ * Leftover units (those that remain after each share is floored) are handed to
+ * the largest fractional remainders, but only where a remainder is strictly
+ * larger than the others competing for the last unit. When recipients are tied
+ * at that cutoff their claim is equal, so rather than breaking the tie by
+ * address (which always favors the same recipient and surfaces as one grantee
+ * getting an unearned extra vote), the ambiguous units are dropped. This keeps
+ * clean ratios exact (a 3:1 split of 100 stays 75/25) while leaving an even
+ * split untouched (25/25/25/101 rounds to 25/25/25/25, not 26/25/25/25), at the
+ * cost of casting slightly fewer than `votingPower` votes in the even case.
+ *
+ * Zero/negative weights are dropped; when more recipients carry weight than
+ * `maxVotingSpread` (0 = unlimited), only the top-weighted ones are kept.
+ * Recipients that round to 0 votes are omitted. The result is sorted by
+ * lowercased recipient address so it is deterministic and comparable.
  */
 export function normalizeWeightsToVotingPower(
   votes: WeightedVote[],
@@ -53,7 +63,6 @@ export function normalizeWeightsToVotingPower(
   // Scale each fractional share to an integer; everything after this is exact.
   const entries = selected.map((v) => ({
     recipient: v.recipient,
-    weight: v.weight,
     share: BigInt(Math.round((v.weight / maxWeight) * WEIGHT_PRECISION)),
     floor: 0n,
     remainder: 0n,
@@ -69,20 +78,22 @@ export function normalizeWeightsToVotingPower(
   }
 
   const allocated = entries.reduce((sum, e) => sum + e.floor, 0n);
-  let leftover = votingPower - allocated;
+  const leftover = votingPower - allocated;
 
-  // Hand the leftover units to the largest fractional remainders (tie-break:
-  // larger weight, then lower address). Mutates the shared entry objects.
-  const byRemainder = [...entries].sort((a, b) => {
-    if (a.remainder !== b.remainder) return a.remainder < b.remainder ? 1 : -1;
-    return (
-      b.weight - a.weight ||
-      a.recipient.toLowerCase().localeCompare(b.recipient.toLowerCase())
+  // Award a unit to every entry whose remainder is strictly greater than the
+  // remainder at the cutoff (the first entry that wouldn't win a unit under a
+  // greedy largest-remainder pass). Entries tied with the cutoff are ambiguous,
+  // so their units are dropped instead of going to whichever sorts first. The
+  // floor guarantees leftover < entries.length, so the cutoff index always
+  // exists when leftover > 0. Mutates the shared entry objects.
+  if (leftover > 0n) {
+    const byRemainder = [...entries].sort((a, b) =>
+      a.remainder < b.remainder ? 1 : a.remainder > b.remainder ? -1 : 0,
     );
-  });
-  for (let i = 0; i < byRemainder.length && leftover > 0n; i++) {
-    byRemainder[i].floor += 1n;
-    leftover -= 1n;
+    const cutoff = byRemainder[Number(leftover)].remainder;
+    for (const e of byRemainder) {
+      if (e.remainder > cutoff) e.floor += 1n;
+    }
   }
 
   return entries

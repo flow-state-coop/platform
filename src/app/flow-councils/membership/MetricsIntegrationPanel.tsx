@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import Stack from "react-bootstrap/Stack";
 import Spinner from "react-bootstrap/Spinner";
 import Table from "react-bootstrap/Table";
+import Button from "react-bootstrap/Button";
 import CopyTooltip from "@/components/CopyTooltip";
 import { networks } from "@/lib/networks";
 import { Network } from "@/types/network";
@@ -93,6 +94,47 @@ function MetricsIntegrationPanelContent(props: {
   const totalAmount = rows.reduce((sum, row) => sum + row.amount, 0);
   const totalPct = power > 0 ? (totalAmount / power) * 100 : 0;
 
+  const downloadRecipients = (format: "csv" | "json") => {
+    const data = rows.map((row) => ({
+      name: row.name ?? "",
+      address: row.address,
+      currentVotes: row.amount,
+      currentPct: Number(row.pct.toFixed(1)),
+    }));
+
+    let content: string;
+
+    if (format === "json") {
+      content = JSON.stringify(data, null, 2);
+    } else {
+      const escape = (value: string) =>
+        /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+
+      content = ["Recipient,Address,Current votes,Current %"]
+        .concat(
+          data.map((row) =>
+            [
+              escape(row.name),
+              row.address,
+              String(row.currentVotes),
+              String(row.currentPct),
+            ].join(","),
+          ),
+        )
+        .join("\n");
+    }
+
+    const blob = new Blob([content], {
+      type: format === "json" ? "application/json" : "text/csv",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `recipients-${councilId}.${format}`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Stack direction="vertical" gap={4}>
       <div>
@@ -125,6 +167,11 @@ Content-Type: application/json
             recipient address (listed below). 1 to 1,000 entries, no duplicates.
           </li>
           <li>
+            Fetch the recipient list programmatically from{" "}
+            <code>GET /api/flow-council/recipients</code> (no auth), or export it
+            below.
+          </li>
+          <li>
             Submitting a ballot that matches the current one is a no-op (no
             transaction).
           </li>
@@ -135,12 +182,45 @@ Content-Type: application/json
             <code>401</code> invalid key; <code>429</code> rate limited.
           </li>
         </ul>
+        <p className="text-info mt-2 mb-0">
+          Full reference:{" "}
+          <a
+            href="https://docs.flowstate.network/developers/metrics-api"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Metrics API docs
+          </a>
+          .
+        </p>
       </div>
 
       <div>
-        <span className="fw-semi-bold d-block mb-1">
-          Recipients and current allocation
-        </span>
+        <Stack
+          direction="horizontal"
+          gap={2}
+          className="align-items-center justify-content-between mb-1"
+        >
+          <span className="fw-semi-bold">Recipients and current allocation</span>
+          {rows.length > 0 ? (
+            <Stack direction="horizontal" gap={2}>
+              <Button
+                variant="outline-primary"
+                size="sm"
+                onClick={() => downloadRecipients("csv")}
+              >
+                Export CSV
+              </Button>
+              <Button
+                variant="outline-primary"
+                size="sm"
+                onClick={() => downloadRecipients("json")}
+              >
+                Export JSON
+              </Button>
+            </Stack>
+          ) : null}
+        </Stack>
         <p className="text-info mb-2">
           Submit votes by address. The values below are the bot&apos;s current
           on-chain ballot.

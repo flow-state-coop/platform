@@ -38,12 +38,14 @@ The caller never needs to know the council's voting power or spread configuratio
 
 ### Normalization
 
-The server converts the relative weights to an integer ballot whose amounts sum to exactly the bot's current on-chain voting power, using **largest-remainder (Hamilton) apportionment**:
+The server converts the relative weights to an integer ballot proportional to the bot's current on-chain voting power, using **largest-remainder (Hamilton) apportionment**:
 
 1. Entries with zero or negative weight are dropped.
 2. If the council has a **Max Voting Spread** configured and more recipients than that limit carry positive weight, only the top-weighted ones are kept (tie-broken by address).
-3. Each kept entry receives a floor allocation proportional to its weight; leftover units go to the largest fractional remainders.
+3. Each kept entry receives a floor allocation proportional to its weight. The leftover units go to the largest fractional remainders, **except when recipients are tied for the last unit**: a tied unit has no unambiguous owner, so it is dropped rather than handed to whichever address sorts first.
 4. Recipients that round to zero are omitted from the final ballot.
+
+Because tied leftover units are dropped, the ballot sums to **at most** the bot's voting power, not always exactly. An even split rounds down: 4 recipients at equal weight against 101 votes each receive 25 (100 cast, 1 unused) instead of one recipient getting an unearned 26. Clean ratios are unaffected (a 3:1 split of 100 stays 75/25). For fine-grained percentages, configure the metrics group's vote power well above the recipient count so rounding loss stays negligible.
 
 ### Responses
 
@@ -64,6 +66,31 @@ At most one ballot that results in an on-chain transaction is accepted per counc
 :::note
 The 60-second minimum interval prevents nonce races and caps gas spend when a caller retries rapidly. If you receive a `429`, wait at least 60 seconds before retrying.
 :::
+
+## Fetching the recipient list
+
+Every `recipient` you submit must be a **current council recipient**. To discover that list dynamically (so your integration stays in sync as recipients are added or removed), call the public, unauthenticated recipients endpoint:
+
+```
+GET /api/flow-council/recipients?chainId=<chainId>&councilId=<councilAddress>
+```
+
+```json
+{
+  "success": true,
+  "recipients": [
+    { "address": "0xabc...", "name": "Project A" },
+    { "address": "0xdef...", "name": null }
+  ]
+}
+```
+
+- **`address`**: a current on-chain recipient (removed recipients are excluded).
+- **`name`**: the project name from its accepted/graduated application, or `null` if the recipient has no matching application.
+
+The Metrics API panel on the Membership page also offers a one-click **CSV / JSON export** of this list for manual or one-off integrations.
+
+If you prefer to read on-chain state directly, query the council's Flow Council subgraph for `recipients(where: { removed: false })`; the endpoint above wraps that query and joins in the project names.
 
 ## Authentication
 

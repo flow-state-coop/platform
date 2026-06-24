@@ -30,7 +30,9 @@ describe("normalizeWeightsToVotingPower", () => {
     expect(byAddr.get(B)).toBe(25n);
   });
 
-  it("uses largest-remainder rounding so the total is exact", () => {
+  it("drops the leftover on an even split rather than favoring one recipient", () => {
+    // 100/3 = 33.33; all three are tied for the single leftover unit, so it is
+    // dropped (33 each) instead of arbitrarily giving one recipient 34.
     const result = normalizeWeightsToVotingPower(
       [
         { recipient: A, weight: 1 },
@@ -40,10 +42,44 @@ describe("normalizeWeightsToVotingPower", () => {
       100n,
       0,
     );
-    expect(sum(result)).toBe(100n);
-    // 100/3 = 33.33; two get 33, one gets 34.
     const amounts = result.map((v) => Number(v.amount)).sort((a, b) => a - b);
-    expect(amounts).toEqual([33, 33, 34]);
+    expect(amounts).toEqual([33, 33, 33]);
+    expect(sum(result)).toBe(99n);
+  });
+
+  it("rounds an even 4-way split down instead of bumping the first recipient", () => {
+    // 101/4 = 25.25 each. Largest-remainder would hand the leftover unit to the
+    // lowest-address recipient (26/25/25/25); the tie is ambiguous so it is
+    // dropped, leaving an even 25/25/25/25.
+    const result = normalizeWeightsToVotingPower(
+      [
+        { recipient: A, weight: 25 },
+        { recipient: B, weight: 25 },
+        { recipient: C, weight: 25 },
+        { recipient: D, weight: 25 },
+      ],
+      101n,
+      0,
+    );
+    expect(result.map((v) => Number(v.amount))).toEqual([25, 25, 25, 25]);
+    expect(sum(result)).toBe(100n);
+  });
+
+  it("still awards a strictly-larger remainder its rounding unit", () => {
+    // 2:1 of 100 → 66.67 / 33.33. A's remainder strictly exceeds B's, so A wins
+    // the leftover unit (the rounding is unambiguous): 67/33, full power used.
+    const result = normalizeWeightsToVotingPower(
+      [
+        { recipient: A, weight: 2 },
+        { recipient: B, weight: 1 },
+      ],
+      100n,
+      0,
+    );
+    expect(sum(result)).toBe(100n);
+    const byAddr = new Map(result.map((v) => [v.recipient, v.amount]));
+    expect(byAddr.get(A)).toBe(67n);
+    expect(byAddr.get(B)).toBe(33n);
   });
 
   it("caps to maxVotingSpread by top weight and still sums to power", () => {
@@ -76,8 +112,23 @@ describe("normalizeWeightsToVotingPower", () => {
     expect(result[0]).toEqual({ recipient: A, amount: 50n });
   });
 
-  it("omits recipients that round down to zero", () => {
-    // power 2 across 3 equal weights → two recipients get 1, one gets 0 (dropped)
+  it("omits recipients whose share rounds down to zero", () => {
+    // power 10 across weights 100:1:1 → 9.8 / 0.098 / 0.098. Only the heaviest
+    // clears a whole vote; the two tiny shares round down and are dropped.
+    const result = normalizeWeightsToVotingPower(
+      [
+        { recipient: A, weight: 100 },
+        { recipient: B, weight: 1 },
+        { recipient: C, weight: 1 },
+      ],
+      10n,
+      0,
+    );
+    expect(result).toEqual([{ recipient: A, amount: 10n }]);
+  });
+
+  it("drops the whole ballot when every share rounds down to zero", () => {
+    // power 2 across 3 equal weights → 0.67 each, all tied, all dropped.
     const result = normalizeWeightsToVotingPower(
       [
         { recipient: A, weight: 1 },
@@ -87,8 +138,7 @@ describe("normalizeWeightsToVotingPower", () => {
       2n,
       0,
     );
-    expect(sum(result)).toBe(2n);
-    expect(result.length).toBe(2);
+    expect(result).toEqual([]);
   });
 
   it("returns empty for all-zero weights or zero power", () => {
