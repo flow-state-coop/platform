@@ -1,4 +1,4 @@
-import { Address } from "viem";
+import { Address, zeroAddress } from "viem";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks } from "@/lib/networks";
 import {
@@ -132,32 +132,29 @@ export async function POST(request: Request) {
   let broadcast = false;
 
   try {
-    // Bot's voting power, the council's spread limit, and its current ballot in
-    // a single round-trip.
-    const [voter, maxVotingSpread, currentVotes] = await publicClient.multicall(
-      {
-        allowFailure: false,
-        contracts: [
-          {
-            address: council,
-            abi: flowCouncilAbi,
-            functionName: "getVoter",
-            args: [FLOW_STATE_BOT_ADDRESS],
-          },
-          {
-            address: council,
-            abi: flowCouncilAbi,
-            functionName: "maxVotingSpread",
-          },
-          {
-            address: council,
-            abi: flowCouncilAbi,
-            functionName: "getVotes",
-            args: [FLOW_STATE_BOT_ADDRESS],
-          },
-        ],
-      },
-    );
+    // Bot's voting power and the council's spread limit in a single round-trip.
+    // The current ballot is reconstructed below from the voter's vote entries
+    // instead of read via getVotes(): on councils whose recipients have churned,
+    // the deployed getVotes() can revert (out-of-bounds while resolving a sparse
+    // recipient history), which an allowFailure:false multicall would surface as
+    // an opaque 502. getVoter().votes carries the same data keyed by recipientId,
+    // and recipientById resolves each id to its address without that bug.
+    const [voter, maxVotingSpread] = await publicClient.multicall({
+      allowFailure: false,
+      contracts: [
+        {
+          address: council,
+          abi: flowCouncilAbi,
+          functionName: "getVoter",
+          args: [FLOW_STATE_BOT_ADDRESS],
+        },
+        {
+          address: council,
+          abi: flowCouncilAbi,
+          functionName: "maxVotingSpread",
+        },
+      ],
+    });
 
     if (voter.votingPower === 0n) {
       // A transient/config state (admin mid-edit, or just after a
@@ -179,22 +176,40 @@ export async function POST(request: Request) {
       return errorResponse("No allocatable votes in ballot", 400);
     }
 
-    // Skip the tx when the computed ballot already matches the on-chain one.
-    // Checked before recipient validation so a stable, repeatedly-polled ballot
-    // doesn't run the per-recipient multicall on every request. getVotes keeps a
-    // 0-amount entry for every recipient ever voted on (vote() never prunes
-    // them), so compare against the positive subset only, otherwise a single
-    // dropped recipient would make the computed ballot (positive amounts only)
-    // never match and force a redundant tx on every poll. Skipping a match is
-    // safe even if a recipient was since removed: the state already equals the
-    // request, so nothing new is written; a ballot that drops that recipient
-    // won't match and takes the validation + clear path below.
-    const current: BallotVote[] = currentVotes
-      .filter((v) => v.amount > 0n)
+    // Reconstruct the bot's current on-chain ballot from its vote entries,
+    // mirroring getVotes() without its churned-recipient revert. Each entry is
+    // keyed by recipientId; recipientById resolves it to the recipient address.
+    // Only positive amounts on still-live recipients (account != 0) count, the
+    // same filter getVotes() applies: vote() never prunes 0-amount entries, and a
+    // removed recipient must be dropped (vote() reverts NOT_FOUND when zeroing
+    // one, and the contract excludes it from totalVotes anyway). Resolved before
+    // recipient validation so a stable, repeatedly-polled ballot can skip without
+    // the per-target validation multicall below.
+    const votedEntries = voter.votes.filter((v) => v.amount > 0n);
+    const resolved =
+      votedEntries.length > 0
+        ? await publicClient.multicall({
+            allowFailure: false,
+            contracts: votedEntries.map((v) => ({
+              address: council,
+              abi: flowCouncilAbi,
+              functionName: "recipientById" as const,
+              args: [v.recipientId],
+            })),
+          })
+        : [];
+    const current: BallotVote[] = votedEntries
+      .map((v, i) => ({ account: resolved[i][0], amount: v.amount }))
+      .filter((v) => v.account !== zeroAddress)
       .map((v) => ({
-        recipient: v.recipient.toLowerCase() as `0x${string}`,
+        recipient: v.account.toLowerCase() as `0x${string}`,
         amount: v.amount,
       }));
+
+    // Skip the tx when the computed ballot already matches the on-chain one.
+    // Safe even if a recipient was since removed: the state already equals the
+    // request, so nothing new is written; a ballot that drops that recipient
+    // won't match and takes the validation + clear path below.
     if (votesEqual(target, current)) {
       return Response.json({ success: true, skipped: true });
     }
