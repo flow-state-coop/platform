@@ -13,6 +13,11 @@ A **Council** is the set of wallet addresses that may cast votes in a Flow Counc
 Council admins (and anyone granted the **Voter Review** role) can update membership and the voting policy anytime from the **Membership** page of the Flow Council launchpad. All membership changes are written onchain; large updates are submitted in batches.
 
 ## Voter Groups
+
+![Voter groups](./img/membership.png)
+
+*Voter groups and their share of votes.*
+
 Membership is organized into **voter groups**. Each group has an **eligibility method** that determines how addresses join it, and a **default vote allocation** applied to members as they're added. A council can have several groups (for example, a curated core team alongside an open community group).
 
 ### Manual groups

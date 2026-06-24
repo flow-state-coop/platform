@@ -55,7 +55,11 @@ export async function getFlowStateMarkee(): Promise<MarkeeInfo | null> {
 
     const [priceRes, topRes] = await client.multicall({
       contracts: [
-        { address: leaderboard, abi: LEADERBOARD_ABI, functionName: "minimumPrice" },
+        {
+          address: leaderboard,
+          abi: LEADERBOARD_ABI,
+          functionName: "minimumPrice",
+        },
         {
           address: leaderboard,
           abi: LEADERBOARD_ABI,
@@ -67,8 +71,7 @@ export async function getFlowStateMarkee(): Promise<MarkeeInfo | null> {
 
     if (topRes.status !== "success") return null;
 
-    const minimumPrice =
-      priceRes.status === "success" ? priceRes.result : 0n;
+    const minimumPrice = priceRes.status === "success" ? priceRes.result : 0n;
     const [topAddresses, topFunds] = topRes.result;
     const topIdx = topFunds.findIndex((f) => f > 0n);
     if (topIdx < 0 || !topAddresses[topIdx]) return null;
@@ -80,8 +83,16 @@ export async function getFlowStateMarkee(): Promise<MarkeeInfo | null> {
 
     const [msgRes, ownerRes] = await client.multicall({
       contracts: [
-        { address: topAddresses[topIdx], abi: MARKEE_ABI, functionName: "message" },
-        { address: topAddresses[topIdx], abi: MARKEE_ABI, functionName: "owner" },
+        {
+          address: topAddresses[topIdx],
+          abi: MARKEE_ABI,
+          functionName: "message",
+        },
+        {
+          address: topAddresses[topIdx],
+          abi: MARKEE_ABI,
+          functionName: "owner",
+        },
       ],
     });
 

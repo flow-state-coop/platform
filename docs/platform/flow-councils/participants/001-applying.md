@@ -6,6 +6,10 @@ description: Applying for funding from a Flow Council
 # Applying
 You apply with a **project**. Create a project once and reuse it across as many rounds as you like—your project details, branding, and links carry over.
 
+![Application form](./img/applying.png)
+
+*Filling out a council application.*
+
 Head to the council's application page at `https://flowstate.network/flow-councils/application/<chainId>/<councilId>`, sign in with your wallet, then pick an existing project or **Create Project**. Want to draft your answers offline first? Use **Download Application Template** to grab a markdown copy of every question.
 
 The application has three tabs that mirror the [form the operators built](../operators/003-applications.md):

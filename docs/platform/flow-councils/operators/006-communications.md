@@ -6,6 +6,10 @@ description: Announcements and per-project channels for a Flow Council
 # Communications
 Every Flow Council has built-in chat so operators and projects can stay in sync without leaving the platform. Open it from the **Communications** page of the launchpad.
 
+![Communication channels](./img/communications.png)
+
+*Per-round and per-project channels with a markdown composer.*
+
 There are two kinds of channels:
 
 - **Announcements** – a council-wide channel for broadcasting updates to everyone in the round. Council admins post here; all members can read it.

@@ -7,6 +7,10 @@ description: Set your display name, bio, and social links
 
 Your **profile** is the public identity attached to your wallet address. Manage it at [`flowstate.network/profile`](https://flowstate.network/profile) — connect your wallet and **Sign In With Ethereum** to edit.
 
+![Profile editor](./img/profile.png)
+
+*Editing your profile at flowstate.network/profile.*
+
 ## Public information
 
 This section is shown on your public profile:
@@ -24,5 +28,9 @@ Adding an email also enables [email notifications](003-notifications.md); you'll
 Click **Save** to apply your changes.
 
 ## Public profiles
+
+![Public profile view](./img/public-profile.png)
+
+*A public profile as others see it.*
 
 Every address has a public profile at `flowstate.network/profile/<address>`. It shows the display name (or a shortened address), bio, and any social links you've set, plus a **View projects** link to the [projects](/projects) that address manages. An address that hasn't set up a profile yet simply shows that no profile exists.

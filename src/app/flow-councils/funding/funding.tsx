@@ -56,10 +56,20 @@ const FLOW_COUNCIL_QUERY = gql`
   query FundingCouncilQuery($councilId: String!) {
     flowCouncil(id: $councilId) {
       id
+      distributionPool
       flowCouncilManagers {
         account
         role
       }
+    }
+  }
+`;
+
+const SF_POOL_UNITS_QUERY = gql`
+  query FundingPoolUnitsQuery($distributionPool: String) {
+    pool(id: $distributionPool) {
+      id
+      totalUnits
     }
   }
 `;
@@ -159,6 +169,28 @@ export default function Funding(props: FundingProps) {
         m.account === address.toLowerCase() && m.role === DEFAULT_ADMIN_ROLE,
     );
   }, [flowCouncilQueryRes, address]);
+
+  const distributionPoolAddress = flowCouncilQueryRes?.flowCouncil
+    ?.distributionPool as string | undefined;
+
+  const { data: poolUnitsRes } = useQuery(SF_POOL_UNITS_QUERY, {
+    client: chainId ? getApolloClient("superfluid", chainId) : undefined,
+    variables: { distributionPool: distributionPoolAddress?.toLowerCase() },
+    skip: !distributionPoolAddress || !chainId,
+    pollInterval: 10000,
+  });
+
+  const hasGdaRecipient = useMemo<boolean | null>(() => {
+    const pool = poolUnitsRes?.pool;
+    if (!pool) return null;
+    try {
+      return BigInt(pool.totalUnits ?? "0") > 0n;
+    } catch {
+      return null;
+    }
+  }, [poolUnitsRes]);
+
+  const noGdaRecipientYet = hasGdaRecipient === false;
 
   const { data: senderOutflowsRes } = useQuery(SF_SENDER_OUTFLOWS_QUERY, {
     client: chainId ? getApolloClient("superfluid", chainId) : undefined,
@@ -488,7 +520,8 @@ export default function Funding(props: FundingProps) {
       !(chainId in hostAddress) ||
       streamFlowRate === 0n ||
       streamFlowRateUnchanged ||
-      !streamHasSufficientForBuffer
+      !streamHasSufficientForBuffer ||
+      noGdaRecipientYet
     ) {
       return;
     }
@@ -780,7 +813,8 @@ export default function Funding(props: FundingProps) {
             streamFlowRate === 0n ||
             streamFlowRateUnchanged ||
             !streamHasSufficientForBuffer ||
-            streamWrapExceedsUnderlying)
+            streamWrapExceedsUnderlying ||
+            noGdaRecipientYet)
         }
         style={{ pointerEvents: streamFlashSuccess ? "none" : "auto" }}
         className="fs-lg fw-semi-bold py-4 rounded-4"
@@ -1143,6 +1177,12 @@ export default function Funding(props: FundingProps) {
           </Card.Header>
           <Card.Body className="p-0 mt-4">
             <Stack direction="vertical" gap={3}>
+              {noGdaRecipientYet ? (
+                <Alert variant="warning" className="mb-0 fw-semi-bold">
+                  You cannot start funding until at least one recipient is added
+                  to the Flow Council.
+                </Alert>
+              ) : null}
               <Form.Group>
                 <Form.Label className="fw-semi-bold">
                   Monthly flow rate ({tokenSymbol})
@@ -1162,6 +1202,7 @@ export default function Funding(props: FundingProps) {
                   type="text"
                   inputMode="decimal"
                   placeholder="0.0"
+                  disabled={noGdaRecipientYet}
                   value={streamMonthlyAmount}
                   onChange={(e) => {
                     if (isInProgressDecimal(e.target.value)) {
@@ -1224,6 +1265,7 @@ export default function Funding(props: FundingProps) {
                     type="text"
                     inputMode="decimal"
                     placeholder="0.0"
+                    disabled={noGdaRecipientYet}
                     value={streamWrapAmount}
                     onChange={(e) => {
                       if (isInProgressDecimal(e.target.value)) {

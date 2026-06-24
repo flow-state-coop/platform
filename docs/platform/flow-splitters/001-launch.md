@@ -7,6 +7,10 @@ description: How to configure and deploy Flow Splitters.
 
 Creating a Flow Splitter requires a wallet, a little ETH, and no code. Navigate to [https://flowstate.network/flow-splitters/launch](https://flowstate.network/flow-splitters/launch) to get started.
 
+![Flow Splitter launch](./img/launch.png)
+
+*Creating a Flow Splitter.*
+
 ## Metadata
 Flow Splitter Shares are ERC20 tokens (with distribution superpowers). You can give your Shares a name and token symbol to identify or brand them across wallets and block explorers. If your Flow Splitter will be used for any external purposes (e.g. attracting funding for your team), you’re highly encouraged to use these fields.
 
