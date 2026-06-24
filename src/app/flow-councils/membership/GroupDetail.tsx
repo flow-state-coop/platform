@@ -864,14 +864,20 @@ export default function GroupDetail(props: GroupDetailProps) {
                     {isMetricsGroup ? (
                       <>
                         <span className="text-info fs-6">Voter</span>
-                        <Link
-                          href={`${network?.blockExplorer}/address/${FLOW_STATE_BOT_ADDRESS}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="fs-5 fw-semi-bold text-primary text-decoration-none"
-                        >
-                          {truncateAddress(FLOW_STATE_BOT_ADDRESS)}
-                        </Link>
+                        {network?.blockExplorer ? (
+                          <Link
+                            href={`${network.blockExplorer}/address/${FLOW_STATE_BOT_ADDRESS}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="fs-5 fw-semi-bold text-primary text-decoration-none"
+                          >
+                            {truncateAddress(FLOW_STATE_BOT_ADDRESS)}
+                          </Link>
+                        ) : (
+                          <span className="fs-5 fw-semi-bold">
+                            {truncateAddress(FLOW_STATE_BOT_ADDRESS)}
+                          </span>
+                        )}
                       </>
                     ) : (
                       <>

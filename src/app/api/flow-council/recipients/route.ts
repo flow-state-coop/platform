@@ -114,11 +114,19 @@ export async function GET(request: Request) {
         .execute();
 
       for (const app of applications) {
-        const details = (
-          typeof app.details === "string"
-            ? JSON.parse(app.details)
-            : app.details
-        ) as ProjectDetails | null;
+        let details: ProjectDetails | null;
+
+        try {
+          details = (
+            typeof app.details === "string"
+              ? JSON.parse(app.details)
+              : app.details
+          ) as ProjectDetails | null;
+        } catch {
+          // One application with corrupt details JSON shouldn't break the whole
+          // recipient list; skip it and leave its address unnamed.
+          continue;
+        }
 
         if (details?.name) {
           nameByAddress.set(app.fundingAddress.toLowerCase(), details.name);

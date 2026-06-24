@@ -282,6 +282,8 @@ export async function POST(request: Request) {
     // failure was in a read/claim step). Once broadcast, the tx may still land,
     // so keep the window held, otherwise a retry could submit a second ballot.
     if (claimed && claimedAt && !broadcast) {
+      // Restore the pre-claim value, which is null on a council's first-ever
+      // ballot; setting it back to null is intentional, not a missing value.
       await db
         .updateTable("voterGroups")
         .set({ lastBallotAt: group.lastBallotAt })
