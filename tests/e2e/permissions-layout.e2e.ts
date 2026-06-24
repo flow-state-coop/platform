@@ -48,9 +48,7 @@ for (const viewport of VIEWPORTS) {
       has: page.getByPlaceholder("Manager Address"),
     });
     const addressCell = row.getByPlaceholder("Manager Address");
-    // Profile-name input is the row's only direct-child input (the address
-    // input is nested in a wrapper), so this stays correct if its CSS changes.
-    const nameCell = row.locator(":scope > input");
+    const nameCell = row.getByLabel("Profile Name");
     await expect(addressCell).toBeVisible();
     await expect(nameCell).toBeVisible();
 

@@ -580,6 +580,7 @@ export default function Permissions(props: PermissionsProps) {
                 <Form.Control
                   type="text"
                   disabled
+                  aria-label="Profile Name"
                   value={managerDisplayName(managerEntry.address) || "N/A"}
                   className="border-0 bg-white rounded-4 fw-semi-bold text-info"
                   style={{
