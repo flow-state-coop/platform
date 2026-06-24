@@ -106,6 +106,8 @@ export default function DistributionPoolFunding(props: {
   const [amountPerTimeInterval, setAmountPerTimeInterval] = useState("");
   const [newFlowRate, setNewFlowRate] = useState("");
   const [wrapAmount, setWrapAmount] = useState("");
+  const [hasAcceptedSplitterCapWarning, setHasAcceptedSplitterCapWarning] =
+    useState(false);
 
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
@@ -394,7 +396,9 @@ export default function DistributionPoolFunding(props: {
     }
 
     const shouldIncludeTransfer =
-      exceedsSplitterCap && requiredTransferWei > BigInt(0);
+      exceedsSplitterCap &&
+      hasAcceptedSplitterCapWarning &&
+      requiredTransferWei > BigInt(0);
 
     if (shouldIncludeTransfer) {
       const wrapBatchCall = buildBatchCall(wrapBatchOps, chainId);
@@ -444,7 +448,12 @@ export default function DistributionPoolFunding(props: {
     network.id,
     exceedsSplitterCap,
     requiredTransferWei,
+    hasAcceptedSplitterCapWarning,
   ]);
+
+  useEffect(() => {
+    setHasAcceptedSplitterCapWarning(false);
+  }, [newFlowRate]);
 
   useEffect(() => {
     (async () => {
@@ -647,6 +656,10 @@ export default function DistributionPoolFunding(props: {
                 requiredTransferWei={requiredTransferWei}
                 hasSufficientBalanceForTransfer={
                   hasSufficientBalanceForTransfer
+                }
+                hasAcceptedSplitterCapWarning={hasAcceptedSplitterCapWarning}
+                setHasAcceptedSplitterCapWarning={
+                  setHasAcceptedSplitterCapWarning
                 }
               />
               <Success

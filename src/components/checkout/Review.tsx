@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
 import { formatEther, parseEther } from "viem";
 import dayjs from "dayjs";
@@ -54,6 +54,8 @@ export type ReviewProps = {
   exceedsSplitterCap?: boolean;
   requiredTransferWei?: bigint;
   hasSufficientBalanceForTransfer?: boolean;
+  hasAcceptedSplitterCapWarning?: boolean;
+  setHasAcceptedSplitterCapWarning?: (hasAccepted: boolean) => void;
 };
 
 type TransactionDetailsSnapshot = {
@@ -68,6 +70,7 @@ type TransactionDetailsSnapshot = {
   flowRateToReceiver: string;
   exceedsSplitterCap: boolean;
   requiredTransferWei: bigint;
+  callsCount: number;
 };
 
 export default function Review(props: ReviewProps) {
@@ -97,6 +100,8 @@ export default function Review(props: ReviewProps) {
     exceedsSplitterCap = false,
     requiredTransferWei = BigInt(0),
     hasSufficientBalanceForTransfer = true,
+    hasAcceptedSplitterCapWarning = false,
+    setHasAcceptedSplitterCapWarning,
   } = props;
 
   const [transactionDetailsSnapshot, setTransactionDetailsSnapshot] =
@@ -105,8 +110,6 @@ export default function Review(props: ReviewProps) {
     hasAcceptedCloseLiquidationWarning,
     setHasAcceptedCloseLiquidationWarning,
   ] = useState(false);
-  const [hasAcceptedSplitterCapWarning, setHasAcceptedSplitterCapWarning] =
-    useState(false);
 
   const wrapAmountForDisplay =
     areTransactionsLoading && transactionDetailsSnapshot
@@ -116,7 +119,7 @@ export default function Review(props: ReviewProps) {
   const hasTransfer =
     areTransactionsLoading && transactionDetailsSnapshot
       ? transactionDetailsSnapshot.exceedsSplitterCap
-      : exceedsSplitterCap;
+      : exceedsSplitterCap && hasAcceptedSplitterCapWarning;
   const transferWeiForDisplay =
     areTransactionsLoading && transactionDetailsSnapshot
       ? transactionDetailsSnapshot.requiredTransferWei
@@ -130,10 +133,10 @@ export default function Review(props: ReviewProps) {
       : requiredTransferWei -
         superTokenBalance -
         parseEther(wrapAmount?.replace(/,/g, "") ?? "0");
-
-  useEffect(() => {
-    setHasAcceptedSplitterCapWarning(false);
-  }, [newFlowRate]);
+  const callsCountForDisplay =
+    areTransactionsLoading && transactionDetailsSnapshot
+      ? transactionDetailsSnapshot.callsCount
+      : calls.length;
 
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -173,6 +176,7 @@ export default function Review(props: ReviewProps) {
       flowRateToReceiver,
       exceedsSplitterCap,
       requiredTransferWei,
+      callsCount: calls.length,
     });
 
     try {
@@ -630,7 +634,7 @@ export default function Review(props: ReviewProps) {
                   disabled={!hasSufficientBalanceForTransfer}
                   className="border-black"
                   onChange={() =>
-                    setHasAcceptedSplitterCapWarning(
+                    setHasAcceptedSplitterCapWarning?.(
                       !hasAcceptedSplitterCapWarning,
                     )
                   }
@@ -703,16 +707,17 @@ export default function Review(props: ReviewProps) {
                   role="status"
                   className="p-2"
                 />
-                {!shouldUseSendCalls && calls.length > 1 && (
+                {!shouldUseSendCalls && callsCountForDisplay > 1 && (
                   <Card.Text className="m-0 fw-semi-bold">
-                    {completedTransactions + 1}/{calls.length}
+                    {Math.min(completedTransactions + 1, callsCountForDisplay)}/
+                    {callsCountForDisplay}
                   </Card.Text>
                 )}
               </Stack>
             ) : isDeletingStream ? (
               "Cancel Stream"
-            ) : !shouldUseSendCalls && calls.length > 1 ? (
-              `Submit (${calls.length})`
+            ) : !shouldUseSendCalls && callsCountForDisplay > 1 ? (
+              `Submit (${callsCountForDisplay})`
             ) : (
               "Submit"
             )}
