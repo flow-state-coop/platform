@@ -68,7 +68,7 @@ type TransactionDetailsSnapshot = {
   matchingMultiplier: number | null;
   newFlowRate: string;
   flowRateToReceiver: string;
-  exceedsSplitterCap: boolean;
+  hasTransfer: boolean;
   requiredTransferWei: bigint;
   callsCount: number;
 };
@@ -118,7 +118,7 @@ export default function Review(props: ReviewProps) {
   const hasWrap = Number(wrapAmountForDisplay ?? "0") > 0;
   const hasTransfer =
     areTransactionsLoading && transactionDetailsSnapshot
-      ? transactionDetailsSnapshot.exceedsSplitterCap
+      ? transactionDetailsSnapshot.hasTransfer
       : exceedsSplitterCap && hasAcceptedSplitterCapWarning;
   const transferWeiForDisplay =
     areTransactionsLoading && transactionDetailsSnapshot
@@ -174,7 +174,7 @@ export default function Review(props: ReviewProps) {
       netImpact,
       newFlowRate,
       flowRateToReceiver,
-      exceedsSplitterCap,
+      hasTransfer: exceedsSplitterCap && hasAcceptedSplitterCapWarning,
       requiredTransferWei,
       callsCount: calls.length,
     });
