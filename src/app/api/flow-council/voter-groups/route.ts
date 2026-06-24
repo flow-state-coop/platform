@@ -408,6 +408,20 @@ export async function PATCH(request: Request) {
       );
     }
 
+    // The inverse: a metrics group is only valid alongside its on-chain bot
+    // voter, which is added by the dedicated create flow. Switching an existing
+    // group to metrics here would make a metrics DB group with no bot, so its
+    // ballots would fail with "no voting power". Only POST can create metrics.
+    if (
+      group.eligibilityMethod !== "metrics" &&
+      parsed.data.eligibilityMethod === "metrics"
+    ) {
+      return errorResponse(
+        "A group's eligibility method cannot be changed to metrics",
+        400,
+      );
+    }
+
     const updates: {
       name?: string;
       eligibilityMethod?: string;

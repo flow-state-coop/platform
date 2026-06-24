@@ -419,6 +419,21 @@ export default function Membership(props: MembershipProps) {
         return;
       }
 
+      // The bot's on-chain vote power is the partial/complete signal: 0 means it
+      // was never added (a genuine partial attempt), non-zero means a fully
+      // configured metrics group already exists. Read it once here so it can
+      // both gate resume-vs-reject below and pick addVoter vs editVoter.
+      let botVotingPower = 0n;
+      if (isMetrics && publicClient) {
+        const botVoter = await publicClient.readContract({
+          address: councilId as Address,
+          abi: flowCouncilAbi,
+          functionName: "getVoter",
+          args: [FLOW_STATE_BOT_ADDRESS],
+        });
+        botVotingPower = botVoter.votingPower;
+      }
+
       // Create the DB group first. The server's "one metrics group per council"
       // and duplicate-name guards run here, before any on-chain write, so a
       // rejected create can never orphan a bot voter on-chain. On a retry the id
@@ -427,7 +442,10 @@ export default function Membership(props: MembershipProps) {
         // A prior attempt may have created the DB group before its on-chain tx
         // failed; if the modal was closed since, createdGroupId is gone. Reuse
         // the existing metrics group so the retry resumes from the on-chain step
-        // instead of hitting the partial unique index with a second insert.
+        // instead of hitting the partial unique index with a second insert. Only
+        // adopt it when the bot isn't on-chain yet (power 0); if the bot already
+        // has vote power the group is complete, so reject like the server's
+        // one-metrics-group-per-council guard rather than silently re-editing it.
         if (isMetrics) {
           const existingGroups = await fetchVoterGroups(chainId, councilId);
           const existingMetrics = existingGroups?.find(
@@ -435,6 +453,11 @@ export default function Membership(props: MembershipProps) {
           );
 
           if (existingMetrics) {
+            if (botVotingPower !== 0n) {
+              setCreateGroupError("This council already has a metrics group.");
+              return;
+            }
+
             newGroupId = existingMetrics.id;
             setCreatedGroupId(newGroupId);
           }
@@ -469,17 +492,10 @@ export default function Membership(props: MembershipProps) {
       // voter-manager rights signs addVoter directly. editVoter covers the rare
       // case where the bot is already a voter (a recreated metrics group).
       if (isMetrics && publicClient) {
-        const botVoter = await publicClient.readContract({
-          address: councilId as Address,
-          abi: flowCouncilAbi,
-          functionName: "getVoter",
-          args: [FLOW_STATE_BOT_ADDRESS],
-        });
-
         const hash = await writeContract(wagmiConfig, {
           address: councilId as Address,
           abi: flowCouncilAbi,
-          functionName: botVoter.votingPower === 0n ? "addVoter" : "editVoter",
+          functionName: botVotingPower === 0n ? "addVoter" : "editVoter",
           args: [FLOW_STATE_BOT_ADDRESS, BigInt(defaultVotingPower)],
         });
 
@@ -552,6 +568,9 @@ export default function Membership(props: MembershipProps) {
   const goodDollarBlockedForNonAdmin = goodDollarNeedsGrant && !isAdmin;
   const newGroupUsesVotePower =
     newGroupEligibility === "gooddollar" || newGroupEligibility === "metrics";
+  const hasMetricsGroup = groups.some(
+    (group) => group.eligibilityMethod === "metrics",
+  );
 
   return (
     <>
@@ -869,7 +888,11 @@ export default function Membership(props: MembershipProps) {
               <option value="gooddollar" disabled={!isCelo}>
                 GoodDollar ID{!isCelo ? " (Celo only)" : ""}
               </option>
-              <option value="metrics">Metrics</option>
+              <option value="metrics" disabled={hasMetricsGroup}>
+                {hasMetricsGroup
+                  ? "Metrics (n/a - one metrics voter per council)"
+                  : "Metrics"}
+              </option>
             </Form.Select>
           </Form.Group>
           {newGroupUsesVotePower ? (

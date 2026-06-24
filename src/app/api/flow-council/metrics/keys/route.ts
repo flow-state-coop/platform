@@ -119,33 +119,50 @@ export async function POST(request: Request) {
       return errorResponse("This council has no metrics voter group", 409);
     }
 
-    const activeKeys = await db
-      .selectFrom("metricsApiKeys")
-      .select((eb) => eb.fn.countAll<number>().as("count"))
-      .where("voterGroupId", "=", group.id)
-      .where("revokedAt", "is", null)
-      .executeTakeFirst();
+    const { token, hash, prefix } = generateApiKey();
 
-    if (Number(activeKeys?.count ?? 0) >= MAX_ACTIVE_KEYS_PER_COUNCIL) {
+    // Count and insert in one transaction, locking the metrics group row first.
+    // There's no DB constraint on the active-key count, so without the lock two
+    // concurrent mints could both read count < cap and both insert, exceeding
+    // it. The lock serializes mints per council so the check stays authoritative.
+    const inserted = await db.transaction().execute(async (trx) => {
+      await trx
+        .selectFrom("voterGroups")
+        .select("id")
+        .where("id", "=", group.id)
+        .forUpdate()
+        .executeTakeFirst();
+
+      const activeKeys = await trx
+        .selectFrom("metricsApiKeys")
+        .select((eb) => eb.fn.countAll<number>().as("count"))
+        .where("voterGroupId", "=", group.id)
+        .where("revokedAt", "is", null)
+        .executeTakeFirst();
+
+      if (Number(activeKeys?.count ?? 0) >= MAX_ACTIVE_KEYS_PER_COUNCIL) {
+        return null;
+      }
+
+      return trx
+        .insertInto("metricsApiKeys")
+        .values({
+          roundId: auth.roundId,
+          voterGroupId: group.id,
+          keyHash: hash,
+          keyPrefix: prefix,
+          label: parsed.data.label,
+        })
+        .returning(["id", "label", "keyPrefix", "createdAt"])
+        .executeTakeFirst();
+    });
+
+    if (!inserted) {
       return errorResponse(
         `This council has reached the limit of ${MAX_ACTIVE_KEYS_PER_COUNCIL} active keys. Revoke an existing key before minting a new one.`,
         409,
       );
     }
-
-    const { token, hash, prefix } = generateApiKey();
-
-    const inserted = await db
-      .insertInto("metricsApiKeys")
-      .values({
-        roundId: auth.roundId,
-        voterGroupId: group.id,
-        keyHash: hash,
-        keyPrefix: prefix,
-        label: parsed.data.label,
-      })
-      .returning(["id", "label", "keyPrefix", "createdAt"])
-      .executeTakeFirst();
 
     return Response.json({ success: true, key: { ...inserted, token } });
   } catch (err) {

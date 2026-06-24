@@ -270,6 +270,26 @@ describe("voter-groups group CRUD", () => {
       .executeTakeFirstOrThrow();
     expect(stored.eligibilityMethod).toBe("metrics");
   });
+
+  it("PATCH cannot change a group to metrics (400)", async () => {
+    const id = await createGroup("Manual", "manual");
+    const res = await groupsPatch(
+      jsonRequest("PATCH", `${BASE}?id=${id}`, {
+        ...base,
+        eligibilityMethod: "metrics",
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = await readJson(res);
+    expect(body.success).toBe(false);
+
+    const stored = await db
+      .selectFrom("voterGroups")
+      .select("eligibilityMethod")
+      .where("id", "=", id)
+      .executeTakeFirstOrThrow();
+    expect(stored.eligibilityMethod).toBe("manual");
+  });
 });
 
 // ---------------------------------------------------------------------------
