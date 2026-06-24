@@ -134,6 +134,6 @@ export async function GET(request: Request) {
     return Response.json({ success: true, recipients });
   } catch (err) {
     console.error(err);
-    return errorResponse(err, 500);
+    return errorResponse("There was an error, please try again later", 500);
   }
 }
