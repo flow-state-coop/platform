@@ -20,12 +20,13 @@ import {
 type MetricsIntegrationPanelProps = {
   chainId: number;
   councilId: string;
+  defaultVotingPower: number;
 };
 
 export default function MetricsIntegrationPanel(
   props: MetricsIntegrationPanelProps,
 ) {
-  const { chainId, councilId } = props;
+  const { chainId, councilId, defaultVotingPower } = props;
 
   const network = networks.find((n) => n.id === chainId);
 
@@ -34,15 +35,20 @@ export default function MetricsIntegrationPanel(
   }
 
   return (
-    <MetricsIntegrationPanelContent network={network} councilId={councilId} />
+    <MetricsIntegrationPanelContent
+      network={network}
+      councilId={councilId}
+      defaultVotingPower={defaultVotingPower}
+    />
   );
 }
 
 function MetricsIntegrationPanelContent(props: {
   network: Network;
   councilId: string;
+  defaultVotingPower: number;
 }) {
-  const { network, councilId } = props;
+  const { network, councilId, defaultVotingPower } = props;
 
   const council = useCouncilQuery(network, councilId);
   const projects = useRecipientsQuery(network, council?.recipients, councilId);
@@ -52,7 +58,10 @@ function MetricsIntegrationPanelContent(props: {
     FLOW_STATE_BOT_ADDRESS,
   );
 
-  const power = Number(votingPower ?? 0);
+  // Fall back to the DB-mirrored bot power (the same value the "Votes assigned"
+  // stat shows) while the subgraph hasn't indexed addVoter yet, so percentages
+  // aren't computed against a 0 denominator right after the group is created.
+  const power = Number(votingPower ?? defaultVotingPower);
   const rateLimitSeconds = Math.round(METRICS_MIN_INTERVAL_MS / 1000);
 
   const rows = useMemo(() => {

@@ -564,10 +564,16 @@ export async function DELETE(request: Request) {
         }
       }
 
-      await trx
-        .deleteFrom("voterGroupMembers")
-        .where("voterGroupId", "=", id)
-        .execute();
+      // Only a metrics group reaches here still holding a membership row (its
+      // bot voter, zeroed on-chain by the client). Every other method passed
+      // the emptiness guard above, so it is provably empty and clearing its
+      // members would delete nothing.
+      if (target.eligibilityMethod === "metrics") {
+        await trx
+          .deleteFrom("voterGroupMembers")
+          .where("voterGroupId", "=", id)
+          .execute();
+      }
 
       await trx
         .deleteFrom("voterGroups")

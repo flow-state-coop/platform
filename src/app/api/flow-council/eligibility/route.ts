@@ -1,13 +1,7 @@
-import {
-  Address,
-  createPublicClient,
-  createWalletClient,
-  http,
-  isAddress,
-} from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { Address, createPublicClient, http, isAddress } from "viem";
 import { db } from "../db";
 import { findRoundByCouncil } from "../auth";
+import { buildBotSigner, getGroupByMethod } from "../bot";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks, getViemChain } from "@/lib/networks";
 import {
@@ -27,34 +21,9 @@ const IDENTITY_ABI = [
   },
 ] as const;
 
-type GoodDollarGroup = { id: number; defaultVotingPower: number };
-
-/**
- * Resolve the "gooddollar"-eligibility voter group for a council, if one
- * exists. Queried directly with no in-memory cache: it is a single indexed read
- * on a small table, and a process-local TTL cache went stale for up to a minute
- * after an admin changed a group's eligibility method or default allocation
- * (and wouldn't have been shared across serverless instances regardless).
- */
-async function getGoodDollarGroup(
-  roundId: number,
-): Promise<GoodDollarGroup | null> {
-  const group = await db
-    .selectFrom("voterGroups")
-    .select(["id", "defaultVotingPower"])
-    .where("roundId", "=", roundId)
-    .where("eligibilityMethod", "=", "gooddollar")
-    .orderBy("id", "asc")
-    .executeTakeFirst();
-
-  return group
-    ? { id: group.id, defaultVotingPower: group.defaultVotingPower }
-    : null;
-}
-
 export async function POST(request: Request) {
   // Self-claim is gated per council: a request only succeeds when the council
-  // has a "gooddollar" voter group (getGoodDollarGroup below) and the bot holds
+  // has a "gooddollar" voter group (getGroupByMethod below) and the bot holds
   // VOTER_MANAGER_ROLE (else addVoter reverts). Revoking that role is the kill
   // switch.
   try {
@@ -89,7 +58,7 @@ export async function POST(request: Request) {
       return Response.json({ success: false, error: "Council not found" });
     }
 
-    const goodDollarGroup = await getGoodDollarGroup(round.id);
+    const goodDollarGroup = await getGroupByMethod(round.id, "gooddollar");
 
     if (!goodDollarGroup) {
       return Response.json({
@@ -139,19 +108,7 @@ export async function POST(request: Request) {
       return Response.json({ success: true });
     }
 
-    const account = privateKeyToAccount(
-      process.env.FLOW_STATE_ELIGIBILITY_PK as `0x${string}`,
-    );
-
-    const viemChain = getViemChain(network.id);
-    const publicClient = createPublicClient({
-      chain: viemChain,
-      transport: http(network.rpcUrl),
-    });
-    const walletClient = createWalletClient({
-      chain: viemChain,
-      transport: http(network.rpcUrl),
-    });
+    const { account, publicClient, walletClient } = buildBotSigner(network);
 
     try {
       const hash = await walletClient.writeContract({

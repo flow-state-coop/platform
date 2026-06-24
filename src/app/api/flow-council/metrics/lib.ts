@@ -1,45 +1,18 @@
 import crypto from "crypto";
-import { createPublicClient, createWalletClient, http } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { db } from "../db";
+import { createPublicClient, http } from "viem";
 import { getViemChain } from "@/lib/networks";
 import type { Network } from "@/types/network";
+import { buildBotSigner, getGroupByMethod } from "../bot";
 
 /**
  * Resolve the "metrics"-eligibility voter group for a council, if one exists.
- * A council has at most one (the bot is a single per-council voter). Mirrors
- * `getGoodDollarGroup` in the eligibility route, a single indexed read, no
- * cache (it would go stale across serverless instances after an admin edit).
+ * A council has at most one (the bot is a single per-council voter).
  */
 export function getMetricsGroup(roundId: number) {
-  return db
-    .selectFrom("voterGroups")
-    .select(["id", "defaultVotingPower", "lastBallotAt"])
-    .where("roundId", "=", roundId)
-    .where("eligibilityMethod", "=", "metrics")
-    .orderBy("id", "asc")
-    .executeTakeFirst();
+  return getGroupByMethod(roundId, "metrics");
 }
 
-function buildMetricsSigner(network: Network) {
-  const pk = process.env.FLOW_STATE_ELIGIBILITY_PK;
-  if (!pk) {
-    throw new Error("FLOW_STATE_ELIGIBILITY_PK is not configured");
-  }
-  const account = privateKeyToAccount(pk as `0x${string}`);
-  const viemChain = getViemChain(network.id);
-  const publicClient = createPublicClient({
-    chain: viemChain,
-    transport: http(network.rpcUrl),
-  });
-  const walletClient = createWalletClient({
-    chain: viemChain,
-    transport: http(network.rpcUrl),
-  });
-  return { account, publicClient, walletClient };
-}
-
-const signerCache = new Map<number, ReturnType<typeof buildMetricsSigner>>();
+const signerCache = new Map<number, ReturnType<typeof buildBotSigner>>();
 
 /**
  * Resolve the viem account + clients that sign on-chain actions as the Flow
@@ -52,7 +25,7 @@ export function getMetricsSigner(network: Network) {
   const cached = signerCache.get(network.id);
   if (cached) return cached;
 
-  const signer = buildMetricsSigner(network);
+  const signer = buildBotSigner(network);
   signerCache.set(network.id, signer);
   return signer;
 }

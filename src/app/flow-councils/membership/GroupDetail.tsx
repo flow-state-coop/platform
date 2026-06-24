@@ -468,14 +468,29 @@ export default function GroupDetail(props: GroupDetailProps) {
           return;
         }
 
-        const hash = await writeContract(wagmiConfig, {
+        // Idempotent retry: if a prior attempt wrote the new power on-chain but
+        // the server PATCH failed, the bot already holds the target power.
+        // Re-running editVoter would fire a redundant tx, so read the current
+        // power first and skip the write when it already matches (mirrors the
+        // create/delete getVoter check).
+        const botVoter = await publicClient.readContract({
           address: councilId as Address,
           abi: flowCouncilAbi,
-          functionName: "editVoter",
-          args: [FLOW_STATE_BOT_ADDRESS, BigInt(defaultVotingPower)],
+          functionName: "getVoter",
+          args: [FLOW_STATE_BOT_ADDRESS],
         });
 
-        await waitForReceipt(publicClient, hash);
+        if (botVoter.votingPower !== BigInt(defaultVotingPower)) {
+          const hash = await writeContract(wagmiConfig, {
+            address: councilId as Address,
+            abi: flowCouncilAbi,
+            functionName: "editVoter",
+            args: [FLOW_STATE_BOT_ADDRESS, BigInt(defaultVotingPower)],
+          });
+
+          await waitForReceipt(publicClient, hash);
+        }
+
         onChainApplied = true;
       }
 
@@ -535,24 +550,13 @@ export default function GroupDetail(props: GroupDetailProps) {
       // server then clears the membership row and the group), so the admin
       // deletes the group without a separate "remove voter" step. Removal goes
       // through updateVoters with power 0 (which the contract routes to
-      // removeVoter) to match the rest of the app and to pass maxVotingSpread
-      // verbatim so the council-wide spread is never reset. editVoter can't be
-      // used here: the contract reverts INVALID on a 0 voting power.
+      // removeVoter) to match the rest of the app, preserving the council-wide
+      // maxVotingSpread (read fresh on-chain below) so it is never reset.
+      // editVoter can't be used here: the contract reverts INVALID on a 0
+      // voting power.
       if (isMetrics) {
         if (!publicClient) {
           setDeleteError("Connect your wallet to delete a metrics group.");
-          setIsDeleting(false);
-          return;
-        }
-
-        // maxVotingSpread falls back to 0 until the subgraph query resolves, and
-        // updateVoters writes it council-wide, so deleting before it loads would
-        // silently reset the council's spread to unlimited. Refuse until the
-        // council's real value is available.
-        if (!flowCouncil) {
-          setDeleteError(
-            "Council settings are still loading, please try again in a moment.",
-          );
           setIsDeleting(false);
           return;
         }
@@ -578,6 +582,16 @@ export default function GroupDetail(props: GroupDetailProps) {
         });
 
         if (botVoter.votingPower !== 0n) {
+          // updateVoters writes maxVotingSpread council-wide, so read it fresh
+          // on-chain rather than reusing the subgraph value, which can be stale
+          // if another admin changed the spread since this page loaded (passing
+          // the stale value would silently revert their change).
+          const onChainSpread = await publicClient.readContract({
+            address: councilId as Address,
+            abi: flowCouncilAbi,
+            functionName: "maxVotingSpread",
+          });
+
           const hash = await writeContract(wagmiConfig, {
             address: councilId as Address,
             abi: flowCouncilAbi,
@@ -590,7 +604,7 @@ export default function GroupDetail(props: GroupDetailProps) {
                   votes: [],
                 },
               ],
-              maxVotingSpread,
+              onChainSpread,
             ],
           });
 
@@ -1040,6 +1054,7 @@ export default function GroupDetail(props: GroupDetailProps) {
                   <MetricsIntegrationPanel
                     chainId={chainId}
                     councilId={councilId}
+                    defaultVotingPower={group.defaultVotingPower}
                   />
                 ) : (
                   <>
