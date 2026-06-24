@@ -44,8 +44,13 @@ for (const viewport of VIEWPORTS) {
       `/flow-councils/permissions/${fx.chainId}/${fx.councilAddress}`,
     );
 
-    const addressCell = page.getByPlaceholder("Manager Address");
-    const nameCell = page.locator("input.text-info");
+    const row = page.locator(".hstack", {
+      has: page.getByPlaceholder("Manager Address"),
+    });
+    const addressCell = row.getByPlaceholder("Manager Address");
+    // Profile-name input is the row's only direct-child input (the address
+    // input is nested in a wrapper), so this stays correct if its CSS changes.
+    const nameCell = row.locator(":scope > input");
     await expect(addressCell).toBeVisible();
     await expect(nameCell).toBeVisible();
 
@@ -75,7 +80,6 @@ for (const viewport of VIEWPORTS) {
       ).toBeLessThanOrEqual(TOLERANCE);
     }
 
-    const row = page.locator(".hstack", { has: addressCell });
     const checkboxes = row.locator('input[type="checkbox"]');
     const roleHeaders = ["Super Admin", "Voter Review", "Recipient Review"];
     await expect(checkboxes).toHaveCount(roleHeaders.length);
