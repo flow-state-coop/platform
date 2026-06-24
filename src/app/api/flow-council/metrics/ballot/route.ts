@@ -62,9 +62,14 @@ export async function POST(request: Request) {
   if (!keyRow || keyRow.revokedAt) return unauthorized();
 
   // Reject before any RPC work if this key is still cooling down from a prior
-  // failed request.
+  // failed request. Distinct message from the group-level rate limit so the
+  // caller can tell a key cooldown (their last ballot was rejected) apart from
+  // another submission winning the shared window.
   if (keyRow.cooldownUntil && new Date(keyRow.cooldownUntil) > new Date()) {
-    return errorResponse("Too many ballots, please retry later", 429);
+    return errorResponse(
+      "This API key is cooling down after a recently rejected ballot, please retry later",
+      429,
+    );
   }
 
   const round = await db

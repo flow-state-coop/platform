@@ -56,7 +56,8 @@ Because tied leftover units are dropped, the ballot sums to **at most** the bot'
 | `400` | `{ "error": "…" }` | Invalid body, unknown or non-recipient address, metrics voting not enabled for the council, no allocatable votes after normalization, or the bot has no voting power. |
 | `401` | `{ "error": "Unauthorized" }` | Missing, invalid, or revoked key. |
 | `413` | `{ "error": "…" }` | Request body exceeds 256 KB. |
-| `429` | `{ "error": "Too many ballots, please retry later" }` | Rate limit exceeded (see below). |
+| `429` | `{ "error": "Too many ballots, please retry later" }` | Council-level rate limit: another ballot for this council was accepted within the window (see below). |
+| `429` | `{ "error": "This API key is cooling down after a recently rejected ballot, please retry later" }` | Key-level cooldown: a prior request with this key was rejected for a content fault (unknown recipient, or weights that normalize to nothing). |
 | `502` | `{ "error": "There was an error submitting the ballot" }` | RPC or contract error. The message is generic; provider details are never exposed. |
 
 ### Rate limit
