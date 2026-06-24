@@ -77,6 +77,13 @@ export default function Permissions(props: PermissionsProps) {
   const wagmiConfig = useConfig();
   const { isMobile } = useMediaQuery();
   const headerFontSize = isMobile ? "0.7rem" : "inherit";
+  const addressColumnStyle = isMobile
+    ? { minWidth: 0 }
+    : { flex: "1 1 460px", minWidth: 0, maxWidth: 460 };
+  const nameColumnStyle = isMobile
+    ? { width: 90, flexShrink: 0 }
+    : { flex: "1 1 180px", minWidth: 0 };
+  const checkColumnWidth = isMobile ? 50 : 70;
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
@@ -473,20 +480,13 @@ export default function Permissions(props: PermissionsProps) {
             >
               <Card.Text
                 className="m-0 flex-grow-1 ps-3"
-                style={{
-                  maxWidth: isMobile ? undefined : 460,
-                  fontSize: headerFontSize,
-                }}
+                style={{ ...addressColumnStyle, fontSize: headerFontSize }}
               >
                 Address
               </Card.Text>
               <Card.Text
                 className="m-0 ps-3"
-                style={
-                  isMobile
-                    ? { width: 90, flexShrink: 0, fontSize: headerFontSize }
-                    : { flex: "1 1 180px", minWidth: 0 }
-                }
+                style={{ ...nameColumnStyle, fontSize: headerFontSize }}
               >
                 Profile Name
               </Card.Text>
@@ -494,7 +494,7 @@ export default function Permissions(props: PermissionsProps) {
                 <Card.Text
                   className="m-0 text-center flex-shrink-0"
                   style={{
-                    width: isMobile ? 52 : 70,
+                    width: checkColumnWidth,
                     fontSize: headerFontSize,
                   }}
                 >
@@ -503,7 +503,7 @@ export default function Permissions(props: PermissionsProps) {
                 <Card.Text
                   className="m-0 text-center flex-shrink-0"
                   style={{
-                    width: isMobile ? 52 : 70,
+                    width: checkColumnWidth,
                     fontSize: headerFontSize,
                   }}
                 >
@@ -512,7 +512,7 @@ export default function Permissions(props: PermissionsProps) {
                 <Card.Text
                   className="m-0 text-center flex-shrink-0"
                   style={{
-                    width: isMobile ? 52 : 70,
+                    width: checkColumnWidth,
                     fontSize: headerFontSize,
                   }}
                 >
@@ -530,7 +530,7 @@ export default function Permissions(props: PermissionsProps) {
                 <Stack
                   direction="vertical"
                   className="position-relative flex-grow-1"
-                  style={{ minWidth: 0, maxWidth: isMobile ? undefined : 460 }}
+                  style={addressColumnStyle}
                 >
                   <Form.Control
                     type="text"
@@ -583,9 +583,7 @@ export default function Permissions(props: PermissionsProps) {
                   value={managerDisplayName(managerEntry.address) || "N/A"}
                   className="border-0 bg-white rounded-4 fw-semi-bold text-info"
                   style={{
-                    ...(isMobile
-                      ? { width: 90, flexShrink: 0 }
-                      : { flex: "1 1 180px", minWidth: 0 }),
+                    ...nameColumnStyle,
                     paddingTop: 12,
                     paddingBottom: 12,
                   }}
@@ -594,7 +592,7 @@ export default function Permissions(props: PermissionsProps) {
                   <Form.Check
                     className="d-flex justify-content-center"
                     style={{
-                      width: isMobile ? 50 : 70,
+                      width: checkColumnWidth,
                     }}
                   >
                     <Form.Check.Input
@@ -620,7 +618,7 @@ export default function Permissions(props: PermissionsProps) {
                   <Form.Check
                     className="d-flex justify-content-center"
                     style={{
-                      width: isMobile ? 50 : 70,
+                      width: checkColumnWidth,
                     }}
                   >
                     <Form.Check.Input
@@ -646,7 +644,7 @@ export default function Permissions(props: PermissionsProps) {
                   <Form.Check
                     className="d-flex justify-content-center"
                     style={{
-                      width: isMobile ? 50 : 70,
+                      width: checkColumnWidth,
                     }}
                   >
                     <Form.Check.Input
