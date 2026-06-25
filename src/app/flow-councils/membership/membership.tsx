@@ -20,7 +20,7 @@ import Image from "react-bootstrap/Image";
 import Table from "react-bootstrap/Table";
 import Modal from "react-bootstrap/Modal";
 import InfoTooltip from "@/components/InfoTooltip";
-import { waitForReceipt, isNumber } from "@/lib/utils";
+import { waitForReceipt } from "@/lib/utils";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
@@ -33,6 +33,7 @@ import { useGrantBotVoterManager } from "@/app/flow-councils/hooks/useGrantBotVo
 import {
   computeCastVotes,
   shareOfVotes,
+  validateVotePowerInput,
 } from "@/app/flow-councils/lib/voterUtils";
 import SuccessCheckmark from "@/app/flow-councils/components/SuccessCheckmark";
 import {
@@ -47,6 +48,7 @@ import type {
   SubgraphVoter,
   VoterGroup,
 } from "./voterTableTypes";
+import { prettyEligibility } from "./voterTableTypes";
 
 type MembershipProps = { chainId?: number; councilId?: string };
 
@@ -73,9 +75,6 @@ const FLOW_COUNCIL_QUERY = gql`
   }
 `;
 
-function prettyEligibility(method: EligibilityMethod): string {
-  return method === "gooddollar" ? "GoodDollar ID" : "Manual";
-}
 export default function Membership(props: MembershipProps) {
   const { chainId, councilId } = props;
 
@@ -99,6 +98,10 @@ export default function Membership(props: MembershipProps) {
   const [createGroupError, setCreateGroupError] = useState("");
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [createGroupSuccess, setCreateGroupSuccess] = useState(false);
+  // After a successful DB create, the new group's id is held so a retry that
+  // failed at the on-chain step skips re-creating the group and just finishes
+  // the transaction.
+  const [createdGroupId, setCreatedGroupId] = useState<number | null>(null);
   // Tracks the post-create-success close timer so it's cleared if the component
   // unmounts before it fires (avoids setState on an unmounted component).
   const createSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -332,6 +335,7 @@ export default function Membership(props: MembershipProps) {
     setNewGroupDefaultVotingPower("10");
     setCreateGroupError("");
     setCreateGroupSuccess(false);
+    setCreatedGroupId(null);
   };
 
   const handleCreateGroup = async () => {
@@ -341,10 +345,13 @@ export default function Membership(props: MembershipProps) {
 
     const name = newGroupName.trim();
     const isGoodDollar = newGroupEligibility === "gooddollar";
+    const isMetrics = newGroupEligibility === "metrics";
     // Manual groups don't expose the field; they fall back to the default of 10
-    // (the per-voter fallback used by the Add voters modal). Only the GoodDollar
-    // value is user-editable, so only that one is validated.
-    const defaultVotingPower = isGoodDollar
+    // (the per-voter fallback used by the Add voters modal). GoodDollar's default
+    // allocation and the metrics bot's vote power are user-editable, so those are
+    // validated.
+    const usesVotePower = isGoodDollar || isMetrics;
+    const defaultVotingPower = usesVotePower
       ? Number(newGroupDefaultVotingPower)
       : 10;
 
@@ -353,19 +360,28 @@ export default function Membership(props: MembershipProps) {
       return;
     }
 
-    if (
-      isGoodDollar &&
-      (!isNumber(newGroupDefaultVotingPower) ||
-        newGroupDefaultVotingPower.includes(".") ||
-        defaultVotingPower < 1 ||
-        defaultVotingPower > 1e6)
-    ) {
-      setCreateGroupError("Default votes must be an integer between 1 and 1M");
+    if (usesVotePower) {
+      const votePowerError = validateVotePowerInput(
+        newGroupDefaultVotingPower,
+        isMetrics,
+      );
+
+      if (votePowerError) {
+        setCreateGroupError(votePowerError);
+        return;
+      }
+    }
+
+    if (isMetrics && !publicClient) {
+      setCreateGroupError("Connect your wallet to create a metrics group.");
       return;
     }
 
     setIsCreatingGroup(true);
     setCreateGroupError("");
+
+    let onChainApplied = false;
+    let newGroupId = createdGroupId;
 
     try {
       // GoodDollar groups rely on the Flow State bot holding VOTER_MANAGER_ROLE
@@ -392,22 +408,116 @@ export default function Membership(props: MembershipProps) {
         await refetch();
       }
 
-      const res = await fetch("/api/flow-council/voter-groups", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chainId,
-          councilId,
-          name,
-          eligibilityMethod: newGroupEligibility,
-          defaultVotingPower,
-        }),
-      });
-      const data = await res.json();
-
-      if (!data.success) {
-        setCreateGroupError(data.error ?? "Failed to create group");
+      // Metrics groups add the Flow State bot as a council voter on-chain. Check
+      // the wallet is on the right network before creating anything off-chain,
+      // so a wrong-network bail can't leave a DB group without its bot.
+      if (isMetrics && publicClient && connectedChain?.id !== chainId) {
+        switchChain({ chainId });
+        setCreateGroupError(
+          "Switch your wallet to the council's network, then click Create again.",
+        );
         return;
+      }
+
+      // The bot's on-chain vote power is the partial/complete signal: 0 means it
+      // was never added (a genuine partial attempt), non-zero means a fully
+      // configured metrics group already exists. Read it once here so it can
+      // both gate resume-vs-reject below and pick addVoter vs editVoter.
+      let botVotingPower = 0n;
+      if (isMetrics && publicClient) {
+        const botVoter = await publicClient.readContract({
+          address: councilId as Address,
+          abi: flowCouncilAbi,
+          functionName: "getVoter",
+          args: [FLOW_STATE_BOT_ADDRESS],
+        });
+        botVotingPower = botVoter.votingPower;
+      }
+
+      // Create the DB group first. The server's "one metrics group per council"
+      // and duplicate-name guards run here, before any on-chain write, so a
+      // rejected create can never orphan a bot voter on-chain. On a retry the id
+      // is reused so we skip straight to the on-chain step.
+      if (newGroupId === null) {
+        // A prior attempt may have created the DB group before its on-chain tx
+        // failed; if the modal was closed since, createdGroupId is gone. Reuse
+        // the existing metrics group so the retry resumes from the on-chain step
+        // instead of hitting the partial unique index with a second insert. Only
+        // adopt it when the bot isn't on-chain yet (power 0); if the bot already
+        // has vote power the group is complete, so reject like the server's
+        // one-metrics-group-per-council guard rather than silently re-editing it.
+        if (isMetrics) {
+          const existingGroups = await fetchVoterGroups(chainId, councilId);
+          const existingMetrics = existingGroups?.find(
+            (group) => group.eligibilityMethod === "metrics",
+          );
+
+          if (existingMetrics) {
+            if (botVotingPower !== 0n) {
+              setCreateGroupError("This council already has a metrics group.");
+              return;
+            }
+
+            newGroupId = existingMetrics.id;
+            setCreatedGroupId(newGroupId);
+          }
+        }
+      }
+
+      if (newGroupId === null) {
+        const res = await fetch("/api/flow-council/voter-groups", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chainId,
+            councilId,
+            name,
+            eligibilityMethod: newGroupEligibility,
+            defaultVotingPower,
+          }),
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          setCreateGroupError(data.error ?? "Failed to create group");
+          return;
+        }
+
+        newGroupId = data.id as number;
+        setCreatedGroupId(newGroupId);
+      }
+
+      // Add the bot as a council voter with the configured vote power. It needs
+      // no role (unlike GoodDollar), it only casts ballots, so an admin with
+      // voter-manager rights signs addVoter directly. editVoter covers the rare
+      // case where the bot is already a voter (a recreated metrics group).
+      if (isMetrics && publicClient) {
+        const hash = await writeContract(wagmiConfig, {
+          address: councilId as Address,
+          abi: flowCouncilAbi,
+          functionName: botVotingPower === 0n ? "addVoter" : "editVoter",
+          args: [FLOW_STATE_BOT_ADDRESS, BigInt(defaultVotingPower)],
+        });
+
+        await waitForReceipt(publicClient, hash);
+        onChainApplied = true;
+      }
+
+      // Record the bot's group membership so it appears in the metrics group's
+      // voter list. Best-effort and cosmetic: the ballot API reads the bot's
+      // power on-chain, not from this row, so a failure here doesn't block
+      // creation.
+      if (isMetrics && newGroupId) {
+        await fetch("/api/flow-council/voter-groups/members", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chainId,
+            councilId,
+            groupId: newGroupId,
+            address: FLOW_STATE_BOT_ADDRESS,
+          }),
+        }).catch(() => {});
       }
 
       // Platform-standard confirmation: the button turns green with a checkmark,
@@ -418,11 +528,15 @@ export default function Membership(props: MembershipProps) {
 
       createSuccessTimer.current = setTimeout(() => {
         setShowNewGroupModal(false);
-        fetchGroups();
+        refresh();
       }, 1500);
     } catch (err) {
       console.error(err);
-      setCreateGroupError("Failed to create group");
+      setCreateGroupError(
+        isMetrics && newGroupId !== null && !onChainApplied
+          ? "The group was saved, but adding the bot on-chain failed. Click Create again to finish."
+          : "Failed to create group",
+      );
     } finally {
       setIsCreatingGroup(false);
     }
@@ -452,6 +566,11 @@ export default function Membership(props: MembershipProps) {
   const goodDollarNeedsGrant =
     newGroupEligibility === "gooddollar" && !botHasVoterManagerRole;
   const goodDollarBlockedForNonAdmin = goodDollarNeedsGrant && !isAdmin;
+  const newGroupUsesVotePower =
+    newGroupEligibility === "gooddollar" || newGroupEligibility === "metrics";
+  const hasMetricsGroup = groups.some(
+    (group) => group.eligibilityMethod === "metrics",
+  );
 
   return (
     <>
@@ -508,7 +627,7 @@ export default function Membership(props: MembershipProps) {
             <Card.Text className="text-info">
               {isManager
                 ? "Manage your council membership and how they can vote."
-                : "(Read only—check your connected wallet's permissions to make changes)"}
+                : "(Read only. Check your connected wallet's permissions to make changes.)"}
             </Card.Text>
           </Card.Header>
           <Card.Body className="p-0 mt-4">
@@ -629,9 +748,7 @@ export default function Membership(props: MembershipProps) {
                     <th className="fw-semi-bold">Group</th>
                     <th className="fw-semi-bold">Eligibility</th>
                     <th className="fw-semi-bold text-end">Voters</th>
-                    <th className="fw-semi-bold text-end">
-                      Valid votes assigned
-                    </th>
+                    <th className="fw-semi-bold text-end">Votes assigned</th>
                     <th className="fw-semi-bold text-end">Votes used</th>
                     <th className="fw-semi-bold text-end">Share of votes</th>
                   </tr>
@@ -644,10 +761,18 @@ export default function Membership(props: MembershipProps) {
                       )
                       .filter((voter): voter is SubgraphVoter => !!voter);
 
-                    const assigned = memberVoters.reduce(
-                      (sum, voter) => sum + Number(voter.votingPower),
-                      0,
-                    );
+                    // A metrics group's assignment is the bot's on-chain voting
+                    // power, mirrored to defaultVotingPower when the group is
+                    // created. Read it from there (as the group detail page
+                    // does) so the value is correct before the subgraph has
+                    // indexed the bot, instead of showing 0.
+                    const assigned =
+                      group.eligibilityMethod === "metrics"
+                        ? group.defaultVotingPower
+                        : memberVoters.reduce(
+                            (sum, voter) => sum + Number(voter.votingPower),
+                            0,
+                          );
                     const used = memberVoters.reduce(
                       (sum, voter) => sum + computeCastVotes(voter),
                       0,
@@ -763,12 +888,19 @@ export default function Membership(props: MembershipProps) {
               <option value="gooddollar" disabled={!isCelo}>
                 GoodDollar ID{!isCelo ? " (Celo only)" : ""}
               </option>
+              <option value="metrics" disabled={hasMetricsGroup}>
+                {hasMetricsGroup
+                  ? "Metrics (n/a - one metrics voter per council)"
+                  : "Metrics"}
+              </option>
             </Form.Select>
           </Form.Group>
-          {newGroupEligibility === "gooddollar" ? (
+          {newGroupUsesVotePower ? (
             <Form.Group className="mb-3">
               <Form.Label className="fw-semi-bold">
-                Default vote allocation
+                {newGroupEligibility === "metrics"
+                  ? "Vote power"
+                  : "Default vote allocation"}
               </Form.Label>
               <Form.Control
                 type="text"
@@ -790,9 +922,19 @@ export default function Membership(props: MembershipProps) {
                 }}
               />
               <Form.Text className="text-info">
-                Votes a voter receives when first added through this group.
+                {newGroupEligibility === "metrics"
+                  ? "Total votes the metrics bot can allocate across recipients."
+                  : "Votes a voter receives when first added through this group."}
               </Form.Text>
             </Form.Group>
+          ) : null}
+          {newGroupEligibility === "metrics" ? (
+            <Alert variant="info" className="mb-3">
+              Creating this group adds a Flow State-sponsored bot as a council
+              voter with the vote power above (one transaction). You can then
+              mint an API key on the group page to submit ballots
+              programmatically.
+            </Alert>
           ) : null}
           {newGroupEligibility === "gooddollar" ? (
             <Alert variant="info" className="mb-3">

@@ -17,7 +17,7 @@ pnpm typecheck   # tsc --noEmit
 pnpm test        # vitest run
 ```
 
-All three must pass. `pnpm lint` enforces `no-unused-vars`, so a stray import will fail the build. See [Testing](006-testing.md) for the integration and end-to-end suites.
+All three must pass. `pnpm lint` enforces `no-unused-vars`, so a stray import will fail the build. See [Testing](007-testing.md) for the integration and end-to-end suites.
 
 :::tip
 Run the checks before you push, not after CI flags them — `pnpm typecheck` catches issues `pnpm lint` doesn't, and vice versa.

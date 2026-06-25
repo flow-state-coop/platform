@@ -18,6 +18,7 @@ import Dropdown from "react-bootstrap/Dropdown";
 import Alert from "react-bootstrap/Alert";
 import Pagination from "react-bootstrap/Pagination";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
+import { truncateAddress } from "@/lib/utils";
 import {
   CHUNK_SIZE,
   splitIntoChunks,
@@ -70,10 +71,6 @@ const PCT_OPTIONS = [
   { value: "80", label: "> 80% cast" },
   { value: "100", label: "100% cast" },
 ] as const;
-
-function truncateAddress(address: string): string {
-  return `${address.slice(0, 6)}…${address.slice(-4)}`;
-}
 
 // Row-actions dropdown toggle: a plain three-dots button. react-bootstrap's
 // DropdownToggle always merges the `dropdown-toggle` class (even with `as`),

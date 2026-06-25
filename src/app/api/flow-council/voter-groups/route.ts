@@ -1,13 +1,18 @@
 import { z } from "zod";
 import { gql } from "@apollo/client";
-import { isAddress } from "viem";
+import { isAddress, Address } from "viem";
 import { db } from "../db";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { errorResponse } from "../../utils";
 import { findRoundByCouncil, authorizeCouncilManager } from "../auth";
 import { voterGroupCreateSchema, voterGroupUpdateSchema } from "../validation";
-import { CELO_CHAIN_ID } from "@/app/flow-councils/lib/constants";
+import { getCouncilPublicClient } from "../metrics/lib";
+import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
+import {
+  CELO_CHAIN_ID,
+  FLOW_STATE_BOT_ADDRESS,
+} from "@/app/flow-councils/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -122,7 +127,7 @@ async function ensureDefaultGroup(
   }
 
   // Create the group and seed its members in one transaction. If a member batch
-  // fails mid-seed, the group insert rolls back with it — otherwise a half-seeded
+  // fails mid-seed, the group insert rolls back with it, otherwise a half-seeded
   // Default group would survive (groups.length > 0), making every later access
   // skip the migration and leaving the group permanently under-seeded. The
   // subgraph fetch is kept outside the transaction so it never holds a DB
@@ -273,6 +278,23 @@ export async function POST(request: Request) {
       );
     }
 
+    // One metrics group per council: the bot is a single per-council voter.
+    if (parsed.data.eligibilityMethod === "metrics") {
+      const existing = await db
+        .selectFrom("voterGroups")
+        .select("id")
+        .where("roundId", "=", auth.roundId)
+        .where("eligibilityMethod", "=", "metrics")
+        .executeTakeFirst();
+
+      if (existing) {
+        return errorResponse(
+          "This council already has a metrics voter group",
+          400,
+        );
+      }
+    }
+
     const inserted = await db
       .insertInto("voterGroups")
       .values({
@@ -343,15 +365,61 @@ export async function PATCH(request: Request) {
       );
     }
 
+    // One metrics group per council: the bot is a single per-council voter.
+    if (parsed.data.eligibilityMethod === "metrics") {
+      const existing = await db
+        .selectFrom("voterGroups")
+        .select("id")
+        .where("roundId", "=", auth.roundId)
+        .where("eligibilityMethod", "=", "metrics")
+        .where("id", "!=", id)
+        .executeTakeFirst();
+
+      if (existing) {
+        return errorResponse(
+          "This council already has a metrics voter group",
+          400,
+        );
+      }
+    }
+
     const group = await db
       .selectFrom("voterGroups")
-      .select("id")
+      .select(["id", "eligibilityMethod"])
       .where("id", "=", id)
       .where("roundId", "=", auth.roundId)
       .executeTakeFirst();
 
     if (!group) {
       return errorResponse("Group not found", 404);
+    }
+
+    // A metrics group owns an on-chain bot voter and its API keys, so its
+    // eligibility method is locked after creation. The UI disables the dropdown;
+    // guard the API too so a direct call can't orphan the bot or keys.
+    if (
+      group.eligibilityMethod === "metrics" &&
+      parsed.data.eligibilityMethod !== undefined &&
+      parsed.data.eligibilityMethod !== "metrics"
+    ) {
+      return errorResponse(
+        "A metrics voter group's eligibility method cannot be changed",
+        400,
+      );
+    }
+
+    // The inverse: a metrics group is only valid alongside its on-chain bot
+    // voter, which is added by the dedicated create flow. Switching an existing
+    // group to metrics here would make a metrics DB group with no bot, so its
+    // ballots would fail with "no voting power". Only POST can create metrics.
+    if (
+      group.eligibilityMethod !== "metrics" &&
+      parsed.data.eligibilityMethod === "metrics"
+    ) {
+      return errorResponse(
+        "A group's eligibility method cannot be changed to metrics",
+        400,
+      );
     }
 
     const updates: {
@@ -418,6 +486,40 @@ export async function DELETE(request: Request) {
       return errorResponse(auth.error, auth.status);
     }
 
+    // A metrics group owns the single bot voter. Deleting the DB group also
+    // cascades its API keys, so confirm the bot was actually zeroed on-chain
+    // first (the client removes it before calling DELETE). Done outside the
+    // transaction below so the RPC read never holds the row locks. Without this,
+    // a skipped/failed removal tx (or a direct DELETE) would leave the bot
+    // voting on-chain with no DB record and no key left to manage it.
+    const targetGroup = await db
+      .selectFrom("voterGroups")
+      .select(["id", "eligibilityMethod"])
+      .where("id", "=", id)
+      .where("roundId", "=", auth.roundId)
+      .executeTakeFirst();
+
+    if (targetGroup?.eligibilityMethod === "metrics") {
+      const network = networks.find((n) => n.id === chainId);
+      if (!network) {
+        return errorResponse("Wrong network", 400);
+      }
+
+      const voter = await getCouncilPublicClient(network).readContract({
+        address: councilId as Address,
+        abi: flowCouncilAbi,
+        functionName: "getVoter",
+        args: [FLOW_STATE_BOT_ADDRESS],
+      });
+
+      if (voter.votingPower !== 0n) {
+        return errorResponse(
+          "Remove the metrics voter on-chain before deleting this group",
+          409,
+        );
+      }
+    }
+
     // Run the existence / emptiness / "at least one group" guards and the
     // delete in one transaction, locking the council's group rows up front.
     // Without the lock two concurrent deletes could both read count >= 2 and
@@ -425,12 +527,14 @@ export async function DELETE(request: Request) {
     await db.transaction().execute(async (trx) => {
       const groups = await trx
         .selectFrom("voterGroups")
-        .select("id")
+        .select(["id", "eligibilityMethod"])
         .where("roundId", "=", auth.roundId)
         .forUpdate()
         .execute();
 
-      if (!groups.some((g) => g.id === id)) {
+      const target = groups.find((g) => g.id === id);
+
+      if (!target) {
         throw new HttpError("Group not found", 404);
       }
 
@@ -441,17 +545,34 @@ export async function DELETE(request: Request) {
         );
       }
 
-      const memberCountRow = await trx
-        .selectFrom("voterGroupMembers")
-        .select((eb) => eb.fn.countAll<number>().as("count"))
-        .where("voterGroupId", "=", id)
-        .executeTakeFirst();
+      // A metrics group owns a single bot voter that the client zeroes on-chain
+      // as part of deletion, so it may be deleted while still "populated"; its
+      // membership row is cleared below. Every other method must be emptied
+      // first.
+      if (target.eligibilityMethod !== "metrics") {
+        const memberCountRow = await trx
+          .selectFrom("voterGroupMembers")
+          .select((eb) => eb.fn.countAll<number>().as("count"))
+          .where("voterGroupId", "=", id)
+          .executeTakeFirst();
 
-      if (Number(memberCountRow?.count ?? 0) > 0) {
-        throw new HttpError(
-          "Group must be empty before it can be deleted",
-          400,
-        );
+        if (Number(memberCountRow?.count ?? 0) > 0) {
+          throw new HttpError(
+            "Group must be empty before it can be deleted",
+            400,
+          );
+        }
+      }
+
+      // Only a metrics group reaches here still holding a membership row (its
+      // bot voter, zeroed on-chain by the client). Every other method passed
+      // the emptiness guard above, so it is provably empty and clearing its
+      // members would delete nothing.
+      if (target.eligibilityMethod === "metrics") {
+        await trx
+          .deleteFrom("voterGroupMembers")
+          .where("voterGroupId", "=", id)
+          .execute();
       }
 
       await trx

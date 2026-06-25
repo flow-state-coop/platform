@@ -109,7 +109,7 @@ async function roundId(): Promise<number> {
 
 async function createGroup(
   name: string,
-  eligibilityMethod: "manual" | "gooddollar" = "manual",
+  eligibilityMethod: "manual" | "gooddollar" | "metrics" = "manual",
   defaultVotingPower = 10,
 ): Promise<number> {
   const rid = await roundId();
@@ -249,6 +249,46 @@ describe("voter-groups group CRUD", () => {
       .where("id", "=", id)
       .executeTakeFirstOrThrow();
     expect(stored.name).toBe("New name");
+  });
+
+  it("PATCH cannot change a metrics group's eligibility method (400)", async () => {
+    const id = await createGroup("Metrics", "metrics");
+    const res = await groupsPatch(
+      jsonRequest("PATCH", `${BASE}?id=${id}`, {
+        ...base,
+        eligibilityMethod: "manual",
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = await readJson(res);
+    expect(body.success).toBe(false);
+
+    const stored = await db
+      .selectFrom("voterGroups")
+      .select("eligibilityMethod")
+      .where("id", "=", id)
+      .executeTakeFirstOrThrow();
+    expect(stored.eligibilityMethod).toBe("metrics");
+  });
+
+  it("PATCH cannot change a group to metrics (400)", async () => {
+    const id = await createGroup("Manual", "manual");
+    const res = await groupsPatch(
+      jsonRequest("PATCH", `${BASE}?id=${id}`, {
+        ...base,
+        eligibilityMethod: "metrics",
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = await readJson(res);
+    expect(body.success).toBe(false);
+
+    const stored = await db
+      .selectFrom("voterGroups")
+      .select("eligibilityMethod")
+      .where("id", "=", id)
+      .executeTakeFirstOrThrow();
+    expect(stored.eligibilityMethod).toBe("manual");
   });
 });
 

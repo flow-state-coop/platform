@@ -1,0 +1,136 @@
+---
+slug: /developers/metrics-api
+description: Authenticated API for pushing automated ballots to a metrics voter group
+---
+
+# Metrics API
+
+The **metrics ballot endpoint** lets an external caller push allocation decisions to a Flow Council's [metrics voter group](../platform/flow-councils/operators/004-membership.md#metrics-groups). The platform normalizes the submitted relative weights to the bot's current on-chain voting power and submits the ballot on-chain. Scoring and ranking logic are entirely the caller's responsibility; the platform ingests weights and handles the on-chain transaction.
+
+:::info
+This endpoint requires a **Bearer API key** scoped to the council. Keys are minted and revoked by a council manager from the Membership page (see [Council Membership](../platform/flow-councils/operators/004-membership.md#metrics-groups) for setup instructions). The key is shown once on creation; store it securely.
+:::
+
+## Submit a ballot
+
+```
+POST /api/flow-council/metrics/ballot
+Authorization: Bearer <key>
+Content-Type: application/json
+```
+
+### Request body
+
+```json
+{
+  "votes": [
+    { "recipient": "0xabc...", "weight": 3.5 },
+    { "recipient": "0xdef...", "weight": 1.0 }
+  ]
+}
+```
+
+- **`votes`**: array of 1 to 1000 entries. Order is not significant.
+- **`recipient`**: a valid EVM address that is a **current council recipient**. An address that is not a recipient returns a `400`.
+- **`weight`**: a finite, non-negative number representing the recipient's share relative to the others. At least one entry must have a positive weight.
+
+The caller never needs to know the council's voting power or spread configuration. The server reads those values on-chain per request and normalizes accordingly.
+
+### Normalization
+
+The server converts the relative weights to an integer ballot proportional to the bot's current on-chain voting power, using **largest-remainder (Hamilton) apportionment**:
+
+1. Entries with zero or negative weight are dropped.
+2. If the council has a **Max Voting Spread** configured and more recipients than that limit carry positive weight, only the top-weighted ones are kept (tie-broken by address).
+3. Each kept entry receives a floor allocation proportional to its weight. The leftover units go to the largest fractional remainders, **except when recipients are tied for the last unit**: a tied unit has no unambiguous owner, so it is dropped rather than handed to whichever address sorts first.
+4. Recipients that round to zero are omitted from the final ballot.
+
+Because tied leftover units are dropped, the ballot sums to **at most** the bot's voting power, not always exactly. An even split rounds down: 4 recipients at equal weight against 101 votes each receive 25 (100 cast, 1 unused) instead of one recipient getting an unearned 26. Clean ratios are unaffected (a 3:1 split of 100 stays 75/25). For fine-grained percentages, configure the metrics group's vote power well above the recipient count so rounding loss stays negligible.
+
+### Responses
+
+| Status | Body | Meaning |
+|---|---|---|
+| `200` | `{ "success": true, "txHash": "0x…" }` | Ballot cast on-chain. |
+| `200` | `{ "success": true, "skipped": true }` | Computed ballot matches the bot's current on-chain ballot, so no transaction is sent. |
+| `400` | `{ "error": "…" }` | Invalid body, unknown or non-recipient address, metrics voting not enabled for the council, no allocatable votes after normalization, or the bot has no voting power. |
+| `401` | `{ "error": "Unauthorized" }` | Missing, invalid, or revoked key. |
+| `413` | `{ "error": "…" }` | Request body exceeds 256 KB. |
+| `429` | `{ "error": "Too many ballots, please retry later" }` | Council-level rate limit: another ballot for this council was accepted within the window (see below). |
+| `429` | `{ "error": "This API key is cooling down after a recently rejected ballot, please retry later" }` | Key-level cooldown: a prior request with this key was rejected for a content fault (unknown recipient, or weights that normalize to nothing). |
+| `502` | `{ "error": "There was an error submitting the ballot" }` | RPC or contract error. The message is generic; provider details are never exposed. |
+
+### Rate limit
+
+At most one ballot that results in an on-chain transaction is accepted per council per **60 seconds**. Submissions that match the current on-chain ballot (returning `skipped: true`) do not consume the rate-limit window.
+
+:::note
+The 60-second minimum interval prevents nonce races and caps gas spend when a caller retries rapidly. If you receive a `429`, wait at least 60 seconds before retrying.
+:::
+
+## Fetching the recipient list
+
+Every `recipient` you submit must be a **current council recipient**. To discover that list dynamically (so your integration stays in sync as recipients are added or removed), call the public, unauthenticated recipients endpoint:
+
+```
+GET /api/flow-council/recipients?chainId=<chainId>&councilId=<councilAddress>
+```
+
+```json
+{
+  "success": true,
+  "recipients": [
+    { "address": "0xabc...", "name": "Project A" },
+    { "address": "0xdef...", "name": null }
+  ]
+}
+```
+
+- **`address`**: a current on-chain recipient (removed recipients are excluded).
+- **`name`**: the project name from its accepted/graduated application, or `null` if the recipient has no matching application.
+
+The Metrics API panel on the Membership page also offers a one-click **CSV / JSON export** of this list for manual or one-off integrations.
+
+If you prefer to read on-chain state directly, query the council's Flow Council subgraph for `recipients(where: { removed: false })`; the endpoint above wraps that query and joins in the project names.
+
+## Authentication
+
+**API key format:** `metrics_<base64url-encoded random bytes>`
+
+Keys are:
+- Scoped to a single council.
+- Not stored in plaintext. Only a keyed hash is persisted. The token is shown once in the Metrics API panel on creation.
+- Soft-revoked: a revoked key is rejected as missing. Revocation takes effect immediately.
+
+Pass the key as a standard HTTP Bearer token:
+
+```
+Authorization: Bearer metrics_abc123...
+```
+
+## Example
+
+```bash
+curl -X POST https://flowstate.network/api/flow-council/metrics/ballot \
+  -H "Authorization: Bearer metrics_abc123..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "votes": [
+      { "recipient": "0xabc...", "weight": 5 },
+      { "recipient": "0xdef...", "weight": 3 },
+      { "recipient": "0x123...", "weight": 2 }
+    ]
+  }'
+```
+
+Success response:
+
+```json
+{ "success": true, "txHash": "0x..." }
+```
+
+Skip response (ballot unchanged):
+
+```json
+{ "success": true, "skipped": true }
+```
