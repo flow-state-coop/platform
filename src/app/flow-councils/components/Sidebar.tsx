@@ -309,7 +309,7 @@ function Sidebar() {
             className="text-truncate fw-semi-bold"
             onClick={() =>
               router.push(
-                `/flow-councils/membership/${selectedNetwork.id}/${council.id}`,
+                `/flow-councils/round-metadata/${selectedNetwork.id}/${council.id}`,
               )
             }
           >
