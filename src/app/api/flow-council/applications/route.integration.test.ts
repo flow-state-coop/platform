@@ -34,8 +34,11 @@ import {
   type SeededFixture,
 } from "@tests/helpers/db";
 import { mockSession, mockUnauthenticated } from "@tests/helpers/session";
+import { MINIMAL_TEMPLATE } from "@/app/flow-councils/types/formSchema";
 
 const db = getTestDb();
+
+const MINIMAL_ROUND_FIELD_ID = MINIMAL_TEMPLATE.round[0].id;
 
 let fixture: SeededFixture;
 
@@ -254,6 +257,66 @@ describe("PUT /api/flow-council/applications", () => {
     const body = await readJson(res);
     expect(body.success).toBe(true);
     expect(body.application.id).toBe(fixture.submittedApplicationId);
+  });
+
+  it("accepts a dynamic-shaped submission on a round with no formSchema (Minimal default)", async () => {
+    mockSession(TEST_MANAGER_ADDRESS);
+    const res = await PUT(
+      putRequest({
+        projectId: fixture.alphaProjectId,
+        chainId: TEST_CHAIN_ID,
+        councilId: TEST_COUNCIL_ADDRESS,
+        fundingAddress: TEST_MANAGER_ADDRESS,
+        details: {
+          _formVersion: 1,
+          round: { [MINIMAL_ROUND_FIELD_ID]: "test" },
+          attestation: {},
+        },
+      }),
+    );
+    const body = await readJson(res);
+    expect(res.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.application.id).toBe(fixture.submittedApplicationId);
+  });
+
+  it("rejects a dynamic-shaped submission without a funding address", async () => {
+    mockSession(TEST_MANAGER_ADDRESS);
+    const res = await PUT(
+      putRequest({
+        projectId: fixture.alphaProjectId,
+        chainId: TEST_CHAIN_ID,
+        councilId: TEST_COUNCIL_ADDRESS,
+        details: {
+          _formVersion: 1,
+          round: { [MINIMAL_ROUND_FIELD_ID]: "test" },
+          attestation: {},
+        },
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = await readJson(res);
+    expect(body.error).toMatch(/funding address/i);
+  });
+
+  it("rejects a dynamic-shaped submission missing the required Minimal round field", async () => {
+    mockSession(TEST_MANAGER_ADDRESS);
+    const res = await PUT(
+      putRequest({
+        projectId: fixture.alphaProjectId,
+        chainId: TEST_CHAIN_ID,
+        councilId: TEST_COUNCIL_ADDRESS,
+        fundingAddress: TEST_MANAGER_ADDRESS,
+        details: {
+          _formVersion: 1,
+          round: {},
+          attestation: {},
+        },
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = await readJson(res);
+    expect(body.error).toMatch(/required/i);
   });
 
   it("returns 409 when the application is ACCEPTED and editsUnlocked is false", async () => {
