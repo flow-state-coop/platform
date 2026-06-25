@@ -9,6 +9,7 @@ import { writeContract } from "@wagmi/core";
 import { useSession } from "next-auth/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { gql, useQuery } from "@apollo/client";
+import { useQueryClient } from "@tanstack/react-query";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
@@ -156,6 +157,7 @@ export default function Review(props: ReviewProps) {
     Map<string, "connected" | "slots-full">
   >(new Map());
 
+  const queryClient = useQueryClient();
   const topRef = useRef<HTMLDivElement>(null);
   const publicClient = usePublicClient();
   const wagmiConfig = useConfig();
@@ -644,6 +646,7 @@ export default function Review(props: ReviewProps) {
       }
 
       setApplicationsClosed(!applicationsClosed);
+      queryClient.invalidateQueries({ queryKey: ["councilMetadata"] });
       setIsTogglingApplicationsClosed(false);
     } catch (err) {
       console.error(err);
