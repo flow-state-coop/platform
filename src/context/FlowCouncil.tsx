@@ -36,6 +36,7 @@ export const FlowCouncilContext = createContext<{
     description: string;
     logoUrl: string;
     superappSplitterAddress: Address | null;
+    applicationsClosed: boolean;
   };
   councilMember?: CouncilMember;
   currentBallot?: CurrentBallot;

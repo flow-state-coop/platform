@@ -962,7 +962,14 @@ export default function Review(props: ReviewProps) {
               gap={2}
               className="align-items-center mb-4"
             >
-              <Image src="/unlock.svg" alt="Open" width={20} height={20} />
+              <InfoTooltip
+                position={{ top: true }}
+                wrapperClassName="d-flex align-items-center"
+                content={<>Open Applications</>}
+                target={
+                  <Image src="/unlock.svg" alt="Open" width={20} height={20} />
+                }
+              />
               <div
                 className="form-switch"
                 style={{
@@ -981,7 +988,14 @@ export default function Review(props: ReviewProps) {
                   onChange={handleToggleApplicationsClosed}
                 />
               </div>
-              <Image src="/lock.svg" alt="Closed" width={20} height={20} />
+              <InfoTooltip
+                position={{ top: true }}
+                wrapperClassName="d-flex align-items-center"
+                content={<>Close Applications</>}
+                target={
+                  <Image src="/lock.svg" alt="Closed" width={20} height={20} />
+                }
+              />
             </Stack>
 
             {/* Applications Table */}

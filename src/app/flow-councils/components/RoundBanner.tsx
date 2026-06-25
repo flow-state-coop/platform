@@ -38,7 +38,8 @@ export default function PoolInfo(props: PoolInfoProps) {
     showDistributionPoolFunding,
   } = props;
 
-  const { council, projects, superAppFunderData } = useFlowCouncil();
+  const { council, councilMetadata, projects, superAppFunderData } =
+    useFlowCouncil();
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
 
@@ -94,11 +95,15 @@ export default function PoolInfo(props: PoolInfoProps) {
           }
         />
       </Stack>
-      <Card.Text className="mb-8 fs-lg">
-        <Card.Link href={`/flow-councils/application/${chainId}/${councilId}`}>
-          Apply to the Round
-        </Card.Link>
-      </Card.Text>
+      {!councilMetadata.applicationsClosed && (
+        <Card.Text className="mb-8 fs-lg">
+          <Card.Link
+            href={`/flow-councils/application/${chainId}/${councilId}`}
+          >
+            Apply to the Round
+          </Card.Link>
+        </Card.Text>
+      )}
       <Table borderless className="fs-lg">
         <thead className="border-bottom border-dark">
           <tr>
