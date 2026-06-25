@@ -51,6 +51,7 @@ import type {
 import {
   type FormSchema,
   type FormElement,
+  STRUCTURAL_TYPES,
 } from "@/app/flow-councils/types/formSchema";
 import {
   getApplicationAsDynamic,
@@ -402,8 +403,7 @@ export default function Review(props: ReviewProps) {
         ...getApplicationAsDynamic(app.details, roundFormSchema),
       }));
 
-      const isQuestion = (el: FormElement) =>
-        !["section", "divider", "description"].includes(el.type);
+      const isQuestion = (el: FormElement) => !STRUCTURAL_TYPES.has(el.type);
       const unionQuestions = (pick: (schema: FormSchema) => FormElement[]) => {
         const byId = new Map<string, FormElement>();
         for (const { schema } of appViews) {
