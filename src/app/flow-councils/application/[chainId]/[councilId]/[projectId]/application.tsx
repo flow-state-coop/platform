@@ -174,10 +174,11 @@ export default function Application(props: ApplicationProps) {
       );
       const data = await res.json();
       if (!data.success || !data.round?.details) return null;
-      const { name, formSchema: schema } = parseRoundDetails(data.round);
+      const { name, formSchema: configuredSchema } =
+        parseRoundDetails(data.round);
       setRoundName(name);
-      setFormSchema(schema ?? MINIMAL_TEMPLATE);
-      return schema;
+      setFormSchema(configuredSchema ?? MINIMAL_TEMPLATE);
+      return configuredSchema;
     } catch (err) {
       console.error("Failed to fetch form schema:", err);
       return null;
@@ -231,7 +232,7 @@ export default function Application(props: ApplicationProps) {
   }, [projectId, address]);
 
   const fetchApplication = useCallback(
-    async (schema: FormSchema | null) => {
+    async (configuredSchema: FormSchema | null) => {
       if (!projectId || !address) return;
 
       try {
@@ -257,7 +258,7 @@ export default function Application(props: ApplicationProps) {
             ? JSON.parse(app.details)
             : app.details;
 
-        if (schema || isDynamicApplicationDetails(details)) {
+        if (configuredSchema || isDynamicApplicationDetails(details)) {
           setDynamicRoundValues(
             (details.round as Record<string, unknown>) ?? {},
           );
@@ -268,6 +269,8 @@ export default function Application(props: ApplicationProps) {
             setDynamicFundingAddress(app.fundingAddress);
           }
         } else {
+          // Existing legacy submission: undo the Minimal default from fetchRound
+          // so the legacy form (not the dynamic one) renders.
           setFormSchema(null);
           setRoundData(details as unknown as RoundForm);
           const attestation = details.attestation ?? details.eligibility;
@@ -286,11 +289,11 @@ export default function Application(props: ApplicationProps) {
     if (projectId && address) {
       setIsLoading(true);
       (async () => {
-        const schema = await fetchRound();
+        const configuredSchema = await fetchRound();
         await Promise.all([
           fetchProfile(),
           fetchProject(),
-          fetchApplication(schema),
+          fetchApplication(configuredSchema),
         ]);
         setIsLoading(false);
       })();

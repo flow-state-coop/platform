@@ -159,12 +159,11 @@ export function getApplicationAsDynamic(
   roundValues: Record<string, unknown>;
   attestationValues: Record<string, unknown>;
 } {
-  const isDynamic = !!roundFormSchema || isDynamicApplicationDetails(details);
+  const detailsAreDynamic = isDynamicApplicationDetails(details);
+  const isDynamic = !!roundFormSchema || detailsAreDynamic;
   const schema =
     roundFormSchema ??
-    (isDynamicApplicationDetails(details)
-      ? MINIMAL_TEMPLATE
-      : GOODBUILDERS_TEMPLATE);
+    (detailsAreDynamic ? MINIMAL_TEMPLATE : GOODBUILDERS_TEMPLATE);
 
   if (!details) {
     return { schema, roundValues: {}, attestationValues: {} };
