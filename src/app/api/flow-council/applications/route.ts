@@ -286,8 +286,6 @@ export async function PUT(request: Request) {
     // (carrying _formVersion) are dynamic too; legacy-shaped ones stay legacy.
     const isDynamicFlow =
       !!roundDetails.formSchema?.round || isDynamicApplicationDetails(details);
-    const dynamicRoundSchema =
-      roundDetails.formSchema?.round ?? MINIMAL_TEMPLATE.round;
 
     if (isDynamicFlow) {
       if (
@@ -306,7 +304,7 @@ export async function PUT(request: Request) {
       if (isDynamicFlow) {
         const validation = validateDynamicRoundDetails(
           details,
-          dynamicRoundSchema,
+          roundDetails.formSchema?.round ?? MINIMAL_TEMPLATE.round,
         );
         if (!validation.success) {
           return new Response(

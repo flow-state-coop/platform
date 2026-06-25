@@ -178,6 +178,9 @@ export default function Application(props: ApplicationProps) {
         parseRoundDetails(data.round);
       setRoundName(name);
       setFormSchema(configuredSchema ?? MINIMAL_TEMPLATE);
+      // Return the raw configured schema (may be null), not the Minimal
+      // default: fetchApplication needs the null to detect legacy submissions
+      // and undo the default via setFormSchema(null).
       return configuredSchema;
     } catch (err) {
       console.error("Failed to fetch form schema:", err);
