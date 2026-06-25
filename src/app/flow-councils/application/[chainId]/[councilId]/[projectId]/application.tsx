@@ -21,8 +21,14 @@ import type {
   RoundForm,
   AttestationForm,
 } from "@/app/flow-councils/types/round";
-import type { FormSchema } from "@/app/flow-councils/types/formSchema";
-import { getApplicationAsDynamic } from "@/app/flow-councils/utils/legacyFormAdapter";
+import {
+  type FormSchema,
+  MINIMAL_TEMPLATE,
+} from "@/app/flow-councils/types/formSchema";
+import {
+  getApplicationAsDynamic,
+  isDynamicApplicationDetails,
+} from "@/app/flow-councils/utils/legacyFormAdapter";
 import { generateApplicationTemplate } from "@/app/flow-councils/lib/generateApplicationTemplate";
 import { networks } from "@/lib/networks";
 import { Project } from "@/types/project";
@@ -170,7 +176,7 @@ export default function Application(props: ApplicationProps) {
       if (!data.success || !data.round?.details) return null;
       const { name, formSchema: schema } = parseRoundDetails(data.round);
       setRoundName(name);
-      if (schema) setFormSchema(schema);
+      setFormSchema(schema ?? MINIMAL_TEMPLATE);
       return schema;
     } catch (err) {
       console.error("Failed to fetch form schema:", err);
@@ -251,7 +257,7 @@ export default function Application(props: ApplicationProps) {
             ? JSON.parse(app.details)
             : app.details;
 
-        if (schema) {
+        if (schema || isDynamicApplicationDetails(details)) {
           setDynamicRoundValues(
             (details.round as Record<string, unknown>) ?? {},
           );
@@ -262,6 +268,7 @@ export default function Application(props: ApplicationProps) {
             setDynamicFundingAddress(app.fundingAddress);
           }
         } else {
+          setFormSchema(null);
           setRoundData(details as unknown as RoundForm);
           const attestation = details.attestation ?? details.eligibility;
           if (attestation) {

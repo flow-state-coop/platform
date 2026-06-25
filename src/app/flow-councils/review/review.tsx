@@ -48,8 +48,14 @@ import type {
   RoundForm,
   AttestationForm,
 } from "@/app/flow-councils/types/round";
-import type { FormSchema } from "@/app/flow-councils/types/formSchema";
-import { getApplicationAsDynamic } from "@/app/flow-councils/utils/legacyFormAdapter";
+import {
+  type FormSchema,
+  MINIMAL_TEMPLATE,
+} from "@/app/flow-councils/types/formSchema";
+import {
+  getApplicationAsDynamic,
+  isDynamicApplicationDetails,
+} from "@/app/flow-councils/utils/legacyFormAdapter";
 import { ProjectDetails } from "@/types/project";
 
 type ReviewProps = {
@@ -357,7 +363,13 @@ export default function Review(props: ReviewProps) {
     let headers: string[];
     let rows: string[][];
 
-    if (!roundFormSchema) {
+    const effectiveSchema =
+      roundFormSchema ??
+      (fullApplications.some((app) => isDynamicApplicationDetails(app.details))
+        ? MINIMAL_TEMPLATE
+        : null);
+
+    if (!effectiveSchema) {
       headers = [
         "application_status",
         "project_name",
@@ -381,10 +393,10 @@ export default function Review(props: ReviewProps) {
         ].map(escCsv);
       });
     } else {
-      const roundQuestions = roundFormSchema.round.filter(
+      const roundQuestions = effectiveSchema.round.filter(
         (el) => !["section", "divider", "description"].includes(el.type),
       );
-      const attestationQuestions = roundFormSchema.attestation.filter(
+      const attestationQuestions = effectiveSchema.attestation.filter(
         (el) => !["section", "divider", "description"].includes(el.type),
       );
 
@@ -408,7 +420,7 @@ export default function Review(props: ReviewProps) {
         const projectDetails = app.projectDetails;
         const { roundValues, attestationValues } = getApplicationAsDynamic(
           app.details,
-          roundFormSchema,
+          effectiveSchema,
         );
         return [
           STATUS_LABELS[app.status] || app.status,
