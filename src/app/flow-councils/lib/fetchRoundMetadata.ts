@@ -5,6 +5,7 @@ export type RoundMetadata = {
   description: string;
   logoUrl: string;
   superappSplitterAddress: Address | null;
+  applicationsClosed: boolean;
 };
 
 const DEFAULT_METADATA: RoundMetadata = {
@@ -12,6 +13,7 @@ const DEFAULT_METADATA: RoundMetadata = {
   description: "",
   logoUrl: "",
   superappSplitterAddress: null,
+  applicationsClosed: false,
 };
 
 export async function fetchRoundMetadata(
@@ -24,11 +26,12 @@ export async function fetchRoundMetadata(
     );
     const data = await res.json();
 
-    if (data.success && data.round?.details) {
-      const details =
-        typeof data.round.details === "string"
+    if (data.success && data.round) {
+      const details = data.round.details
+        ? typeof data.round.details === "string"
           ? JSON.parse(data.round.details)
-          : data.round.details;
+          : data.round.details
+        : null;
 
       const raw = data.round.superappSplitterAddress;
       const splitter: Address | null =
@@ -39,6 +42,7 @@ export async function fetchRoundMetadata(
         description: details?.description ?? DEFAULT_METADATA.description,
         logoUrl: details?.logoUrl ?? DEFAULT_METADATA.logoUrl,
         superappSplitterAddress: splitter,
+        applicationsClosed: data.round.applicationsClosed ?? false,
       };
     }
   } catch (err) {
