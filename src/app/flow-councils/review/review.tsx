@@ -160,6 +160,7 @@ export default function Review(props: ReviewProps) {
   useEffect(() => {
     setReviewComment(reviewDraft.readDraft() ?? "");
   }, [reviewDraft]);
+
   const [isTogglingLock, setIsTogglingLock] = useState(false);
   const [applicationsClosed, setApplicationsClosed] = useState(false);
   const [isTogglingApplicationsClosed, setIsTogglingApplicationsClosed] =

@@ -30,6 +30,7 @@ import {
   isDynamicApplicationDetails,
 } from "@/app/flow-councils/utils/legacyFormAdapter";
 import { generateApplicationTemplate } from "@/app/flow-councils/lib/generateApplicationTemplate";
+import { generateDraftId } from "@/app/flow-councils/utils/draftId";
 import { networks } from "@/lib/networks";
 import { Project } from "@/types/project";
 import useRequireAuth from "@/hooks/requireAuth";
@@ -43,8 +44,19 @@ type ApplicationDraft = {
   fundingAddress: string;
 };
 
-function generateDraftId() {
-  return `draft_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+// Order-insensitive serialization for comparing a restored draft against the
+// server baseline: the two objects can carry the same field values in different
+// key orders, which a plain JSON.stringify would report as a difference.
+function stableStringify(value: unknown): string {
+  return JSON.stringify(value, (_key, val) =>
+    val && typeof val === "object" && !Array.isArray(val)
+      ? Object.fromEntries(
+          Object.keys(val as Record<string, unknown>)
+            .sort()
+            .map((k) => [k, (val as Record<string, unknown>)[k]]),
+        )
+      : val,
+  );
 }
 
 function FormSkeleton() {
@@ -347,9 +359,9 @@ export default function Application(props: ApplicationProps) {
 
       const baseline = serverBaselineRef.current;
       const differsFromServer =
-        JSON.stringify(round) !== JSON.stringify(baseline.round ?? {}) ||
-        JSON.stringify(attestation) !==
-          JSON.stringify(baseline.attestation ?? {}) ||
+        stableStringify(round) !== stableStringify(baseline.round ?? {}) ||
+        stableStringify(attestation) !==
+          stableStringify(baseline.attestation ?? {}) ||
         fundingAddress !== (baseline.fundingAddress ?? "");
       setDraftRestored(differsFromServer);
     },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { isAddress } from "viem";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -120,9 +120,17 @@ export default function ProjectTab(props: ProjectTabProps) {
   const projectDraft = useLocalDraft<ProjectDraft>(draftKey ?? null);
   const seededDraft = useMemo(() => projectDraft.readDraft(), [projectDraft]);
 
-  const [form, setForm] = useState<ProjectForm>(
+  const [form, setFormState] = useState<ProjectForm>(
     () => seededDraft?.form ?? DEFAULT_PROJECT_FORM,
   );
+  const userEditedRef = useRef(false);
+  // User-driven form updates flow through this and mark the form dirty; the
+  // automatic seeds (server project, session address) call setFormState
+  // directly so they don't create a draft the user never touched.
+  const setForm = useCallback((action: Parameters<typeof setFormState>[0]) => {
+    userEditedRef.current = true;
+    setFormState(action);
+  }, []);
 
   const [logoBlob, setLogoBlob] = useState<Blob | null>(null);
   const [bannerBlob, setBannerBlob] = useState<Blob | null>(null);
@@ -158,7 +166,7 @@ export default function ProjectTab(props: ProjectTabProps) {
 
   useEffect(() => {
     if (project && project.details) {
-      setForm({
+      setFormState({
         name: project.details.name ?? "",
         managerAddresses:
           project.managerAddresses && project.managerAddresses.length > 0
@@ -202,7 +210,7 @@ export default function ProjectTab(props: ProjectTabProps) {
   useEffect(() => {
     if (session?.address) {
       const sessionAddr = session.address.toLowerCase();
-      setForm((prev) => {
+      setFormState((prev) => {
         // Filter out any existing instance of session address (case-insensitive)
         const otherAddresses = prev.managerAddresses.filter(
           (a) => a && a.toLowerCase() !== sessionAddr,
@@ -226,6 +234,7 @@ export default function ProjectTab(props: ProjectTabProps) {
   }, [session?.address]);
 
   useEffect(() => {
+    if (!userEditedRef.current) return;
     projectDraft.save({ form, existingLogoUrl, existingBannerUrl });
   }, [form, existingLogoUrl, existingBannerUrl, projectDraft]);
 
