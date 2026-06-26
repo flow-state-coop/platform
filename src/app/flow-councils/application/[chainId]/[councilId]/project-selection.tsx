@@ -528,8 +528,9 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
                     className="d-flex flex-col justify-content-center align-items-center border-2 border-secondary rounded-4 fs-6 cursor-pointer"
                     style={{ height: 430 }}
                     onClick={() => {
+                      const draftId = `draft_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
                       router.push(
-                        `/flow-councils/application/${chainId}/${councilId}/new`,
+                        `/flow-councils/application/${chainId}/${councilId}/${draftId}`,
                       );
                     }}
                   >

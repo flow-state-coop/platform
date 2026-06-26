@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import Link from "next/link";
@@ -27,6 +27,19 @@ import { generateApplicationTemplate } from "@/app/flow-councils/lib/generateApp
 import { networks } from "@/lib/networks";
 import { Project } from "@/types/project";
 import useRequireAuth from "@/hooks/requireAuth";
+import { useLocalDraft } from "@/hooks/useLocalDraft";
+
+type ApplicationDraft = {
+  savedProjectId?: number | null;
+  applicationId?: number | null;
+  round: Record<string, unknown>;
+  attestation: Record<string, unknown>;
+  fundingAddress: string;
+};
+
+function generateDraftId() {
+  return `draft_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+}
 
 function FormSkeleton() {
   return (
@@ -118,6 +131,9 @@ export default function Application(props: ApplicationProps) {
   const { address } = useAccount();
   const { hasSession, requireAuth } = useRequireAuth();
 
+  const urlId = projectId && projectId.length > 0 ? projectId : "new";
+  const isExistingApplication = /^\d+$/.test(urlId);
+
   const [activeTab, setActiveTab] = useState("project");
   const [project, setProject] = useState<Project | null>(null);
   const [roundData, setRoundData] = useState<RoundForm | null>(null);
@@ -129,7 +145,7 @@ export default function Application(props: ApplicationProps) {
   );
   const [savedProjectId, setSavedProjectId] = useState<number | null>(null);
   const [editsUnlocked, setEditsUnlocked] = useState(false);
-  const [isLoading, setIsLoading] = useState(!!projectId);
+  const [isLoading, setIsLoading] = useState(isExistingApplication);
 
   const [formSchema, setFormSchema] = useState<FormSchema | null>(null);
   const [dynamicRoundValues, setDynamicRoundValues] = useState<
@@ -143,6 +159,17 @@ export default function Application(props: ApplicationProps) {
   const [dynamicSaving, setDynamicSaving] = useState(false);
   const [dynamicError, setDynamicError] = useState("");
 
+  const draft = useLocalDraft<ApplicationDraft>(
+    `application:${chainId}:${councilId}:${urlId}`,
+  );
+  const userEditedRef = useRef(false);
+  const serverBaselineRef = useRef<ApplicationDraft>({
+    round: {},
+    attestation: {},
+    fundingAddress: "",
+  });
+  const [draftRestored, setDraftRestored] = useState(false);
+
   const [roundName, setRoundName] = useState<string>("");
 
   const [profileData, setProfileData] = useState<{
@@ -154,6 +181,11 @@ export default function Application(props: ApplicationProps) {
   const projectComplete = !!project;
   const roundComplete = !!applicationId;
   const isDynamicFormApp = formSchema != null;
+
+  const isNewDraft = !isExistingApplication && savedProjectId == null;
+  const projectDraftKey = isNewDraft
+    ? `application:${chainId}:${councilId}:${urlId}:project`
+    : undefined;
 
   const isInLockedStatus =
     applicationStatus !== null && LOCKED_STATUSES.includes(applicationStatus);
@@ -197,36 +229,39 @@ export default function Application(props: ApplicationProps) {
     }
   }, [address]);
 
-  const fetchProject = useCallback(async () => {
-    if (!projectId || !address) return;
+  const fetchProject = useCallback(
+    async (realProjectId: number) => {
+      if (!address) return;
 
-    try {
-      const res = await fetch(
-        `/api/flow-council/projects/${projectId}?managerAddress=${address}`,
-      );
-      const data = await res.json();
+      try {
+        const res = await fetch(
+          `/api/flow-council/projects/${realProjectId}?managerAddress=${address}`,
+        );
+        const data = await res.json();
 
-      if (data.success && data.project) {
-        const details =
-          typeof data.project.details === "string"
-            ? JSON.parse(data.project.details)
-            : data.project.details;
+        if (data.success && data.project) {
+          const details =
+            typeof data.project.details === "string"
+              ? JSON.parse(data.project.details)
+              : data.project.details;
 
-        setProject({
-          id: data.project.id,
-          details,
-          managerAddresses: data.project.managerAddresses ?? [],
-          managerEmails: data.project.managerEmails ?? [],
-        });
+          setProject({
+            id: data.project.id,
+            details,
+            managerAddresses: data.project.managerAddresses ?? [],
+            managerEmails: data.project.managerEmails ?? [],
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch project:", err);
       }
-    } catch (err) {
-      console.error("Failed to fetch project:", err);
-    }
-  }, [projectId, address]);
+    },
+    [address],
+  );
 
   const fetchApplication = useCallback(
-    async (schema: FormSchema | null) => {
-      if (!projectId || !address) return;
+    async (realProjectId: number, schema: FormSchema | null) => {
+      if (!address) return;
 
       try {
         const res = await fetch("/api/flow-council/applications", {
@@ -237,7 +272,7 @@ export default function Application(props: ApplicationProps) {
 
         if (!data.success || !data.applications) return;
         const app = data.applications.find(
-          (a: { projectId: number }) => a.projectId === parseInt(projectId, 10),
+          (a: { projectId: number }) => a.projectId === realProjectId,
         );
         if (!app) return;
 
@@ -252,12 +287,16 @@ export default function Application(props: ApplicationProps) {
             : app.details;
 
         if (schema) {
-          setDynamicRoundValues(
-            (details.round as Record<string, unknown>) ?? {},
-          );
-          setDynamicAttestationValues(
-            (details.attestation as Record<string, unknown>) ?? {},
-          );
+          const round = (details.round as Record<string, unknown>) ?? {};
+          const attestation =
+            (details.attestation as Record<string, unknown>) ?? {};
+          serverBaselineRef.current = {
+            round,
+            attestation,
+            fundingAddress: app.fundingAddress ?? "",
+          };
+          setDynamicRoundValues(round);
+          setDynamicAttestationValues(attestation);
           if (app.fundingAddress) {
             setDynamicFundingAddress(app.fundingAddress);
           }
@@ -272,46 +311,151 @@ export default function Application(props: ApplicationProps) {
         console.error("Failed to fetch application:", err);
       }
     },
-    [projectId, address, chainId, councilId],
+    [address, chainId, councilId],
+  );
+
+  const restoreDraft = useCallback(
+    (schema: FormSchema | null) => {
+      if (!schema) return;
+      const storedDraft = draft.readDraft();
+      if (!storedDraft) return;
+
+      const round = storedDraft.round ?? {};
+      const attestation = storedDraft.attestation ?? {};
+      const fundingAddress = storedDraft.fundingAddress ?? "";
+
+      if (Object.keys(round).length > 0) {
+        setDynamicRoundValues((prev) => ({ ...prev, ...round }));
+      }
+      if (Object.keys(attestation).length > 0) {
+        setDynamicAttestationValues((prev) => ({ ...prev, ...attestation }));
+      }
+      if (fundingAddress) {
+        setDynamicFundingAddress(fundingAddress);
+      }
+
+      const baseline = serverBaselineRef.current;
+      const differsFromServer =
+        JSON.stringify(round) !== JSON.stringify(baseline.round ?? {}) ||
+        JSON.stringify(attestation) !==
+          JSON.stringify(baseline.attestation ?? {}) ||
+        fundingAddress !== (baseline.fundingAddress ?? "");
+      setDraftRestored(differsFromServer);
+    },
+    [draft],
   );
 
   useEffect(() => {
-    if (projectId && address) {
+    if (urlId === "new") {
+      router.replace(
+        `/flow-councils/application/${chainId}/${councilId}/${generateDraftId()}`,
+      );
+    }
+  }, [urlId, chainId, councilId, router]);
+
+  useEffect(() => {
+    if (urlId === "new") return;
+
+    let cancelled = false;
+    const appDraft = draft.readDraft();
+    const realProjectId = isExistingApplication
+      ? Number(urlId)
+      : (appDraft?.savedProjectId ?? null);
+
+    if (realProjectId != null && address) {
       setIsLoading(true);
       (async () => {
         const schema = await fetchRound();
         await Promise.all([
           fetchProfile(),
-          fetchProject(),
-          fetchApplication(schema),
+          fetchProject(realProjectId),
+          fetchApplication(realProjectId, schema),
         ]);
+        if (cancelled) return;
+        setSavedProjectId(realProjectId);
+        if (appDraft?.applicationId != null) {
+          setApplicationId((prev) => prev ?? appDraft.applicationId ?? null);
+        }
+        restoreDraft(schema);
         setIsLoading(false);
       })();
     } else {
-      fetchRound();
-      fetchProfile();
+      (async () => {
+        const schema = await fetchRound();
+        fetchProfile();
+        if (cancelled) return;
+        restoreDraft(schema);
+      })();
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [
+    urlId,
+    isExistingApplication,
+    address,
+    draft,
     fetchRound,
     fetchProfile,
     fetchProject,
     fetchApplication,
-    projectId,
-    address,
+    restoreDraft,
+  ]);
+
+  useEffect(() => {
+    if (!isDynamicFormApp) return;
+    const shouldPersist =
+      userEditedRef.current ||
+      (!isExistingApplication && savedProjectId != null);
+    if (!shouldPersist) return;
+    draft.save({
+      savedProjectId,
+      applicationId,
+      round: dynamicRoundValues,
+      attestation: dynamicAttestationValues,
+      fundingAddress: dynamicFundingAddress,
+    });
+  }, [
+    savedProjectId,
+    applicationId,
+    dynamicRoundValues,
+    dynamicAttestationValues,
+    dynamicFundingAddress,
+    isExistingApplication,
+    isDynamicFormApp,
+    draft,
   ]);
 
   const showNudge = !profileData.displayName || !profileData.email;
 
   const handleDynamicRoundChange = useCallback((id: string, value: unknown) => {
+    userEditedRef.current = true;
     setDynamicRoundValues((prev) => ({ ...prev, [id]: value }));
   }, []);
 
   const handleDynamicAttestationChange = useCallback(
     (id: string, value: unknown) => {
+      userEditedRef.current = true;
       setDynamicAttestationValues((prev) => ({ ...prev, [id]: value }));
     },
     [],
   );
+
+  const handleDynamicFundingAddressChange = useCallback((value: string) => {
+    userEditedRef.current = true;
+    setDynamicFundingAddress(value);
+  }, []);
+
+  const handleDiscardDraft = useCallback(() => {
+    draft.clear();
+    const baseline = serverBaselineRef.current;
+    setDynamicRoundValues(baseline.round);
+    setDynamicAttestationValues(baseline.attestation);
+    setDynamicFundingAddress(baseline.fundingAddress);
+    userEditedRef.current = false;
+    setDraftRestored(false);
+  }, [draft]);
 
   const handleBack = () => {
     router.push(`/flow-councils/application/${chainId}/${councilId}`);
@@ -365,6 +509,12 @@ export default function Application(props: ApplicationProps) {
       if (json.application?.id) {
         setApplicationId(json.application.id);
       }
+      serverBaselineRef.current = {
+        round: dynamicRoundValues,
+        attestation: dynamicAttestationValues,
+        fundingAddress: dynamicFundingAddress,
+      };
+      setDraftRestored(false);
       setDynamicSaving(false);
       setActiveTab("eligibility");
       window.scrollTo(0, 0);
@@ -406,6 +556,8 @@ export default function Application(props: ApplicationProps) {
         return;
       }
 
+      draft.clear();
+      setDraftRestored(false);
       setDynamicSaving(false);
       router.push(`/flow-councils/application/${chainId}/${councilId}`);
     } catch (err) {
@@ -426,7 +578,7 @@ export default function Application(props: ApplicationProps) {
     return <span className="m-auto fs-4 fw-bold">Invalid council</span>;
   }
 
-  if (isLoading) {
+  if (isLoading || urlId === "new") {
     return (
       <Stack direction="vertical">
         <Nav className="gap-2 mb-4 border-0">
@@ -509,6 +661,20 @@ export default function Application(props: ApplicationProps) {
           </div>
         )}
 
+        {draftRestored &&
+          (activeTab === "round" || activeTab === "eligibility") && (
+            <div className="d-flex align-items-center gap-2 mb-3 small text-muted">
+              <span>Unsaved changes restored.</span>
+              <Button
+                variant="link"
+                className="p-0 small text-decoration-underline"
+                onClick={handleDiscardDraft}
+              >
+                Discard
+              </Button>
+            </div>
+          )}
+
         <Tab.Content>
           <Tab.Pane eventKey="project">
             <ProjectTab
@@ -516,6 +682,7 @@ export default function Application(props: ApplicationProps) {
               isLoading={isLoading}
               onSave={handleProjectSaved}
               onCancel={handleBack}
+              draftKey={projectDraftKey}
             />
           </Tab.Pane>
           <Tab.Pane eventKey="round">
@@ -524,7 +691,7 @@ export default function Application(props: ApplicationProps) {
                 <>
                   <FundingAddressSection
                     value={dynamicFundingAddress}
-                    onChange={setDynamicFundingAddress}
+                    onChange={handleDynamicFundingAddressChange}
                     defaultFundingAddress={
                       project?.details?.defaultFundingAddress || ""
                     }

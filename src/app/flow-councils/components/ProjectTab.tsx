@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { isAddress } from "viem";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -20,6 +20,7 @@ import useSiwe from "@/hooks/siwe";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import { normalizeUrl } from "@/app/flow-councils/utils/normalizeUrl";
 import { Project } from "@/types/project";
+import { useLocalDraft } from "@/hooks/useLocalDraft";
 
 async function uploadToS3(file: Blob, fileName: string): Promise<string> {
   const presignRes = await fetch("/api/flow-council/images", {
@@ -57,6 +58,7 @@ type ProjectTabProps = {
   isLoading: boolean;
   onSave: (project: Project) => void;
   onCancel: () => void;
+  draftKey?: string;
 };
 
 type ProjectForm = {
@@ -77,6 +79,32 @@ type ProjectForm = {
   otherLinks: OtherLink[];
 };
 
+type ProjectDraft = {
+  form: ProjectForm;
+  existingLogoUrl: string;
+  existingBannerUrl: string;
+};
+
+const DEFAULT_PROJECT_FORM: ProjectForm = {
+  name: "",
+  managerAddresses: [""],
+  defaultFundingAddress: "",
+  description: "",
+  website: "",
+  demoUrl: "",
+  twitter: "",
+  farcaster: "",
+  telegram: "",
+  discord: "",
+  karmaProfile: "",
+  gardensPool: "",
+  githubRepos: [""],
+  smartContracts: [
+    { type: "projectAddress", network: "Arbitrum One", address: "" },
+  ],
+  otherLinks: [{ description: "", url: "" }],
+};
+
 const isValidGithubRepo = (url: string): boolean => {
   if (!url) return true;
   const normalized = url.replace(/\/+$/, "");
@@ -87,32 +115,23 @@ const isValidGithubRepo = (url: string): boolean => {
 };
 
 export default function ProjectTab(props: ProjectTabProps) {
-  const { project, isLoading, onSave, onCancel } = props;
+  const { project, isLoading, onSave, onCancel, draftKey } = props;
 
-  const [form, setForm] = useState<ProjectForm>({
-    name: "",
-    managerAddresses: [""],
-    defaultFundingAddress: "",
-    description: "",
-    website: "",
-    demoUrl: "",
-    twitter: "",
-    farcaster: "",
-    telegram: "",
-    discord: "",
-    karmaProfile: "",
-    gardensPool: "",
-    githubRepos: [""],
-    smartContracts: [
-      { type: "projectAddress", network: "Arbitrum One", address: "" },
-    ],
-    otherLinks: [{ description: "", url: "" }],
-  });
+  const projectDraft = useLocalDraft<ProjectDraft>(draftKey ?? null);
+  const seededDraft = useMemo(() => projectDraft.readDraft(), [projectDraft]);
+
+  const [form, setForm] = useState<ProjectForm>(
+    () => seededDraft?.form ?? DEFAULT_PROJECT_FORM,
+  );
 
   const [logoBlob, setLogoBlob] = useState<Blob | null>(null);
   const [bannerBlob, setBannerBlob] = useState<Blob | null>(null);
-  const [existingLogoUrl, setExistingLogoUrl] = useState("");
-  const [existingBannerUrl, setExistingBannerUrl] = useState("");
+  const [existingLogoUrl, setExistingLogoUrl] = useState(
+    seededDraft?.existingLogoUrl ?? "",
+  );
+  const [existingBannerUrl, setExistingBannerUrl] = useState(
+    seededDraft?.existingBannerUrl ?? "",
+  );
   const [validated, setValidated] = useState(false);
   const [touched, setTouched] = useState({
     name: false,
@@ -205,6 +224,10 @@ export default function ProjectTab(props: ProjectTabProps) {
       });
     }
   }, [session?.address]);
+
+  useEffect(() => {
+    projectDraft.save({ form, existingLogoUrl, existingBannerUrl });
+  }, [form, existingLogoUrl, existingBannerUrl, projectDraft]);
 
   const hasLogo = !!logoBlob || !!existingLogoUrl;
   const hasBanner = !!bannerBlob || !!existingBannerUrl;
@@ -315,6 +338,7 @@ export default function ProjectTab(props: ProjectTabProps) {
       }
 
       setIsSubmitting(false);
+      projectDraft.clear();
       onSave({
         id: json.project.id,
         details: {

@@ -38,6 +38,7 @@ import InternalComments from "@/app/flow-councils/components/InternalComments";
 import useDistributionPoolQuery from "@/app/flow-councils/hooks/distributionPoolQuery";
 import useSiwe from "@/hooks/siwe";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import { useLocalDraft } from "@/hooks/useLocalDraft";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks } from "@/lib/networks";
 import { SUPERFLUID_CALL_AGREEMENT_OPERATION } from "@/lib/constants";
@@ -142,6 +143,16 @@ export default function Review(props: ReviewProps) {
   const [newStatus, setNewStatus] = useState<Status | null>(null);
   const [reviewComment, setReviewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const reviewDraft = useLocalDraft<string>(
+    selectedApplication
+      ? `review:${chainId}:${councilId}:${selectedApplication.id}`
+      : null,
+  );
+
+  useEffect(() => {
+    setReviewComment(reviewDraft.readDraft() ?? "");
+  }, [reviewDraft]);
   const [isTogglingLock, setIsTogglingLock] = useState(false);
   const [applicationsClosed, setApplicationsClosed] = useState(false);
   const [isTogglingApplicationsClosed, setIsTogglingApplicationsClosed] =
@@ -870,6 +881,7 @@ export default function Review(props: ReviewProps) {
       }
 
       // Success - refresh applications and close panel
+      reviewDraft.clear();
       setSuccess(true);
       fetchApplications();
       handleCloseReview();
@@ -1331,7 +1343,10 @@ export default function Review(props: ReviewProps) {
                       rows={3}
                       value={reviewComment}
                       placeholder="Write a message..."
-                      onChange={(e) => setReviewComment(e.target.value)}
+                      onChange={(e) => {
+                        setReviewComment(e.target.value);
+                        reviewDraft.save(e.target.value);
+                      }}
                       resizable
                     />
                   </Form.Group>
