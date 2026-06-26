@@ -142,6 +142,7 @@ export default function Review(props: ReviewProps) {
   const [selectedApplication, setSelectedApplication] =
     useState<Application | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [roundFormSchema, setRoundFormSchema] = useState<FormSchema | null>(
     null,
@@ -178,6 +179,7 @@ export default function Review(props: ReviewProps) {
 
   const queryClient = useQueryClient();
   const topRef = useRef<HTMLDivElement>(null);
+  const fullScreenRef = useRef<HTMLDivElement>(null);
   const publicClient = usePublicClient();
   const wagmiConfig = useConfig();
   const router = useRouter();
@@ -591,6 +593,7 @@ export default function Review(props: ReviewProps) {
     setNewStatus(null);
     setReviewComment("");
     setError("");
+    setIsFullScreen(false);
   };
 
   // Deep link from the inbox: /flow-councils/review/[chainId]/[councilId]
@@ -611,6 +614,26 @@ export default function Review(props: ReviewProps) {
     // safe to call here; excluded from deps to avoid re-triggering.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applications, searchParams]);
+
+  useEffect(() => {
+    if (!isFullScreen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    document.body.style.overflow = "hidden";
+    fullScreenRef.current?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsFullScreen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+      previouslyFocused?.focus?.();
+    };
+  }, [isFullScreen]);
 
   const handleToggleEditsUnlocked = async (application: Application) => {
     if (!flowCouncil) return;
@@ -1251,16 +1274,57 @@ export default function Review(props: ReviewProps) {
             )}
 
             {selectedApplication !== null && !isLoadingDetail && (
-              <Stack direction="vertical" gap={4} className="mt-4">
+              <Stack
+                ref={fullScreenRef}
+                direction="vertical"
+                gap={4}
+                tabIndex={isFullScreen ? -1 : undefined}
+                role={isFullScreen ? "dialog" : undefined}
+                aria-modal={isFullScreen ? true : undefined}
+                aria-label={
+                  isFullScreen
+                    ? `${selectedApplication.projectDetails?.name ?? "Application"} review`
+                    : undefined
+                }
+                className={
+                  isFullScreen
+                    ? "position-fixed top-0 start-0 w-100 vh-100 overflow-auto p-4 p-md-5 bg-lace-50"
+                    : "mt-4"
+                }
+                style={isFullScreen ? { zIndex: 1050 } : undefined}
+              >
                 <div className="bg-lace-100 rounded-4 p-4">
                   <Stack
                     direction="horizontal"
                     className="justify-content-between mb-4"
                   >
-                    <h4 className="fw-bold mb-0">
-                      {selectedApplication.projectDetails?.name ??
-                        "Application Review"}
-                    </h4>
+                    <Stack
+                      direction="horizontal"
+                      gap={3}
+                      className="align-items-center"
+                    >
+                      <h4 className="fw-bold mb-0">
+                        {selectedApplication.projectDetails?.name ??
+                          "Application Review"}
+                      </h4>
+                      <Button
+                        variant="link"
+                        className="d-flex align-items-center gap-1 p-0 text-decoration-none fw-semi-bold text-primary"
+                        onClick={() => setIsFullScreen((prev) => !prev)}
+                      >
+                        <Image
+                          src={
+                            isFullScreen
+                              ? "/fullscreen-exit.svg"
+                              : "/fullscreen.svg"
+                          }
+                          alt=""
+                          width={20}
+                          height={20}
+                        />
+                        {isFullScreen ? "Exit Full Screen" : "Full Screen Review"}
+                      </Button>
+                    </Stack>
                     <Stack direction="horizontal" gap={3}>
                       {["ACCEPTED", "GRADUATED", "REMOVED"].includes(
                         selectedApplication.status,
