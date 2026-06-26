@@ -133,7 +133,7 @@ const StatusFilterToggle = forwardRef<
     className="btn btn-link p-0 lh-1 border-0 d-inline-flex align-items-center"
   >
     <Image
-      src="/arrow-down.svg"
+      src="/filter-alt.svg"
       alt="Filter by status"
       width={16}
       height={16}
