@@ -19,6 +19,11 @@ describe("getAllowedStatusTransitions", () => {
   });
 
   it("offers accept/changes/reject for not-yet-accepted statuses, excluding the current one", () => {
+    expect(getAllowedStatusTransitions("INCOMPLETE")).toEqual([
+      "ACCEPTED",
+      "CHANGES_REQUESTED",
+      "REJECTED",
+    ]);
     expect(getAllowedStatusTransitions("SUBMITTED")).toEqual([
       "ACCEPTED",
       "CHANGES_REQUESTED",
@@ -27,6 +32,10 @@ describe("getAllowedStatusTransitions", () => {
     expect(getAllowedStatusTransitions("CHANGES_REQUESTED")).toEqual([
       "ACCEPTED",
       "REJECTED",
+    ]);
+    expect(getAllowedStatusTransitions("REJECTED")).toEqual([
+      "ACCEPTED",
+      "CHANGES_REQUESTED",
     ]);
   });
 

@@ -13,6 +13,8 @@ export function getAllowedStatusTransitions(
       return ["ACCEPTED"];
     case "GRADUATED":
       return ["ACCEPTED", "REMOVED"];
+    // Pre-acceptance statuses (INCOMPLETE, SUBMITTED, CHANGES_REQUESTED,
+    // REJECTED) can be accepted, asked for changes, or rejected.
     default:
       return (
         ["ACCEPTED", "CHANGES_REQUESTED", "REJECTED"] as ApplicationStatus[]
