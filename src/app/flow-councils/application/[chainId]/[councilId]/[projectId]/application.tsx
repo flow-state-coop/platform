@@ -21,8 +21,14 @@ import type {
   RoundForm,
   AttestationForm,
 } from "@/app/flow-councils/types/round";
-import type { FormSchema } from "@/app/flow-councils/types/formSchema";
-import { getApplicationAsDynamic } from "@/app/flow-councils/utils/legacyFormAdapter";
+import {
+  type FormSchema,
+  MINIMAL_TEMPLATE,
+} from "@/app/flow-councils/types/formSchema";
+import {
+  getApplicationAsDynamic,
+  isDynamicApplicationDetails,
+} from "@/app/flow-councils/utils/legacyFormAdapter";
 import { generateApplicationTemplate } from "@/app/flow-councils/lib/generateApplicationTemplate";
 import { networks } from "@/lib/networks";
 import { Project } from "@/types/project";
@@ -200,10 +206,14 @@ export default function Application(props: ApplicationProps) {
       );
       const data = await res.json();
       if (!data.success || !data.round?.details) return null;
-      const { name, formSchema: schema } = parseRoundDetails(data.round);
+      const { name, formSchema: configuredSchema } =
+        parseRoundDetails(data.round);
       setRoundName(name);
-      if (schema) setFormSchema(schema);
-      return schema;
+      setFormSchema(configuredSchema ?? MINIMAL_TEMPLATE);
+      // Return the raw configured schema (may be null), not the Minimal
+      // default: fetchApplication needs the null to detect legacy submissions
+      // and undo the default via setFormSchema(null).
+      return configuredSchema;
     } catch (err) {
       console.error("Failed to fetch form schema:", err);
       return null;
@@ -260,7 +270,7 @@ export default function Application(props: ApplicationProps) {
   );
 
   const fetchApplication = useCallback(
-    async (realProjectId: number, schema: FormSchema | null) => {
+    async (realProjectId: number, configuredSchema: FormSchema | null) => {
       if (!address) return;
 
       try {
@@ -286,7 +296,7 @@ export default function Application(props: ApplicationProps) {
             ? JSON.parse(app.details)
             : app.details;
 
-        if (schema) {
+        if (configuredSchema || isDynamicApplicationDetails(details)) {
           const round = (details.round as Record<string, unknown>) ?? {};
           const attestation =
             (details.attestation as Record<string, unknown>) ?? {};
@@ -301,6 +311,9 @@ export default function Application(props: ApplicationProps) {
             setDynamicFundingAddress(app.fundingAddress);
           }
         } else {
+          // Existing legacy submission: undo the Minimal default from fetchRound
+          // so the legacy form (not the dynamic one) renders.
+          setFormSchema(null);
           setRoundData(details as unknown as RoundForm);
           const attestation = details.attestation ?? details.eligibility;
           if (attestation) {
@@ -314,11 +327,9 @@ export default function Application(props: ApplicationProps) {
     [address, chainId, councilId],
   );
 
-  const restoreDraft = useCallback(
-    (schema: FormSchema | null) => {
-      if (!schema) return;
-      const storedDraft = draft.readDraft();
-      if (!storedDraft) return;
+  const restoreDraft = useCallback(() => {
+    const storedDraft = draft.readDraft();
+    if (!storedDraft) return;
 
       const round = storedDraft.round ?? {};
       const attestation = storedDraft.attestation ?? {};
@@ -365,26 +376,26 @@ export default function Application(props: ApplicationProps) {
     if (realProjectId != null && address) {
       setIsLoading(true);
       (async () => {
-        const schema = await fetchRound();
+        const configuredSchema = await fetchRound();
         await Promise.all([
           fetchProfile(),
           fetchProject(realProjectId),
-          fetchApplication(realProjectId, schema),
+          fetchApplication(realProjectId, configuredSchema),
         ]);
         if (cancelled) return;
         setSavedProjectId(realProjectId);
         if (appDraft?.applicationId != null) {
           setApplicationId((prev) => prev ?? appDraft.applicationId ?? null);
         }
-        restoreDraft(schema);
+        restoreDraft();
         setIsLoading(false);
       })();
     } else {
       (async () => {
-        const schema = await fetchRound();
+        await fetchRound();
         fetchProfile();
         if (cancelled) return;
-        restoreDraft(schema);
+        restoreDraft();
       })();
     }
 

@@ -50,8 +50,15 @@ import type {
   RoundForm,
   AttestationForm,
 } from "@/app/flow-councils/types/round";
-import type { FormSchema } from "@/app/flow-councils/types/formSchema";
-import { getApplicationAsDynamic } from "@/app/flow-councils/utils/legacyFormAdapter";
+import {
+  type FormSchema,
+  type FormElement,
+  STRUCTURAL_TYPES,
+} from "@/app/flow-councils/types/formSchema";
+import {
+  getApplicationAsDynamic,
+  isDynamicApplicationDetails,
+} from "@/app/flow-councils/utils/legacyFormAdapter";
 import { ProjectDetails } from "@/types/project";
 
 type ReviewProps = {
@@ -370,7 +377,11 @@ export default function Review(props: ReviewProps) {
     let headers: string[];
     let rows: string[][];
 
-    if (!roundFormSchema) {
+    const hasDynamicForm =
+      !!roundFormSchema ||
+      fullApplications.some((app) => isDynamicApplicationDetails(app.details));
+
+    if (!hasDynamicForm) {
       headers = [
         "application_status",
         "project_name",
@@ -394,18 +405,32 @@ export default function Review(props: ReviewProps) {
         ].map(escCsv);
       });
     } else {
-      const roundQuestions = roundFormSchema.round.filter(
-        (el) => !["section", "divider", "description"].includes(el.type),
-      );
-      const attestationQuestions = roundFormSchema.attestation.filter(
-        (el) => !["section", "divider", "description"].includes(el.type),
-      );
-
       const formatVal = (val: unknown) => {
         if (Array.isArray(val)) return val.join("|");
         if (typeof val === "boolean") return val ? "Yes" : "No";
         return String(val ?? "");
       };
+
+      const appViews = fullApplications.map((app) => ({
+        app,
+        ...getApplicationAsDynamic(app.details, roundFormSchema),
+      }));
+
+      const isQuestion = (el: FormElement) => !STRUCTURAL_TYPES.has(el.type);
+      const unionQuestions = (pick: (schema: FormSchema) => FormElement[]) => {
+        const byId = new Map<string, FormElement>();
+        for (const { schema } of appViews) {
+          for (const el of pick(schema).filter(isQuestion)) {
+            if (!byId.has(el.id)) byId.set(el.id, el);
+          }
+        }
+        return [...byId.values()];
+      };
+
+      const roundQuestions = unionQuestions((schema) => schema.round);
+      const attestationQuestions = unionQuestions(
+        (schema) => schema.attestation,
+      );
 
       headers = [
         "application_status",
@@ -417,12 +442,8 @@ export default function Review(props: ReviewProps) {
         ...attestationQuestions.map((q) => q.label),
       ];
 
-      rows = fullApplications.map((app) => {
+      rows = appViews.map(({ app, roundValues, attestationValues }) => {
         const projectDetails = app.projectDetails;
-        const { roundValues, attestationValues } = getApplicationAsDynamic(
-          app.details,
-          roundFormSchema,
-        );
         return [
           STATUS_LABELS[app.status] || app.status,
           projectDetails?.name ?? "",
