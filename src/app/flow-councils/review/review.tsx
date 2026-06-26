@@ -503,9 +503,9 @@ export default function Review(props: ReviewProps) {
     if (!selectedApplication) return [];
     const currentStatus = selectedApplication.status;
 
-    // If accepted, can be removed or graduated
+    // If accepted, can be moved back to review, removed, or graduated
     if (currentStatus === "ACCEPTED") {
-      return ["REMOVED", "GRADUATED"] as Status[];
+      return ["SUBMITTED", "REMOVED", "GRADUATED"] as Status[];
     }
 
     // If removed, can only be re-accepted
@@ -820,13 +820,12 @@ export default function Review(props: ReviewProps) {
       // Check if on-chain transaction is needed
       // Only need on-chain tx when actually changing on-chain state:
       // - Adding: ACCEPTED (and not already on-chain)
-      // - Removing: REMOVED/GRADUATED from ACCEPTED state
+      // - Removing: leaving ACCEPTED for any non-accepted status
       const currentStatus = selectedApplication.status;
       const isAddingOnChain =
         newStatus === "ACCEPTED" && currentStatus !== "ACCEPTED";
       const isRemovingOnChain =
-        (newStatus === "REMOVED" || newStatus === "GRADUATED") &&
-        currentStatus === "ACCEPTED";
+        currentStatus === "ACCEPTED" && newStatus !== "ACCEPTED";
 
       if (isAddingOnChain || isRemovingOnChain) {
         const recipientStatus = isAddingOnChain ? 0 : 1; // 0 = ADDED, 1 = REMOVED
