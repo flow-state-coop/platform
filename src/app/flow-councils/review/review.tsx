@@ -1,6 +1,14 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+  forwardRef,
+} from "react";
+import type { MouseEventHandler } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Address, encodeAbiParameters, encodeFunctionData } from "viem";
@@ -111,6 +119,31 @@ const STATUS_LABELS: Record<Status, string> = {
   GRADUATED: "Graduated",
 };
 
+type StatusFilter = Status | "ALL";
+
+const StatusFilterToggle = forwardRef<
+  HTMLButtonElement,
+  { active: boolean; onClick?: MouseEventHandler<HTMLButtonElement> }
+>(({ active, onClick }, ref) => (
+  <button
+    ref={ref}
+    type="button"
+    title="Filter by status"
+    onClick={onClick}
+    className="btn btn-link p-0 lh-1 border-0 d-inline-flex align-items-center"
+  >
+    <Image
+      src="/arrow-down.svg"
+      alt="Filter by status"
+      width={16}
+      height={16}
+      style={{ opacity: active ? 1 : 0.5 }}
+    />
+  </button>
+));
+
+StatusFilterToggle.displayName = "StatusFilterToggle";
+
 const FLOW_COUNCIL_QUERY = gql`
   query FlowCouncilQuery($councilId: String!) {
     flowCouncil(id: $councilId) {
@@ -131,6 +164,7 @@ export default function Review(props: ReviewProps) {
 
   const [applications, setApplications] = useState<ApplicationSummary[]>([]);
   const [isLoadingApplications, setIsLoadingApplications] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [selectedApplication, setSelectedApplication] =
     useState<Application | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
@@ -523,6 +557,27 @@ export default function Review(props: ReviewProps) {
       (s) => s !== currentStatus,
     );
   }, [selectedApplication]);
+
+  const presentStatuses = useMemo(() => {
+    const present = new Set(applications.map((a) => a.status));
+    return (Object.keys(STATUS_LABELS) as Status[]).filter((s) =>
+      present.has(s),
+    );
+  }, [applications]);
+
+  const filteredApplications = useMemo(
+    () =>
+      statusFilter === "ALL"
+        ? applications
+        : applications.filter((a) => a.status === statusFilter),
+    [applications, statusFilter],
+  );
+
+  useEffect(() => {
+    if (statusFilter !== "ALL" && !presentStatuses.includes(statusFilter)) {
+      setStatusFilter("ALL");
+    }
+  }, [presentStatuses, statusFilter]);
 
   const handleSelectApplication = async (summary: ApplicationSummary) => {
     setSelectedTab("project");
@@ -1022,7 +1077,40 @@ export default function Review(props: ReviewProps) {
                     <th className="bg-white text-center w-25">
                       Pool Connection
                     </th>
-                    <th className="bg-white text-center w-25">Status</th>
+                    <th className="bg-white text-center w-25">
+                      <div className="d-inline-flex align-items-center gap-1">
+                        <span>Status</span>
+                        {applications.length > 0 && (
+                          <Dropdown align="end">
+                            <Dropdown.Toggle
+                              as={StatusFilterToggle}
+                              active={statusFilter !== "ALL"}
+                            />
+                            <Dropdown.Menu
+                              className="border border-dark p-2 lh-lg"
+                              renderOnMount
+                              popperConfig={{ strategy: "fixed" }}
+                            >
+                              <Dropdown.Item
+                                active={statusFilter === "ALL"}
+                                onClick={() => setStatusFilter("ALL")}
+                              >
+                                All statuses
+                              </Dropdown.Item>
+                              {presentStatuses.map((status) => (
+                                <Dropdown.Item
+                                  key={status}
+                                  active={statusFilter === status}
+                                  onClick={() => setStatusFilter(status)}
+                                >
+                                  {STATUS_LABELS[status]}
+                                </Dropdown.Item>
+                              ))}
+                            </Dropdown.Menu>
+                          </Dropdown>
+                        )}
+                      </div>
+                    </th>
                     <th className="bg-white text-end w-25">
                       {applications.length > 0 && (
                         <Button
@@ -1081,7 +1169,19 @@ export default function Review(props: ReviewProps) {
                       </tr>
                     ))}
                   {!isLoadingApplications &&
-                    applications?.map(
+                    applications.length > 0 &&
+                    filteredApplications.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className="text-center align-middle text-info py-4"
+                        >
+                          No recipients with this status.
+                        </td>
+                      </tr>
+                    )}
+                  {!isLoadingApplications &&
+                    filteredApplications.map(
                       (application: ApplicationSummary, i: number) => {
                         const addressLower =
                           application.fundingAddress.toLowerCase();
