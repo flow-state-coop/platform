@@ -96,7 +96,7 @@ export default function ConsentGate() {
   const [error, setError] = useState<string | null>(null);
 
   const runCheck = useCallback(
-    async (force: boolean) => {
+    async (force: boolean, signal: AbortSignal) => {
       if (status !== "authenticated" || !session?.address) return;
 
       const address = session.address.toLowerCase();
@@ -117,13 +117,14 @@ export default function ConsentGate() {
       try {
         const res = await fetch(
           `/api/flow-council/profile?address=${address}&includePrivate=true`,
+          { signal },
         );
-        if (!res.ok) return;
+        if (signal.aborted || !res.ok) return;
         const json = (await res.json()) as {
           success: boolean;
           profile: ProfileShape | null;
         };
-        if (!json.success || !json.profile) return;
+        if (signal.aborted || !json.success || !json.profile) return;
 
         const p = json.profile;
 
@@ -134,7 +135,9 @@ export default function ConsentGate() {
         // Falls back to the generic copy if classification fails.
         let resolvedRole: GateRole = null;
         try {
-          const roleRes = await fetch("/api/flow-council/notification-role");
+          const roleRes = await fetch("/api/flow-council/notification-role", {
+            signal,
+          });
           if (roleRes.ok) {
             const roleJson = (await roleRes.json()) as {
               success: boolean;
@@ -145,6 +148,10 @@ export default function ConsentGate() {
         } catch {
           // Keep resolvedRole null — generic copy is a safe default.
         }
+
+        // Bail if the session changed while we were fetching — avoids flashing
+        // the modal for a stale (e.g. signed-out) session.
+        if (signal.aborted) return;
 
         setProfile(p);
         setRole(resolvedRole);
@@ -164,16 +171,22 @@ export default function ConsentGate() {
     [status, session?.address],
   );
 
-  // Prompt on sign-in (respecting a prior "Not now" for this session).
+  // Prompt on sign-in (respecting a prior "Not now" for this session). The
+  // controller aborts an in-flight check if the session changes mid-fetch, so a
+  // stale result can't pop the modal for a different (or signed-out) wallet.
   useEffect(() => {
-    runCheck(false);
+    const controller = new AbortController();
+    runCheck(false, controller.signal);
+    return () => controller.abort();
   }, [runCheck]);
 
   // Re-prompt on demand, e.g. right after an application is submitted. Forced so
   // a "Not now" earlier in the session doesn't swallow this key moment.
   useEffect(() => {
     if (promptSignal === 0) return;
-    runCheck(true);
+    const controller = new AbortController();
+    runCheck(true, controller.signal);
+    return () => controller.abort();
   }, [promptSignal, runCheck]);
 
   const handleNotNow = () => {
