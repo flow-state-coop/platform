@@ -51,6 +51,7 @@ import type {
 } from "@/app/flow-councils/types/round";
 import type { FormSchema } from "@/app/flow-councils/types/formSchema";
 import { getApplicationAsDynamic } from "@/app/flow-councils/utils/legacyFormAdapter";
+import { getAllowedStatusTransitions } from "@/app/flow-councils/lib/statusTransitions";
 import { ProjectDetails } from "@/types/project";
 
 type ReviewProps = {
@@ -501,27 +502,7 @@ export default function Review(props: ReviewProps) {
   // Get available statuses based on current status
   const availableStatuses = useMemo(() => {
     if (!selectedApplication) return [];
-    const currentStatus = selectedApplication.status;
-
-    // If accepted, can be moved back to review, removed, or graduated
-    if (currentStatus === "ACCEPTED") {
-      return ["SUBMITTED", "REMOVED", "GRADUATED"] as Status[];
-    }
-
-    // If removed, can only be re-accepted
-    if (currentStatus === "REMOVED") {
-      return ["ACCEPTED"] as Status[];
-    }
-
-    // If graduated, can be re-accepted or removed
-    if (currentStatus === "GRADUATED") {
-      return ["ACCEPTED", "REMOVED"] as Status[];
-    }
-
-    // If not yet accepted, can accept, request changes, or reject
-    return (["ACCEPTED", "CHANGES_REQUESTED", "REJECTED"] as Status[]).filter(
-      (s) => s !== currentStatus,
-    );
+    return getAllowedStatusTransitions(selectedApplication.status);
   }, [selectedApplication]);
 
   const handleSelectApplication = async (summary: ApplicationSummary) => {
