@@ -15,7 +15,8 @@ import Card from "react-bootstrap/Card";
 import Link from "next/link";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
 import useSiwe from "@/hooks/siwe";
-import { CONSENT_TEXT, CONSENT_VERSION } from "@/lib/consent";
+import { CONSENT_VERSION } from "@/lib/consent";
+import EmailNotificationPreferences from "@/components/EmailNotificationPreferences";
 
 type ProfileForm = {
   displayName: string;
@@ -84,25 +85,6 @@ const SOCIAL_FIELDS: {
     label: "Farcaster",
     placeholder: "@handle or https://farcaster.xyz/handle",
   },
-];
-
-const NOTIFICATION_FIELDS: {
-  field:
-    | "notifyApplicationEligibility"
-    | "notifyProjectChannels"
-    | "notifyRoundAnnouncements"
-    | "notifyInternalReview"
-    | "notifyPlatform";
-  label: string;
-}[] = [
-  {
-    field: "notifyApplicationEligibility",
-    label: "Application & eligibility updates",
-  },
-  { field: "notifyProjectChannels", label: "Project channel messages" },
-  { field: "notifyRoundAnnouncements", label: "Round announcements" },
-  { field: "notifyInternalReview", label: "Internal review comments" },
-  { field: "notifyPlatform", label: "Flow State Platform updates" },
 ];
 
 function toProfileForm(p: Partial<Record<string, unknown>>): ProfileForm {
@@ -430,35 +412,29 @@ export default function Profile() {
             </Alert>
           )}
 
-          <Form.Group className="mb-3">
-            <Form.Check
-              type="checkbox"
-              id="consent"
-              checked={form.consentChecked}
-              disabled={!form.email}
-              onChange={(e) => updateField("consentChecked", e.target.checked)}
-              label={CONSENT_TEXT}
-            />
-            {!form.email && (
-              <Form.Text className="text-muted">
-                Add an email address above to enable notifications.
-              </Form.Text>
-            )}
-          </Form.Group>
-
-          <Stack gap={2}>
-            {NOTIFICATION_FIELDS.map(({ field, label }) => (
-              <Form.Check
-                key={field}
-                type="switch"
-                id={`switch-${field}`}
-                checked={form[field]}
-                disabled={!form.consentChecked}
-                onChange={(e) => updateField(field, e.target.checked)}
-                label={label}
-              />
-            ))}
-          </Stack>
+          <EmailNotificationPreferences
+            idPrefix="profile"
+            consentChecked={form.consentChecked}
+            onConsentChange={(checked) =>
+              updateField("consentChecked", checked)
+            }
+            consentDisabled={!form.email}
+            helperText={
+              !form.email && (
+                <Form.Text className="text-muted">
+                  Add an email address above to enable notifications.
+                </Form.Text>
+              )
+            }
+            toggles={{
+              notifyApplicationEligibility: form.notifyApplicationEligibility,
+              notifyProjectChannels: form.notifyProjectChannels,
+              notifyRoundAnnouncements: form.notifyRoundAnnouncements,
+              notifyInternalReview: form.notifyInternalReview,
+              notifyPlatform: form.notifyPlatform,
+            }}
+            onToggleChange={(field, checked) => updateField(field, checked)}
+          />
         </Card>
 
         {error && (

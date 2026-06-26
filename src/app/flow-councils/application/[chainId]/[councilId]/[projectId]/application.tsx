@@ -27,6 +27,7 @@ import { generateApplicationTemplate } from "@/app/flow-councils/lib/generateApp
 import { networks } from "@/lib/networks";
 import { Project } from "@/types/project";
 import useRequireAuth from "@/hooks/requireAuth";
+import { useNotificationGate } from "@/context/NotificationGate";
 
 function FormSkeleton() {
   return (
@@ -117,6 +118,7 @@ export default function Application(props: ApplicationProps) {
   const router = useRouter();
   const { address } = useAccount();
   const { hasSession, requireAuth } = useRequireAuth();
+  const { promptNotificationPrefs } = useNotificationGate();
 
   const [activeTab, setActiveTab] = useState("project");
   const [project, setProject] = useState<Project | null>(null);
@@ -407,6 +409,9 @@ export default function Application(props: ApplicationProps) {
       }
 
       setDynamicSaving(false);
+      // Nudge the applicant to set notification prefs if they skipped it, so
+      // they don't miss communications about the application they just sent.
+      promptNotificationPrefs();
       router.push(`/flow-councils/application/${chainId}/${councilId}`);
     } catch (err) {
       console.error(err);

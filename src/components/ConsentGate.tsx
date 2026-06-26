@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Modal, Button, Form } from "react-bootstrap";
-import { CONSENT_TEXT, CONSENT_VERSION } from "@/lib/consent";
+import Link from "next/link";
+import { CONSENT_VERSION } from "@/lib/consent";
 import { isValidEmail } from "@/lib/email";
+import { useNotificationGate } from "@/context/NotificationGate";
+import EmailNotificationPreferences, {
+  type NotificationToggles,
+} from "@/components/EmailNotificationPreferences";
 
 // Shape of the profile returned by GET /api/flow-council/profile?includePrivate=true
 // for the authenticated owner. `emailVersion` is intentionally excluded server-side
@@ -31,48 +36,84 @@ type ProfileShape = {
   emailSuspensionReason: string | null;
 };
 
+type GateRole = "applicant" | "admin" | null;
+
 const DISMISS_KEY_PREFIX = "consent-modal-dismissed-at-";
+
+const DEFAULT_TOGGLES: NotificationToggles = {
+  notifyApplicationEligibility: true,
+  notifyProjectChannels: true,
+  notifyRoundAnnouncements: true,
+  notifyInternalReview: true,
+  notifyPlatform: true,
+};
+
+// Copy is tailored to why the wallet is being prompted. Applicants and admins
+// get a reason tied to their round; everyone else gets the generic v2 migration
+// nudge. The "here" link points at the profile page for later edits.
+function GateMessage({ role }: { role: GateRole }) {
+  if (role === "applicant") {
+    return (
+      <p>
+        You have an outstanding Flow Council application but have not set your
+        notification preferences. You may miss important communications from the
+        round operator if you don&apos;t set your preferences. Set them below
+        and you can edit them any time <Link href="/profile">here</Link>.
+      </p>
+    );
+  }
+
+  if (role === "admin") {
+    return (
+      <p>
+        You have been added as an admin on a Flow Council but have not set your
+        notification preferences. You may miss important communications related
+        to your funding round. Set them below and you can edit them any time{" "}
+        <Link href="/profile">here</Link>.
+      </p>
+    );
+  }
+
+  return (
+    <p>
+      We&apos;ve updated how email notifications work. Please confirm your email
+      and choose what you want to hear about.
+    </p>
+  );
+}
 
 export default function ConsentGate() {
   const { data: session, status } = useSession();
+  const { promptSignal } = useNotificationGate();
 
   const [show, setShow] = useState(false);
   const [profile, setProfile] = useState<ProfileShape | null>(null);
+  const [role, setRole] = useState<GateRole>(null);
   const [email, setEmail] = useState("");
   const [consentChecked, setConsentChecked] = useState(false);
-  const [notifyApplicationEligibility, setNotifyApplicationEligibility] =
-    useState(true);
-  const [notifyProjectChannels, setNotifyProjectChannels] = useState(true);
-  const [notifyRoundAnnouncements, setNotifyRoundAnnouncements] =
-    useState(true);
-  const [notifyInternalReview, setNotifyInternalReview] = useState(true);
-  const [notifyPlatform, setNotifyPlatform] = useState(true);
+  const [toggles, setToggles] = useState<NotificationToggles>(DEFAULT_TOGGLES);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (status !== "authenticated" || !session?.address) {
-      return;
-    }
+  const runCheck = useCallback(
+    async (force: boolean) => {
+      if (status !== "authenticated" || !session?.address) return;
 
-    const address = session.address.toLowerCase();
+      const address = session.address.toLowerCase();
 
-    // UX-only gate: sessionStorage suppresses the modal after "Not now"
-    // for the current browser session only. Closing the tab/browser
-    // re-prompts on next sign-in, matching the spec's "until they dismiss
-    // + return" requirement. The authoritative gate remains server-side
-    // (`consent_confirmed_at IS NOT NULL` in the dispatch pipeline) — do
-    // not remove the server check thinking this is sufficient.
-    const dismissedAt = sessionStorage.getItem(
-      `${DISMISS_KEY_PREFIX}${address}`,
-    );
-    if (dismissedAt) {
-      return;
-    }
+      // UX-only gate: sessionStorage suppresses the modal after "Not now" for
+      // the current browser session only. A post-submit prompt passes force to
+      // bypass it, since that's a deliberate "you just skipped this" nudge. The
+      // authoritative gate remains server-side (`consent_confirmed_at IS NOT
+      // NULL` in the dispatch pipeline) — do not remove the server check
+      // thinking this is sufficient.
+      if (!force) {
+        const dismissedAt = sessionStorage.getItem(
+          `${DISMISS_KEY_PREFIX}${address}`,
+        );
+        if (dismissedAt) return;
+      }
 
-    let cancelled = false;
-
-    (async () => {
       try {
         const res = await fetch(
           `/api/flow-council/profile?address=${address}&includePrivate=true`,
@@ -82,27 +123,58 @@ export default function ConsentGate() {
           success: boolean;
           profile: ProfileShape | null;
         };
-        if (cancelled || !json.success || !json.profile) return;
+        if (!json.success || !json.profile) return;
 
         const p = json.profile;
 
-        // Prompt whenever consent hasn't been recorded yet. If the user has
-        // no email on file, the modal collects it inline; otherwise the
-        // field is pre-filled and editable.
-        if (p.consentConfirmedAt === null) {
-          setProfile(p);
-          setEmail(p.email ?? "");
-          setShow(true);
+        // Only prompt when consent hasn't been recorded yet.
+        if (p.consentConfirmedAt !== null) return;
+
+        // Classify the wallet so the copy matches its relationship to a round.
+        // Falls back to the generic copy if classification fails.
+        let resolvedRole: GateRole = null;
+        try {
+          const roleRes = await fetch("/api/flow-council/notification-role");
+          if (roleRes.ok) {
+            const roleJson = (await roleRes.json()) as {
+              success: boolean;
+              role: GateRole;
+            };
+            if (roleJson.success) resolvedRole = roleJson.role;
+          }
+        } catch {
+          // Keep resolvedRole null — generic copy is a safe default.
         }
+
+        setProfile(p);
+        setRole(resolvedRole);
+        setEmail(p.email ?? "");
+        setToggles({
+          notifyApplicationEligibility: p.notifyApplicationEligibility,
+          notifyProjectChannels: p.notifyProjectChannels,
+          notifyRoundAnnouncements: p.notifyRoundAnnouncements,
+          notifyInternalReview: p.notifyInternalReview,
+          notifyPlatform: p.notifyPlatform,
+        });
+        setShow(true);
       } catch {
         // Silent — nothing useful we can show before the modal is open.
       }
-    })();
+    },
+    [status, session?.address],
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, [status, session?.address]);
+  // Prompt on sign-in (respecting a prior "Not now" for this session).
+  useEffect(() => {
+    runCheck(false);
+  }, [runCheck]);
+
+  // Re-prompt on demand, e.g. right after an application is submitted. Forced so
+  // a "Not now" earlier in the session doesn't swallow this key moment.
+  useEffect(() => {
+    if (promptSignal === 0) return;
+    runCheck(true);
+  }, [promptSignal, runCheck]);
 
   const handleNotNow = () => {
     if (session?.address) {
@@ -147,11 +219,7 @@ export default function ConsentGate() {
         telegram: profile.telegram ?? "",
         consentConfirmedAt: new Date().toISOString(),
         consentVersion: CONSENT_VERSION,
-        notifyApplicationEligibility,
-        notifyProjectChannels,
-        notifyRoundAnnouncements,
-        notifyInternalReview,
-        notifyPlatform,
+        ...toggles,
       };
 
       const res = await fetch("/api/flow-council/profile", {
@@ -197,10 +265,7 @@ export default function ConsentGate() {
         <Modal.Title>Email notification preferences</Modal.Title>
       </Modal.Header>
       <Modal.Body className="px-4 py-3">
-        <p>
-          We&apos;ve updated how email notifications work. Please confirm your
-          email and choose what you want to hear about.
-        </p>
+        <GateMessage role={role} />
         <Form.Group className="mb-3" controlId="consent-modal-email">
           <Form.Label>Email address</Form.Label>
           <Form.Control
@@ -212,53 +277,15 @@ export default function ConsentGate() {
             required
           />
         </Form.Group>
-        <Form.Check
-          type="checkbox"
-          id="consent-modal-checkbox"
-          label={CONSENT_TEXT}
-          checked={consentChecked}
-          onChange={(e) => setConsentChecked(e.target.checked)}
+        <EmailNotificationPreferences
+          idPrefix="consent-modal"
+          consentChecked={consentChecked}
+          onConsentChange={setConsentChecked}
+          toggles={toggles}
+          onToggleChange={(field, checked) =>
+            setToggles((prev) => ({ ...prev, [field]: checked }))
+          }
         />
-        <div className="mt-3">
-          <p className="text-muted small mb-2">
-            Choose what you&apos;d like to hear about:
-          </p>
-          <Form.Switch
-            id="consent-modal-notify-application-eligibility"
-            label="Application & eligibility updates"
-            checked={notifyApplicationEligibility}
-            disabled={!consentChecked}
-            onChange={(e) => setNotifyApplicationEligibility(e.target.checked)}
-          />
-          <Form.Switch
-            id="consent-modal-notify-project-channels"
-            label="Project channel messages"
-            checked={notifyProjectChannels}
-            disabled={!consentChecked}
-            onChange={(e) => setNotifyProjectChannels(e.target.checked)}
-          />
-          <Form.Switch
-            id="consent-modal-notify-round-announcements"
-            label="Round announcements"
-            checked={notifyRoundAnnouncements}
-            disabled={!consentChecked}
-            onChange={(e) => setNotifyRoundAnnouncements(e.target.checked)}
-          />
-          <Form.Switch
-            id="consent-modal-notify-internal-review"
-            label="Internal review comments"
-            checked={notifyInternalReview}
-            disabled={!consentChecked}
-            onChange={(e) => setNotifyInternalReview(e.target.checked)}
-          />
-          <Form.Switch
-            id="consent-modal-notify-platform"
-            label="Flow State Platform updates"
-            checked={notifyPlatform}
-            disabled={!consentChecked}
-            onChange={(e) => setNotifyPlatform(e.target.checked)}
-          />
-        </div>
         {error && (
           <div className="text-danger mt-3" role="alert">
             {error}

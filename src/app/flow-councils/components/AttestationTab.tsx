@@ -9,6 +9,7 @@ import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import Toast from "react-bootstrap/Toast";
 import useRequireAuth from "@/hooks/requireAuth";
+import { useNotificationGate } from "@/context/NotificationGate";
 import { isValidEmail } from "@/lib/email";
 import {
   type RoundForm,
@@ -45,6 +46,7 @@ export default function AttestationTab(props: AttestationTabProps) {
   } = props;
 
   const router = useRouter();
+  const { promptNotificationPrefs } = useNotificationGate();
   const [form, setForm] = useState<AttestationForm>(INITIAL_ATTESTATION_FORM);
   const [validated, setValidated] = useState(false);
   const [touched, setTouched] = useState({
@@ -151,6 +153,9 @@ export default function AttestationTab(props: AttestationTabProps) {
       setSuccess(true);
 
       if (!saveOnly) {
+        // Nudge the applicant to set notification prefs if they skipped it, so
+        // they don't miss communications about the application they just sent.
+        promptNotificationPrefs();
         router.push(`/flow-councils/application/${chainId}/${councilId}`);
       }
     } catch (err) {
