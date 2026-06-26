@@ -281,6 +281,18 @@ export default function ChatView(props: ChatViewProps) {
     );
   }
 
+  const draftKey = [
+    "msg",
+    channelType,
+    chainId,
+    councilId,
+    roundId,
+    applicationId,
+    projectId,
+  ]
+    .filter((part) => part !== undefined && part !== null)
+    .join(":");
+
   const messageInput = canWrite && (
     <MessageInput
       onSend={handleSendMessage}
@@ -292,6 +304,7 @@ export default function ChatView(props: ChatViewProps) {
           : "Sign in to send messages"
       }
       onAuthRequired={onAuthRequired}
+      draftKey={draftKey}
     />
   );
 

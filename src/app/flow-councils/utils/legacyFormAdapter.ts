@@ -10,6 +10,7 @@ import {
 } from "@/app/flow-councils/types/round";
 import {
   GOODBUILDERS_TEMPLATE,
+  MINIMAL_TEMPLATE,
   type FormSchema,
 } from "@/app/flow-councils/types/formSchema";
 
@@ -144,6 +145,12 @@ type DetailsShape = {
   eligibility?: Partial<AttestationForm> | Record<string, unknown>;
 };
 
+export function isDynamicApplicationDetails(details: unknown): boolean {
+  return (
+    typeof details === "object" && details !== null && "_formVersion" in details
+  );
+}
+
 export function getApplicationAsDynamic(
   details: unknown,
   roundFormSchema: FormSchema | null | undefined,
@@ -152,13 +159,17 @@ export function getApplicationAsDynamic(
   roundValues: Record<string, unknown>;
   attestationValues: Record<string, unknown>;
 } {
-  const schema = roundFormSchema ?? GOODBUILDERS_TEMPLATE;
+  const detailsAreDynamic = isDynamicApplicationDetails(details);
+  const isDynamic = !!roundFormSchema || detailsAreDynamic;
+  const schema =
+    roundFormSchema ??
+    (detailsAreDynamic ? MINIMAL_TEMPLATE : GOODBUILDERS_TEMPLATE);
 
   if (!details) {
     return { schema, roundValues: {}, attestationValues: {} };
   }
 
-  if (roundFormSchema) {
+  if (isDynamic) {
     const d = details as DetailsShape;
     return {
       schema,

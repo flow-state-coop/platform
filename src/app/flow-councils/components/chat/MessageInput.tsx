@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import MarkdownEditor from "@/components/MarkdownEditor";
+import { useLocalDraft } from "@/hooks/useLocalDraft";
 
 type MessageInputProps = {
   onSend: (content: string) => Promise<void>;
@@ -13,6 +14,7 @@ type MessageInputProps = {
   disabled?: boolean;
   placeholder?: string;
   onAuthRequired?: () => void;
+  draftKey?: string;
 };
 
 export default function MessageInput(props: MessageInputProps) {
@@ -22,14 +24,26 @@ export default function MessageInput(props: MessageInputProps) {
     disabled = false,
     placeholder = "Write a message. Markdown is supported.",
     onAuthRequired,
+    draftKey,
   } = props;
 
-  const [content, setContent] = useState("");
+  const draft = useLocalDraft<string>(draftKey ?? null);
+  const [content, setContent] = useState(() => draft.readDraft() ?? "");
+
+  useEffect(() => {
+    setContent(draft.readDraft() ?? "");
+  }, [draft]);
+
+  const handleChange = (value: string) => {
+    setContent(value);
+    draft.save(value);
+  };
 
   const handleSend = async () => {
     if (!content.trim() || disabled) return;
 
     await onSend(content.trim());
+    draft.clear();
     setContent("");
   };
 
@@ -52,7 +66,7 @@ export default function MessageInput(props: MessageInputProps) {
           rows={3}
           value={content}
           placeholder={placeholder}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(e) => handleChange(e.target.value)}
           disabled={isSending || disabled}
           resizable
         />

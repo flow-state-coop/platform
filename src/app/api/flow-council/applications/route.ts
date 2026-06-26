@@ -10,6 +10,8 @@ import {
   MAX_DETAILS_SIZE,
 } from "../validation";
 import { isRoundAdmin, hasOnChainRole } from "../auth";
+import { MINIMAL_TEMPLATE } from "@/app/flow-councils/types/formSchema";
+import { isDynamicApplicationDetails } from "@/app/flow-councils/utils/legacyFormAdapter";
 
 export const dynamic = "force-dynamic";
 
@@ -279,7 +281,11 @@ export async function PUT(request: Request) {
         ? JSON.parse(round.details)
         : (round.details ?? {});
 
-    const isDynamicFlow = !!roundDetails.formSchema?.round;
+    // A round with a configured formSchema is always dynamic. Rounds without
+    // one default to the Minimal template, so dynamic-shaped submissions
+    // (carrying _formVersion) are dynamic too; legacy-shaped ones stay legacy.
+    const isDynamicFlow =
+      !!roundDetails.formSchema?.round || isDynamicApplicationDetails(details);
 
     if (isDynamicFlow) {
       if (
@@ -298,7 +304,7 @@ export async function PUT(request: Request) {
       if (isDynamicFlow) {
         const validation = validateDynamicRoundDetails(
           details,
-          roundDetails.formSchema.round,
+          roundDetails.formSchema?.round ?? MINIMAL_TEMPLATE.round,
         );
         if (!validation.success) {
           return new Response(
