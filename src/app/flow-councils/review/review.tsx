@@ -565,19 +565,18 @@ export default function Review(props: ReviewProps) {
     );
   }, [applications]);
 
+  const effectiveFilter: StatusFilter =
+    statusFilter !== "ALL" && !presentStatuses.includes(statusFilter)
+      ? "ALL"
+      : statusFilter;
+
   const filteredApplications = useMemo(
     () =>
-      statusFilter === "ALL"
+      effectiveFilter === "ALL"
         ? applications
-        : applications.filter((a) => a.status === statusFilter),
-    [applications, statusFilter],
+        : applications.filter((a) => a.status === effectiveFilter),
+    [applications, effectiveFilter],
   );
-
-  useEffect(() => {
-    if (statusFilter !== "ALL" && !presentStatuses.includes(statusFilter)) {
-      setStatusFilter("ALL");
-    }
-  }, [presentStatuses, statusFilter]);
 
   const handleSelectApplication = async (summary: ApplicationSummary) => {
     setSelectedTab("project");
@@ -1084,7 +1083,7 @@ export default function Review(props: ReviewProps) {
                           <Dropdown align="end">
                             <Dropdown.Toggle
                               as={StatusFilterToggle}
-                              active={statusFilter !== "ALL"}
+                              active={effectiveFilter !== "ALL"}
                             />
                             <Dropdown.Menu
                               className="border border-dark p-2 lh-lg"
@@ -1092,7 +1091,7 @@ export default function Review(props: ReviewProps) {
                               popperConfig={{ strategy: "fixed" }}
                             >
                               <Dropdown.Item
-                                active={statusFilter === "ALL"}
+                                active={effectiveFilter === "ALL"}
                                 onClick={() => setStatusFilter("ALL")}
                               >
                                 All statuses
@@ -1100,7 +1099,7 @@ export default function Review(props: ReviewProps) {
                               {presentStatuses.map((status) => (
                                 <Dropdown.Item
                                   key={status}
-                                  active={statusFilter === status}
+                                  active={effectiveFilter === status}
                                   onClick={() => setStatusFilter(status)}
                                 >
                                   {STATUS_LABELS[status]}
