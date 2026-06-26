@@ -160,6 +160,7 @@ export default function Review(props: ReviewProps) {
 
   const queryClient = useQueryClient();
   const topRef = useRef<HTMLDivElement>(null);
+  const fullScreenRef = useRef<HTMLDivElement>(null);
   const publicClient = usePublicClient();
   const wagmiConfig = useConfig();
   const router = useRouter();
@@ -585,7 +586,9 @@ export default function Review(props: ReviewProps) {
     if (!isFullScreen) return;
 
     const previousOverflow = document.body.style.overflow;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
     document.body.style.overflow = "hidden";
+    fullScreenRef.current?.focus();
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setIsFullScreen(false);
@@ -595,6 +598,7 @@ export default function Review(props: ReviewProps) {
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
+      previouslyFocused?.focus?.();
     };
   }, [isFullScreen]);
 
@@ -1237,18 +1241,23 @@ export default function Review(props: ReviewProps) {
 
             {selectedApplication !== null && !isLoadingDetail && (
               <Stack
+                ref={fullScreenRef}
                 direction="vertical"
                 gap={4}
-                className={
+                tabIndex={isFullScreen ? -1 : undefined}
+                role={isFullScreen ? "dialog" : undefined}
+                aria-modal={isFullScreen ? true : undefined}
+                aria-label={
                   isFullScreen
-                    ? "position-fixed top-0 start-0 w-100 vh-100 overflow-auto p-4 p-md-5"
-                    : "mt-4"
-                }
-                style={
-                  isFullScreen
-                    ? { backgroundColor: "#fbf7ef", zIndex: 1050 }
+                    ? `${selectedApplication.projectDetails?.name ?? "Application"} review`
                     : undefined
                 }
+                className={
+                  isFullScreen
+                    ? "position-fixed top-0 start-0 w-100 vh-100 overflow-auto p-4 p-md-5 bg-lace-50"
+                    : "mt-4"
+                }
+                style={isFullScreen ? { zIndex: 1050 } : undefined}
               >
                 <div className="bg-lace-100 rounded-4 p-4">
                   <Stack
