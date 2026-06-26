@@ -11,7 +11,7 @@ export default async function Page({
     <Application
       chainId={Number(chainId)}
       councilId={councilId}
-      projectId={projectId === "new" ? undefined : projectId}
+      projectId={projectId}
     />
   );
 }

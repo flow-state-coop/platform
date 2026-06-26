@@ -14,6 +14,7 @@ import Image from "react-bootstrap/Image";
 import ProjectCard from "@/app/flow-councils/components/ProjectCard";
 import type { FormSchema } from "@/app/flow-councils/types/formSchema";
 import { generateApplicationTemplate } from "@/app/flow-councils/lib/generateApplicationTemplate";
+import { generateDraftId } from "@/app/flow-councils/utils/draftId";
 import InfoTooltip from "@/components/InfoTooltip";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
@@ -529,7 +530,7 @@ export default function ProjectSelection(props: ProjectSelectionProps) {
                     style={{ height: 430 }}
                     onClick={() => {
                       router.push(
-                        `/flow-councils/application/${chainId}/${councilId}/new`,
+                        `/flow-councils/application/${chainId}/${councilId}/${generateDraftId()}`,
                       );
                     }}
                   >
