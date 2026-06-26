@@ -177,8 +177,8 @@ Content-Type: application/json
           </li>
           <li>
             Fetch the recipient list programmatically from{" "}
-            <code>GET /api/flow-council/recipients</code> (no auth), or export it
-            below.
+            <code>GET /api/flow-council/recipients</code> (no auth), or export
+            it below.
           </li>
           <li>
             Submitting a ballot that matches the current one is a no-op (no
@@ -210,7 +210,9 @@ Content-Type: application/json
           gap={2}
           className="align-items-center justify-content-between mb-1"
         >
-          <span className="fw-semi-bold">Recipients and current allocation</span>
+          <span className="fw-semi-bold">
+            Recipients and current allocation
+          </span>
           {rows.length > 0 ? (
             <Stack direction="horizontal" gap={2}>
               <Button

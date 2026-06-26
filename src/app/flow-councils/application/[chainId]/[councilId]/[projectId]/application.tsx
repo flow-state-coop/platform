@@ -218,8 +218,9 @@ export default function Application(props: ApplicationProps) {
       );
       const data = await res.json();
       if (!data.success || !data.round?.details) return null;
-      const { name, formSchema: configuredSchema } =
-        parseRoundDetails(data.round);
+      const { name, formSchema: configuredSchema } = parseRoundDetails(
+        data.round,
+      );
       setRoundName(name);
       setFormSchema(configuredSchema ?? MINIMAL_TEMPLATE);
       // Return the raw configured schema (may be null), not the Minimal
@@ -343,30 +344,28 @@ export default function Application(props: ApplicationProps) {
     const storedDraft = draft.readDraft();
     if (!storedDraft) return;
 
-      const round = storedDraft.round ?? {};
-      const attestation = storedDraft.attestation ?? {};
-      const fundingAddress = storedDraft.fundingAddress ?? "";
+    const round = storedDraft.round ?? {};
+    const attestation = storedDraft.attestation ?? {};
+    const fundingAddress = storedDraft.fundingAddress ?? "";
 
-      if (Object.keys(round).length > 0) {
-        setDynamicRoundValues((prev) => ({ ...prev, ...round }));
-      }
-      if (Object.keys(attestation).length > 0) {
-        setDynamicAttestationValues((prev) => ({ ...prev, ...attestation }));
-      }
-      if (fundingAddress) {
-        setDynamicFundingAddress(fundingAddress);
-      }
+    if (Object.keys(round).length > 0) {
+      setDynamicRoundValues((prev) => ({ ...prev, ...round }));
+    }
+    if (Object.keys(attestation).length > 0) {
+      setDynamicAttestationValues((prev) => ({ ...prev, ...attestation }));
+    }
+    if (fundingAddress) {
+      setDynamicFundingAddress(fundingAddress);
+    }
 
-      const baseline = serverBaselineRef.current;
-      const differsFromServer =
-        stableStringify(round) !== stableStringify(baseline.round ?? {}) ||
-        stableStringify(attestation) !==
-          stableStringify(baseline.attestation ?? {}) ||
-        fundingAddress !== (baseline.fundingAddress ?? "");
-      setDraftRestored(differsFromServer);
-    },
-    [draft],
-  );
+    const baseline = serverBaselineRef.current;
+    const differsFromServer =
+      stableStringify(round) !== stableStringify(baseline.round ?? {}) ||
+      stableStringify(attestation) !==
+        stableStringify(baseline.attestation ?? {}) ||
+      fundingAddress !== (baseline.fundingAddress ?? "");
+    setDraftRestored(differsFromServer);
+  }, [draft]);
 
   useEffect(() => {
     if (urlId === "new") {

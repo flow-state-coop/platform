@@ -93,7 +93,8 @@ export default function ApplicationLayout({
   }, [projectId, session?.address]);
 
   const fetchApplicationStatus = useCallback(async () => {
-    if (!chainId || !councilId || !projectId || !/^\d+$/.test(projectId)) return;
+    if (!chainId || !councilId || !projectId || !/^\d+$/.test(projectId))
+      return;
 
     try {
       const res = await fetch("/api/flow-council/applications", {

@@ -59,7 +59,10 @@ export function useLocalDraft<T>(key: string | null, options: Options = {}) {
       const raw = window.localStorage.getItem(storageKey);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === "object" && "v" in parsed && "t" in parsed
+      return parsed &&
+        typeof parsed === "object" &&
+        "v" in parsed &&
+        "t" in parsed
         ? (parsed.v as T)
         : (parsed as T);
     } catch {
@@ -112,8 +115,5 @@ export function useLocalDraft<T>(key: string | null, options: Options = {}) {
     };
   }, [storageKey]);
 
-  return useMemo(
-    () => ({ readDraft, save, clear }),
-    [readDraft, save, clear],
-  );
+  return useMemo(() => ({ readDraft, save, clear }), [readDraft, save, clear]);
 }
