@@ -7,9 +7,7 @@ export const dynamic = "force-dynamic";
 
 export type NotificationGateRole = "applicant" | "admin" | null;
 
-// Statuses that count as an "outstanding" application (everything except
-// rejected/removed). A positive IN list rather than NOT IN so a newly added
-// status doesn't silently count as outstanding until it's listed here.
+// Allow-list, not a NOT IN: a new status counts as not-outstanding until added here.
 const OUTSTANDING_APPLICATION_STATUSES: ApplicationStatus[] = [
   "INCOMPLETE",
   "SUBMITTED",
@@ -18,11 +16,7 @@ const OUTSTANDING_APPLICATION_STATUSES: ApplicationStatus[] = [
   "GRADUATED",
 ];
 
-// Classifies the signed-in wallet's relationship to a Flow Council round so the
-// notification-prefs prompt can show role-specific copy. Applicant takes
-// priority over admin. "Applicant" means the wallet manages a project with an
-// outstanding application. "Admin" means the wallet was explicitly added as a
-// round admin.
+// Applicant takes priority over admin when a wallet matches both.
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);

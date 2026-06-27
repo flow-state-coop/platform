@@ -409,10 +409,6 @@ export default function Application(props: ApplicationProps) {
       }
 
       setDynamicSaving(false);
-      // Nudge the applicant to set notification prefs if they skipped it, so
-      // they don't miss communications about the application they just sent.
-      // The global ConsentGate (mounted in providers) reads this signal and
-      // shows the modal on the destination page after the redirect below.
       promptNotificationPrefs();
       router.push(`/flow-councils/application/${chainId}/${councilId}`);
     } catch (err) {

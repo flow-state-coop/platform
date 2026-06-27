@@ -10,6 +10,7 @@ import { useNotificationGate } from "@/context/NotificationGate";
 import EmailNotificationPreferences, {
   type NotificationToggles,
 } from "@/components/EmailNotificationPreferences";
+import type { NotificationGateRole } from "@/app/api/flow-council/notification-role/route";
 
 // Shape of the profile returned by GET /api/flow-council/profile?includePrivate=true
 // for the authenticated owner. `emailVersion` is intentionally excluded server-side
@@ -36,22 +37,12 @@ type ProfileShape = {
   emailSuspensionReason: string | null;
 };
 
-type GateRole = "applicant" | "admin" | null;
-
 const DISMISS_KEY_PREFIX = "consent-modal-dismissed-at-";
-
-const DEFAULT_TOGGLES: NotificationToggles = {
-  notifyApplicationEligibility: true,
-  notifyProjectChannels: true,
-  notifyRoundAnnouncements: true,
-  notifyInternalReview: true,
-  notifyPlatform: true,
-};
 
 // Copy is tailored to why the wallet is being prompted. Applicants and admins
 // get a reason tied to their round; everyone else gets the generic v2 migration
 // nudge. The "here" link points at the profile page for later edits.
-function GateMessage({ role }: { role: GateRole }) {
+function GateMessage({ role }: { role: NotificationGateRole }) {
   if (role === "applicant") {
     return (
       <p>
@@ -88,10 +79,17 @@ export default function ConsentGate() {
 
   const [show, setShow] = useState(false);
   const [profile, setProfile] = useState<ProfileShape | null>(null);
-  const [role, setRole] = useState<GateRole>(null);
+  const [role, setRole] = useState<NotificationGateRole>(null);
   const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [consentChecked, setConsentChecked] = useState(false);
-  const [toggles, setToggles] = useState<NotificationToggles>(DEFAULT_TOGGLES);
+  const [toggles, setToggles] = useState<NotificationToggles>({
+    notifyApplicationEligibility: true,
+    notifyProjectChannels: true,
+    notifyRoundAnnouncements: true,
+    notifyInternalReview: true,
+    notifyPlatform: true,
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -124,16 +122,18 @@ export default function ConsentGate() {
           success: boolean;
           profile: ProfileShape | null;
         };
-        if (signal.aborted || !json.success || !json.profile) return;
+        if (signal.aborted || !json.success) return;
 
         const p = json.profile;
 
-        // Only prompt when consent hasn't been recorded yet.
-        if (p.consentConfirmedAt !== null) return;
+        // Only prompt when consent hasn't been recorded yet. A null profile (no
+        // row yet, e.g. an applicant or admin who never saved one) has no
+        // consent, so it still prompts and the modal collects a display name.
+        if (p && p.consentConfirmedAt !== null) return;
 
         // Classify the wallet so the copy matches its relationship to a round.
         // Falls back to the generic copy if classification fails.
-        let resolvedRole: GateRole = null;
+        let resolvedRole: NotificationGateRole = null;
         try {
           const roleRes = await fetch("/api/flow-council/notification-role", {
             signal,
@@ -141,7 +141,7 @@ export default function ConsentGate() {
           if (roleRes.ok) {
             const roleJson = (await roleRes.json()) as {
               success: boolean;
-              role: GateRole;
+              role: NotificationGateRole;
             };
             if (roleJson.success) resolvedRole = roleJson.role;
           }
@@ -153,16 +153,23 @@ export default function ConsentGate() {
         // the modal for a stale (e.g. signed-out) session.
         if (signal.aborted) return;
 
+        // A wallet with no profile row only gets prompted when it's an
+        // applicant or admin (the segment that actually receives round comms).
+        // Casual visitors without a profile are left alone until they have one.
+        if (!p && resolvedRole === null) return;
+
         setProfile(p);
         setRole(resolvedRole);
-        setEmail(p.email ?? "");
-        setToggles({
-          notifyApplicationEligibility: p.notifyApplicationEligibility,
-          notifyProjectChannels: p.notifyProjectChannels,
-          notifyRoundAnnouncements: p.notifyRoundAnnouncements,
-          notifyInternalReview: p.notifyInternalReview,
-          notifyPlatform: p.notifyPlatform,
-        });
+        setEmail(p?.email ?? "");
+        if (p) {
+          setToggles({
+            notifyApplicationEligibility: p.notifyApplicationEligibility,
+            notifyProjectChannels: p.notifyProjectChannels,
+            notifyRoundAnnouncements: p.notifyRoundAnnouncements,
+            notifyInternalReview: p.notifyInternalReview,
+            notifyPlatform: p.notifyPlatform,
+          });
+        }
         setShow(true);
       } catch {
         // Silent — nothing useful we can show before the modal is open.
@@ -200,7 +207,13 @@ export default function ConsentGate() {
   };
 
   const handleSave = async () => {
-    if (!profile || !consentChecked) return;
+    if (!consentChecked) return;
+
+    const trimmedName = (profile?.displayName ?? displayName).trim();
+    if (!trimmedName) {
+      setError("Please enter a display name.");
+      return;
+    }
 
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
@@ -222,14 +235,14 @@ export default function ConsentGate() {
       // schema rejects null for string fields, so empty/missing values are
       // sent as "" rather than null.
       const body = {
-        displayName: profile.displayName,
-        bio: profile.bio ?? "",
-        twitter: profile.twitter ?? "",
-        github: profile.github ?? "",
-        linkedin: profile.linkedin ?? "",
-        farcaster: profile.farcaster ?? "",
+        displayName: trimmedName,
+        bio: profile?.bio ?? "",
+        twitter: profile?.twitter ?? "",
+        github: profile?.github ?? "",
+        linkedin: profile?.linkedin ?? "",
+        farcaster: profile?.farcaster ?? "",
         email: trimmedEmail,
-        telegram: profile.telegram ?? "",
+        telegram: profile?.telegram ?? "",
         consentConfirmedAt: new Date().toISOString(),
         consentVersion: CONSENT_VERSION,
         ...toggles,
@@ -270,6 +283,8 @@ export default function ConsentGate() {
     }
   };
 
+  const needsName = profile === null;
+
   if (!show) return null;
 
   return (
@@ -279,6 +294,19 @@ export default function ConsentGate() {
       </Modal.Header>
       <Modal.Body className="px-4 py-3">
         <GateMessage role={role} />
+        {needsName && (
+          <Form.Group className="mb-3" controlId="consent-modal-display-name">
+            <Form.Label>Display name</Form.Label>
+            <Form.Control
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Your name"
+              maxLength={50}
+              required
+            />
+          </Form.Group>
+        )}
         <Form.Group className="mb-3" controlId="consent-modal-email">
           <Form.Label>Email address</Form.Label>
           <Form.Control
