@@ -13,6 +13,7 @@ import {
 import { writeInboxItems } from "@/lib/inboxWriter";
 import { errorResponse } from "../../utils";
 import { RECIPIENT_MANAGER_ROLE } from "@/app/flow-councils/lib/constants";
+import { getAllowedStatusTransitions } from "@/app/flow-councils/lib/statusTransitions";
 import { findRoundByCouncil } from "../auth";
 
 export const dynamic = "force-dynamic";
@@ -85,10 +86,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get the application to get project ID
+    // Get the application to get project ID and current status
     const application = await db
       .selectFrom("applications")
-      .select(["id", "projectId"])
+      .select(["id", "projectId", "status"])
       .where("id", "=", applicationId)
       .where("roundId", "=", round.id)
       .executeTakeFirst();
@@ -96,6 +97,16 @@ export async function POST(request: Request) {
     if (!application) {
       return new Response(
         JSON.stringify({ success: false, error: "Application not found" }),
+      );
+    }
+
+    if (
+      !getAllowedStatusTransitions(application.status).includes(
+        newStatus as ApplicationStatus,
+      )
+    ) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid status transition" }),
       );
     }
 

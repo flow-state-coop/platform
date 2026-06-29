@@ -1,6 +1,14 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+  forwardRef,
+} from "react";
+import type { MouseEventHandler } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Address, encodeAbiParameters, encodeFunctionData } from "viem";
@@ -38,6 +46,7 @@ import InternalComments from "@/app/flow-councils/components/InternalComments";
 import useDistributionPoolQuery from "@/app/flow-councils/hooks/distributionPoolQuery";
 import useSiwe from "@/hooks/siwe";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import { useLocalDraft } from "@/hooks/useLocalDraft";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks } from "@/lib/networks";
 import { SUPERFLUID_CALL_AGREEMENT_OPERATION } from "@/lib/constants";
@@ -49,8 +58,16 @@ import type {
   RoundForm,
   AttestationForm,
 } from "@/app/flow-councils/types/round";
-import type { FormSchema } from "@/app/flow-councils/types/formSchema";
-import { getApplicationAsDynamic } from "@/app/flow-councils/utils/legacyFormAdapter";
+import {
+  type FormSchema,
+  type FormElement,
+  STRUCTURAL_TYPES,
+} from "@/app/flow-councils/types/formSchema";
+import {
+  getApplicationAsDynamic,
+  isDynamicApplicationDetails,
+} from "@/app/flow-councils/utils/legacyFormAdapter";
+import { getAllowedStatusTransitions } from "@/app/flow-councils/lib/statusTransitions";
 import { ProjectDetails } from "@/types/project";
 
 type ReviewProps = {
@@ -111,6 +128,31 @@ const STATUS_LABELS: Record<Status, string> = {
   GRADUATED: "Graduated",
 };
 
+type StatusFilter = Status | "ALL";
+
+const StatusFilterToggle = forwardRef<
+  HTMLButtonElement,
+  { active: boolean; onClick?: MouseEventHandler<HTMLButtonElement> }
+>(({ active, onClick }, ref) => (
+  <button
+    ref={ref}
+    type="button"
+    title="Filter by status"
+    onClick={onClick}
+    className="btn btn-link p-0 lh-1 border-0 d-inline-flex align-items-center"
+  >
+    <Image
+      src="/filter-alt.svg"
+      alt="Filter by status"
+      width={16}
+      height={16}
+      style={{ opacity: active ? 1 : 0.5 }}
+    />
+  </button>
+));
+
+StatusFilterToggle.displayName = "StatusFilterToggle";
+
 const FLOW_COUNCIL_QUERY = gql`
   query FlowCouncilQuery($councilId: String!) {
     flowCouncil(id: $councilId) {
@@ -131,9 +173,11 @@ export default function Review(props: ReviewProps) {
 
   const [applications, setApplications] = useState<ApplicationSummary[]>([]);
   const [isLoadingApplications, setIsLoadingApplications] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [selectedApplication, setSelectedApplication] =
     useState<Application | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [roundFormSchema, setRoundFormSchema] = useState<FormSchema | null>(
     null,
@@ -142,6 +186,17 @@ export default function Review(props: ReviewProps) {
   const [newStatus, setNewStatus] = useState<Status | null>(null);
   const [reviewComment, setReviewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const reviewDraft = useLocalDraft<string>(
+    selectedApplication
+      ? `review:${chainId}:${councilId}:${selectedApplication.id}`
+      : null,
+  );
+
+  useEffect(() => {
+    setReviewComment(reviewDraft.readDraft() ?? "");
+  }, [reviewDraft]);
+
   const [isTogglingLock, setIsTogglingLock] = useState(false);
   const [applicationsClosed, setApplicationsClosed] = useState(false);
   const [isTogglingApplicationsClosed, setIsTogglingApplicationsClosed] =
@@ -159,6 +214,7 @@ export default function Review(props: ReviewProps) {
 
   const queryClient = useQueryClient();
   const topRef = useRef<HTMLDivElement>(null);
+  const fullScreenRef = useRef<HTMLDivElement>(null);
   const publicClient = usePublicClient();
   const wagmiConfig = useConfig();
   const router = useRouter();
@@ -359,7 +415,11 @@ export default function Review(props: ReviewProps) {
     let headers: string[];
     let rows: string[][];
 
-    if (!roundFormSchema) {
+    const hasDynamicForm =
+      !!roundFormSchema ||
+      fullApplications.some((app) => isDynamicApplicationDetails(app.details));
+
+    if (!hasDynamicForm) {
       headers = [
         "application_status",
         "project_name",
@@ -383,18 +443,32 @@ export default function Review(props: ReviewProps) {
         ].map(escCsv);
       });
     } else {
-      const roundQuestions = roundFormSchema.round.filter(
-        (el) => !["section", "divider", "description"].includes(el.type),
-      );
-      const attestationQuestions = roundFormSchema.attestation.filter(
-        (el) => !["section", "divider", "description"].includes(el.type),
-      );
-
       const formatVal = (val: unknown) => {
         if (Array.isArray(val)) return val.join("|");
         if (typeof val === "boolean") return val ? "Yes" : "No";
         return String(val ?? "");
       };
+
+      const appViews = fullApplications.map((app) => ({
+        app,
+        ...getApplicationAsDynamic(app.details, roundFormSchema),
+      }));
+
+      const isQuestion = (el: FormElement) => !STRUCTURAL_TYPES.has(el.type);
+      const unionQuestions = (pick: (schema: FormSchema) => FormElement[]) => {
+        const byId = new Map<string, FormElement>();
+        for (const { schema } of appViews) {
+          for (const el of pick(schema).filter(isQuestion)) {
+            if (!byId.has(el.id)) byId.set(el.id, el);
+          }
+        }
+        return [...byId.values()];
+      };
+
+      const roundQuestions = unionQuestions((schema) => schema.round);
+      const attestationQuestions = unionQuestions(
+        (schema) => schema.attestation,
+      );
 
       headers = [
         "application_status",
@@ -406,12 +480,8 @@ export default function Review(props: ReviewProps) {
         ...attestationQuestions.map((q) => q.label),
       ];
 
-      rows = fullApplications.map((app) => {
+      rows = appViews.map(({ app, roundValues, attestationValues }) => {
         const projectDetails = app.projectDetails;
-        const { roundValues, attestationValues } = getApplicationAsDynamic(
-          app.details,
-          roundFormSchema,
-        );
         return [
           STATUS_LABELS[app.status] || app.status,
           projectDetails?.name ?? "",
@@ -501,28 +571,28 @@ export default function Review(props: ReviewProps) {
   // Get available statuses based on current status
   const availableStatuses = useMemo(() => {
     if (!selectedApplication) return [];
-    const currentStatus = selectedApplication.status;
-
-    // If accepted, can be removed or graduated
-    if (currentStatus === "ACCEPTED") {
-      return ["REMOVED", "GRADUATED"] as Status[];
-    }
-
-    // If removed, can only be re-accepted
-    if (currentStatus === "REMOVED") {
-      return ["ACCEPTED"] as Status[];
-    }
-
-    // If graduated, can be re-accepted or removed
-    if (currentStatus === "GRADUATED") {
-      return ["ACCEPTED", "REMOVED"] as Status[];
-    }
-
-    // If not yet accepted, can accept, request changes, or reject
-    return (["ACCEPTED", "CHANGES_REQUESTED", "REJECTED"] as Status[]).filter(
-      (s) => s !== currentStatus,
-    );
+    return getAllowedStatusTransitions(selectedApplication.status);
   }, [selectedApplication]);
+
+  const presentStatuses = useMemo(() => {
+    const present = new Set(applications.map((a) => a.status));
+    return (Object.keys(STATUS_LABELS) as Status[]).filter((s) =>
+      present.has(s),
+    );
+  }, [applications]);
+
+  const effectiveFilter: StatusFilter =
+    statusFilter !== "ALL" && !presentStatuses.includes(statusFilter)
+      ? "ALL"
+      : statusFilter;
+
+  const filteredApplications = useMemo(
+    () =>
+      effectiveFilter === "ALL"
+        ? applications
+        : applications.filter((a) => a.status === effectiveFilter),
+    [applications, effectiveFilter],
+  );
 
   const handleSelectApplication = async (summary: ApplicationSummary) => {
     setSelectedTab("project");
@@ -558,6 +628,7 @@ export default function Review(props: ReviewProps) {
     setNewStatus(null);
     setReviewComment("");
     setError("");
+    setIsFullScreen(false);
   };
 
   // Deep link from the inbox: /flow-councils/review/[chainId]/[councilId]
@@ -578,6 +649,26 @@ export default function Review(props: ReviewProps) {
     // safe to call here; excluded from deps to avoid re-triggering.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applications, searchParams]);
+
+  useEffect(() => {
+    if (!isFullScreen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    document.body.style.overflow = "hidden";
+    fullScreenRef.current?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsFullScreen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+      previouslyFocused?.focus?.();
+    };
+  }, [isFullScreen]);
 
   const handleToggleEditsUnlocked = async (application: Application) => {
     if (!flowCouncil) return;
@@ -820,13 +911,12 @@ export default function Review(props: ReviewProps) {
       // Check if on-chain transaction is needed
       // Only need on-chain tx when actually changing on-chain state:
       // - Adding: ACCEPTED (and not already on-chain)
-      // - Removing: REMOVED/GRADUATED from ACCEPTED state
+      // - Removing: leaving ACCEPTED for any non-accepted status
       const currentStatus = selectedApplication.status;
       const isAddingOnChain =
         newStatus === "ACCEPTED" && currentStatus !== "ACCEPTED";
       const isRemovingOnChain =
-        (newStatus === "REMOVED" || newStatus === "GRADUATED") &&
-        currentStatus === "ACCEPTED";
+        currentStatus === "ACCEPTED" && newStatus !== "ACCEPTED";
 
       if (isAddingOnChain || isRemovingOnChain) {
         const recipientStatus = isAddingOnChain ? 0 : 1; // 0 = ADDED, 1 = REMOVED
@@ -870,6 +960,7 @@ export default function Review(props: ReviewProps) {
       }
 
       // Success - refresh applications and close panel
+      reviewDraft.clear();
       setSuccess(true);
       fetchApplications();
       handleCloseReview();
@@ -1022,7 +1113,40 @@ export default function Review(props: ReviewProps) {
                     <th className="bg-white text-center w-25">
                       Pool Connection
                     </th>
-                    <th className="bg-white text-center w-25">Status</th>
+                    <th className="bg-white text-center w-25">
+                      <div className="d-inline-flex align-items-center gap-1">
+                        <span>Status</span>
+                        {applications.length > 0 && (
+                          <Dropdown align="end">
+                            <Dropdown.Toggle
+                              as={StatusFilterToggle}
+                              active={effectiveFilter !== "ALL"}
+                            />
+                            <Dropdown.Menu
+                              className="border border-dark p-2 lh-lg"
+                              renderOnMount
+                              popperConfig={{ strategy: "fixed" }}
+                            >
+                              <Dropdown.Item
+                                active={effectiveFilter === "ALL"}
+                                onClick={() => setStatusFilter("ALL")}
+                              >
+                                All statuses
+                              </Dropdown.Item>
+                              {presentStatuses.map((status) => (
+                                <Dropdown.Item
+                                  key={status}
+                                  active={effectiveFilter === status}
+                                  onClick={() => setStatusFilter(status)}
+                                >
+                                  {STATUS_LABELS[status]}
+                                </Dropdown.Item>
+                              ))}
+                            </Dropdown.Menu>
+                          </Dropdown>
+                        )}
+                      </div>
+                    </th>
                     <th className="bg-white text-end w-25">
                       {applications.length > 0 && (
                         <Button
@@ -1081,7 +1205,19 @@ export default function Review(props: ReviewProps) {
                       </tr>
                     ))}
                   {!isLoadingApplications &&
-                    applications?.map(
+                    applications.length > 0 &&
+                    filteredApplications.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className="text-center align-middle text-info py-4"
+                        >
+                          No recipients with this status.
+                        </td>
+                      </tr>
+                    )}
+                  {!isLoadingApplications &&
+                    filteredApplications.map(
                       (application: ApplicationSummary, i: number) => {
                         const addressLower =
                           application.fundingAddress.toLowerCase();
@@ -1217,16 +1353,57 @@ export default function Review(props: ReviewProps) {
             )}
 
             {selectedApplication !== null && !isLoadingDetail && (
-              <Stack direction="vertical" gap={4} className="mt-4">
+              <Stack
+                ref={fullScreenRef}
+                direction="vertical"
+                gap={4}
+                tabIndex={isFullScreen ? -1 : undefined}
+                role={isFullScreen ? "dialog" : undefined}
+                aria-modal={isFullScreen ? true : undefined}
+                aria-label={
+                  isFullScreen
+                    ? `${selectedApplication.projectDetails?.name ?? "Application"} review`
+                    : undefined
+                }
+                className={
+                  isFullScreen
+                    ? "position-fixed top-0 start-0 w-100 vh-100 overflow-auto p-4 p-md-5 bg-lace-50"
+                    : "mt-4"
+                }
+                style={isFullScreen ? { zIndex: 1050 } : undefined}
+              >
                 <div className="bg-lace-100 rounded-4 p-4">
                   <Stack
                     direction="horizontal"
                     className="justify-content-between mb-4"
                   >
-                    <h4 className="fw-bold mb-0">
-                      {selectedApplication.projectDetails?.name ??
-                        "Application Review"}
-                    </h4>
+                    <Stack
+                      direction="horizontal"
+                      gap={3}
+                      className="align-items-center"
+                    >
+                      <h4 className="fw-bold mb-0">
+                        {selectedApplication.projectDetails?.name ??
+                          "Application Review"}
+                      </h4>
+                      <Button
+                        variant="link"
+                        className="d-flex align-items-center gap-1 p-0 text-decoration-none fw-semi-bold text-primary"
+                        onClick={() => setIsFullScreen((prev) => !prev)}
+                      >
+                        <Image
+                          src={
+                            isFullScreen
+                              ? "/fullscreen-exit.svg"
+                              : "/fullscreen.svg"
+                          }
+                          alt=""
+                          width={20}
+                          height={20}
+                        />
+                        {isFullScreen ? "Exit Full Screen" : "Full Screen Review"}
+                      </Button>
+                    </Stack>
                     <Stack direction="horizontal" gap={3}>
                       {["ACCEPTED", "GRADUATED", "REMOVED"].includes(
                         selectedApplication.status,
@@ -1331,7 +1508,10 @@ export default function Review(props: ReviewProps) {
                       rows={3}
                       value={reviewComment}
                       placeholder="Write a message..."
-                      onChange={(e) => setReviewComment(e.target.value)}
+                      onChange={(e) => {
+                        setReviewComment(e.target.value);
+                        reviewDraft.save(e.target.value);
+                      }}
                       resizable
                     />
                   </Form.Group>

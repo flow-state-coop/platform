@@ -16,6 +16,8 @@ import {
   MAX_DETAILS_SIZE,
 } from "../../validation";
 import { readJsonBody, PayloadTooLargeError } from "../../../utils";
+import { MINIMAL_TEMPLATE } from "@/app/flow-councils/types/formSchema";
+import { isDynamicApplicationDetails } from "@/app/flow-councils/utils/legacyFormAdapter";
 
 export const dynamic = "force-dynamic";
 
@@ -250,11 +252,19 @@ export async function PATCH(
           ? JSON.parse(roundRow.details)
           : (roundRow?.details ?? {});
 
-      if (roundDetails.formSchema?.round) {
-        const validation = validateDynamicRoundDetails(
-          details,
-          roundDetails.formSchema.round,
-        );
+      // Configured formSchema wins; otherwise dynamic-shaped submissions
+      // (carrying _formVersion) validate against the default Minimal template.
+      const roundSchema =
+        roundDetails.formSchema?.round ??
+        (isDynamicApplicationDetails(details) ? MINIMAL_TEMPLATE.round : null);
+      const attestationSchema =
+        roundDetails.formSchema?.attestation ??
+        (isDynamicApplicationDetails(details)
+          ? MINIMAL_TEMPLATE.attestation
+          : null);
+
+      if (roundSchema) {
+        const validation = validateDynamicRoundDetails(details, roundSchema);
         if (!validation.success) {
           return new Response(
             JSON.stringify({ success: false, error: validation.error }),
@@ -263,10 +273,10 @@ export async function PATCH(
         }
       }
 
-      if (roundDetails.formSchema?.attestation) {
+      if (attestationSchema) {
         const validation = validateDynamicAttestationDetails(
           details,
-          roundDetails.formSchema.attestation,
+          attestationSchema,
         );
         if (!validation.success) {
           return new Response(
