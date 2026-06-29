@@ -16,7 +16,6 @@ const OUTSTANDING_APPLICATION_STATUSES: ApplicationStatus[] = [
   "GRADUATED",
 ];
 
-// Applicant takes priority over admin when a wallet matches both.
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -46,6 +45,7 @@ export async function GET() {
         .executeTakeFirst(),
     ]);
 
+    // Applicant takes priority over admin when a wallet matches both.
     const role: NotificationGateRole = application
       ? "applicant"
       : admin

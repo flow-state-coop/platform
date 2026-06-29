@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Modal, Button, Form } from "react-bootstrap";
 import Link from "next/link";
@@ -38,6 +38,20 @@ type ProfileShape = {
 };
 
 const DISMISS_KEY_PREFIX = "consent-modal-dismissed-at-";
+
+// New wallets with no profile row default every notification on, so an opt-out
+// is always a deliberate toggle rather than inherited state.
+const DEFAULT_TOGGLES: NotificationToggles = {
+  notifyApplicationEligibility: true,
+  notifyProjectChannels: true,
+  notifyRoundAnnouncements: true,
+  notifyInternalReview: true,
+  notifyPlatform: true,
+};
+
+// Mirrors displayNameSchema in src/app/api/flow-council/validation.ts so a
+// rejected name surfaces inline instead of as a generic server error.
+const DISPLAY_NAME_PATTERN = /^[\p{L}\p{N}\s\-_]+$/u;
 
 // Copy is tailored to why the wallet is being prompted. Applicants and admins
 // get a reason tied to their round; everyone else gets the generic v2 migration
@@ -83,13 +97,7 @@ export default function ConsentGate() {
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [consentChecked, setConsentChecked] = useState(false);
-  const [toggles, setToggles] = useState<NotificationToggles>({
-    notifyApplicationEligibility: true,
-    notifyProjectChannels: true,
-    notifyRoundAnnouncements: true,
-    notifyInternalReview: true,
-    notifyPlatform: true,
-  });
+  const [toggles, setToggles] = useState<NotificationToggles>(DEFAULT_TOGGLES);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,7 +154,7 @@ export default function ConsentGate() {
             if (roleJson.success) resolvedRole = roleJson.role;
           }
         } catch {
-          // Keep resolvedRole null — generic copy is a safe default.
+          // Classification is best-effort; fall back to the generic copy.
         }
 
         // Bail if the session changed while we were fetching — avoids flashing
@@ -158,18 +166,26 @@ export default function ConsentGate() {
         // Casual visitors without a profile are left alone until they have one.
         if (!p && resolvedRole === null) return;
 
+        // Reset every field from the freshly fetched profile so nothing bleeds
+        // in from a previously prompted wallet (toggles, a typed-but-dismissed
+        // name, a ticked consent box, or a stale error banner).
         setProfile(p);
         setRole(resolvedRole);
         setEmail(p?.email ?? "");
-        if (p) {
-          setToggles({
-            notifyApplicationEligibility: p.notifyApplicationEligibility,
-            notifyProjectChannels: p.notifyProjectChannels,
-            notifyRoundAnnouncements: p.notifyRoundAnnouncements,
-            notifyInternalReview: p.notifyInternalReview,
-            notifyPlatform: p.notifyPlatform,
-          });
-        }
+        setDisplayName("");
+        setConsentChecked(false);
+        setError(null);
+        setToggles(
+          p
+            ? {
+                notifyApplicationEligibility: p.notifyApplicationEligibility,
+                notifyProjectChannels: p.notifyProjectChannels,
+                notifyRoundAnnouncements: p.notifyRoundAnnouncements,
+                notifyInternalReview: p.notifyInternalReview,
+                notifyPlatform: p.notifyPlatform,
+              }
+            : DEFAULT_TOGGLES,
+        );
         setShow(true);
       } catch {
         // Silent — nothing useful we can show before the modal is open.
@@ -188,9 +204,14 @@ export default function ConsentGate() {
   }, [runCheck]);
 
   // Re-prompt on demand, e.g. right after an application is submitted. Forced so
-  // a "Not now" earlier in the session doesn't swallow this key moment.
+  // a "Not now" earlier in the session doesn't swallow this key moment. Only a
+  // genuinely new signal fires: runCheck is recreated on every wallet switch, so
+  // without this guard a stale promptSignal would re-pop the modal for a wallet
+  // that never submitted (and bypass its own "Not now").
+  const handledPromptSignal = useRef(0);
   useEffect(() => {
-    if (promptSignal === 0) return;
+    if (promptSignal === handledPromptSignal.current) return;
+    handledPromptSignal.current = promptSignal;
     const controller = new AbortController();
     runCheck(true, controller.signal);
     return () => controller.abort();
@@ -212,6 +233,12 @@ export default function ConsentGate() {
     const trimmedName = (profile?.displayName ?? displayName).trim();
     if (!trimmedName) {
       setError("Please enter a display name.");
+      return;
+    }
+    if (!DISPLAY_NAME_PATTERN.test(trimmedName)) {
+      setError(
+        "Display name can only contain letters, numbers, spaces, hyphens, and underscores.",
+      );
       return;
     }
 
