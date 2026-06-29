@@ -187,20 +187,27 @@ export default function Review(props: ReviewProps) {
       const container = tableContainerRef.current;
       if (!container) return;
 
+      const handle = e.currentTarget;
+      handle.setPointerCapture(e.pointerId);
+
       const startY = e.clientY;
       const startHeight = container.offsetHeight;
+      const maxHeight = window.innerHeight * 0.7;
 
       const handlePointerMove = (moveEvent: PointerEvent) => {
-        setTableHeight(Math.max(160, startHeight + moveEvent.clientY - startY));
+        const nextHeight = startHeight + moveEvent.clientY - startY;
+        setTableHeight(Math.min(maxHeight, Math.max(160, nextHeight)));
       };
 
       const handlePointerUp = () => {
-        document.removeEventListener("pointermove", handlePointerMove);
-        document.removeEventListener("pointerup", handlePointerUp);
+        handle.removeEventListener("pointermove", handlePointerMove);
+        handle.removeEventListener("pointerup", handlePointerUp);
+        handle.removeEventListener("lostpointercapture", handlePointerUp);
       };
 
-      document.addEventListener("pointermove", handlePointerMove);
-      document.addEventListener("pointerup", handlePointerUp);
+      handle.addEventListener("pointermove", handlePointerMove);
+      handle.addEventListener("pointerup", handlePointerUp);
+      handle.addEventListener("lostpointercapture", handlePointerUp);
     },
     [],
   );
