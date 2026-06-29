@@ -583,6 +583,8 @@ export default function Application(props: ApplicationProps) {
       draft.clear();
       setDraftRestored(false);
       setDynamicSaving(false);
+      // ConsentGate lives in the provider tree, so it picks this signal up and
+      // shows the prefs modal on the destination page after the push below.
       promptNotificationPrefs();
       router.push(`/flow-councils/application/${chainId}/${councilId}`);
     } catch (err) {
