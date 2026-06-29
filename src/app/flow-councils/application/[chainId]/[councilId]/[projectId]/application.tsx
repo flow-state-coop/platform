@@ -34,6 +34,7 @@ import { generateDraftId } from "@/app/flow-councils/utils/draftId";
 import { networks } from "@/lib/networks";
 import { Project } from "@/types/project";
 import useRequireAuth from "@/hooks/requireAuth";
+import { useNotificationGate } from "@/context/NotificationGate";
 import { useLocalDraft } from "@/hooks/useLocalDraft";
 
 type ApplicationDraft = {
@@ -148,6 +149,7 @@ export default function Application(props: ApplicationProps) {
   const router = useRouter();
   const { address } = useAccount();
   const { hasSession, requireAuth } = useRequireAuth();
+  const { promptNotificationPrefs } = useNotificationGate();
 
   const urlId = projectId && projectId.length > 0 ? projectId : "new";
   const isExistingApplication = /^\d+$/.test(urlId);
@@ -581,6 +583,9 @@ export default function Application(props: ApplicationProps) {
       draft.clear();
       setDraftRestored(false);
       setDynamicSaving(false);
+      // ConsentGate lives in the provider tree, so it picks this signal up and
+      // shows the prefs modal on the destination page after the push below.
+      promptNotificationPrefs();
       router.push(`/flow-councils/application/${chainId}/${councilId}`);
     } catch (err) {
       console.error(err);

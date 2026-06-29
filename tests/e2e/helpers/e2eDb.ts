@@ -1,6 +1,7 @@
 import type { Kysely } from "kysely";
 import type { DB } from "@/generated/kysely";
 import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
+import { CONSENT_VERSION } from "@/lib/consent";
 import { getTestDb, resetDb } from "@tests/helpers/db";
 import { getTestAccount, TEST_CHAIN_ID } from "./mockEthereum";
 
@@ -28,6 +29,19 @@ export async function seedE2eFixture(
   db: Kysely<DB> = getTestDb(),
 ): Promise<E2eFixture> {
   const walletAddress = getTestAccount().address.toLowerCase();
+
+  // The wallet is seeded as an admin and applicant below, so without a consented
+  // profile ConsentGate would pop its blocking modal on every authenticated page
+  // and intercept clicks. Seed consent to represent a user who already onboarded.
+  await db
+    .insertInto("userProfiles")
+    .values({
+      address: walletAddress,
+      displayName: "E2E Test User",
+      consentConfirmedAt: new Date(),
+      consentVersion: CONSENT_VERSION,
+    })
+    .execute();
 
   const round = await db
     .insertInto("rounds")

@@ -24,6 +24,7 @@ import { PostHogProvider } from "posthog-js/react";
 import { DonorParamsContextProvider } from "@/context/DonorParams";
 import { FlowCouncilContextProvider } from "@/context/FlowCouncil";
 import ConsentGate from "@/components/ConsentGate";
+import { NotificationGateProvider } from "@/context/NotificationGate";
 import useSiwe from "@/hooks/siwe";
 import { networks } from "@/lib/networks";
 import { WALLET_CONNECT_PROJECT_ID, DEFAULT_CHAIN_ID } from "@/lib/constants";
@@ -274,16 +275,18 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           <SessionProvider>
             <AuthSync switchInProgressRef={switchInProgressRef} />
             <AutoSiwe switchInProgressRef={switchInProgressRef} />
-            <ConsentGate />
-            <RainbowKitWithInitialChain>
-              <PostHogProvider client={posthog}>
-                <DonorParamsContextProvider>
-                  <FlowCouncilContextProvider>
-                    {children}
-                  </FlowCouncilContextProvider>
-                </DonorParamsContextProvider>
-              </PostHogProvider>
-            </RainbowKitWithInitialChain>
+            <NotificationGateProvider>
+              <ConsentGate />
+              <RainbowKitWithInitialChain>
+                <PostHogProvider client={posthog}>
+                  <DonorParamsContextProvider>
+                    <FlowCouncilContextProvider>
+                      {children}
+                    </FlowCouncilContextProvider>
+                  </DonorParamsContextProvider>
+                </PostHogProvider>
+              </RainbowKitWithInitialChain>
+            </NotificationGateProvider>
           </SessionProvider>
         </QueryClientProvider>
       </WagmiProvider>
