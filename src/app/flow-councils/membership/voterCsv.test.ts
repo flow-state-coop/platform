@@ -70,6 +70,17 @@ describe("computeCsvSync", () => {
     expect(result.nextNew).toEqual([{ address: C.toLowerCase(), votes: "5" }]);
     expect(result.skipped).toBe(2);
   });
+
+  it("accepts well-formed addresses regardless of EIP-55 checksum casing", () => {
+    const nonChecksummed = "0x388C818CA8B9251B393131C08A736A67CCB19297";
+
+    const result = computeCsvSync([[nonChecksummed, "5"]], [], new Set(), 10);
+
+    expect(result.nextNew).toEqual([
+      { address: nonChecksummed.toLowerCase(), votes: "5" },
+    ]);
+    expect(result.skipped).toBe(0);
+  });
 });
 
 describe("buildCsvRows", () => {

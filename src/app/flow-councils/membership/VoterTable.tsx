@@ -302,7 +302,7 @@ export default function VoterTable(props: VoterTableProps) {
       const addr = row.address.trim().toLowerCase();
 
       if (
-        !isAddress(row.address.trim()) ||
+        !isAddress(row.address.trim(), { strict: false }) ||
         !isValidVotes(row.votes) ||
         existingOnchainSet.has(addr) ||
         seen.has(addr)
@@ -331,7 +331,7 @@ export default function VoterTable(props: VoterTableProps) {
         continue;
       }
 
-      if (!isAddress(address)) {
+      if (!isAddress(address, { strict: false })) {
         errors[row.id] = "Invalid address";
       } else if (existingOnchainSet.has(addr)) {
         errors[row.id] = "Already a voter";
@@ -341,7 +341,7 @@ export default function VoterTable(props: VoterTableProps) {
         errors[row.id] = "Votes must be 1–1M";
       }
 
-      if (isAddress(address)) {
+      if (isAddress(address, { strict: false })) {
         seen.add(addr);
       }
     }
@@ -654,7 +654,7 @@ export default function VoterTable(props: VoterTableProps) {
       // so a paused/failed queue never resets the council-wide spread.
       const entries = [
         ...validNewRows.map((row) => ({
-          account: row.address as Address,
+          account: row.address.toLowerCase() as Address,
           votingPower: BigInt(row.votes),
           votes: [] as [],
         })),

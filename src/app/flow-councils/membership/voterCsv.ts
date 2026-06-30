@@ -42,7 +42,7 @@ export function computeCsvSync(
       continue;
     }
 
-    if (!isAddress(address)) {
+    if (!isAddress(address, { strict: false })) {
       skipped++;
       continue;
     }
