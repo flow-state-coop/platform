@@ -5,12 +5,12 @@ import { TEST_CHAIN_ID, TEST_PRIVATE_KEY } from "./mockEthereum";
 
 // Wait for the injected wallet to auto-connect. RainbowKit's injected
 // connector picks up window.ethereum on mount, so there is no "Connect
-// Wallet" button to click; the account chip appears directly. Match on the
-// chip button itself rather than the address tail: the chip first shows the
-// truncated address, then swaps to the resolved profile name once
-// /api/flow-council/profile loads, so an address-tail match races that fetch.
-// The chip's accessible name always carries the "account" icon label while
-// connected, regardless of which label is currently shown.
+// Wallet" button to click — the account chip appears directly. The chip's
+// label starts as the truncated address and then swaps to the resolved
+// profile/ENS name once a background fetch returns, so matching either text is
+// racy. Wait for the chip button itself instead: its accessible name always
+// carries the "account" icon label once connected, regardless of which label
+// is currently shown.
 export async function waitForAutoConnect(page: Page): Promise<void> {
   await page
     .getByRole("button", { name: /account/i })
