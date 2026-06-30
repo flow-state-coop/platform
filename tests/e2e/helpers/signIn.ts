@@ -1,18 +1,19 @@
 import type { Page } from "@playwright/test";
 import { privateKeyToAccount } from "viem/accounts";
 import { createSiweMessage } from "viem/siwe";
-import { getTestAccount, TEST_CHAIN_ID, TEST_PRIVATE_KEY } from "./mockEthereum";
+import { TEST_CHAIN_ID, TEST_PRIVATE_KEY } from "./mockEthereum";
 
 // Wait for the injected wallet to auto-connect. RainbowKit's injected
 // connector picks up window.ethereum on mount, so there is no "Connect
-// Wallet" button to click — the account chip appears directly. Match on the
-// last 4 hex characters of the address, which every truncation scheme
-// (0xf3…2266, 0xf39F…2266, full) contains.
+// Wallet" button to click; the account chip appears directly. Match on the
+// chip button itself rather than the address tail: the chip first shows the
+// truncated address, then swaps to the resolved profile name once
+// /api/flow-council/profile loads, so an address-tail match races that fetch.
+// The chip's accessible name always carries the "account" icon label while
+// connected, regardless of which label is currently shown.
 export async function waitForAutoConnect(page: Page): Promise<void> {
-  const { address } = getTestAccount();
-  const tail = address.slice(-4);
   await page
-    .getByText(new RegExp(tail, "i"))
+    .getByRole("button", { name: /account/i })
     .first()
     .waitFor({ state: "visible", timeout: 15_000 });
 }
