@@ -314,7 +314,7 @@ export default function HomePage() {
                     className="flex-wrap flex-sm-nowrap"
                   >
                     <Link
-                      href="https://docs.flowstate.network/platform/streaming-qf"
+                      href="https://docs.flowstate.network/flow-qf"
                       target="_blank"
                       className={isMobile ? "w-100" : "w-50"}
                     >
