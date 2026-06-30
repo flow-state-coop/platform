@@ -26,8 +26,6 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import useCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
-import { useChunkedTxQueue } from "@/app/flow-councils/hooks/useChunkedTxQueue";
-import { useVoterGroupQueueCleanup } from "@/app/flow-councils/hooks/useVoterGroupQueueCleanup";
 import { fetchVoterGroups } from "@/app/flow-councils/lib/fetchVoterGroups";
 import { useGrantBotVoterManager } from "@/app/flow-councils/hooks/useGrantBotVoterManager";
 import {
@@ -113,7 +111,6 @@ export default function Membership(props: MembershipProps) {
   const { address, chain: connectedChain } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
-  const q = useChunkedTxQueue(wagmiConfig, publicClient, councilId);
 
   useEffect(
     () => () => {
@@ -238,16 +235,10 @@ export default function Membership(props: MembershipProps) {
     fetchGroups();
   }, [fetchGroups]);
 
-  // The overview also mounts the chunked queue (for its cross-navigation resume
-  // banner), so wire the same DB cleanup here: resuming or discarding from this
-  // banner must finalize/roll back just like the group-detail page does.
   const refresh = useCallback(async () => {
     await refetch();
     await fetchGroups();
   }, [refetch, fetchGroups]);
-
-  const { discard, cleanupError, clearCleanupError } =
-    useVoterGroupQueueCleanup(q, refresh);
 
   // The query pages 1000 voters per request (`first: 1000` above). Fetch the
   // next page only while the loaded count is a full multiple of that page size:
@@ -556,11 +547,6 @@ export default function Membership(props: MembershipProps) {
     );
   }
 
-  const showResumeBanner =
-    q.totalCount > 0 &&
-    q.completedCount < q.totalCount &&
-    q.councilId === councilId;
-
   // Granting the bot role is a DEFAULT_ADMIN-only onchain call, so a non-admin
   // manager can't complete a GoodDollar create that still needs the grant.
   const goodDollarNeedsGrant =
@@ -579,46 +565,6 @@ export default function Membership(props: MembershipProps) {
         direction="vertical"
         className={!isMobile ? "w-75 px-5" : "w-100 px-4"}
       >
-        {showResumeBanner ? (
-          <Alert
-            variant="warning"
-            className="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 mb-0"
-          >
-            <span className="fw-semi-bold">
-              You have an in-progress operation for this council (
-              {q.completedCount} of {q.totalCount} transactions submitted).
-            </span>
-            <Stack direction="horizontal" gap={2}>
-              <Button
-                size="sm"
-                className="fw-semi-bold"
-                onClick={() => q.resume()}
-                disabled={q.isPending}
-              >
-                {q.isPending ? <Spinner size="sm" /> : "Resume"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline-secondary"
-                className="fw-semi-bold"
-                onClick={() => discard()}
-                disabled={q.isPending}
-              >
-                Discard
-              </Button>
-            </Stack>
-          </Alert>
-        ) : null}
-        {cleanupError ? (
-          <Alert
-            variant="danger"
-            dismissible
-            onClose={() => clearCleanupError()}
-            className="fw-semi-bold mt-3 mb-0"
-          >
-            {cleanupError}
-          </Alert>
-        ) : null}
         <Card className="bg-lace-100 rounded-4 border-0 p-4">
           <Card.Header className="bg-transparent border-0 rounded-4 p-0">
             <Card.Title className="fs-5 fw-semi-bold">
