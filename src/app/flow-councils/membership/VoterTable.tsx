@@ -33,7 +33,14 @@ import {
 } from "@/app/flow-councils/lib/voterUtils";
 import MoveVoterModal from "./MoveVoterModal";
 import SaveConfirmModal from "./SaveConfirmModal";
-import { computeCsvSync, buildCsvRows } from "./voterCsv";
+import {
+  computeCsvSync,
+  buildCsvRows,
+  validateCsvShape,
+  collectEnsNames,
+  applyEnsResolutions,
+} from "./voterCsv";
+import { resolveEnsNames } from "@/lib/ens";
 import type {
   ChunkedQueue,
   GroupOption,
@@ -145,6 +152,7 @@ export default function VoterTable(props: VoterTableProps) {
   const [bulkMode, setBulkMode] = useState<"set" | "increment">("set");
 
   const [importNote, setImportNote] = useState("");
+  const [importError, setImportError] = useState("");
 
   // Save lifecycle (see SubmitPhase), surfaced entirely inside the confirm modal
   // so the flow matches the rest of the platform (spinner → checkmark → close).
@@ -515,9 +523,35 @@ export default function VoterTable(props: VoterTableProps) {
   // assign row ids and surface the import summary.
   const handleCsvImport = (file: File) => {
     Papa.parse(file, {
-      complete: (results: { data: string[][] }) => {
+      skipEmptyLines: true,
+      complete: async (results: { data: string[][] }) => {
+        // Resolve any ENS names in the address column to addresses first, so the
+        // template validation and sync see them as ordinary addresses.
+        const ensNames = collectEnsNames(results.data);
+
+        if (ensNames.length > 0) {
+          setImportError("");
+          setImportNote("Resolving ENS names…");
+        }
+
+        const resolved =
+          ensNames.length > 0 ? await resolveEnsNames(ensNames) : {};
+        const rows = applyEnsResolutions(results.data, resolved);
+
+        // Reject files that aren't in template shape (e.g. a roster with the
+        // address in the wrong column) so the import never silently no-ops.
+        const shapeError = validateCsvShape(rows);
+
+        if (shapeError) {
+          setImportNote("");
+          setImportError(shapeError);
+          return;
+        }
+
+        setImportError("");
+
         const { nextEdited, nextRemoved, nextNew, skipped } = computeCsvSync(
-          results.data,
+          rows,
           voters,
           existingOnchainSet,
           defaultVotingPower,
@@ -528,9 +562,13 @@ export default function VoterTable(props: VoterTableProps) {
         setNewRows(nextNew.map((row) => ({ id: ++newRowId.current, ...row })));
 
         const changed = Object.keys(nextEdited).length;
+        const resolvedCount = Object.keys(resolved).length;
         setImportNote(
           `Imported: ${nextNew.length} to add, ${changed} changed, ` +
             `${nextRemoved.size} to remove` +
+            (resolvedCount > 0
+              ? ` (${resolvedCount} ENS name(s) resolved)`
+              : "") +
             (skipped > 0 ? ` (${skipped} row(s) skipped)` : ""),
         );
       },
@@ -767,6 +805,7 @@ export default function VoterTable(props: VoterTableProps) {
     setEditedPower({});
     setRemoved(new Set());
     setImportNote("");
+    setImportError("");
     setSaveError("");
   };
 
@@ -929,6 +968,24 @@ export default function VoterTable(props: VoterTableProps) {
           className="mb-0"
         >
           {importNote}
+        </Alert>
+      ) : null}
+      {importError ? (
+        <Alert
+          variant="danger"
+          dismissible
+          onClose={() => setImportError("")}
+          className="mb-0"
+        >
+          {importError}{" "}
+          <a
+            href="https://docs.google.com/spreadsheets/d/1BKo20lc4ZdRWKjvxQuTcOldQo_qL7Y5tXOvhFMJlwug/edit?gid=0#gid=0"
+            target="_blank"
+            rel="noreferrer"
+            className="fw-semi-bold"
+          >
+            Open the template
+          </a>
         </Alert>
       ) : null}
       {moveSuccess ? (
