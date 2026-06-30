@@ -478,7 +478,31 @@ export default function Review(props: ReviewProps) {
       });
     } else {
       const formatVal = (val: unknown) => {
-        if (Array.isArray(val)) return val.join("|");
+        if (Array.isArray(val)) {
+          if (val.length > 0 && typeof val[0] === "object" && val[0] !== null) {
+            return (
+              val as Array<{
+                title?: string;
+                description?: string;
+                items?: string[];
+              }>
+            )
+              .map((m, i) => {
+                const items = Array.isArray(m.items)
+                  ? m.items.filter((x) => typeof x === "string" && x.trim())
+                  : [];
+                return [
+                  `Milestone ${i + 1}: ${m.title ?? ""}`.trim(),
+                  m.description ?? "",
+                  items.map((x) => `- ${x}`).join("\n"),
+                ]
+                  .filter(Boolean)
+                  .join("\n");
+              })
+              .join("\n\n");
+          }
+          return val.join("|");
+        }
         if (typeof val === "boolean") return val ? "Yes" : "No";
         return String(val ?? "");
       };

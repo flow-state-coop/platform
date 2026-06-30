@@ -14,30 +14,6 @@ import {
   type FormSchema,
 } from "@/app/flow-councils/types/formSchema";
 
-type MilestoneLike = { title?: string; description?: string };
-
-function formatMilestones<T extends MilestoneLike>(
-  milestones: T[],
-  getItems: (m: T) => string[],
-  itemsLabel: string,
-): string {
-  return milestones
-    .map((m, i) => {
-      const items = getItems(m)
-        .filter((x) => x.trim())
-        .map((x) => `- ${x}`)
-        .join("\n");
-      return [
-        `**Milestone ${i + 1}: ${m.title || "(Untitled)"}**`,
-        m.description || "",
-        items ? `${itemsLabel}:\n${items}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n");
-    })
-    .join("\n\n");
-}
-
 function formatTeammates(teammates: TeamMember[]): string {
   return teammates
     .map((t, i) => {
@@ -92,22 +68,22 @@ export function adaptLegacyRoundData(
     "gb-r-q13": build?.primaryBuildGoal || undefined,
     "gb-r-q14":
       (build?.milestones?.length ?? 0) > 0
-        ? formatMilestones(
-            build!.milestones,
-            (m) => m.deliverables,
-            "Deliverables",
-          )
+        ? build!.milestones.map((m) => ({
+            title: m.title ?? "",
+            description: m.description ?? "",
+            items: (m.deliverables ?? []).filter((d) => d.trim()),
+          }))
         : undefined,
     "gb-r-q15": build?.ecosystemImpact || undefined,
     "gb-r-q16": growth?.primaryGrowthGoal || undefined,
     "gb-r-q17": growth?.targetUsers || undefined,
     "gb-r-q18":
       (growth?.milestones?.length ?? 0) > 0
-        ? formatMilestones(
-            growth!.milestones,
-            (m) => m.activations,
-            "Activations",
-          )
+        ? growth!.milestones.map((m) => ({
+            title: m.title ?? "",
+            description: m.description ?? "",
+            items: (m.activations ?? []).filter((a) => a.trim()),
+          }))
         : undefined,
     "gb-r-q19": growth?.ecosystemImpact || undefined,
     "gb-r-q20": contact?.name || undefined,

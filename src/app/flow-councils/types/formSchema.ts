@@ -272,11 +272,12 @@ export const GOODBUILDERS_TEMPLATE: FormSchema = {
     },
     {
       id: "gb-r-q14",
-      type: "textarea",
+      type: "milestone",
       label: "Build Milestones",
       required: true,
-      placeholder:
-        "List your build milestones with titles, descriptions, and deliverables.",
+      milestoneLabel: "Build Milestone",
+      itemLabel: "Deliverable",
+      minCount: 1,
     },
     {
       id: "gb-r-q15",
@@ -302,11 +303,12 @@ export const GOODBUILDERS_TEMPLATE: FormSchema = {
     },
     {
       id: "gb-r-q18",
-      type: "textarea",
+      type: "milestone",
       label: "Growth Milestones",
       required: true,
-      placeholder:
-        "List your growth milestones with titles, descriptions, and activations.",
+      milestoneLabel: "Growth Milestone",
+      itemLabel: "Activation",
+      minCount: 1,
     },
     {
       id: "gb-r-q19",
