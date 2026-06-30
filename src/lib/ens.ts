@@ -2,9 +2,16 @@ import { Address, createPublicClient, http } from "viem";
 import { mainnet } from "viem/chains";
 import { normalize } from "viem/ens";
 
-const ensClient = createPublicClient({
+// Shared mainnet client for ENS lookups. Batching coalesces the per-name
+// getEnsAddress/getEnsName calls into few RPC requests when resolving a list.
+export const mainnetClient = createPublicClient({
   chain: mainnet,
-  transport: http("https://ethereum-rpc.publicnode.com"),
+  transport: http("https://ethereum-rpc.publicnode.com", {
+    batch: {
+      batchSize: 100,
+      wait: 10,
+    },
+  }),
 });
 
 /**
@@ -21,7 +28,7 @@ export async function resolveEnsNames(
   await Promise.all(
     unique.map(async (name) => {
       try {
-        const address = await ensClient.getEnsAddress({
+        const address = await mainnetClient.getEnsAddress({
           name: normalize(name),
         });
 

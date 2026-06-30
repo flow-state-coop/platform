@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { Address, createPublicClient, http } from "viem";
-import { mainnet } from "viem/chains";
+import { Address } from "viem";
 import { normalize } from "viem/ens";
 import { IPFS_GATEWAYS } from "@/lib/constants";
+import { mainnetClient as publicClient } from "@/lib/ens";
 
 export type EnsData = {
   name: string | null;
@@ -12,16 +12,6 @@ export type EnsData = {
 export type EnsByAddress = {
   [address: string]: EnsData;
 };
-
-const publicClient = createPublicClient({
-  chain: mainnet,
-  transport: http("https://ethereum-rpc.publicnode.com", {
-    batch: {
-      batchSize: 100,
-      wait: 10,
-    },
-  }),
-});
 
 export function useEnsResolution(addresses: string[]): {
   ensByAddress: EnsByAddress | null;

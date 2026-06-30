@@ -525,52 +525,60 @@ export default function VoterTable(props: VoterTableProps) {
     Papa.parse(file, {
       skipEmptyLines: true,
       complete: async (results: { data: string[][] }) => {
-        // Resolve any ENS names in the address column to addresses first, so the
-        // template validation and sync see them as ordinary addresses.
-        const ensNames = collectEnsNames(results.data);
+        try {
+          // Resolve any ENS names in the address column to addresses first, so
+          // the template validation and sync see them as ordinary addresses.
+          const ensNames = collectEnsNames(results.data);
 
-        if (ensNames.length > 0) {
+          if (ensNames.length > 0) {
+            setImportError("");
+            setImportNote("Resolving ENS names…");
+          }
+
+          const resolved =
+            ensNames.length > 0 ? await resolveEnsNames(ensNames) : {};
+          const rows = applyEnsResolutions(results.data, resolved);
+
+          // Reject files that aren't in template shape (e.g. a roster with the
+          // address in the wrong column) so the import never silently no-ops.
+          const shapeError = validateCsvShape(rows);
+
+          if (shapeError) {
+            setImportNote("");
+            setImportError(shapeError);
+            return;
+          }
+
           setImportError("");
-          setImportNote("Resolving ENS names…");
-        }
 
-        const resolved =
-          ensNames.length > 0 ? await resolveEnsNames(ensNames) : {};
-        const rows = applyEnsResolutions(results.data, resolved);
+          const { nextEdited, nextRemoved, nextNew, skipped } = computeCsvSync(
+            rows,
+            voters,
+            existingOnchainSet,
+            defaultVotingPower,
+          );
 
-        // Reject files that aren't in template shape (e.g. a roster with the
-        // address in the wrong column) so the import never silently no-ops.
-        const shapeError = validateCsvShape(rows);
+          setEditedPower(nextEdited);
+          setRemoved(nextRemoved);
+          setNewRows(
+            nextNew.map((row) => ({ id: ++newRowId.current, ...row })),
+          );
 
-        if (shapeError) {
+          const changed = Object.keys(nextEdited).length;
+          const resolvedCount = Object.keys(resolved).length;
+          setImportNote(
+            `Imported: ${nextNew.length} to add, ${changed} changed, ` +
+              `${nextRemoved.size} to remove` +
+              (resolvedCount > 0
+                ? ` (${resolvedCount} ENS name(s) resolved)`
+                : "") +
+              (skipped > 0 ? ` (${skipped} row(s) skipped)` : ""),
+          );
+        } catch (err) {
+          console.error(err);
           setImportNote("");
-          setImportError(shapeError);
-          return;
+          setImportError("Failed to resolve ENS names. Please try again.");
         }
-
-        setImportError("");
-
-        const { nextEdited, nextRemoved, nextNew, skipped } = computeCsvSync(
-          rows,
-          voters,
-          existingOnchainSet,
-          defaultVotingPower,
-        );
-
-        setEditedPower(nextEdited);
-        setRemoved(nextRemoved);
-        setNewRows(nextNew.map((row) => ({ id: ++newRowId.current, ...row })));
-
-        const changed = Object.keys(nextEdited).length;
-        const resolvedCount = Object.keys(resolved).length;
-        setImportNote(
-          `Imported: ${nextNew.length} to add, ${changed} changed, ` +
-            `${nextRemoved.size} to remove` +
-            (resolvedCount > 0
-              ? ` (${resolvedCount} ENS name(s) resolved)`
-              : "") +
-            (skipped > 0 ? ` (${skipped} row(s) skipped)` : ""),
-        );
       },
     });
   };
