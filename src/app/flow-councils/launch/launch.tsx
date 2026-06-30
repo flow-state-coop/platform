@@ -592,8 +592,10 @@ export default function Launch(props: LaunchProps) {
                     >
                       {truncateStr(distributionPool, 16)}
                     </Card.Link>
-                  ) : (
+                  ) : flowCouncilQueryLoading ? (
                     <Spinner size="sm" />
+                  ) : (
+                    <span className="text-info">Not available</span>
                   )}
                 </Stack>
                 {splitterAddress && splitterExplorerHref && (
