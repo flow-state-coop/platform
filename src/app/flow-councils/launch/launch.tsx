@@ -18,7 +18,8 @@ import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
 import Image from "react-bootstrap/Image";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
-import { waitForReceipt } from "@/lib/utils";
+import useCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
+import { truncateStr, waitForReceipt } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useSiwe from "@/hooks/siwe";
@@ -55,6 +56,7 @@ const FLOW_COUNCIL_QUERY = gql`
     flowCouncil(id: $councilId) {
       id
       superToken
+      distributionPool
     }
   }
 `;
@@ -150,6 +152,23 @@ export default function Launch(props: LaunchProps) {
   });
 
   const flowCouncil = flowCouncilQueryRes?.flowCouncil;
+
+  const councilMetadata = useCouncilMetadata(
+    selectedNetwork.id,
+    councilId ?? "",
+  );
+  const distributionPool = flowCouncil?.distributionPool as Address | undefined;
+  const splitterAddress = councilMetadata.superappSplitterAddress;
+  const superfluidExplorerBase = selectedNetwork.superfluidExplorer.replace(
+    /\/$/,
+    "",
+  );
+  const distributionPoolExplorerHref = distributionPool
+    ? `${superfluidExplorerBase}/pools/${distributionPool}`
+    : null;
+  const splitterExplorerHref = splitterAddress
+    ? `${superfluidExplorerBase}/accounts/${splitterAddress}`
+    : null;
 
   const launchNetworks = useMemo(
     () => networks.filter(isFlowCouncilNetwork),
@@ -548,6 +567,55 @@ export default function Launch(props: LaunchProps) {
             </Stack>
           </Card.Body>
         </Card>
+        {councilId && (
+          <Card className="bg-lace-100 rounded-4 border-0 p-4 mt-4">
+            <Card.Header className="bg-transparent border-0 rounded-4 p-0 fs-5 fw-semi-bold">
+              Contract Addresses
+            </Card.Header>
+            <Card.Body className="p-0">
+              <Card.Text className="text-info">
+                View your Flow Council&apos;s contracts on the Superfluid
+                Explorer.
+              </Card.Text>
+              <Stack direction="vertical" gap={3}>
+                <Stack
+                  direction={isMobile ? "vertical" : "horizontal"}
+                  className={isMobile ? "" : "justify-content-between"}
+                >
+                  <span className="fw-semi-bold">Flow Council GDA</span>
+                  {distributionPoolExplorerHref && distributionPool ? (
+                    <Card.Link
+                      href={distributionPoolExplorerHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary text-decoration-underline fw-semi-bold"
+                    >
+                      {truncateStr(distributionPool, 16)}
+                    </Card.Link>
+                  ) : (
+                    <Spinner size="sm" />
+                  )}
+                </Stack>
+                {splitterAddress && splitterExplorerHref && (
+                  <Stack
+                    direction={isMobile ? "vertical" : "horizontal"}
+                    className={isMobile ? "" : "justify-content-between"}
+                  >
+                    <span className="fw-semi-bold">Super App Splitter</span>
+                    <Card.Link
+                      href={splitterExplorerHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary text-decoration-underline fw-semi-bold"
+                    >
+                      {truncateStr(splitterAddress, 16)}
+                    </Card.Link>
+                  </Stack>
+                )}
+              </Stack>
+            </Card.Body>
+          </Card>
+        )}
         <Stack direction="vertical" gap={3} className="mt-4 mb-30">
           <Button
             disabled={
