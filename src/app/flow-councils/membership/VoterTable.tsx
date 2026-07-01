@@ -1060,8 +1060,8 @@ export default function VoterTable(props: VoterTableProps) {
                   </td>
                   <td>
                     <span className="fw-semi-bold text-break">
-                      {name ??
-                        ensByAddress?.[account]?.name ??
+                      {name ||
+                        ensByAddress?.[account]?.name ||
                         truncateAddress(account)}
                     </span>
                   </td>
