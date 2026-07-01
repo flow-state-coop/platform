@@ -65,14 +65,18 @@ export async function signInViaSiweApi(page: Page): Promise<void> {
 }
 
 // Convenience wrapper for the common case: navigate, wait for auto-connect,
-// bootstrap SIWE, then reload so the client sees the session cookie.
+// bootstrap SIWE, then reload so the client sees the session cookie. Navigation
+// waits for `domcontentloaded` rather than the default `load`: some pages embed
+// external token/network icons whose requests stall (never erroring) in CI, so
+// waiting for the full `load` event hangs even though the DOM is ready. The
+// explicit element waits below cover readiness.
 export async function enterAuthenticated(
   page: Page,
   path: string,
 ): Promise<void> {
-  await page.goto(path);
+  await page.goto(path, { waitUntil: "domcontentloaded" });
   await waitForAutoConnect(page);
   await signInViaSiweApi(page);
-  await page.goto(path);
+  await page.goto(path, { waitUntil: "domcontentloaded" });
   await waitForAutoConnect(page);
 }
