@@ -1,6 +1,6 @@
 # Flow State Platform
 
-The open-source app behind [flowstate.network](https://flowstate.network) — continuous funding apps, payment tools, and incentive systems powered by [Superfluid](https://superfluid.finance): Flow Councils, Flow Splitters, Streaming Quadratic Funding, and more.
+The open-source app behind [flowstate.network](https://flowstate.network) — continuous funding apps, payment tools, and incentive systems powered by [Superfluid](https://superfluid.finance): Flow Councils, Flow Splitters, Flow QF, and more.
 
 ## Documentation
 
