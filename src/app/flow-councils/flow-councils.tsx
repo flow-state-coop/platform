@@ -317,7 +317,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
               onClick={(e) => {
                 e.stopPropagation();
                 router.push(
-                  `/flow-councils/permissions/${selectedNetwork.id}/${flowCouncil.id}`,
+                  `/flow-councils/round-metadata/${selectedNetwork.id}/${flowCouncil.id}`,
                 );
               }}
             >
