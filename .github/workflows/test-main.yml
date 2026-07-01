@@ -16,6 +16,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Run inside the official Playwright image so the browsers are baked in. The
+    # standalone `playwright install` download deterministically hangs on the
+    # current runner image (stalls after reaching 100% of the browser zip), so
+    # the download itself is the failure; the container skips it entirely.
+    container:
+      image: mcr.microsoft.com/playwright:v1.59.1-noble
     steps:
       - uses: actions/checkout@v4
 
@@ -46,9 +52,6 @@ jobs:
           TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           TEST_PRIVATE_KEY: ${{ secrets.TEST_PRIVATE_KEY }}
-
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
 
       # If VERCEL_PREVIEW_URL is configured as a repository secret, E2E runs
       # against the Vercel preview (matches the spec). Otherwise fall back to
