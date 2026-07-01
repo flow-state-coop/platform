@@ -1,7 +1,7 @@
 ---
 slug: /account
 description: Your Flow State profile, inbox, and notification settings
-sidebar_position: 5
+sidebar_position: 6
 ---
 
 # Account

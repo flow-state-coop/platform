@@ -29,7 +29,7 @@ export const flowGuildConfigs: {
     github: "https://github.com/flow-state-coop",
     twitter: "https://x.com/flowstatecoop",
     farcaster: "https://farcaster.xyz/flowstatecoop",
-    telegram: "https://t.me/flowstatecoop",
+    telegram: "https://t.me/+U6ZFRmOnFWo1ZGUx",
     discord: "",
     defaultChainId: 8453,
     defaultToken: "ETHx",

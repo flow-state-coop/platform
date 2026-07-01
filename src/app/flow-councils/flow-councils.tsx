@@ -383,7 +383,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
             </Card.Link>{" "}
             or{" "}
             <Card.Link
-              href="https://t.me/flowstatecoop"
+              href="https://t.me/+U6ZFRmOnFWo1ZGUx"
               target="blank"
               className="text-primary"
             >

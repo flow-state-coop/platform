@@ -1,7 +1,7 @@
 ---
 slug: /flow-guilds
 description: Community guild funding pages
-sidebar_position: 7
+sidebar_position: 4
 ---
 
 # Flow Guilds
@@ -26,5 +26,5 @@ Two ways to contribute, both from the guild page:
 If you're a recipient in the guild's [Flow Splitter](flow-splitters/index.md) but haven't connected your shares, the page prompts you to connect so your [Super Token balance](https://app.superfluid.finance/) reflects in real time.
 
 :::info[Guilds are curated]
-Flow Guild pages are set up in coordination with Flow State. If you'd like a guild page for your community, [reach out on Telegram](https://t.me/flowstatecoop).
+Flow Guild pages are set up in coordination with Flow State. If you'd like a guild page for your community, [reach out on Telegram](https://t.me/+U6ZFRmOnFWo1ZGUx).
 :::

@@ -114,7 +114,7 @@ export default function Header() {
                   >
                     <Button
                       variant="link"
-                      href="https://t.me/flowstatecoop"
+                      href="https://t.me/+U6ZFRmOnFWo1ZGUx"
                       target="_blank"
                       className="p-0"
                     >
@@ -272,7 +272,7 @@ export default function Header() {
           >
             <Button
               variant="link"
-              href="https://t.me/flowstatecoop"
+              href="https://t.me/+U6ZFRmOnFWo1ZGUx"
               target="_blank"
               className="p-0"
             >

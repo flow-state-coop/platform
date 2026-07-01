@@ -13,4 +13,4 @@ Flow State is a streaming money platform built on [Superfluid](https://docs.supe
 Start here:
 
 - **[Why Streaming?](002-why-streaming.md)** — the case for continuous, real-time money streams over batch payments, and how Flow State's tools put them to work.
-- **[Glossary](003-glossary.md)** — definitions for the terms you'll see throughout the docs, from `flow rate` to Streaming Quadratic Funding.
+- **[Glossary](003-glossary.md)** — definitions for the terms you'll see throughout the docs, from `flow rate` to Flow QF.
