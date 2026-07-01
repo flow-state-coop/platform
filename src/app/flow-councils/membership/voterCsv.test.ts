@@ -76,6 +76,9 @@ describe("computeCsvSync", () => {
 
     expect(result.nextNew).toEqual([{ address: C.toLowerCase(), votes: "5" }]);
     expect(result.skipped).toBe(2);
+    // Only the malformed address counts as a formatting issue; the already-onchain
+    // row is a benign skip.
+    expect(result.invalidRows).toBe(1);
   });
 
   it("accepts well-formed addresses regardless of EIP-55 checksum casing", () => {
@@ -87,6 +90,17 @@ describe("computeCsvSync", () => {
       { address: nonChecksummed.toLowerCase(), votes: "5" },
     ]);
     expect(result.skipped).toBe(0);
+  });
+
+  it("skips a mixed-case address whose checksum fails (a likely typo)", () => {
+    // 0xC02aaA…Cc2 (WETH) is a valid checksum; the trailing 2 -> 3 breaks it.
+    const typo = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc3";
+
+    const result = computeCsvSync([[typo, "5"]], [], new Set(), 10);
+
+    expect(result.nextNew).toEqual([]);
+    expect(result.skipped).toBe(1);
+    expect(result.invalidRows).toBe(1);
   });
 });
 

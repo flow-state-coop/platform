@@ -3,7 +3,10 @@
 // VoterTable owns the Papa.parse / Blob plumbing around these.
 
 import { isAddress } from "viem";
-import { isValidVotes } from "@/app/flow-councils/lib/voterUtils";
+import {
+  isValidVotes,
+  isVoterAddress,
+} from "@/app/flow-councils/lib/voterUtils";
 import type { NewRow, SubgraphVoter } from "./voterTableTypes";
 
 export type CsvSyncResult = {
@@ -18,6 +21,9 @@ export type CsvSyncResult = {
   // Rows ignored: invalid addresses, plus file addresses already onchain in
   // another group.
   skipped: number;
+  // Subset of `skipped` dropped for a malformed address (a formatting issue the
+  // admin should fix), as opposed to a benign already-onchain-elsewhere skip.
+  invalidRows: number;
 };
 
 // An ENS-style name in the address column: no spaces, no "@" (so a stray email
@@ -121,6 +127,7 @@ export function computeCsvSync(
 ): CsvSyncResult {
   const desired = new Map<string, string>();
   let skipped = 0;
+  let invalidRows = 0;
 
   for (const row of rows) {
     const address = (row[0] ?? "").trim();
@@ -129,8 +136,9 @@ export function computeCsvSync(
       continue;
     }
 
-    if (!isAddress(address, { strict: false })) {
+    if (!isVoterAddress(address)) {
       skipped++;
+      invalidRows++;
       continue;
     }
 
@@ -173,7 +181,7 @@ export function computeCsvSync(
     });
   }
 
-  return { nextEdited, nextRemoved, nextNew, skipped };
+  return { nextEdited, nextRemoved, nextNew, skipped, invalidRows };
 }
 
 /**

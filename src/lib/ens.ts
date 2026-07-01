@@ -14,32 +14,50 @@ export const mainnetClient = createPublicClient({
   }),
 });
 
+export type EnsResolutionResult = {
+  // name(lowercased) -> address, only for names that resolved to an address.
+  resolved: Record<string, Address>;
+  // Names whose lookup threw (RPC/timeout/resolver error), as opposed to cleanly
+  // returning "no address". Kept distinct from unregistered names so callers can
+  // offer a retry instead of silently dropping a name that would have resolved.
+  failed: string[];
+};
+
 /**
- * Resolve ENS names to addresses. Returns a map keyed by the lowercased input
- * name; names that fail to resolve (malformed, unregistered, no address record)
- * are omitted so callers can treat them as unresolved.
+ * Resolve ENS names to addresses. `resolved` is keyed by the lowercased input
+ * name; a name that is malformed or has no address record is simply omitted,
+ * while a name whose lookup errored (a transient network failure) is reported in
+ * `failed` so the caller can distinguish "doesn't exist" from "couldn't check".
  */
 export async function resolveEnsNames(
   names: string[],
-): Promise<Record<string, Address>> {
+): Promise<EnsResolutionResult> {
   const unique = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
   const resolved: Record<string, Address> = {};
+  const failed: string[] = [];
 
   await Promise.all(
     unique.map(async (name) => {
+      let normalized: string;
+
       try {
-        const address = await mainnetClient.getEnsAddress({
-          name: normalize(name),
-        });
+        normalized = normalize(name);
+      } catch {
+        // Malformed name: permanently unresolvable, not a transient failure.
+        return;
+      }
+
+      try {
+        const address = await mainnetClient.getEnsAddress({ name: normalized });
 
         if (address) {
           resolved[name.toLowerCase()] = address;
         }
       } catch {
-        // Unresolvable / malformed name — left out; the caller skips it.
+        failed.push(name);
       }
     }),
   );
 
-  return resolved;
+  return { resolved, failed };
 }

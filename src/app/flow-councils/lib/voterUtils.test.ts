@@ -7,6 +7,7 @@ import {
   passesPctFilter,
   shareOfVotes,
   totalPages,
+  isVoterAddress,
 } from "./voterUtils";
 
 // Spec: "Voter table … Votes cast (raw and as a fraction of allocation)"
@@ -257,5 +258,37 @@ describe("totalPages", () => {
 
   it("returns correct count for an exact multiple", () => {
     expect(totalPages(100, 50)).toBe(2);
+  });
+});
+
+describe("isVoterAddress", () => {
+  // WETH, a correct EIP-55 checksum.
+  const checksummed = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+
+  it("accepts a correctly checksummed address", () => {
+    expect(isVoterAddress(checksummed)).toBe(true);
+  });
+
+  it("accepts an all-lowercase (non-checksummed) address", () => {
+    expect(isVoterAddress(checksummed.toLowerCase())).toBe(true);
+  });
+
+  it("accepts an all-uppercase (non-checksummed) address", () => {
+    expect(isVoterAddress("0x" + checksummed.slice(2).toUpperCase())).toBe(
+      true,
+    );
+  });
+
+  it("rejects a mixed-case address whose checksum fails (a likely typo)", () => {
+    // Same as checksummed but the trailing nibble is changed 2 -> 3.
+    expect(isVoterAddress("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc3")).toBe(
+      false,
+    );
+  });
+
+  it("rejects non-address input", () => {
+    expect(isVoterAddress("vitalik.eth")).toBe(false);
+    expect(isVoterAddress("0x123")).toBe(false);
+    expect(isVoterAddress("")).toBe(false);
   });
 });
