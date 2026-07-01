@@ -19,6 +19,7 @@ import Alert from "react-bootstrap/Alert";
 import Pagination from "react-bootstrap/Pagination";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { truncateAddress } from "@/lib/utils";
+import { useEnsResolution } from "@/hooks/useEnsResolution";
 import {
   CHUNK_SIZE,
   splitIntoChunks,
@@ -284,6 +285,23 @@ export default function VoterTable(props: VoterTableProps) {
 
     return filteredVoters.slice(start, start + PAGE_SIZE);
   }, [filteredVoters, page]);
+
+  // Resolve ENS only for the addresses actually on screen: the roster can run to
+  // thousands of voters, so resolving the whole list would fan out that many
+  // mainnet reverse lookups. The visible page (≤ PAGE_SIZE) is all we render.
+  const pageAddressKey = useMemo(
+    () =>
+      [...new Set(pageVoters.map((voter) => voter.account.toLowerCase()))]
+        .sort()
+        .join(","),
+    [pageVoters],
+  );
+  const pageAddresses = useMemo(
+    () => (pageAddressKey === "" ? [] : pageAddressKey.split(",")),
+    [pageAddressKey],
+  );
+
+  const { ensByAddress } = useEnsResolution(pageAddresses);
 
   const otherGroups = useMemo(
     () => allGroups.filter((g) => g.id !== groupId),
@@ -1042,7 +1060,9 @@ export default function VoterTable(props: VoterTableProps) {
                   </td>
                   <td>
                     <span className="fw-semi-bold text-break">
-                      {name ? name : truncateAddress(account)}
+                      {name ??
+                        ensByAddress?.[account]?.name ??
+                        truncateAddress(account)}
                     </span>
                   </td>
                   <td className="text-end" style={{ maxWidth: 120 }}>

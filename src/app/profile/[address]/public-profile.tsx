@@ -5,6 +5,7 @@ import Container from "react-bootstrap/Container";
 import Spinner from "react-bootstrap/Spinner";
 import Stack from "react-bootstrap/Stack";
 import Link from "next/link";
+import { useEnsResolution } from "@/hooks/useEnsResolution";
 
 type PublicProfileData = {
   address: string;
@@ -39,6 +40,8 @@ export default function PublicProfile({ address }: { address: string }) {
   const [profile, setProfile] = useState<PublicProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const { ensByAddress } = useEnsResolution([address]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -68,7 +71,9 @@ export default function PublicProfile({ address }: { address: string }) {
   return (
     <Container className="py-5" style={{ maxWidth: 600 }}>
       <h2 className="mb-4">
-        {profile?.displayName || truncateAddress(address)}
+        {profile?.displayName ||
+          ensByAddress?.[address.toLowerCase()]?.name ||
+          truncateAddress(address)}
       </h2>
 
       <div className="mb-4">
