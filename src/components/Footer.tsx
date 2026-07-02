@@ -65,7 +65,7 @@ export default function Footer() {
               Flow Council
             </Link>
             <Link
-              href="https://docs.flowstate.network/platform/streaming-qf/"
+              href="https://docs.flowstate.network/flow-qf"
               className="text-decoration-none text-white fs-5 fw-bold"
             >
               Flow QF
@@ -108,7 +108,7 @@ export default function Footer() {
               X
             </Link>
             <Link
-              href="https://t.me/flowstatecoop"
+              href="https://t.me/+U6ZFRmOnFWo1ZGUx"
               target="_blank"
               className="text-decoration-none text-white fs-6 fw-bold"
             >

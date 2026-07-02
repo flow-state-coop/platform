@@ -20,7 +20,7 @@ Settlement is passive and gasless–-meaning payouts don’t need to be periodic
 
 Flow Splitters make this powerful onchain primitive accessible through a no-code interface and tooling to encourage more dynamic, creative, and effective pool management.
 
-Streams are the ultimate form of programmable money. We want more teams, guilds, DAOs, and communities to be able to tap into their power. [Give us a shout if you have feedback or ideas](https://t.me/flowstatecoop).
+Streams are the ultimate form of programmable money. We want more teams, guilds, DAOs, and communities to be able to tap into their power. [Give us a shout if you have feedback or ideas](https://t.me/+U6ZFRmOnFWo1ZGUx).
 
 :::info[What is streaming money?]
 Check out the [Superfluid Docs](https://docs.superfluid.finance/docs/concepts/superfluid) to learn more about [streaming money](https://docs.superfluid.finance/docs/concepts/overview/money-streaming), [Super Tokens](https://docs.superfluid.finance/docs/concepts/overview/super-tokens), [distribution pools](https://docs.superfluid.finance/docs/concepts/overview/distributions), and other protocol foundations. 

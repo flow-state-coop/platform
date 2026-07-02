@@ -317,7 +317,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
               onClick={(e) => {
                 e.stopPropagation();
                 router.push(
-                  `/flow-councils/permissions/${selectedNetwork.id}/${flowCouncil.id}`,
+                  `/flow-councils/round-metadata/${selectedNetwork.id}/${flowCouncil.id}`,
                 );
               }}
             >
@@ -383,7 +383,7 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
             </Card.Link>{" "}
             or{" "}
             <Card.Link
-              href="https://t.me/flowstatecoop"
+              href="https://t.me/+U6ZFRmOnFWo1ZGUx"
               target="blank"
               className="text-primary"
             >

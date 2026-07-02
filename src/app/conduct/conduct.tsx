@@ -34,9 +34,9 @@ export default function Conduct() {
       <ol className="lh-sm">
         <li>
           Recycled Funding: Only “first-touch” funding is eligible for matching
-          in Streaming Quadratic Funding and other funding rounds. Using
-          multiple accounts, intermediaries, hops, swaps, or other obfustication
-          methods doesn’t change the nature of this violation.
+          in Flow QF and other funding rounds. Using multiple accounts,
+          intermediaries, hops, swaps, or other obfustication methods doesn’t
+          change the nature of this violation.
         </li>
         <li>
           Sybil Accounts & Matching Calculation Manipulation: Don’t create,

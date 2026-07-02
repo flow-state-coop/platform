@@ -22,6 +22,7 @@ type ExploreProps = {
   chonesGuildInflow: Inflow;
   goodDollarPool: GDAPool;
   goodBuildersS3Inflow: Inflow;
+  goodBuildersS4Pool: GDAPool;
   flowCasterArbFlowInfo: PoolPairFlowInfo;
   flowCasterFlowInfo: PoolPairFlowInfo;
   markee: MarkeeInfo | null;
@@ -42,6 +43,7 @@ export default function Explore(props: ExploreProps) {
     chonesGuildInflow,
     goodDollarPool,
     goodBuildersS3Inflow,
+    goodBuildersS4Pool,
     flowCasterArbFlowInfo,
     flowCasterFlowInfo,
     markee,
@@ -88,15 +90,18 @@ export default function Explore(props: ExploreProps) {
           }}
         >
           <RoundCard
-            name="Arbitrum Mini Apps"
-            image="/arb.png"
-            roundType="Flow Caster"
-            totalStreamedUntilUpdatedAt={flowCasterArbFlowInfo.totalDistributed.toString()}
-            flowRate={flowCasterArbFlowInfo.flowRate.toString()}
-            updatedAt={flowCasterArbFlowInfo.updatedAt}
-            activeStreamCount={flowCasterArbFlowInfo.donors}
-            tokenSymbol="USDN"
-            link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
+            name="GoodBuilders S4"
+            image="/good-dollar.png"
+            roundType="Flow Council"
+            totalStreamedUntilUpdatedAt={BigInt(
+              goodBuildersS4Pool?.totalAmountFlowedDistributedUntilUpdatedAt ??
+                0,
+            ).toString()}
+            flowRate={BigInt(goodBuildersS4Pool?.flowRate ?? 0).toString()}
+            updatedAt={goodBuildersS4Pool?.updatedAtTimestamp}
+            activeStreamCount={goodBuildersS4Pool?.poolDistributors.length}
+            tokenSymbol="G$"
+            link="/goodbuilders-4"
           />
           <RoundCard
             name="Core Contributors"
@@ -110,17 +115,6 @@ export default function Explore(props: ExploreProps) {
             activeStreamCount={coreInflow?.activeIncomingStreamCount}
             tokenSymbol="ETHx"
             link="/flow-guilds/core"
-          />
-          <RoundCard
-            name="Cracked Devs"
-            image="/logo-blue.svg"
-            roundType="Flow Caster"
-            totalStreamedUntilUpdatedAt={flowCasterFlowInfo.totalDistributed.toString()}
-            flowRate={flowCasterFlowInfo.flowRate.toString()}
-            updatedAt={flowCasterFlowInfo.updatedAt}
-            activeStreamCount={flowCasterFlowInfo.donors}
-            tokenSymbol="USDCx"
-            link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
           />
           <RoundCard
             name="Guild Guild"
@@ -154,6 +148,28 @@ export default function Explore(props: ExploreProps) {
           }}
         >
           <RoundCard
+            name="Arbitrum Mini Apps"
+            image="/arb.png"
+            roundType="Flow Caster"
+            totalStreamedUntilUpdatedAt={flowCasterArbFlowInfo.totalDistributed.toString()}
+            flowRate={flowCasterArbFlowInfo.flowRate.toString()}
+            updatedAt={flowCasterArbFlowInfo.updatedAt}
+            activeStreamCount={flowCasterArbFlowInfo.donors}
+            tokenSymbol="USDN"
+            link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
+          />
+          <RoundCard
+            name="Cracked Devs"
+            image="/logo-blue.svg"
+            roundType="Flow Caster"
+            totalStreamedUntilUpdatedAt={flowCasterFlowInfo.totalDistributed.toString()}
+            flowRate={flowCasterFlowInfo.flowRate.toString()}
+            updatedAt={flowCasterFlowInfo.updatedAt}
+            activeStreamCount={flowCasterFlowInfo.donors}
+            tokenSymbol="USDCx"
+            link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
+          />
+          <RoundCard
             name="GoodBuilders S3"
             image="/good-dollar.png"
             roundType="Flow Council"
@@ -171,7 +187,7 @@ export default function Explore(props: ExploreProps) {
           <RoundCard
             name="Octant Builder Accelerator"
             image="/octant-circle.svg"
-            roundType="Streaming Quadratic Funding"
+            roundType="Flow QF"
             totalStreamedUntilUpdatedAt={OCTANT_SNAPSHOT.totalStreamed}
             flowRate={OCTANT_SNAPSHOT.flowRate}
             updatedAt={0}

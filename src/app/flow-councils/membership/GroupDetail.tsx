@@ -660,11 +660,6 @@ export default function GroupDetail(props: GroupDetailProps) {
         ? "Group must be empty to be deleted."
         : null;
 
-  const showResumeBanner =
-    q.totalCount > 0 &&
-    q.completedCount < q.totalCount &&
-    q.councilId === councilId;
-
   if (!groupsLoading && !group) {
     return (
       <>
@@ -696,37 +691,6 @@ export default function GroupDetail(props: GroupDetailProps) {
         direction="vertical"
         className={!isMobile ? "w-75 px-5" : "w-100 px-4"}
       >
-        {showResumeBanner ? (
-          <Alert
-            variant="warning"
-            className="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 mb-0"
-          >
-            <span className="fw-semi-bold">
-              You have an in-progress operation for this council (
-              {q.completedCount} of {q.totalCount} transactions submitted).
-            </span>
-            <Stack direction="horizontal" gap={2}>
-              <Button
-                size="sm"
-                className="fw-semi-bold"
-                onClick={() => q.resume()}
-                disabled={q.isPending}
-              >
-                {q.isPending ? <Spinner size="sm" /> : "Resume"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline-secondary"
-                className="fw-semi-bold"
-                onClick={() => discard()}
-                disabled={q.isPending}
-              >
-                Discard
-              </Button>
-            </Stack>
-          </Alert>
-        ) : null}
-
         {groupsLoading || !group ? (
           <Stack
             direction="horizontal"

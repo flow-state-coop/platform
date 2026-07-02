@@ -253,7 +253,7 @@ export default function Launch(props: LaunchProps) {
               </Card.Link>{" "}
               or{" "}
               <Card.Link
-                href="https://t.me/flowstatecoop"
+                href="https://t.me/+U6ZFRmOnFWo1ZGUx"
                 target="_blank"
                 className="m-0 text-primary"
               >
