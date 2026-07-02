@@ -25,9 +25,24 @@ const publicClient = createPublicClient({
 
 // Session-wide caches so re-resolving the same addresses (e.g. paging a table
 // back and forth) never refetches. Failed lookups are left uncached so a
-// transient RPC error is retried on the next resolution.
+// transient RPC error is retried on the next resolution. Capped with
+// oldest-first eviction so a session that walks a huge roster can't grow
+// them without bound.
+const MAX_CACHE_ENTRIES = 10_000;
 const nameCache = new Map<string, string | null>();
 const avatarCache = new Map<string, string | null>();
+
+function cacheSet(
+  cache: Map<string, string | null>,
+  key: string,
+  value: string | null,
+) {
+  if (cache.size >= MAX_CACHE_ENTRIES) {
+    cache.delete(cache.keys().next().value!);
+  }
+
+  cache.set(key, value);
+}
 
 export function useEnsResolution(
   addresses: string[],
@@ -80,7 +95,7 @@ export function useEnsResolution(
 
       for (const { address, name, ok } of nameResults) {
         if (ok) {
-          nameCache.set(address, name);
+          cacheSet(nameCache, address, name);
         }
       }
 
@@ -110,7 +125,7 @@ export function useEnsResolution(
 
         for (const { address, avatar, ok } of avatarResults) {
           if (ok) {
-            avatarCache.set(address, avatar);
+            cacheSet(avatarCache, address, avatar);
           }
         }
       }
