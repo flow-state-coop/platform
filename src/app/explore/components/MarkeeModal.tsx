@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import CloseButton from "react-bootstrap/CloseButton";
@@ -52,6 +52,7 @@ type MarkeeModalProps = {
   onBoostAmountChange: (value: string) => void;
   selectedMarkee: Address | null;
   onSelectMarkee: (address: Address) => void;
+  flagged: Set<string>;
   onConnectWallet: () => void;
   onClose: () => void;
   onTxSuccess: () => void;
@@ -183,12 +184,11 @@ export default function MarkeeModal(props: MarkeeModalProps) {
     onBoostAmountChange,
     selectedMarkee,
     onSelectMarkee,
+    flagged,
     onConnectWallet,
     onClose,
     onTxSuccess,
   } = props;
-
-  const [flagged, setFlagged] = useState<Set<string>>(new Set());
 
   const { address, isConnected, chainId } = useAccount();
   const isOnBase = isConnected && chainId === base.id;
@@ -314,21 +314,6 @@ export default function MarkeeModal(props: MarkeeModalProps) {
       onTxSuccess();
     }
   }, [isSuccess, onTxSuccess]);
-
-  useEffect(() => {
-    fetch("/api/markee/moderation")
-      .then((res) => res.json())
-      .then((data) =>
-        setFlagged(
-          new Set(
-            ((data.flagged ?? []) as string[]).map((entry) =>
-              entry.toLowerCase(),
-            ),
-          ),
-        ),
-      )
-      .catch(() => {});
-  }, []);
 
   const buyAmountWei = parseEthInput(ethAmount);
   const boostAmountWei = parseEthInput(boostAmount);

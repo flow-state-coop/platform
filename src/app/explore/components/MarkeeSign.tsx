@@ -16,6 +16,9 @@ import {
   parseFlowStateLeaderboard,
 } from "../lib/markee";
 
+// Give the Markee API time to index the confirmed transaction before refetching
+const REFRESH_DELAY_MS = 3000;
+
 export default function MarkeeSign() {
   const [leaderboard, setLeaderboard] = useState<MarkeeLeaderboard | null>(
     null,
@@ -140,7 +143,7 @@ export default function MarkeeSign() {
       setEthAmount("");
       setBoostAmount("");
       setSelectedMarkee(null);
-      setTimeout(fetchLeaderboard, 3000);
+      setTimeout(fetchLeaderboard, REFRESH_DELAY_MS);
     }
   };
 
@@ -252,6 +255,7 @@ export default function MarkeeSign() {
             onBoostAmountChange={setBoostAmount}
             selectedMarkee={selectedMarkee}
             onSelectMarkee={setSelectedMarkee}
+            flagged={flagged}
             onConnectWallet={handleConnectWallet}
             onClose={handleRequestClose}
             onTxSuccess={handleTxSuccess}
