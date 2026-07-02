@@ -104,17 +104,6 @@ export default function Explore(props: ExploreProps) {
             link="/goodbuilders-4"
           />
           <RoundCard
-            name="Arbitrum Mini Apps"
-            image="/arb.png"
-            roundType="Flow Caster"
-            totalStreamedUntilUpdatedAt={flowCasterArbFlowInfo.totalDistributed.toString()}
-            flowRate={flowCasterArbFlowInfo.flowRate.toString()}
-            updatedAt={flowCasterArbFlowInfo.updatedAt}
-            activeStreamCount={flowCasterArbFlowInfo.donors}
-            tokenSymbol="USDN"
-            link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
-          />
-          <RoundCard
             name="Core Contributors"
             image="/logo-blue.svg"
             roundType="Flow Guild"
@@ -126,17 +115,6 @@ export default function Explore(props: ExploreProps) {
             activeStreamCount={coreInflow?.activeIncomingStreamCount}
             tokenSymbol="ETHx"
             link="/flow-guilds/core"
-          />
-          <RoundCard
-            name="Cracked Devs"
-            image="/logo-blue.svg"
-            roundType="Flow Caster"
-            totalStreamedUntilUpdatedAt={flowCasterFlowInfo.totalDistributed.toString()}
-            flowRate={flowCasterFlowInfo.flowRate.toString()}
-            updatedAt={flowCasterFlowInfo.updatedAt}
-            activeStreamCount={flowCasterFlowInfo.donors}
-            tokenSymbol="USDCx"
-            link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
           />
           <RoundCard
             name="Guild Guild"
@@ -169,6 +147,28 @@ export default function Explore(props: ExploreProps) {
                   : "",
           }}
         >
+          <RoundCard
+            name="Arbitrum Mini Apps"
+            image="/arb.png"
+            roundType="Flow Caster"
+            totalStreamedUntilUpdatedAt={flowCasterArbFlowInfo.totalDistributed.toString()}
+            flowRate={flowCasterArbFlowInfo.flowRate.toString()}
+            updatedAt={flowCasterArbFlowInfo.updatedAt}
+            activeStreamCount={flowCasterArbFlowInfo.donors}
+            tokenSymbol="USDN"
+            link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
+          />
+          <RoundCard
+            name="Cracked Devs"
+            image="/logo-blue.svg"
+            roundType="Flow Caster"
+            totalStreamedUntilUpdatedAt={flowCasterFlowInfo.totalDistributed.toString()}
+            flowRate={flowCasterFlowInfo.flowRate.toString()}
+            updatedAt={flowCasterFlowInfo.updatedAt}
+            activeStreamCount={flowCasterFlowInfo.donors}
+            tokenSymbol="USDCx"
+            link="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
+          />
           <RoundCard
             name="GoodBuilders S3"
             image="/good-dollar.png"
