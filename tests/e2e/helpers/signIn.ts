@@ -16,10 +16,11 @@ export async function waitForAutoConnect(page: Page): Promise<void> {
 
   try {
     await accountChip.waitFor({ state: "visible", timeout: 15_000 });
-  } catch {
+  } catch (err) {
     // On loaded CI runners wagmi's injected auto-reconnect occasionally never
     // fires (observed 2026-06-30 and 2026-07-02 on main). The provider is
     // injected via addInitScript, so a reload gives it a second chance.
+    console.warn("waitForAutoConnect: first attempt failed, reloading", err);
     await page.reload({ waitUntil: "domcontentloaded" });
     await accountChip.waitFor({ state: "visible", timeout: 15_000 });
   }

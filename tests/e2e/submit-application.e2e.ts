@@ -23,9 +23,10 @@ test("authenticated manager reaches the application project-selection page", asy
 
   try {
     await expect(project).toBeVisible({ timeout: 15_000 });
-  } catch {
+  } catch (err) {
     // The page fetches projects once with no retry, so a single transient
     // API failure leaves the list empty forever. Reload before failing.
+    console.warn("project list empty on first attempt, reloading", err);
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(project).toBeVisible({ timeout: 15_000 });
   }
