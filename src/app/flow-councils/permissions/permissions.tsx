@@ -277,7 +277,9 @@ export default function Permissions(props: PermissionsProps) {
     [managerAddressKey],
   );
 
-  const { ensByAddress } = useEnsResolution(managerAddresses);
+  const { ensByAddress } = useEnsResolution(managerAddresses, {
+    avatars: false,
+  });
 
   useEffect(() => {
     if (managerAddresses.length === 0) {

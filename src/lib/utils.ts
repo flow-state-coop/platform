@@ -28,6 +28,16 @@ export function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
+// The one place that defines the display-name fallback order:
+// profile name, then ENS name, then the truncated address.
+export function resolveDisplayName(
+  profileName: string | null | undefined,
+  ensName: string | null | undefined,
+  address: string,
+): string {
+  return profileName || ensName || truncateAddress(address);
+}
+
 export function extractGithubUsername(url: string) {
   if (!url) {
     return null;
