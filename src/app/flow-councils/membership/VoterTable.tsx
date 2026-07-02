@@ -8,7 +8,7 @@ import {
   useRef,
   forwardRef,
 } from "react";
-import { Address, isAddress } from "viem";
+import { Address } from "viem";
 import Papa from "papaparse";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
@@ -32,10 +32,18 @@ import {
   passesPctFilter,
   totalPages,
   isValidVotes,
+  isVoterAddress,
 } from "@/app/flow-councils/lib/voterUtils";
 import MoveVoterModal from "./MoveVoterModal";
 import SaveConfirmModal from "./SaveConfirmModal";
-import { computeCsvSync, buildCsvRows } from "./voterCsv";
+import {
+  computeCsvSync,
+  buildCsvRows,
+  validateCsvShape,
+  collectEnsNames,
+  applyEnsResolutions,
+} from "./voterCsv";
+import { resolveEnsNames } from "@/lib/ens";
 import type {
   ChunkedQueue,
   GroupOption,
@@ -57,6 +65,9 @@ type VoterTableProps = {
   maxVotingSpread: number;
   onRefresh: () => Promise<void> | void;
 };
+
+const VOTER_TEMPLATE_URL =
+  "https://docs.google.com/spreadsheets/d/1BKo20lc4ZdRWKjvxQuTcOldQo_qL7Y5tXOvhFMJlwug/edit?gid=0#gid=0";
 
 const PAGE_SIZE = 50;
 // Display-name lookups go out as a GET with the addresses in the query string.
@@ -112,6 +123,14 @@ function parseAddressSearch(raw: string): {
   return { list: new Set(), needle: raw.trim().toLowerCase() };
 }
 
+// A short, human-readable sample of ENS names for an import alert, so a large
+// unresolved list doesn't spill the whole file into the message.
+function sampleNames(names: string[]): string {
+  const shown = names.slice(0, 3).join(", ");
+
+  return names.length > 3 ? `${shown}, …` : shown;
+}
+
 export default function VoterTable(props: VoterTableProps) {
   const {
     chainId,
@@ -147,11 +166,18 @@ export default function VoterTable(props: VoterTableProps) {
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   const [newRows, setNewRows] = useState<NewRow[]>([]);
   const newRowId = useRef(0);
+  // Bumped on every CSV upload; a resolution callback that awaited ENS while a
+  // newer upload started sees a stale id and drops its result (no clobber).
+  const importSeq = useRef(0);
 
   const [bulkValue, setBulkValue] = useState("");
   const [bulkMode, setBulkMode] = useState<"set" | "increment">("set");
 
   const [importNote, setImportNote] = useState("");
+  // The import note turns red when rows were dropped for a malformed address, so
+  // a partial import that needs the file fixed reads as a warning, not a success.
+  const [importNoteIsError, setImportNoteIsError] = useState(false);
+  const [importError, setImportError] = useState("");
 
   // Save lifecycle (see SubmitPhase), surfaced entirely inside the confirm modal
   // so the flow matches the rest of the platform (spinner → checkmark → close).
@@ -321,7 +347,7 @@ export default function VoterTable(props: VoterTableProps) {
       const addr = row.address.trim().toLowerCase();
 
       if (
-        !isAddress(row.address.trim(), { strict: false }) ||
+        !isVoterAddress(row.address.trim()) ||
         !isValidVotes(row.votes) ||
         existingOnchainSet.has(addr) ||
         seen.has(addr)
@@ -350,7 +376,7 @@ export default function VoterTable(props: VoterTableProps) {
         continue;
       }
 
-      if (!isAddress(address, { strict: false })) {
+      if (!isVoterAddress(address)) {
         errors[row.id] = "Invalid address";
       } else if (existingOnchainSet.has(addr)) {
         errors[row.id] = "Already a voter";
@@ -360,7 +386,7 @@ export default function VoterTable(props: VoterTableProps) {
         errors[row.id] = "Votes must be 1–1M";
       }
 
-      if (isAddress(address, { strict: false })) {
+      if (isVoterAddress(address)) {
         seen.add(addr);
       }
     }
@@ -533,25 +559,115 @@ export default function VoterTable(props: VoterTableProps) {
   // The roster-sync math lives in voterCsv (pure + unit tested); here we only
   // assign row ids and surface the import summary.
   const handleCsvImport = (file: File) => {
+    const seq = ++importSeq.current;
+
     Papa.parse(file, {
-      complete: (results: { data: string[][] }) => {
-        const { nextEdited, nextRemoved, nextNew, skipped } = computeCsvSync(
-          results.data,
-          voters,
-          existingOnchainSet,
-          defaultVotingPower,
-        );
+      skipEmptyLines: true,
+      complete: async (results: { data: string[][] }) => {
+        try {
+          // Resolve any ENS names in the address column to addresses first, so
+          // the template validation and sync see them as ordinary addresses.
+          const ensNames = collectEnsNames(results.data);
 
-        setEditedPower(nextEdited);
-        setRemoved(nextRemoved);
-        setNewRows(nextNew.map((row) => ({ id: ++newRowId.current, ...row })));
+          if (ensNames.length > 0) {
+            setImportError("");
+            setImportNoteIsError(false);
+            setImportNote("Resolving ENS names…");
+          }
 
-        const changed = Object.keys(nextEdited).length;
-        setImportNote(
-          `Imported: ${nextNew.length} to add, ${changed} changed, ` +
-            `${nextRemoved.size} to remove` +
-            (skipped > 0 ? ` (${skipped} row(s) skipped)` : ""),
-        );
+          const { resolved, failed } =
+            ensNames.length > 0
+              ? await resolveEnsNames(ensNames)
+              : { resolved: {} as Record<string, Address>, failed: [] };
+
+          // A newer upload started while we were resolving ENS: drop this stale
+          // result so the two async callbacks can't clobber each other's state.
+          if (seq !== importSeq.current) {
+            return;
+          }
+
+          // Names that errored (network/RPC) are recoverable — prompt a retry
+          // instead of dropping them as if they were unregistered.
+          if (failed.length > 0) {
+            setImportError("");
+            setImportNoteIsError(true);
+            setImportNote(
+              `Couldn't reach ENS to resolve ${failed.length} name(s) ` +
+                `(${sampleNames(failed)}). Please try again.`,
+            );
+            return;
+          }
+
+          const rows = applyEnsResolutions(results.data, resolved);
+          const unresolved = ensNames.filter(
+            (name) => !resolved[name.toLowerCase()],
+          );
+
+          // Reject files that aren't in template shape (e.g. a roster with the
+          // address in the wrong column) so the import never silently no-ops.
+          const shapeError = validateCsvShape(rows);
+
+          if (shapeError) {
+            setImportNote("");
+
+            // A template-shaped file that only lacks an address column because
+            // its ENS names didn't resolve is an ENS problem, not a layout one —
+            // point at the names rather than the template.
+            if (unresolved.length > 0) {
+              setImportError("");
+              setImportNoteIsError(true);
+              setImportNote(
+                `Couldn't resolve ${unresolved.length} ENS name(s) ` +
+                  `(${sampleNames(unresolved)}). Check they're registered ` +
+                  `with an address set.`,
+              );
+            } else {
+              setImportError(shapeError);
+            }
+
+            return;
+          }
+
+          setImportError("");
+
+          const { nextEdited, nextRemoved, nextNew, skipped, invalidRows } =
+            computeCsvSync(
+              rows,
+              voters,
+              existingOnchainSet,
+              defaultVotingPower,
+            );
+
+          setEditedPower(nextEdited);
+          setRemoved(nextRemoved);
+          setNewRows(
+            nextNew.map((row) => ({ id: ++newRowId.current, ...row })),
+          );
+
+          const changed = Object.keys(nextEdited).length;
+          const resolvedCount = Object.keys(resolved).length;
+          setImportNoteIsError(invalidRows > 0);
+          setImportNote(
+            `Imported: ${nextNew.length} to add, ${changed} changed, ` +
+              `${nextRemoved.size} to remove` +
+              (resolvedCount > 0
+                ? ` (${resolvedCount} ENS name(s) resolved)`
+                : "") +
+              (unresolved.length > 0
+                ? ` (${unresolved.length} ENS name(s) not resolved)`
+                : "") +
+              (skipped > 0 ? ` (${skipped} row(s) skipped)` : ""),
+          );
+        } catch (err) {
+          console.error(err);
+
+          if (seq !== importSeq.current) {
+            return;
+          }
+
+          setImportNote("");
+          setImportError("Failed to import this file. Please try again.");
+        }
       },
     });
   };
@@ -786,6 +902,7 @@ export default function VoterTable(props: VoterTableProps) {
     setEditedPower({});
     setRemoved(new Set());
     setImportNote("");
+    setImportError("");
     setSaveError("");
   };
 
@@ -942,12 +1059,30 @@ export default function VoterTable(props: VoterTableProps) {
 
       {importNote ? (
         <Alert
-          variant="info"
+          variant={importNoteIsError ? "danger" : "info"}
           dismissible
           onClose={() => setImportNote("")}
           className="mb-0"
         >
           {importNote}
+        </Alert>
+      ) : null}
+      {importError ? (
+        <Alert
+          variant="danger"
+          dismissible
+          onClose={() => setImportError("")}
+          className="mb-0"
+        >
+          {importError}{" "}
+          <a
+            href={VOTER_TEMPLATE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="fw-semi-bold"
+          >
+            Open the template
+          </a>
         </Alert>
       ) : null}
       {moveSuccess ? (
@@ -1200,7 +1335,7 @@ export default function VoterTable(props: VoterTableProps) {
             />
           </Stack>
           <a
-            href="https://docs.google.com/spreadsheets/d/1BKo20lc4ZdRWKjvxQuTcOldQo_qL7Y5tXOvhFMJlwug/edit?gid=0#gid=0"
+            href={VOTER_TEMPLATE_URL}
             target="_blank"
             rel="noreferrer"
             className="align-self-end pe-1 text-primary text-decoration-underline fw-semi-bold"

@@ -3,6 +3,29 @@
 // tested in isolation (see voterUtils.test.ts) and reused across the overview
 // table, group detail page, voter table, and bulk-action toolbar.
 
+import { isAddress } from "viem";
+
+/**
+ * Accept a wallet address the voter flows can safely lowercase and store: it
+ * must be a structurally valid hex address, and when it carries EIP-55 checksum
+ * casing (mixed case) that checksum must be correct. All-lowercase or
+ * all-uppercase input has no checksum to verify, so it's accepted as an
+ * intentionally non-checksummed address; a mixed-case string that fails the
+ * checksum is almost always a mistyped character and is rejected rather than
+ * silently mapped to the wrong address.
+ */
+export function isVoterAddress(value: string): boolean {
+  if (!isAddress(value, { strict: false })) {
+    return false;
+  }
+
+  const body = value.slice(2);
+  const isChecksummed =
+    body !== body.toLowerCase() && body !== body.toUpperCase();
+
+  return isChecksummed ? isAddress(value, { strict: true }) : true;
+}
+
 /**
  * Sum the votes a voter has already cast on their ballot.
  * The subgraph returns amounts as decimal strings; returns 0 when the voter has
