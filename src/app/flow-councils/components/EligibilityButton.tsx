@@ -60,8 +60,13 @@ export default function EligibilityButton({
 
       if (data.success) {
         setStatus("confirmed");
-      } else {
+      } else if (data.notWhitelisted) {
+        // "failed" routes into face verification, so it is reserved for a
+        // definitive not-whitelisted answer. Transient errors (RPC hiccups on
+        // the bot's addVoter call) reset to idle for a plain re-check.
         setStatus("failed");
+      } else {
+        setStatus("idle");
       }
     } catch {
       setStatus("idle");

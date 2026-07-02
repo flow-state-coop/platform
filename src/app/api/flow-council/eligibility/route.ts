@@ -76,8 +76,15 @@ export async function POST(request: Request) {
       args: [address as Address],
     });
 
+    // notWhitelisted marks the one failure that should send the user into
+    // face verification; every other success:false is an error the client
+    // should treat as retryable instead.
     if (!isWhitelisted) {
-      return Response.json({ success: false, error: "Not whitelisted" });
+      return Response.json({
+        success: false,
+        notWhitelisted: true,
+        error: "Not whitelisted",
+      });
     }
 
     // Record group membership. The UNIQUE(round_id, address) constraint means
