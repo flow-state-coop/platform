@@ -1,9 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
-import {
-  buildMockEthereumScript,
-  TEST_PRIVATE_KEY,
-} from "./mockEthereum";
+import { buildMockEthereumScript, TEST_PRIVATE_KEY } from "./mockEthereum";
 import { attachSiweSignBridge } from "./siweHelper";
 import type { E2eFixture } from "./e2eDb";
 import { FIXTURE_FILE } from "../setup/fixtureFile";

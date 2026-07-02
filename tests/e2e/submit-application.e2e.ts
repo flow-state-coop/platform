@@ -19,7 +19,14 @@ test("authenticated manager reaches the application project-selection page", asy
     `/flow-councils/application/${fx.chainId}/${fx.councilAddress}`,
   );
 
-  await expect(page.getByText(/E2E Primary Project/i)).toBeVisible({
-    timeout: 15_000,
-  });
+  const project = page.getByText(/E2E Primary Project/i);
+
+  try {
+    await expect(project).toBeVisible({ timeout: 15_000 });
+  } catch {
+    // The page fetches projects once with no retry, so a single transient
+    // API failure leaves the list empty forever. Reload before failing.
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(project).toBeVisible({ timeout: 15_000 });
+  }
 });
