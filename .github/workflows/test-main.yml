@@ -15,7 +15,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -47,8 +47,32 @@ jobs:
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           TEST_PRIVATE_KEY: ${{ secrets.TEST_PRIVATE_KEY }}
 
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
+  # Only the e2e job needs the browsers, so the Playwright container lives here
+  # rather than on `test` (which runs typecheck/lint/unit and would otherwise
+  # pull the ~2GB image for nothing). The container ships the browsers baked in,
+  # sidestepping the `playwright install` download that deterministically hangs
+  # on the current runner image. Waits for `test` so it never resets the shared
+  # test DB while the integration step is still using it.
+  e2e:
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 25
+    container:
+      image: mcr.microsoft.com/playwright:v1.59.1-noble
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       # If VERCEL_PREVIEW_URL is configured as a repository secret, E2E runs
       # against the Vercel preview (matches the spec). Otherwise fall back to

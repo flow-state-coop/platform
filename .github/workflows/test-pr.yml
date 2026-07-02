@@ -54,7 +54,13 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     needs: test
-    timeout-minutes: 30
+    timeout-minutes: 25
+    # Run inside the official Playwright image so the browsers are baked in. The
+    # standalone `playwright install` download deterministically hangs on the
+    # current runner image (stalls after reaching 100% of the browser zip), so
+    # the download itself is the failure; the container skips it entirely.
+    container:
+      image: mcr.microsoft.com/playwright:v1.59.1-noble
     steps:
       - uses: actions/checkout@v4
 
@@ -69,9 +75,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
 
       # Reuse the Next.js build cache across runs so `pnpm build` is incremental
       # instead of compiling every module from scratch. A miss just rebuilds in
