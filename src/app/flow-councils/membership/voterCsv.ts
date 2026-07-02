@@ -26,8 +26,10 @@ export type CsvSyncResult = {
   invalidRows: number;
 };
 
-// An ENS-style name in the address column: no spaces, no "@" (so a stray email
-// is left alone), a trailing dotted TLD, and not already a hex address.
+// A .eth ENS name in the address column: no spaces, no "@" (so a stray email
+// is left alone), and not already a hex address. Restricted to .eth so dotted
+// tokens from a wrong-shaped file (j.smith, coinbase.com) fail the shape check
+// instead of being reported as unresolvable ENS names.
 export function isEnsName(cell: string): boolean {
   const value = cell.trim();
 
@@ -39,7 +41,7 @@ export function isEnsName(cell: string): boolean {
     return false;
   }
 
-  return /^[^\s@]+\.[a-z]{2,}$/i.test(value);
+  return /^[^\s@]+\.eth$/i.test(value);
 }
 
 /**
@@ -100,7 +102,7 @@ export function validateCsvShape(rows: string[][]): string | null {
   }
 
   const hasAddressColumn = nonBlank.some((row) =>
-    isAddress((row[0] ?? "").trim(), { strict: false }),
+    isVoterAddress((row[0] ?? "").trim()),
   );
 
   if (!hasAddressColumn) {

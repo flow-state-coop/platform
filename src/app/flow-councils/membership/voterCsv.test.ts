@@ -141,6 +141,12 @@ describe("validateCsvShape", () => {
     expect(validateCsvShape([["", ""], [""]])).toMatch(/empty/i);
   });
 
+  it("rejects a file whose only address has a bad checksum", () => {
+    const badChecksum = "0xE247a45c287191d435A8a5D72A7C8dc030F1dB18";
+
+    expect(validateCsvShape([[badChecksum, "10"]])).toMatch(/first column/i);
+  });
+
   it("accepts a file once its ENS names are resolved to addresses", () => {
     const rows = applyEnsResolutions([["tnrdd.eth", "10"]], { "tnrdd.eth": A });
 
@@ -156,6 +162,13 @@ describe("ENS helpers", () => {
     expect(isEnsName("solene@example.com")).toBe(false);
     expect(isEnsName("Pedro Talent")).toBe(false);
     expect(isEnsName("")).toBe(false);
+  });
+
+  it("ignores dotted names outside .eth so they fail the shape check instead", () => {
+    expect(isEnsName("j.smith")).toBe(false);
+    expect(isEnsName("coinbase.com")).toBe(false);
+    expect(isEnsName("flowstate.network")).toBe(false);
+    expect(isEnsName("sub.tnrdd.eth")).toBe(true);
   });
 
   it("collects ENS names only from the address column", () => {

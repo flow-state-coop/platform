@@ -64,6 +64,9 @@ type VoterTableProps = {
   onRefresh: () => Promise<void> | void;
 };
 
+const VOTER_TEMPLATE_URL =
+  "https://docs.google.com/spreadsheets/d/1BKo20lc4ZdRWKjvxQuTcOldQo_qL7Y5tXOvhFMJlwug/edit?gid=0#gid=0";
+
 const PAGE_SIZE = 50;
 // Display-name lookups go out as a GET with the addresses in the query string.
 // At ~43 chars per address this keeps the URL well under the ~8KB some
@@ -1054,7 +1057,7 @@ export default function VoterTable(props: VoterTableProps) {
         >
           {importError}{" "}
           <a
-            href="https://docs.google.com/spreadsheets/d/1BKo20lc4ZdRWKjvxQuTcOldQo_qL7Y5tXOvhFMJlwug/edit?gid=0#gid=0"
+            href={VOTER_TEMPLATE_URL}
             target="_blank"
             rel="noreferrer"
             className="fw-semi-bold"
@@ -1309,7 +1312,7 @@ export default function VoterTable(props: VoterTableProps) {
             />
           </Stack>
           <a
-            href="https://docs.google.com/spreadsheets/d/1BKo20lc4ZdRWKjvxQuTcOldQo_qL7Y5tXOvhFMJlwug/edit?gid=0#gid=0"
+            href={VOTER_TEMPLATE_URL}
             target="_blank"
             rel="noreferrer"
             className="align-self-end pe-1 text-primary text-decoration-underline fw-semi-bold"
