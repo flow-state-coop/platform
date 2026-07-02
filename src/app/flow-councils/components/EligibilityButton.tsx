@@ -114,6 +114,8 @@ export default function EligibilityButton({
   );
 
   useEffect(() => {
+    // The alias only satisfies react-hooks/exhaustive-deps, which flags
+    // reading ref.current inside effect cleanups.
     const watchIdOnMount = watchIdRef;
 
     return () => {
@@ -223,6 +225,9 @@ export default function EligibilityButton({
   };
 
   const handleJoinToVote = async () => {
+    // Reconnecting may bring a different, possibly already-whitelisted
+    // address, so run the cheap eligibility re-check instead of jumping
+    // straight into face verification.
     if (!isConnected || !address) {
       setPendingCheck(true);
       openConnectModal?.();

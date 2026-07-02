@@ -29,6 +29,16 @@ export const GOODBUILDERS_COUNCIL_ADDRESSES: `0x${string}`[] = [
 export const GOODDOLLAR_IDENTITY_ADDRESS: `0x${string}` =
   "0xC361A6E67822a0EDc17D899227dd9FC50BD62F42";
 
+export const GOODDOLLAR_IDENTITY_ABI = [
+  {
+    type: "function",
+    name: "isWhitelisted",
+    inputs: [{ name: "_account", type: "address", internalType: "address" }],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    stateMutability: "view",
+  },
+] as const;
+
 // Flow State bot that holds VOTER_MANAGER_ROLE to add GoodDollar-verified
 // voters. The grant UI gives the role to this address; the bot then signs
 // addVoter calls with FLOW_STATE_ELIGIBILITY_PK, so this must stay equal to the

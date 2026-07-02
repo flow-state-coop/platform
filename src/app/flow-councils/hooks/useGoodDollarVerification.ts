@@ -6,16 +6,14 @@ import { celo } from "wagmi/chains";
 import {
   createWalletClient,
   custom,
-  parseAbi,
   EIP1193Provider,
   PublicClient,
 } from "viem";
 import { IdentitySDK, SupportedChains } from "@goodsdks/citizen-sdk";
-import { GOODDOLLAR_IDENTITY_ADDRESS } from "@/app/flow-councils/lib/constants";
-
-const IDENTITY_ABI = parseAbi([
-  "function isWhitelisted(address account) view returns (bool)",
-]);
+import {
+  GOODDOLLAR_IDENTITY_ABI,
+  GOODDOLLAR_IDENTITY_ADDRESS,
+} from "@/app/flow-councils/lib/constants";
 
 export function useGoodDollarVerification() {
   const { address, connector } = useAccount();
@@ -59,7 +57,7 @@ export function useGoodDollarVerification() {
 
     return celoPublicClient.readContract({
       address: GOODDOLLAR_IDENTITY_ADDRESS,
-      abi: IDENTITY_ABI,
+      abi: GOODDOLLAR_IDENTITY_ABI,
       functionName: "isWhitelisted",
       args: [address],
     });
