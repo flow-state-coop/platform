@@ -130,7 +130,7 @@ export default function Profile() {
   const [saved, setSaved] = useState(false);
 
   const addresses = address ? [address] : [];
-  const { ensByAddress } = useEnsResolution(addresses);
+  const { ensByAddress } = useEnsResolution(addresses, { avatars: false });
   const ensName = address ? ensByAddress?.[address.toLowerCase()]?.name : null;
 
   const fetchProfile = useCallback(async () => {

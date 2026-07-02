@@ -11,7 +11,9 @@ export function useProfileDisplayName(): {
   const [profileLoaded, setProfileLoaded] = useState(false);
 
   const addresses = useMemo(() => (address ? [address] : []), [address]);
-  const { ensByAddress, isLoading: ensLoading } = useEnsResolution(addresses);
+  const { ensByAddress, isLoading: ensLoading } = useEnsResolution(addresses, {
+    avatars: false,
+  });
   const ensName = address
     ? (ensByAddress?.[address.toLowerCase()]?.name ?? null)
     : null;

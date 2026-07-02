@@ -6,6 +6,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Stack from "react-bootstrap/Stack";
 import Link from "next/link";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
+import { resolveDisplayName } from "@/lib/utils";
 
 type PublicProfileData = {
   address: string;
@@ -24,10 +25,6 @@ const SOCIAL_LABELS: Record<string, string> = {
   farcaster: "Farcaster",
 };
 
-function truncateAddress(addr: string) {
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-}
-
 function isSafeHttpsUrl(url: string): boolean {
   try {
     return new URL(url).protocol === "https:";
@@ -40,7 +37,7 @@ export default function PublicProfile({ address }: { address: string }) {
   const [profile, setProfile] = useState<PublicProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { ensByAddress } = useEnsResolution([address]);
+  const { ensByAddress } = useEnsResolution([address], { avatars: false });
 
   useEffect(() => {
     (async () => {
@@ -71,9 +68,11 @@ export default function PublicProfile({ address }: { address: string }) {
   return (
     <Container className="py-5" style={{ maxWidth: 600 }}>
       <h2 className="mb-4">
-        {profile?.displayName ||
-          ensByAddress?.[address.toLowerCase()]?.name ||
-          truncateAddress(address)}
+        {resolveDisplayName(
+          profile?.displayName,
+          ensByAddress?.[address.toLowerCase()]?.name,
+          address,
+        )}
       </h2>
 
       <div className="mb-4">

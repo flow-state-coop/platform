@@ -9,6 +9,7 @@ import ProfilePic from "./ProfilePic";
 import MessageActions from "./MessageActions";
 import ReactionBar, { type ReactionSummary } from "./ReactionBar";
 import type { EnsData } from "@/hooks/useEnsResolution";
+import { resolveDisplayName } from "@/lib/utils";
 
 export type Message = {
   id: number;
@@ -48,11 +49,6 @@ type MessageItemProps = {
 };
 
 const SYSTEM_ADDRESS = "0x0000000000000000000000000000000000000000";
-
-function shortenAddress(address: string): string {
-  if (address.length <= 10) return address;
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
 
 function formatTimestamp(dateString: string): string {
   const date = new Date(dateString);
@@ -100,9 +96,11 @@ export default function MessageItem(props: MessageItemProps) {
     ? (projectSource ?? "Milestone Update")
     : isSystemMessage
       ? "System"
-      : customDisplayName ||
-        ensData?.name ||
-        shortenAddress(message.authorAddress);
+      : resolveDisplayName(
+          customDisplayName,
+          ensData?.name,
+          message.authorAddress,
+        );
   const showAddressTooltip = !isMilestoneUpdate && !isSystemMessage;
   const edited = isEdited(message.createdAt, message.updatedAt);
 

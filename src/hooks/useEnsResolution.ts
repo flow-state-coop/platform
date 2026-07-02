@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Address, createPublicClient, http } from "viem";
 import { mainnet } from "viem/chains";
 import { normalize } from "viem/ens";
@@ -23,77 +23,123 @@ const publicClient = createPublicClient({
   }),
 });
 
-export function useEnsResolution(addresses: string[]): {
+// Session-wide caches so re-resolving the same addresses (e.g. paging a table
+// back and forth) never refetches. Failed lookups are left uncached so a
+// transient RPC error is retried on the next resolution.
+const nameCache = new Map<string, string | null>();
+const avatarCache = new Map<string, string | null>();
+
+export function useEnsResolution(
+  addresses: string[],
+  options?: { avatars?: boolean },
+): {
   ensByAddress: EnsByAddress | null;
   isLoading: boolean;
 } {
   const [ensByAddress, setEnsByAddress] = useState<EnsByAddress | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const withAvatars = options?.avatars !== false;
+
   // Create a stable key for the addresses array
   const addressesKey = addresses.join(",").toLowerCase();
 
-  const resolveAddresses = useCallback(async () => {
-    if (!addresses || addresses.length === 0) {
+  useEffect(() => {
+    if (addressesKey === "") {
       setEnsByAddress({});
+      setIsLoading(false);
       return;
     }
 
-    // Deduplicate addresses
-    const uniqueAddresses = [...new Set(addresses.map((a) => a.toLowerCase()))];
+    const uniqueAddresses = [...new Set(addressesKey.split(","))];
 
-    setIsLoading(true);
+    let cancelled = false;
 
-    const result: EnsByAddress = {};
-
-    try {
-      const ensNames = await Promise.all(
-        uniqueAddresses.map((address) =>
-          publicClient
-            .getEnsName({
-              address: address as Address,
-            })
-            .catch(() => null),
-        ),
+    const resolve = async () => {
+      const uncachedNames = uniqueAddresses.filter(
+        (address) => !nameCache.has(address),
       );
 
-      const ensAvatars = await Promise.all(
-        ensNames.map((ensName) => {
-          if (!ensName) return Promise.resolve(null);
-          return publicClient
-            .getEnsAvatar({
-              name: normalize(ensName),
-              gatewayUrls: ["https://ccip.ens.xyz"],
-              assetGatewayUrls: {
-                ipfs: IPFS_GATEWAYS[0],
-              },
-            })
-            .catch(() => null);
+      if (uncachedNames.length > 0) {
+        setIsLoading(true);
+      }
+
+      const nameResults = await Promise.all(
+        uncachedNames.map(async (address) => {
+          try {
+            const name = await publicClient.getEnsName({
+              address: address as Address,
+            });
+
+            return { address, name, ok: true };
+          } catch {
+            return { address, name: null, ok: false };
+          }
         }),
       );
 
-      for (let i = 0; i < uniqueAddresses.length; i++) {
-        result[uniqueAddresses[i]] = {
-          name: ensNames[i] ?? null,
-          avatar: ensAvatars[i] ?? null,
+      for (const { address, name, ok } of nameResults) {
+        if (ok) {
+          nameCache.set(address, name);
+        }
+      }
+
+      if (withAvatars) {
+        const uncachedAvatars = uniqueAddresses.filter(
+          (address) =>
+            nameCache.get(address) != null && !avatarCache.has(address),
+        );
+
+        const avatarResults = await Promise.all(
+          uncachedAvatars.map(async (address) => {
+            try {
+              const avatar = await publicClient.getEnsAvatar({
+                name: normalize(nameCache.get(address)!),
+                gatewayUrls: ["https://ccip.ens.xyz"],
+                assetGatewayUrls: {
+                  ipfs: IPFS_GATEWAYS[0],
+                },
+              });
+
+              return { address, avatar, ok: true };
+            } catch {
+              return { address, avatar: null, ok: false };
+            }
+          }),
+        );
+
+        for (const { address, avatar, ok } of avatarResults) {
+          if (ok) {
+            avatarCache.set(address, avatar);
+          }
+        }
+      }
+
+      // A newer resolution for a different address set has taken over this
+      // hook's state; writing now would show the wrong page's names.
+      if (cancelled) {
+        return;
+      }
+
+      const result: EnsByAddress = {};
+
+      for (const address of uniqueAddresses) {
+        result[address] = {
+          name: nameCache.get(address) ?? null,
+          avatar: withAvatars ? (avatarCache.get(address) ?? null) : null,
         };
       }
-    } catch (err) {
-      console.error("Error resolving ENS:", err);
-      // Populate with null values on error
-      for (const address of uniqueAddresses) {
-        result[address] = { name: null, avatar: null };
-      }
-    }
 
-    setEnsByAddress(result);
-    setIsLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressesKey]);
+      setEnsByAddress(result);
+      setIsLoading(false);
+    };
 
-  useEffect(() => {
-    resolveAddresses();
-  }, [resolveAddresses]);
+    resolve();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [addressesKey, withAvatars]);
 
   return { ensByAddress, isLoading };
 }

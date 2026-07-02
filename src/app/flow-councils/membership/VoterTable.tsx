@@ -18,7 +18,8 @@ import Dropdown from "react-bootstrap/Dropdown";
 import Alert from "react-bootstrap/Alert";
 import Pagination from "react-bootstrap/Pagination";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
-import { truncateAddress } from "@/lib/utils";
+import { resolveDisplayName, truncateAddress } from "@/lib/utils";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
 import {
   CHUNK_SIZE,
@@ -133,6 +134,11 @@ export default function VoterTable(props: VoterTableProps) {
   const [pctFilter, setPctFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
 
+  // Filtering is debounced so a narrowing keystroke doesn't re-page the table
+  // and fan out a fresh page of ENS lookups per character typed.
+  const debouncedAddressSearch = useDebouncedValue(addressSearch, 300);
+  const debouncedNameSearch = useDebouncedValue(nameSearch, 300);
+
   // Staged edits — committed together by Save.
   // editedPower: acct(lowercase) -> new votes string (only present when changed).
   // removed: accts staged for removal (onchain power → 0 + DB classification drop).
@@ -238,8 +244,8 @@ export default function VoterTable(props: VoterTableProps) {
   );
 
   const filteredVoters = useMemo(() => {
-    const { list, needle } = parseAddressSearch(addressSearch);
-    const nameNeedle = nameSearch.trim().toLowerCase();
+    const { list, needle } = parseAddressSearch(debouncedAddressSearch);
+    const nameNeedle = debouncedNameSearch.trim().toLowerCase();
 
     return voters.filter((voter) => {
       const account = voter.account.toLowerCase();
@@ -272,7 +278,7 @@ export default function VoterTable(props: VoterTableProps) {
 
       return true;
     });
-  }, [voters, addressSearch, nameSearch, pctFilter, names]);
+  }, [voters, debouncedAddressSearch, debouncedNameSearch, pctFilter, names]);
 
   const pageCount = totalPages(filteredVoters.length, PAGE_SIZE);
 
@@ -289,19 +295,14 @@ export default function VoterTable(props: VoterTableProps) {
   // Resolve ENS only for the addresses actually on screen: the roster can run to
   // thousands of voters, so resolving the whole list would fan out that many
   // mainnet reverse lookups. The visible page (≤ PAGE_SIZE) is all we render.
-  const pageAddressKey = useMemo(
-    () =>
-      [...new Set(pageVoters.map((voter) => voter.account.toLowerCase()))]
-        .sort()
-        .join(","),
+  // Sorted so an Apollo re-poll that reorders the same membership doesn't
+  // change the hook's key and refetch.
+  const pageAddresses = useMemo(
+    () => pageVoters.map((voter) => voter.account.toLowerCase()).sort(),
     [pageVoters],
   );
-  const pageAddresses = useMemo(
-    () => (pageAddressKey === "" ? [] : pageAddressKey.split(",")),
-    [pageAddressKey],
-  );
 
-  const { ensByAddress } = useEnsResolution(pageAddresses);
+  const { ensByAddress } = useEnsResolution(pageAddresses, { avatars: false });
 
   const otherGroups = useMemo(
     () => allGroups.filter((g) => g.id !== groupId),
@@ -1060,9 +1061,11 @@ export default function VoterTable(props: VoterTableProps) {
                   </td>
                   <td>
                     <span className="fw-semi-bold text-break">
-                      {name ||
-                        ensByAddress?.[account]?.name ||
-                        truncateAddress(account)}
+                      {resolveDisplayName(
+                        name,
+                        ensByAddress?.[account]?.name,
+                        account,
+                      )}
                     </span>
                   </td>
                   <td className="text-end" style={{ maxWidth: 120 }}>
