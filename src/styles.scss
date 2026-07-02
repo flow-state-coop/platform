@@ -402,3 +402,7 @@ input[type="email"].mailing-list-input::placeholder {
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
 }
+
+dialog.markee-dialog::backdrop {
+  background: rgba(3, 3, 3, 0.5);
+}
