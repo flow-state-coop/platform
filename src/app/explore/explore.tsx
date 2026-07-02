@@ -187,7 +187,7 @@ export default function Explore(props: ExploreProps) {
           <RoundCard
             name="Octant Builder Accelerator"
             image="/octant-circle.svg"
-            roundType="Streaming Quadratic Funding"
+            roundType="Flow QF"
             totalStreamedUntilUpdatedAt={OCTANT_SNAPSHOT.totalStreamed}
             flowRate={OCTANT_SNAPSHOT.flowRate}
             updatedAt={0}

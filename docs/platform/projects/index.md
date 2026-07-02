@@ -1,7 +1,7 @@
 ---
 slug: /projects
 description: Create and manage the project you use to apply for funding
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 # Projects

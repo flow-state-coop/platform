@@ -19,7 +19,7 @@ Flow Councils are a great tool for grants programs, organizational budgeting, an
 
 ![Flow Council Architecture_2](https://github.com/user-attachments/assets/5e6e1d40-733f-40a7-8752-146d2f6867d6)
 
-You can launch a Flow Council yourself with the no-code [launchpad](https://flowstate.network/flow-councils/launch), or reach out to us on [Telegram](https://t.me/flowstatecoop) if you'd like a hand getting started.
+You can launch a Flow Council yourself with the no-code [launchpad](https://flowstate.network/flow-councils/launch), or reach out to us on [Telegram](https://t.me/+U6ZFRmOnFWo1ZGUx) if you'd like a hand getting started.
 
 The docs are split by role:
 

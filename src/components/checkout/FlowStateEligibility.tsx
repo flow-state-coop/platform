@@ -203,7 +203,7 @@ export default function FlowStateEligibility(props: FlowStateEligibilityProps) {
                 <p className="mb-1 small text-center text-danger fw-smei-bold">
                   Not yet eligible. Request manual verification in our{" "}
                   <Link
-                    href="https://t.me/flowstatecoop"
+                    href="https://t.me/+U6ZFRmOnFWo1ZGUx"
                     target="_blank"
                     className="text-danger"
                   >
