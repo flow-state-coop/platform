@@ -12,6 +12,7 @@ import {
 import { isRoundAdmin, hasOnChainRole } from "../auth";
 import { MINIMAL_TEMPLATE } from "@/app/flow-councils/types/formSchema";
 import { isDynamicApplicationDetails } from "@/app/flow-councils/utils/legacyFormAdapter";
+import { getStoredSection } from "../utils";
 
 export const dynamic = "force-dynamic";
 
@@ -281,6 +282,17 @@ export async function PUT(request: Request) {
         ? JSON.parse(round.details)
         : (round.details ?? {});
 
+    // Fetched before validation so milestone checks can compare submitted
+    // descriptions against what is already stored (unchanged ones pass).
+    const existingApplication = await db
+      .selectFrom("applications")
+      .select(["id", "status", "editsUnlocked", "details"])
+      .where("projectId", "=", projectId)
+      .where("roundId", "=", round.id)
+      .executeTakeFirst();
+
+    const storedRound = getStoredSection(existingApplication?.details, "round");
+
     // A round with a configured formSchema is always dynamic. Rounds without
     // one default to the Minimal template, so dynamic-shaped submissions
     // (carrying _formVersion) are dynamic too; legacy-shaped ones stay legacy.
@@ -305,6 +317,7 @@ export async function PUT(request: Request) {
         const validation = validateDynamicRoundDetails(
           details,
           roundDetails.formSchema?.round ?? MINIMAL_TEMPLATE.round,
+          storedRound,
         );
         if (!validation.success) {
           return new Response(
@@ -322,13 +335,6 @@ export async function PUT(request: Request) {
         }
       }
     }
-
-    const existingApplication = await db
-      .selectFrom("applications")
-      .select(["id", "status", "editsUnlocked"])
-      .where("projectId", "=", projectId)
-      .where("roundId", "=", round.id)
-      .executeTakeFirst();
 
     const LOCKED_STATUSES = ["ACCEPTED", "GRADUATED", "REMOVED"];
     if (

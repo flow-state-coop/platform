@@ -16,6 +16,9 @@ import type { FormElement } from "@/app/flow-councils/types/formSchema";
 type Props = {
   elements: FormElement[];
   values: Record<string, unknown>;
+  // Server-stored values, used by milestone questions to tell edited
+  // descriptions from unchanged ones (the validation ratchet).
+  baselineValues?: Record<string, unknown>;
   onChange?: (id: string, value: unknown) => void;
   validated?: boolean;
   readOnly?: boolean;
@@ -26,6 +29,7 @@ type Props = {
 export default function DynamicFormSection({
   elements,
   values,
+  baselineValues,
   onChange,
   validated = false,
   readOnly = false,
@@ -448,11 +452,17 @@ export default function DynamicFormSection({
             const milestoneValues: DynamicMilestoneValue[] = Array.isArray(raw)
               ? (raw as DynamicMilestoneValue[])
               : [];
+            const storedRaw = baselineValues?.[el.id];
             return (
               <DynamicMilestoneInput
                 key={el.id}
                 element={el}
                 values={milestoneValues}
+                storedValues={
+                  Array.isArray(storedRaw)
+                    ? (storedRaw as DynamicMilestoneValue[])
+                    : undefined
+                }
                 onChange={(v) => handleChange(el.id, v)}
                 validated={validated}
                 readOnly={readOnly}

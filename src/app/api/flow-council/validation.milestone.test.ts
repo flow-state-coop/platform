@@ -281,6 +281,182 @@ describe("validateDynamicRoundDetails — milestone entry field presence", () =>
 });
 
 // ---------------------------------------------------------------------------
+// Section 3b: mandatory descriptions with a stored-state ratchet
+// ---------------------------------------------------------------------------
+
+describe("validateDynamicRoundDetails — description ratchet against stored data", () => {
+  it("rejects an empty description on new submissions even when descriptionMinChars is not set", () => {
+    const result = validateDynamicRoundDetails(
+      {
+        round: {
+          [MILESTONE_UUID]: [validMilestoneEntry({ description: "" })],
+        },
+      },
+      [minimalMilestoneElement() as FormElement],
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toMatch(/description is required/i);
+    }
+  });
+
+  it("accepts an empty description when the stored milestone's description is also empty", () => {
+    const stored = {
+      [MILESTONE_UUID]: [validMilestoneEntry({ description: "" })],
+    };
+    const result = validateDynamicRoundDetails(
+      {
+        round: {
+          [MILESTONE_UUID]: [validMilestoneEntry({ description: "" })],
+        },
+      },
+      [minimalMilestoneElement() as FormElement],
+      stored,
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects blanking a stored non-empty description", () => {
+    const stored = {
+      [MILESTONE_UUID]: [validMilestoneEntry({ description: "existing" })],
+    };
+    const result = validateDynamicRoundDetails(
+      {
+        round: {
+          [MILESTONE_UUID]: [validMilestoneEntry({ description: "" })],
+        },
+      },
+      [minimalMilestoneElement() as FormElement],
+      stored,
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts an unchanged stored description that is shorter than descriptionMinChars", () => {
+    const element = { ...fullMilestoneElement(), minCount: 1 };
+    const stored = {
+      [MILESTONE_UUID]: [validMilestoneEntry({ description: "short" })],
+    };
+    const result = validateDynamicRoundDetails(
+      {
+        round: {
+          [MILESTONE_UUID]: [validMilestoneEntry({ description: "short" })],
+        },
+      },
+      [element as FormElement],
+      stored,
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an edited description that violates descriptionMinChars even when the stored one was empty", () => {
+    const element = { ...fullMilestoneElement(), minCount: 1 };
+    const stored = {
+      [MILESTONE_UUID]: [validMilestoneEntry({ description: "" })],
+    };
+    const result = validateDynamicRoundDetails(
+      {
+        round: {
+          [MILESTONE_UUID]: [validMilestoneEntry({ description: "too short" })],
+        },
+      },
+      [element as FormElement],
+      stored,
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it("requires a description for milestones added beyond the stored list", () => {
+    const stored = {
+      [MILESTONE_UUID]: [validMilestoneEntry({ description: "" })],
+    };
+    const result = validateDynamicRoundDetails(
+      {
+        round: {
+          [MILESTONE_UUID]: [
+            validMilestoneEntry({ description: "" }),
+            validMilestoneEntry({ description: "" }),
+          ],
+        },
+      },
+      [minimalMilestoneElement() as FormElement],
+      stored,
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it("grandfathers unchanged descriptions when an earlier milestone is removed", () => {
+    const element = { ...fullMilestoneElement(), minCount: 1 };
+    const stored = {
+      [MILESTONE_UUID]: [
+        validMilestoneEntry(),
+        validMilestoneEntry({ description: "short" }),
+      ],
+    };
+    const result = validateDynamicRoundDetails(
+      {
+        round: {
+          [MILESTONE_UUID]: [validMilestoneEntry({ description: "short" })],
+        },
+      },
+      [element as FormElement],
+      stored,
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("reports the configured item label and 1-based item index in item errors", () => {
+    const element = { ...fullMilestoneElement(), minCount: 1 };
+    const result = validateDynamicRoundDetails(
+      {
+        round: {
+          [MILESTONE_UUID]: [
+            validMilestoneEntry({ items: ["Valid item", ""] }),
+          ],
+        },
+      },
+      [element as FormElement],
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Build Milestone 1: Deliverable 2 is required");
+    }
+  });
+
+  it("prefixes per-milestone errors with the milestone label and 1-based index", () => {
+    const element = { ...fullMilestoneElement(), minCount: 1 };
+    const result = validateDynamicRoundDetails(
+      {
+        round: {
+          [MILESTONE_UUID]: [
+            validMilestoneEntry(),
+            validMilestoneEntry({ description: "" }),
+          ],
+        },
+      },
+      [element as FormElement],
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toMatch(/^Build Milestone 2: /);
+    }
+  });
+
+  it("rejects a whitespace-only title", () => {
+    const element = { ...fullMilestoneElement(), minCount: 1 };
+    const result = validateDynamicRoundDetails(
+      {
+        round: {
+          [MILESTONE_UUID]: [validMilestoneEntry({ title: "   " })],
+        },
+      },
+      [element as FormElement],
+    );
+    expect(result.success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Section 4: descriptionMinChars / descriptionMaxChars
 // ---------------------------------------------------------------------------
 

@@ -19,6 +19,9 @@ export type DynamicMilestoneValue = {
 type Props = {
   element: MilestoneQuestion;
   values: DynamicMilestoneValue[];
+  // Server-stored milestones, used to tell edited descriptions from unchanged
+  // ones. Absent for new applications (everything validates strictly).
+  storedValues?: DynamicMilestoneValue[];
   onChange: (values: DynamicMilestoneValue[]) => void;
   validated: boolean;
   readOnly?: boolean;
@@ -34,6 +37,7 @@ export default function DynamicMilestoneInput(props: Props) {
   const {
     element,
     values,
+    storedValues,
     onChange,
     validated,
     readOnly = false,
@@ -56,6 +60,29 @@ export default function DynamicMilestoneInput(props: Props) {
       ...Array.from({ length: minCount - values.length }, emptyMilestone),
     ];
   }, [values, minCount]);
+
+  // Mirrors the server's ratchet: each server-stored description covers one
+  // block (a multiset, so reordering or removing blocks keeps untouched
+  // descriptions covered), while edited or net-new descriptions must be
+  // non-empty and within the configured bounds.
+  const descUnchangedFlags = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const stored of storedValues ?? []) {
+      const description =
+        stored && typeof stored.description === "string"
+          ? stored.description
+          : "";
+      counts.set(description, (counts.get(description) ?? 0) + 1);
+    }
+    return blocks.map((milestone) => {
+      const remaining = counts.get(milestone.description) ?? 0;
+      if (remaining > 0) {
+        counts.set(milestone.description, remaining - 1);
+        return true;
+      }
+      return false;
+    });
+  }, [blocks, storedValues]);
 
   const updateMilestone = (index: number, next: DynamicMilestoneValue) => {
     const copy = [...blocks];
@@ -109,6 +136,7 @@ export default function DynamicMilestoneInput(props: Props) {
         </Form.Label>
       )}
       {blocks.map((milestone, i) => {
+        const descUnchanged = descUnchangedFlags[i];
         const descTooShort =
           typeof element.descriptionMinChars === "number" &&
           milestone.description.length > 0 &&
@@ -118,6 +146,7 @@ export default function DynamicMilestoneInput(props: Props) {
           milestone.description.length > element.descriptionMaxChars;
         const descInvalid =
           validated &&
+          !descUnchanged &&
           (!milestone.description.trim() || descTooShort || descTooLong);
         const titleInvalid = validated && !milestone.title.trim();
         const hasValidItem = milestone.items.some((it) => it.trim() !== "");

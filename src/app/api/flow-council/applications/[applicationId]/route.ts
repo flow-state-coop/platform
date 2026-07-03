@@ -18,6 +18,7 @@ import {
 import { readJsonBody, PayloadTooLargeError } from "../../../utils";
 import { MINIMAL_TEMPLATE } from "@/app/flow-councils/types/formSchema";
 import { isDynamicApplicationDetails } from "@/app/flow-councils/utils/legacyFormAdapter";
+import { getStoredSection } from "@/app/api/flow-council/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -210,6 +211,7 @@ export async function PATCH(
         "applications.roundId",
         "applications.status",
         "applications.editsUnlocked",
+        "applications.details as storedDetails",
       ])
       .where("applications.id", "=", appId)
       .where(
@@ -264,7 +266,11 @@ export async function PATCH(
           : null);
 
       if (roundSchema) {
-        const validation = validateDynamicRoundDetails(details, roundSchema);
+        const validation = validateDynamicRoundDetails(
+          details,
+          roundSchema,
+          getStoredSection(existingApp.storedDetails, "round"),
+        );
         if (!validation.success) {
           return new Response(
             JSON.stringify({ success: false, error: validation.error }),
@@ -277,6 +283,7 @@ export async function PATCH(
         const validation = validateDynamicAttestationDetails(
           details,
           attestationSchema,
+          getStoredSection(existingApp.storedDetails, "attestation"),
         );
         if (!validation.success) {
           return new Response(

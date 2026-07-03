@@ -5,8 +5,8 @@ import { isProjectManager } from "@/app/api/flow-council/auth";
 import { parseDetails } from "@/app/api/flow-council/utils";
 import {
   milestoneProgressSchema,
-  milestoneDefinitionSchema,
-  makeMilestoneDefinitionSchema,
+  pickMilestoneDefinitionSchema,
+  getStoredMilestoneDescription,
   MAX_STRING_LENGTH,
 } from "@/app/api/flow-council/validation";
 import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
@@ -24,6 +24,11 @@ import type {
 } from "@/app/projects/[id]/milestones/types";
 
 export const dynamic = "force-dynamic";
+
+// Graduated grantees are still active recipients (see the recipients route and
+// the review unlock route, which both treat GRADUATED like ACCEPTED), so their
+// milestones stay visible and editable.
+const ACTIVE_GRANTEE_STATUSES = ["ACCEPTED", "GRADUATED"] as const;
 
 type RouteParams = { params: Promise<{ projectId: string }> };
 
@@ -125,7 +130,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
         "rounds.flowCouncilAddress as councilId",
       ])
       .where("applications.projectId", "=", pid)
-      .where("applications.status", "=", "ACCEPTED")
+      .where("applications.status", "in", ACTIVE_GRANTEE_STATUSES)
+      .orderBy("applications.roundId", "desc")
       .execute();
 
     if (applications.length === 0) {
@@ -251,9 +257,13 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
 const MILESTONE_AUTHOR_ADDRESS = "0x0000000000000000000000000000000000000000";
 
+// Deep links carry the applicationId so the anchor stays unique when a
+// project has milestones in more than one round (legacy rounds share the
+// "build"/"growth" types, so type+index alone collides across rounds).
 function buildEvidencePostContent(
   verb: "added to" | "updated on",
   roundName: string,
+  applicationId: number,
   milestoneType: string,
   typeLabel: string,
   milestoneIndex: number,
@@ -265,18 +275,19 @@ function buildEvidencePostContent(
 ): string {
   const header = `Evidence ${verb} ${roundName} - ${typeLabel} ${milestoneIndex + 1} - ${itemLabel} ${itemIndex + 1} (${completion}% Complete)`;
   const lines = evidence.map((e) => `- [${e.name}](${e.link})`);
-  return `${header}:\n\n${lines.join("\n")}\n\n[Go to the milestone](/projects/${pid}?tab=milestones&milestone=${milestoneType}-${milestoneIndex})`;
+  return `${header}:\n\n${lines.join("\n")}\n\n[Go to the milestone](/projects/${pid}?tab=milestones&milestone=${applicationId}-${milestoneType}-${milestoneIndex})`;
 }
 
 function buildTextUpdatePostContent(
   roundName: string,
+  applicationId: number,
   milestoneType: string,
   typeLabel: string,
   milestoneIndex: number,
   otherDetails: string,
   pid: number,
 ): string {
-  return `Details updated on ${roundName} - ${typeLabel} ${milestoneIndex + 1}:\n\n${otherDetails}\n\n[Go to the milestone](/projects/${pid}?tab=milestones&milestone=${milestoneType}-${milestoneIndex})`;
+  return `Details updated on ${roundName} - ${typeLabel} ${milestoneIndex + 1}:\n\n${otherDetails}\n\n[Go to the milestone](/projects/${pid}?tab=milestones&milestone=${applicationId}-${milestoneType}-${milestoneIndex})`;
 }
 
 export async function PATCH(request: Request, { params }: RouteParams) {
@@ -341,7 +352,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       ])
       .where("id", "=", applicationId)
       .where("projectId", "=", pid)
-      .where("status", "=", "ACCEPTED")
+      .where("status", "in", ACTIVE_GRANTEE_STATUSES)
       .executeTakeFirst();
 
     if (!application) {
@@ -349,6 +360,18 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         success: false,
         error: "Application not found or not accepted",
       });
+    }
+
+    // Graduated grants are a concluded record: visible on the tab, but any
+    // write (progress or definition) requires the admin to unlock edits.
+    if (application.status === "GRADUATED" && !application.editsUnlocked) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Edits are not unlocked for this application",
+        }),
+        { status: 403 },
+      );
     }
 
     const appDetailsParsed = parseDetails<RoundForm & DynamicAppDetails>(
@@ -405,18 +428,31 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         );
       }
 
-      // Dynamic milestones honor the per-element descriptionMin/MaxChars
-      // configured in the round's formSchema. Falling back to the legacy
-      // 500–5000 bounds here would lock applicants out of editing data they
-      // were allowed to submit (e.g. an admin-configured 100–8000 range).
-      const definitionSchema = dynamicMilestoneElement
-        ? makeMilestoneDefinitionSchema({
-            descriptionMinChars:
-              dynamicMilestoneElement.descriptionMinChars ?? 0,
-            descriptionMaxChars:
-              dynamicMilestoneElement.descriptionMaxChars ?? MAX_STRING_LENGTH,
-          })
-        : milestoneDefinitionSchema;
+      const storedMilestones = isDynamic
+        ? (appDetailsParsed as { round: Record<string, unknown> }).round[
+            milestoneType
+          ]
+        : milestoneType === "build"
+          ? (appDetailsParsed as RoundForm)?.buildGoals?.milestones
+          : (appDetailsParsed as RoundForm)?.growthGoals?.milestones;
+      const storedDescription = getStoredMilestoneDescription(
+        storedMilestones,
+        milestoneIndex,
+      );
+      const descriptionUnchanged =
+        storedDescription !== undefined &&
+        (definition as { description?: unknown })?.description ===
+          storedDescription;
+
+      // Descriptions are mandatory, enforced as a ratchet: an unchanged stored
+      // description (e.g. an empty one left by the round-49 backfill) never
+      // blocks saving the rest of the definition, but any edited description
+      // must be non-empty and honor the per-element descriptionMin/MaxChars
+      // from the round's formSchema (legacy apps use the 500-5000 bounds).
+      const definitionSchema = pickMilestoneDefinitionSchema(
+        dynamicMilestoneElement,
+        descriptionUnchanged,
+      );
       const parsedDef = definitionSchema.safeParse(definition);
       if (!parsedDef.success) {
         return Response.json({
@@ -580,6 +616,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           buildEvidencePostContent(
             verb,
             roundName,
+            applicationId,
             milestoneType,
             typeLabel,
             milestoneIndex,
@@ -600,6 +637,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       feedMessages.push(
         buildTextUpdatePostContent(
           roundName,
+          applicationId,
           milestoneType,
           typeLabel,
           milestoneIndex,
