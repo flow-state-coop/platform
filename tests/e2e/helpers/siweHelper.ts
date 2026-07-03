@@ -42,10 +42,7 @@ export async function attachSiweSignBridge(
         return account.signMessage({ message: messageArg });
       }
 
-      if (
-        method === "eth_signTypedData_v4" ||
-        method === "eth_signTypedData"
-      ) {
+      if (method === "eth_signTypedData_v4" || method === "eth_signTypedData") {
         // No Phase 4 test flow needs typed-data signatures — SIWE uses
         // personal_sign. Refuse to sign rather than expose a second path that
         // could authorize arbitrary typed payloads with the test key.

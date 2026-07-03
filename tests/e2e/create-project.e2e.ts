@@ -26,7 +26,7 @@ test("authenticated user can open the Create Project modal", async ({
   // "Project Name*" form label inside. Bootstrap's Form.Label has no
   // auto-wired htmlFor here, so getByLabel doesn't find it — match the
   // visible label text inside the dialog instead.
-  await expect(
-    page.getByRole("dialog").getByText(/project name/i),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("dialog").getByText(/project name/i)).toBeVisible(
+    { timeout: 10_000 },
+  );
 });

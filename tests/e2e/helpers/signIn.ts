@@ -12,10 +12,18 @@ import { TEST_CHAIN_ID, TEST_PRIVATE_KEY } from "./mockEthereum";
 // carries the "account" icon label once connected, regardless of which label
 // is currently shown.
 export async function waitForAutoConnect(page: Page): Promise<void> {
-  await page
-    .getByRole("button", { name: /account/i })
-    .first()
-    .waitFor({ state: "visible", timeout: 15_000 });
+  const accountChip = page.getByRole("button", { name: /account/i }).first();
+
+  try {
+    await accountChip.waitFor({ state: "visible", timeout: 15_000 });
+  } catch (err) {
+    // On loaded CI runners wagmi's injected auto-reconnect occasionally never
+    // fires (observed 2026-06-30 and 2026-07-02 on main). The provider is
+    // injected via addInitScript, so a reload gives it a second chance.
+    console.warn("waitForAutoConnect: first attempt failed, reloading", err);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await accountChip.waitFor({ state: "visible", timeout: 15_000 });
+  }
 }
 
 // Bootstrap a NextAuth SIWE session without walking the UI. Fetches CSRF,
