@@ -22,9 +22,11 @@ import type {
   AttestationForm,
 } from "@/app/flow-councils/types/round";
 import {
+  type FormElement,
   type FormSchema,
   MINIMAL_TEMPLATE,
 } from "@/app/flow-councils/types/formSchema";
+import type { DynamicMilestoneValue } from "@/app/flow-councils/components/DynamicMilestoneInput";
 import {
   getApplicationAsDynamic,
   isDynamicApplicationDetails,
@@ -58,6 +60,35 @@ function stableStringify(value: unknown): string {
         )
       : val,
   );
+}
+
+// Blank deliverable rows (e.g. an extra "Add Deliverable" click) are valid
+// while typing but rejected by the server, so drop them at save time, the
+// same behavior as the Milestones-tab definition editor. Non-string rows
+// (possible in an old or hand-edited local draft) are kept for the server to
+// reject with a clear error instead of throwing here.
+function withBlankMilestoneItemsRemoved(
+  values: Record<string, unknown>,
+  elements: FormElement[],
+): Record<string, unknown> {
+  const sanitized = { ...values };
+  for (const element of elements) {
+    if (element.type !== "milestone") continue;
+    const value = sanitized[element.id];
+    if (!Array.isArray(value)) continue;
+    sanitized[element.id] = (value as DynamicMilestoneValue[]).map(
+      (milestone) =>
+        milestone && Array.isArray(milestone.items)
+          ? {
+              ...milestone,
+              items: milestone.items.filter(
+                (item) => typeof item !== "string" || item.trim() !== "",
+              ),
+            }
+          : milestone,
+    );
+  }
+  return sanitized;
 }
 
 function FormSkeleton() {
@@ -507,6 +538,15 @@ export default function Application(props: ApplicationProps) {
     setDynamicSaving(true);
 
     try {
+      const round = withBlankMilestoneItemsRemoved(
+        dynamicRoundValues,
+        formSchema?.round ?? [],
+      );
+      const attestation = withBlankMilestoneItemsRemoved(
+        dynamicAttestationValues,
+        formSchema?.attestation ?? [],
+      );
+
       const res = await fetch("/api/flow-council/applications", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -516,8 +556,8 @@ export default function Application(props: ApplicationProps) {
           councilId,
           details: {
             _formVersion: FORM_VERSION,
-            round: dynamicRoundValues,
-            attestation: dynamicAttestationValues,
+            round,
+            attestation,
           },
           fundingAddress: dynamicFundingAddress,
         }),
@@ -533,9 +573,11 @@ export default function Application(props: ApplicationProps) {
       if (json.application?.id) {
         setApplicationId(json.application.id);
       }
+      setDynamicRoundValues(round);
+      setDynamicAttestationValues(attestation);
       serverBaselineRef.current = {
-        round: dynamicRoundValues,
-        attestation: dynamicAttestationValues,
+        round,
+        attestation,
         fundingAddress: dynamicFundingAddress,
       };
       setDraftRestored(false);
@@ -564,8 +606,14 @@ export default function Application(props: ApplicationProps) {
           body: JSON.stringify({
             details: {
               _formVersion: FORM_VERSION,
-              round: dynamicRoundValues,
-              attestation: dynamicAttestationValues,
+              round: withBlankMilestoneItemsRemoved(
+                dynamicRoundValues,
+                formSchema?.round ?? [],
+              ),
+              attestation: withBlankMilestoneItemsRemoved(
+                dynamicAttestationValues,
+                formSchema?.attestation ?? [],
+              ),
             },
             fundingAddress: dynamicFundingAddress,
             submit: true,
@@ -728,6 +776,7 @@ export default function Application(props: ApplicationProps) {
                   <DynamicFormSection
                     elements={formSchema.round}
                     values={dynamicRoundValues}
+                    baselineValues={serverBaselineRef.current.round}
                     onChange={handleDynamicRoundChange}
                     validated={dynamicValidated}
                     lockBlockCount={isInLockedStatus && editsUnlocked}
@@ -811,6 +860,7 @@ export default function Application(props: ApplicationProps) {
                   <DynamicFormSection
                     elements={formSchema.attestation}
                     values={dynamicAttestationValues}
+                    baselineValues={serverBaselineRef.current.attestation}
                     onChange={handleDynamicAttestationChange}
                     validated={dynamicValidated}
                     lockBlockCount={isInLockedStatus && editsUnlocked}

@@ -220,12 +220,29 @@ export const milestoneProgressSchema = z.object({
   items: z.array(deliverableProgressSchema),
 });
 
+// Single source of truth for what a valid milestone value looks like. Both
+// write paths (full-application PUT via validateDynamicRoundDetails and the
+// Milestones-tab PATCH) must use this so data saved through one path never
+// becomes uneditable through the other.
+//
+// Descriptions are mandatory, but enforced as a ratchet: a description that is
+// unchanged from what is already stored is accepted even if it violates the
+// current rules (callers express this by validating with descriptionRequired:
+// false and relaxed bounds). Anything the caller is actually changing must
+// comply. This lets grantees fix legacy rows with empty descriptions without
+// letting anyone blank a description or create a new milestone without one.
 export function makeMilestoneDefinitionSchema(opts: {
   descriptionMinChars: number;
   descriptionMaxChars: number;
+  descriptionRequired: boolean;
+  itemLabel?: string;
 }) {
+  const itemLabel = opts.itemLabel ?? "Item";
   return z.object({
-    title: z.string().min(1, "Title is required").max(200),
+    title: z
+      .string()
+      .max(200, "Title exceeds 200 characters")
+      .refine((title) => title.trim() !== "", "Title is required"),
     description: z
       .string()
       .min(
@@ -235,20 +252,89 @@ export function makeMilestoneDefinitionSchema(opts: {
       .max(
         opts.descriptionMaxChars,
         `Description must be at most ${opts.descriptionMaxChars} characters`,
+      )
+      .refine(
+        (description) => !opts.descriptionRequired || description.trim() !== "",
+        {
+          message: "Description is required",
+        },
       ),
     items: z
-      .array(z.string().max(500))
-      .max(50)
-      .refine((items) => items.some((item) => item.trim() !== ""), {
-        message: "At least one item is required",
+      .array(z.string())
+      .min(1, `At least one ${itemLabel} is required`)
+      .max(50, `At most 50 ${itemLabel}s are allowed`)
+      .superRefine((items, ctx) => {
+        items.forEach((item, i) => {
+          if (item.trim() === "") {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `${itemLabel} ${i + 1} is required`,
+              path: [i],
+            });
+          } else if (item.length > 500) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `${itemLabel} ${i + 1} exceeds 500 characters`,
+              path: [i],
+            });
+          }
+        });
       }),
   });
+}
+
+// Describes the stored counterpart of a submitted milestone so validation can
+// tell edits from unchanged carry-overs. A stored entry without a string
+// description counts as an empty one, matching how the milestones GET coerces
+// it for clients.
+export function getStoredMilestoneDescription(
+  storedValue: unknown,
+  index: number,
+): string | undefined {
+  if (!Array.isArray(storedValue)) return undefined;
+  const stored = storedValue[index];
+  if (!stored || typeof stored !== "object") return undefined;
+  const description = (stored as { description?: unknown }).description;
+  return typeof description === "string" ? description : "";
 }
 
 export const milestoneDefinitionSchema = makeMilestoneDefinitionSchema({
   descriptionMinChars: CHARACTER_LIMITS.milestoneDescription.min,
   descriptionMaxChars: CHARACTER_LIMITS.milestoneDescription.max,
+  descriptionRequired: true,
 });
+
+// Chooses the schema for a single milestone definition write. Shared by the
+// full-application validator and the Milestones-tab PATCH so the ratchet rule
+// cannot drift between the two write paths: unchanged descriptions validate
+// leniently, edited ones against the element's bounds (or the legacy bounds
+// when there is no dynamic element).
+export function pickMilestoneDefinitionSchema(
+  element:
+    | {
+        descriptionMinChars?: number;
+        descriptionMaxChars?: number;
+        itemLabel?: string;
+      }
+    | undefined,
+  descriptionUnchanged: boolean,
+) {
+  if (descriptionUnchanged) {
+    return makeMilestoneDefinitionSchema({
+      descriptionMinChars: 0,
+      descriptionMaxChars: MAX_STRING_LENGTH,
+      descriptionRequired: false,
+      itemLabel: element?.itemLabel,
+    });
+  }
+  if (!element) return milestoneDefinitionSchema;
+  return makeMilestoneDefinitionSchema({
+    descriptionMinChars: element.descriptionMinChars ?? 0,
+    descriptionMaxChars: element.descriptionMaxChars ?? MAX_STRING_LENGTH,
+    descriptionRequired: true,
+    itemLabel: element.itemLabel,
+  });
+}
 
 export const reactionEmojiSchema = z.enum(ALLOWED_REACTIONS);
 
@@ -428,7 +514,11 @@ export type FormElement = z.infer<typeof formElementSchema>;
 
 export const MAX_DETAILS_SIZE = 512_000; // 512 KB
 
-type FieldValidator = (val: unknown, el: FormElement) => string | null;
+type FieldValidator = (
+  val: unknown,
+  el: FormElement,
+  storedVal?: unknown,
+) => string | null;
 
 function checkStringWithLimit(val: unknown, el: FormElement): string | null {
   if (typeof val !== "string") return `"${el.label}" must be text`;
@@ -502,7 +592,7 @@ const VALIDATORS: Partial<Record<FormElement["type"], FieldValidator>> = {
       : null,
   boolean: (val, el) =>
     typeof val !== "boolean" ? `"${el.label}" must be true or false` : null,
-  milestone: (val, el) => {
+  milestone: (val, el, storedVal) => {
     const minCount = el.minCount ?? 1;
     const milestoneLabel = el.milestoneLabel || el.label || "Milestone";
     if (!Array.isArray(val)) {
@@ -514,51 +604,39 @@ const VALIDATORS: Partial<Record<FormElement["type"], FieldValidator>> = {
     if (val.length > MAX_MILESTONES) {
       return `"${el.label}" allows at most ${MAX_MILESTONES} milestones`;
     }
+    // Grandfathering is a multiset over the stored descriptions, not an
+    // index-by-index comparison: each stored description covers one incoming
+    // milestone, so removing or reordering milestones never re-triggers
+    // validation on descriptions the caller didn't touch, and net-new
+    // milestones cannot inherit another row's exemption.
+    const storedDescriptionCounts = new Map<string, number>();
+    if (Array.isArray(storedVal)) {
+      for (let i = 0; i < storedVal.length; i++) {
+        const stored = getStoredMilestoneDescription(storedVal, i);
+        if (stored !== undefined) {
+          storedDescriptionCounts.set(
+            stored,
+            (storedDescriptionCounts.get(stored) ?? 0) + 1,
+          );
+        }
+      }
+    }
     for (let i = 0; i < val.length; i++) {
-      const m = val[i] as {
-        title?: unknown;
-        description?: unknown;
-        items?: unknown;
-      };
-      if (!m || typeof m !== "object") {
-        return `${milestoneLabel} ${i + 1} is malformed`;
+      const entry = val[i] as { description?: unknown } | null;
+      const description =
+        typeof entry?.description === "string" ? entry.description : undefined;
+      const remaining =
+        description !== undefined
+          ? (storedDescriptionCounts.get(description) ?? 0)
+          : 0;
+      const descriptionUnchanged = remaining > 0;
+      if (descriptionUnchanged && description !== undefined) {
+        storedDescriptionCounts.set(description, remaining - 1);
       }
-      if (typeof m.title !== "string" || m.title.trim() === "") {
-        return `${milestoneLabel} ${i + 1} title is required`;
-      }
-      if (m.title.length > 200) {
-        return `${milestoneLabel} ${i + 1} title exceeds 200 characters`;
-      }
-      if (typeof m.description !== "string" || m.description.trim() === "") {
-        return `${milestoneLabel} ${i + 1} description is required`;
-      }
-      if (
-        typeof el.descriptionMinChars === "number" &&
-        m.description.length < el.descriptionMinChars
-      ) {
-        return `${milestoneLabel} ${i + 1} description must be at least ${el.descriptionMinChars} characters`;
-      }
-      const descMax =
-        typeof el.descriptionMaxChars === "number"
-          ? el.descriptionMaxChars
-          : MAX_STRING_LENGTH;
-      if (m.description.length > descMax) {
-        return `${milestoneLabel} ${i + 1} description exceeds ${descMax} characters`;
-      }
-      if (!Array.isArray(m.items) || m.items.length === 0) {
-        return `${milestoneLabel} ${i + 1} requires at least one ${el.itemLabel ?? "item"}`;
-      }
-      if (m.items.length > 50) {
-        return `${milestoneLabel} ${i + 1} allows at most 50 ${el.itemLabel ?? "item"}s`;
-      }
-      for (let j = 0; j < m.items.length; j++) {
-        const item = m.items[j];
-        if (typeof item !== "string" || item.trim() === "") {
-          return `${milestoneLabel} ${i + 1} ${el.itemLabel ?? "item"} ${j + 1} is required`;
-        }
-        if (item.length > 500) {
-          return `${milestoneLabel} ${i + 1} ${el.itemLabel ?? "item"} ${j + 1} exceeds 500 characters`;
-        }
+      const schema = pickMilestoneDefinitionSchema(el, descriptionUnchanged);
+      const parsed = schema.safeParse(val[i]);
+      if (!parsed.success) {
+        return `${milestoneLabel} ${i + 1}: ${parsed.error.issues[0].message}`;
       }
     }
     return null;
@@ -569,6 +647,7 @@ function validateFormSection(
   values: Record<string, unknown>,
   formElements: FormElement[],
   sectionLabel: string,
+  storedValues?: Record<string, unknown>,
 ): ValidationResult<Record<string, unknown>> {
   const allowedIds = new Set<string>();
 
@@ -595,7 +674,7 @@ function validateFormSection(
 
     const validator = VALIDATORS[el.type];
     if (validator) {
-      const err = validator(val, el);
+      const err = validator(val, el, storedValues?.[el.id]);
       if (err) return { success: false, error: err };
     }
   }
@@ -612,9 +691,13 @@ function validateFormSection(
   return { success: true, data: values };
 }
 
+// storedData is the same section object from the application row currently in
+// the database (if any); it lets milestone validation grandfather unchanged
+// descriptions instead of rejecting rows the caller never touched.
 export function validateDynamicRoundDetails(
   data: Record<string, unknown>,
   formElements: FormElement[],
+  storedData?: Record<string, unknown>,
 ): ValidationResult<Record<string, unknown>> {
   if (JSON.stringify(data).length > MAX_DETAILS_SIZE) {
     return { success: false, error: "Payload too large" };
@@ -629,12 +712,14 @@ export function validateDynamicRoundDetails(
     values as Record<string, unknown>,
     formElements,
     "round",
+    storedData,
   );
 }
 
 export function validateDynamicAttestationDetails(
   data: Record<string, unknown>,
   formElements: FormElement[],
+  storedData?: Record<string, unknown>,
 ): ValidationResult<Record<string, unknown>> {
   if (JSON.stringify(data).length > MAX_DETAILS_SIZE) {
     return { success: false, error: "Payload too large" };
@@ -649,6 +734,7 @@ export function validateDynamicAttestationDetails(
     values as Record<string, unknown>,
     formElements,
     "attestation",
+    storedData,
   );
 }
 

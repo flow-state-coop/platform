@@ -44,7 +44,12 @@ export default function ProjectMilestonesTab({
 
   useEffect(() => {
     if (!isLoading && scrollToMilestone && applications.length > 0) {
-      const el = document.getElementById(`milestone-${scrollToMilestone}`);
+      // New links carry "<applicationId>-<type>-<index>" and match the card id
+      // exactly; links from before applicationId was included fall back to a
+      // suffix match (first card wins, as before).
+      const el =
+        document.getElementById(`milestone-${scrollToMilestone}`) ??
+        document.querySelector(`[id$="-${CSS.escape(scrollToMilestone)}"]`);
       if (el) {
         const timeout = setTimeout(
           () => el.scrollIntoView({ behavior: "smooth", block: "center" }),

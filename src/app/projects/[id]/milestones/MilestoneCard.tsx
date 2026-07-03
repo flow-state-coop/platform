@@ -237,13 +237,18 @@ function DefinitionEditForm({
   const descMax = milestone.descriptionMaxChars;
 
   const isTitleEmpty = !title.trim();
-  const isDescriptionShort = description.length < descMin;
-  const isDescriptionLong = description.length > descMax;
+  // Ratchet rule (mirrors the server): an unchanged description never blocks
+  // the save, an edited one must be non-empty and within bounds.
+  const descriptionChanged = description !== milestone.description;
+  const isDescriptionInvalid =
+    descriptionChanged &&
+    (!description.trim() ||
+      description.length < descMin ||
+      description.length > descMax);
   const hasValidItem = items.some((item) => item.trim() !== "");
 
   const titleInvalid = validated && isTitleEmpty;
-  const descriptionInvalid =
-    validated && (isDescriptionShort || isDescriptionLong);
+  const descriptionInvalid = validated && isDescriptionInvalid;
   const itemsInvalid = validated && !hasValidItem;
 
   const handleItemChange = (index: number, value: string) => {
@@ -261,13 +266,7 @@ function DefinitionEditForm({
 
   const handleSubmit = () => {
     setValidated(true);
-    if (
-      isTitleEmpty ||
-      isDescriptionShort ||
-      isDescriptionLong ||
-      !hasValidItem
-    )
-      return;
+    if (isTitleEmpty || isDescriptionInvalid || !hasValidItem) return;
     onSave({ title, description, items });
   };
 
@@ -506,7 +505,7 @@ export default function MilestoneCard({
 
   return (
     <div
-      id={`milestone-${milestone.type}-${milestone.index}`}
+      id={`milestone-${applicationId}-${milestone.type}-${milestone.index}`}
       className={`border rounded-4 overflow-hidden mb-4 ${editingDefinition ? "border-primary border-2" : "border border-2"}`}
     >
       <div className="bg-secondary d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-1 px-3 px-sm-4 py-3">
