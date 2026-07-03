@@ -149,6 +149,7 @@ export async function PATCH(request: Request) {
           success: false,
           error: "Round not found or not authorized",
         }),
+        { status: 403, headers: { "Content-Type": "application/json" } },
       );
     }
 
