@@ -429,7 +429,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       }
 
       const storedMilestones = isDynamic
-        ? (appDetailsParsed as { round: Record<string, unknown> }).round[
+        ? (appDetailsParsed as { round?: Record<string, unknown> }).round?.[
             milestoneType
           ]
         : milestoneType === "build"
