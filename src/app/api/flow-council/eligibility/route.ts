@@ -6,20 +6,11 @@ import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks, getViemChain } from "@/lib/networks";
 import {
   CELO_CHAIN_ID,
+  GOODDOLLAR_IDENTITY_ABI,
   GOODDOLLAR_IDENTITY_ADDRESS,
 } from "@/app/flow-councils/lib/constants";
 
 export const dynamic = "force-dynamic";
-
-const IDENTITY_ABI = [
-  {
-    type: "function",
-    name: "isWhitelisted",
-    inputs: [{ name: "_account", type: "address", internalType: "address" }],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
-    stateMutability: "view",
-  },
-] as const;
 
 export async function POST(request: Request) {
   // Self-claim is gated per council: a request only succeeds when the council
@@ -80,13 +71,20 @@ export async function POST(request: Request) {
 
     const isWhitelisted = await celoPublicClient.readContract({
       address: GOODDOLLAR_IDENTITY_ADDRESS,
-      abi: IDENTITY_ABI,
+      abi: GOODDOLLAR_IDENTITY_ABI,
       functionName: "isWhitelisted",
       args: [address as Address],
     });
 
+    // notWhitelisted marks the one failure that should send the user into
+    // face verification; every other success:false is an error the client
+    // should treat as retryable instead.
     if (!isWhitelisted) {
-      return Response.json({ success: false, error: "Not whitelisted" });
+      return Response.json({
+        success: false,
+        notWhitelisted: true,
+        error: "Not whitelisted",
+      });
     }
 
     // Record group membership. The UNIQUE(round_id, address) constraint means
