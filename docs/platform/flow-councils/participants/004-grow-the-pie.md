@@ -13,6 +13,8 @@ Flow Councils aren't just for fixed budgets: anyone can permissionlessly **Grow 
 
 On networks with a [SuperApp Splitter](../operators/005-funding.md), your stream routes through the council's splitter on its way to the distribution pool—that's what lets operators wind down a round cleanly on behalf of all funders.
 
+Once your stream is open, the success screen offers **Post to X** and **Cast to Farcaster** buttons that open a pre-filled draft in that platform's composer. Round operators can customize the message and its link preview from the [Social](../operators/007-social.md) page.
+
 :::info[What is streaming money?]
 Check out the [Superfluid Docs](https://docs.superfluid.finance/docs/concepts/superfluid) to learn more about [streaming money](https://docs.superfluid.finance/docs/concepts/overview/money-streaming), [Super Tokens](https://docs.superfluid.finance/docs/concepts/overview/super-tokens), [distribution pools](https://docs.superfluid.finance/docs/concepts/overview/distributions), and other protocol foundations. 
 :::

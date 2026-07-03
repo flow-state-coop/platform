@@ -42,6 +42,7 @@ const SIDEBAR_LINK_DEFS: {
   { path: "membership", label: "Voters" },
   { path: "funding", label: "Funding" },
   { path: "communications", label: "Communications" },
+  { path: "social", label: "Social" },
 ];
 
 type SidebarLinksProps = {

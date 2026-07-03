@@ -32,7 +32,7 @@ Everything lives under `src/`:
 
 Off-chain metadata lives in Postgres. The schema is `prisma/schema.prisma`; migrations are in `prisma/migrations/`. The main tables:
 
-- **Round** — a Flow Council round, keyed by `(chainId, flowCouncilAddress)`. Holds the on-chain council/splitter addresses and a JSON `details` blob (round metadata, visibility, form schema).
+- **Round** — a Flow Council round, keyed by `(chainId, flowCouncilAddress)`. Holds the on-chain council/splitter addresses and a JSON `details` blob (round metadata, visibility, form schema, social share config).
 - **RoundAdmin** — admin addresses for a round, one row per `(roundId, adminAddress)`; backs the SIWE admin checks.
 - **Project** — a reusable project profile (JSON `details`) that can apply to many rounds.
 - **Application** — a project's application to a round (`status`, JSON `details`, funding address); unique per `(projectId, roundId)`.

@@ -4,11 +4,13 @@ type CharacterCounterProps = {
   value: string;
   min?: number;
   max?: number;
+  count?: number;
+  label?: string;
 };
 
 export default function CharacterCounter(props: CharacterCounterProps) {
-  const { value, min, max } = props;
-  const count = value.length;
+  const { value, min, max, label } = props;
+  const count = props.count ?? value.length;
 
   const isTooFew = min !== undefined && count > 0 && count < min;
   const isTooMany = max !== undefined && count > max;
@@ -40,7 +42,7 @@ export default function CharacterCounter(props: CharacterCounterProps) {
           fontSize: "0.8rem",
         }}
       >
-        {displayText}
+        {label ? `${label}: ${displayText}` : displayText}
       </span>
     </div>
   );

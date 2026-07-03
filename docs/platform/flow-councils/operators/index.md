@@ -14,5 +14,6 @@ Everything a round operator does happens in the [launchpad](https://flowstate.ne
 4. **[Council Membership](004-membership.md)** — define who votes, organize voter groups, and set vote budgets.
 5. **[Funding](005-funding.md)** — sponsor the funding stream, manage the SuperApp Splitter, and schedule the round end.
 6. **[Communications](006-communications.md)** — broadcast announcements and chat with projects.
+7. **[Social](007-social.md)** – customize the post-vote and post-donation share messages and the round's link-preview image.
 
 Looking for the voter, applicant, or funder side? See [Participating](../participants/index.md).

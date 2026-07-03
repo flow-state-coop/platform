@@ -5,6 +5,8 @@ import {
   validateReactionEmoji,
   validateDynamicRoundDetails,
   normalizeSocialHandle,
+  extractSocialHandle,
+  socialConfigSchema,
   MAX_DETAILS_SIZE,
 } from "./validation";
 import { CHARACTER_LIMITS } from "@/app/flow-councils/constants";
@@ -132,6 +134,155 @@ describe("normalizeSocialHandle", () => {
 
   it("returns empty string for empty input", () => {
     expect(normalizeSocialHandle("", "twitter")).toBe("");
+  });
+});
+
+// Spec (.claude/specs/social-share-tab.md): "Handle fields accept a pasted
+// profile URL or a bare handle and normalize either (reusing the platform's
+// existing handle normalization)." The stored form is the bare handle, no "@".
+
+describe("extractSocialHandle", () => {
+  it("returns a bare handle unchanged", () => {
+    expect(extractSocialHandle("alice", "twitter")).toBe("alice");
+  });
+
+  it("strips a leading @ from a handle", () => {
+    expect(extractSocialHandle("@alice", "twitter")).toBe("alice");
+  });
+
+  it("extracts the bare handle from a pasted profile URL with tracking params", () => {
+    expect(extractSocialHandle("https://x.com/alice?ref=foo", "twitter")).toBe(
+      "alice",
+    );
+  });
+
+  it("extracts the bare handle from a twitter.com URL", () => {
+    expect(extractSocialHandle("https://twitter.com/alice", "twitter")).toBe(
+      "alice",
+    );
+  });
+
+  it("extracts the bare handle from a warpcast.com URL for farcaster", () => {
+    expect(extractSocialHandle("https://warpcast.com/bob", "farcaster")).toBe(
+      "bob",
+    );
+  });
+
+  it("returns empty string for empty input", () => {
+    expect(extractSocialHandle("", "twitter")).toBe("");
+  });
+
+  it("returns empty string for whitespace-only input", () => {
+    expect(extractSocialHandle("   ", "farcaster")).toBe("");
+  });
+});
+
+// Spec: "Up to 10 accounts per round."; mention tokens are keyed by account
+// name, so names must be unique per round (case-insensitive). Message
+// templates are capped at 1000 chars raw (per-platform resolved limits are
+// enforced separately in the PATCH route). shareImageUrl is an http(s) URL
+// or "" (empty removes the image).
+
+describe("socialConfigSchema", () => {
+  const account = (name: string, extra: Record<string, unknown> = {}) => ({
+    id: `id-${name}`,
+    name,
+    ...extra,
+  });
+
+  const validConfig = {
+    accounts: [
+      account("Octant", { xHandle: "octantapp", farcasterHandle: "octant" }),
+    ],
+    voteMessage: "Voted with @[Octant] in {round name}! {round link}",
+    donationMessage: "Streaming to {round name} {round link}",
+    shareImageUrl: "https://example.com/share.png",
+  };
+
+  it("accepts a valid config", () => {
+    expect(socialConfigSchema.safeParse(validConfig).success).toBe(true);
+  });
+
+  it("accepts an empty accounts list", () => {
+    expect(socialConfigSchema.safeParse({ accounts: [] }).success).toBe(true);
+  });
+
+  it("accepts exactly 10 accounts", () => {
+    const accounts = Array.from({ length: 10 }, (_, i) => account(`Team${i}`));
+    expect(socialConfigSchema.safeParse({ accounts }).success).toBe(true);
+  });
+
+  it("rejects 11 accounts", () => {
+    const accounts = Array.from({ length: 11 }, (_, i) => account(`Team${i}`));
+    expect(socialConfigSchema.safeParse({ accounts }).success).toBe(false);
+  });
+
+  it("rejects duplicate account names differing only by case", () => {
+    const result = socialConfigSchema.safeParse({
+      accounts: [account("Octant"), account("octant")],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an account with an empty name", () => {
+    expect(
+      socialConfigSchema.safeParse({ accounts: [account("")] }).success,
+    ).toBe(false);
+  });
+
+  it("rejects an account name over 50 characters", () => {
+    expect(
+      socialConfigSchema.safeParse({ accounts: [account("x".repeat(51))] })
+        .success,
+    ).toBe(false);
+  });
+
+  it("accepts a message template of exactly 1000 characters", () => {
+    const result = socialConfigSchema.safeParse({
+      accounts: [],
+      voteMessage: "x".repeat(1000),
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a vote message template over 1000 characters", () => {
+    const result = socialConfigSchema.safeParse({
+      accounts: [],
+      voteMessage: "x".repeat(1001),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a donation message template over 1000 characters", () => {
+    const result = socialConfigSchema.safeParse({
+      accounts: [],
+      donationMessage: "x".repeat(1001),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts an https shareImageUrl", () => {
+    const result = socialConfigSchema.safeParse({
+      accounts: [],
+      shareImageUrl: "https://example.com/a.png",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts an empty shareImageUrl", () => {
+    const result = socialConfigSchema.safeParse({
+      accounts: [],
+      shareImageUrl: "",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a non-http(s) shareImageUrl", () => {
+    const result = socialConfigSchema.safeParse({
+      accounts: [],
+      shareImageUrl: "ftp://example.com/a.png",
+    });
+    expect(result.success).toBe(false);
   });
 });
 

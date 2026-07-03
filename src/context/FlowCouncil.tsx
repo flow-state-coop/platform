@@ -19,6 +19,7 @@ import useSuperAppFundersQuery, {
 import { Token } from "@/types/token";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 import { GOODBUILDERS_COUNCIL_ADDRESSES } from "@/app/flow-councils/lib/constants";
+import { type RoundSocialConfig } from "@/app/flow-councils/lib/socialShare";
 import {
   type FlowCouncilData,
   type CouncilMember,
@@ -37,6 +38,7 @@ export const FlowCouncilContext = createContext<{
     logoUrl: string;
     superappSplitterAddress: Address | null;
     applicationsClosed: boolean;
+    social: RoundSocialConfig | null;
   };
   councilMember?: CouncilMember;
   currentBallot?: CurrentBallot;

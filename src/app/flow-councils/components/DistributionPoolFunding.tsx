@@ -204,6 +204,7 @@ export default function DistributionPoolFunding(props: {
   const socialShare = getSocialShare({
     councilName: councilMetadata.name,
     councilUiLink: `https://flowstate.network/flow-councils/${network?.id}/${council?.id}`,
+    social: councilMetadata.social ?? undefined,
   });
 
   const outflowToReceiver = useMemo(() => {

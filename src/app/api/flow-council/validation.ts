@@ -141,55 +141,49 @@ export const roundDetailsSchema = z.object({
   attestation: z.any().optional(),
 });
 
-const SOCIAL_BASE_URLS: Record<string, string> = {
-  twitter: "https://x.com",
-  github: "https://github.com",
-  linkedin: "https://linkedin.com/in",
-  farcaster: "https://farcaster.xyz",
-  telegram: "https://t.me",
-};
+export {
+  normalizeSocialHandle,
+  extractSocialHandle,
+} from "@/lib/socialHandles";
 
-const SOCIAL_ALLOWED_HOSTS: Record<string, string[]> = {
-  twitter: ["x.com", "twitter.com"],
-  github: ["github.com"],
-  linkedin: ["linkedin.com"],
-  farcaster: ["warpcast.com", "farcaster.xyz"],
-  telegram: ["t.me"],
-};
+const socialAccountSchema = z.object({
+  id: z.string().min(1).max(64),
+  name: z.string().trim().min(1).max(50),
+  xHandle: z.string().trim().max(50).optional(),
+  farcasterHandle: z.string().trim().max(50).optional(),
+});
 
-export function normalizeSocialHandle(
-  raw: string,
-  platform: keyof typeof SOCIAL_BASE_URLS,
-): string {
-  const trimmed = raw.trim();
-  if (!trimmed) return "";
-
-  if (/^https?:\/\//i.test(trimmed)) {
-    try {
-      const url = new URL(trimmed);
-      if (url.protocol !== "https:" && url.protocol !== "http:") {
-        return "";
-      }
-      const host = url.hostname.replace(/^www\./, "");
-      const allowed = SOCIAL_ALLOWED_HOSTS[platform] ?? [];
-      if (allowed.includes(host)) {
-        // Strip query and hash — they can carry tracking params or
-        // open-redirect chains and we only need the canonical profile path.
-        return `https://${host}${url.pathname}`;
-      }
-      // Not an allowed host — fall through to treat the last path segment as a handle
-      const lastSegment = url.pathname.split("/").filter(Boolean).pop();
-      if (!lastSegment) return "";
-      const handle = lastSegment.replace(/^@/, "");
-      return `${SOCIAL_BASE_URLS[platform]}/${encodeURIComponent(handle)}`;
-    } catch {
-      return "";
-    }
-  }
-
-  const handle = trimmed.replace(/^@/, "");
-  return `${SOCIAL_BASE_URLS[platform]}/${encodeURIComponent(handle)}`;
-}
+export const socialConfigSchema = z.object({
+  accounts: z
+    .array(socialAccountSchema)
+    .max(10)
+    .refine(
+      (accounts) =>
+        new Set(accounts.map((account) => account.name.toLowerCase())).size ===
+        accounts.length,
+      { message: "Account names must be unique" },
+    ),
+  voteMessage: z.string().max(1000).optional(),
+  donationMessage: z.string().max(1000).optional(),
+  shareImageUrl: z
+    .string()
+    .trim()
+    .max(2000)
+    .refine(
+      (v) => {
+        if (!v) return true;
+        try {
+          const u = new URL(v);
+          return ["http:", "https:"].includes(u.protocol);
+        } catch {
+          return false;
+        }
+      },
+      { message: "shareImageUrl must be an http(s) URL" },
+    )
+    .optional()
+    .or(z.literal("")),
+});
 
 const evidenceLinkSchema = z.object({
   name: z.string().min(1).max(200),

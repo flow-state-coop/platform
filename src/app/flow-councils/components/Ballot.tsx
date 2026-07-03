@@ -138,6 +138,7 @@ export default function Ballot({
   const socialShare = getVoteSocialShare({
     councilName: councilMetadata.name,
     councilUiLink: `https://flowstate.network/flow-councils/${chainId}/${council?.id}`,
+    social: councilMetadata.social ?? undefined,
   });
 
   const handleHide = () => {
@@ -375,15 +376,6 @@ export default function Ballot({
                   height={22}
                 />
                 <span style={{ fontSize: "10px" }}>Cast to Farcaster</span>
-              </Card.Link>
-              <Card.Link
-                href={socialShare.lens}
-                className="d-flex flex-column align-items-center text-decoration-none fw-semi-bold m-0 w-50"
-                rel="noreferrer"
-                target="_blank"
-              >
-                <Image src="/lens.svg" alt="lens" width={28} height={22} />
-                <span style={{ fontSize: "10px" }}>Post on Lens</span>
               </Card.Link>
             </Stack>
           </Card>

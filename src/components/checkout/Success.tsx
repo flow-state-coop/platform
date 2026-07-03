@@ -7,7 +7,7 @@ import { Step } from "@/types/checkout";
 export type SuccessProps = {
   step: Step;
   newFlowRate: string;
-  socialShare: { twitter: string; farcaster: string; lens: string };
+  socialShare: { twitter: string; farcaster: string };
   onClick?: () => void;
 };
 
@@ -61,18 +61,6 @@ export default function Success(props: SuccessProps) {
             />
             <span className="fw-semi-bold" style={{ fontSize: "10px" }}>
               Cast to Farcaster
-            </span>
-          </Button>
-          <Button
-            variant="link"
-            href={socialShare.lens}
-            target="_blank"
-            className="d-flex flex-column align-items-center twitter-share-button text-decoration-none p-0 fs-6 m-0 w-50"
-            onClick={onClick}
-          >
-            <Image src="/lens.svg" alt="lens" width={28} height={22} />
-            <span className="fw-semi-bold" style={{ fontSize: "10px" }}>
-              Post on Lens
             </span>
           </Button>
         </Stack>
