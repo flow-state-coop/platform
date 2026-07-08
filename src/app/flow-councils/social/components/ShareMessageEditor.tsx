@@ -107,6 +107,9 @@ export default function ShareMessageEditor(props: ShareMessageEditorProps) {
     const account = accounts.find((a) => a.name.trim() === name.trim());
 
     if (!account) {
+      warnings.push(
+        `No account named '${name}', so this mention will post as plain text.`,
+      );
       continue;
     }
 

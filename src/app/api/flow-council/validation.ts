@@ -8,6 +8,16 @@ import { ALLOWED_REACTIONS } from "@/app/flow-councils/lib/constants";
 import { STRUCTURAL_TYPES } from "@/app/flow-councils/types/formSchema";
 import { normalizeUrl } from "@/app/flow-councils/utils/normalizeUrl";
 import { isValidEmail } from "@/lib/email";
+import {
+  normalizeSocialHandle,
+  extractSocialHandle,
+} from "@/lib/socialHandles";
+import {
+  getEffectiveCharCount,
+  X_CHAR_LIMIT,
+  FARCASTER_CHAR_LIMIT,
+  type SocialAccount,
+} from "@/app/flow-councils/lib/socialShare";
 import type {
   TeamMember,
   BuildMilestone,
@@ -141,10 +151,7 @@ export const roundDetailsSchema = z.object({
   attestation: z.any().optional(),
 });
 
-export {
-  normalizeSocialHandle,
-  extractSocialHandle,
-} from "@/lib/socialHandles";
+export { normalizeSocialHandle, extractSocialHandle };
 
 const socialAccountSchema = z.object({
   id: z.string().min(1).max(64),
@@ -184,6 +191,73 @@ export const socialConfigSchema = z.object({
     .optional()
     .or(z.literal("")),
 });
+
+type SocialConfig = z.infer<typeof socialConfigSchema>;
+
+export function normalizeSocialConfig(
+  social: SocialConfig,
+  existingShareImageUrl: string | undefined,
+) {
+  return {
+    ...social,
+    shareImageUrl:
+      social.shareImageUrl === undefined
+        ? existingShareImageUrl
+        : social.shareImageUrl,
+    accounts: social.accounts.map((account) => {
+      const xHandle = account.xHandle
+        ? extractSocialHandle(account.xHandle, "twitter")
+        : "";
+      const farcasterHandle = account.farcasterHandle
+        ? extractSocialHandle(account.farcasterHandle, "farcaster")
+        : "";
+
+      return {
+        id: account.id,
+        name: account.name,
+        ...(xHandle ? { xHandle } : {}),
+        ...(farcasterHandle ? { farcasterHandle } : {}),
+      };
+    }),
+  };
+}
+
+export function validateSocialCharLimits(
+  social: {
+    voteMessage?: string;
+    donationMessage?: string;
+    accounts: SocialAccount[];
+  },
+  context: { roundName: string; roundLink: string },
+): string | null {
+  const shareContext = {
+    roundName: context.roundName,
+    roundLink: context.roundLink,
+    accounts: social.accounts,
+  };
+  const messages = [
+    { label: "Vote message", template: social.voteMessage },
+    { label: "Donation message", template: social.donationMessage },
+  ];
+  const platforms = [
+    { platform: "x", label: "X", limit: X_CHAR_LIMIT },
+    { platform: "farcaster", label: "Farcaster", limit: FARCASTER_CHAR_LIMIT },
+  ] as const;
+
+  for (const { label, template } of messages) {
+    if (!template?.trim()) continue;
+
+    for (const { platform, label: platformLabel, limit } of platforms) {
+      const count = getEffectiveCharCount(template, platform, shareContext);
+
+      if (count > limit) {
+        return `${label} exceeds the ${platformLabel} limit (${count}/${limit})`;
+      }
+    }
+  }
+
+  return null;
+}
 
 const evidenceLinkSchema = z.object({
   name: z.string().min(1).max(200),

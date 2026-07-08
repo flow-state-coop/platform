@@ -5,6 +5,8 @@ import { db } from "@/app/api/flow-council/db";
 import { networks } from "@/lib/networks";
 import { OG_DEFAULT_IMAGE_URL } from "@/lib/constants";
 
+export const dynamic = "force-dynamic";
+
 type Params = {
   chainId: string;
   councilId: string;

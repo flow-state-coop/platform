@@ -6,15 +6,11 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { errorResponse, readJsonBody, PayloadTooLargeError } from "../../utils";
 import {
   MAX_DETAILS_SIZE,
-  extractSocialHandle,
+  normalizeSocialConfig,
+  validateSocialCharLimits,
   socialConfigSchema,
 } from "../validation";
 import { deleteObjectByPublicUrl } from "../s3";
-import {
-  getEffectiveCharCount,
-  X_CHAR_LIMIT,
-  FARCASTER_CHAR_LIMIT,
-} from "@/app/flow-councils/lib/socialShare";
 import { networks } from "@/lib/networks";
 
 const roundPatchSchema = z.object({
@@ -166,64 +162,16 @@ export async function PATCH(request: Request) {
     const normalizedSocial =
       social === undefined
         ? undefined
-        : {
-            ...social,
-            shareImageUrl:
-              social.shareImageUrl === undefined
-                ? existingDetails?.social?.shareImageUrl
-                : social.shareImageUrl,
-            accounts: social.accounts.map((account) => {
-              const xHandle = account.xHandle
-                ? extractSocialHandle(account.xHandle, "twitter")
-                : "";
-              const farcasterHandle = account.farcasterHandle
-                ? extractSocialHandle(account.farcasterHandle, "farcaster")
-                : "";
-
-              return {
-                id: account.id,
-                name: account.name,
-                ...(xHandle ? { xHandle } : {}),
-                ...(farcasterHandle ? { farcasterHandle } : {}),
-              };
-            }),
-          };
+        : normalizeSocialConfig(social, existingDetails?.social?.shareImageUrl);
 
     if (normalizedSocial) {
-      const shareContext = {
+      const charLimitError = validateSocialCharLimits(normalizedSocial, {
         roundName: name ?? existingDetails.name ?? "",
         roundLink: `https://flowstate.network/flow-councils/${chainId}/${flowCouncilAddress.toLowerCase()}`,
-        accounts: normalizedSocial.accounts,
-      };
-      const messages = [
-        { label: "Vote message", template: normalizedSocial.voteMessage },
-        {
-          label: "Donation message",
-          template: normalizedSocial.donationMessage,
-        },
-      ];
-      const platforms = [
-        { platform: "x", label: "X", limit: X_CHAR_LIMIT },
-        {
-          platform: "farcaster",
-          label: "Farcaster",
-          limit: FARCASTER_CHAR_LIMIT,
-        },
-      ] as const;
+      });
 
-      for (const { label, template } of messages) {
-        if (!template?.trim()) continue;
-
-        for (const { platform, label: platformLabel, limit } of platforms) {
-          const count = getEffectiveCharCount(template, platform, shareContext);
-
-          if (count > limit) {
-            return errorResponse(
-              `${label} exceeds the ${platformLabel} limit (${count}/${limit})`,
-              400,
-            );
-          }
-        }
+      if (charLimitError) {
+        return errorResponse(charLimitError, 400);
       }
     }
 
