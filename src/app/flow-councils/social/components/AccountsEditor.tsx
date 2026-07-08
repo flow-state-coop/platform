@@ -5,8 +5,9 @@ import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
-import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
+import OverlayTrigger from "react-bootstrap/OverlayTrigger";
+import Tooltip from "react-bootstrap/Tooltip";
 import { extractSocialHandle } from "@/lib/socialHandles";
 import { type SocialAccount } from "@/app/flow-councils/lib/socialShare";
 
@@ -153,19 +154,33 @@ export default function AccountsEditor(props: AccountsEditorProps) {
             </Stack>
           );
         })}
-        <Button
-          variant="link"
-          className="p-0 text-start text-decoration-underline fw-semi-bold text-primary"
-          disabled={disabled || accounts.length >= MAX_ACCOUNTS}
-          onClick={() =>
-            onChange([...accounts, { id: crypto.randomUUID(), name: "" }])
-          }
-        >
-          Add account
-        </Button>
-        <Card.Text className="m-0 text-info small">
-          Up to 10 accounts per round.
-        </Card.Text>
+        {accounts.length >= MAX_ACCOUNTS ? (
+          <OverlayTrigger
+            overlay={<Tooltip>Up to {MAX_ACCOUNTS} accounts per round</Tooltip>}
+          >
+            <span className="d-inline-block align-self-start">
+              <Button
+                variant="link"
+                className="p-0 text-start text-decoration-underline fw-semi-bold text-primary"
+                disabled
+                style={{ pointerEvents: "none" }}
+              >
+                Add account
+              </Button>
+            </span>
+          </OverlayTrigger>
+        ) : (
+          <Button
+            variant="link"
+            className="p-0 text-start text-decoration-underline fw-semi-bold text-primary"
+            disabled={disabled}
+            onClick={() =>
+              onChange([...accounts, { id: crypto.randomUUID(), name: "" }])
+            }
+          >
+            Add account
+          </Button>
+        )}
       </Stack>
     </Form.Group>
   );

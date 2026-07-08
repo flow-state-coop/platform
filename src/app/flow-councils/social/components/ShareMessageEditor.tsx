@@ -5,7 +5,6 @@ import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import Dropdown from "react-bootstrap/Dropdown";
-import Card from "react-bootstrap/Card";
 import Alert from "react-bootstrap/Alert";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Tooltip from "react-bootstrap/Tooltip";
@@ -274,9 +273,6 @@ export default function ShareMessageEditor(props: ShareMessageEditorProps) {
         style={{ resize: "vertical" }}
         onChange={handleTemplateChange}
       />
-      <Card.Text className="m-0 mt-1 text-info small">
-        Leave empty to use the default message.
-      </Card.Text>
       <Stack
         direction="horizontal"
         gap={2}
@@ -295,9 +291,6 @@ export default function ShareMessageEditor(props: ShareMessageEditorProps) {
           label="Farcaster"
         />
       </Stack>
-      <Card.Text className="m-0 text-info small text-end">
-        Counts are approximate for emoji-heavy messages.
-      </Card.Text>
       {warnings.map((warning) => (
         <Alert key={warning} variant="warning" className="mt-2 mb-0 py-2 small">
           {warning}

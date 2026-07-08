@@ -61,9 +61,8 @@ export default function ShareImageUploader(props: ShareImageUploaderProps) {
     <Form.Group className="d-flex flex-column mt-3">
       <Form.Label className="fs-lg fw-semi-bold">Share Image</Form.Label>
       <Card.Text className="m-0 mb-2 text-info small">
-        Suggested ratio 1.91:1 (1200x630 px). Max 1MB. Replaces the default
-        link-preview image for your round page on X, Farcaster, Discord, and
-        anywhere the link unfurls.
+        Suggested 1200x630 px (1.91:1). Max 1MB. Replaces the link-preview image
+        wherever your round link unfurls (X, Farcaster, Discord).
       </Card.Text>
       <Form.Control
         type="file"
@@ -117,8 +116,8 @@ export default function ShareImageUploader(props: ShareImageUploaderProps) {
         By uploading, you confirm you have the right to use this image.
       </Card.Text>
       <Card.Text className="m-0 mt-1 text-info small">
-        Existing share cards may take up to 24 hours to refresh after you change
-        this image.
+        Shows in share cards ONLY AFTER you Save. The change may take up to 24
+        hours to update if it is previewed/shared before saving.
       </Card.Text>
     </Form.Group>
   );
