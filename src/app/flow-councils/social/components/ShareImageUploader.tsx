@@ -117,7 +117,7 @@ export default function ShareImageUploader(props: ShareImageUploaderProps) {
       </Card.Text>
       <Card.Text className="m-0 mt-1 text-info small">
         Shows in share cards ONLY AFTER you Save. The change may take up to 24
-        hours to update if it is previewed/shared before saving.
+        hours to update if your link is previewed or shared before saving.
       </Card.Text>
     </Form.Group>
   );
