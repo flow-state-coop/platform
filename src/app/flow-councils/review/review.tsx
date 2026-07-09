@@ -153,6 +153,8 @@ const StatusFilterToggle = forwardRef<
 
 StatusFilterToggle.displayName = "StatusFilterToggle";
 
+const NAME_FILTER_INPUT_STYLE = { height: 30 } as const;
+
 const NameFilterToggle = (props: {
   onClick: MouseEventHandler<HTMLButtonElement>;
 }) => (
@@ -665,20 +667,16 @@ export default function Review(props: ReviewProps) {
       ? "ALL"
       : statusFilter;
 
-  const normalizedNameFilter = nameFilter.trim().toLowerCase();
+  const filteredApplications = useMemo(() => {
+    const query = nameFilter.trim().toLowerCase();
 
-  const filteredApplications = useMemo(
-    () =>
-      applications.filter(
-        (a) =>
-          (effectiveFilter === "ALL" || a.status === effectiveFilter) &&
-          (normalizedNameFilter === "" ||
-            (a.projectDetails?.name ?? "")
-              .toLowerCase()
-              .includes(normalizedNameFilter)),
-      ),
-    [applications, effectiveFilter, normalizedNameFilter],
-  );
+    return applications.filter(
+      (a) =>
+        (effectiveFilter === "ALL" || a.status === effectiveFilter) &&
+        (query === "" ||
+          (a.projectDetails?.name ?? "").toLowerCase().includes(query)),
+    );
+  }, [applications, effectiveFilter, nameFilter]);
 
   const handleSelectApplication = async (summary: ApplicationSummary) => {
     setSelectedTab("project");
@@ -1206,10 +1204,10 @@ export default function Review(props: ReviewProps) {
                             placeholder="Search projects"
                             aria-label="Filter projects by name"
                             className="py-0 border-dark fw-normal"
-                            style={{ height: 30 }}
+                            style={NAME_FILTER_INPUT_STYLE}
                             onChange={(e) => setNameFilter(e.target.value)}
                             onBlur={() => {
-                              if (normalizedNameFilter === "") {
+                              if (nameFilter.trim() === "") {
                                 setNameFilter("");
                                 setIsNameFilterOpen(false);
                               }
