@@ -153,6 +153,25 @@ const StatusFilterToggle = forwardRef<
 
 StatusFilterToggle.displayName = "StatusFilterToggle";
 
+const NameFilterToggle = (props: {
+  onClick: MouseEventHandler<HTMLButtonElement>;
+}) => (
+  <button
+    type="button"
+    title="Filter by name"
+    onClick={props.onClick}
+    className="btn btn-link p-0 lh-1 border-0 d-inline-flex align-items-center"
+  >
+    <Image
+      src="/search.svg"
+      alt="Filter by name"
+      width={16}
+      height={16}
+      style={{ opacity: 0.5 }}
+    />
+  </button>
+);
+
 const FLOW_COUNCIL_QUERY = gql`
   query FlowCouncilQuery($councilId: String!) {
     flowCouncil(id: $councilId) {
@@ -174,6 +193,8 @@ export default function Review(props: ReviewProps) {
   const [applications, setApplications] = useState<ApplicationSummary[]>([]);
   const [isLoadingApplications, setIsLoadingApplications] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [nameFilter, setNameFilter] = useState("");
+  const [isNameFilterOpen, setIsNameFilterOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] =
     useState<Application | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
@@ -644,12 +665,19 @@ export default function Review(props: ReviewProps) {
       ? "ALL"
       : statusFilter;
 
+  const normalizedNameFilter = nameFilter.trim().toLowerCase();
+
   const filteredApplications = useMemo(
     () =>
-      effectiveFilter === "ALL"
-        ? applications
-        : applications.filter((a) => a.status === effectiveFilter),
-    [applications, effectiveFilter],
+      applications.filter(
+        (a) =>
+          (effectiveFilter === "ALL" || a.status === effectiveFilter) &&
+          (normalizedNameFilter === "" ||
+            (a.projectDetails?.name ?? "")
+              .toLowerCase()
+              .includes(normalizedNameFilter)),
+      ),
+    [applications, effectiveFilter, normalizedNameFilter],
   );
 
   const handleSelectApplication = async (summary: ApplicationSummary) => {
@@ -1169,7 +1197,41 @@ export default function Review(props: ReviewProps) {
                     }}
                   >
                     <tr>
-                      <th className="bg-white w-25">Project</th>
+                      <th className="bg-white w-25">
+                        {isNameFilterOpen ? (
+                          <Form.Control
+                            autoFocus
+                            type="search"
+                            value={nameFilter}
+                            placeholder="Search projects"
+                            aria-label="Filter projects by name"
+                            className="py-0 border-dark fw-normal"
+                            style={{ height: 30 }}
+                            onChange={(e) => setNameFilter(e.target.value)}
+                            onBlur={() => {
+                              if (normalizedNameFilter === "") {
+                                setNameFilter("");
+                                setIsNameFilterOpen(false);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") {
+                                setNameFilter("");
+                                setIsNameFilterOpen(false);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="d-inline-flex align-items-center gap-1">
+                            <span>Project</span>
+                            {applications.length > 0 && (
+                              <NameFilterToggle
+                                onClick={() => setIsNameFilterOpen(true)}
+                              />
+                            )}
+                          </div>
+                        )}
+                      </th>
                       <th className="bg-white text-center w-25">
                         Pool Connection
                       </th>
@@ -1272,7 +1334,7 @@ export default function Review(props: ReviewProps) {
                             colSpan={4}
                             className="text-center align-middle text-info py-4"
                           >
-                            No recipients with this status.
+                            No recipients match your filters.
                           </td>
                         </tr>
                       )}
