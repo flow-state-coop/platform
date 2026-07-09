@@ -53,9 +53,14 @@ export async function acquireTestDbLock(label: string): Promise<void> {
     );
   }
 
-  const timeoutMs = Number(
-    process.env.TEST_DB_LOCK_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS,
-  );
+  // NaN would make every `Date.now() >= deadline` check false and spin forever.
+  const configuredTimeout = process.env.TEST_DB_LOCK_TIMEOUT_MS;
+  const timeoutMs = Number(configuredTimeout ?? DEFAULT_TIMEOUT_MS);
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new Error(
+      `TEST_DB_LOCK_TIMEOUT_MS must be a positive number of milliseconds, got ${configuredTimeout}`,
+    );
+  }
 
   const client = new Client({
     connectionString: directConnectionString(connectionString),
