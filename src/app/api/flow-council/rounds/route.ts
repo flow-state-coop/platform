@@ -4,12 +4,18 @@ import { isAddress } from "viem";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { errorResponse, readJsonBody, PayloadTooLargeError } from "../../utils";
-import { MAX_DETAILS_SIZE } from "../validation";
+import {
+  MAX_DETAILS_SIZE,
+  normalizeSocialConfig,
+  validateSocialCharLimits,
+  socialConfigSchema,
+} from "../validation";
+import { deleteObjectByPublicUrl } from "../s3";
 import { networks } from "@/lib/networks";
 
 const roundPatchSchema = z.object({
-  name: z.string().trim().min(1).max(200),
-  description: z.string().trim().min(1).max(5000),
+  name: z.string().trim().min(1).max(200).optional(),
+  description: z.string().trim().min(1).max(5000).optional(),
   logoUrl: z
     .string()
     .trim()
@@ -29,6 +35,7 @@ const roundPatchSchema = z.object({
     .optional()
     .or(z.literal("")),
   listed: z.boolean().optional(),
+  social: socialConfigSchema.optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -121,7 +128,7 @@ export async function PATCH(request: Request) {
         { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
-    const { name, description, logoUrl, listed } = parsed.data;
+    const { name, description, logoUrl, listed, social } = parsed.data;
 
     const round = await db
       .selectFrom("rounds")
@@ -138,6 +145,7 @@ export async function PATCH(request: Request) {
           success: false,
           error: "Round not found or not authorized",
         }),
+        { status: 403, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -151,13 +159,32 @@ export async function PATCH(request: Request) {
         ? JSON.parse(round.details)
         : (round.details ?? {});
 
+    const normalizedSocial =
+      social === undefined
+        ? undefined
+        : normalizeSocialConfig(social, existingDetails?.social?.shareImageUrl);
+
+    if (normalizedSocial) {
+      const charLimitError = validateSocialCharLimits(normalizedSocial, {
+        roundName: name ?? existingDetails.name ?? "",
+        roundLink: `https://flowstate.network/flow-councils/${chainId}/${flowCouncilAddress.toLowerCase()}`,
+      });
+
+      if (charLimitError) {
+        return errorResponse(charLimitError, 400);
+      }
+    }
+
+    const previousShareImageUrl = existingDetails?.social?.shareImageUrl;
+
+    // Omitting a field from the PATCH leaves the existing value untouched.
     const mergedDetails = {
       ...existingDetails,
-      name,
-      description,
-      logoUrl,
-      // Omitting `listed` from the PATCH leaves the existing value untouched.
+      ...(name !== undefined ? { name } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(logoUrl !== undefined ? { logoUrl } : {}),
       ...(listed !== undefined ? { listed } : {}),
+      ...(normalizedSocial !== undefined ? { social: normalizedSocial } : {}),
     };
 
     const updatedRound = await db
@@ -178,6 +205,25 @@ export async function PATCH(request: Request) {
         "details",
       ])
       .executeTakeFirstOrThrow();
+
+    // Deletes are scoped to the caller's own share-images prefix so a stored
+    // URL pointing at another user's object can never trigger its deletion.
+    const s3PublicUrl = process.env.AWS_S3_PUBLIC_URL;
+    const callerShareImagePrefix = `${s3PublicUrl}/share-images/${session.address.toLowerCase()}/`;
+
+    if (
+      s3PublicUrl &&
+      normalizedSocial !== undefined &&
+      typeof previousShareImageUrl === "string" &&
+      previousShareImageUrl !== normalizedSocial.shareImageUrl &&
+      previousShareImageUrl.startsWith(callerShareImagePrefix)
+    ) {
+      try {
+        await deleteObjectByPublicUrl(previousShareImageUrl);
+      } catch (err) {
+        console.error(err);
+      }
+    }
 
     return new Response(JSON.stringify({ success: true, round: updatedRound }));
   } catch (err) {

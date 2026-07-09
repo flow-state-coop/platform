@@ -8,6 +8,16 @@ import { ALLOWED_REACTIONS } from "@/app/flow-councils/lib/constants";
 import { STRUCTURAL_TYPES } from "@/app/flow-councils/types/formSchema";
 import { normalizeUrl } from "@/app/flow-councils/utils/normalizeUrl";
 import { isValidEmail } from "@/lib/email";
+import {
+  normalizeSocialHandle,
+  extractSocialHandle,
+} from "@/lib/socialHandles";
+import {
+  getEffectiveCharCount,
+  X_CHAR_LIMIT,
+  FARCASTER_CHAR_LIMIT,
+  type SocialAccount,
+} from "@/app/flow-councils/lib/socialShare";
 import type {
   TeamMember,
   BuildMilestone,
@@ -141,54 +151,112 @@ export const roundDetailsSchema = z.object({
   attestation: z.any().optional(),
 });
 
-const SOCIAL_BASE_URLS: Record<string, string> = {
-  twitter: "https://x.com",
-  github: "https://github.com",
-  linkedin: "https://linkedin.com/in",
-  farcaster: "https://farcaster.xyz",
-  telegram: "https://t.me",
-};
+export { normalizeSocialHandle, extractSocialHandle };
 
-const SOCIAL_ALLOWED_HOSTS: Record<string, string[]> = {
-  twitter: ["x.com", "twitter.com"],
-  github: ["github.com"],
-  linkedin: ["linkedin.com"],
-  farcaster: ["warpcast.com", "farcaster.xyz"],
-  telegram: ["t.me"],
-};
+const socialAccountSchema = z.object({
+  id: z.string().min(1).max(64),
+  name: z.string().trim().min(1).max(50),
+  xHandle: z.string().trim().max(50).optional(),
+  farcasterHandle: z.string().trim().max(50).optional(),
+});
 
-export function normalizeSocialHandle(
-  raw: string,
-  platform: keyof typeof SOCIAL_BASE_URLS,
-): string {
-  const trimmed = raw.trim();
-  if (!trimmed) return "";
+export const socialConfigSchema = z.object({
+  accounts: z
+    .array(socialAccountSchema)
+    .max(10)
+    .refine(
+      (accounts) =>
+        new Set(accounts.map((account) => account.name.toLowerCase())).size ===
+        accounts.length,
+      { message: "Account names must be unique" },
+    ),
+  voteMessage: z.string().max(1000).optional(),
+  donationMessage: z.string().max(1000).optional(),
+  shareImageUrl: z
+    .string()
+    .trim()
+    .max(2000)
+    .refine(
+      (v) => {
+        if (!v) return true;
+        try {
+          const u = new URL(v);
+          return ["http:", "https:"].includes(u.protocol);
+        } catch {
+          return false;
+        }
+      },
+      { message: "shareImageUrl must be an http(s) URL" },
+    )
+    .optional()
+    .or(z.literal("")),
+});
 
-  if (/^https?:\/\//i.test(trimmed)) {
-    try {
-      const url = new URL(trimmed);
-      if (url.protocol !== "https:" && url.protocol !== "http:") {
-        return "";
+type SocialConfig = z.infer<typeof socialConfigSchema>;
+
+export function normalizeSocialConfig(
+  social: SocialConfig,
+  existingShareImageUrl: string | undefined,
+) {
+  return {
+    ...social,
+    shareImageUrl:
+      social.shareImageUrl === undefined
+        ? existingShareImageUrl
+        : social.shareImageUrl,
+    accounts: social.accounts.map((account) => {
+      const xHandle = account.xHandle
+        ? extractSocialHandle(account.xHandle, "twitter")
+        : "";
+      const farcasterHandle = account.farcasterHandle
+        ? extractSocialHandle(account.farcasterHandle, "farcaster")
+        : "";
+
+      return {
+        id: account.id,
+        name: account.name,
+        ...(xHandle ? { xHandle } : {}),
+        ...(farcasterHandle ? { farcasterHandle } : {}),
+      };
+    }),
+  };
+}
+
+export function validateSocialCharLimits(
+  social: {
+    voteMessage?: string;
+    donationMessage?: string;
+    accounts: SocialAccount[];
+  },
+  context: { roundName: string; roundLink: string },
+): string | null {
+  const shareContext = {
+    roundName: context.roundName,
+    roundLink: context.roundLink,
+    accounts: social.accounts,
+  };
+  const messages = [
+    { label: "Vote message", template: social.voteMessage },
+    { label: "Donation message", template: social.donationMessage },
+  ];
+  const platforms = [
+    { platform: "x", label: "X", limit: X_CHAR_LIMIT },
+    { platform: "farcaster", label: "Farcaster", limit: FARCASTER_CHAR_LIMIT },
+  ] as const;
+
+  for (const { label, template } of messages) {
+    if (!template?.trim()) continue;
+
+    for (const { platform, label: platformLabel, limit } of platforms) {
+      const count = getEffectiveCharCount(template, platform, shareContext);
+
+      if (count > limit) {
+        return `${label} exceeds the ${platformLabel} limit (${count}/${limit})`;
       }
-      const host = url.hostname.replace(/^www\./, "");
-      const allowed = SOCIAL_ALLOWED_HOSTS[platform] ?? [];
-      if (allowed.includes(host)) {
-        // Strip query and hash — they can carry tracking params or
-        // open-redirect chains and we only need the canonical profile path.
-        return `https://${host}${url.pathname}`;
-      }
-      // Not an allowed host — fall through to treat the last path segment as a handle
-      const lastSegment = url.pathname.split("/").filter(Boolean).pop();
-      if (!lastSegment) return "";
-      const handle = lastSegment.replace(/^@/, "");
-      return `${SOCIAL_BASE_URLS[platform]}/${encodeURIComponent(handle)}`;
-    } catch {
-      return "";
     }
   }
 
-  const handle = trimmed.replace(/^@/, "");
-  return `${SOCIAL_BASE_URLS[platform]}/${encodeURIComponent(handle)}`;
+  return null;
 }
 
 const evidenceLinkSchema = z.object({

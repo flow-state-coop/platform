@@ -10,6 +10,7 @@ const DEFAULT_METADATA: RoundMetadata = {
   logoUrl: "",
   superappSplitterAddress: null,
   applicationsClosed: false,
+  social: null,
 };
 
 export default function useCouncilMetadata(chainId: number, councilId: string) {

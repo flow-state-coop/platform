@@ -12,7 +12,7 @@ export default function Terms() {
     >
       <h1 className="fs-3 m-0">Terms of Use</h1>
       <p className="text-info m-0">Flow State</p>
-      <p>Last Updated: 18 October 2024</p>
+      <p>Last Updated: 3 July 2026</p>
       <i>Acceptance of Terms</i>
       <p className="mt-1">
         Flow State LCA, a Colorado-based limited cooperative association
@@ -378,6 +378,32 @@ export default function Terms() {
         permission or are otherwise legally entitled to post the material and to
         grant us the license described above, and that the content does not
         violate any laws.
+      </p>
+      <i>Copyright Complaints</i>
+      <p className="mt-1">
+        If you believe that any content made available on or through the
+        Services infringes a copyright that you own or control, you may report
+        it to us by email at info@flowstate.network. Your report should: (a)
+        identify the copyrighted work you believe has been infringed; (b)
+        identify the allegedly infringing material and provide information
+        reasonably sufficient to allow us to locate it on the Services; (c)
+        provide your contact information, including your name and email address;
+        and (d) include a statement that you have a good-faith belief that the
+        use of the material is not authorized by the copyright owner, its agent,
+        or the law.
+      </p>
+      <p>
+        We will review reports submitted under this section and, where we
+        determine it to be appropriate, remove or disable access to the
+        allegedly infringing material. Users who repeatedly post or display
+        material that infringes the intellectual property rights of others may
+        have such content removed and their access to upload features or the
+        Services suspended or terminated.
+      </p>
+      <p>
+        Without limiting the foregoing, you acknowledge and agree that Flow
+        State may remove or disable access to any content provided by users on
+        or through the Services at its sole discretion, with or without notice.
       </p>
       <i>Third-Party Resources and Promotions</i>
       <p className="mt-1">

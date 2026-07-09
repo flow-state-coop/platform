@@ -8,6 +8,7 @@ import { ALLOWED_IMAGE_TYPES } from "@/app/flow-councils/lib/constants";
 export const dynamic = "force-dynamic";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_SHARE_IMAGE_FILE_SIZE = 1024 * 1024; // 1MB
 
 export async function POST(request: Request) {
   try {
@@ -20,7 +21,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const { fileName, contentType, fileSize } = await request.json();
+    const { fileName, contentType, fileSize, kind } = await request.json();
+    const isShareImage = kind === "share-image";
 
     if (!fileName || !contentType) {
       console.warn("Rejected image upload: missing fileName or contentType", {
@@ -50,20 +52,30 @@ export async function POST(request: Request) {
       );
     }
 
-    if (fileSize && fileSize > MAX_FILE_SIZE) {
+    const maxFileSize = isShareImage
+      ? MAX_SHARE_IMAGE_FILE_SIZE
+      : MAX_FILE_SIZE;
+
+    if (fileSize && fileSize > maxFileSize) {
       console.warn("Rejected image upload: file too large", {
         fileName,
         contentType,
         fileSize,
       });
       return new Response(
-        JSON.stringify({ success: false, error: "File too large. Max 5MB" }),
+        JSON.stringify({
+          success: false,
+          error: isShareImage
+            ? "File too large. Max 1MB"
+            : "File too large. Max 5MB",
+        }),
         { status: 400 },
       );
     }
 
     const ext = fileName.split(".").pop()?.toLowerCase() || "png";
-    const key = `projects/${session.address.toLowerCase()}/${Date.now()}.${ext}`;
+    const keyPrefix = isShareImage ? "share-images" : "projects";
+    const key = `${keyPrefix}/${session.address.toLowerCase()}/${Date.now()}.${ext}`;
 
     const command = new PutObjectCommand({
       Bucket: S3_BUCKET,

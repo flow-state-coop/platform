@@ -1,4 +1,4 @@
-import { S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 export const s3Client = new S3Client({
   region: process.env.AWS_REGION!,
@@ -10,3 +10,17 @@ export const s3Client = new S3Client({
 
 export const S3_BUCKET = process.env.AWS_S3_BUCKET!;
 export const S3_PUBLIC_URL = process.env.AWS_S3_PUBLIC_URL!; // e.g., https://bucket.s3.region.amazonaws.com or CloudFront URL
+
+export async function deleteObjectByPublicUrl(
+  publicUrl: string,
+): Promise<void> {
+  const prefix = `${S3_PUBLIC_URL}/`;
+
+  if (!publicUrl.startsWith(prefix)) {
+    return;
+  }
+
+  const key = publicUrl.slice(prefix.length);
+
+  await s3Client.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }));
+}

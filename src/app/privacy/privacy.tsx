@@ -12,7 +12,7 @@ export default function Privacy() {
     >
       <h1 className="fs-3 m-0">Privacy Policy</h1>
       <p className="text-info m-0">Flow State</p>
-      <p>Last Updated: 15 November 2024</p>
+      <p>Last Updated: 3 July 2026</p>
       <p className="mt-1">
         This privacy policy (“Policy”) describes how Flow State LCA, a
         Colorado-based limited cooperative association (referred to herein as
@@ -138,6 +138,19 @@ export default function Privacy() {
         address or other contact information), we may use that information for
         the purposes described when you provide it to us. You do not need to
         provide us with any personal data to use the Services.
+      </p>
+      <i>Content you publish through the Services</i>
+      <p className="mt-1">
+        If you administer a funding round through the Services, the round names,
+        descriptions, logos, images, social media handles, and share message
+        text you provide are stored with Flow State and its infrastructure
+        providers and are publicly displayed, including in link previews
+        rendered by third-party platforms such as X and Farcaster. Do not
+        include personal information in this content that you do not want to be
+        public. You can update or remove this content through the round admin
+        tools or by contacting us at info@flowstate.network, but copies cached
+        by third-party link-preview services may persist for a period of time
+        after removal.
       </p>
       <p className="mt-3 fs-5">How We Use Data</p>
       <p>

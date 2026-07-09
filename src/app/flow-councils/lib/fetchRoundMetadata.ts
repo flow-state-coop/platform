@@ -1,4 +1,5 @@
 import { isAddress, type Address } from "viem";
+import { type RoundSocialConfig } from "@/app/flow-councils/lib/socialShare";
 
 export type RoundMetadata = {
   name: string;
@@ -6,6 +7,7 @@ export type RoundMetadata = {
   logoUrl: string;
   superappSplitterAddress: Address | null;
   applicationsClosed: boolean;
+  social: RoundSocialConfig | null;
 };
 
 const DEFAULT_METADATA: RoundMetadata = {
@@ -14,6 +16,7 @@ const DEFAULT_METADATA: RoundMetadata = {
   logoUrl: "",
   superappSplitterAddress: null,
   applicationsClosed: false,
+  social: null,
 };
 
 export async function fetchRoundMetadata(
@@ -43,6 +46,7 @@ export async function fetchRoundMetadata(
         logoUrl: details?.logoUrl ?? DEFAULT_METADATA.logoUrl,
         superappSplitterAddress: splitter,
         applicationsClosed: data.round.applicationsClosed ?? false,
+        social: details?.social ?? null,
       };
     }
   } catch (err) {
