@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { getTestDb, resetDb } from "@tests/helpers/db";
+import { acquireTestDbLock } from "@tests/helpers/dbLock";
 import { seedE2eFixture } from "../helpers/e2eDb";
 import { FIXTURE_FILE } from "./fixtureFile";
 
@@ -32,6 +33,8 @@ export default async function globalSetup() {
       "NEXTAUTH_SECRET is not set — required for SIWE sign-in during E2E",
     );
   }
+
+  await acquireTestDbLock("playwright-e2e");
 
   // Reset before seeding: a prior run's teardown may have been skipped (CI
   // timeout, process crash), leaving rows that would collide on unique
