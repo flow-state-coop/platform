@@ -83,16 +83,16 @@ function withMilestonesSanitized(
     sanitized[element.id] = (value as DynamicMilestoneValue[]).map(
       (milestone) => {
         if (!milestone || typeof milestone !== "object") return milestone;
-        const { title, description, items } = milestone;
-        return {
-          title,
-          description,
-          items: Array.isArray(items)
-            ? items.filter(
+        const rest = { ...milestone };
+        delete rest.sourceIndex;
+        return Array.isArray(rest.items)
+          ? {
+              ...rest,
+              items: rest.items.filter(
                 (item) => typeof item !== "string" || item.trim() !== "",
-              )
-            : items,
-        };
+              ),
+            }
+          : rest;
       },
     );
   }

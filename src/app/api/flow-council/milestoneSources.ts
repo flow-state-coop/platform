@@ -58,6 +58,17 @@ export function getMilestoneCounts(
 // evidence to whichever milestone slid into its slot.
 export type MilestoneSources = Record<string, (number | null)[]>;
 
+// Thrown when the stored milestones changed between the request reading them
+// and the transaction that rewrites them (a double-submitted save, two tabs).
+// The provenance the caller sent describes an array that no longer exists, so
+// applying it would move progress onto the wrong milestone or drop it.
+export class MilestoneSourcesConflictError extends Error {
+  constructor() {
+    super("Application changed while saving");
+    this.name = "MilestoneSourcesConflictError";
+  }
+}
+
 type ParseResult =
   | { success: true; sources: MilestoneSources }
   | { success: false; error: string };
@@ -107,6 +118,46 @@ export function parseMilestoneSources(
   }
 
   return { success: true, sources };
+}
+
+// Re-reads the milestones under a row lock and re-checks the caller's
+// provenance against them, so a save that raced another one is rejected
+// instead of remapping progress against counts that have since moved. Returns
+// the counts the remap must use.
+export async function lockAndRevalidateMilestoneSources(
+  trx: Transaction<DB>,
+  applicationId: number,
+  rawMilestoneSources: unknown,
+  isDynamicFlow: boolean,
+  milestoneTypes: string[],
+  submittedCounts: Record<string, number>,
+): Promise<{
+  sources: MilestoneSources;
+  storedCounts: Record<string, number>;
+}> {
+  const current = await trx
+    .selectFrom("applications")
+    .select("details")
+    .where("id", "=", applicationId)
+    .forUpdate()
+    .executeTakeFirstOrThrow();
+
+  const storedCounts = getMilestoneCounts(
+    typeof current.details === "string"
+      ? JSON.parse(current.details)
+      : current.details,
+    isDynamicFlow,
+    milestoneTypes,
+  );
+
+  const parsed = parseMilestoneSources(
+    rawMilestoneSources,
+    storedCounts,
+    submittedCounts,
+  );
+  if (!parsed.success) throw new MilestoneSourcesConflictError();
+
+  return { sources: parsed.sources, storedCounts };
 }
 
 function isIdentity(entries: (number | null)[], storedCount: number): boolean {

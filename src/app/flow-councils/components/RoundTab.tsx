@@ -64,27 +64,20 @@ function extractMilestoneSources(roundData: RoundForm) {
 }
 
 function withoutMilestoneSources(roundData: RoundForm): RoundForm {
+  const strip = <T extends { sourceIndex?: number | null }>(milestone: T) => {
+    const rest = { ...milestone };
+    delete rest.sourceIndex;
+    return rest;
+  };
   return {
     ...roundData,
     buildGoals: {
       ...roundData.buildGoals,
-      milestones: roundData.buildGoals.milestones.map(
-        ({ title, description, deliverables }) => ({
-          title,
-          description,
-          deliverables,
-        }),
-      ),
+      milestones: roundData.buildGoals.milestones.map(strip),
     },
     growthGoals: {
       ...roundData.growthGoals,
-      milestones: roundData.growthGoals.milestones.map(
-        ({ title, description, activations }) => ({
-          title,
-          description,
-          activations,
-        }),
-      ),
+      milestones: roundData.growthGoals.milestones.map(strip),
     },
   };
 }

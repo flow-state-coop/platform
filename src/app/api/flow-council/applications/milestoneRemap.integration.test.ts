@@ -20,6 +20,7 @@ vi.mock("../auth", async (importOriginal) => {
 });
 
 import { PUT } from "./route";
+import { PATCH } from "./[applicationId]/route";
 import {
   getTestDb,
   resetAndSeed,
@@ -307,6 +308,134 @@ describe("PUT /api/flow-council/applications — milestone progress remap", () =
       putRequest(
         saveBody(projectId, [milestone("A"), milestone("B"), milestone("C")]),
       ),
+    );
+
+    expect((await readJson(res)).success).toBe(true);
+    expect(await readProgress(applicationId)).toHaveLength(3);
+  });
+
+  it("rejects a replayed save whose provenance no longer matches the stored milestones", async () => {
+    const { projectId, applicationId } = await seedGranteeWithProgress();
+    const deleteMiddle = saveBody(projectId, [milestone("A"), milestone("C")], {
+      [ELEMENT_ID]: [0, 2],
+    });
+
+    expect((await readJson(await PUT(putRequest(deleteMiddle)))).success).toBe(
+      true,
+    );
+
+    // Replaying the same body (a double-submit) names index 2, which no longer
+    // exists. Applying it would delete milestone C's progress instead of
+    // keeping it.
+    const replay = await PUT(putRequest(deleteMiddle));
+
+    expect(replay.status).toBe(400);
+    expect(await readProgress(applicationId)).toEqual([
+      { index: 0, otherDetails: "progress for A" },
+      { index: 1, otherDetails: "progress for C" },
+    ]);
+  });
+
+  it("keeps progress consistent when two saves race", async () => {
+    const { projectId, applicationId } = await seedGranteeWithProgress();
+    const deleteMiddle = saveBody(projectId, [milestone("A"), milestone("C")], {
+      [ELEMENT_ID]: [0, 2],
+    });
+
+    const [first, second] = await Promise.all([
+      PUT(putRequest(deleteMiddle)),
+      PUT(putRequest(deleteMiddle)),
+    ]);
+    const statuses = [first.status, second.status].sort();
+
+    // Exactly one save wins; the loser is turned away rather than remapping
+    // against milestones that moved under it.
+    expect(statuses[0]).toBe(200);
+    expect(statuses[1]).toBeGreaterThanOrEqual(400);
+    expect(await readProgress(applicationId)).toEqual([
+      { index: 0, otherDetails: "progress for A" },
+      { index: 1, otherDetails: "progress for C" },
+    ]);
+  });
+});
+
+describe("PATCH /api/flow-council/applications/[applicationId] — milestone progress remap", () => {
+  beforeEach(() => {
+    mockSession(TEST_MANAGER_ADDRESS);
+  });
+
+  function patchRequest(applicationId: number, body: unknown) {
+    return new Request(
+      `http://localhost/api/flow-council/applications/${applicationId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+  }
+
+  function routeParams(applicationId: number) {
+    return {
+      params: Promise.resolve({ applicationId: String(applicationId) }),
+    };
+  }
+
+  function patchBody(milestones: unknown[], milestoneSources?: unknown) {
+    return {
+      details: {
+        _formVersion: 1,
+        round: { [ELEMENT_ID]: milestones },
+        attestation: {},
+      },
+      ...(milestoneSources === undefined ? {} : { milestoneSources }),
+    };
+  }
+
+  it("moves progress with its milestone when a middle milestone is deleted", async () => {
+    const { applicationId } = await seedGranteeWithProgress();
+
+    const res = await PATCH(
+      patchRequest(
+        applicationId,
+        patchBody([milestone("A"), milestone("C")], { [ELEMENT_ID]: [0, 2] }),
+      ),
+      routeParams(applicationId),
+    );
+
+    expect((await readJson(res)).success).toBe(true);
+    expect(await readProgress(applicationId)).toEqual([
+      { index: 0, otherDetails: "progress for A" },
+      { index: 1, otherDetails: "progress for C" },
+    ]);
+  });
+
+  it("rejects provenance that names a milestone the stored array does not have", async () => {
+    const { applicationId } = await seedGranteeWithProgress();
+
+    const res = await PATCH(
+      patchRequest(
+        applicationId,
+        patchBody([milestone("A"), milestone("B"), milestone("C")], {
+          [ELEMENT_ID]: [0, 1, 7],
+        }),
+      ),
+      routeParams(applicationId),
+    );
+
+    expect(res.status).toBe(400);
+    expect(await readProgress(applicationId)).toHaveLength(3);
+  });
+
+  it("leaves progress alone when a save carries no provenance", async () => {
+    const { applicationId } = await seedGranteeWithProgress();
+
+    const res = await PATCH(
+      patchRequest(
+        applicationId,
+        patchBody([milestone("A"), milestone("B"), milestone("C")]),
+      ),
+      routeParams(applicationId),
     );
 
     expect((await readJson(res)).success).toBe(true);

@@ -16,6 +16,8 @@ import { getStoredSection } from "../utils";
 import {
   getMilestoneCounts,
   getMilestoneTypes,
+  lockAndRevalidateMilestoneSources,
+  MilestoneSourcesConflictError,
   parseMilestoneSources,
   remapMilestoneProgress,
 } from "../milestoneSources";
@@ -372,10 +374,15 @@ export async function PUT(request: Request) {
       isDynamicFlow,
       milestoneTypes,
     );
+    const submittedMilestoneCounts = getMilestoneCounts(
+      details,
+      isDynamicFlow,
+      milestoneTypes,
+    );
     const parsedSources = parseMilestoneSources(
       rawMilestoneSources,
       storedMilestoneCounts,
-      getMilestoneCounts(details, isDynamicFlow, milestoneTypes),
+      submittedMilestoneCounts,
     );
     if (!parsedSources.success) {
       return new Response(
@@ -399,30 +406,54 @@ export async function PUT(request: Request) {
         updateValues.fundingAddress = fundingAddress.toLowerCase();
       }
 
-      application = await db.transaction().execute(async (trx) => {
-        const updated = await trx
-          .updateTable("applications")
-          .set(updateValues)
-          .where("id", "=", existingApplication.id)
-          .returning([
-            "id",
-            "projectId",
-            "roundId",
-            "fundingAddress",
-            "status",
-            "details",
-          ])
-          .executeTakeFirstOrThrow();
+      try {
+        application = await db.transaction().execute(async (trx) => {
+          const { sources, storedCounts } =
+            await lockAndRevalidateMilestoneSources(
+              trx,
+              existingApplication.id,
+              rawMilestoneSources,
+              isDynamicFlow,
+              milestoneTypes,
+              submittedMilestoneCounts,
+            );
 
-        await remapMilestoneProgress(
-          trx,
-          existingApplication.id,
-          parsedSources.sources,
-          storedMilestoneCounts,
-        );
+          const updated = await trx
+            .updateTable("applications")
+            .set(updateValues)
+            .where("id", "=", existingApplication.id)
+            .returning([
+              "id",
+              "projectId",
+              "roundId",
+              "fundingAddress",
+              "status",
+              "details",
+            ])
+            .executeTakeFirstOrThrow();
 
-        return updated;
-      });
+          await remapMilestoneProgress(
+            trx,
+            existingApplication.id,
+            sources,
+            storedCounts,
+          );
+
+          return updated;
+        });
+      } catch (err) {
+        if (err instanceof MilestoneSourcesConflictError) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error:
+                "This application changed while you were saving. Reload and try again.",
+            }),
+            { status: 409, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        throw err;
+      }
     } else {
       if (round.applicationsClosed) {
         return new Response(

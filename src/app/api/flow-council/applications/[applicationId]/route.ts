@@ -22,6 +22,8 @@ import { getStoredSection } from "@/app/api/flow-council/utils";
 import {
   getMilestoneCounts,
   getMilestoneTypes,
+  lockAndRevalidateMilestoneSources,
+  MilestoneSourcesConflictError,
   parseMilestoneSources,
   remapMilestoneProgress,
 } from "@/app/api/flow-council/milestoneSources";
@@ -250,8 +252,13 @@ export async function PATCH(
       );
     }
 
-    let milestoneSources: Record<string, (number | null)[]> = {};
-    let storedMilestoneCounts: Record<string, number> = {};
+    // Set only when the request carries details, i.e. when the milestone arrays
+    // can have moved and progress may need to follow them.
+    let milestoneRemap: {
+      isDynamicFlow: boolean;
+      milestoneTypes: string[];
+      submittedCounts: Record<string, number>;
+    } | null = null;
 
     if (details) {
       const roundRow = await db
@@ -304,20 +311,21 @@ export async function PATCH(
         }
       }
 
-      const milestoneTypes = getMilestoneTypes(!!roundSchema, roundSchema);
+      const isDynamicFlow = !!roundSchema;
+      const milestoneTypes = getMilestoneTypes(isDynamicFlow, roundSchema);
       const storedDetails =
         typeof existingApp.storedDetails === "string"
           ? JSON.parse(existingApp.storedDetails)
           : existingApp.storedDetails;
-      storedMilestoneCounts = getMilestoneCounts(
-        storedDetails,
-        !!roundSchema,
+      const submittedCounts = getMilestoneCounts(
+        details,
+        isDynamicFlow,
         milestoneTypes,
       );
       const parsedSources = parseMilestoneSources(
         rawMilestoneSources,
-        storedMilestoneCounts,
-        getMilestoneCounts(details, !!roundSchema, milestoneTypes),
+        getMilestoneCounts(storedDetails, isDynamicFlow, milestoneTypes),
+        submittedCounts,
       );
       if (!parsedSources.success) {
         return new Response(
@@ -325,7 +333,7 @@ export async function PATCH(
           { status: 400, headers: { "Content-Type": "application/json" } },
         );
       }
-      milestoneSources = parsedSources.sources;
+      milestoneRemap = { isDynamicFlow, milestoneTypes, submittedCounts };
     }
 
     const updateData: Record<string, unknown> = {
@@ -352,30 +360,58 @@ export async function PATCH(
       updateData.status = "SUBMITTED";
     }
 
-    const updatedApplication = await db.transaction().execute(async (trx) => {
-      const updated = await trx
-        .updateTable("applications")
-        .set(updateData)
-        .where("id", "=", appId)
-        .returning([
-          "id",
-          "projectId",
-          "roundId",
-          "fundingAddress",
-          "status",
-          "details",
-        ])
-        .executeTakeFirstOrThrow();
+    let updatedApplication;
+    try {
+      updatedApplication = await db.transaction().execute(async (trx) => {
+        const remap = milestoneRemap
+          ? await lockAndRevalidateMilestoneSources(
+              trx,
+              appId,
+              rawMilestoneSources,
+              milestoneRemap.isDynamicFlow,
+              milestoneRemap.milestoneTypes,
+              milestoneRemap.submittedCounts,
+            )
+          : null;
 
-      await remapMilestoneProgress(
-        trx,
-        appId,
-        milestoneSources,
-        storedMilestoneCounts,
-      );
+        const updated = await trx
+          .updateTable("applications")
+          .set(updateData)
+          .where("id", "=", appId)
+          .returning([
+            "id",
+            "projectId",
+            "roundId",
+            "fundingAddress",
+            "status",
+            "details",
+          ])
+          .executeTakeFirstOrThrow();
 
-      return updated;
-    });
+        if (remap) {
+          await remapMilestoneProgress(
+            trx,
+            appId,
+            remap.sources,
+            remap.storedCounts,
+          );
+        }
+
+        return updated;
+      });
+    } catch (err) {
+      if (err instanceof MilestoneSourcesConflictError) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error:
+              "This application changed while you were saving. Reload and try again.",
+          }),
+          { status: 409, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      throw err;
+    }
 
     // Insert automated message and send email when application is submitted
     if (submit === true && canSubmit) {
