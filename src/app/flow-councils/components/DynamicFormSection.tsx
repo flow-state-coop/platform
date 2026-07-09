@@ -22,7 +22,6 @@ type Props = {
   onChange?: (id: string, value: unknown) => void;
   validated?: boolean;
   readOnly?: boolean;
-  lockBlockCount?: boolean;
   profileData?: { email?: string; telegram?: string };
 };
 
@@ -33,7 +32,6 @@ export default function DynamicFormSection({
   onChange,
   validated = false,
   readOnly = false,
-  lockBlockCount = false,
   profileData,
 }: Props) {
   const getValue = (id: string) => values[id] ?? "";
@@ -466,7 +464,6 @@ export default function DynamicFormSection({
                 onChange={(v) => handleChange(el.id, v)}
                 validated={validated}
                 readOnly={readOnly}
-                lockBlockCount={lockBlockCount}
                 numberPrefix={num(el.id)}
               />
             );

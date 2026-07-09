@@ -19,6 +19,12 @@ import { readJsonBody, PayloadTooLargeError } from "../../../utils";
 import { MINIMAL_TEMPLATE } from "@/app/flow-councils/types/formSchema";
 import { isDynamicApplicationDetails } from "@/app/flow-councils/utils/legacyFormAdapter";
 import { getStoredSection } from "@/app/api/flow-council/utils";
+import {
+  getMilestoneCounts,
+  getMilestoneTypes,
+  parseMilestoneSources,
+  remapMilestoneProgress,
+} from "@/app/api/flow-council/milestoneSources";
 
 export const dynamic = "force-dynamic";
 
@@ -181,6 +187,7 @@ export async function PATCH(
       details?: Record<string, unknown>;
       submit?: boolean;
       fundingAddress?: string;
+      milestoneSources?: unknown;
     };
     try {
       body = await readJsonBody(request, MAX_DETAILS_SIZE);
@@ -197,6 +204,7 @@ export async function PATCH(
       );
     }
     const { details, submit, fundingAddress } = body;
+    const rawMilestoneSources = body.milestoneSources;
 
     // Verify user is a manager of the project
     const existingApp = await db
@@ -241,6 +249,9 @@ export async function PATCH(
         }),
       );
     }
+
+    let milestoneSources: Record<string, (number | null)[]> = {};
+    let storedMilestoneCounts: Record<string, number> = {};
 
     if (details) {
       const roundRow = await db
@@ -292,6 +303,29 @@ export async function PATCH(
           );
         }
       }
+
+      const milestoneTypes = getMilestoneTypes(!!roundSchema, roundSchema);
+      const storedDetails =
+        typeof existingApp.storedDetails === "string"
+          ? JSON.parse(existingApp.storedDetails)
+          : existingApp.storedDetails;
+      storedMilestoneCounts = getMilestoneCounts(
+        storedDetails,
+        !!roundSchema,
+        milestoneTypes,
+      );
+      const parsedSources = parseMilestoneSources(
+        rawMilestoneSources,
+        storedMilestoneCounts,
+        getMilestoneCounts(details, !!roundSchema, milestoneTypes),
+      );
+      if (!parsedSources.success) {
+        return new Response(
+          JSON.stringify({ success: false, error: parsedSources.error }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      milestoneSources = parsedSources.sources;
     }
 
     const updateData: Record<string, unknown> = {
@@ -318,19 +352,30 @@ export async function PATCH(
       updateData.status = "SUBMITTED";
     }
 
-    const updatedApplication = await db
-      .updateTable("applications")
-      .set(updateData)
-      .where("id", "=", appId)
-      .returning([
-        "id",
-        "projectId",
-        "roundId",
-        "fundingAddress",
-        "status",
-        "details",
-      ])
-      .executeTakeFirstOrThrow();
+    const updatedApplication = await db.transaction().execute(async (trx) => {
+      const updated = await trx
+        .updateTable("applications")
+        .set(updateData)
+        .where("id", "=", appId)
+        .returning([
+          "id",
+          "projectId",
+          "roundId",
+          "fundingAddress",
+          "status",
+          "details",
+        ])
+        .executeTakeFirstOrThrow();
+
+      await remapMilestoneProgress(
+        trx,
+        appId,
+        milestoneSources,
+        storedMilestoneCounts,
+      );
+
+      return updated;
+    });
 
     // Insert automated message and send email when application is submitted
     if (submit === true && canSubmit) {

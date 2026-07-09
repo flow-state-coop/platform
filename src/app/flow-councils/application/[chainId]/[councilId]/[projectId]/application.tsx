@@ -67,7 +67,11 @@ function stableStringify(value: unknown): string {
 // same behavior as the Milestones-tab definition editor. Non-string rows
 // (possible in an old or hand-edited local draft) are kept for the server to
 // reject with a clear error instead of throwing here.
-function withBlankMilestoneItemsRemoved(
+//
+// `sourceIndex` is editor-only bookkeeping (see DynamicMilestoneValue): it is
+// extracted into the save payload's `milestoneSources` and dropped here so it
+// never reaches the stored application details.
+function withMilestonesSanitized(
   values: Record<string, unknown>,
   elements: FormElement[],
 ): Record<string, unknown> {
@@ -77,18 +81,91 @@ function withBlankMilestoneItemsRemoved(
     const value = sanitized[element.id];
     if (!Array.isArray(value)) continue;
     sanitized[element.id] = (value as DynamicMilestoneValue[]).map(
-      (milestone) =>
-        milestone && Array.isArray(milestone.items)
-          ? {
-              ...milestone,
-              items: milestone.items.filter(
+      (milestone) => {
+        if (!milestone || typeof milestone !== "object") return milestone;
+        const { title, description, items } = milestone;
+        return {
+          title,
+          description,
+          items: Array.isArray(items)
+            ? items.filter(
                 (item) => typeof item !== "string" || item.trim() !== "",
-              ),
-            }
-          : milestone,
+              )
+            : items,
+        };
+      },
     );
   }
   return sanitized;
+}
+
+// Provenance for every milestone the round section submits, so the server can
+// move reported progress with its milestone when blocks are added or removed.
+function extractMilestoneSources(
+  values: Record<string, unknown>,
+  elements: FormElement[],
+): Record<string, (number | null)[]> {
+  const sources: Record<string, (number | null)[]> = {};
+  for (const element of elements) {
+    if (element.type !== "milestone") continue;
+    const value = values[element.id];
+    if (!Array.isArray(value)) continue;
+    sources[element.id] = (value as DynamicMilestoneValue[]).map((milestone) =>
+      typeof milestone?.sourceIndex === "number" ? milestone.sourceIndex : null,
+    );
+  }
+  return sources;
+}
+
+// Stamps each milestone with the position it holds in the just-loaded (or
+// just-saved) server array, which is the baseline every later add/remove is
+// resolved against.
+function withMilestoneSourcesStamped(
+  values: Record<string, unknown>,
+  elements: FormElement[],
+): Record<string, unknown> {
+  const stamped = { ...values };
+  for (const element of elements) {
+    if (element.type !== "milestone") continue;
+    const value = stamped[element.id];
+    if (!Array.isArray(value)) continue;
+    stamped[element.id] = (value as DynamicMilestoneValue[]).map(
+      (milestone, index) =>
+        milestone && typeof milestone === "object"
+          ? { ...milestone, sourceIndex: index }
+          : milestone,
+    );
+  }
+  return stamped;
+}
+
+// A local draft written before milestones carried provenance has none, so its
+// milestones are matched to the stored array by position; anything past the end
+// of that array is new. Drafts written since keep the provenance they recorded.
+function withMilestoneSourcesFilled(
+  values: Record<string, unknown>,
+  elements: FormElement[],
+  baseline: Record<string, unknown>,
+): Record<string, unknown> {
+  const filled = { ...values };
+  for (const element of elements) {
+    if (element.type !== "milestone") continue;
+    const value = filled[element.id];
+    if (!Array.isArray(value)) continue;
+    const storedValue = baseline[element.id];
+    const storedCount = Array.isArray(storedValue) ? storedValue.length : 0;
+    filled[element.id] = (value as DynamicMilestoneValue[]).map(
+      (milestone, index) => {
+        if (!milestone || typeof milestone !== "object") return milestone;
+        if ("sourceIndex" in milestone) return milestone;
+        return {
+          ...milestone,
+          sourceIndex: index < storedCount ? index : null,
+        };
+      },
+    );
+  }
+  return filled;
 }
 
 function FormSkeleton() {
@@ -343,7 +420,10 @@ export default function Application(props: ApplicationProps) {
             : app.details;
 
         if (configuredSchema || isDynamicApplicationDetails(details)) {
-          const round = (details.round as Record<string, unknown>) ?? {};
+          const round = withMilestoneSourcesStamped(
+            (details.round as Record<string, unknown>) ?? {},
+            (configuredSchema ?? MINIMAL_TEMPLATE).round,
+          );
           const attestation =
             (details.attestation as Record<string, unknown>) ?? {};
           serverBaselineRef.current = {
@@ -373,32 +453,39 @@ export default function Application(props: ApplicationProps) {
     [address, chainId, councilId],
   );
 
-  const restoreDraft = useCallback(() => {
-    const storedDraft = draft.readDraft();
-    if (!storedDraft) return;
+  const restoreDraft = useCallback(
+    (roundElements: FormElement[]) => {
+      const storedDraft = draft.readDraft();
+      if (!storedDraft) return;
 
-    const round = storedDraft.round ?? {};
-    const attestation = storedDraft.attestation ?? {};
-    const fundingAddress = storedDraft.fundingAddress ?? "";
+      const round = withMilestoneSourcesFilled(
+        storedDraft.round ?? {},
+        roundElements,
+        serverBaselineRef.current.round ?? {},
+      );
+      const attestation = storedDraft.attestation ?? {};
+      const fundingAddress = storedDraft.fundingAddress ?? "";
 
-    if (Object.keys(round).length > 0) {
-      setDynamicRoundValues((prev) => ({ ...prev, ...round }));
-    }
-    if (Object.keys(attestation).length > 0) {
-      setDynamicAttestationValues((prev) => ({ ...prev, ...attestation }));
-    }
-    if (fundingAddress) {
-      setDynamicFundingAddress(fundingAddress);
-    }
+      if (Object.keys(round).length > 0) {
+        setDynamicRoundValues((prev) => ({ ...prev, ...round }));
+      }
+      if (Object.keys(attestation).length > 0) {
+        setDynamicAttestationValues((prev) => ({ ...prev, ...attestation }));
+      }
+      if (fundingAddress) {
+        setDynamicFundingAddress(fundingAddress);
+      }
 
-    const baseline = serverBaselineRef.current;
-    const differsFromServer =
-      stableStringify(round) !== stableStringify(baseline.round ?? {}) ||
-      stableStringify(attestation) !==
-        stableStringify(baseline.attestation ?? {}) ||
-      fundingAddress !== (baseline.fundingAddress ?? "");
-    setDraftRestored(differsFromServer);
-  }, [draft]);
+      const baseline = serverBaselineRef.current;
+      const differsFromServer =
+        stableStringify(round) !== stableStringify(baseline.round ?? {}) ||
+        stableStringify(attestation) !==
+          stableStringify(baseline.attestation ?? {}) ||
+        fundingAddress !== (baseline.fundingAddress ?? "");
+      setDraftRestored(differsFromServer);
+    },
+    [draft],
+  );
 
   useEffect(() => {
     if (urlId === "new") {
@@ -431,15 +518,15 @@ export default function Application(props: ApplicationProps) {
         if (appDraft?.applicationId != null) {
           setApplicationId((prev) => prev ?? appDraft.applicationId ?? null);
         }
-        restoreDraft();
+        restoreDraft((configuredSchema ?? MINIMAL_TEMPLATE).round);
         setIsLoading(false);
       })();
     } else {
       (async () => {
-        await fetchRound();
+        const configuredSchema = await fetchRound();
         fetchProfile();
         if (cancelled) return;
-        restoreDraft();
+        restoreDraft((configuredSchema ?? MINIMAL_TEMPLATE).round);
       })();
     }
 
@@ -538,11 +625,9 @@ export default function Application(props: ApplicationProps) {
     setDynamicSaving(true);
 
     try {
-      const round = withBlankMilestoneItemsRemoved(
-        dynamicRoundValues,
-        formSchema?.round ?? [],
-      );
-      const attestation = withBlankMilestoneItemsRemoved(
+      const roundElements = formSchema?.round ?? [];
+      const round = withMilestonesSanitized(dynamicRoundValues, roundElements);
+      const attestation = withMilestonesSanitized(
         dynamicAttestationValues,
         formSchema?.attestation ?? [],
       );
@@ -560,6 +645,10 @@ export default function Application(props: ApplicationProps) {
             attestation,
           },
           fundingAddress: dynamicFundingAddress,
+          milestoneSources: extractMilestoneSources(
+            dynamicRoundValues,
+            roundElements,
+          ),
         }),
       });
       const json = await res.json();
@@ -573,10 +662,13 @@ export default function Application(props: ApplicationProps) {
       if (json.application?.id) {
         setApplicationId(json.application.id);
       }
-      setDynamicRoundValues(round);
+      // What we just sent is now what the server stores, so every milestone's
+      // provenance resets to its own position for any later edit in this session.
+      const savedRound = withMilestoneSourcesStamped(round, roundElements);
+      setDynamicRoundValues(savedRound);
       setDynamicAttestationValues(attestation);
       serverBaselineRef.current = {
-        round,
+        round: savedRound,
         attestation,
         fundingAddress: dynamicFundingAddress,
       };
@@ -606,17 +698,21 @@ export default function Application(props: ApplicationProps) {
           body: JSON.stringify({
             details: {
               _formVersion: FORM_VERSION,
-              round: withBlankMilestoneItemsRemoved(
+              round: withMilestonesSanitized(
                 dynamicRoundValues,
                 formSchema?.round ?? [],
               ),
-              attestation: withBlankMilestoneItemsRemoved(
+              attestation: withMilestonesSanitized(
                 dynamicAttestationValues,
                 formSchema?.attestation ?? [],
               ),
             },
             fundingAddress: dynamicFundingAddress,
             submit: true,
+            milestoneSources: extractMilestoneSources(
+              dynamicRoundValues,
+              formSchema?.round ?? [],
+            ),
           }),
         },
       );
@@ -779,7 +875,6 @@ export default function Application(props: ApplicationProps) {
                     baselineValues={serverBaselineRef.current.round}
                     onChange={handleDynamicRoundChange}
                     validated={dynamicValidated}
-                    lockBlockCount={isInLockedStatus && editsUnlocked}
                     profileData={profileData}
                   />
                   {dynamicError && (
@@ -863,7 +958,6 @@ export default function Application(props: ApplicationProps) {
                     baselineValues={serverBaselineRef.current.attestation}
                     onChange={handleDynamicAttestationChange}
                     validated={dynamicValidated}
-                    lockBlockCount={isInLockedStatus && editsUnlocked}
                     profileData={profileData}
                   />
                   {dynamicError && (
