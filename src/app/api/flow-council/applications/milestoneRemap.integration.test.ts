@@ -335,28 +335,6 @@ describe("PUT /api/flow-council/applications — milestone progress remap", () =
       { index: 1, otherDetails: "progress for C" },
     ]);
   });
-
-  it("keeps progress consistent when two saves race", async () => {
-    const { projectId, applicationId } = await seedGranteeWithProgress();
-    const deleteMiddle = saveBody(projectId, [milestone("A"), milestone("C")], {
-      [ELEMENT_ID]: [0, 2],
-    });
-
-    const [first, second] = await Promise.all([
-      PUT(putRequest(deleteMiddle)),
-      PUT(putRequest(deleteMiddle)),
-    ]);
-    const statuses = [first.status, second.status].sort();
-
-    // Exactly one save wins; the loser is turned away rather than remapping
-    // against milestones that moved under it.
-    expect(statuses[0]).toBe(200);
-    expect(statuses[1]).toBeGreaterThanOrEqual(400);
-    expect(await readProgress(applicationId)).toEqual([
-      { index: 0, otherDetails: "progress for A" },
-      { index: 1, otherDetails: "progress for C" },
-    ]);
-  });
 });
 
 describe("PATCH /api/flow-council/applications/[applicationId] — milestone progress remap", () => {

@@ -1,6 +1,9 @@
-import type { Kysely, Transaction } from "kysely";
+import { sql, type Kysely, type Transaction } from "kysely";
 import type { DB } from "@/generated/kysely";
 import { MINIMAL_TEMPLATE } from "@/app/flow-councils/types/formSchema";
+
+// Postgres: lock_not_available, i.e. the row lock below hit its timeout.
+const LOCK_TIMEOUT_SQLSTATE = "55P03";
 
 const LEGACY_MILESTONE_TYPES = ["build", "growth"];
 
@@ -124,6 +127,11 @@ export function parseMilestoneSources(
 // provenance against them, so a save that raced another one is rejected
 // instead of remapping progress against counts that have since moved. Returns
 // the counts the remap must use.
+//
+// The wait is bounded: connections reach Postgres through a transaction pooler,
+// where a lock wait pins a server connection for its whole duration. Giving up
+// quickly turns a contended save into a retryable conflict instead of letting
+// it hold the pool while it waits.
 export async function lockAndRevalidateMilestoneSources(
   trx: Transaction<DB>,
   applicationId: number,
@@ -135,12 +143,26 @@ export async function lockAndRevalidateMilestoneSources(
   sources: MilestoneSources;
   storedCounts: Record<string, number>;
 }> {
-  const current = await trx
-    .selectFrom("applications")
-    .select("details")
-    .where("id", "=", applicationId)
-    .forUpdate()
-    .executeTakeFirstOrThrow();
+  await sql`set local lock_timeout = '3s'`.execute(trx);
+
+  let current;
+  try {
+    current = await trx
+      .selectFrom("applications")
+      .select("details")
+      .where("id", "=", applicationId)
+      .forUpdate()
+      .executeTakeFirstOrThrow();
+  } catch (err) {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      (err as { code?: string }).code === LOCK_TIMEOUT_SQLSTATE
+    ) {
+      throw new MilestoneSourcesConflictError();
+    }
+    throw err;
+  }
 
   const storedCounts = getMilestoneCounts(
     typeof current.details === "string"
