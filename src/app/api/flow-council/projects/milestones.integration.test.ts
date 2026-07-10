@@ -22,7 +22,7 @@ vi.mock("../db", async () => {
 });
 
 // Route handlers under test
-import { GET, PATCH } from "./[projectId]/milestones/route";
+import { GET, PATCH, POST, DELETE } from "./[projectId]/milestones/route";
 
 import {
   getTestDb,
@@ -88,6 +88,64 @@ function makePatchRequest(projectId: number, body: unknown) {
       body: JSON.stringify(body),
     },
   );
+}
+
+function makePostRequest(projectId: number, body: unknown) {
+  return new Request(
+    `http://localhost/api/flow-council/projects/${projectId}/milestones`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+function makeDeleteRequest(projectId: number, body: unknown) {
+  return new Request(
+    `http://localhost/api/flow-council/projects/${projectId}/milestones`,
+    {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+/** Create a project managed by TEST_MANAGER_ADDRESS */
+async function seedManagedProject(name: string) {
+  const project = await db
+    .insertInto("projects")
+    .values({ details: JSON.stringify({ name }) })
+    .returning("id")
+    .executeTakeFirstOrThrow();
+
+  await db
+    .insertInto("projectManagers")
+    .values({ projectId: project.id, managerAddress: TEST_MANAGER_ADDRESS })
+    .execute();
+
+  return project;
+}
+
+async function insertProgressRow(
+  applicationId: number,
+  milestoneType: string,
+  milestoneIndex: number,
+  completion: number,
+) {
+  await db
+    .insertInto("milestoneProgress")
+    .values({
+      applicationId,
+      milestoneType,
+      milestoneIndex,
+      progress: JSON.stringify({
+        otherDetails: `details for index ${milestoneIndex}`,
+        items: [{ completion, evidence: [] }],
+      }),
+    })
+    .execute();
 }
 
 function makeRouteParams(projectId: number) {
@@ -1056,5 +1114,558 @@ describe("PATCH — milestoneType length validation", () => {
 
     const body = await readJson(res);
     expect(body.success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET — minCount exposure
+// ---------------------------------------------------------------------------
+
+describe("GET — minCount", () => {
+  it("dynamic milestones expose the element's minCount; legacy milestones expose 1", async () => {
+    const round = await seedRoundWithMilestoneSchema(
+      ELEMENT_UUID,
+      "Engineering Milestone",
+      "Activation",
+      3,
+    );
+
+    const project = await seedManagedProject("MinCount Project");
+
+    await seedDynamicApplication(project.id, round.id, ELEMENT_UUID, [
+      { title: "M1", description: "x".repeat(50), items: ["KR"] },
+    ]);
+    await seedLegacyApplication(project.id, fixture.roundId);
+
+    const res = await GET(
+      makeGetRequest(project.id),
+      makeRouteParams(project.id),
+    );
+    const body = await readJson(res);
+
+    expect(body.success).toBe(true);
+    const allMilestones = body.applications.flatMap(
+      (a: TestApplication) => a.milestones,
+    );
+    const dynamicM = allMilestones.find(
+      (m: TestMilestone) => m.type === ELEMENT_UUID,
+    ) as (TestMilestone & { minCount: number }) | undefined;
+    const legacyM = allMilestones.find(
+      (m: TestMilestone) => m.type === "build",
+    ) as (TestMilestone & { minCount: number }) | undefined;
+
+    expect(dynamicM?.minCount).toBe(3);
+    expect(legacyM?.minCount).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST — add milestone
+// ---------------------------------------------------------------------------
+
+describe("POST /api/flow-council/projects/[projectId]/milestones — add", () => {
+  it("appends a dynamic milestone and leaves existing milestones and progress untouched", async () => {
+    mockSession(TEST_MANAGER_ADDRESS);
+
+    const round = await seedRoundWithMilestoneSchema(
+      ELEMENT_UUID,
+      "Engineering Milestone",
+      "Activation",
+    );
+    const project = await seedManagedProject("Add Dynamic Project");
+    const app = await seedDynamicApplication(
+      project.id,
+      round.id,
+      ELEMENT_UUID,
+      [
+        {
+          title: "Existing Milestone",
+          description: "x".repeat(50),
+          items: ["Activation 1"],
+        },
+      ],
+    );
+    await insertProgressRow(app.id, ELEMENT_UUID, 0, 40);
+
+    const res = await POST(
+      makePostRequest(project.id, {
+        applicationId: app.id,
+        milestoneType: ELEMENT_UUID,
+        definition: {
+          title: "Added Milestone",
+          description: "n".repeat(50),
+          items: ["New KR 1", "New KR 2"],
+        },
+      }),
+      makeRouteParams(project.id),
+    );
+
+    const body = await readJson(res);
+    expect(body.success).toBe(true);
+
+    const updated = await db
+      .selectFrom("applications")
+      .select("details")
+      .where("id", "=", app.id)
+      .executeTakeFirstOrThrow();
+    const details = updated.details as {
+      round: Record<
+        string,
+        Array<{ title: string; description: string; items: string[] }>
+      >;
+    };
+    expect(details.round[ELEMENT_UUID]).toHaveLength(2);
+    expect(details.round[ELEMENT_UUID][0].title).toBe("Existing Milestone");
+    expect(details.round[ELEMENT_UUID][1].title).toBe("Added Milestone");
+    expect(details.round[ELEMENT_UUID][1].items).toEqual([
+      "New KR 1",
+      "New KR 2",
+    ]);
+
+    const progressRows = await db
+      .selectFrom("milestoneProgress")
+      .select(["milestoneIndex", "progress"])
+      .where("applicationId", "=", app.id)
+      .execute();
+    expect(progressRows).toHaveLength(1);
+    expect(progressRows[0].milestoneIndex).toBe(0);
+  });
+
+  it("appends a legacy build milestone with a deliverables key", async () => {
+    mockSession(TEST_MANAGER_ADDRESS);
+
+    const project = await seedManagedProject("Add Legacy Project");
+    const app = await seedLegacyApplication(project.id, fixture.roundId);
+
+    const res = await POST(
+      makePostRequest(project.id, {
+        applicationId: app.id,
+        milestoneType: "build",
+        definition: {
+          title: "Second Build Milestone",
+          description: "b".repeat(500),
+          items: ["Deliverable X"],
+        },
+      }),
+      makeRouteParams(project.id),
+    );
+
+    const body = await readJson(res);
+    expect(body.success).toBe(true);
+
+    const updated = await db
+      .selectFrom("applications")
+      .select("details")
+      .where("id", "=", app.id)
+      .executeTakeFirstOrThrow();
+    const details = updated.details as {
+      buildGoals: {
+        milestones: Array<{ title: string; deliverables: string[] }>;
+      };
+      growthGoals: { milestones: Array<{ title: string }> };
+    };
+    expect(details.buildGoals.milestones).toHaveLength(2);
+    expect(details.buildGoals.milestones[1].title).toBe(
+      "Second Build Milestone",
+    );
+    expect(details.buildGoals.milestones[1].deliverables).toEqual([
+      "Deliverable X",
+    ]);
+    expect(details.growthGoals.milestones).toHaveLength(1);
+  });
+
+  it("rejects when editsUnlocked is false", async () => {
+    mockSession(TEST_MANAGER_ADDRESS);
+
+    const round = await seedRoundWithMilestoneSchema(
+      ELEMENT_UUID,
+      "Engineering Milestone",
+      "Activation",
+    );
+    const project = await seedManagedProject("Add Locked Project");
+    const app = await seedLockedApplication(project.id, round.id, {
+      round: {
+        [ELEMENT_UUID]: [
+          { title: "M1", description: "x".repeat(50), items: ["KR"] },
+        ],
+      },
+    });
+
+    const res = await POST(
+      makePostRequest(project.id, {
+        applicationId: app.id,
+        milestoneType: ELEMENT_UUID,
+        definition: {
+          title: "Blocked",
+          description: "b".repeat(50),
+          items: ["KR"],
+        },
+      }),
+      makeRouteParams(project.id),
+    );
+
+    expect(res.status).toBe(403);
+    const body = await readJson(res);
+    expect(body.success).toBe(false);
+    expect(body.error).toMatch(/edit|unlock/i);
+  });
+
+  it("validates the new definition against the element's description bounds", async () => {
+    mockSession(TEST_MANAGER_ADDRESS);
+
+    const round = await seedRoundWithMilestoneSchema(
+      ELEMENT_UUID,
+      "Engineering Milestone",
+      "Activation",
+    );
+    const project = await seedManagedProject("Add Invalid Project");
+    const app = await seedDynamicApplication(
+      project.id,
+      round.id,
+      ELEMENT_UUID,
+      [{ title: "M1", description: "x".repeat(50), items: ["KR"] }],
+    );
+
+    // descriptionMinChars is 50 in the seeded schema; "short" must be rejected
+    const res = await POST(
+      makePostRequest(project.id, {
+        applicationId: app.id,
+        milestoneType: ELEMENT_UUID,
+        definition: { title: "Too Short", description: "short", items: ["KR"] },
+      }),
+      makeRouteParams(project.id),
+    );
+
+    const body = await readJson(res);
+    expect(body.success).toBe(false);
+    expect(body.error).toMatch(/at least 50/i);
+
+    const updated = await db
+      .selectFrom("applications")
+      .select("details")
+      .where("id", "=", app.id)
+      .executeTakeFirstOrThrow();
+    const details = updated.details as {
+      round: Record<string, unknown[]>;
+    };
+    expect(details.round[ELEMENT_UUID]).toHaveLength(1);
+  });
+
+  it("rejects when the milestone list is already at MAX_MILESTONES (20)", async () => {
+    mockSession(TEST_MANAGER_ADDRESS);
+
+    const round = await seedRoundWithMilestoneSchema(
+      ELEMENT_UUID,
+      "Engineering Milestone",
+      "Activation",
+    );
+    const project = await seedManagedProject("Add Full Project");
+    const app = await seedDynamicApplication(
+      project.id,
+      round.id,
+      ELEMENT_UUID,
+      Array.from({ length: 20 }, (_, i) => ({
+        title: `M${i + 1}`,
+        description: "x".repeat(50),
+        items: ["KR"],
+      })),
+    );
+
+    const res = await POST(
+      makePostRequest(project.id, {
+        applicationId: app.id,
+        milestoneType: ELEMENT_UUID,
+        definition: {
+          title: "One Too Many",
+          description: "y".repeat(50),
+          items: ["KR"],
+        },
+      }),
+      makeRouteParams(project.id),
+    );
+
+    const body = await readJson(res);
+    expect(body.success).toBe(false);
+    expect(body.error).toMatch(/at most 20/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DELETE — remove milestone
+// ---------------------------------------------------------------------------
+
+describe("DELETE /api/flow-council/projects/[projectId]/milestones — remove", () => {
+  it("removes a dynamic milestone and remaps later progress rows down by one", async () => {
+    mockSession(TEST_MANAGER_ADDRESS);
+
+    const round = await seedRoundWithMilestoneSchema(
+      ELEMENT_UUID,
+      "Engineering Milestone",
+      "Activation",
+    );
+    const project = await seedManagedProject("Delete Dynamic Project");
+    const app = await seedDynamicApplication(
+      project.id,
+      round.id,
+      ELEMENT_UUID,
+      [
+        { title: "M1", description: "x".repeat(50), items: ["KR"] },
+        { title: "M2", description: "y".repeat(50), items: ["KR"] },
+        { title: "M3", description: "z".repeat(50), items: ["KR"] },
+      ],
+    );
+    await insertProgressRow(app.id, ELEMENT_UUID, 0, 10);
+    await insertProgressRow(app.id, ELEMENT_UUID, 1, 20);
+    await insertProgressRow(app.id, ELEMENT_UUID, 2, 30);
+
+    const res = await DELETE(
+      makeDeleteRequest(project.id, {
+        applicationId: app.id,
+        milestoneType: ELEMENT_UUID,
+        milestoneIndex: 1,
+      }),
+      makeRouteParams(project.id),
+    );
+
+    const body = await readJson(res);
+    expect(body.success).toBe(true);
+
+    const updated = await db
+      .selectFrom("applications")
+      .select("details")
+      .where("id", "=", app.id)
+      .executeTakeFirstOrThrow();
+    const details = updated.details as {
+      round: Record<string, Array<{ title: string }>>;
+    };
+    expect(details.round[ELEMENT_UUID].map((m) => m.title)).toEqual([
+      "M1",
+      "M3",
+    ]);
+
+    const progressRows = await db
+      .selectFrom("milestoneProgress")
+      .select(["milestoneIndex", "progress"])
+      .where("applicationId", "=", app.id)
+      .orderBy("milestoneIndex")
+      .execute();
+    expect(progressRows).toHaveLength(2);
+    const completions = progressRows.map((row) => {
+      const parsed =
+        typeof row.progress === "string"
+          ? JSON.parse(row.progress)
+          : row.progress;
+      return [row.milestoneIndex, parsed.items[0].completion];
+    });
+    // M1 keeps its progress at index 0; M3's progress moves from 2 to 1; the
+    // deleted M2's progress (completion 20) is gone.
+    expect(completions).toEqual([
+      [0, 10],
+      [1, 30],
+    ]);
+  });
+
+  it("removes a legacy build milestone without touching growth milestones or their progress", async () => {
+    mockSession(TEST_MANAGER_ADDRESS);
+
+    const project = await seedManagedProject("Delete Legacy Project");
+    const app = await db
+      .insertInto("applications")
+      .values({
+        projectId: project.id,
+        roundId: fixture.roundId,
+        fundingAddress: TEST_MANAGER_ADDRESS,
+        status: "ACCEPTED",
+        editsUnlocked: true,
+        details: JSON.stringify({
+          buildGoals: {
+            primaryBuildGoal: "Build",
+            milestones: [
+              {
+                title: "Build 1",
+                description: "x".repeat(500),
+                deliverables: ["D1"],
+              },
+              {
+                title: "Build 2",
+                description: "y".repeat(500),
+                deliverables: ["D2"],
+              },
+            ],
+            ecosystemImpact: "",
+          },
+          growthGoals: {
+            primaryGrowthGoal: "Grow",
+            targetUsers: "Everyone",
+            milestones: [
+              {
+                title: "Growth 1",
+                description: "z".repeat(500),
+                activations: ["A1"],
+              },
+            ],
+            ecosystemImpact: "",
+          },
+        }),
+      })
+      .returning("id")
+      .executeTakeFirstOrThrow();
+    await insertProgressRow(app.id, "build", 0, 10);
+    await insertProgressRow(app.id, "build", 1, 20);
+    await insertProgressRow(app.id, "growth", 0, 30);
+
+    const res = await DELETE(
+      makeDeleteRequest(project.id, {
+        applicationId: app.id,
+        milestoneType: "build",
+        milestoneIndex: 0,
+      }),
+      makeRouteParams(project.id),
+    );
+
+    const body = await readJson(res);
+    expect(body.success).toBe(true);
+
+    const updated = await db
+      .selectFrom("applications")
+      .select("details")
+      .where("id", "=", app.id)
+      .executeTakeFirstOrThrow();
+    const details = updated.details as {
+      buildGoals: { milestones: Array<{ title: string }> };
+      growthGoals: { milestones: Array<{ title: string }> };
+    };
+    expect(details.buildGoals.milestones.map((m) => m.title)).toEqual([
+      "Build 2",
+    ]);
+    expect(details.growthGoals.milestones).toHaveLength(1);
+
+    const buildRows = await db
+      .selectFrom("milestoneProgress")
+      .select(["milestoneIndex", "progress"])
+      .where("applicationId", "=", app.id)
+      .where("milestoneType", "=", "build")
+      .execute();
+    expect(buildRows).toHaveLength(1);
+    expect(buildRows[0].milestoneIndex).toBe(0);
+    const buildProgress =
+      typeof buildRows[0].progress === "string"
+        ? JSON.parse(buildRows[0].progress)
+        : buildRows[0].progress;
+    expect(buildProgress.items[0].completion).toBe(20);
+
+    const growthRows = await db
+      .selectFrom("milestoneProgress")
+      .select("milestoneIndex")
+      .where("applicationId", "=", app.id)
+      .where("milestoneType", "=", "growth")
+      .execute();
+    expect(growthRows).toHaveLength(1);
+    expect(growthRows[0].milestoneIndex).toBe(0);
+  });
+
+  it("refuses to delete below the element's minCount", async () => {
+    mockSession(TEST_MANAGER_ADDRESS);
+
+    const round = await seedRoundWithMilestoneSchema(
+      ELEMENT_UUID,
+      "Engineering Milestone",
+      "Activation",
+      2,
+    );
+    const project = await seedManagedProject("Delete MinCount Project");
+    const app = await seedDynamicApplication(
+      project.id,
+      round.id,
+      ELEMENT_UUID,
+      [
+        { title: "M1", description: "x".repeat(50), items: ["KR"] },
+        { title: "M2", description: "y".repeat(50), items: ["KR"] },
+      ],
+    );
+
+    const res = await DELETE(
+      makeDeleteRequest(project.id, {
+        applicationId: app.id,
+        milestoneType: ELEMENT_UUID,
+        milestoneIndex: 1,
+      }),
+      makeRouteParams(project.id),
+    );
+
+    const body = await readJson(res);
+    expect(body.success).toBe(false);
+    expect(body.error).toMatch(/at least 2/i);
+
+    const updated = await db
+      .selectFrom("applications")
+      .select("details")
+      .where("id", "=", app.id)
+      .executeTakeFirstOrThrow();
+    const details = updated.details as { round: Record<string, unknown[]> };
+    expect(details.round[ELEMENT_UUID]).toHaveLength(2);
+  });
+
+  it("rejects when editsUnlocked is false", async () => {
+    mockSession(TEST_MANAGER_ADDRESS);
+
+    const project = await seedManagedProject("Delete Locked Project");
+    const app = await seedLockedApplication(project.id, fixture.roundId, {
+      buildGoals: {
+        primaryBuildGoal: "Build",
+        milestones: [
+          { title: "B1", description: "x".repeat(500), deliverables: ["D"] },
+          { title: "B2", description: "y".repeat(500), deliverables: ["D"] },
+        ],
+        ecosystemImpact: "",
+      },
+    });
+
+    const res = await DELETE(
+      makeDeleteRequest(project.id, {
+        applicationId: app.id,
+        milestoneType: "build",
+        milestoneIndex: 0,
+      }),
+      makeRouteParams(project.id),
+    );
+
+    expect(res.status).toBe(403);
+    const body = await readJson(res);
+    expect(body.success).toBe(false);
+    expect(body.error).toMatch(/edit|unlock/i);
+  });
+
+  it("rejects an out-of-range milestoneIndex", async () => {
+    mockSession(TEST_MANAGER_ADDRESS);
+
+    const round = await seedRoundWithMilestoneSchema(
+      ELEMENT_UUID,
+      "Engineering Milestone",
+      "Activation",
+    );
+    const project = await seedManagedProject("Delete OOB Project");
+    const app = await seedDynamicApplication(
+      project.id,
+      round.id,
+      ELEMENT_UUID,
+      [
+        { title: "M1", description: "x".repeat(50), items: ["KR"] },
+        { title: "M2", description: "y".repeat(50), items: ["KR"] },
+      ],
+    );
+
+    const res = await DELETE(
+      makeDeleteRequest(project.id, {
+        applicationId: app.id,
+        milestoneType: ELEMENT_UUID,
+        milestoneIndex: 5,
+      }),
+      makeRouteParams(project.id),
+    );
+
+    const body = await readJson(res);
+    expect(body.success).toBe(false);
+    expect(body.error).toMatch(/out of range|invalid|index/i);
   });
 });

@@ -123,26 +123,17 @@ export function parseMilestoneSources(
   return { success: true, sources };
 }
 
-// Re-reads the milestones under a row lock and re-checks the caller's
-// provenance against them, so a save that raced another one is rejected
-// instead of remapping progress against counts that have since moved. Returns
-// the counts the remap must use.
+// Locks the application row and returns its current details, so a
+// read-modify-write of the milestone arrays cannot race another save.
 //
 // The wait is bounded: connections reach Postgres through a transaction pooler,
 // where a lock wait pins a server connection for its whole duration. Giving up
 // quickly turns a contended save into a retryable conflict instead of letting
 // it hold the pool while it waits.
-export async function lockAndRevalidateMilestoneSources(
+export async function lockApplicationDetails(
   trx: Transaction<DB>,
   applicationId: number,
-  rawMilestoneSources: unknown,
-  isDynamicFlow: boolean,
-  milestoneTypes: string[],
-  submittedCounts: Record<string, number>,
-): Promise<{
-  sources: MilestoneSources;
-  storedCounts: Record<string, number>;
-}> {
+): Promise<unknown> {
   await sql`set local lock_timeout = '3s'`.execute(trx);
 
   let current;
@@ -164,10 +155,30 @@ export async function lockAndRevalidateMilestoneSources(
     throw err;
   }
 
+  return typeof current.details === "string"
+    ? JSON.parse(current.details)
+    : current.details;
+}
+
+// Re-reads the milestones under a row lock and re-checks the caller's
+// provenance against them, so a save that raced another one is rejected
+// instead of remapping progress against counts that have since moved. Returns
+// the counts the remap must use.
+export async function lockAndRevalidateMilestoneSources(
+  trx: Transaction<DB>,
+  applicationId: number,
+  rawMilestoneSources: unknown,
+  isDynamicFlow: boolean,
+  milestoneTypes: string[],
+  submittedCounts: Record<string, number>,
+): Promise<{
+  sources: MilestoneSources;
+  storedCounts: Record<string, number>;
+}> {
+  const details = await lockApplicationDetails(trx, applicationId);
+
   const storedCounts = getMilestoneCounts(
-    typeof current.details === "string"
-      ? JSON.parse(current.details)
-      : current.details,
+    details,
     isDynamicFlow,
     milestoneTypes,
   );
