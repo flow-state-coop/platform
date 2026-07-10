@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import { config } from "dotenv";
 import { fileURLToPath, URL } from "node:url";
+import { acquireTestDbLock, releaseTestDbLock } from "../helpers/dbLock";
 
 export default async function globalSetup() {
   config({
@@ -15,6 +16,8 @@ export default async function globalSetup() {
     );
   }
 
+  await acquireTestDbLock("vitest-integration");
+
   // Neon computes auto-suspend when idle; Prisma's default connect timeout can
   // fire before a cold compute finishes booting. Ensure connect_timeout is
   // generous enough to ride out the wake.
@@ -23,13 +26,15 @@ export default async function globalSetup() {
   // prisma.config.ts reads COUNCIL_DATABASE_URL — override it (not DATABASE_URL)
   // so `migrate deploy` targets the test branch, not production.
   await migrateDeploy({ ...process.env, COUNCIL_DATABASE_URL: migrateUrl });
+
+  return async () => {
+    await releaseTestDbLock();
+  };
 }
 
-// PR and main runs share one test database, so concurrent `migrate deploy`
-// invocations contend on Prisma's migration advisory lock; the loser times out
-// after 10s ("P1002 … Timed out trying to acquire a postgres advisory lock").
-// Neon can also drop the first connection to a cold compute (P1001). Both are
-// transient, so retry with linear backoff before failing. Genuine migration
+// Neon can drop the first connection to a cold compute (P1001), and a compute
+// still waking can time out on Prisma's migration advisory lock (P1002). Both
+// are transient, so retry with linear backoff before failing. Genuine migration
 // errors don't match these patterns and surface on the first attempt.
 const TRANSIENT_PATTERNS = [
   "P1002", // server reached but timed out (advisory-lock contention)
