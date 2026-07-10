@@ -253,17 +253,25 @@ describe("PUT /api/flow-council/applications — milestone progress remap", () =
     expect(await readStoredMilestones(applicationId)).toHaveLength(4);
   });
 
-  it("never persists the editor-only sourceIndex bookkeeping", async () => {
+  it("never persists the editor-only sourceIndex bookkeeping, even when a client submits it", async () => {
     const { projectId, applicationId } = await seedGranteeWithProgress();
 
-    await PUT(
+    // A conforming client strips sourceIndex before saving; this body keeps it
+    // to prove the server enforces the invariant on its own.
+    const res = await PUT(
       putRequest(
-        saveBody(projectId, [milestone("A"), milestone("C")], {
-          [ELEMENT_ID]: [0, 2],
-        }),
+        saveBody(
+          projectId,
+          [
+            { ...milestone("A"), sourceIndex: 0 },
+            { ...milestone("C"), sourceIndex: 2 },
+          ],
+          { [ELEMENT_ID]: [0, 2] },
+        ),
       ),
     );
 
+    expect((await readJson(res)).success).toBe(true);
     for (const stored of await readStoredMilestones(applicationId)) {
       expect(stored).not.toHaveProperty("sourceIndex");
     }
@@ -334,6 +342,214 @@ describe("PUT /api/flow-council/applications — milestone progress remap", () =
       { index: 0, otherDetails: "progress for A" },
       { index: 1, otherDetails: "progress for C" },
     ]);
+  });
+});
+
+describe("PUT /api/flow-council/applications — legacy build/growth remap", () => {
+  const LEGACY_COUNCIL_ADDRESS = "0x00000000000000000000000000000000000000cc";
+
+  beforeEach(() => {
+    mockSession(TEST_MANAGER_ADDRESS);
+  });
+
+  function legacyBuildMilestone(label: string, sourceIndex?: number | null) {
+    return {
+      title: `Build ${label}`,
+      description: `Legacy build milestone ${label}. `.repeat(20),
+      deliverables: [`Deliverable ${label}`],
+      ...(sourceIndex === undefined ? {} : { sourceIndex }),
+    };
+  }
+
+  function legacyGrowthMilestone(label: string, sourceIndex?: number | null) {
+    return {
+      title: `Growth ${label}`,
+      description: `Legacy growth milestone ${label}. `.repeat(20),
+      activations: [`Activation ${label}`],
+      ...(sourceIndex === undefined ? {} : { sourceIndex }),
+    };
+  }
+
+  function legacyDetails(build: unknown[], growth: unknown[]) {
+    return {
+      previousParticipation: {
+        hasParticipatedBefore: false,
+        numberOfRounds: "",
+        previousKarmaUpdates: "",
+        currentProjectState: "",
+      },
+      maturityAndUsage: {
+        projectStage: "live",
+        lifetimeUsers: "1000",
+        activeUsers: "100",
+        activeUsersFrequency: "weekly",
+        otherUsageData: "",
+      },
+      integration: {
+        status: "live",
+        types: ["payments"],
+        otherTypeExplanation: "",
+        description: "Payments integration",
+      },
+      buildGoals: {
+        primaryBuildGoal: "Ship the build goals",
+        milestones: build,
+        ecosystemImpact: "",
+      },
+      growthGoals: {
+        primaryGrowthGoal: "Grow the user base",
+        targetUsers: "Everyone",
+        milestones: growth,
+        ecosystemImpact: "",
+      },
+      team: {
+        primaryContact: { name: "Alice", roleDescription: "Developer" },
+        additionalTeammates: [],
+      },
+      additional: { comments: "" },
+    };
+  }
+
+  /**
+   * An ACCEPTED, edits-unlocked legacy application (no formSchema on the
+   * round, buildGoals/growthGoals details) with three build milestones and one
+   * growth milestone, each carrying a named progress row.
+   */
+  async function seedLegacyGranteeWithProgress() {
+    const project = await db
+      .insertInto("projects")
+      .values({ details: JSON.stringify({ name: "Legacy Grantee Project" }) })
+      .returning("id")
+      .executeTakeFirstOrThrow();
+
+    await db
+      .insertInto("projectManagers")
+      .values({ projectId: project.id, managerAddress: TEST_MANAGER_ADDRESS })
+      .execute();
+
+    const round = await db
+      .insertInto("rounds")
+      .values({
+        chainId: TEST_CHAIN_ID,
+        flowCouncilAddress: LEGACY_COUNCIL_ADDRESS,
+        applicationsClosed: false,
+        details: JSON.stringify({ name: "Legacy Round" }),
+      })
+      .returning("id")
+      .executeTakeFirstOrThrow();
+
+    const application = await db
+      .insertInto("applications")
+      .values({
+        projectId: project.id,
+        roundId: round.id,
+        fundingAddress: FUNDING_ADDRESS,
+        status: "ACCEPTED",
+        editsUnlocked: true,
+        details: JSON.stringify(
+          legacyDetails(
+            [
+              legacyBuildMilestone("A"),
+              legacyBuildMilestone("B"),
+              legacyBuildMilestone("C"),
+            ],
+            [legacyGrowthMilestone("G")],
+          ),
+        ),
+      })
+      .returning("id")
+      .executeTakeFirstOrThrow();
+
+    for (const [index, label] of ["A", "B", "C"].entries()) {
+      await db
+        .insertInto("milestoneProgress")
+        .values({
+          applicationId: application.id,
+          milestoneType: "build",
+          milestoneIndex: index,
+          progress: JSON.stringify({
+            otherDetails: `build progress ${label}`,
+            items: [{ completion: (index + 1) * 10, evidence: [] }],
+          }),
+        })
+        .execute();
+    }
+    await db
+      .insertInto("milestoneProgress")
+      .values({
+        applicationId: application.id,
+        milestoneType: "growth",
+        milestoneIndex: 0,
+        progress: JSON.stringify({
+          otherDetails: "growth progress G",
+          items: [{ completion: 50, evidence: [] }],
+        }),
+      })
+      .execute();
+
+    return { projectId: project.id, applicationId: application.id };
+  }
+
+  async function readProgressByType(applicationId: number, type: string) {
+    const rows = await db
+      .selectFrom("milestoneProgress")
+      .select(["milestoneIndex", "progress"])
+      .where("applicationId", "=", applicationId)
+      .where("milestoneType", "=", type)
+      .orderBy("milestoneIndex")
+      .execute();
+    return rows.map((row) => ({
+      index: row.milestoneIndex,
+      otherDetails: (typeof row.progress === "string"
+        ? JSON.parse(row.progress)
+        : row.progress
+      )?.otherDetails,
+    }));
+  }
+
+  it("remaps build progress through a RoundTab-shaped save, leaves growth alone, and strips sourceIndex", async () => {
+    const { projectId, applicationId } = await seedLegacyGranteeWithProgress();
+
+    const res = await PUT(
+      putRequest({
+        projectId,
+        chainId: TEST_CHAIN_ID,
+        councilId: LEGACY_COUNCIL_ADDRESS,
+        details: legacyDetails(
+          [legacyBuildMilestone("A", 0), legacyBuildMilestone("C", 2)],
+          [legacyGrowthMilestone("G", 0)],
+        ),
+        milestoneSources: { build: [0, 2], growth: [0] },
+      }),
+    );
+
+    expect((await readJson(res)).success).toBe(true);
+
+    expect(await readProgressByType(applicationId, "build")).toEqual([
+      { index: 0, otherDetails: "build progress A" },
+      { index: 1, otherDetails: "build progress C" },
+    ]);
+    expect(await readProgressByType(applicationId, "growth")).toEqual([
+      { index: 0, otherDetails: "growth progress G" },
+    ]);
+
+    const row = await db
+      .selectFrom("applications")
+      .select("details")
+      .where("id", "=", applicationId)
+      .executeTakeFirstOrThrow();
+    const details =
+      typeof row.details === "string" ? JSON.parse(row.details) : row.details;
+    expect(details.buildGoals.milestones).toHaveLength(2);
+    expect(
+      details.buildGoals.milestones.map((m: { title: string }) => m.title),
+    ).toEqual(["Build A", "Build C"]);
+    for (const stored of [
+      ...details.buildGoals.milestones,
+      ...details.growthGoals.milestones,
+    ]) {
+      expect(stored).not.toHaveProperty("sourceIndex");
+    }
   });
 });
 

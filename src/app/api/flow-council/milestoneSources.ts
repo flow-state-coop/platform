@@ -52,6 +52,39 @@ export function getMilestoneCounts(
   return counts;
 }
 
+// `sourceIndex` is editor-only bookkeeping that clients strip before saving,
+// but that promise is only as good as the client honoring it. Dropping it here
+// too keeps a stale or nonconforming client from persisting it into stored
+// details. Mutates the submitted details in place.
+export function stripMilestoneSourceIndexes(
+  details: unknown,
+  isDynamicFlow: boolean,
+  types: string[],
+): void {
+  const parsed = details as
+    | {
+        round?: Record<string, unknown>;
+        buildGoals?: { milestones?: unknown };
+        growthGoals?: { milestones?: unknown };
+      }
+    | undefined
+    | null;
+
+  for (const type of types) {
+    const value = isDynamicFlow
+      ? parsed?.round?.[type]
+      : type === "build"
+        ? parsed?.buildGoals?.milestones
+        : parsed?.growthGoals?.milestones;
+    if (!Array.isArray(value)) continue;
+    for (const milestone of value) {
+      if (milestone && typeof milestone === "object") {
+        delete (milestone as { sourceIndex?: unknown }).sourceIndex;
+      }
+    }
+  }
+}
+
 // Reported progress lives in `milestone_progress`, keyed by the milestone's
 // position in the application's milestone array. Once a grantee can add and
 // remove milestones on an accepted application, those positions move, so a save

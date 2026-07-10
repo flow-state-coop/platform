@@ -26,6 +26,7 @@ import {
   MilestoneSourcesConflictError,
   parseMilestoneSources,
   remapMilestoneProgress,
+  stripMilestoneSourceIndexes,
 } from "@/app/api/flow-council/milestoneSources";
 
 export const dynamic = "force-dynamic";
@@ -313,6 +314,7 @@ export async function PATCH(
 
       const isDynamicFlow = !!roundSchema;
       const milestoneTypes = getMilestoneTypes(isDynamicFlow, roundSchema);
+      stripMilestoneSourceIndexes(details, isDynamicFlow, milestoneTypes);
       const storedDetails =
         typeof existingApp.storedDetails === "string"
           ? JSON.parse(existingApp.storedDetails)

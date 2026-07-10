@@ -843,6 +843,47 @@ describe("PATCH /api/flow-council/projects/[projectId]/milestones — dynamic", 
     expect(progressRow!.milestoneType.length).toBeLessThanOrEqual(100);
   });
 
+  it("rejects a progress report whose milestoneIndex is past the stored milestone array", async () => {
+    mockSession(TEST_MANAGER_ADDRESS);
+
+    const round = await seedRoundWithMilestoneSchema(
+      ELEMENT_UUID,
+      "Engineering Milestone",
+      "Activation",
+    );
+    const project = await seedManagedProject("Progress OOB Project");
+    const app = await seedDynamicApplication(
+      project.id,
+      round.id,
+      ELEMENT_UUID,
+      [{ title: "M1", description: "x".repeat(50), items: ["KR"] }],
+    );
+
+    const res = await PATCH(
+      makePatchRequest(project.id, {
+        applicationId: app.id,
+        milestoneType: ELEMENT_UUID,
+        milestoneIndex: 3,
+        progress: {
+          otherDetails: "",
+          items: [{ completion: 10, evidence: [] }],
+        },
+      }),
+      makeRouteParams(project.id),
+    );
+
+    const body = await readJson(res);
+    expect(body.success).toBe(false);
+    expect(body.error).toMatch(/out of range/i);
+
+    const rows = await db
+      .selectFrom("milestoneProgress")
+      .select("milestoneIndex")
+      .where("applicationId", "=", app.id)
+      .execute();
+    expect(rows).toHaveLength(0);
+  });
+
   it("rejects out-of-range milestoneIndex for a dynamic milestone type with error body", async () => {
     mockSession(TEST_MANAGER_ADDRESS);
 

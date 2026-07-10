@@ -323,7 +323,6 @@ type AuthorizedMilestoneWrite = {
     details: unknown;
     editsUnlocked: boolean | null;
   };
-  appDetailsParsed: (RoundForm & DynamicAppDetails) | null;
   isDynamic: boolean;
   roundDetailsParsed: { name?: string; formSchema?: FormSchema } | null;
   dynamicMilestoneElement: MilestoneQuestion | undefined;
@@ -452,7 +451,6 @@ async function authorizeMilestoneWrite(
     applicationId,
     milestoneType,
     application,
-    appDetailsParsed,
     isDynamic,
     roundDetailsParsed,
     dynamicMilestoneElement,
@@ -497,6 +495,34 @@ function getMilestonesArray(
   return Array.isArray(value) ? value : null;
 }
 
+// A validated definition in the shape the application stores: dynamic
+// milestones keep `items`, the legacy goal arrays name them `deliverables`
+// (build) or `activations` (growth).
+function buildStoredMilestone(
+  isDynamic: boolean,
+  milestoneType: string,
+  definition: { title: string; description: string; items: string[] },
+) {
+  if (isDynamic) {
+    return {
+      title: definition.title,
+      description: definition.description,
+      items: definition.items,
+    };
+  }
+  return milestoneType === "build"
+    ? {
+        title: definition.title,
+        description: definition.description,
+        deliverables: definition.items,
+      }
+    : {
+        title: definition.title,
+        description: definition.description,
+        activations: definition.items,
+      };
+}
+
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {
     const { projectId } = await params;
@@ -510,7 +536,6 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       applicationId,
       milestoneType,
       application,
-      appDetailsParsed,
       isDynamic,
       roundDetailsParsed,
       dynamicMilestoneElement,
@@ -526,114 +551,65 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         return editsLockedResponse();
       }
 
-      const storedMilestones = isDynamic
-        ? (appDetailsParsed as { round?: Record<string, unknown> }).round?.[
-            milestoneType
-          ]
-        : milestoneType === "build"
-          ? (appDetailsParsed as RoundForm)?.buildGoals?.milestones
-          : (appDetailsParsed as RoundForm)?.growthGoals?.milestones;
-      const storedDescription = getStoredMilestoneDescription(
-        storedMilestones,
-        milestoneIndex,
-      );
-      const descriptionUnchanged =
-        storedDescription !== undefined &&
-        (definition as { description?: unknown })?.description ===
-          storedDescription;
+      let failure: string | null = null;
 
-      // Descriptions are mandatory, enforced as a ratchet: an unchanged stored
-      // description (e.g. an empty one left by the round-49 backfill) never
-      // blocks saving the rest of the definition, but any edited description
-      // must be non-empty and honor the per-element descriptionMin/MaxChars
-      // from the round's formSchema (legacy apps use the 500-5000 bounds).
-      const definitionSchema = pickMilestoneDefinitionSchema(
-        dynamicMilestoneElement,
-        descriptionUnchanged,
-      );
-      const parsedDef = definitionSchema.safeParse(definition);
-      if (!parsedDef.success) {
-        return Response.json({
-          success: false,
-          error: parsedDef.error.issues[0].message,
-        });
-      }
+      await db.transaction().execute(async (trx) => {
+        const lockedDetails = await lockApplicationDetails(trx, applicationId);
+        const milestonesArray = getMilestonesArray(
+          lockedDetails,
+          isDynamic,
+          milestoneType,
+        );
 
-      if (!appDetailsParsed) {
-        return Response.json({
-          success: false,
-          error: "Failed to parse application details",
-        });
-      }
-
-      if (isDynamic) {
-        const dynamicAppDetails = appDetailsParsed as DynamicAppDetails & {
-          round: Record<string, unknown>;
-        };
-        const milestonesArray = dynamicAppDetails.round[milestoneType];
-        if (
-          !Array.isArray(milestonesArray) ||
-          milestoneIndex >= milestonesArray.length
-        ) {
-          return Response.json({
-            success: false,
-            error: "Milestone index out of range",
-          });
+        if (!milestonesArray || milestoneIndex >= milestonesArray.length) {
+          failure = "Milestone index out of range";
+          return;
         }
-        const updated: DynamicMilestoneValue = {
-          title: parsedDef.data.title,
-          description: parsedDef.data.description,
-          items: parsedDef.data.items,
-        };
-        (milestonesArray as DynamicMilestoneValue[])[milestoneIndex] = updated;
 
-        await db
+        const storedDescription = getStoredMilestoneDescription(
+          milestonesArray,
+          milestoneIndex,
+        );
+        const descriptionUnchanged =
+          storedDescription !== undefined &&
+          (definition as { description?: unknown })?.description ===
+            storedDescription;
+
+        // Descriptions are mandatory, enforced as a ratchet: an unchanged
+        // stored description (e.g. an empty one left by the round-49 backfill)
+        // never blocks saving the rest of the definition, but any edited
+        // description must be non-empty and honor the per-element
+        // descriptionMin/MaxChars from the round's formSchema (legacy apps use
+        // the 500-5000 bounds).
+        const definitionSchema = pickMilestoneDefinitionSchema(
+          dynamicMilestoneElement,
+          descriptionUnchanged,
+        );
+        const parsedDef = definitionSchema.safeParse(definition);
+        if (!parsedDef.success) {
+          failure = parsedDef.error.issues[0].message;
+          return;
+        }
+
+        milestonesArray[milestoneIndex] = buildStoredMilestone(
+          isDynamic,
+          milestoneType,
+          parsedDef.data,
+        );
+
+        await trx
           .updateTable("applications")
           .set({
-            details: JSON.stringify(dynamicAppDetails),
+            details: JSON.stringify(lockedDetails),
             updatedAt: new Date(),
           })
           .where("id", "=", applicationId)
           .execute();
+      });
 
-        return Response.json({ success: true });
+      if (failure) {
+        return Response.json({ success: false, error: failure });
       }
-
-      const appDetails = appDetailsParsed as RoundForm;
-      const milestonesArray =
-        milestoneType === "build"
-          ? appDetails.buildGoals?.milestones
-          : appDetails.growthGoals?.milestones;
-
-      if (!milestonesArray || milestoneIndex >= milestonesArray.length) {
-        return Response.json({
-          success: false,
-          error: "Milestone index out of range",
-        });
-      }
-
-      if (milestoneType === "build") {
-        appDetails.buildGoals.milestones[milestoneIndex] = {
-          title: parsedDef.data.title,
-          description: parsedDef.data.description,
-          deliverables: parsedDef.data.items,
-        };
-      } else {
-        appDetails.growthGoals.milestones[milestoneIndex] = {
-          title: parsedDef.data.title,
-          description: parsedDef.data.description,
-          activations: parsedDef.data.items,
-        };
-      }
-
-      await db
-        .updateTable("applications")
-        .set({
-          details: JSON.stringify(appDetails),
-          updatedAt: new Date(),
-        })
-        .where("id", "=", applicationId)
-        .execute();
 
       return Response.json({ success: true });
     }
@@ -646,34 +622,70 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       });
     }
 
-    const existingRow = await db
-      .selectFrom("milestoneProgress")
-      .select("progress")
-      .where("applicationId", "=", applicationId)
-      .where("milestoneType", "=", milestoneType)
-      .where("milestoneIndex", "=", milestoneIndex)
-      .executeTakeFirst();
+    // The row lock serializes progress writes against add/delete remaps: an
+    // upsert can no longer land mid-remap and be dropped or shifted onto
+    // another milestone, and a report against a milestone that was deleted
+    // meanwhile fails the range check instead of writing an orphan row.
+    const txResult = await db
+      .transaction()
+      .execute(
+        async (
+          trx,
+        ): Promise<
+          { failure: string } | { oldProgress: MilestoneProgressData | null }
+        > => {
+          const lockedDetails = await lockApplicationDetails(
+            trx,
+            applicationId,
+          );
+          const milestonesArray = getMilestonesArray(
+            lockedDetails,
+            isDynamic,
+            milestoneType,
+          );
 
-    const oldProgress = existingRow
-      ? parseDetails<MilestoneProgressData>(existingRow.progress)
-      : null;
+          if (!milestonesArray || milestoneIndex >= milestonesArray.length) {
+            return { failure: "Milestone index out of range" };
+          }
 
-    await db
-      .insertInto("milestoneProgress")
-      .values({
-        applicationId,
-        milestoneType,
-        milestoneIndex,
-        progress: JSON.stringify(parsed.data),
-      })
-      .onConflict((oc) =>
-        oc
-          .columns(["applicationId", "milestoneType", "milestoneIndex"])
-          .doUpdateSet({
-            progress: JSON.stringify(parsed.data),
-          }),
-      )
-      .execute();
+          const existingRow = await trx
+            .selectFrom("milestoneProgress")
+            .select("progress")
+            .where("applicationId", "=", applicationId)
+            .where("milestoneType", "=", milestoneType)
+            .where("milestoneIndex", "=", milestoneIndex)
+            .executeTakeFirst();
+
+          await trx
+            .insertInto("milestoneProgress")
+            .values({
+              applicationId,
+              milestoneType,
+              milestoneIndex,
+              progress: JSON.stringify(parsed.data),
+            })
+            .onConflict((oc) =>
+              oc
+                .columns(["applicationId", "milestoneType", "milestoneIndex"])
+                .doUpdateSet({
+                  progress: JSON.stringify(parsed.data),
+                }),
+            )
+            .execute();
+
+          return {
+            oldProgress: existingRow
+              ? parseDetails<MilestoneProgressData>(existingRow.progress)
+              : null,
+          };
+        },
+      );
+
+    if ("failure" in txResult) {
+      return Response.json({ success: false, error: txResult.failure });
+    }
+
+    const { oldProgress } = txResult;
 
     const newProgress = parsed.data;
     const feedMessages: string[] = [];
@@ -777,6 +789,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     return Response.json({ success: true });
   } catch (err) {
+    if (err instanceof MilestoneSourcesConflictError) {
+      return savingConflictResponse();
+    }
     console.error("Failed to update milestone progress:", err);
     return Response.json({
       success: false,
@@ -823,23 +838,11 @@ export async function POST(request: Request, { params }: RouteParams) {
       });
     }
 
-    const newMilestone = isDynamic
-      ? {
-          title: parsedDef.data.title,
-          description: parsedDef.data.description,
-          items: parsedDef.data.items,
-        }
-      : milestoneType === "build"
-        ? {
-            title: parsedDef.data.title,
-            description: parsedDef.data.description,
-            deliverables: parsedDef.data.items,
-          }
-        : {
-            title: parsedDef.data.title,
-            description: parsedDef.data.description,
-            activations: parsedDef.data.items,
-          };
+    const newMilestone = buildStoredMilestone(
+      isDynamic,
+      milestoneType,
+      parsedDef.data,
+    );
 
     let failure: string | null = null;
 

@@ -20,6 +20,7 @@ import {
   MilestoneSourcesConflictError,
   parseMilestoneSources,
   remapMilestoneProgress,
+  stripMilestoneSourceIndexes,
 } from "../milestoneSources";
 
 export const dynamic = "force-dynamic";
@@ -365,6 +366,7 @@ export async function PUT(request: Request) {
       isDynamicFlow,
       roundDetails.formSchema?.round,
     );
+    stripMilestoneSourceIndexes(details, isDynamicFlow, milestoneTypes);
     const storedMilestoneCounts = getMilestoneCounts(
       existingApplication
         ? typeof existingApplication.details === "string"
