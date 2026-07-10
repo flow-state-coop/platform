@@ -1773,8 +1773,8 @@ export default function Review(props: ReviewProps) {
                               roundId={roundId ?? undefined}
                               projectId={selectedApplication.projectId}
                               applicationId={selectedApplication.id}
-                              canWrite={true}
-                              canModerate={true}
+                              canWrite={isManager}
+                              canModerate={isManager}
                               currentUserAddress={session?.address}
                               active={selectedTab === "communications"}
                               emptyMessage="No messages yet in this project chat."
