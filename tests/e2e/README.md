@@ -66,6 +66,28 @@ pnpm test:live
 The base URL defaults to `http://localhost:3000`. Override with `E2E_BASE_URL`
 to point at a deployed preview instead.
 
+## The shared test database lock
+
+`TEST_DATABASE_URL` points at one Neon database that every local run and every
+CI job shares. Both suites seed it and reset it with `truncate ... cascade`, so
+two runs at once corrupt each other — the tell is a missing seeded row, or a
+duplicate-key/foreign-key error in a test your change never touched.
+
+To prevent that, `globalSetup` takes a Postgres advisory lock and holds it for
+the run. A second run waits instead of clobbering the first, logging:
+
+```
+waiting for the shared test database — held by test-db-lock:vitest-integration, connected 00:00:12
+```
+
+It gives up after 10 minutes (`TEST_DB_LOCK_TIMEOUT_MS` to change that). The
+lock lives on a session, so a crashed or killed run releases it automatically.
+
+The lock sits on a direct connection, not the pooled `-pooler` endpoint:
+PgBouncer runs in transaction mode there, where session-level advisory locks are
+silently lost. Only runs that have this code participate, so a branch predating
+it can still clobber a locked run.
+
 ## How the mock wallet works
 
 `global.ts` seeds the database once before the test run and writes a fixture
