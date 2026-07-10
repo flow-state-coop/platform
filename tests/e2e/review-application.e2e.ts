@@ -60,6 +60,38 @@ test("admin reaches the review page with an authenticated session", async ({
   await expect(connectAll).toBeVisible();
   await expect(connectAll).toBeDisabled();
 
-  const nextButton = page.getByRole("button", { name: "Next" });
+  const nextButton = page.getByRole("button", { name: "Next", exact: true });
   await expect(nextButton).toBeVisible();
+});
+
+test("filters the recipients table by project name", async ({ page }) => {
+  const fx = readFixture();
+  const path = `/flow-councils/review/${fx.chainId}/${fx.councilAddress}`;
+
+  await page.goto(path);
+  await signInViaSiweApi(page);
+  await page.goto(path);
+
+  const seededRow = page.getByRole("cell", { name: "E2E Secondary Project" });
+  await expect(seededRow).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole("button", { name: "Filter by name" }).click();
+
+  const search = page.getByRole("searchbox", {
+    name: "Filter projects by name",
+  });
+  await expect(search).toBeFocused();
+
+  await search.fill("secondary");
+  await expect(seededRow).toBeVisible();
+
+  await search.fill("no-such-project");
+  await expect(seededRow).toHaveCount(0);
+  await expect(
+    page.getByText("No recipients match your filters."),
+  ).toBeVisible();
+
+  await search.press("Escape");
+  await expect(search).toHaveCount(0);
+  await expect(seededRow).toBeVisible();
 });
