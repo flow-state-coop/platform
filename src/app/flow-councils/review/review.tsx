@@ -120,6 +120,9 @@ type ConnectAllState =
   | "no-members"
   | "all-connected";
 
+const PRIMARY_ICON_FILTER =
+  "brightness(0) saturate(100%) invert(27%) sepia(34%) saturate(2833%) hue-rotate(167deg) brightness(96%) contrast(96%)";
+
 const STATUS_LABELS: Record<Status, string> = {
   INCOMPLETE: "Incomplete",
   SUBMITTED: "Submitted",
@@ -1761,9 +1764,16 @@ export default function Review(props: ReviewProps) {
                               <Link
                                 href={`/flow-councils/communications/${chainId}/${councilId}?channel=${selectedApplication.projectId}`}
                                 target="_blank"
-                                className="text-primary text-decoration-none fw-semi-bold flex-shrink-0"
+                                className="d-flex align-items-center gap-1 text-primary text-decoration-none fw-semi-bold flex-shrink-0"
                               >
-                                Open in Communications
+                                <Image
+                                  src="/open-new.svg"
+                                  alt=""
+                                  width={20}
+                                  height={20}
+                                  style={{ filter: PRIMARY_ICON_FILTER }}
+                                />
+                                Open in New Tab
                               </Link>
                             </Stack>
                             <ChatView
