@@ -330,6 +330,15 @@ blockquote {
   border-color: $info;
 }
 
+// Bootstrap's color-contrast() picks black over our off-white $white on the
+// red fill, so danger buttons need the light text restored explicitly.
+.btn.btn-danger,
+.btn.btn-outline-danger:hover,
+.btn.btn-outline-danger:active,
+.btn.btn-outline-danger:focus-visible {
+  color: $white;
+}
+
 .form-switch > .form-check-input {
   cursor: pointer;
 }

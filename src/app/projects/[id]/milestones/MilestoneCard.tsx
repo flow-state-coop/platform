@@ -232,6 +232,7 @@ function DefinitionEditForm({
   onCancel,
   onSave,
   onDelete,
+  deleteBlockedMessage,
   saving,
 }: {
   milestone: MilestoneWithProgress;
@@ -243,6 +244,7 @@ function DefinitionEditForm({
     items: string[];
   }) => void;
   onDelete?: () => void;
+  deleteBlockedMessage?: string | null;
   saving: boolean;
 }) {
   const [title, setTitle] = useState(milestone.title);
@@ -290,6 +292,18 @@ function DefinitionEditForm({
     if (isTitleEmpty || isDescriptionInvalid || !hasValidItem) return;
     onSave({ title, description, items });
   };
+
+  const deleteButton = onDelete ? (
+    <Button
+      variant="outline-danger"
+      className="rounded-3"
+      onClick={onDelete}
+      disabled={saving || !!deleteBlockedMessage}
+      style={{ width: 100 }}
+    >
+      Delete
+    </Button>
+  ) : null;
 
   return (
     <Stack direction="vertical" gap={3}>
@@ -360,16 +374,15 @@ function DefinitionEditForm({
         </Stack>
       </Form.Group>
       <Stack direction="horizontal" gap={2} className="justify-content-end">
-        {onDelete && (
-          <Button
-            variant="outline-danger"
-            className="rounded-3 me-auto"
-            onClick={onDelete}
-            disabled={saving}
-            style={{ width: 100 }}
-          >
-            Delete
-          </Button>
+        {deleteBlockedMessage && deleteButton ? (
+          <InfoTooltip
+            position={{ top: true }}
+            content={<span>{deleteBlockedMessage}</span>}
+            target={deleteButton}
+            wrapperClassName="d-flex"
+          />
+        ) : (
+          deleteButton
         )}
         <Button
           variant="outline-secondary"
@@ -517,6 +530,13 @@ export default function MilestoneCard({
 
   const badgeLabel = `${milestone.milestoneLabel} ${milestone.index + 1}`;
   const itemLabel = milestone.itemLabel;
+
+  const minCount = milestone.minCount;
+  const deleteBlockedMessage = canDelete
+    ? null
+    : `At least ${minCount} ${milestone.milestoneLabel.toLowerCase()}${
+        minCount === 1 ? " is" : "s are"
+      } required`;
 
   const handleEditDeliverableClick = (index: number) => {
     requireAuth(() => setEditingItemIndex(index));
@@ -745,14 +765,11 @@ export default function MilestoneCard({
                 setDefError(null);
               }}
               onSave={handleDefinitionSave}
-              onDelete={
-                canDelete
-                  ? () => {
-                      setDeleteError(null);
-                      setShowDeleteConfirm(true);
-                    }
-                  : undefined
-              }
+              onDelete={() => {
+                setDeleteError(null);
+                setShowDeleteConfirm(true);
+              }}
+              deleteBlockedMessage={deleteBlockedMessage}
               saving={defSaving}
             />
           </>
