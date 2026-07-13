@@ -19,6 +19,15 @@ import { readJsonBody, PayloadTooLargeError } from "../../../utils";
 import { MINIMAL_TEMPLATE } from "@/app/flow-councils/types/formSchema";
 import { isDynamicApplicationDetails } from "@/app/flow-councils/utils/legacyFormAdapter";
 import { getStoredSection } from "@/app/api/flow-council/utils";
+import {
+  getMilestoneCounts,
+  getMilestoneTypes,
+  lockAndRevalidateMilestoneSources,
+  MilestoneSourcesConflictError,
+  parseMilestoneSources,
+  remapMilestoneProgress,
+  stripMilestoneSourceIndexes,
+} from "@/app/api/flow-council/milestoneSources";
 
 export const dynamic = "force-dynamic";
 
@@ -181,6 +190,7 @@ export async function PATCH(
       details?: Record<string, unknown>;
       submit?: boolean;
       fundingAddress?: string;
+      milestoneSources?: unknown;
     };
     try {
       body = await readJsonBody(request, MAX_DETAILS_SIZE);
@@ -197,6 +207,7 @@ export async function PATCH(
       );
     }
     const { details, submit, fundingAddress } = body;
+    const rawMilestoneSources = body.milestoneSources;
 
     // Verify user is a manager of the project
     const existingApp = await db
@@ -241,6 +252,14 @@ export async function PATCH(
         }),
       );
     }
+
+    // Set only when the request carries details, i.e. when the milestone arrays
+    // can have moved and progress may need to follow them.
+    let milestoneRemap: {
+      isDynamicFlow: boolean;
+      milestoneTypes: string[];
+      submittedCounts: Record<string, number>;
+    } | null = null;
 
     if (details) {
       const roundRow = await db
@@ -292,6 +311,31 @@ export async function PATCH(
           );
         }
       }
+
+      const isDynamicFlow = !!roundSchema;
+      const milestoneTypes = getMilestoneTypes(isDynamicFlow, roundSchema);
+      stripMilestoneSourceIndexes(details, isDynamicFlow, milestoneTypes);
+      const storedDetails =
+        typeof existingApp.storedDetails === "string"
+          ? JSON.parse(existingApp.storedDetails)
+          : existingApp.storedDetails;
+      const submittedCounts = getMilestoneCounts(
+        details,
+        isDynamicFlow,
+        milestoneTypes,
+      );
+      const parsedSources = parseMilestoneSources(
+        rawMilestoneSources,
+        getMilestoneCounts(storedDetails, isDynamicFlow, milestoneTypes),
+        submittedCounts,
+      );
+      if (!parsedSources.success) {
+        return new Response(
+          JSON.stringify({ success: false, error: parsedSources.error }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      milestoneRemap = { isDynamicFlow, milestoneTypes, submittedCounts };
     }
 
     const updateData: Record<string, unknown> = {
@@ -318,19 +362,58 @@ export async function PATCH(
       updateData.status = "SUBMITTED";
     }
 
-    const updatedApplication = await db
-      .updateTable("applications")
-      .set(updateData)
-      .where("id", "=", appId)
-      .returning([
-        "id",
-        "projectId",
-        "roundId",
-        "fundingAddress",
-        "status",
-        "details",
-      ])
-      .executeTakeFirstOrThrow();
+    let updatedApplication;
+    try {
+      updatedApplication = await db.transaction().execute(async (trx) => {
+        const remap = milestoneRemap
+          ? await lockAndRevalidateMilestoneSources(
+              trx,
+              appId,
+              rawMilestoneSources,
+              milestoneRemap.isDynamicFlow,
+              milestoneRemap.milestoneTypes,
+              milestoneRemap.submittedCounts,
+            )
+          : null;
+
+        const updated = await trx
+          .updateTable("applications")
+          .set(updateData)
+          .where("id", "=", appId)
+          .returning([
+            "id",
+            "projectId",
+            "roundId",
+            "fundingAddress",
+            "status",
+            "details",
+          ])
+          .executeTakeFirstOrThrow();
+
+        if (remap) {
+          await remapMilestoneProgress(
+            trx,
+            appId,
+            remap.sources,
+            remap.storedCounts,
+          );
+        }
+
+        return updated;
+      });
+    } catch (err) {
+      if (err instanceof MilestoneSourcesConflictError) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error:
+              "This application changed while you were saving. Reload and try again.",
+          }),
+          { status: 409, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      throw err;
+    }
 
     // Insert automated message and send email when application is submitted
     if (submit === true && canSubmit) {

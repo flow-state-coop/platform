@@ -7,16 +7,22 @@ export type IntegrationType =
   | "activityFees"
   | "other";
 
+// `sourceIndex` is editor-only bookkeeping: the index this milestone occupied
+// in the server-stored array (null when new), sent alongside a save as
+// `milestoneSources` so reported progress moves with its milestone. It is
+// stripped before the details are persisted.
 export type BuildMilestone = {
   title: string;
   description: string;
   deliverables: string[];
+  sourceIndex?: number | null;
 };
 
 export type GrowthMilestone = {
   title: string;
   description: string;
   activations: string[];
+  sourceIndex?: number | null;
 };
 
 export type TeamMember = {

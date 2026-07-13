@@ -7,6 +7,8 @@ import Form from "react-bootstrap/Form";
 import Image from "react-bootstrap/Image";
 import Spinner from "react-bootstrap/Spinner";
 import ProgressBar from "react-bootstrap/ProgressBar";
+import Modal from "react-bootstrap/Modal";
+import Alert from "react-bootstrap/Alert";
 import Markdown from "@/components/Markdown";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import InfoTooltip from "@/components/InfoTooltip";
@@ -26,6 +28,20 @@ type MilestoneCardProps = {
   projectId: string;
   isManager: boolean;
   editsUnlocked: boolean;
+  canDelete: boolean;
+  onSaved: () => void;
+};
+
+type NewMilestoneCardProps = {
+  applicationId: number;
+  projectId: string;
+  milestoneType: string;
+  milestoneLabel: string;
+  itemLabel: string;
+  index: number;
+  descriptionMinChars: number;
+  descriptionMaxChars: number;
+  onCancel: () => void;
   onSaved: () => void;
 };
 
@@ -212,17 +228,23 @@ function DeliverableEditForm({
 
 function DefinitionEditForm({
   milestone,
+  isNew = false,
   onCancel,
   onSave,
+  onDelete,
+  deleteBlockedMessage,
   saving,
 }: {
   milestone: MilestoneWithProgress;
+  isNew?: boolean;
   onCancel: () => void;
   onSave: (data: {
     title: string;
     description: string;
     items: string[];
   }) => void;
+  onDelete?: () => void;
+  deleteBlockedMessage?: string | null;
   saving: boolean;
 }) {
   const [title, setTitle] = useState(milestone.title);
@@ -238,8 +260,9 @@ function DefinitionEditForm({
 
   const isTitleEmpty = !title.trim();
   // Ratchet rule (mirrors the server): an unchanged description never blocks
-  // the save, an edited one must be non-empty and within bounds.
-  const descriptionChanged = description !== milestone.description;
+  // the save, an edited one must be non-empty and within bounds. A new
+  // milestone has no stored description, so it always validates strictly.
+  const descriptionChanged = isNew || description !== milestone.description;
   const isDescriptionInvalid =
     descriptionChanged &&
     (!description.trim() ||
@@ -269,6 +292,18 @@ function DefinitionEditForm({
     if (isTitleEmpty || isDescriptionInvalid || !hasValidItem) return;
     onSave({ title, description, items });
   };
+
+  const deleteButton = onDelete ? (
+    <Button
+      variant="outline-danger"
+      className="rounded-3"
+      onClick={onDelete}
+      disabled={saving || !!deleteBlockedMessage}
+      style={{ width: 100 }}
+    >
+      Delete
+    </Button>
+  ) : null;
 
   return (
     <Stack direction="vertical" gap={3}>
@@ -339,6 +374,16 @@ function DefinitionEditForm({
         </Stack>
       </Form.Group>
       <Stack direction="horizontal" gap={2} className="justify-content-end">
+        {deleteBlockedMessage && deleteButton ? (
+          <InfoTooltip
+            position={{ top: true }}
+            content={<span>{deleteBlockedMessage}</span>}
+            target={deleteButton}
+            wrapperClassName="d-flex"
+          />
+        ) : (
+          deleteButton
+        )}
         <Button
           variant="outline-secondary"
           className="rounded-3"
@@ -362,12 +407,107 @@ function DefinitionEditForm({
   );
 }
 
+// Editor card for a milestone that doesn't exist yet, shown when a manager
+// clicks "Add {milestoneLabel}" on the Milestones tab. Saving POSTs the new
+// definition; the card only exists client-side until then.
+export function NewMilestoneCard({
+  applicationId,
+  projectId,
+  milestoneType,
+  milestoneLabel,
+  itemLabel,
+  index,
+  descriptionMinChars,
+  descriptionMaxChars,
+  onCancel,
+  onSaved,
+}: NewMilestoneCardProps) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const emptyMilestone: MilestoneWithProgress = {
+    type: milestoneType,
+    milestoneLabel,
+    itemLabel,
+    index,
+    title: "",
+    description: "",
+    itemNames: [],
+    progress: { otherDetails: "", items: [] },
+    descriptionMinChars,
+    descriptionMaxChars,
+    minCount: 1,
+  };
+
+  const handleSave = async (data: {
+    title: string;
+    description: string;
+    items: string[];
+  }) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/flow-council/projects/${projectId}/milestones`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            applicationId,
+            milestoneType,
+            definition: {
+              title: data.title,
+              description: data.description,
+              items: data.items.filter((i) => i.trim() !== ""),
+            },
+          }),
+        },
+      );
+      const result = await res.json();
+      if (result.success) {
+        onSaved();
+      } else {
+        setError(result.error || "Failed to save");
+      }
+    } catch {
+      setError("Failed to save. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="border border-primary border-2 rounded-4 overflow-hidden mb-4">
+      <div className="bg-secondary d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-1 px-3 px-sm-4 py-3">
+        <h5 className="fw-bold mb-0 text-light">New {milestoneLabel}</h5>
+        <span
+          className="fs-sm fw-semi-bold text-light text-nowrap rounded-pill px-3 py-1 flex-shrink-0"
+          style={{ backgroundColor: "rgba(255, 255, 255, 0.2)" }}
+        >
+          {milestoneLabel} {index + 1}
+        </span>
+      </div>
+      <div className="p-3 p-sm-4" style={{ backgroundColor: "#fff" }}>
+        {error && <p className="text-danger small mb-3">{error}</p>}
+        <DefinitionEditForm
+          milestone={emptyMilestone}
+          isNew
+          onCancel={onCancel}
+          onSave={handleSave}
+          saving={saving}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function MilestoneCard({
   milestone,
   applicationId,
   projectId,
   isManager,
   editsUnlocked,
+  canDelete,
   onSaved,
 }: MilestoneCardProps) {
   const { requireAuth } = useRequireAuth();
@@ -377,6 +517,9 @@ export default function MilestoneCard({
   const [editingDefinition, setEditingDefinition] = useState(false);
   const [defSaving, setDefSaving] = useState(false);
   const [defError, setDefError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [otherDetailsValue, setOtherDetailsValue] = useState(
     milestone.progress.otherDetails,
   );
@@ -387,6 +530,13 @@ export default function MilestoneCard({
 
   const badgeLabel = `${milestone.milestoneLabel} ${milestone.index + 1}`;
   const itemLabel = milestone.itemLabel;
+
+  const minCount = milestone.minCount;
+  const deleteBlockedMessage = canDelete
+    ? null
+    : `At least ${minCount} ${milestone.milestoneLabel.toLowerCase()}${
+        minCount === 1 ? " is" : "s are"
+      } required`;
 
   const handleEditDeliverableClick = (index: number) => {
     requireAuth(() => setEditingItemIndex(index));
@@ -439,6 +589,37 @@ export default function MilestoneCard({
       setDefError("Failed to save. Please try again.");
     } finally {
       setDefSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(
+        `/api/flow-council/projects/${projectId}/milestones`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            applicationId,
+            milestoneType: milestone.type,
+            milestoneIndex: milestone.index,
+          }),
+        },
+      );
+      const result = await res.json();
+      if (result.success) {
+        setShowDeleteConfirm(false);
+        setEditingDefinition(false);
+        onSaved();
+      } else {
+        setDeleteError(result.error || "Failed to delete");
+      }
+    } catch {
+      setDeleteError("Failed to delete. Please try again.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -584,6 +765,11 @@ export default function MilestoneCard({
                 setDefError(null);
               }}
               onSave={handleDefinitionSave}
+              onDelete={() => {
+                setDeleteError(null);
+                setShowDeleteConfirm(true);
+              }}
+              deleteBlockedMessage={deleteBlockedMessage}
               saving={defSaving}
             />
           </>
@@ -721,6 +907,50 @@ export default function MilestoneCard({
           </>
         )}
       </div>
+      <Modal
+        show={showDeleteConfirm}
+        centered
+        onHide={() => !deleting && setShowDeleteConfirm(false)}
+      >
+        <Modal.Header closeButton className="border-0 p-4">
+          <Modal.Title className="fs-5 fw-semi-bold">
+            Delete {milestone.milestoneLabel.toLowerCase()}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4 pt-0">
+          <p className="mb-0">
+            Are you sure you want to delete{" "}
+            <span className="fw-semi-bold">
+              {milestone.title || badgeLabel}
+            </span>
+            ? Its reported progress and evidence will be removed. This cannot be
+            undone.
+          </p>
+          {deleteError ? (
+            <Alert variant="danger" className="mt-3 mb-0">
+              {deleteError}
+            </Alert>
+          ) : null}
+        </Modal.Body>
+        <Modal.Footer className="border-0 p-4 pt-0">
+          <Button
+            variant="secondary"
+            className="rounded-4 px-4 py-2 fw-semi-bold"
+            onClick={() => setShowDeleteConfirm(false)}
+            disabled={deleting}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            className="rounded-4 px-4 py-2 fw-semi-bold text-white"
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? <Spinner size="sm" /> : "Delete"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }

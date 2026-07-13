@@ -31,6 +31,57 @@ const ACTIVE_USERS_FREQUENCY_OPTIONS = Object.entries(FREQUENCY_LABELS).map(
   ([value, label]) => ({ value, label }),
 );
 
+// See BuildMilestone.sourceIndex: milestones carry where they sat in the stored
+// array so the server can move reported progress with them across an add or a
+// delete, then shed that field before the details are persisted.
+function stampMilestoneSources(roundData: RoundForm): RoundForm {
+  return {
+    ...roundData,
+    buildGoals: {
+      ...roundData.buildGoals,
+      milestones: roundData.buildGoals.milestones.map((milestone, index) => ({
+        ...milestone,
+        sourceIndex: index,
+      })),
+    },
+    growthGoals: {
+      ...roundData.growthGoals,
+      milestones: roundData.growthGoals.milestones.map((milestone, index) => ({
+        ...milestone,
+        sourceIndex: index,
+      })),
+    },
+  };
+}
+
+function extractMilestoneSources(roundData: RoundForm) {
+  const sourceIndexOf = (milestone: { sourceIndex?: number | null }) =>
+    typeof milestone.sourceIndex === "number" ? milestone.sourceIndex : null;
+  return {
+    build: roundData.buildGoals.milestones.map(sourceIndexOf),
+    growth: roundData.growthGoals.milestones.map(sourceIndexOf),
+  };
+}
+
+function withoutMilestoneSources(roundData: RoundForm): RoundForm {
+  const strip = <T extends { sourceIndex?: number | null }>(milestone: T) => {
+    const rest = { ...milestone };
+    delete rest.sourceIndex;
+    return rest;
+  };
+  return {
+    ...roundData,
+    buildGoals: {
+      ...roundData.buildGoals,
+      milestones: roundData.buildGoals.milestones.map(strip),
+    },
+    growthGoals: {
+      ...roundData.growthGoals,
+      milestones: roundData.growthGoals.milestones.map(strip),
+    },
+  };
+}
+
 type RoundTabProps = {
   chainId: number;
   councilId: string;
@@ -66,7 +117,7 @@ export default function RoundTab(props: RoundTabProps) {
 
   useEffect(() => {
     if (existingRoundData) {
-      setForm(existingRoundData);
+      setForm(stampMilestoneSources(existingRoundData));
     }
   }, [existingRoundData]);
 
@@ -156,7 +207,7 @@ export default function RoundTab(props: RoundTabProps) {
         ...form.buildGoals,
         milestones: [
           ...form.buildGoals.milestones,
-          { title: "", description: "", deliverables: [""] },
+          { title: "", description: "", deliverables: [""], sourceIndex: null },
         ],
       },
     });
@@ -173,7 +224,14 @@ export default function RoundTab(props: RoundTabProps) {
         milestones:
           newMilestones.length > 0
             ? newMilestones
-            : [{ title: "", description: "", deliverables: [""] }],
+            : [
+                {
+                  title: "",
+                  description: "",
+                  deliverables: [""],
+                  sourceIndex: null,
+                },
+              ],
       },
     });
   };
@@ -197,7 +255,7 @@ export default function RoundTab(props: RoundTabProps) {
         ...form.growthGoals,
         milestones: [
           ...form.growthGoals.milestones,
-          { title: "", description: "", activations: [""] },
+          { title: "", description: "", activations: [""], sourceIndex: null },
         ],
       },
     });
@@ -214,7 +272,14 @@ export default function RoundTab(props: RoundTabProps) {
         milestones:
           newMilestones.length > 0
             ? newMilestones
-            : [{ title: "", description: "", activations: [""] }],
+            : [
+                {
+                  title: "",
+                  description: "",
+                  activations: [""],
+                  sourceIndex: null,
+                },
+              ],
       },
     });
   };
@@ -270,13 +335,16 @@ export default function RoundTab(props: RoundTabProps) {
       setIsSubmitting(true);
       setError("");
 
+      const details = withoutMilestoneSources(form);
+
       const res = await fetch("/api/flow-council/applications", {
         method: "PUT",
         body: JSON.stringify({
           projectId,
           chainId,
           councilId,
-          details: form,
+          details,
+          milestoneSources: extractMilestoneSources(form),
         }),
       });
 
@@ -288,8 +356,11 @@ export default function RoundTab(props: RoundTabProps) {
         return;
       }
 
+      // What we just sent is now what the server stores, so provenance resets to
+      // each milestone's own position before any further edit in this session.
+      setForm(stampMilestoneSources(details));
       setIsSubmitting(false);
-      onSave(form, json.application?.id);
+      onSave(details, json.application?.id);
     } catch (err) {
       console.error(err);
       setError("Failed to save round data");

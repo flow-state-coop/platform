@@ -13,6 +13,15 @@ import { isRoundAdmin, hasOnChainRole } from "../auth";
 import { MINIMAL_TEMPLATE } from "@/app/flow-councils/types/formSchema";
 import { isDynamicApplicationDetails } from "@/app/flow-councils/utils/legacyFormAdapter";
 import { getStoredSection } from "../utils";
+import {
+  getMilestoneCounts,
+  getMilestoneTypes,
+  lockAndRevalidateMilestoneSources,
+  MilestoneSourcesConflictError,
+  parseMilestoneSources,
+  remapMilestoneProgress,
+  stripMilestoneSourceIndexes,
+} from "../milestoneSources";
 
 export const dynamic = "force-dynamic";
 
@@ -206,6 +215,7 @@ export async function PUT(request: Request) {
       councilId: string;
       details?: Record<string, unknown>;
       fundingAddress?: string;
+      milestoneSources?: unknown;
     };
     try {
       body = await readJsonBody(request, MAX_DETAILS_SIZE);
@@ -222,6 +232,7 @@ export async function PUT(request: Request) {
       );
     }
     const { projectId, chainId, councilId, details, fundingAddress } = body;
+    const rawMilestoneSources = body.milestoneSources;
 
     if (!projectId || typeof projectId !== "number") {
       return new Response(
@@ -351,6 +362,37 @@ export async function PUT(request: Request) {
       );
     }
 
+    const milestoneTypes = getMilestoneTypes(
+      isDynamicFlow,
+      roundDetails.formSchema?.round,
+    );
+    stripMilestoneSourceIndexes(details, isDynamicFlow, milestoneTypes);
+    const storedMilestoneCounts = getMilestoneCounts(
+      existingApplication
+        ? typeof existingApplication.details === "string"
+          ? JSON.parse(existingApplication.details)
+          : existingApplication.details
+        : undefined,
+      isDynamicFlow,
+      milestoneTypes,
+    );
+    const submittedMilestoneCounts = getMilestoneCounts(
+      details,
+      isDynamicFlow,
+      milestoneTypes,
+    );
+    const parsedSources = parseMilestoneSources(
+      rawMilestoneSources,
+      storedMilestoneCounts,
+      submittedMilestoneCounts,
+    );
+    if (!parsedSources.success) {
+      return new Response(
+        JSON.stringify({ success: false, error: parsedSources.error }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
     let application;
 
     if (existingApplication) {
@@ -366,19 +408,54 @@ export async function PUT(request: Request) {
         updateValues.fundingAddress = fundingAddress.toLowerCase();
       }
 
-      application = await db
-        .updateTable("applications")
-        .set(updateValues)
-        .where("id", "=", existingApplication.id)
-        .returning([
-          "id",
-          "projectId",
-          "roundId",
-          "fundingAddress",
-          "status",
-          "details",
-        ])
-        .executeTakeFirstOrThrow();
+      try {
+        application = await db.transaction().execute(async (trx) => {
+          const { sources, storedCounts } =
+            await lockAndRevalidateMilestoneSources(
+              trx,
+              existingApplication.id,
+              rawMilestoneSources,
+              isDynamicFlow,
+              milestoneTypes,
+              submittedMilestoneCounts,
+            );
+
+          const updated = await trx
+            .updateTable("applications")
+            .set(updateValues)
+            .where("id", "=", existingApplication.id)
+            .returning([
+              "id",
+              "projectId",
+              "roundId",
+              "fundingAddress",
+              "status",
+              "details",
+            ])
+            .executeTakeFirstOrThrow();
+
+          await remapMilestoneProgress(
+            trx,
+            existingApplication.id,
+            sources,
+            storedCounts,
+          );
+
+          return updated;
+        });
+      } catch (err) {
+        if (err instanceof MilestoneSourcesConflictError) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error:
+                "This application changed while you were saving. Reload and try again.",
+            }),
+            { status: 409, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        throw err;
+      }
     } else {
       if (round.applicationsClosed) {
         return new Response(

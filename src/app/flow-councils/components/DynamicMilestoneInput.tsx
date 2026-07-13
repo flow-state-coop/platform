@@ -14,6 +14,10 @@ export type DynamicMilestoneValue = {
   title: string;
   description: string;
   items: string[];
+  // Index this milestone occupied in the server-stored array, or null when it
+  // is new. Carried through edits so a save can tell the server where each
+  // milestone's reported progress should move to. Stripped before persisting.
+  sourceIndex?: number | null;
 };
 
 type Props = {
@@ -25,12 +29,11 @@ type Props = {
   onChange: (values: DynamicMilestoneValue[]) => void;
   validated: boolean;
   readOnly?: boolean;
-  lockBlockCount?: boolean;
   numberPrefix?: string;
 };
 
 function emptyMilestone(): DynamicMilestoneValue {
-  return { title: "", description: "", items: [""] };
+  return { title: "", description: "", items: [""], sourceIndex: null };
 }
 
 export default function DynamicMilestoneInput(props: Props) {
@@ -41,7 +44,6 @@ export default function DynamicMilestoneInput(props: Props) {
     onChange,
     validated,
     readOnly = false,
-    lockBlockCount = false,
     numberPrefix = "",
   } = props;
 
@@ -122,9 +124,8 @@ export default function DynamicMilestoneInput(props: Props) {
     });
   };
 
-  const canAdd = !readOnly && !lockBlockCount && blocks.length < MAX_MILESTONES;
-  const canRemoveBlock = (i: number) =>
-    !readOnly && !lockBlockCount && i >= minCount;
+  const canAdd = !readOnly && blocks.length < MAX_MILESTONES;
+  const canRemoveBlock = !readOnly && blocks.length > minCount;
 
   return (
     <Form.Group className="mb-4">
@@ -165,7 +166,7 @@ export default function DynamicMilestoneInput(props: Props) {
                 {milestoneLabel} {i + 1}
                 {element.required && "*"}
               </span>
-              {canRemoveBlock(i) && (
+              {canRemoveBlock && (
                 <Button
                   variant="link"
                   className="d-flex align-items-center justify-content-center p-0"

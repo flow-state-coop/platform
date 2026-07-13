@@ -24,6 +24,7 @@ export type MilestoneWithProgress = {
   progress: MilestoneProgressData;
   descriptionMinChars: number;
   descriptionMaxChars: number;
+  minCount: number;
 };
 
 export type ApplicationMilestones = {
