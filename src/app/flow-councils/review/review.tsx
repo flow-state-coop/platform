@@ -43,6 +43,8 @@ import ViewProjectTab from "@/app/flow-councils/components/ViewProjectTab";
 import ViewRoundTab from "@/app/flow-councils/components/ViewRoundTab";
 import ViewAttestationTab from "@/app/flow-councils/components/ViewAttestationTab";
 import InternalComments from "@/app/flow-councils/components/InternalComments";
+import ChatView from "@/app/flow-councils/components/ChatView";
+import { ChannelType } from "@/generated/kysely";
 import useDistributionPoolQuery from "@/app/flow-councils/hooks/distributionPoolQuery";
 import useSiwe from "@/hooks/siwe";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -117,6 +119,9 @@ type ConnectAllState =
   | "actionable"
   | "no-members"
   | "all-connected";
+
+const PRIMARY_ICON_FILTER =
+  "brightness(0) saturate(100%) invert(27%) sepia(34%) saturate(2833%) hue-rotate(167deg) brightness(96%) contrast(96%)";
 
 const STATUS_LABELS: Record<Status, string> = {
   INCOMPLETE: "Incomplete",
@@ -368,6 +373,7 @@ export default function Review(props: ReviewProps) {
           : "all-connected";
 
   const [roundName, setRoundName] = useState("Flow Council");
+  const [roundId, setRoundId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!chainId || !councilId) return;
@@ -380,6 +386,7 @@ export default function Review(props: ReviewProps) {
         const data = await res.json();
 
         if (data.success && data.round) {
+          setRoundId(data.round.id ?? null);
           setApplicationsClosed(data.round.applicationsClosed ?? false);
 
           if (data.round.details) {
@@ -1750,6 +1757,19 @@ export default function Review(props: ReviewProps) {
                           Comments
                         </Nav.Link>
                       </Nav.Item>
+                      <Nav.Item>
+                        <Nav.Link
+                          eventKey="communications"
+                          className={`py-3 px-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${
+                            selectedTab === "communications"
+                              ? "bg-primary text-white"
+                              : "bg-white text-primary"
+                          }`}
+                          style={{ minWidth: 140 }}
+                        >
+                          Communications
+                        </Nav.Link>
+                      </Nav.Item>
                     </Nav>
 
                     {(() => {
@@ -1791,6 +1811,43 @@ export default function Review(props: ReviewProps) {
                               applicationId={selectedApplication.id}
                               chainId={chainId}
                               councilId={councilId}
+                            />
+                          </Tab.Pane>
+                          <Tab.Pane eventKey="communications">
+                            <Stack
+                              direction="horizontal"
+                              className="justify-content-between align-items-center mb-4"
+                            >
+                              <p className="text-muted mb-0">
+                                Messages here are shared with the project team.
+                              </p>
+                              <Link
+                                href={`/flow-councils/communications/${chainId}/${councilId}?channel=${selectedApplication.projectId}`}
+                                target="_blank"
+                                className="d-flex align-items-center gap-1 text-primary text-decoration-none fw-semi-bold flex-shrink-0"
+                              >
+                                <Image
+                                  src="/open-new.svg"
+                                  alt=""
+                                  width={20}
+                                  height={20}
+                                  style={{ filter: PRIMARY_ICON_FILTER }}
+                                />
+                                Open in New Tab
+                              </Link>
+                            </Stack>
+                            <ChatView
+                              channelType={ChannelType.GROUP_PROJECT}
+                              chainId={chainId}
+                              councilId={councilId}
+                              roundId={roundId ?? undefined}
+                              projectId={selectedApplication.projectId}
+                              applicationId={selectedApplication.id}
+                              canWrite={isManager}
+                              canModerate={isManager}
+                              currentUserAddress={session?.address}
+                              active={selectedTab === "communications"}
+                              emptyMessage="No messages yet in this project chat."
                             />
                           </Tab.Pane>
                         </Tab.Content>
