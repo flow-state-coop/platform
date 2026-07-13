@@ -157,13 +157,11 @@ const networks: Network[] = [
       "https://subgraph-endpoints.superfluid.dev/celo-mainnet/protocol-v1",
     onRampLabel: "celo",
     flowSplitter: "0x0e9ddfd2ffdb0ba1ac3340d865193a7b6d4ea147",
-    flowSplitterSubgraph: graphNetworkSubgraph(
-      "6LQPPz6wjuA7kfkEHHvShR9JQZ4Dx81J4eryMKU8yDwS",
-    ),
+    flowSplitterSubgraph:
+      "https://api.goldsky.com/api/public/project_cmbkdj2bd7cr601uwafoe4u3y/subgraphs/flow-splitter-celo/v0.0.3/gn",
     flowCouncilFactory: "0x589232342bfeCb372dbbc01d17e8D112a27fF125",
-    flowCouncilSubgraph: graphNetworkSubgraph(
-      "8QgPMn2diKDXjHFgwXorU9XGT7cW5Se5bLaRn9TAKSjt",
-    ),
+    flowCouncilSubgraph:
+      "https://api.goldsky.com/api/public/project_cmbkdj2bd7cr601uwafoe4u3y/subgraphs/flow-council-celo/v0.4.2/gn",
     flowStateEligibilityNft: "",
     flowStateEligibilityMinScore: 15,
     superfluidHost: "0xA4Ff07cF81C02CFD356184879D953970cA957585",
