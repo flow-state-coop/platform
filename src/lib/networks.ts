@@ -7,6 +7,12 @@ const SPLITTER_FACTORY_NOT_DEPLOYED = "0x";
 
 const GRAPH_API_KEY = process.env.NEXT_PUBLIC_GRAPH_API_KEY ?? "";
 
+if (!GRAPH_API_KEY) {
+  console.warn(
+    "NEXT_PUBLIC_GRAPH_API_KEY is not set: The Graph Network subgraph queries will fail",
+  );
+}
+
 const graphNetworkSubgraph = (subgraphId: string) =>
   `https://gateway.thegraph.com/api/${GRAPH_API_KEY}/subgraphs/id/${subgraphId}`;
 

@@ -16,8 +16,7 @@ const defaultOptions: DefaultOptions = {
   },
   watchQuery: {
     errorPolicy: "all",
-    skipPollAttempt: () =>
-      typeof document !== "undefined" && document.hidden,
+    skipPollAttempt: () => typeof document !== "undefined" && document.hidden,
   },
 };
 
