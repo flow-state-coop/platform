@@ -254,10 +254,10 @@ const networks: Network[] = [
     onRampLabel: "optimism",
     flowSplitter: "0xd53B8Bed28E122eA20dCC90d3991a614EC163a21",
     flowSplitterSubgraph:
-      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-splitter-optimism-sepolia/v0.0.2/gn",
+      "https://api.goldsky.com/api/public/project_cmbkdj2bd7cr601uwafoe4u3y/subgraphs/flow-splitter-optimism-sepolia/v0.0.3/gn",
     flowCouncilFactory: "0xDD1a61127d910e6a7CD71788F0Ebb5A46DFDB424",
     flowCouncilSubgraph:
-      "https://api.subgraph.ormilabs.com/api/public/f73714f1-9afa-4cd8-99bb-d4c0522c9d2b/subgraphs/flow-council-optimism-sepolia/v0.4.2/gn",
+      "https://api.goldsky.com/api/public/project_cmbkdj2bd7cr601uwafoe4u3y/subgraphs/flow-council-optimism-sepolia/v0.4.2/gn",
     flowStateEligibilityNft: "0x1059A20C7aA0B4576B631d064730dB2E02940535",
     flowStateEligibilityMinScore: 0.5,
     superfluidHost: "0xd399e2Fb5f4cf3722a11F65b88FAB6B2B8621005",
