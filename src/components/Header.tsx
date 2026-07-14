@@ -12,6 +12,8 @@ import Image from "react-bootstrap/Image";
 import Offcanvas from "react-bootstrap/Offcanvas";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 
+const FLOW_QF_DOCS_URL = "https://docs.flowstate.network/flow-qf";
+
 export default function Header() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
@@ -19,6 +21,12 @@ export default function Header() {
   const pathname = usePathname();
   const params = useParams();
   const { isMobile, isTablet, isSmallScreen } = useMediaQuery();
+
+  const isHome = pathname === "/";
+  const flowCouncilHref = isHome ? "/flow-councils/launch" : "/flow-councils";
+  const flowSplitterHref = isHome
+    ? "/flow-splitters/launch"
+    : "/flow-splitters";
 
   return (
     <header className="w-100">
@@ -49,64 +57,35 @@ export default function Header() {
           )}
           {!isMobile && !isTablet && (
             <>
-              {pathname === "/" ? (
-                <Stack direction="horizontal" gap={2}>
-                  <Button
-                    variant="transparent"
-                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold`}
-                    style={{ whiteSpace: "nowrap" }}
-                    onClick={() => router.push("/?for-funders=true")}
-                  >
-                    For funders
-                  </Button>
-                  <Button
-                    variant="transparent"
-                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold`}
-                    style={{ whiteSpace: "nowrap" }}
-                    onClick={() => router.push("/?for-builders=true")}
-                  >
-                    For builders
-                  </Button>
-                  <Button
-                    variant="transparent"
-                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold`}
-                    style={{ whiteSpace: "nowrap" }}
-                    onClick={() => router.push("/?for-everyone=true")}
-                  >
-                    For everyone
-                  </Button>
-                </Stack>
-              ) : (
-                <Stack direction="horizontal" gap={2}>
-                  <Button
-                    variant="transparent"
-                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold border-0`}
-                    style={{ whiteSpace: "nowrap" }}
-                    onClick={() => router.push("/flow-councils")}
-                  >
-                    Flow Council
-                  </Button>
-                  <Button
-                    variant="transparent"
-                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold border-0`}
-                    style={{ whiteSpace: "nowrap" }}
-                    onClick={() => router.push("/flow-splitters")}
-                  >
-                    Flow Splitter
-                  </Button>
-                  <Button
-                    variant="link"
-                    href="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
-                    target="_blank"
-                    className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold border-0 text-decoration-none`}
-                    style={{ whiteSpace: "nowrap" }}
-                  >
-                    Flow Caster
-                  </Button>
-                </Stack>
-              )}
+              <Stack direction="horizontal" gap={2}>
+                <Button
+                  variant="transparent"
+                  className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold border-0`}
+                  style={{ whiteSpace: "nowrap" }}
+                  onClick={() => router.push(flowCouncilHref)}
+                >
+                  Flow Council
+                </Button>
+                <Button
+                  variant="transparent"
+                  className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold border-0`}
+                  style={{ whiteSpace: "nowrap" }}
+                  onClick={() => router.push(flowSplitterHref)}
+                >
+                  Flow Splitter
+                </Button>
+                <Button
+                  variant="link"
+                  href={FLOW_QF_DOCS_URL}
+                  target="_blank"
+                  className={`${isSmallScreen ? "px-6" : "px-10"} py-4 fs-lg fw-bold border-0 text-decoration-none`}
+                  style={{ whiteSpace: "nowrap" }}
+                >
+                  Flow QF
+                </Button>
+              </Stack>
               <Stack direction="horizontal" gap={isSmallScreen ? 4 : 6}>
-                {pathname === "/" && !isSmallScreen && (
+                {isHome && !isSmallScreen && (
                   <Stack
                     direction="horizontal"
                     gap={6}
@@ -154,7 +133,7 @@ export default function Header() {
                   </Stack>
                 )}
                 <Suspense>
-                  {pathname === "/" ? (
+                  {isHome ? (
                     <Link href="/explore">
                       <Button
                         className={`${isSmallScreen ? "px-6" : "px-10"} py-4 rounded-3 text-white fs-lg fw-bold`}
@@ -200,71 +179,34 @@ export default function Header() {
           </Button>
         </Offcanvas.Header>
         <Offcanvas.Body className="d-flex flex-column align-items-center gap-10 mt-20 px-8">
-          {pathname === "/" ? (
-            <>
-              <Button
-                variant="transparent"
-                className="px-10 py-4 fs-lg fw-bold border-0"
-                onClick={() => {
-                  router.push("/?for-funders=true");
-                  setShowMobileMenu(false);
-                }}
-              >
-                For funders
-              </Button>
-              <Button
-                variant="transparent"
-                className="px-10 py-4 fs-lg fw-bold border-0"
-                onClick={() => {
-                  router.push("/?for-builders=true");
-                  setShowMobileMenu(false);
-                }}
-              >
-                For builders
-              </Button>
-              <Button
-                variant="transparent"
-                className="px-10 py-4 fs-lg fw-bold border-0"
-                onClick={() => {
-                  router.push("/?for-everyone=true");
-                  setShowMobileMenu(false);
-                }}
-              >
-                For everyone
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                variant="transparent"
-                className="px-10 py-4 fs-lg fw-bold border-0"
-                onClick={() => {
-                  router.push("/flow-councils");
-                  setShowMobileMenu(false);
-                }}
-              >
-                Flow Council
-              </Button>
-              <Button
-                variant="transparent"
-                className="px-10 py-4 fs-lg fw-bold border-0"
-                onClick={() => {
-                  router.push("/flow-splitters");
-                  setShowMobileMenu(false);
-                }}
-              >
-                Flow Splitter
-              </Button>
-              <Button
-                variant="link"
-                href="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
-                target="_blank"
-                className="px-10 py-4 fs-lg fw-bold border-0 text-decoration-none"
-              >
-                Flow Caster
-              </Button>
-            </>
-          )}
+          <Button
+            variant="transparent"
+            className="px-10 py-4 fs-lg fw-bold border-0"
+            onClick={() => {
+              router.push(flowCouncilHref);
+              setShowMobileMenu(false);
+            }}
+          >
+            Flow Council
+          </Button>
+          <Button
+            variant="transparent"
+            className="px-10 py-4 fs-lg fw-bold border-0"
+            onClick={() => {
+              router.push(flowSplitterHref);
+              setShowMobileMenu(false);
+            }}
+          >
+            Flow Splitter
+          </Button>
+          <Button
+            variant="link"
+            href={FLOW_QF_DOCS_URL}
+            target="_blank"
+            className="px-10 py-4 fs-lg fw-bold border-0 text-decoration-none"
+          >
+            Flow QF
+          </Button>
           <Stack
             direction="horizontal"
             gap={6}
@@ -306,7 +248,7 @@ export default function Header() {
             </Button>
           </Stack>
           <Suspense>
-            {pathname === "/" ? (
+            {isHome ? (
               <Link
                 className="w-100"
                 href="/explore"

@@ -70,13 +70,6 @@ export default function Footer() {
             >
               Flow QF
             </Link>
-            <Link
-              href="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
-              target="_blank"
-              className="text-decoration-none text-white fs-5 fw-bold"
-            >
-              Flow Caster
-            </Link>
           </Stack>
           <Stack direction="vertical" gap={8} className="mb-30 mb-lg-0 me-10">
             <Link

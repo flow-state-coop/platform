@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
 import Stack from "react-bootstrap/Stack";
 import Image from "react-bootstrap/Image";
@@ -21,8 +20,6 @@ export default function HomePage() {
     TargetAudience.FUNDERS,
   );
 
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const { isMobile, isTablet, isSmallScreen, isBigScreen } = useMediaQuery();
   const postHog = usePostHog();
 
@@ -31,21 +28,6 @@ export default function HomePage() {
       postHog.startSessionRecording();
     }
   }, [postHog, postHog.decideEndpointWasHit]);
-
-  useEffect(() => {
-    const targetAudienceElem = document.getElementById("target-audience");
-
-    if (searchParams.get("for-funders")) {
-      setShowTargetAudience(TargetAudience.FUNDERS);
-      targetAudienceElem?.scrollIntoView();
-    } else if (searchParams.get("for-builders")) {
-      setShowTargetAudience(TargetAudience.BUILDERS);
-      targetAudienceElem?.scrollIntoView();
-    } else if (searchParams.get("for-everyone")) {
-      setShowTargetAudience(TargetAudience.EVERYONE);
-      targetAudienceElem?.scrollIntoView();
-    }
-  }, [router, searchParams]);
 
   return (
     <div className="hero-background w-100">
@@ -384,38 +366,26 @@ export default function HomePage() {
                       </Button>
                     </Link>
                     <Link
-                      href="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
-                      target="_blank"
+                      href="#schedule-consultation"
+                      onNavigate={(e) => {
+                        e.preventDefault();
+                        const elem = document.getElementById(
+                          "schedule-consultation",
+                        );
+                        elem?.scrollIntoView({
+                          behavior: "smooth",
+                        });
+                      }}
                       className={isMobile ? "w-100" : "w-50"}
                     >
                       <Button
                         variant="outline-secondary"
                         className="w-100 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
                       >
-                        Flow Caster
+                        Custom
                       </Button>
                     </Link>
                   </Stack>
-                  <Link
-                    href="#schedule-consultation"
-                    onNavigate={(e) => {
-                      e.preventDefault();
-                      const elem = document.getElementById(
-                        "schedule-consultation",
-                      );
-                      elem?.scrollIntoView({
-                        behavior: "smooth",
-                      });
-                    }}
-                    className={isMobile ? "w-100" : "w-50"}
-                  >
-                    <Button
-                      variant="outline-secondary"
-                      className="w-100 mt-sm-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
-                    >
-                      Custom
-                    </Button>
-                  </Link>
                 </>
               ) : (
                 <>
@@ -459,36 +429,6 @@ export default function HomePage() {
                         className="w-100 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
                       >
                         Explore
-                      </Button>
-                    </Link>
-                  </Stack>
-                  <Stack
-                    direction="horizontal"
-                    gap={2}
-                    className="flex-wrap flex-sm-nowrap"
-                  >
-                    <Link
-                      href="https://farcaster.xyz/miniapps/0EyeQpCD0lSP/flowcaster"
-                      target="_blank"
-                      className={isMobile ? "w-100" : "w-50"}
-                    >
-                      <Button
-                        variant="outline-secondary"
-                        className="w-100 mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
-                      >
-                        Flow Caster
-                      </Button>
-                    </Link>
-                    <Link
-                      href="https://farcaster.xyz/beamr"
-                      target="_blank"
-                      className={isMobile ? "w-100" : "w-50"}
-                    >
-                      <Button
-                        variant="outline-secondary"
-                        className="w-100 mt-4 px-10 py-3 border-4 rounded-4 fs-lg fw-semi-bold"
-                      >
-                        Beamr
                       </Button>
                     </Link>
                   </Stack>
