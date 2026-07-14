@@ -4,9 +4,11 @@ import { installMockWallet } from "./helpers/setup";
 // Live smoke test — hits the real OP Sepolia flow-council subgraph and RPC
 // via `pnpm test:live`. Council deployed by
 // `~/web3/flow-council/script/CreateFlowCouncil.s.sol` (factory in
-// `src/lib/networks.ts:flowCouncilFactory`).
+// `src/lib/networks.ts:flowCouncilFactory`). The subgraph only indexes councils
+// from the factory currently in `networks.ts`, so this must stay a council
+// created by that factory: one from a retired factory resolves to null.
 const LIVE_CHAIN_ID = 11155420;
-const LIVE_COUNCIL_ADDRESS = "0x512E7c3855d9Cd5eB202843779160563556D45Ea";
+const LIVE_COUNCIL_ADDRESS = "0x5c4a58A24e2c1BC3E6D37A03500ed01d5c414Bb0";
 
 test.beforeEach(async ({ page }) => {
   await installMockWallet(page);
