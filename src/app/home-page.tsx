@@ -8,6 +8,7 @@ import Image from "react-bootstrap/Image";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import { FLOW_QF_DOCS_URL } from "@/lib/constants";
 
 enum TargetAudience {
   FUNDERS = "For funders",
@@ -296,7 +297,7 @@ export default function HomePage() {
                     className="flex-wrap flex-sm-nowrap"
                   >
                     <Link
-                      href="https://docs.flowstate.network/flow-qf"
+                      href={FLOW_QF_DOCS_URL}
                       target="_blank"
                       className={isMobile ? "w-100" : "w-50"}
                     >

@@ -10,6 +10,7 @@ import Toast from "react-bootstrap/Toast";
 import Alert from "react-bootstrap/Alert";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import useMailingList from "@/hooks/mailingList";
+import { FLOW_QF_DOCS_URL } from "@/lib/constants";
 
 export default function Footer() {
   const { isMobile } = useMediaQuery();
@@ -65,7 +66,7 @@ export default function Footer() {
               Flow Council
             </Link>
             <Link
-              href="https://docs.flowstate.network/flow-qf"
+              href={FLOW_QF_DOCS_URL}
               className="text-decoration-none text-white fs-5 fw-bold"
             >
               Flow QF

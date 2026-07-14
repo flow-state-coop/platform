@@ -11,8 +11,7 @@ import Button from "react-bootstrap/Button";
 import Image from "react-bootstrap/Image";
 import Offcanvas from "react-bootstrap/Offcanvas";
 import { useMediaQuery } from "@/hooks/mediaQuery";
-
-const FLOW_QF_DOCS_URL = "https://docs.flowstate.network/flow-qf";
+import { FLOW_QF_DOCS_URL } from "@/lib/constants";
 
 export default function Header() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
