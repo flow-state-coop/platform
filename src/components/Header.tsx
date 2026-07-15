@@ -22,10 +22,8 @@ export default function Header() {
   const { isMobile, isTablet, isSmallScreen } = useMediaQuery();
 
   const isHome = pathname === "/";
-  const flowCouncilHref = isHome ? "/flow-councils/launch" : "/flow-councils";
-  const flowSplitterHref = isHome
-    ? "/flow-splitters/launch"
-    : "/flow-splitters";
+  const flowCouncilHref = "/flow-councils";
+  const flowSplitterHref = "/flow-splitters";
 
   return (
     <header className="w-100">
