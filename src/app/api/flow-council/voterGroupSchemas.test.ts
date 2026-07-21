@@ -55,7 +55,7 @@ describe("voterGroupCreateSchema", () => {
       const result = voterGroupCreateSchema.safeParse({
         ...validPayload,
         eligibilityMethod: "nft",
-        nft: ERC721_CONFIG,
+        nftConfig: ERC721_CONFIG,
       });
       expect(result.success).toBe(true);
     });
@@ -64,7 +64,7 @@ describe("voterGroupCreateSchema", () => {
       const result = voterGroupCreateSchema.safeParse({
         ...validPayload,
         eligibilityMethod: "nft",
-        nft: ERC1155_CONFIG,
+        nftConfig: ERC1155_CONFIG,
       });
       expect(result.success).toBe(true);
     });
@@ -142,7 +142,7 @@ describe("voterGroupCreateSchema", () => {
       const result = voterGroupCreateSchema.safeParse({
         ...validPayload,
         eligibilityMethod: "NFT",
-        nft: ERC721_CONFIG,
+        nftConfig: ERC721_CONFIG,
       });
       expect(result.success).toBe(false);
     });
@@ -247,7 +247,7 @@ describe("voterGroupCreateSchema", () => {
       const result = voterGroupCreateSchema.safeParse({
         ...validPayload,
         eligibilityMethod: "nft",
-        nft: { contractAddress: ERC721_CONFIG.contractAddress },
+        nftConfig: { contractAddress: ERC721_CONFIG.contractAddress },
       });
       expect(result.success).toBe(false);
     });
@@ -256,7 +256,7 @@ describe("voterGroupCreateSchema", () => {
       const result = voterGroupCreateSchema.safeParse({
         ...validPayload,
         eligibilityMethod: "manual",
-        nft: ERC721_CONFIG,
+        nftConfig: ERC721_CONFIG,
       });
       expect(result.success).toBe(false);
     });
@@ -265,7 +265,7 @@ describe("voterGroupCreateSchema", () => {
       const result = voterGroupCreateSchema.safeParse({
         ...validPayload,
         eligibilityMethod: "gooddollar",
-        nft: ERC721_CONFIG,
+        nftConfig: ERC721_CONFIG,
       });
       expect(result.success).toBe(false);
     });
@@ -346,7 +346,7 @@ describe("voterGroupUpdateSchema", () => {
       expect(
         voterGroupUpdateSchema.safeParse({
           eligibilityMethod: "nft",
-          nft: ERC1155_CONFIG,
+          nftConfig: ERC1155_CONFIG,
         }).success,
       ).toBe(true);
     });
@@ -372,21 +372,21 @@ describe("voterGroupUpdateSchema", () => {
 
     it("accepts an update carrying a complete nft config", () => {
       expect(
-        voterGroupUpdateSchema.safeParse({ nft: ERC721_CONFIG }).success,
+        voterGroupUpdateSchema.safeParse({ nftConfig: ERC721_CONFIG }).success,
       ).toBe(true);
     });
 
     it("rejects an update carrying only a contract address (criterion 4)", () => {
       expect(
         voterGroupUpdateSchema.safeParse({
-          nft: { contractAddress: ERC721_CONFIG.contractAddress },
+          nftConfig: { contractAddress: ERC721_CONFIG.contractAddress },
         }).success,
       ).toBe(false);
     });
 
     it("rejects an update carrying only a token standard (criterion 4)", () => {
       expect(
-        voterGroupUpdateSchema.safeParse({ nft: { tokenStandard: "erc1155" } })
+        voterGroupUpdateSchema.safeParse({ nftConfig: { tokenStandard: "erc1155" } })
           .success,
       ).toBe(false);
     });
@@ -394,7 +394,7 @@ describe("voterGroupUpdateSchema", () => {
     it("rejects an update switching to erc1155 without a token id (criterion 4)", () => {
       expect(
         voterGroupUpdateSchema.safeParse({
-          nft: {
+          nftConfig: {
             contractAddress: ERC1155_CONFIG.contractAddress,
             tokenStandard: "erc1155",
           },

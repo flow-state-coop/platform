@@ -922,21 +922,21 @@ export const voterGroupCreateSchema = z
     name: z.string().min(1).max(100),
     eligibilityMethod: z.enum(["manual", "gooddollar", "metrics", "nft"]),
     defaultVotingPower: z.number().int().min(1).max(1_000_000),
-    nft: nftConfigSchema.optional(),
+    nftConfig: nftConfigSchema.optional(),
   })
   .superRefine((value, ctx) => {
-    if (value.eligibilityMethod === "nft" && !value.nft) {
+    if (value.eligibilityMethod === "nft" && !value.nftConfig) {
       ctx.addIssue({
         code: "custom",
-        path: ["nft"],
+        path: ["nftConfig"],
         message: "An NFT Holder group needs a collection configuration",
       });
     }
 
-    if (value.eligibilityMethod !== "nft" && value.nft) {
+    if (value.eligibilityMethod !== "nft" && value.nftConfig) {
       ctx.addIssue({
         code: "custom",
-        path: ["nft"],
+        path: ["nftConfig"],
         message:
           "Only an NFT Holder group can carry a collection configuration",
       });
@@ -954,7 +954,7 @@ export const voterGroupUpdateSchema = z.object({
     .enum(["manual", "gooddollar", "metrics", "nft"])
     .optional(),
   defaultVotingPower: z.number().int().min(1).max(1_000_000).optional(),
-  nft: nftConfigSchema.optional(),
+  nftConfig: nftConfigSchema.optional(),
 });
 
 // ---------------------------------------------------------------------------
