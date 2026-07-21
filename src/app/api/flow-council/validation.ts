@@ -937,7 +937,8 @@ export const voterGroupCreateSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["nft"],
-        message: "Only an NFT Holder group can carry a collection configuration",
+        message:
+          "Only an NFT Holder group can carry a collection configuration",
       });
     }
   });

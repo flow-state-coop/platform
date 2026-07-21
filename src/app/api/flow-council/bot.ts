@@ -1,4 +1,9 @@
-import { createPublicClient, createWalletClient, http } from "viem";
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  nonceManager,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { db } from "./db";
 import { getViemChain } from "@/lib/networks";
@@ -23,6 +28,30 @@ export function getGroupByMethod(roundId: number, method: string) {
 }
 
 /**
+ * Every "nft"-eligibility group on a council, lowest id first. Unlike
+ * getGroupByMethod a council can have several of these (a tiered membership),
+ * and the ordering is the documented tie-break when a wallet qualifies for more
+ * than one at the same allocation.
+ */
+export function loadNftRequirements(roundId: number) {
+  return db
+    .selectFrom("voterGroups")
+    .select([
+      "id",
+      "name",
+      "defaultVotingPower",
+      "nftContractAddress",
+      "nftTokenStandard",
+      "nftTokenId",
+      "nftAcquisitionUrl",
+    ])
+    .where("roundId", "=", roundId)
+    .where("eligibilityMethod", "=", "nft")
+    .orderBy("id", "asc")
+    .execute();
+}
+
+/**
  * Build the viem account + clients that sign on-chain actions as the Flow State
  * bot. Single seam for the wallet model: today one centralized key signs for
  * every council; a future per-council HD wallet would be derived here from the
@@ -33,7 +62,11 @@ export function buildBotSigner(network: Network) {
   if (!pk) {
     throw new Error("FLOW_STATE_ELIGIBILITY_PK is not configured");
   }
-  const account = privateKeyToAccount(pk as `0x${string}`);
+  // Claims and ballots both broadcast as this one account, so consecutive
+  // requests served by the same warm instance must not read the same pending
+  // nonce. Cross-instance collisions remain possible and surface as a failed
+  // claim the caller retries.
+  const account = privateKeyToAccount(pk as `0x${string}`, { nonceManager });
   const viemChain = getViemChain(network.id);
   const publicClient = createPublicClient({
     chain: viemChain,
@@ -44,4 +77,20 @@ export function buildBotSigner(network: Network) {
     transport: http(network.rpcUrl),
   });
   return { account, publicClient, walletClient };
+}
+
+const signerCache = new Map<number, ReturnType<typeof buildBotSigner>>();
+
+/**
+ * The bot signer for a network, memoized per chain. The memo is what makes the
+ * account's nonce manager useful: a signer rebuilt per request would start from
+ * a fresh nonce state every time.
+ */
+export function getBotSigner(network: Network) {
+  const cached = signerCache.get(network.id);
+  if (cached) return cached;
+
+  const signer = buildBotSigner(network);
+  signerCache.set(network.id, signer);
+  return signer;
 }
