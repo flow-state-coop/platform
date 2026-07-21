@@ -224,7 +224,11 @@ export default function NftEligibilityModal({
       const data = await res.json();
 
       if (data.success) {
-        setGrantedVotes(Number(data.votingPower));
+        // The ALREADY_ADDED path deliberately omits votingPower, since another
+        // claim set it and this route never read it back. null falls through to
+        // the polled on-chain figure; Number(undefined) would render as NaN.
+        const granted = Number(data.votingPower);
+        setGrantedVotes(Number.isFinite(granted) ? granted : null);
         setState(data.alreadyVoter ? "already-has-votes" : "granted");
         return;
       }
