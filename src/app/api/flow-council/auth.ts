@@ -337,6 +337,8 @@ const COUNCIL_EXISTS_QUERY = gql`
   }
 `;
 
+const FACTORY_COUNCIL_CACHE_LIMIT = 500;
+
 const factoryCouncils = new Set<string>();
 
 /** Drop the verified-council cache, so tests can control the guard. */
@@ -368,6 +370,10 @@ export async function isFactoryCouncil(
 
     if (!data?.flowCouncil?.id) {
       return false;
+    }
+
+    if (factoryCouncils.size >= FACTORY_COUNCIL_CACHE_LIMIT) {
+      factoryCouncils.delete(factoryCouncils.values().next().value as string);
     }
 
     factoryCouncils.add(key);

@@ -62,9 +62,12 @@ export async function POST(request: Request) {
     // are logged server-side only and never returned to the client.
     console.error(err);
 
-    return Response.json({
-      success: false,
-      error: "There was an error, please try again later",
-    });
+    return Response.json(
+      {
+        success: false,
+        error: "There was an error, please try again later",
+      },
+      { status: 500 },
+    );
   }
 }

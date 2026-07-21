@@ -126,6 +126,13 @@ export async function POST(request: Request) {
       return refusal("bot_missing_role");
     }
 
+    // multicall allows per-call failure, so the role read can come back unknown
+    // while the balances resolve. Spending gas on a claim that would revert
+    // NOT_VOTER_MANAGER is worse than asking the caller to retry.
+    if (evaluation.botHasRole === null) {
+      return refusal("check_unavailable");
+    }
+
     if (!(await isFactoryCouncil(numericChainId, councilId))) {
       return refusal("council_unverified");
     }

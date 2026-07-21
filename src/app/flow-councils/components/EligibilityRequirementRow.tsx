@@ -40,7 +40,7 @@ export default function EligibilityRequirementRow({
           <a
             href={acquisitionUrl}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="small text-primary text-decoration-none"
           >
             Get this NFT
