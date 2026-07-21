@@ -1,0 +1,371 @@
+import { useState, useEffect, useCallback } from "react";
+import { useAccount, useSignMessage } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import Modal from "react-bootstrap/Modal";
+import Button from "react-bootstrap/Button";
+import Stack from "react-bootstrap/Stack";
+import Alert from "react-bootstrap/Alert";
+import Spinner from "react-bootstrap/Spinner";
+import useFlowCouncil from "../hooks/flowCouncil";
+import { buildClaimMessage } from "../lib/claimMessage";
+import EligibilityRequirementRow, {
+  type RequirementRowStatus,
+} from "./EligibilityRequirementRow";
+
+export type NftRequirementGroup = {
+  groupId: number;
+  name: string;
+  defaultVotingPower: number;
+  nftAcquisitionUrl?: string | null;
+};
+
+type StatusRow = {
+  groupId: number;
+  name: string;
+  votes: number;
+  status: "met" | "unmet" | "unknown";
+};
+
+type ModalState =
+  | "list-loading"
+  | "list-resolved"
+  | "no-wallet"
+  | "already-has-votes"
+  | "claiming-signing"
+  | "claiming-pending"
+  | "granted"
+  | "claim-error"
+  | "no-requirements"
+  | "council-unavailable";
+
+const CLAIM_ERROR_COPY: Record<string, string> = {
+  rate_limited: "Try again in a moment.",
+  chain_error:
+    "The transaction didn't go through. Nothing was granted, you can try again.",
+  bot_missing_role:
+    "This council's setup is incomplete. An admin needs to grant the Flow State bot permission to add voters.",
+  already_voter: "You already have votes in this council.",
+  check_unavailable:
+    "We couldn't finish checking your wallet. Try again in a moment.",
+  not_eligible: "This wallet doesn't meet any of the requirements yet.",
+  no_requirements: "This council has no NFT requirements configured.",
+  invalid_signature: "That signature couldn't be verified. Try again.",
+  expired_signature: "That signature expired. Try again.",
+};
+
+export default function NftEligibilityModal({
+  show,
+  onHide,
+  chainId,
+  councilId,
+  requirements,
+}: {
+  show: boolean;
+  onHide: () => void;
+  chainId: number;
+  councilId: string;
+  requirements: NftRequirementGroup[];
+}) {
+  const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const { councilMember, dispatchShowBallot } = useFlowCouncil();
+  const { signMessageAsync } = useSignMessage();
+
+  const [state, setState] = useState<ModalState>("list-loading");
+  const [rows, setRows] = useState<StatusRow[]>([]);
+  const [grantedVotes, setGrantedVotes] = useState<number | null>(null);
+  const [claimErrorCode, setClaimErrorCode] = useState<string | null>(null);
+
+  const acquisitionUrlFor = useCallback(
+    (groupId: number) =>
+      requirements.find((requirement) => requirement.groupId === groupId)
+        ?.nftAcquisitionUrl ?? null,
+    [requirements],
+  );
+
+  const loadStatus = useCallback(async () => {
+    if (requirements.length === 0) {
+      setState("no-requirements");
+      return;
+    }
+
+    if (!isConnected || !address) {
+      setState("no-wallet");
+      return;
+    }
+
+    setState("list-loading");
+
+    try {
+      const res = await fetch("/api/flow-council/eligibility/nft-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chainId, councilId, address }),
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        setRows(
+          requirements.map((requirement) => ({
+            groupId: requirement.groupId,
+            name: requirement.name,
+            votes: requirement.defaultVotingPower,
+            status: "unknown" as const,
+          })),
+        );
+        setState("list-resolved");
+        return;
+      }
+
+      setRows(data.requirements);
+
+      if (BigInt(data.votingPower) > 0n) {
+        setGrantedVotes(Number(data.votingPower));
+        setState("already-has-votes");
+        return;
+      }
+
+      setState(
+        data.botHasRole === false ? "council-unavailable" : "list-resolved",
+      );
+    } catch {
+      setRows(
+        requirements.map((requirement) => ({
+          groupId: requirement.groupId,
+          name: requirement.name,
+          votes: requirement.defaultVotingPower,
+          status: "unknown" as const,
+        })),
+      );
+      setState("list-resolved");
+    }
+  }, [address, chainId, councilId, isConnected, requirements]);
+
+  useEffect(() => {
+    if (!show) {
+      return;
+    }
+
+    setClaimErrorCode(null);
+
+    if (councilMember) {
+      setState("already-has-votes");
+      return;
+    }
+
+    loadStatus();
+  }, [show, councilMember, loadStatus]);
+
+  const metRows = rows.filter((row) => row.status === "met");
+  // The grant is the largest single allocation, never the sum.
+  const claimableVotes = metRows.reduce(
+    (largest, row) => Math.max(largest, row.votes),
+    0,
+  );
+
+  const handleClaim = async () => {
+    if (!address) {
+      return;
+    }
+
+    setClaimErrorCode(null);
+    setState("claiming-signing");
+
+    const issuedAt = Date.now();
+
+    let signature: string;
+
+    try {
+      signature = await signMessageAsync({
+        message: buildClaimMessage({ chainId, councilId, address, issuedAt }),
+      });
+    } catch {
+      // A declined signature grants nothing and is not a failure state.
+      setState("list-resolved");
+      return;
+    }
+
+    setState("claiming-pending");
+
+    try {
+      const res = await fetch("/api/flow-council/eligibility/nft-claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address,
+          chainId,
+          councilId,
+          signature,
+          issuedAt,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setGrantedVotes(Number(data.votingPower));
+        setState(data.alreadyVoter ? "already-has-votes" : "granted");
+        return;
+      }
+
+      setClaimErrorCode(data.code ?? "chain_error");
+      setState("claim-error");
+    } catch {
+      setClaimErrorCode("chain_error");
+      setState("claim-error");
+    }
+  };
+
+  const rowStatus = (row: StatusRow): RequirementRowStatus =>
+    state === "council-unavailable"
+      ? "unavailable"
+      : state === "list-loading"
+        ? "pending"
+        : row.status;
+
+  const showsRequirementList =
+    state === "list-loading" ||
+    state === "list-resolved" ||
+    state === "no-wallet" ||
+    state === "claiming-signing" ||
+    state === "claiming-pending" ||
+    state === "claim-error" ||
+    state === "council-unavailable";
+
+  const isClaiming =
+    state === "claiming-signing" || state === "claiming-pending";
+
+  return (
+    <Modal show={show} centered onHide={onHide} scrollable>
+      <Modal.Header closeButton className="border-0 p-4">
+        <Modal.Title className="fs-5 fw-semi-bold">
+          Voter eligibility
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body className="p-4 pt-0">
+        {state === "already-has-votes" ? (
+          <Stack direction="vertical" gap={3}>
+            <span>
+              You have{" "}
+              <span className="fw-semi-bold">
+                {grantedVotes ?? councilMember?.votingPower}
+              </span>{" "}
+              votes in this council.
+            </span>
+          </Stack>
+        ) : null}
+
+        {state === "granted" ? (
+          <Stack direction="vertical" gap={3}>
+            <Alert variant="success" className="mb-0">
+              You received <span className="fw-semi-bold">{grantedVotes}</span>{" "}
+              votes.
+            </Alert>
+          </Stack>
+        ) : null}
+
+        {state === "no-requirements" ? (
+          <span className="text-info">
+            This council has no NFT requirements configured.
+          </span>
+        ) : null}
+
+        {showsRequirementList ? (
+          <Stack direction="vertical" gap={3}>
+            <span className="text-info">
+              Ways to earn votes in this council:
+            </span>
+
+            {state === "council-unavailable" ? (
+              <Alert variant="warning" className="mb-0">
+                Claiming is temporarily unavailable for this council. An admin
+                needs to grant the Flow State bot permission to add voters.
+              </Alert>
+            ) : null}
+
+            {rows.length > 0
+              ? rows.map((row) => (
+                  <EligibilityRequirementRow
+                    key={row.groupId}
+                    name={row.name}
+                    votes={row.votes}
+                    status={rowStatus(row)}
+                    acquisitionUrl={acquisitionUrlFor(row.groupId)}
+                    onRetry={loadStatus}
+                  />
+                ))
+              : requirements.map((requirement) => (
+                  <EligibilityRequirementRow
+                    key={requirement.groupId}
+                    name={requirement.name}
+                    votes={requirement.defaultVotingPower}
+                    status={state === "no-wallet" ? "unmet" : "pending"}
+                    acquisitionUrl={requirement.nftAcquisitionUrl}
+                  />
+                ))}
+
+            {state === "no-wallet" ? (
+              <span className="text-info">
+                Connect your wallet to see which of these you meet.
+              </span>
+            ) : null}
+
+            {claimableVotes > 0 && state !== "council-unavailable" ? (
+              <span>
+                You&apos;ll receive{" "}
+                <span className="fw-semi-bold">{claimableVotes} votes</span>
+                {metRows.length > 1 ? ", the highest you qualify for" : ""}.
+              </span>
+            ) : null}
+
+            {claimErrorCode ? (
+              <Alert variant="danger" className="mb-0">
+                {CLAIM_ERROR_COPY[claimErrorCode] ??
+                  CLAIM_ERROR_COPY.chain_error}
+              </Alert>
+            ) : null}
+          </Stack>
+        ) : null}
+      </Modal.Body>
+      <Modal.Footer className="border-0 p-4 pt-0">
+        {state === "already-has-votes" || state === "granted" ? (
+          <Button
+            variant="primary"
+            className="rounded-4 px-4 py-2 fw-semi-bold"
+            onClick={() => {
+              onHide();
+              dispatchShowBallot({ type: "show" });
+            }}
+          >
+            View Ballot
+          </Button>
+        ) : null}
+
+        {state === "no-wallet" ? (
+          <Button
+            variant="primary"
+            className="rounded-4 px-4 py-2 fw-semi-bold"
+            onClick={() => openConnectModal?.()}
+          >
+            Connect Wallet
+          </Button>
+        ) : null}
+
+        {(state === "list-resolved" || state === "claim-error" || isClaiming) &&
+        claimableVotes > 0 ? (
+          <Button
+            variant="primary"
+            className="rounded-4 px-4 py-2 fw-semi-bold"
+            onClick={handleClaim}
+            disabled={isClaiming}
+          >
+            {isClaiming ? (
+              <Spinner size="sm" />
+            ) : (
+              `Claim ${claimableVotes} votes`
+            )}
+          </Button>
+        ) : null}
+      </Modal.Footer>
+    </Modal>
+  );
+}

@@ -386,8 +386,9 @@ describe("voterGroupUpdateSchema", () => {
 
     it("rejects an update carrying only a token standard (criterion 4)", () => {
       expect(
-        voterGroupUpdateSchema.safeParse({ nftConfig: { tokenStandard: "erc1155" } })
-          .success,
+        voterGroupUpdateSchema.safeParse({
+          nftConfig: { tokenStandard: "erc1155" },
+        }).success,
       ).toBe(false);
     });
 

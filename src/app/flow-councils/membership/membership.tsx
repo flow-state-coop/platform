@@ -20,7 +20,7 @@ import Image from "react-bootstrap/Image";
 import Table from "react-bootstrap/Table";
 import Modal from "react-bootstrap/Modal";
 import InfoTooltip from "@/components/InfoTooltip";
-import { waitForReceipt } from "@/lib/utils";
+import { waitForReceipt, truncateAddress } from "@/lib/utils";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
@@ -47,6 +47,12 @@ import type {
   VoterGroup,
 } from "./voterTableTypes";
 import { prettyEligibility } from "./voterTableTypes";
+import NftGroupFields, {
+  emptyNftDraft,
+  nftDraftToConfig,
+  isNftDraftComplete,
+  type NftConfigDraft,
+} from "./NftGroupFields";
 
 type MembershipProps = { chainId?: number; councilId?: string };
 
@@ -93,6 +99,9 @@ export default function Membership(props: MembershipProps) {
     useState<EligibilityMethod>("manual");
   const [newGroupDefaultVotingPower, setNewGroupDefaultVotingPower] =
     useState("10");
+  const [newGroupNftDraft, setNewGroupNftDraft] =
+    useState<NftConfigDraft>(emptyNftDraft);
+  const [newGroupNftBlocked, setNewGroupNftBlocked] = useState(false);
   const [createGroupError, setCreateGroupError] = useState("");
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [createGroupSuccess, setCreateGroupSuccess] = useState(false);
@@ -324,6 +333,8 @@ export default function Membership(props: MembershipProps) {
     setNewGroupName("");
     setNewGroupEligibility("manual");
     setNewGroupDefaultVotingPower("10");
+    setNewGroupNftDraft(emptyNftDraft);
+    setNewGroupNftBlocked(false);
     setCreateGroupError("");
     setCreateGroupSuccess(false);
     setCreatedGroupId(null);
@@ -465,6 +476,9 @@ export default function Membership(props: MembershipProps) {
             name,
             eligibilityMethod: newGroupEligibility,
             defaultVotingPower,
+            ...(newGroupEligibility === "nft"
+              ? { nftConfig: nftDraftToConfig(newGroupNftDraft) }
+              : {}),
           }),
         });
         const data = await res.json();
@@ -871,6 +885,25 @@ export default function Membership(props: MembershipProps) {
               method or the other.
             </Alert>
           ) : null}
+          {newGroupEligibility === "nft" &&
+          !hasGoodDollarGroup &&
+          chainId &&
+          councilId ? (
+            <NftGroupFields
+              chainId={chainId}
+              councilId={councilId}
+              draft={newGroupNftDraft}
+              onChange={setNewGroupNftDraft}
+              onBlockedChange={setNewGroupNftBlocked}
+              onCollectionDetected={(collectionName, address) =>
+                setNewGroupName(
+                  (current) =>
+                    current || collectionName || truncateAddress(address),
+                )
+              }
+              disabled={isCreatingGroup}
+            />
+          ) : null}
           {newGroupUsesVotePower ? (
             <Form.Group className="mb-3">
               <Form.Label className="fw-semi-bold">
@@ -957,7 +990,12 @@ export default function Membership(props: MembershipProps) {
               isCreatingGroup ||
               isGranting ||
               createGroupSuccess ||
-              grantBlockedForNonAdmin
+              grantBlockedForNonAdmin ||
+              (newGroupEligibility === "nft" &&
+                (hasGoodDollarGroup ||
+                  newGroupNftBlocked ||
+                  !isNftDraftComplete(newGroupNftDraft))) ||
+              (newGroupEligibility === "gooddollar" && hasNftGroup)
             }
           >
             {createGroupSuccess ? (

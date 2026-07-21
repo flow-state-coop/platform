@@ -7,6 +7,19 @@ import { findRoundByCouncil } from "../../auth";
 
 export const revalidate = 60;
 
+type PublicGroup = {
+  groupId: number;
+  name: string;
+  eligibilityMethod: string;
+  defaultVotingPower: number;
+  members: string[];
+  nftContractAddress?: string | null;
+  nftTokenStandard?: string | null;
+  nftTokenId?: string | null;
+  nftAcquisitionUrl?: string | null;
+  nftCollectionName?: string | null;
+};
+
 const queryParamsSchema = z.object({
   chainId: z.coerce
     .number()
@@ -46,24 +59,40 @@ export async function GET(request: Request) {
         "voterGroups.id as groupId",
         "voterGroups.name as name",
         "voterGroups.eligibilityMethod as eligibilityMethod",
+        "voterGroups.defaultVotingPower as defaultVotingPower",
+        "voterGroups.nftContractAddress as nftContractAddress",
+        "voterGroups.nftTokenStandard as nftTokenStandard",
+        "voterGroups.nftTokenId as nftTokenId",
+        "voterGroups.nftAcquisitionUrl as nftAcquisitionUrl",
+        "voterGroups.nftCollectionName as nftCollectionName",
         "voterGroupMembers.address as address",
       ])
       .where("voterGroups.roundId", "=", round.id)
       .orderBy("voterGroups.id", "asc")
       .execute();
 
-    const byGroup = new Map<
-      number,
-      { name: string; eligibilityMethod: string; members: string[] }
-    >();
+    const byGroup = new Map<number, PublicGroup>();
 
     for (const row of rows) {
       let group = byGroup.get(row.groupId);
       if (!group) {
         group = {
+          groupId: row.groupId,
           name: row.name,
           eligibilityMethod: row.eligibilityMethod,
+          defaultVotingPower: row.defaultVotingPower,
           members: [],
+          // Only nft groups carry the requirement metadata the eligibility
+          // popup renders, so every other group keeps its existing shape.
+          ...(row.eligibilityMethod === "nft"
+            ? {
+                nftContractAddress: row.nftContractAddress,
+                nftTokenStandard: row.nftTokenStandard,
+                nftTokenId: row.nftTokenId,
+                nftAcquisitionUrl: row.nftAcquisitionUrl,
+                nftCollectionName: row.nftCollectionName,
+              }
+            : {}),
         };
         byGroup.set(row.groupId, group);
       }
