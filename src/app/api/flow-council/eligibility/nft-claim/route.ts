@@ -288,9 +288,14 @@ export async function POST(request: Request) {
       await releaseRateWindow(roundId, previousLastClaimAt, claimedAt);
     }
 
-    return Response.json({
-      success: false,
-      error: "There was an error, please try again later",
-    });
+    // 500, unlike the refusals above: those are expected outcomes, this is a
+    // bug, and status-code monitoring is the only thing that separates them.
+    return Response.json(
+      {
+        success: false,
+        error: "There was an error, please try again later",
+      },
+      { status: 500 },
+    );
   }
 }

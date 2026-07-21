@@ -677,21 +677,6 @@ export async function PATCH(request: Request) {
       (parsed.data.eligibilityMethod === "nft" ||
         group.eligibilityMethod === "nft");
 
-    if (switchesNftMethod) {
-      const memberCountRow = await db
-        .selectFrom("voterGroupMembers")
-        .select((eb) => eb.fn.countAll<number>().as("count"))
-        .where("voterGroupId", "=", id)
-        .executeTakeFirst();
-
-      if (Number(memberCountRow?.count ?? 0) > 0) {
-        return errorResponse(
-          "A group's eligibility method cannot be changed to or from NFT Holder once it has members",
-          400,
-        );
-      }
-    }
-
     if (resultingMethod !== "nft" && parsed.data.nftConfig) {
       return errorResponse(
         "Only an NFT Holder group can carry a collection configuration",
@@ -756,6 +741,24 @@ export async function PATCH(request: Request) {
 
       if (nftColumns?.nftContractAddress) {
         assertNftCollectionUnique(groups, nftColumns, id);
+      }
+
+      // Inside the lock: a claim landing between an unlocked count and this
+      // update would switch the method out from under a group that just
+      // gained its first member.
+      if (switchesNftMethod) {
+        const memberCountRow = await trx
+          .selectFrom("voterGroupMembers")
+          .select((eb) => eb.fn.countAll<number>().as("count"))
+          .where("voterGroupId", "=", id)
+          .executeTakeFirst();
+
+        if (Number(memberCountRow?.count ?? 0) > 0) {
+          throw new HttpError(
+            "A group's eligibility method cannot be changed to or from NFT Holder once it has members",
+            400,
+          );
+        }
       }
 
       try {
