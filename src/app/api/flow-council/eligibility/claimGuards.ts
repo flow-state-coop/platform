@@ -1,7 +1,5 @@
 import { verifyMessage as verifyMessageLocally } from "viem";
 import type { Address, PublicClient } from "viem";
-import { gql } from "@apollo/client";
-import { getApolloClient } from "@/lib/apollo";
 import { db } from "../db";
 import { buildClaimMessage } from "@/app/flow-councils/lib/claimMessage";
 import {
@@ -9,64 +7,6 @@ import {
   CLAIM_SIGNATURE_TTL_MS,
   CLAIM_SIGNATURE_SKEW_MS,
 } from "@/app/flow-councils/lib/constants";
-
-const COUNCIL_EXISTS_QUERY = gql`
-  query FlowCouncilExists($councilId: String!) {
-    flowCouncil(id: $councilId) {
-      id
-    }
-  }
-`;
-
-const factoryCouncils = new Set<string>();
-
-/** Drop the verified-council cache. Used by tests to control the guard. */
-export function resetFactoryCouncilCache() {
-  factoryCouncils.clear();
-}
-
-/**
- * Confirm a council was actually deployed by the Flow Council factory before
- * the bot spends gas on it.
- *
- * Registering a round only proves the caller passed the candidate contract's
- * own `hasRole` check, which a contract can simply answer `true` to. Without
- * this, anyone could register a contract they wrote, point an NFT group at a
- * second contract whose `balanceOf` always returns 1, and have the bot pay for
- * unlimited `addVoter` calls. The subgraph only indexes FlowCouncilCreated
- * events from the factory, so presence there is the proof.
- *
- * Fails closed: an unreachable subgraph refuses the claim rather than spending.
- * Only positives are cached, since a council cannot become un-created.
- */
-export async function isFactoryCouncil(
-  chainId: number,
-  councilId: string,
-): Promise<boolean> {
-  const key = `${chainId}:${councilId.toLowerCase()}`;
-
-  if (factoryCouncils.has(key)) {
-    return true;
-  }
-
-  try {
-    const { data } = await getApolloClient("flowCouncil", chainId).query({
-      query: COUNCIL_EXISTS_QUERY,
-      variables: { councilId: councilId.toLowerCase() },
-      fetchPolicy: "no-cache",
-    });
-
-    if (!data?.flowCouncil?.id) {
-      return false;
-    }
-
-    factoryCouncils.add(key);
-    return true;
-  } catch (err) {
-    console.error("Council factory verification failed:", err);
-    return false;
-  }
-}
 
 export type ClaimSignatureResult =
   | { ok: true }

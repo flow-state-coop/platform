@@ -87,9 +87,7 @@ export async function detectNftStandard(
   client: ProbeClient,
   address: Address,
 ): Promise<NftDetectionResult> {
-  // An EOA surfaces as a decode error rather than a clean answer, so the code
-  // read has to come first or every wallet address reads as an unreadable
-  // contract.
+  // An EOA surfaces as a decode error, not a clean answer, so code comes first.
   let code: string | undefined;
 
   try {
@@ -235,19 +233,15 @@ export async function verifyOverrideStandard(
     return { ok: false, reason: "looks_like_token" };
   }
 
-  // The balance read is the decisive one and it must actually decode. A revert
-  // would prove nothing: a contract with no fallback reverts on every unknown
-  // selector, so accepting one would let a Safe or a staking pool through, and
-  // every voter's balance read would then fail the same way, leaving a group
-  // whose rows are permanently "unknown" and that nobody can ever claim.
+  // Must decode, not merely not-revert: a contract with no fallback reverts on
+  // every unknown selector, and a group whose balance reads fail matches nobody.
   if (!decoded(balance)) {
     return { ok: false, reason: "missing_interface" };
   }
 
-  // ERC-1155's two-argument balanceOf selector is not one an ERC-20 answers, so
-  // a clean decode settles it. ERC-721 shares its one-argument balanceOf with
-  // ERC-20, so it must also expose ownerOf: empty returndata proves that
-  // function is absent, while a revert only means the probe token id is unowned.
+  // ERC-1155's two-argument balanceOf is not a selector an ERC-20 answers.
+  // ERC-721 shares its one-argument form, so it must also expose ownerOf: empty
+  // returndata proves absence, a revert only means the probe id is unowned.
   const present = standard === "erc1155" || !isZeroData(ownerOf);
 
   return present ? { ok: true } : { ok: false, reason: "missing_interface" };

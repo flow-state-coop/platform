@@ -57,13 +57,9 @@ export function buildBotSigner(network: Network) {
   if (!pk) {
     throw new Error("FLOW_STATE_ELIGIBILITY_PK is not configured");
   }
-  // Deliberately no viem nonceManager. It consumes a nonce before the send and
-  // never gives it back on failure, so one rejected broadcast leaves every
-  // later transaction from this key sitting in a nonce gap. Its cache is also a
-  // module-level singleton keyed by address, so a wedge caused by a claim would
-  // silently stop metrics ballots and GoodDollar claims too. viem re-reads the
-  // pending nonce per send instead, which self-heals; concurrent sends are kept
-  // apart by the per-council rate windows.
+  // Deliberately no viem nonceManager: it consumes a nonce before the send and
+  // never returns it, so one rejected broadcast gaps every later transaction
+  // from this key, across every route sharing it.
   const account = privateKeyToAccount(pk as `0x${string}`);
   const viemChain = getViemChain(network.id);
   const publicClient = createPublicClient({
@@ -79,11 +75,7 @@ export function buildBotSigner(network: Network) {
 
 const signerCache = new Map<number, ReturnType<typeof buildBotSigner>>();
 
-/**
- * The bot signer for a network, memoized per chain. The memo is what makes the
- * account's nonce manager useful: a signer rebuilt per request would start from
- * a fresh nonce state every time.
- */
+/** The bot signer for a network, memoized per chain. */
 export function getBotSigner(network: Network) {
   const cached = signerCache.get(network.id);
   if (cached) return cached;

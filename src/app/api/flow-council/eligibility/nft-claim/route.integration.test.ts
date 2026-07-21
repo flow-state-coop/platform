@@ -58,7 +58,7 @@ vi.mock("../../db", async () => {
 });
 
 import { privateKeyToAccount } from "viem/accounts";
-import { resetFactoryCouncilCache } from "../claimGuards";
+import { resetFactoryCouncilCache } from "../../auth";
 import { buildClaimMessage } from "@/app/flow-councils/lib/claimMessage";
 import { POST as claimPost } from "./route";
 import {

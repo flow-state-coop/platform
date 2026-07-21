@@ -2,12 +2,11 @@ import { Address, isAddress, type PublicClient } from "viem";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks } from "@/lib/networks";
 import { db } from "../../db";
-import { findRoundByCouncil } from "../../auth";
+import { findRoundByCouncil, isFactoryCouncil } from "../../auth";
 import { getBotSigner, loadNftRequirements } from "../../bot";
 import { getCouncilPublicClient } from "../../metrics/lib";
 import {
   claimRateWindow,
-  isFactoryCouncil,
   releaseRateWindow,
   verifyClaimSignature,
 } from "../claimGuards";
@@ -19,9 +18,8 @@ import {
 
 export const dynamic = "force-dynamic";
 
-// An addVoter is well under this. Capping it matters because the council
-// contract is admin-supplied: without a limit, gas estimation would hand a
-// hostile contract the whole block limit at the bot's expense.
+// Without a cap, gas estimation hands an admin-supplied contract the whole
+// block limit at the bot's expense.
 const ADD_VOTER_GAS_LIMIT = 200_000n;
 
 type RefusalCode =
@@ -50,9 +48,6 @@ async function readLastClaimAt(roundId: number): Promise<Date | null> {
 }
 
 export async function POST(request: Request) {
-  // Sibling of the GoodDollar route rather than a mode on it: a council is
-  // either GoodDollar-gated or NFT-gated, never both, so the two claim paths
-  // never contend for the same council or the same rate-limit window.
   let roundId: number | null = null;
   let previousLastClaimAt: Date | null = null;
   let claimedAt: Date | null = null;
@@ -96,9 +91,7 @@ export async function POST(request: Request) {
       return refusal("no_requirements");
     }
 
-    // Consent is unconditional: there is no signature-less branch on this
-    // route, which is what makes "no votes without a signature from the
-    // claiming address" structural rather than a matter of client behavior.
+    // No signature-less branch exists on this route, by design.
     const verification = await verifyClaimSignature({
       client: getCouncilPublicClient(network) as PublicClient,
       chainId: numericChainId,
@@ -119,8 +112,7 @@ export async function POST(request: Request) {
       requirements,
     });
 
-    // A wallet that already has power is never touched, however it got there:
-    // no membership write, no transaction, no rate window consumed.
+    // A wallet that already has power is never touched, however it got there.
     if (evaluation.votingPower !== null && evaluation.votingPower > 0n) {
       return Response.json({
         success: true,
@@ -150,9 +142,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Taken after consent and eligibility are proven, so spam cannot lock real
-    // claimers out of the window, and before the chain write, so two claims
-    // cannot race the bot's nonce.
+    // After consent and eligibility, so spam cannot lock out real claimers;
+    // before the write, so two claims cannot race the bot's nonce.
     previousLastClaimAt = await readLastClaimAt(round.id);
     claimedAt = new Date();
 
@@ -180,9 +171,9 @@ export async function POST(request: Request) {
     let previousGroupId: number | null = null;
 
     if (!inserted) {
-      // A row already exists and step 4 proved on-chain power is 0, so this is
-      // a voter an admin zeroed out claiming again. Move the row into the
-      // winning group rather than reporting success and granting nothing.
+      // A row exists and on-chain power is 0, so this is a zeroed-out voter
+      // claiming again. Move it rather than reporting success and granting
+      // nothing.
       const existing = await db
         .selectFrom("voterGroupMembers")
         .select(["id", "voterGroupId"])
@@ -204,8 +195,7 @@ export async function POST(request: Request) {
         .execute();
     }
 
-    // The two rollback shapes, one per branch above. Guarded so a failing
-    // rollback is logged without masking the chain error that triggered it.
+    // Guarded so a failing rollback cannot mask the chain error behind it.
     const rollbackMembership = async () => {
       try {
         if (inserted) {
@@ -254,9 +244,7 @@ export async function POST(request: Request) {
       // The wallet was added between the getVoter read and this broadcast, so
       // the membership row is correct and the claim already happened.
       if (errorMessage.includes("ALREADY_ADDED")) {
-        // Someone else set the power, so it is not ours to report. The client
-        // re-reads it. Nothing was broadcast on this path, so the window goes
-        // back rather than throttling the next real claimer.
+        // Someone else set the power, so it is not ours to report.
         if (!broadcast) {
           await releaseRateWindow(round.id, previousLastClaimAt, claimedAt);
         }
@@ -270,25 +258,18 @@ export async function POST(request: Request) {
         });
       }
 
-      // Roll back only when the failure is provably terminal. A transaction
-      // that was broadcast but whose receipt never resolved may still land, and
-      // deleting the row then would leave a voter holding votes with no record:
-      // invisible in the admin voter table and unable to heal itself, since a
-      // re-claim returns early for a wallet that already has power. Keeping the
-      // row is the recoverable side of the trade, because a row with zero power
-      // is exactly what the zeroed-voter re-claim path repairs.
+      // Only roll back on a provably terminal failure. A broadcast whose
+      // receipt never resolved may still land, and deleting the row then would
+      // leave a voter holding votes with no record and no way to self-heal.
       if (!broadcast || reverted) {
         await rollbackMembership();
       }
 
-      // Once broadcast the transaction may still land, so the window stays held
-      // and a retry cannot grant votes twice.
       if (!broadcast) {
         await releaseRateWindow(round.id, previousLastClaimAt, claimedAt);
       }
 
-      // RPC and contract errors can embed provider URLs and revert data, so
-      // they are logged server-side only and never returned to the client.
+      // RPC errors can embed provider URLs and revert data.
       console.error(err);
 
       return refusal("chain_error");
