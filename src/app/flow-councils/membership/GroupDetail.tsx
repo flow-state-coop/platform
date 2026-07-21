@@ -409,7 +409,8 @@ export default function GroupDetail(props: GroupDetailProps) {
     const name = editName.trim();
     const isGoodDollar = editEligibility === "gooddollar";
     const isMetrics = editEligibility === "metrics";
-    const usesVotePower = isGoodDollar || isMetrics;
+    const isNft = editEligibility === "nft";
+    const usesVotePower = isGoodDollar || isMetrics || isNft;
     const defaultVotingPower = Number(editDefaultVotingPower);
 
     if (!name) {
@@ -794,7 +795,8 @@ export default function GroupDetail(props: GroupDetailProps) {
                     and manager (with the grant action) read-only here, so an
                     admin can see/repair bot permissions without entering edit
                     mode. */}
-                {group.eligibilityMethod === "gooddollar" ? (
+                {group.eligibilityMethod === "gooddollar" ||
+                group.eligibilityMethod === "nft" ? (
                   <Stack direction="vertical" gap={3} className="mt-4">
                     <div>
                       <span className="fw-semi-bold d-block mb-1">

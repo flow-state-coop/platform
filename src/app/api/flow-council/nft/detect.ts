@@ -188,13 +188,13 @@ export async function verifyOverrideStandard(
           address,
           abi: erc721MinimalAbi,
           functionName: "ownerOf" as const,
-          args: [1n],
+          args: [1n] as const,
         }
       : {
           address,
           abi: erc1155MinimalAbi,
           functionName: "balanceOf" as const,
-          args: [zeroAddress, 0n],
+          args: [zeroAddress, 0n] as const,
         };
 
   let entries: MulticallEntry[];

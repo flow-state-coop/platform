@@ -861,19 +861,99 @@ export function validateReactionEmoji(
 //       PATCH /api/flow-council/voter-groups — update group metadata (all fields optional)
 // ---------------------------------------------------------------------------
 
-// Spec: "name" 1–100 chars; "eligibilityMethod" enum ["manual","gooddollar","metrics"];
-//       "defaultVotingPower" integer 1–1_000_000
-export const voterGroupCreateSchema = z.object({
-  name: z.string().min(1).max(100),
-  eligibilityMethod: z.enum(["manual", "gooddollar", "metrics"]),
-  defaultVotingPower: z.number().int().min(1).max(1_000_000),
-});
+const MAX_UINT256 = 2n ** 256n - 1n;
 
-// Spec: PATCH — partial update; each field still validated when present
+function isHttpUrl(value: string): boolean {
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+const nftContractAddressSchema = z
+  .string()
+  .refine(isAddress, "Invalid contract address")
+  .transform((value) => value.toLowerCase());
+
+// The token id is half of the (council, collection, token id) uniqueness rule,
+// so it is stored as a canonical decimal string: "007" and "7" must not both be
+// storable, and a uint256 does not survive a JS number.
+const nftTokenIdSchema = z
+  .string()
+  .max(78)
+  .regex(/^(0|[1-9]\d*)$/, "Token id must be a canonical decimal integer")
+  .refine((value) => BigInt(value) <= MAX_UINT256, "Token id exceeds uint256");
+
+const nftAcquisitionUrlSchema = z
+  .string()
+  .max(2048)
+  .refine(isHttpUrl, "Link must be an http or https URL");
+
+const nftCollectionNameSchema = z.string().max(100);
+
+// Spec: "If it's an ERC-1155, a token ID field appears and is required."
+// A 721 group has no token id to distinguish it (Out of scope: "Multiple tiers
+// on a single ERC-721 collection"), so carrying one is a configuration error.
+export const nftConfigSchema = z.discriminatedUnion("tokenStandard", [
+  z.object({
+    tokenStandard: z.literal("erc721"),
+    contractAddress: nftContractAddressSchema,
+    tokenId: z.undefined(),
+    acquisitionUrl: nftAcquisitionUrlSchema.optional(),
+    collectionName: nftCollectionNameSchema.optional(),
+  }),
+  z.object({
+    tokenStandard: z.literal("erc1155"),
+    contractAddress: nftContractAddressSchema,
+    tokenId: nftTokenIdSchema,
+    acquisitionUrl: nftAcquisitionUrlSchema.optional(),
+    collectionName: nftCollectionNameSchema.optional(),
+  }),
+]);
+
+export type NftConfig = z.infer<typeof nftConfigSchema>;
+
+// Spec: "name" 1–100 chars; "eligibilityMethod" enum ["manual","gooddollar","metrics","nft"];
+//       "defaultVotingPower" integer 1–1_000_000
+export const voterGroupCreateSchema = z
+  .object({
+    name: z.string().min(1).max(100),
+    eligibilityMethod: z.enum(["manual", "gooddollar", "metrics", "nft"]),
+    defaultVotingPower: z.number().int().min(1).max(1_000_000),
+    nft: nftConfigSchema.optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.eligibilityMethod === "nft" && !value.nft) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["nft"],
+        message: "An NFT Holder group needs a collection configuration",
+      });
+    }
+
+    if (value.eligibilityMethod !== "nft" && value.nft) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["nft"],
+        message: "Only an NFT Holder group can carry a collection configuration",
+      });
+    }
+  });
+
+// Spec: PATCH — partial update; each field still validated when present.
+// The nft config is optional as a whole object and never per-field: a partial
+// merge is what leaves a group matching nobody (criterion 4). Whether the
+// resulting group is an nft group depends on the stored row, so completeness
+// for the resulting method is enforced by the route, not here.
 export const voterGroupUpdateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  eligibilityMethod: z.enum(["manual", "gooddollar", "metrics"]).optional(),
+  eligibilityMethod: z
+    .enum(["manual", "gooddollar", "metrics", "nft"])
+    .optional(),
   defaultVotingPower: z.number().int().min(1).max(1_000_000).optional(),
+  nft: nftConfigSchema.optional(),
 });
 
 // ---------------------------------------------------------------------------
