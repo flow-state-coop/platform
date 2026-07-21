@@ -1,4 +1,7 @@
+import { verifyMessage as verifyMessageLocally } from "viem";
 import type { Address, PublicClient } from "viem";
+import { gql } from "@apollo/client";
+import { getApolloClient } from "@/lib/apollo";
 import { db } from "../db";
 import { buildClaimMessage } from "@/app/flow-councils/lib/claimMessage";
 import {
@@ -6,6 +9,64 @@ import {
   CLAIM_SIGNATURE_TTL_MS,
   CLAIM_SIGNATURE_SKEW_MS,
 } from "@/app/flow-councils/lib/constants";
+
+const COUNCIL_EXISTS_QUERY = gql`
+  query FlowCouncilExists($councilId: String!) {
+    flowCouncil(id: $councilId) {
+      id
+    }
+  }
+`;
+
+const factoryCouncils = new Set<string>();
+
+/** Drop the verified-council cache. Used by tests to control the guard. */
+export function resetFactoryCouncilCache() {
+  factoryCouncils.clear();
+}
+
+/**
+ * Confirm a council was actually deployed by the Flow Council factory before
+ * the bot spends gas on it.
+ *
+ * Registering a round only proves the caller passed the candidate contract's
+ * own `hasRole` check, which a contract can simply answer `true` to. Without
+ * this, anyone could register a contract they wrote, point an NFT group at a
+ * second contract whose `balanceOf` always returns 1, and have the bot pay for
+ * unlimited `addVoter` calls. The subgraph only indexes FlowCouncilCreated
+ * events from the factory, so presence there is the proof.
+ *
+ * Fails closed: an unreachable subgraph refuses the claim rather than spending.
+ * Only positives are cached, since a council cannot become un-created.
+ */
+export async function isFactoryCouncil(
+  chainId: number,
+  councilId: string,
+): Promise<boolean> {
+  const key = `${chainId}:${councilId.toLowerCase()}`;
+
+  if (factoryCouncils.has(key)) {
+    return true;
+  }
+
+  try {
+    const { data } = await getApolloClient("flowCouncil", chainId).query({
+      query: COUNCIL_EXISTS_QUERY,
+      variables: { councilId: councilId.toLowerCase() },
+      fetchPolicy: "no-cache",
+    });
+
+    if (!data?.flowCouncil?.id) {
+      return false;
+    }
+
+    factoryCouncils.add(key);
+    return true;
+  } catch (err) {
+    console.error("Council factory verification failed:", err);
+    return false;
+  }
+}
 
 export type ClaimSignatureResult =
   | { ok: true }
@@ -24,11 +85,11 @@ export function isClaimTimestampFresh(issuedAt: number, now: number): boolean {
 }
 
 /**
- * Prove the claiming wallet consents. Verification goes through the public
- * client action rather than viem's standalone util because only the action
- * resolves ERC-1271 and ERC-6492, which is the sole reason a Safe or other
- * smart-contract wallet can claim at all. Every EOA passes either way, so a
- * mistake here is invisible until a Safe tries.
+ * Prove the claiming wallet consents, picking the verifier by account type.
+ * A contract account goes through the public client action, which is the only
+ * thing that resolves ERC-1271 and ERC-6492 and therefore the only reason a
+ * Safe can claim at all. Every EOA passes either verifier, so getting this
+ * wrong stays invisible until a Safe tries.
  */
 export async function verifyClaimSignature({
   client,
@@ -54,11 +115,27 @@ export async function verifyClaimSignature({
   const message = buildClaimMessage({ chainId, councilId, address, issuedAt });
 
   try {
-    const valid = await client.verifyMessage({
-      address: address as Address,
-      message,
-      signature: signature as `0x${string}`,
-    });
+    // The public-client action resolves ERC-1271/6492, which is the only reason
+    // a Safe can claim, but it does so by executing the caller's signature bytes
+    // on our RPC: the 6492 path deploys a validator that calls an
+    // attacker-supplied factory with attacker-supplied calldata. This route is
+    // anonymous, so an EOA (the overwhelming majority of claimers) is verified
+    // with pure local ECDSA instead, and only a real contract account reaches
+    // the on-chain path.
+    const code = await client.getCode({ address: address as Address });
+    const isContractAccount = !!code && code !== "0x";
+
+    const valid = isContractAccount
+      ? await client.verifyMessage({
+          address: address as Address,
+          message,
+          signature: signature as `0x${string}`,
+        })
+      : await verifyMessageLocally({
+          address: address as Address,
+          message,
+          signature: signature as `0x${string}`,
+        });
 
     return valid ? { ok: true } : { ok: false, code: "invalid_signature" };
   } catch {

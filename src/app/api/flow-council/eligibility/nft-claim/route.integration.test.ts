@@ -35,6 +35,21 @@ vi.mock("viem", async (importOriginal) => {
 });
 
 vi.mock("next-auth/next", () => ({ getServerSession: vi.fn() }));
+
+// The claim route verifies the council was deployed by the factory by looking
+// it up in the subgraph before the bot spends any gas.
+const { councilIndexedRef } = vi.hoisted(() => ({
+  councilIndexedRef: { current: true },
+}));
+vi.mock("@/lib/apollo", () => ({
+  getApolloClient: () => ({
+    query: async () => ({
+      data: {
+        flowCouncil: councilIndexedRef.current ? { id: "0xcouncil" } : null,
+      },
+    }),
+  }),
+}));
 vi.mock("@/app/api/auth/[...nextauth]/route", () => ({ authOptions: {} }));
 
 vi.mock("../../db", async () => {
@@ -42,6 +57,9 @@ vi.mock("../../db", async () => {
   return { db: getTestDb() };
 });
 
+import { privateKeyToAccount } from "viem/accounts";
+import { resetFactoryCouncilCache } from "../claimGuards";
+import { buildClaimMessage } from "@/app/flow-councils/lib/claimMessage";
 import { POST as claimPost } from "./route";
 import {
   getTestDb,
@@ -71,12 +89,52 @@ function address(suffix: string): string {
 
 const COLLECTION_721 = address("beef721");
 const COLLECTION_1155 = address("beef1155");
-const HOLDER = address("b01de1");
-const HOLDER_2 = address("b01de2");
-const NON_HOLDER = address("f00d2");
 
-const VALID_SIGNATURE = `0x${"ab".repeat(65)}`;
-const BAD_SIGNATURE = `0x${"cd".repeat(65)}`;
+// Claimant wallets are backed by real keys so the route's signature check runs
+// genuine ECDSA. An EOA is verified locally, without touching the chain, so a
+// registered fake would no longer be accepted (and a mock that accepted one
+// would hide exactly the bug this check exists to catch).
+const KEY_BY_ADDRESS = new Map<string, `0x${string}`>();
+
+function claimant(privateKey: `0x${string}`): string {
+  const account = privateKeyToAccount(privateKey);
+  const addr = account.address.toLowerCase();
+  KEY_BY_ADDRESS.set(addr, privateKey);
+  return addr;
+}
+
+const HOLDER = claimant(
+  "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
+);
+const HOLDER_2 = claimant(
+  "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a",
+);
+const NON_HOLDER = claimant(
+  "0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6",
+);
+
+// A syntactically valid signature that recovers to some other address.
+const BAD_SIGNATURE = `0x${"cd".repeat(64)}1b`;
+
+async function signClaim(
+  claimAddress: string,
+  issuedAt: number,
+): Promise<string> {
+  const key = KEY_BY_ADDRESS.get(claimAddress.toLowerCase());
+
+  if (!key) {
+    return BAD_SIGNATURE;
+  }
+
+  return privateKeyToAccount(key).signMessage({
+    message: buildClaimMessage({
+      chainId: TEST_CHAIN_ID,
+      councilId: TEST_COUNCIL_ADDRESS,
+      address: claimAddress,
+      issuedAt,
+    }),
+  });
+}
 
 const base = { chainId: TEST_CHAIN_ID, councilId: TEST_COUNCIL_ADDRESS };
 
@@ -89,7 +147,8 @@ beforeEach(async () => {
   await resetDb(db);
   await seedTestData(db);
   resetNftChain();
-  addValidSignature(VALID_SIGNATURE);
+  resetFactoryCouncilCache();
+  councilIndexedRef.current = true;
   setContract(COLLECTION_721, {
     kind: "erc721",
     name: "Flowstaters",
@@ -103,11 +162,13 @@ beforeEach(async () => {
 });
 
 async function claim(overrides: Record<string, unknown> = {}) {
+  const claimAddress = (overrides.address as string) ?? HOLDER;
+  const issuedAt = (overrides.issuedAt as number) ?? Date.now();
   const payload: Record<string, unknown> = {
     ...base,
-    address: HOLDER,
-    signature: VALID_SIGNATURE,
-    issuedAt: Date.now(),
+    address: claimAddress,
+    issuedAt,
+    signature: await signClaim(claimAddress, issuedAt),
     ...overrides,
   };
 
@@ -266,16 +327,44 @@ describe("nft-claim signature gate", () => {
     expect(await dbSnapshot()).toBe(before);
   });
 
-  it("verifies the signature against the claiming address", async () => {
+  it("refuses a signature produced by a different wallet than the one claiming", async () => {
     await insertNftGroup({ name: "Core", defaultVotingPower: 20 });
 
-    await claim({ address: HOLDER });
+    const { body } = await claim({
+      address: HOLDER,
+      signature: await signClaim(HOLDER_2, Date.now()),
+    });
 
+    expect(body.success).toBe(false);
+    expect(body.code).toBe("invalid_signature");
+    expect(nftChain.writes).toEqual([]);
+  });
+
+  // A holder's EOA signature must never reach the chain verifier: that path
+  // executes the caller's signature bytes (ERC-6492 deploys a validator that
+  // calls an address the caller chose), and this route is anonymous.
+  it("verifies an ordinary wallet without any chain call", async () => {
+    await insertNftGroup({ name: "Core", defaultVotingPower: 20 });
+
+    const { body } = await claim({});
+
+    expect(body.success).toBe(true);
+    expect(nftChain.verifications).toEqual([]);
+  });
+
+  // Criterion 7: a smart-contract wallet proves its signature the way those
+  // wallets require, which does need the chain.
+  it("verifies a smart-contract wallet through the chain verifier", async () => {
+    await insertNftGroup({ name: "Core", defaultVotingPower: 20 });
+    setContract(HOLDER, { kind: "erc165Other" });
+    const safeSignature = `0x${"ab".repeat(65)}`;
+    addValidSignature(safeSignature);
+
+    const { body } = await claim({ signature: safeSignature });
+
+    expect(body.success).toBe(true);
     expect(nftChain.verifications).toHaveLength(1);
-    expect(nftChain.verifications[0].address).toBe(HOLDER.toLowerCase());
-    expect(nftChain.verifications[0].signature.toLowerCase()).toBe(
-      VALID_SIGNATURE,
-    );
+    expect(nftChain.verifications[0].address.toLowerCase()).toBe(HOLDER);
   });
 
   // Spec behavior 7: the signed message names what it authorizes and binds it
@@ -290,14 +379,30 @@ describe("nft-claim signature gate", () => {
     const { body } = await claim({ issuedAt });
     expect(body.success).toBe(true);
 
-    const message = nftChain.verifications[0].message.toLowerCase();
-    expect(message).toContain("claim voting rights in this flow council.");
-    expect(message).toContain(`council: ${TEST_COUNCIL_ADDRESS.toLowerCase()}`);
-    expect(message).toContain(`chain: ${TEST_CHAIN_ID}`);
-    expect(message).toContain(`wallet: ${HOLDER.toLowerCase()}`);
-    expect(message).toContain(
-      `issued at: ${new Date(issuedAt).toISOString().replace(".000Z", "Z").toLowerCase()}`,
-    );
+    // The binding is what the signature buys, so assert it by rejection: a
+    // signature over a message naming a different council, chain, wallet or
+    // moment must not be accepted here.
+    const wrongBindings = [
+      { chainId: TEST_CHAIN_ID + 1, councilId: TEST_COUNCIL_ADDRESS },
+      { chainId: TEST_CHAIN_ID, councilId: address("dead") },
+    ];
+
+    for (const binding of wrongBindings) {
+      const foreign = await privateKeyToAccount(
+        KEY_BY_ADDRESS.get(HOLDER)!,
+      ).signMessage({
+        message: buildClaimMessage({
+          ...binding,
+          address: HOLDER,
+          issuedAt: Date.now(),
+        }),
+      });
+
+      const refused = await claim({ signature: foreign });
+
+      expect(refused.body.success).toBe(false);
+      expect(refused.body.code).toBe("invalid_signature");
+    }
   });
 
   it("refuses a signature issued outside the freshness window", async () => {
@@ -633,13 +738,34 @@ describe("nft-claim rollback", () => {
     expect(await allMembershipRows()).toHaveLength(1);
   });
 
-  it("rolls back when the transaction is broadcast but never confirms", async () => {
-    await insertNftGroup({
+  // A broadcast transaction may still land, so the membership row is kept: a row
+  // with zero on-chain power is repaired by the zeroed-voter re-claim path,
+  // whereas deleting it after the tx lands would leave a voter holding votes
+  // with no record, invisible to admins and unable to heal itself.
+  it("keeps the membership row when the transaction is broadcast but never confirms", async () => {
+    const core = await insertNftGroup({
       name: "Core",
       contractAddress: COLLECTION_721,
       defaultVotingPower: 20,
     });
     nftChain.receiptError = "receipt timed out";
+
+    const { body } = await claim({});
+
+    expect(body.success).toBe(false);
+    expect(body.code).toBe("chain_error");
+    expect(await membershipRows(HOLDER)).toEqual([
+      { voterGroupId: core, address: HOLDER.toLowerCase() },
+    ]);
+  });
+
+  it("still rolls back when the transaction is broadcast and provably reverts", async () => {
+    await insertNftGroup({
+      name: "Core",
+      contractAddress: COLLECTION_721,
+      defaultVotingPower: 20,
+    });
+    nftChain.receiptStatus = "reverted";
 
     const { body } = await claim({});
 
@@ -846,6 +972,10 @@ describe("nft-claim refusal codes", () => {
       defaultVotingPower: 20,
     });
 
+    councilIndexedRef.current = false;
+    codes.add((await claim({})).body.code);
+    councilIndexedRef.current = true;
+
     codes.add((await claim({ signature: BAD_SIGNATURE })).body.code);
     codes.add((await claim({ issuedAt: Date.now() - 10 * 60_000 })).body.code);
     codes.add((await claim({ address: NON_HOLDER })).body.code);
@@ -880,6 +1010,7 @@ describe("nft-claim refusal codes", () => {
         "chain_error",
         "rate_limited",
         "already_voter",
+        "council_unverified",
       ]),
     );
   });

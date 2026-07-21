@@ -12,7 +12,7 @@ type PublicGroup = {
   name: string;
   eligibilityMethod: string;
   defaultVotingPower: number;
-  members: string[];
+  members?: string[];
   nftContractAddress?: string | null;
   nftTokenStandard?: string | null;
   nftTokenId?: string | null;
@@ -41,6 +41,9 @@ export async function GET(request: Request) {
     }
 
     const { chainId, councilId } = parsed.data;
+    // Callers that only need the group metadata opt out of the member lists,
+    // which dominate the payload on large councils.
+    const includeMembers = searchParams.get("includeMembers") !== "0";
 
     const round = await findRoundByCouncil(chainId, councilId);
 
@@ -81,7 +84,7 @@ export async function GET(request: Request) {
           name: row.name,
           eligibilityMethod: row.eligibilityMethod,
           defaultVotingPower: row.defaultVotingPower,
-          members: [],
+          ...(includeMembers ? { members: [] } : {}),
           // Only nft groups carry the requirement metadata the eligibility
           // popup renders, so every other group keeps its existing shape.
           ...(row.eligibilityMethod === "nft"
@@ -97,7 +100,7 @@ export async function GET(request: Request) {
         byGroup.set(row.groupId, group);
       }
       if (row.address) {
-        group.members.push(row.address);
+        group.members?.push(row.address);
       }
     }
 

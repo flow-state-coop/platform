@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAccount, useSignMessage } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Modal from "react-bootstrap/Modal";
@@ -44,7 +44,6 @@ const CLAIM_ERROR_COPY: Record<string, string> = {
     "The transaction didn't go through. Nothing was granted, you can try again.",
   bot_missing_role:
     "This council's setup is incomplete. An admin needs to grant the Flow State bot permission to add voters.",
-  already_voter: "You already have votes in this council.",
   check_unavailable:
     "We couldn't finish checking your wallet. Try again in a moment.",
   not_eligible: "This wallet doesn't meet any of the requirements yet.",
@@ -75,6 +74,8 @@ export default function NftEligibilityModal({
   const [rows, setRows] = useState<StatusRow[]>([]);
   const [grantedVotes, setGrantedVotes] = useState<number | null>(null);
   const [claimErrorCode, setClaimErrorCode] = useState<string | null>(null);
+  const checkedAddressRef = useRef<string | null>(null);
+  const claimInFlightRef = useRef(false);
 
   const acquisitionUrlFor = useCallback(
     (groupId: number) =>
@@ -94,30 +95,44 @@ export default function NftEligibilityModal({
       return;
     }
 
+    const requestedAddress = address;
+    const unknownRows = () =>
+      requirements.map((requirement) => ({
+        groupId: requirement.groupId,
+        name: requirement.name,
+        votes: requirement.defaultVotingPower,
+        status: "unknown" as const,
+      }));
+
     setState("list-loading");
 
     try {
       const res = await fetch("/api/flow-council/eligibility/nft-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chainId, councilId, address }),
+        body: JSON.stringify({ chainId, councilId, address: requestedAddress }),
       });
       const data = await res.json();
 
+      if (checkedAddressRef.current !== requestedAddress) {
+        return;
+      }
+
       if (!data.success) {
-        setRows(
-          requirements.map((requirement) => ({
-            groupId: requirement.groupId,
-            name: requirement.name,
-            votes: requirement.defaultVotingPower,
-            status: "unknown" as const,
-          })),
-        );
+        setRows(unknownRows());
         setState("list-resolved");
         return;
       }
 
-      setRows(data.requirements);
+      const statusRows: StatusRow[] = data.requirements ?? [];
+
+      if (statusRows.length === 0) {
+        setRows([]);
+        setState("no-requirements");
+        return;
+      }
+
+      setRows(statusRows);
 
       if (BigInt(data.votingPower) > 0n) {
         setGrantedVotes(Number(data.votingPower));
@@ -129,20 +144,25 @@ export default function NftEligibilityModal({
         data.botHasRole === false ? "council-unavailable" : "list-resolved",
       );
     } catch {
-      setRows(
-        requirements.map((requirement) => ({
-          groupId: requirement.groupId,
-          name: requirement.name,
-          votes: requirement.defaultVotingPower,
-          status: "unknown" as const,
-        })),
-      );
+      if (checkedAddressRef.current !== requestedAddress) {
+        return;
+      }
+
+      setRows(unknownRows());
       setState("list-resolved");
     }
   }, [address, chainId, councilId, isConnected, requirements]);
 
+  // Verdicts belong to the wallet they were fetched for: switching or
+  // disconnecting drops them and invalidates any response still in flight.
   useEffect(() => {
-    if (!show) {
+    checkedAddressRef.current = isConnected ? (address ?? null) : null;
+    setRows([]);
+    setGrantedVotes(null);
+  }, [address, isConnected]);
+
+  useEffect(() => {
+    if (!show || claimInFlightRef.current) {
       return;
     }
 
@@ -169,6 +189,7 @@ export default function NftEligibilityModal({
     }
 
     setClaimErrorCode(null);
+    claimInFlightRef.current = true;
     setState("claiming-signing");
 
     const issuedAt = Date.now();
@@ -181,6 +202,7 @@ export default function NftEligibilityModal({
       });
     } catch {
       // A declined signature grants nothing and is not a failure state.
+      claimInFlightRef.current = false;
       setState("list-resolved");
       return;
     }
@@ -212,15 +234,19 @@ export default function NftEligibilityModal({
     } catch {
       setClaimErrorCode("chain_error");
       setState("claim-error");
+    } finally {
+      claimInFlightRef.current = false;
     }
   };
 
   const rowStatus = (row: StatusRow): RequirementRowStatus =>
     state === "council-unavailable"
       ? "unavailable"
-      : state === "list-loading"
-        ? "pending"
-        : row.status;
+      : state === "no-wallet"
+        ? "unchecked"
+        : state === "list-loading"
+          ? "pending"
+          : row.status;
 
   const showsRequirementList =
     state === "list-loading" ||
@@ -234,8 +260,22 @@ export default function NftEligibilityModal({
   const isClaiming =
     state === "claiming-signing" || state === "claiming-pending";
 
+  const votesLabel = (votes: number) =>
+    `${votes} ${votes === 1 ? "vote" : "votes"}`;
+
   return (
-    <Modal show={show} centered onHide={onHide} scrollable>
+    <Modal
+      show={show}
+      centered
+      onHide={onHide}
+      scrollable
+      onExited={() => {
+        setState("list-loading");
+        setRows([]);
+        setGrantedVotes(null);
+        setClaimErrorCode(null);
+      }}
+    >
       <Modal.Header closeButton className="border-0 p-4">
         <Modal.Title className="fs-5 fw-semi-bold">
           Voter eligibility
@@ -298,22 +338,18 @@ export default function NftEligibilityModal({
                     key={requirement.groupId}
                     name={requirement.name}
                     votes={requirement.defaultVotingPower}
-                    status={state === "no-wallet" ? "unmet" : "pending"}
+                    status={state === "no-wallet" ? "unchecked" : "pending"}
                     acquisitionUrl={requirement.nftAcquisitionUrl}
                   />
                 ))}
 
-            {state === "no-wallet" ? (
-              <span className="text-info">
-                Connect your wallet to see which of these you meet.
-              </span>
-            ) : null}
-
-            {claimableVotes > 0 && state !== "council-unavailable" ? (
+            {metRows.length > 1 && state !== "council-unavailable" ? (
               <span>
                 You&apos;ll receive{" "}
-                <span className="fw-semi-bold">{claimableVotes} votes</span>
-                {metRows.length > 1 ? ", the highest you qualify for" : ""}.
+                <span className="fw-semi-bold">
+                  {votesLabel(claimableVotes)}
+                </span>
+                , the highest you qualify for.
               </span>
             ) : null}
 
@@ -327,6 +363,14 @@ export default function NftEligibilityModal({
         ) : null}
       </Modal.Body>
       <Modal.Footer className="border-0 p-4 pt-0">
+        <Button
+          variant="secondary"
+          className="rounded-4 px-4 py-2 fw-semi-bold"
+          onClick={onHide}
+        >
+          Close
+        </Button>
+
         {state === "already-has-votes" || state === "granted" ? (
           <Button
             variant="primary"
@@ -359,9 +403,12 @@ export default function NftEligibilityModal({
             disabled={isClaiming}
           >
             {isClaiming ? (
-              <Spinner size="sm" />
+              <>
+                <Spinner size="sm" className="me-2" />
+                {state === "claiming-signing" ? "Signing..." : "Granting..."}
+              </>
             ) : (
-              `Claim ${claimableVotes} votes`
+              `Claim ${votesLabel(claimableVotes)}`
             )}
           </Button>
         ) : null}

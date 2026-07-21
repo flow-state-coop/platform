@@ -56,7 +56,7 @@ type ProbeResponse = {
   collectionName?: string;
   message: string;
   overrideOk?: boolean;
-  overrideReason?: "looks_like_token" | "missing_interface";
+  overrideReason?: "looks_like_token" | "missing_interface" | "read_failed";
 };
 
 export async function POST(request: Request) {

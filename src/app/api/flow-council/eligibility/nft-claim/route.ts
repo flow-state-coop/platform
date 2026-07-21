@@ -7,16 +7,22 @@ import { getBotSigner, loadNftRequirements } from "../../bot";
 import { getCouncilPublicClient } from "../../metrics/lib";
 import {
   claimRateWindow,
+  isFactoryCouncil,
   releaseRateWindow,
   verifyClaimSignature,
 } from "../claimGuards";
 import {
   evaluateNftRequirements,
   selectWinner,
-  type NftRequirement,
+  toRequirements,
 } from "../nftRequirements";
 
 export const dynamic = "force-dynamic";
+
+// An addVoter is well under this. Capping it matters because the council
+// contract is admin-supplied: without a limit, gas estimation would hand a
+// hostile contract the whole block limit at the bot's expense.
+const ADD_VOTER_GAS_LIMIT = 200_000n;
 
 type RefusalCode =
   | "no_requirements"
@@ -26,33 +32,11 @@ type RefusalCode =
   | "check_unavailable"
   | "bot_missing_role"
   | "rate_limited"
+  | "council_unverified"
   | "chain_error";
-
-type RequirementRecord = Awaited<
-  ReturnType<typeof loadNftRequirements>
->[number];
 
 function refusal(code: RefusalCode, status = 200) {
   return Response.json({ success: false, code }, { status });
-}
-
-function toRequirements(rows: RequirementRecord[]): NftRequirement[] {
-  // A group with no contract address can never match anyone, and passing an
-  // empty address into the multicall would fail the whole batch rather than one
-  // row, so an incomplete config is dropped before the reads are built.
-  return rows
-    .filter((row) => !!row.nftContractAddress)
-    .map((row) => ({
-      id: row.id,
-      name: row.name,
-      defaultVotingPower: row.defaultVotingPower,
-      nftContractAddress: row.nftContractAddress as string,
-      nftTokenStandard:
-        row.nftTokenStandard === "erc1155"
-          ? ("erc1155" as const)
-          : ("erc721" as const),
-      nftTokenId: row.nftTokenId,
-    }));
 }
 
 async function readLastClaimAt(roundId: number): Promise<Date | null> {
@@ -150,6 +134,10 @@ export async function POST(request: Request) {
       return refusal("bot_missing_role");
     }
 
+    if (!(await isFactoryCouncil(numericChainId, councilId))) {
+      return refusal("council_unverified");
+    }
+
     const winner = selectWinner(evaluation.rows, requirements);
 
     if (!winner) {
@@ -172,6 +160,8 @@ export async function POST(request: Request) {
       claimedAt = null;
       return refusal("rate_limited", 429);
     }
+
+    const { account, publicClient, walletClient } = getBotSigner(network);
 
     const claimant = address.toLowerCase();
 
@@ -235,7 +225,7 @@ export async function POST(request: Request) {
       }
     };
 
-    const { account, publicClient, walletClient } = getBotSigner(network);
+    let reverted = false;
 
     try {
       const hash = await walletClient.writeContract({
@@ -244,6 +234,7 @@ export async function POST(request: Request) {
         abi: flowCouncilAbi,
         functionName: "addVoter",
         args: [address as Address, BigInt(winner.defaultVotingPower)],
+        gas: ADD_VOTER_GAS_LIMIT,
       });
 
       broadcast = true;
@@ -254,6 +245,7 @@ export async function POST(request: Request) {
       });
 
       if (receipt.status !== "success") {
+        reverted = true;
         throw new Error(`Claim transaction reverted: ${hash}`);
       }
     } catch (err) {
@@ -262,15 +254,32 @@ export async function POST(request: Request) {
       // The wallet was added between the getVoter read and this broadcast, so
       // the membership row is correct and the claim already happened.
       if (errorMessage.includes("ALREADY_ADDED")) {
+        // Someone else set the power, so it is not ours to report. The client
+        // re-reads it. Nothing was broadcast on this path, so the window goes
+        // back rather than throttling the next real claimer.
+        if (!broadcast) {
+          await releaseRateWindow(round.id, previousLastClaimAt, claimedAt);
+        }
+
         return Response.json({
           success: true,
-          votingPower: winner.defaultVotingPower,
+          alreadyVoter: true,
+          code: "already_voter",
           groupId: winner.id,
           groupName: winner.name,
         });
       }
 
-      await rollbackMembership();
+      // Roll back only when the failure is provably terminal. A transaction
+      // that was broadcast but whose receipt never resolved may still land, and
+      // deleting the row then would leave a voter holding votes with no record:
+      // invisible in the admin voter table and unable to heal itself, since a
+      // re-claim returns early for a wallet that already has power. Keeping the
+      // row is the recoverable side of the trade, because a row with zero power
+      // is exactly what the zeroed-voter re-claim path repairs.
+      if (!broadcast || reverted) {
+        await rollbackMembership();
+      }
 
       // Once broadcast the transaction may still land, so the window stays held
       // and a retry cannot grant votes twice.

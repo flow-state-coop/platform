@@ -422,6 +422,7 @@ describe("verifyOverrideStandard", () => {
   it("rejects a contract whose allowance() decodes even when decimals() reverts (criterion 3)", async () => {
     const client = fakeClient({
       allowance: ok(0n),
+      balanceOfHolder: ok(1n),
       ownerOf: ok(OWNER),
     });
 
@@ -435,7 +436,10 @@ describe("verifyOverrideStandard", () => {
   });
 
   it("accepts a pre-ERC-165 721 whose ownerOf reverts on a nonexistent token id", async () => {
-    const client = fakeClient({ ownerOf: failure(revertedError("ownerOf")) });
+    const client = fakeClient({
+      balanceOfHolder: ok(0n),
+      ownerOf: failure(revertedError("ownerOf")),
+    });
 
     const result = await verifyOverrideStandard(
       asOverrideClient(client),
@@ -447,7 +451,7 @@ describe("verifyOverrideStandard", () => {
   });
 
   it("accepts a 721 whose ownerOf returns an owner", async () => {
-    const client = fakeClient({ ownerOf: ok(OWNER) });
+    const client = fakeClient({ balanceOfHolder: ok(3n), ownerOf: ok(OWNER) });
 
     const result = await verifyOverrideStandard(
       asOverrideClient(client),
@@ -459,7 +463,10 @@ describe("verifyOverrideStandard", () => {
   });
 
   it("rejects a 721 override when ownerOf returns zero data, which proves the function does not exist", async () => {
-    const client = fakeClient({ ownerOf: failure(zeroDataError("ownerOf")) });
+    const client = fakeClient({
+      balanceOfHolder: ok(0n),
+      ownerOf: failure(zeroDataError("ownerOf")),
+    });
 
     const result = await verifyOverrideStandard(
       asOverrideClient(client),
@@ -468,6 +475,38 @@ describe("verifyOverrideStandard", () => {
     );
 
     expect(result).toEqual({ ok: false, reason: "missing_interface" });
+  });
+
+  // A contract with no fallback reverts on every unknown selector, so a revert
+  // is not evidence the function exists. Only a decoding balance read is, and
+  // without it the group would match nobody and show every voter "unknown".
+  it("rejects a 721 override on a contract whose balanceOf does not decode, such as a Safe", async () => {
+    const client = fakeClient({
+      balanceOfHolder: failure(revertedError("balanceOf")),
+      ownerOf: failure(revertedError("ownerOf")),
+    });
+
+    const result = await verifyOverrideStandard(
+      asOverrideClient(client),
+      COLLECTION,
+      "erc721",
+    );
+
+    expect(result).toEqual({ ok: false, reason: "missing_interface" });
+  });
+
+  it("reports read_failed rather than missing_interface when the probe cannot reach the chain", async () => {
+    const client = fakeClient({
+      multicallThrows: new Error("HTTP request failed"),
+    });
+
+    const result = await verifyOverrideStandard(
+      asOverrideClient(client),
+      COLLECTION,
+      "erc721",
+    );
+
+    expect(result).toEqual({ ok: false, reason: "read_failed" });
   });
 
   it("accepts a 1155 on a clean two-argument balanceOf decode", async () => {

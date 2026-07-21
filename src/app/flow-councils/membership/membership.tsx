@@ -348,11 +348,12 @@ export default function Membership(props: MembershipProps) {
     const name = newGroupName.trim();
     const isGoodDollar = newGroupEligibility === "gooddollar";
     const isMetrics = newGroupEligibility === "metrics";
+    const isNft = newGroupEligibility === "nft";
     // Manual groups don't expose the field; they fall back to the default of 10
     // (the per-voter fallback used by the Add voters modal). GoodDollar's default
     // allocation and the metrics bot's vote power are user-editable, so those are
     // validated.
-    const usesVotePower = isGoodDollar || isMetrics;
+    const usesVotePower = isGoodDollar || isMetrics || isNft;
     const defaultVotingPower = usesVotePower
       ? Number(newGroupDefaultVotingPower)
       : 10;
@@ -873,36 +874,26 @@ export default function Membership(props: MembershipProps) {
               </option>
             </Form.Select>
           </Form.Group>
-          {newGroupEligibility === "nft" && hasGoodDollarGroup ? (
-            <Alert variant="warning" className="mb-3">
-              This council uses GoodDollar eligibility. A council uses one
-              automated method or the other.
-            </Alert>
-          ) : null}
-          {newGroupEligibility === "gooddollar" && hasNftGroup ? (
-            <Alert variant="warning" className="mb-3">
-              This council uses NFT eligibility. A council uses one automated
-              method or the other.
-            </Alert>
-          ) : null}
           {newGroupEligibility === "nft" &&
           !hasGoodDollarGroup &&
           chainId &&
           councilId ? (
-            <NftGroupFields
-              chainId={chainId}
-              councilId={councilId}
-              draft={newGroupNftDraft}
-              onChange={setNewGroupNftDraft}
-              onBlockedChange={setNewGroupNftBlocked}
-              onCollectionDetected={(collectionName, address) =>
-                setNewGroupName(
-                  (current) =>
-                    current || collectionName || truncateAddress(address),
-                )
-              }
-              disabled={isCreatingGroup}
-            />
+            <div className="mb-3">
+              <NftGroupFields
+                chainId={chainId}
+                councilId={councilId}
+                draft={newGroupNftDraft}
+                onChange={setNewGroupNftDraft}
+                onBlockedChange={setNewGroupNftBlocked}
+                onCollectionDetected={(collectionName, address) =>
+                  setNewGroupName(
+                    (current) =>
+                      current || collectionName || truncateAddress(address),
+                  )
+                }
+                disabled={isCreatingGroup}
+              />
+            </div>
           ) : null}
           {newGroupUsesVotePower ? (
             <Form.Group className="mb-3">
@@ -960,7 +951,9 @@ export default function Membership(props: MembershipProps) {
               admin to create this group.
             </Alert>
           ) : null}
-          {newGroupEligibility === "gooddollar" && grantError ? (
+          {(newGroupEligibility === "gooddollar" ||
+            newGroupEligibility === "nft") &&
+          grantError ? (
             <Alert variant="danger" className="mb-3">
               {grantError}
             </Alert>

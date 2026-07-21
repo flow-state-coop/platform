@@ -1,7 +1,6 @@
 import {
   ContractFunctionZeroDataError,
   BaseError,
-  zeroAddress,
   type Address,
   type PublicClient,
 } from "viem";
@@ -34,7 +33,14 @@ export type NftDetectionResult =
 
 export type OverrideVerification =
   | { ok: true }
-  | { ok: false; reason: "looks_like_token" | "missing_interface" };
+  | {
+      ok: false;
+      reason: "looks_like_token" | "missing_interface" | "read_failed";
+    };
+
+// Both standards revert balanceOf for the zero address (OpenZeppelin rejects it
+// as an invalid owner), so the probe has to ask about a real-looking one.
+const PROBE_HOLDER = "0x0000000000000000000000000000000000000001" as const;
 
 export const NFT_DETECTION_MESSAGES = {
   no_contract: "No contract found at that address on this chain.",
@@ -182,19 +188,19 @@ export async function verifyOverrideStandard(
   // Detection failing is not permission to trust the admin's pick. An ordinary
   // ERC-20 lands in no_erc165, and accepting one as a collection would grant
   // votes to every token holder.
-  const standardProbe =
+  const balanceProbe =
     standard === "erc721"
       ? {
           address,
           abi: erc721MinimalAbi,
-          functionName: "ownerOf" as const,
-          args: [1n] as const,
+          functionName: "balanceOf" as const,
+          args: [PROBE_HOLDER] as const,
         }
       : {
           address,
           abi: erc1155MinimalAbi,
           functionName: "balanceOf" as const,
-          args: [zeroAddress, 0n] as const,
+          args: [PROBE_HOLDER, 0n] as const,
         };
 
   let entries: MulticallEntry[];
@@ -208,28 +214,41 @@ export async function verifyOverrideStandard(
           address,
           abi: erc20MarkerAbi,
           functionName: "allowance",
-          args: [zeroAddress, zeroAddress],
+          args: [PROBE_HOLDER, PROBE_HOLDER],
         },
-        standardProbe,
+        balanceProbe,
+        {
+          address,
+          abi: erc721MinimalAbi,
+          functionName: "ownerOf" as const,
+          args: [1n] as const,
+        },
       ],
     })) as MulticallEntry[];
   } catch {
-    return { ok: false, reason: "missing_interface" };
+    return { ok: false, reason: "read_failed" };
   }
 
-  const [decimals, allowance, standardEntry] = entries;
+  const [decimals, allowance, balance, ownerOf] = entries;
 
   if (decoded(decimals) || decoded(allowance)) {
     return { ok: false, reason: "looks_like_token" };
   }
 
-  // A revert proves the function exists; empty returndata proves it does not.
-  // For ERC-1155 only a clean decode counts, since its two-argument balanceOf
-  // selector is not one an ERC-20 answers.
-  const present =
-    standard === "erc721"
-      ? !isZeroData(standardEntry)
-      : decoded(standardEntry) && !isZeroData(standardEntry);
+  // The balance read is the decisive one and it must actually decode. A revert
+  // would prove nothing: a contract with no fallback reverts on every unknown
+  // selector, so accepting one would let a Safe or a staking pool through, and
+  // every voter's balance read would then fail the same way, leaving a group
+  // whose rows are permanently "unknown" and that nobody can ever claim.
+  if (!decoded(balance)) {
+    return { ok: false, reason: "missing_interface" };
+  }
+
+  // ERC-1155's two-argument balanceOf selector is not one an ERC-20 answers, so
+  // a clean decode settles it. ERC-721 shares its one-argument balanceOf with
+  // ERC-20, so it must also expose ownerOf: empty returndata proves that
+  // function is absent, while a revert only means the probe token id is unowned.
+  const present = standard === "erc1155" || !isZeroData(ownerOf);
 
   return present ? { ok: true } : { ok: false, reason: "missing_interface" };
 }

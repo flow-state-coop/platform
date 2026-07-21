@@ -46,6 +46,7 @@ export const nftChain = {
   validSignatures: new Set<string>(),
   writeError: null as string | null,
   receiptError: null as string | null,
+  receiptStatus: "success" as "success" | "reverted",
   reads: [] as CallRecord[],
   writes: [] as CallRecord[],
   receiptWaits: [] as string[],
@@ -65,6 +66,7 @@ export function resetNftChain() {
   nftChain.validSignatures.clear();
   nftChain.writeError = null;
   nftChain.receiptError = null;
+  nftChain.receiptStatus = "success";
   nftChain.reads = [];
   nftChain.writes = [];
   nftChain.receiptWaits = [];
@@ -277,7 +279,7 @@ export function createNftMockPublicClient() {
     waitForTransactionReceipt: vi.fn(async ({ hash }: { hash: string }) => {
       nftChain.receiptWaits.push(hash);
       if (nftChain.receiptError) throw new Error(nftChain.receiptError);
-      return { status: "success", transactionHash: hash };
+      return { status: nftChain.receiptStatus, transactionHash: hash };
     }),
   };
 }

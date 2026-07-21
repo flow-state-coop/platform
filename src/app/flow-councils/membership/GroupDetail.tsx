@@ -678,6 +678,7 @@ export default function GroupDetail(props: GroupDetailProps) {
   const nftOptionDisabled =
     (!isNftGroup && (councilHasGoodDollar || hasMembers)) ||
     (isNftGroup && hasMembers);
+  const nftMethodLocked = isNftGroup && hasMembers;
   const goodDollarOptionDisabled =
     councilHasNft && group?.eligibilityMethod !== "gooddollar";
   const nftConfigChanged =
@@ -970,10 +971,16 @@ export default function GroupDetail(props: GroupDetailProps) {
                           )
                         }
                       >
-                        <option value="manual">Manual</option>
+                        <option value="manual" disabled={nftMethodLocked}>
+                          Manual
+                        </option>
                         <option
                           value="gooddollar"
-                          disabled={!isCelo || goodDollarOptionDisabled}
+                          disabled={
+                            !isCelo ||
+                            goodDollarOptionDisabled ||
+                            nftMethodLocked
+                          }
                         >
                           GoodDollar ID{!isCelo ? " (Celo only)" : ""}
                         </option>
@@ -1043,7 +1050,8 @@ export default function GroupDetail(props: GroupDetailProps) {
                     ) : null}
 
                     {editEligibility === "gooddollar" ||
-                    editEligibility === "metrics" ? (
+                    editEligibility === "metrics" ||
+                    editEligibility === "nft" ? (
                       <Form.Group>
                         <Form.Label className="fw-semi-bold">
                           {editEligibility === "metrics"

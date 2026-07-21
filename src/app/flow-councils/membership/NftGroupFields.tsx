@@ -89,14 +89,17 @@ export default function NftGroupFields({
   chainId: number;
   councilId: string;
   draft: NftConfigDraft;
-  onChange: (draft: NftConfigDraft) => void;
+  onChange: (updater: (current: NftConfigDraft) => NftConfigDraft) => void;
   onCollectionDetected?: (collectionName: string, address: string) => void;
   onBlockedChange?: (blocked: boolean) => void;
   disabled?: boolean;
 }) {
   const [probe, setProbe] = useState<ProbeResult | null>(null);
+  const [overrideCheck, setOverrideCheck] = useState<ProbeResult | null>(null);
   const [checking, setChecking] = useState(false);
-  const probedAddressRef = useRef("");
+  // A prefilled address is treated as already probed so reopening the editor
+  // can't wipe a standard that was set through the manual override.
+  const probedAddressRef = useRef(draft.contractAddress.trim());
 
   const address = draft.contractAddress.trim();
   const standard = draft.tokenStandard;
@@ -104,8 +107,14 @@ export default function NftGroupFields({
   useEffect(() => {
     if (!isAddress(address)) {
       setProbe(null);
+      setOverrideCheck(null);
       probedAddressRef.current = "";
       return;
+    }
+
+    if (probedAddressRef.current !== address) {
+      setProbe(null);
+      setOverrideCheck(null);
     }
 
     let cancelled = false;
@@ -134,16 +143,21 @@ export default function NftGroupFields({
         // carries over from the previous one.
         if (probedAddressRef.current !== address) {
           probedAddressRef.current = address;
+          const detectedStandard = data.standard;
 
-          if (data.standard) {
-            onChange({
-              ...draft,
-              tokenStandard: data.standard,
+          if (detectedStandard) {
+            onChange((current) => ({
+              ...current,
+              tokenStandard: detectedStandard,
               collectionName: data.collectionName ?? "",
-            });
+            }));
             onCollectionDetected?.(data.collectionName ?? "", address);
           } else {
-            onChange({ ...draft, tokenStandard: "", collectionName: "" });
+            onChange((current) => ({
+              ...current,
+              tokenStandard: "",
+              collectionName: "",
+            }));
           }
         }
       } catch {
@@ -161,18 +175,21 @@ export default function NftGroupFields({
       cancelled = true;
       clearTimeout(timeout);
     };
-    // draft is intentionally not a dependency: re-probing on every keystroke of
-    // the label or link fields would spam the RPC.
+    // The callbacks are intentionally not dependencies: their identity changes
+    // on every parent render, and re-probing that often would spam the RPC.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address, chainId, councilId]);
-
-  const [overrideCheck, setOverrideCheck] = useState<ProbeResult | null>(null);
 
   const needsManualStandard =
     !!probe && OVERRIDABLE_STATUSES.includes(probe.status);
 
   useEffect(() => {
-    if (!needsManualStandard || !standard || !isAddress(address)) {
+    if (
+      !needsManualStandard ||
+      !standard ||
+      !isAddress(address) ||
+      probedAddressRef.current !== address
+    ) {
       setOverrideCheck(null);
       return;
     }
@@ -222,7 +239,7 @@ export default function NftGroupFields({
   }, [blocked]);
 
   return (
-    <Stack direction="vertical" gap={3} className="mb-3">
+    <Stack direction="vertical" gap={3}>
       <Form.Group>
         <Form.Label className="fw-semi-bold">Collection address</Form.Label>
         <Form.Control
@@ -231,11 +248,14 @@ export default function NftGroupFields({
           value={draft.contractAddress}
           disabled={disabled}
           onChange={(e) =>
-            onChange({ ...draft, contractAddress: e.target.value })
+            onChange((current) => ({
+              ...current,
+              contractAddress: e.target.value,
+            }))
           }
         />
         {checking ? (
-          <Form.Text>
+          <Form.Text className="text-info">
             <Spinner size="sm" className="me-2" />
             Checking the contract...
           </Form.Text>
@@ -261,11 +281,11 @@ export default function NftGroupFields({
             value={standard}
             disabled={disabled}
             onChange={(e) =>
-              onChange({
-                ...draft,
+              onChange((current) => ({
+                ...current,
                 tokenStandard: e.target.value as NftTokenStandard | "",
                 tokenId: "",
-              })
+              }))
             }
           >
             <option value="">Select a standard</option>
@@ -289,7 +309,9 @@ export default function NftGroupFields({
             placeholder="0"
             value={draft.tokenId}
             disabled={disabled}
-            onChange={(e) => onChange({ ...draft, tokenId: e.target.value })}
+            onChange={(e) =>
+              onChange((current) => ({ ...current, tokenId: e.target.value }))
+            }
           />
         </Form.Group>
       ) : null}
@@ -304,7 +326,10 @@ export default function NftGroupFields({
           value={draft.acquisitionUrl}
           disabled={disabled}
           onChange={(e) =>
-            onChange({ ...draft, acquisitionUrl: e.target.value })
+            onChange((current) => ({
+              ...current,
+              acquisitionUrl: e.target.value,
+            }))
           }
         />
       </Form.Group>

@@ -19,6 +19,42 @@ export type NftRequirement = {
 
 export type RequirementStatus = "met" | "unmet" | "unknown";
 
+type RequirementRecord = {
+  id: number;
+  name: string;
+  defaultVotingPower: number;
+  nftContractAddress: string | null;
+  nftTokenStandard: string | null;
+  nftTokenId: string | null;
+};
+
+/**
+ * Map stored group rows onto the shape the evaluator reads. Shared by the
+ * status and claim routes so the popup and the claim can never disagree about
+ * which requirements exist or how a row is read.
+ */
+export function toRequirements(rows: RequirementRecord[]): NftRequirement[] {
+  // A row with no contract address can never match anyone, and an empty address
+  // would fail the whole multicall rather than one entry. An unrecognized
+  // standard is dropped rather than coerced: reading a 1155 with the
+  // one-argument balanceOf could report every wallet as a holder.
+  return rows
+    .filter(
+      (row) =>
+        !!row.nftContractAddress &&
+        (row.nftTokenStandard === "erc721" ||
+          row.nftTokenStandard === "erc1155"),
+    )
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      defaultVotingPower: row.defaultVotingPower,
+      nftContractAddress: row.nftContractAddress as string,
+      nftTokenStandard: row.nftTokenStandard as "erc721" | "erc1155",
+      nftTokenId: row.nftTokenId,
+    }));
+}
+
 export type RequirementRow = {
   groupId: number;
   name: string;
@@ -105,6 +141,7 @@ export async function evaluateNftRequirements({
   try {
     entries = (await client.multicall({
       allowFailure: true,
+      batchSize: 0,
       contracts,
     })) as unknown as MulticallEntry[];
   } catch {

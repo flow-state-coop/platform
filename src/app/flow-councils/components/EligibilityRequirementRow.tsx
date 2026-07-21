@@ -1,12 +1,14 @@
 import Stack from "react-bootstrap/Stack";
 import Spinner from "react-bootstrap/Spinner";
+import Button from "react-bootstrap/Button";
 
 export type RequirementRowStatus =
   | "pending"
   | "met"
   | "unmet"
   | "unknown"
-  | "unavailable";
+  | "unavailable"
+  | "unchecked";
 
 export default function EligibilityRequirementRow({
   name,
@@ -25,7 +27,7 @@ export default function EligibilityRequirementRow({
     <Stack
       direction="horizontal"
       gap={3}
-      className={`justify-content-between align-items-start border rounded-4 p-3 ${
+      className={`justify-content-between align-items-start bg-lace-100 rounded-4 p-3 ${
         status === "unavailable" ? "opacity-50" : ""
       }`}
     >
@@ -39,14 +41,14 @@ export default function EligibilityRequirementRow({
             href={acquisitionUrl}
             target="_blank"
             rel="noreferrer"
-            className="small"
+            className="small text-primary text-decoration-none"
           >
             Get this NFT
           </a>
         ) : null}
         {status === "unknown" ? (
           <span className="small text-danger">
-            Couldn&apos;t check right now, try again
+            Couldn&apos;t check right now
           </span>
         ) : null}
       </Stack>
@@ -57,17 +59,14 @@ export default function EligibilityRequirementRow({
         ) : null}
         {status === "unmet" ? <span className="text-info">Not met</span> : null}
         {status === "unknown" && onRetry ? (
-          <span
-            role="button"
-            tabIndex={0}
-            className="text-primary text-decoration-underline"
+          <Button
+            variant="link"
+            size="sm"
+            className="p-0 fw-semi-bold text-decoration-none"
             onClick={onRetry}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") onRetry();
-            }}
           >
             Retry
-          </span>
+          </Button>
         ) : null}
       </Stack>
     </Stack>

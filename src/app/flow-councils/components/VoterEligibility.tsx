@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Button from "react-bootstrap/Button";
+import useFlowCouncil from "../hooks/flowCouncil";
 import EligibilityButton from "./EligibilityButton";
 import NftEligibilityModal, {
   type NftRequirementGroup,
@@ -29,9 +30,12 @@ export default function VoterEligibility({
   councilId: string;
   isMobile: boolean;
 }) {
+  const { councilMember, dispatchShowBallot } = useFlowCouncil();
   const [nftRequirements, setNftRequirements] = useState<
     NftRequirementGroup[] | null
   >(null);
+  const [lookupFailed, setLookupFailed] = useState(false);
+  const [lookupAttempt, setLookupAttempt] = useState(0);
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
@@ -40,14 +44,20 @@ export default function VoterEligibility({
     (async () => {
       try {
         const res = await fetch(
-          `/api/flow-council/voter-groups/public?chainId=${chainId}&councilId=${councilId}`,
+          `/api/flow-council/voter-groups/public?chainId=${chainId}&councilId=${councilId}&includeMembers=0`,
         );
         const data = await res.json();
 
-        if (cancelled || !Array.isArray(data.groups)) {
+        if (cancelled) {
           return;
         }
 
+        if (!Array.isArray(data.groups)) {
+          setLookupFailed(true);
+          return;
+        }
+
+        setLookupFailed(false);
         setNftRequirements(
           data.groups
             .filter((group: PublicGroup) => group.eligibilityMethod === "nft")
@@ -59,15 +69,45 @@ export default function VoterEligibility({
             })),
         );
       } catch {
-        // Leave the NFT branch unselected on a failed lookup, which falls
-        // through to the existing button.
+        if (!cancelled) {
+          setLookupFailed(true);
+        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [chainId, councilId]);
+  }, [chainId, councilId, lookupAttempt]);
+
+  if (councilMember && nftRequirements && nftRequirements.length > 0) {
+    return (
+      <Button
+        variant="primary"
+        className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
+        style={{ width: isMobile ? "100%" : 240 }}
+        onClick={() => dispatchShowBallot({ type: "show" })}
+      >
+        View Ballot
+      </Button>
+    );
+  }
+
+  // A failed lookup can't tell an NFT council from any other, so retrying is the
+  // only action that can recover the right control. An existing voter needs no
+  // lookup: EligibilityButton below shows them their ballot either way.
+  if (lookupFailed && !nftRequirements && !councilMember) {
+    return (
+      <Button
+        variant="primary"
+        className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
+        style={{ width: isMobile ? "100%" : 240 }}
+        onClick={() => setLookupAttempt((attempt) => attempt + 1)}
+      >
+        Retry Eligibility Check
+      </Button>
+    );
+  }
 
   if (!nftRequirements || nftRequirements.length === 0) {
     return (

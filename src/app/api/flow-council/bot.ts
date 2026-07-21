@@ -1,9 +1,4 @@
-import {
-  createPublicClient,
-  createWalletClient,
-  http,
-  nonceManager,
-} from "viem";
+import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { db } from "./db";
 import { getViemChain } from "@/lib/networks";
@@ -62,11 +57,14 @@ export function buildBotSigner(network: Network) {
   if (!pk) {
     throw new Error("FLOW_STATE_ELIGIBILITY_PK is not configured");
   }
-  // Claims and ballots both broadcast as this one account, so consecutive
-  // requests served by the same warm instance must not read the same pending
-  // nonce. Cross-instance collisions remain possible and surface as a failed
-  // claim the caller retries.
-  const account = privateKeyToAccount(pk as `0x${string}`, { nonceManager });
+  // Deliberately no viem nonceManager. It consumes a nonce before the send and
+  // never gives it back on failure, so one rejected broadcast leaves every
+  // later transaction from this key sitting in a nonce gap. Its cache is also a
+  // module-level singleton keyed by address, so a wedge caused by a claim would
+  // silently stop metrics ballots and GoodDollar claims too. viem re-reads the
+  // pending nonce per send instead, which self-heals; concurrent sends are kept
+  // apart by the per-council rate windows.
+  const account = privateKeyToAccount(pk as `0x${string}`);
   const viemChain = getViemChain(network.id);
   const publicClient = createPublicClient({
     chain: viemChain,
