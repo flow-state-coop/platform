@@ -223,10 +223,21 @@ function asNftDuplicateError(err: unknown): HttpError | null {
     : null;
 }
 
-function lockCouncilGroups(
+async function lockCouncilGroups(
   trx: Transaction<DB>,
   roundId: number,
 ): Promise<LockedGroup[]> {
+  // Lock the council row first. Locking only the group rows leaves a council
+  // with no groups yet locking an empty set, so two concurrent first creates
+  // would both read "no conflicting method" and both insert, which is exactly
+  // the state the exclusivity rule exists to prevent.
+  await trx
+    .selectFrom("rounds")
+    .select("id")
+    .where("id", "=", roundId)
+    .forUpdate()
+    .execute();
+
   return trx
     .selectFrom("voterGroups")
     .select(["id", "eligibilityMethod", "nftContractAddress", "nftTokenId"])
