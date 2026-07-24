@@ -311,3 +311,24 @@ describe("nft-probe error hygiene", () => {
     expect(text).not.toContain("provider.internal");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Malformed requests are the caller's mistake: 400, matching the eligibility
+// routes, never the outer catch's 500.
+// ---------------------------------------------------------------------------
+
+describe("nft-probe malformed requests", () => {
+  it("returns 400 for a body that is not JSON", async () => {
+    const res = await probePost(
+      new Request(PROBE, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "not json",
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+  });
+});

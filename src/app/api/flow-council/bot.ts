@@ -2,6 +2,7 @@ import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { db } from "./db";
 import { getViemChain } from "@/lib/networks";
+import { FLOW_STATE_BOT_ADDRESS } from "@/app/flow-councils/lib/constants";
 import type { Network } from "@/types/network";
 
 /**
@@ -61,6 +62,20 @@ export function buildBotSigner(network: Network) {
   // never returns it, so one rejected broadcast gaps every later transaction
   // from this key, across every route sharing it.
   const account = privateKeyToAccount(pk as `0x${string}`);
+
+  // On-chain role grants point at FLOW_STATE_BOT_ADDRESS while transactions
+  // are signed by this key, so drift between them (a key rotation without a
+  // constant update) silently breaks every automated claim. Integration tests
+  // run a throwaway key by design, so they are the one environment where the
+  // identity check must not run.
+  if (
+    process.env.NODE_ENV !== "test" &&
+    account.address.toLowerCase() !== FLOW_STATE_BOT_ADDRESS.toLowerCase()
+  ) {
+    throw new Error(
+      "FLOW_STATE_ELIGIBILITY_PK does not derive FLOW_STATE_BOT_ADDRESS",
+    );
+  }
   const viemChain = getViemChain(network.id);
   const publicClient = createPublicClient({
     chain: viemChain,

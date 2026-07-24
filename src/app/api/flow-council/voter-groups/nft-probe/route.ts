@@ -61,7 +61,14 @@ type ProbeResponse = {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+
+    // Garbage JSON is a caller mistake, not the server bug the outer catch's
+    // 500 signals. Same contract as the eligibility routes.
+    if (body === null || typeof body !== "object") {
+      return errorResponse("Invalid request", 400);
+    }
+
     const { chainId, councilId } = body;
 
     const auth = await authorizeCouncilManager(chainId, councilId);
