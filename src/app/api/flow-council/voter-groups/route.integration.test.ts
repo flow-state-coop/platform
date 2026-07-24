@@ -576,6 +576,30 @@ describe("voter-groups public API", () => {
     expect(group.members.sort()).toEqual([A1, A2].sort());
   });
 
+  it("omits the member lists entirely when includeMembers=0", async () => {
+    const g = await createGroup("Holders", "gooddollar", 5);
+    const rid = await roundId();
+    await db
+      .insertInto("voterGroupMembers")
+      .values([{ voterGroupId: g, roundId: rid, address: A1 }])
+      .execute();
+
+    const res = await publicGet(
+      jsonRequest(
+        "GET",
+        `http://localhost/api/flow-council/voter-groups/public?chainId=${TEST_CHAIN_ID}&councilId=${TEST_COUNCIL_ADDRESS}&includeMembers=0`,
+      ),
+    );
+    const body = await readJson(res);
+    const group = body.groups.find(
+      (x: { name: string }) => x.name === "Holders",
+    );
+
+    expect(group).toBeDefined();
+    expect("members" in group).toBe(false);
+    expect(group.defaultVotingPower).toBe(5);
+  });
+
   it("returns an empty list for an unknown council", async () => {
     const res = await publicGet(
       jsonRequest(

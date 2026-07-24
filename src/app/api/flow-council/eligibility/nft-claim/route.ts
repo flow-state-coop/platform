@@ -54,8 +54,18 @@ export async function POST(request: Request) {
   let broadcast = false;
 
   try {
-    const { address, chainId, councilId, signature, issuedAt } =
-      await request.json();
+    const body = await request.json().catch(() => null);
+
+    // Garbage JSON is a caller mistake, not the server bug the outer catch's
+    // 500 signals.
+    if (body === null || typeof body !== "object") {
+      return Response.json(
+        { success: false, error: "Invalid request" },
+        { status: 400 },
+      );
+    }
+
+    const { address, chainId, councilId, signature, issuedAt } = body;
 
     if (!address || !chainId || !councilId) {
       return Response.json({ success: false, error: "Invalid request" });
@@ -260,19 +270,40 @@ export async function POST(request: Request) {
     } catch (err) {
       const errorMessage = (err as Error)?.message ?? "";
 
+      // Someone else set the power, so it is only reported when a fresh read
+      // resolves it: both already-voter shapes carry votingPower when known.
+      const readOnChainPower = async (): Promise<bigint | null> => {
+        try {
+          const voter = await publicClient.readContract({
+            address: councilId as Address,
+            abi: flowCouncilAbi,
+            functionName: "getVoter",
+            args: [address as Address],
+          });
+          return BigInt(voter.votingPower);
+        } catch (probeErr) {
+          console.error("Voter read after failed claim errored:", probeErr);
+          return null;
+        }
+      };
+
       // The wallet was added between the getVoter read and this broadcast, so
       // the membership row is correct and the claim already happened. Only a
       // pre-broadcast simulation surfaces the revert by name.
       if (errorMessage.includes("ALREADY_ADDED")) {
-        // Someone else set the power, so it is not ours to report.
         if (!broadcast) {
           await releaseRateWindow(round.id, previousLastClaimAt, claimedAt);
         }
+
+        const onChainPower = await readOnChainPower();
 
         return Response.json({
           success: true,
           alreadyVoter: true,
           code: "already_voter",
+          ...(onChainPower !== null && onChainPower > 0n
+            ? { votingPower: onChainPower.toString() }
+            : {}),
           groupId: winner.id,
           groupName: winner.name,
         });
@@ -284,19 +315,7 @@ export async function POST(request: Request) {
       // real failure: power at or above the winner's means the claim already
       // happened and the membership row is correct.
       if (reverted) {
-        let onChainPower: bigint | null = null;
-
-        try {
-          const voter = await publicClient.readContract({
-            address: councilId as Address,
-            abi: flowCouncilAbi,
-            functionName: "getVoter",
-            args: [address as Address],
-          });
-          onChainPower = BigInt(voter.votingPower);
-        } catch (probeErr) {
-          console.error("Voter read after reverted claim failed:", probeErr);
-        }
+        const onChainPower = await readOnChainPower();
 
         if (
           onChainPower !== null &&

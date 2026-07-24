@@ -982,6 +982,22 @@ describe("nft-claim rollback", () => {
       { voterGroupId: core, address: HOLDER.toLowerCase() },
     ]);
   });
+
+  it("reports the on-chain power when a fresh read resolves an ALREADY_ADDED revert", async () => {
+    await insertNftGroup({
+      name: "Core",
+      contractAddress: COLLECTION_721,
+      defaultVotingPower: 20,
+    });
+    nftChain.writeError = "execution reverted: ALREADY_ADDED";
+    nftChain.writeHook = () => setVotingPower(HOLDER, 30n);
+
+    const { body } = await claim({});
+
+    expect(body.success).toBe(true);
+    expect(body.alreadyVoter).toBe(true);
+    expect(Number(body.votingPower)).toBe(30);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1135,6 +1151,23 @@ describe("nft-claim refusal codes", () => {
     expect(body.code).toBe("chain_error");
     expect(text).not.toContain(RPC_ERROR_SENTINEL);
     expect(text).not.toContain("provider.internal");
+  });
+
+  it("returns 400 for a body that is not JSON, not the outer catch's 500", async () => {
+    await insertNftGroup({ name: "Core", defaultVotingPower: 20 });
+
+    const res = await claimPost(
+      new Request(CLAIM, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "not json",
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(nftChain.writes).toEqual([]);
   });
 
   it("rejects a malformed claiming address", async () => {

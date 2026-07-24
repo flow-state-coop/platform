@@ -51,60 +51,66 @@ export async function GET(request: Request) {
       return Response.json({ groups: [] });
     }
 
-    const rows = await db
+    const groupRows = await db
       .selectFrom("voterGroups")
-      .leftJoin(
-        "voterGroupMembers",
-        "voterGroupMembers.voterGroupId",
-        "voterGroups.id",
-      )
       .select([
-        "voterGroups.id as groupId",
-        "voterGroups.name as name",
-        "voterGroups.eligibilityMethod as eligibilityMethod",
-        "voterGroups.defaultVotingPower as defaultVotingPower",
-        "voterGroups.nftContractAddress as nftContractAddress",
-        "voterGroups.nftTokenStandard as nftTokenStandard",
-        "voterGroups.nftTokenId as nftTokenId",
-        "voterGroups.nftAcquisitionUrl as nftAcquisitionUrl",
-        "voterGroups.nftCollectionName as nftCollectionName",
-        "voterGroupMembers.address as address",
+        "id as groupId",
+        "name",
+        "eligibilityMethod",
+        "defaultVotingPower",
+        "nftContractAddress",
+        "nftTokenStandard",
+        "nftTokenId",
+        "nftAcquisitionUrl",
+        "nftCollectionName",
       ])
-      .where("voterGroups.roundId", "=", round.id)
-      .orderBy("voterGroups.id", "asc")
+      .where("roundId", "=", round.id)
+      .orderBy("id", "asc")
       .execute();
 
-    const byGroup = new Map<number, PublicGroup>();
+    // The member lists dominate the query cost as well as the payload, so an
+    // opted-out request never touches the members table at all.
+    const membersByGroup = new Map<number, string[]>();
 
-    for (const row of rows) {
-      let group = byGroup.get(row.groupId);
-      if (!group) {
-        group = {
-          groupId: row.groupId,
-          name: row.name,
-          eligibilityMethod: row.eligibilityMethod,
-          defaultVotingPower: row.defaultVotingPower,
-          ...(includeMembers ? { members: [] } : {}),
-          // Only nft groups carry the requirement metadata the eligibility
-          // popup renders, so every other group keeps its existing shape.
-          ...(row.eligibilityMethod === "nft"
-            ? {
-                nftContractAddress: row.nftContractAddress,
-                nftTokenStandard: row.nftTokenStandard,
-                nftTokenId: row.nftTokenId,
-                nftAcquisitionUrl: row.nftAcquisitionUrl,
-                nftCollectionName: row.nftCollectionName,
-              }
-            : {}),
-        };
-        byGroup.set(row.groupId, group);
-      }
-      if (row.address) {
-        group.members?.push(row.address);
+    if (includeMembers) {
+      const memberRows = await db
+        .selectFrom("voterGroupMembers")
+        .select(["voterGroupId", "address"])
+        .where("roundId", "=", round.id)
+        .execute();
+
+      for (const row of memberRows) {
+        const members = membersByGroup.get(row.voterGroupId);
+        if (members) {
+          members.push(row.address);
+        } else {
+          membersByGroup.set(row.voterGroupId, [row.address]);
+        }
       }
     }
 
-    return Response.json({ groups: Array.from(byGroup.values()) });
+    const groups: PublicGroup[] = groupRows.map((row) => ({
+      groupId: row.groupId,
+      name: row.name,
+      eligibilityMethod: row.eligibilityMethod,
+      defaultVotingPower: row.defaultVotingPower,
+      ...(includeMembers
+        ? { members: membersByGroup.get(row.groupId) ?? [] }
+        : {}),
+      // Only nft groups carry the requirement metadata the eligibility
+      // popup renders, so every other group keeps its existing shape.
+      ...(row.eligibilityMethod === "nft"
+        ? {
+            nftContractAddress: row.nftContractAddress,
+            nftTokenStandard: row.nftTokenStandard,
+            nftTokenId: row.nftTokenId,
+            nftAcquisitionUrl: row.nftAcquisitionUrl,
+            nftCollectionName: row.nftCollectionName,
+          }
+        : {}),
+    }));
+
+    return Response.json({ groups });
   } catch (err) {
     console.error(err);
     return errorResponse("There was an error, please try again later", 500);
