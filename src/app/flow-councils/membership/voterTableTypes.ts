@@ -3,11 +3,14 @@
 // helpers (membership.tsx, GroupDetail.tsx, VoterTable.tsx, MoveVoterModal.tsx,
 // SaveConfirmModal.tsx, voterCsv.ts).
 
-export type EligibilityMethod = "manual" | "gooddollar" | "metrics";
+export type EligibilityMethod = "manual" | "gooddollar" | "metrics" | "nft";
+
+export type NftTokenStandard = "erc721" | "erc1155";
 
 export function prettyEligibility(method: EligibilityMethod): string {
   if (method === "gooddollar") return "GoodDollar ID";
   if (method === "metrics") return "Metrics";
+  if (method === "nft") return "NFT Holder";
   return "Manual";
 }
 
@@ -18,6 +21,11 @@ export type VoterGroup = {
   defaultVotingPower: number;
   memberCount: number;
   members: string[];
+  nftContractAddress?: string | null;
+  nftTokenStandard?: NftTokenStandard | null;
+  nftTokenId?: string | null;
+  nftAcquisitionUrl?: string | null;
+  nftCollectionName?: string | null;
 };
 
 export type SubgraphVoter = {

@@ -1,13 +1,25 @@
 import { z } from "zod";
 import { gql } from "@apollo/client";
 import { isAddress, Address } from "viem";
+import type { Transaction } from "kysely";
+import type { DB } from "@/generated/kysely";
 import { db } from "../db";
 import { networks } from "@/lib/networks";
 import { getApolloClient } from "@/lib/apollo";
 import { errorResponse } from "../../utils";
 import { findRoundByCouncil, authorizeCouncilManager } from "../auth";
-import { voterGroupCreateSchema, voterGroupUpdateSchema } from "../validation";
+import {
+  voterGroupCreateSchema,
+  voterGroupUpdateSchema,
+  type NftConfig,
+} from "../validation";
 import { getCouncilPublicClient } from "../metrics/lib";
+import {
+  detectNftStandard,
+  verifyOverrideStandard,
+  NFT_DETECTION_MESSAGES,
+  type NftTokenStandard,
+} from "../nft/detect";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import {
   CELO_CHAIN_ID,
@@ -57,6 +69,182 @@ class HttpError extends Error {
 }
 
 type SubgraphVoter = { account: string; votingPower: string };
+
+// A council uses one automated method or the other. Both strings render
+// verbatim in the admin UI, so they name the method already in use.
+const GOODDOLLAR_EXCLUSIVITY_ERROR =
+  "This council uses GoodDollar eligibility. A council uses one automated method or the other.";
+const NFT_EXCLUSIVITY_ERROR =
+  "This council uses NFT Holder eligibility. A council uses one automated method or the other.";
+const NFT_DUPLICATE_ERROR =
+  "This council already has an NFT group for that collection";
+
+const STANDARD_LABELS: Record<NftTokenStandard, string> = {
+  erc721: "ERC-721",
+  erc1155: "ERC-1155",
+};
+
+type NftColumns = {
+  nftContractAddress: string | null;
+  nftTokenStandard: string | null;
+  nftTokenId: string | null;
+  nftAcquisitionUrl: string | null;
+  nftCollectionName: string | null;
+};
+
+const CLEARED_NFT_COLUMNS: NftColumns = {
+  nftContractAddress: null,
+  nftTokenStandard: null,
+  nftTokenId: null,
+  nftAcquisitionUrl: null,
+  nftCollectionName: null,
+};
+
+type LockedGroup = {
+  id: number;
+  eligibilityMethod: string;
+  nftContractAddress: string | null;
+  nftTokenId: string | null;
+};
+
+/**
+ * Re-probe the collection server-side and turn a validated config into the
+ * five nft columns as one unit. The submitted standard is only trusted when
+ * detection agrees with it, or when detection is inconclusive *and* the
+ * contract structurally answers the chosen standard: an ordinary ERC-20 lands
+ * in no_erc165, and accepting one would grant votes to every token holder.
+ */
+async function resolveNftColumns(
+  chainId: number,
+  config: NftConfig,
+): Promise<NftColumns> {
+  const network = networks.find((n) => n.id === chainId);
+
+  if (!network) {
+    throw new HttpError("Wrong network", 400);
+  }
+
+  const contractAddress = config.contractAddress as Address;
+  const client = getCouncilPublicClient(network);
+  const detection = await detectNftStandard(client, contractAddress);
+
+  let collectionName = config.collectionName ?? null;
+
+  if (detection.status === "detected") {
+    if (detection.standard !== config.tokenStandard) {
+      throw new HttpError(
+        `That contract is an ${STANDARD_LABELS[detection.standard]} collection, not ${STANDARD_LABELS[config.tokenStandard]}.`,
+        400,
+      );
+    }
+    collectionName = detection.collectionName ?? collectionName;
+  } else if (
+    detection.status === "no_erc165" ||
+    detection.status === "unsupported_interface"
+  ) {
+    const verification = await verifyOverrideStandard(
+      client,
+      contractAddress,
+      config.tokenStandard,
+    );
+
+    if (!verification.ok) {
+      throw new HttpError(NFT_DETECTION_MESSAGES[verification.reason], 400);
+    }
+  } else {
+    throw new HttpError(NFT_DETECTION_MESSAGES[detection.status], 400);
+  }
+
+  return {
+    nftContractAddress: config.contractAddress,
+    nftTokenStandard: config.tokenStandard,
+    nftTokenId: config.tokenStandard === "erc1155" ? config.tokenId : null,
+    nftAcquisitionUrl: config.acquisitionUrl ?? null,
+    nftCollectionName: collectionName,
+  };
+}
+
+/**
+ * GoodDollar and NFT gating are mutually exclusive per council, in both
+ * directions. Deliberately write-time only: a council that somehow held both
+ * would be frozen against new automated groups and surfaced rather than
+ * repaired, while both existing paths keep working (each only ever queries its
+ * own method). This is not a one-GoodDollar-group-per-council rule; several
+ * gooddollar groups remain legal.
+ */
+function assertMethodExclusivity(
+  groups: LockedGroup[],
+  method: string | undefined,
+  excludeId?: number,
+) {
+  if (method !== "nft" && method !== "gooddollar") return;
+
+  const others = groups.filter((g) => g.id !== excludeId);
+
+  if (
+    method === "nft" &&
+    others.some((g) => g.eligibilityMethod === "gooddollar")
+  ) {
+    throw new HttpError(GOODDOLLAR_EXCLUSIVITY_ERROR, 400);
+  }
+
+  if (
+    method === "gooddollar" &&
+    others.some((g) => g.eligibilityMethod === "nft")
+  ) {
+    throw new HttpError(NFT_EXCLUSIVITY_ERROR, 400);
+  }
+}
+
+function assertNftCollectionUnique(
+  groups: LockedGroup[],
+  columns: NftColumns,
+  excludeId?: number,
+) {
+  const duplicate = groups.some(
+    (g) =>
+      g.id !== excludeId &&
+      g.eligibilityMethod === "nft" &&
+      g.nftContractAddress?.toLowerCase() === columns.nftContractAddress &&
+      (g.nftTokenId ?? "") === (columns.nftTokenId ?? ""),
+  );
+
+  if (duplicate) {
+    throw new HttpError(NFT_DUPLICATE_ERROR, 409);
+  }
+}
+
+// The pre-check above races two concurrent writers, so the partial unique index
+// is the backstop and its violation carries the same message.
+function asNftDuplicateError(err: unknown): HttpError | null {
+  const message = err instanceof Error ? err.message : "";
+  return message.includes("voter_groups_round_nft_unique")
+    ? new HttpError(NFT_DUPLICATE_ERROR, 409)
+    : null;
+}
+
+async function lockCouncilGroups(
+  trx: Transaction<DB>,
+  roundId: number,
+): Promise<LockedGroup[]> {
+  // Lock the council row first. Locking only the group rows leaves a council
+  // with no groups yet locking an empty set, so two concurrent first creates
+  // would both read "no conflicting method" and both insert, which is exactly
+  // the state the exclusivity rule exists to prevent.
+  await trx
+    .selectFrom("rounds")
+    .select("id")
+    .where("id", "=", roundId)
+    .forUpdate()
+    .execute();
+
+  return trx
+    .selectFrom("voterGroups")
+    .select(["id", "eligibilityMethod", "nftContractAddress", "nftTokenId"])
+    .where("roundId", "=", roundId)
+    .forUpdate()
+    .execute();
+}
 
 /**
  * Fetch the full voter list from the subgraph, paginating with `skip`
@@ -175,7 +363,17 @@ async function ensureDefaultGroup(
 async function loadGroupsWithMembers(roundId: number) {
   const groups = await db
     .selectFrom("voterGroups")
-    .select(["id", "name", "eligibilityMethod", "defaultVotingPower"])
+    .select([
+      "id",
+      "name",
+      "eligibilityMethod",
+      "defaultVotingPower",
+      "nftContractAddress",
+      "nftTokenStandard",
+      "nftTokenId",
+      "nftAcquisitionUrl",
+      "nftCollectionName",
+    ])
     .where("roundId", "=", roundId)
     .orderBy("id", "asc")
     .execute();
@@ -198,13 +396,26 @@ async function loadGroupsWithMembers(roundId: number) {
 
   return groups.map((g) => {
     const groupMembers = membersByGroup.get(g.id) ?? [];
-    return {
+    const group = {
       id: g.id,
       name: g.name,
       eligibilityMethod: g.eligibilityMethod,
       defaultVotingPower: g.defaultVotingPower,
       memberCount: groupMembers.length,
       members: groupMembers,
+    };
+
+    // Only nft groups carry the config, so every other group's response shape
+    // stays exactly as it was.
+    if (g.eligibilityMethod !== "nft") return group;
+
+    return {
+      ...group,
+      nftContractAddress: g.nftContractAddress,
+      nftTokenStandard: g.nftTokenStandard,
+      nftTokenId: g.nftTokenId,
+      nftAcquisitionUrl: g.nftAcquisitionUrl,
+      nftCollectionName: g.nftCollectionName,
     };
   });
 }
@@ -259,6 +470,7 @@ export async function POST(request: Request) {
       name: body.name,
       eligibilityMethod: body.eligibilityMethod,
       defaultVotingPower: body.defaultVotingPower,
+      nftConfig: body.nftConfig,
     });
 
     if (!parsed.success) {
@@ -295,17 +507,44 @@ export async function POST(request: Request) {
       }
     }
 
-    const inserted = await db
-      .insertInto("voterGroups")
-      .values({
-        roundId: auth.roundId,
-        name: parsed.data.name,
-        eligibilityMethod: parsed.data.eligibilityMethod,
-        defaultVotingPower: parsed.data.defaultVotingPower,
-      })
-      .onConflict((oc) => oc.columns(["roundId", "name"]).doNothing())
-      .returning(["id"])
-      .executeTakeFirst();
+    // Probed outside the transaction below so the RPC round trip never holds
+    // the council's row locks.
+    const nftColumns =
+      parsed.data.eligibilityMethod === "nft" && parsed.data.nftConfig
+        ? await resolveNftColumns(Number(chainId), parsed.data.nftConfig)
+        : null;
+
+    // The exclusivity and duplicate guards are check-then-write, so they run in
+    // one transaction with the council's group rows locked. Without the lock two
+    // concurrent requests both read "no conflict" and both write.
+    const inserted = await db.transaction().execute(async (trx) => {
+      const groups = await lockCouncilGroups(trx, auth.roundId);
+
+      assertMethodExclusivity(groups, parsed.data.eligibilityMethod);
+
+      if (nftColumns) {
+        assertNftCollectionUnique(groups, nftColumns);
+      }
+
+      try {
+        return await trx
+          .insertInto("voterGroups")
+          .values({
+            roundId: auth.roundId,
+            name: parsed.data.name,
+            eligibilityMethod: parsed.data.eligibilityMethod,
+            defaultVotingPower: parsed.data.defaultVotingPower,
+            ...(nftColumns ?? {}),
+          })
+          .onConflict((oc) => oc.columns(["roundId", "name"]).doNothing())
+          .returning(["id"])
+          .executeTakeFirst();
+      } catch (err) {
+        const duplicate = asNftDuplicateError(err);
+        if (duplicate) throw duplicate;
+        throw err;
+      }
+    });
 
     if (!inserted) {
       return new Response(
@@ -319,6 +558,10 @@ export async function POST(request: Request) {
 
     return Response.json({ success: true, id: inserted.id });
   } catch (err) {
+    if (err instanceof HttpError) {
+      return errorResponse(err.message, err.status);
+    }
+
     console.error(err);
     return errorResponse("There was an error, please try again later", 500);
   }
@@ -346,6 +589,7 @@ export async function PATCH(request: Request) {
       name: body.name,
       eligibilityMethod: body.eligibilityMethod,
       defaultVotingPower: body.defaultVotingPower,
+      nftConfig: body.nftConfig,
     });
 
     if (!parsed.success) {
@@ -422,11 +666,57 @@ export async function PATCH(request: Request) {
       );
     }
 
+    const resultingMethod =
+      parsed.data.eligibilityMethod ?? group.eligibilityMethod;
+
+    // An nft group's method is locked while it has members, matching the spec.
+    // Editing its collection, allocation, label and link stays allowed.
+    const switchesNftMethod =
+      parsed.data.eligibilityMethod !== undefined &&
+      parsed.data.eligibilityMethod !== group.eligibilityMethod &&
+      (parsed.data.eligibilityMethod === "nft" ||
+        group.eligibilityMethod === "nft");
+
+    if (resultingMethod !== "nft" && parsed.data.nftConfig) {
+      return errorResponse(
+        "Only an NFT Holder group can carry a collection configuration",
+        400,
+      );
+    }
+
+    if (
+      resultingMethod === "nft" &&
+      group.eligibilityMethod !== "nft" &&
+      !parsed.data.nftConfig
+    ) {
+      return errorResponse(
+        "An NFT Holder group needs a collection configuration",
+        400,
+      );
+    }
+
+    // The five nft columns move as one unit or not at all. A field-by-field
+    // merge is what leaves a group matching nobody: a 721 to 1155 switch would
+    // otherwise land a 1155 standard with a null token id. A PATCH that omits
+    // the config on an existing nft group leaves all five exactly as they were.
+    let nftColumns: NftColumns | null = null;
+
+    if (resultingMethod === "nft") {
+      if (parsed.data.nftConfig) {
+        nftColumns = await resolveNftColumns(
+          Number(chainId),
+          parsed.data.nftConfig,
+        );
+      }
+    } else if (group.eligibilityMethod === "nft") {
+      nftColumns = CLEARED_NFT_COLUMNS;
+    }
+
     const updates: {
       name?: string;
       eligibilityMethod?: string;
       defaultVotingPower?: number;
-    } = {};
+    } & Partial<NftColumns> = {};
 
     if (parsed.data.name !== undefined) updates.name = parsed.data.name;
     if (parsed.data.eligibilityMethod !== undefined) {
@@ -435,34 +725,67 @@ export async function PATCH(request: Request) {
     if (parsed.data.defaultVotingPower !== undefined) {
       updates.defaultVotingPower = parsed.data.defaultVotingPower;
     }
+    if (nftColumns) Object.assign(updates, nftColumns);
 
     if (Object.keys(updates).length === 0) {
       return Response.json({ success: true });
     }
 
-    try {
-      await db
-        .updateTable("voterGroups")
-        .set(updates)
-        .where("id", "=", id)
-        .where("roundId", "=", auth.roundId)
-        .execute();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      if (message.includes("voter_groups_round_id_name_key")) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: "A group with that name already exists",
-          }),
-          { status: 409 },
-        );
+    // Same check-then-write hazard as POST: switching a method into or out of
+    // an automated one, and claiming a collection, both have to see a stable
+    // view of the council's groups.
+    await db.transaction().execute(async (trx) => {
+      const groups = await lockCouncilGroups(trx, auth.roundId);
+
+      assertMethodExclusivity(groups, parsed.data.eligibilityMethod, id);
+
+      if (nftColumns?.nftContractAddress) {
+        assertNftCollectionUnique(groups, nftColumns, id);
       }
-      throw err;
-    }
+
+      // Inside the lock: a claim landing between an unlocked count and this
+      // update would switch the method out from under a group that just
+      // gained its first member.
+      if (switchesNftMethod) {
+        const memberCountRow = await trx
+          .selectFrom("voterGroupMembers")
+          .select((eb) => eb.fn.countAll<number>().as("count"))
+          .where("voterGroupId", "=", id)
+          .executeTakeFirst();
+
+        if (Number(memberCountRow?.count ?? 0) > 0) {
+          throw new HttpError(
+            "A group's eligibility method cannot be changed to or from NFT Holder once it has members",
+            400,
+          );
+        }
+      }
+
+      try {
+        await trx
+          .updateTable("voterGroups")
+          .set(updates)
+          .where("id", "=", id)
+          .where("roundId", "=", auth.roundId)
+          .execute();
+      } catch (err) {
+        const duplicate = asNftDuplicateError(err);
+        if (duplicate) throw duplicate;
+
+        const message = err instanceof Error ? err.message : "";
+        if (message.includes("voter_groups_round_id_name_key")) {
+          throw new HttpError("A group with that name already exists", 409);
+        }
+        throw err;
+      }
+    });
 
     return Response.json({ success: true });
   } catch (err) {
+    if (err instanceof HttpError) {
+      return errorResponse(err.message, err.status);
+    }
+
     console.error(err);
     return errorResponse("There was an error, please try again later", 500);
   }

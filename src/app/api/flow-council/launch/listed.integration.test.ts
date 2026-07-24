@@ -12,12 +12,28 @@ vi.mock("next-auth/next", () => ({
 
 vi.mock("@/app/api/auth/[...nextauth]/route", () => ({ authOptions: {} }));
 
+// Registration confirms the address is a factory-deployed council by looking it
+// up in the subgraph. Default to indexed so existing cases register normally.
+const { councilIndexedRef } = vi.hoisted(() => ({
+  councilIndexedRef: { current: true },
+}));
+vi.mock("@/lib/apollo", () => ({
+  getApolloClient: () => ({
+    query: async () => ({
+      data: {
+        flowCouncil: councilIndexedRef.current ? { id: "0xcouncil" } : null,
+      },
+    }),
+  }),
+}));
+
 vi.mock("../db", async () => {
   const { getTestDb } = await import("@tests/helpers/db");
   return { db: getTestDb() };
 });
 
 import { POST } from "./route";
+import { resetFactoryCouncilCache } from "../auth";
 import {
   getTestDb,
   resetDb,
@@ -38,6 +54,8 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  resetFactoryCouncilCache();
+  councilIndexedRef.current = true;
   await resetDb(db);
 });
 

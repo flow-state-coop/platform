@@ -43,6 +43,13 @@ import type {
   VoterGroupQueueMeta,
 } from "./voterTableTypes";
 import { prettyEligibility } from "./voterTableTypes";
+import NftGroupFields, {
+  emptyNftDraft,
+  nftDraftToConfig,
+  nftDraftFromGroup,
+  isNftDraftComplete,
+  type NftConfigDraft,
+} from "./NftGroupFields";
 import {
   VOTER_MANAGER_ROLE,
   RECIPIENT_MANAGER_ROLE,
@@ -92,6 +99,9 @@ export default function GroupDetail(props: GroupDetailProps) {
   const [editEligibility, setEditEligibility] =
     useState<EligibilityMethod>("manual");
   const [editDefaultVotingPower, setEditDefaultVotingPower] = useState("10");
+  const [editNftDraft, setEditNftDraft] =
+    useState<NftConfigDraft>(emptyNftDraft);
+  const [editNftBlocked, setEditNftBlocked] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -345,6 +355,8 @@ export default function GroupDetail(props: GroupDetailProps) {
     setEditName(group.name);
     setEditEligibility(group.eligibilityMethod);
     setEditDefaultVotingPower(String(group.defaultVotingPower));
+    setEditNftDraft(nftDraftFromGroup(group));
+    setEditNftBlocked(false);
   }, [group, isEditing]);
 
   const metrics = useMemo(() => {
@@ -385,6 +397,8 @@ export default function GroupDetail(props: GroupDetailProps) {
     setEditName(group.name);
     setEditEligibility(group.eligibilityMethod);
     setEditDefaultVotingPower(String(group.defaultVotingPower));
+    setEditNftDraft(nftDraftFromGroup(group));
+    setEditNftBlocked(false);
     setSaveError("");
     setSaveSuccess(false);
     setIsEditing(true);
@@ -395,6 +409,8 @@ export default function GroupDetail(props: GroupDetailProps) {
       setEditName(group.name);
       setEditEligibility(group.eligibilityMethod);
       setEditDefaultVotingPower(String(group.defaultVotingPower));
+      setEditNftDraft(nftDraftFromGroup(group));
+      setEditNftBlocked(false);
     }
 
     setSaveError("");
@@ -409,7 +425,8 @@ export default function GroupDetail(props: GroupDetailProps) {
     const name = editName.trim();
     const isGoodDollar = editEligibility === "gooddollar";
     const isMetrics = editEligibility === "metrics";
-    const usesVotePower = isGoodDollar || isMetrics;
+    const isNft = editEligibility === "nft";
+    const usesVotePower = isGoodDollar || isMetrics || isNft;
     const defaultVotingPower = Number(editDefaultVotingPower);
 
     if (!name) {
@@ -508,6 +525,9 @@ export default function GroupDetail(props: GroupDetailProps) {
             ? { eligibilityMethod: editEligibility }
             : {}),
           ...(usesVotePower ? { defaultVotingPower } : {}),
+          ...(editEligibility === "nft"
+            ? { nftConfig: nftDraftToConfig(editNftDraft) }
+            : {}),
         }),
       });
       const data = await res.json();
@@ -647,6 +667,25 @@ export default function GroupDetail(props: GroupDetailProps) {
   // require removing the bot voter, and switching to it requires adding the bot
   // (done only in the create flow).
   const isMetricsGroup = group?.eligibilityMethod === "metrics";
+  const isNftGroup = group?.eligibilityMethod === "nft";
+  const hasMembers = (group?.memberCount ?? 0) > 0;
+  const councilHasGoodDollar = groups.some(
+    (g) => g.eligibilityMethod === "gooddollar",
+  );
+  const councilHasNft = groups.some((g) => g.eligibilityMethod === "nft");
+  // A populated group's method is locked, matching how metrics groups behave,
+  // and the two automated methods stay mutually exclusive per council.
+  const nftOptionDisabled =
+    (!isNftGroup && (councilHasGoodDollar || hasMembers)) ||
+    (isNftGroup && hasMembers);
+  const nftMethodLocked = isNftGroup && hasMembers;
+  const goodDollarOptionDisabled =
+    councilHasNft && group?.eligibilityMethod !== "gooddollar";
+  const nftConfigChanged =
+    isNftGroup &&
+    (editNftDraft.contractAddress.trim().toLowerCase() !==
+      (group?.nftContractAddress ?? "").toLowerCase() ||
+      editNftDraft.tokenId.trim() !== (group?.nftTokenId ?? ""));
 
   // Reason the delete action is unavailable (rendered as a tooltip on the
   // disabled trash icon). Mirrors the server guards: a council must keep at
@@ -794,7 +833,8 @@ export default function GroupDetail(props: GroupDetailProps) {
                     and manager (with the grant action) read-only here, so an
                     admin can see/repair bot permissions without entering edit
                     mode. */}
-                {group.eligibilityMethod === "gooddollar" ? (
+                {group.eligibilityMethod === "gooddollar" ||
+                group.eligibilityMethod === "nft" ? (
                   <Stack direction="vertical" gap={3} className="mt-4">
                     <div>
                       <span className="fw-semi-bold d-block mb-1">
@@ -931,12 +971,24 @@ export default function GroupDetail(props: GroupDetailProps) {
                           )
                         }
                       >
-                        <option value="manual">Manual</option>
-                        <option value="gooddollar" disabled={!isCelo}>
+                        <option value="manual" disabled={nftMethodLocked}>
+                          Manual
+                        </option>
+                        <option
+                          value="gooddollar"
+                          disabled={
+                            !isCelo ||
+                            goodDollarOptionDisabled ||
+                            nftMethodLocked
+                          }
+                        >
                           GoodDollar ID{!isCelo ? " (Celo only)" : ""}
                         </option>
                         <option value="metrics" disabled={!isMetricsGroup}>
                           Metrics
+                        </option>
+                        <option value="nft" disabled={nftOptionDisabled}>
+                          NFT Holder
                         </option>
                       </Form.Select>
                       {isMetricsGroup ? (
@@ -945,10 +997,61 @@ export default function GroupDetail(props: GroupDetailProps) {
                           method.
                         </Form.Text>
                       ) : null}
+                      {!isMetricsGroup && nftOptionDisabled && hasMembers ? (
+                        <Form.Text className="text-info">
+                          A group&apos;s eligibility method is locked once it
+                          has members.
+                        </Form.Text>
+                      ) : null}
+                      {!isMetricsGroup &&
+                      councilHasGoodDollar &&
+                      !isNftGroup &&
+                      !hasMembers ? (
+                        <Form.Text className="text-info">
+                          This council uses GoodDollar eligibility. A council
+                          uses one automated method or the other.
+                        </Form.Text>
+                      ) : null}
+                      {goodDollarOptionDisabled ? (
+                        <Form.Text className="text-info">
+                          This council uses NFT eligibility. A council uses one
+                          automated method or the other.
+                        </Form.Text>
+                      ) : null}
                     </Form.Group>
 
+                    {editEligibility === "nft" ? (
+                      <>
+                        <NftGroupFields
+                          chainId={chainId}
+                          councilId={councilId}
+                          draft={editNftDraft}
+                          onChange={setEditNftDraft}
+                          onBlockedChange={setEditNftBlocked}
+                          onCollectionDetected={(collectionName, address) =>
+                            setEditName(
+                              (current) =>
+                                current ||
+                                collectionName ||
+                                truncateAddress(address),
+                            )
+                          }
+                          disabled={isSaving}
+                        />
+                        {nftConfigChanged && hasMembers ? (
+                          <Alert variant="warning">
+                            Existing members keep the votes they already have
+                            and are not re-checked against the new collection.
+                            Use the voter table below to remove anyone who no
+                            longer qualifies.
+                          </Alert>
+                        ) : null}
+                      </>
+                    ) : null}
+
                     {editEligibility === "gooddollar" ||
-                    editEligibility === "metrics" ? (
+                    editEligibility === "metrics" ||
+                    editEligibility === "nft" ? (
                       <Form.Group>
                         <Form.Label className="fw-semi-bold">
                           {editEligibility === "metrics"
@@ -989,7 +1092,13 @@ export default function GroupDetail(props: GroupDetailProps) {
                     <Stack direction="vertical" gap={2}>
                       <Button
                         className="fs-lg fw-semi-bold py-4 rounded-4"
-                        disabled={!isManager || isSaving}
+                        disabled={
+                          !isManager ||
+                          isSaving ||
+                          (editEligibility === "nft" &&
+                            (editNftBlocked ||
+                              !isNftDraftComplete(editNftDraft)))
+                        }
                         onClick={handleSave}
                       >
                         {isSaving ? <Spinner size="sm" /> : "Save"}
