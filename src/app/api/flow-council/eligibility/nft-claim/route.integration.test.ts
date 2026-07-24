@@ -1170,11 +1170,12 @@ describe("nft-claim refusal codes", () => {
     expect(nftChain.writes).toEqual([]);
   });
 
-  it("rejects a malformed claiming address", async () => {
+  it("rejects a malformed claiming address with 400", async () => {
     await insertNftGroup({ name: "Core", defaultVotingPower: 20 });
 
-    const { body } = await claim({ address: "0xnope" });
+    const { res, body } = await claim({ address: "0xnope" });
 
+    expect(res.status).toBe(400);
     expect(body.success).toBe(false);
     expect(nftChain.writes).toEqual([]);
   });

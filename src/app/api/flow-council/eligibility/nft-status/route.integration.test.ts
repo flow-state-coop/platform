@@ -416,3 +416,38 @@ describe("nft-status is read-only", () => {
     expect(round.lastClaimAt).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Malformed requests are the caller's mistake: 400, matching the claim route,
+// never the outer catch's 500.
+// ---------------------------------------------------------------------------
+
+describe("nft-status malformed requests", () => {
+  it("returns 400 for a body that is not JSON", async () => {
+    const res = await statusPost(
+      new Request(STATUS, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "not json",
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+  });
+
+  it("returns 400 for missing required fields", async () => {
+    const res = await statusPost(
+      new Request(STATUS, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chainId: TEST_CHAIN_ID }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+  });
+});

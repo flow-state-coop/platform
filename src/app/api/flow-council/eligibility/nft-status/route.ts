@@ -10,26 +10,49 @@ export async function POST(request: Request) {
   // Read-only by construction: no insert, no update, no transaction, no rate
   // window. Opening the eligibility popup must never cost gas or change state.
   try {
-    const { address, chainId, councilId } = await request.json();
+    const body = await request.json().catch(() => null);
+
+    // Garbage JSON is a caller mistake, not the server bug the outer catch's
+    // 500 signals. Same contract as the claim route.
+    if (body === null || typeof body !== "object") {
+      return Response.json(
+        { success: false, error: "Invalid request" },
+        { status: 400 },
+      );
+    }
+
+    const { address, chainId, councilId } = body;
 
     if (!address || !chainId || !councilId) {
-      return Response.json({ success: false, error: "Invalid request" });
+      return Response.json(
+        { success: false, error: "Invalid request" },
+        { status: 400 },
+      );
     }
 
     const numericChainId = Number(chainId);
 
     if (!Number.isInteger(numericChainId)) {
-      return Response.json({ success: false, error: "Invalid chainId" });
+      return Response.json(
+        { success: false, error: "Invalid chainId" },
+        { status: 400 },
+      );
     }
 
     if (!isAddress(address) || !isAddress(councilId)) {
-      return Response.json({ success: false, error: "Invalid address" });
+      return Response.json(
+        { success: false, error: "Invalid address" },
+        { status: 400 },
+      );
     }
 
     const network = networks.find((network) => network.id === numericChainId);
 
     if (!network) {
-      return Response.json({ success: false, error: "Wrong network" });
+      return Response.json(
+        { success: false, error: "Wrong network" },
+        { status: 400 },
+      );
     }
 
     const round = await findRoundByCouncil(numericChainId, councilId);

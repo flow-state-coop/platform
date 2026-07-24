@@ -68,23 +68,35 @@ export async function POST(request: Request) {
     const { address, chainId, councilId, signature, issuedAt } = body;
 
     if (!address || !chainId || !councilId) {
-      return Response.json({ success: false, error: "Invalid request" });
+      return Response.json(
+        { success: false, error: "Invalid request" },
+        { status: 400 },
+      );
     }
 
     const numericChainId = Number(chainId);
 
     if (!Number.isInteger(numericChainId)) {
-      return Response.json({ success: false, error: "Invalid chainId" });
+      return Response.json(
+        { success: false, error: "Invalid chainId" },
+        { status: 400 },
+      );
     }
 
     if (!isAddress(address) || !isAddress(councilId)) {
-      return Response.json({ success: false, error: "Invalid address" });
+      return Response.json(
+        { success: false, error: "Invalid address" },
+        { status: 400 },
+      );
     }
 
     const network = networks.find((network) => network.id === numericChainId);
 
     if (!network) {
-      return Response.json({ success: false, error: "Wrong network" });
+      return Response.json(
+        { success: false, error: "Wrong network" },
+        { status: 400 },
+      );
     }
 
     const round = await findRoundByCouncil(numericChainId, councilId);
