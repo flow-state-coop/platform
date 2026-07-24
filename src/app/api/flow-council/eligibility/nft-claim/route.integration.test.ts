@@ -1142,6 +1142,18 @@ describe("nft-claim refusal codes", () => {
     expect(await allMembershipRows()).toEqual([]);
   });
 
+  it("returns check_unavailable when the voter read itself failed", async () => {
+    await insertNftGroup({ name: "Core", defaultVotingPower: 20 });
+    failRead(TEST_COUNCIL_ADDRESS, "getVoter");
+
+    const { body } = await claim({});
+
+    expect(body.success).toBe(false);
+    expect(body.code).toBe("check_unavailable");
+    expect(nftChain.writes).toEqual([]);
+    expect(await allMembershipRows()).toEqual([]);
+  });
+
   it("returns chain_error without echoing the raw provider error", async () => {
     await insertNftGroup({ name: "Core", defaultVotingPower: 20 });
     nftChain.writeError = RPC_ERROR_MESSAGE;

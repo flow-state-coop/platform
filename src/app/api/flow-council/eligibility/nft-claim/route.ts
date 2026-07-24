@@ -134,10 +134,15 @@ export async function POST(request: Request) {
       requirements,
     });
 
-    // A failed getVoter read flattens to zero: the claim then takes the
-    // addVoter path, which reverts for a real voter, and the post-revert read
-    // below repairs the answer.
-    const currentPower = evaluation.votingPower ?? 0n;
+    // A failed getVoter read cannot tell a voter from a newcomer, and
+    // broadcasting anyway wastes bot gas on an ALREADY_ADDED revert for a
+    // real voter: refuse retryably, the same reasoning as the unknown
+    // bot-role case below.
+    if (evaluation.votingPower === null) {
+      return refusal("check_unavailable");
+    }
+
+    const currentPower = evaluation.votingPower;
 
     const winner = selectWinner(evaluation.rows, requirements);
     const isUpgrade = currentPower > 0n;

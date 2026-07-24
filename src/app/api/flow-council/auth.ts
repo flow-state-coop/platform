@@ -339,7 +339,9 @@ const COUNCIL_EXISTS_QUERY = gql`
 
 const FACTORY_COUNCIL_CACHE_LIMIT = 500;
 
-const factoryCouncils = new Set<string>();
+// Map instead of Set for LRU behavior: a hit re-inserts its key, so eviction
+// drops the least recently used council, not the busiest early one.
+const factoryCouncils = new Map<string, true>();
 
 /** Drop the verified-council cache, so tests can control the guard. */
 export function resetFactoryCouncilCache() {
@@ -358,6 +360,8 @@ export async function isFactoryCouncil(
   const key = `${chainId}:${councilId.toLowerCase()}`;
 
   if (factoryCouncils.has(key)) {
+    factoryCouncils.delete(key);
+    factoryCouncils.set(key, true);
     return true;
   }
 
@@ -373,10 +377,10 @@ export async function isFactoryCouncil(
     }
 
     if (factoryCouncils.size >= FACTORY_COUNCIL_CACHE_LIMIT) {
-      factoryCouncils.delete(factoryCouncils.values().next().value as string);
+      factoryCouncils.delete(factoryCouncils.keys().next().value as string);
     }
 
-    factoryCouncils.add(key);
+    factoryCouncils.set(key, true);
     return true;
   } catch (err) {
     console.error("Council factory verification failed:", err);
