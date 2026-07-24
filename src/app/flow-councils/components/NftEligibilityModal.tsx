@@ -72,6 +72,7 @@ export default function NftEligibilityModal({
 
   const [state, setState] = useState<ModalState>("list-loading");
   const [rows, setRows] = useState<StatusRow[]>([]);
+  const [currentVotes, setCurrentVotes] = useState(0);
   const [grantedVotes, setGrantedVotes] = useState<number | null>(null);
   const [claimErrorCode, setClaimErrorCode] = useState<string | null>(null);
   const checkedAddressRef = useRef<string | null>(null);
@@ -134,8 +135,17 @@ export default function NftEligibilityModal({
 
       setRows(statusRows);
 
-      if (BigInt(data.votingPower) > 0n) {
-        setGrantedVotes(Number(data.votingPower));
+      const votingPower = Number(data.votingPower);
+      const highestMetVotes = statusRows
+        .filter((row) => row.status === "met")
+        .reduce((largest, row) => Math.max(largest, row.votes), 0);
+
+      setCurrentVotes(votingPower);
+
+      // An existing voter stays on the recheck path only when a met tier
+      // beats what they already hold; the claim then raises their votes.
+      if (votingPower > 0 && highestMetVotes <= votingPower) {
+        setGrantedVotes(votingPower);
         setState("already-has-votes");
         return;
       }
@@ -158,23 +168,21 @@ export default function NftEligibilityModal({
   useEffect(() => {
     checkedAddressRef.current = isConnected ? (address ?? null) : null;
     setRows([]);
+    setCurrentVotes(0);
     setGrantedVotes(null);
   }, [address, isConnected]);
 
+  // An existing voter loads the list too: a recheck may find a tier above
+  // their current allocation. councilMember is deliberately not a dependency,
+  // so the poll catching up after a grant cannot clobber the granted state.
   useEffect(() => {
     if (!show || claimInFlightRef.current) {
       return;
     }
 
     setClaimErrorCode(null);
-
-    if (councilMember) {
-      setState("already-has-votes");
-      return;
-    }
-
     loadStatus();
-  }, [show, councilMember, loadStatus]);
+  }, [show, loadStatus]);
 
   const metRows = rows.filter((row) => row.status === "met");
   // The grant is the largest single allocation, never the sum.
@@ -276,6 +284,7 @@ export default function NftEligibilityModal({
       onExited={() => {
         setState("list-loading");
         setRows([]);
+        setCurrentVotes(0);
         setGrantedVotes(null);
         setClaimErrorCode(null);
       }}
@@ -295,14 +304,30 @@ export default function NftEligibilityModal({
               </span>{" "}
               votes in this council.
             </span>
+            {rows.length > 0 &&
+            currentVotes > 0 &&
+            claimableVotes <= currentVotes ? (
+              <span className="text-info">
+                That&apos;s the highest allocation you currently qualify for.
+              </span>
+            ) : null}
           </Stack>
         ) : null}
 
         {state === "granted" ? (
           <Stack direction="vertical" gap={3}>
             <Alert variant="success" className="mb-0">
-              You received <span className="fw-semi-bold">{grantedVotes}</span>{" "}
-              votes.
+              {currentVotes > 0 ? (
+                <>
+                  Your votes increased to{" "}
+                  <span className="fw-semi-bold">{grantedVotes}</span>.
+                </>
+              ) : (
+                <>
+                  You received{" "}
+                  <span className="fw-semi-bold">{grantedVotes}</span> votes.
+                </>
+              )}
             </Alert>
           </Stack>
         ) : null}
@@ -347,7 +372,17 @@ export default function NftEligibilityModal({
                   />
                 ))}
 
-            {metRows.length > 1 && state !== "council-unavailable" ? (
+            {state !== "council-unavailable" &&
+            currentVotes > 0 &&
+            claimableVotes > currentVotes ? (
+              <span>
+                You have {votesLabel(currentVotes)} and qualify for{" "}
+                <span className="fw-semi-bold">
+                  {votesLabel(claimableVotes)}
+                </span>
+                .
+              </span>
+            ) : metRows.length > 1 && state !== "council-unavailable" ? (
               <span>
                 You&apos;ll receive{" "}
                 <span className="fw-semi-bold">
@@ -399,7 +434,7 @@ export default function NftEligibilityModal({
         ) : null}
 
         {(state === "list-resolved" || state === "claim-error" || isClaiming) &&
-        claimableVotes > 0 ? (
+        claimableVotes > currentVotes ? (
           <Button
             variant="primary"
             className="rounded-4 px-4 py-2 fw-semi-bold"

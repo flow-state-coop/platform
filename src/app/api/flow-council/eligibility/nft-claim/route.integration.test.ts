@@ -7,6 +7,8 @@ import { describe, it, expect, afterAll, beforeEach, vi } from "vitest";
 //   body:     { address, chainId, councilId, signature, issuedAt }
 //             issuedAt is epoch milliseconds.
 //   success:  { success: true, votingPower, groupId, groupName }
+//             (addVoter for a new voter, editVoter to raise an existing one
+//             to a higher met tier; power is never lowered)
 //   already:  { success: true, alreadyVoter: true, code: "already_voter",
 //               votingPower }
 //   refusal:  { success: false, code }
@@ -295,6 +297,10 @@ function addVoterWrites() {
   return nftChain.writes.filter((w) => w.functionName === "addVoter");
 }
 
+function editVoterWrites() {
+  return nftChain.writes.filter((w) => w.functionName === "editVoter");
+}
+
 // ---------------------------------------------------------------------------
 // Criterion 13: "No votes can be granted to an address without a signature from
 // that address, and no page load or check causes an on-chain transaction."
@@ -497,6 +503,8 @@ describe("nft-claim happy path", () => {
 // ---------------------------------------------------------------------------
 // Criterion 10: "A wallet that already has voting power is never altered by an
 // automated check, whether it was added by an admin or claimed earlier."
+// The signed recheck (nft-claim tier upgrade below) may raise a voter's power,
+// never lower it, so a voter at or above every met tier stays untouched.
 // ---------------------------------------------------------------------------
 
 describe("nft-claim already-a-voter protection", () => {
@@ -581,6 +589,150 @@ describe("nft-claim re-claim after an admin zeroed the voter", () => {
 
     const rows = await allMembershipRows();
     expect(rows).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Recheck: an existing voter who now qualifies for a higher tier claims the
+// increase. The route raises their power with editVoter and moves the
+// membership row; a recheck may only ever raise a voter's power.
+// ---------------------------------------------------------------------------
+
+describe("nft-claim tier upgrade", () => {
+  it("raises an existing voter to a higher met tier via editVoter", async () => {
+    const community = await insertNftGroup({
+      name: "Community",
+      contractAddress: COLLECTION_1155,
+      tokenStandard: "erc1155",
+      tokenId: "1",
+      defaultVotingPower: 5,
+    });
+    const core = await insertNftGroup({
+      name: "Core",
+      contractAddress: COLLECTION_721,
+      defaultVotingPower: 20,
+    });
+    await addMember(community, HOLDER);
+    setVotingPower(HOLDER, 5n);
+
+    const { body } = await claim({});
+
+    expect(body.success).toBe(true);
+    expect(body.alreadyVoter).toBeUndefined();
+    expect(Number(body.votingPower)).toBe(20);
+    expect(body.groupId).toBe(core);
+
+    expect(addVoterWrites()).toEqual([]);
+    const edits = editVoterWrites();
+    expect(edits).toHaveLength(1);
+    expect(String(edits[0].args[0]).toLowerCase()).toBe(HOLDER.toLowerCase());
+    expect(edits[0].args[1]).toBe(20n);
+
+    expect(await membershipRows(HOLDER)).toEqual([
+      { voterGroupId: core, address: HOLDER.toLowerCase() },
+    ]);
+  });
+
+  it("records a membership row for an admin-added voter who upgrades", async () => {
+    const core = await insertNftGroup({
+      name: "Core",
+      contractAddress: COLLECTION_721,
+      defaultVotingPower: 20,
+    });
+    setVotingPower(HOLDER, 5n);
+
+    const { body } = await claim({});
+
+    expect(body.success).toBe(true);
+    expect(editVoterWrites()).toHaveLength(1);
+    expect(await membershipRows(HOLDER)).toEqual([
+      { voterGroupId: core, address: HOLDER.toLowerCase() },
+    ]);
+  });
+
+  it("consumes the rate-limit window like a first claim", async () => {
+    await insertNftGroup({ name: "Core", defaultVotingPower: 20 });
+    setVotingPower(HOLDER, 5n);
+
+    const { body } = await claim({});
+
+    expect(body.success).toBe(true);
+    expect(await lastClaimAt()).not.toBeNull();
+  });
+
+  it("never lowers a voter whose power already meets the highest met tier", async () => {
+    await insertNftGroup({ name: "Core", defaultVotingPower: 20 });
+    setVotingPower(HOLDER, 20n);
+
+    const before = await dbSnapshot();
+    const { body } = await claim({});
+
+    expect(body.success).toBe(true);
+    expect(body.alreadyVoter).toBe(true);
+    expect(Number(body.votingPower)).toBe(20);
+    expect(nftChain.writes).toEqual([]);
+    expect(await dbSnapshot()).toBe(before);
+  });
+
+  // The recheck twin of "a read failure must never be presented as 'you don't
+  // qualify'": an unread tier that could beat the current power must not
+  // flatten to "no higher tier for you".
+  it("returns check_unavailable when the read that could beat the current power failed", async () => {
+    await insertNftGroup({
+      name: "Core",
+      contractAddress: COLLECTION_721,
+      defaultVotingPower: 20,
+    });
+    setVotingPower(HOLDER, 5n);
+    failRead(COLLECTION_721, "balanceOf");
+
+    const { body } = await claim({});
+
+    expect(body.success).toBe(false);
+    expect(body.code).toBe("check_unavailable");
+    expect(nftChain.writes).toEqual([]);
+  });
+
+  it("treats an unresolved tier below the current power as no upgrade", async () => {
+    await insertNftGroup({
+      name: "Core",
+      contractAddress: COLLECTION_721,
+      defaultVotingPower: 20,
+    });
+    setVotingPower(HOLDER, 30n);
+    failRead(COLLECTION_721, "balanceOf");
+
+    const { body } = await claim({});
+
+    expect(body.success).toBe(true);
+    expect(body.alreadyVoter).toBe(true);
+    expect(nftChain.writes).toEqual([]);
+  });
+
+  it("restores the previous group when the upgrade write throws", async () => {
+    const community = await insertNftGroup({
+      name: "Community",
+      contractAddress: COLLECTION_1155,
+      tokenStandard: "erc1155",
+      tokenId: "1",
+      defaultVotingPower: 5,
+    });
+    await insertNftGroup({
+      name: "Core",
+      contractAddress: COLLECTION_721,
+      defaultVotingPower: 20,
+    });
+    await addMember(community, HOLDER);
+    setVotingPower(HOLDER, 5n);
+    nftChain.writeError = "boom";
+
+    const { body } = await claim({});
+
+    expect(body.success).toBe(false);
+    expect(body.code).toBe("chain_error");
+    expect(await membershipRows(HOLDER)).toEqual([
+      { voterGroupId: community, address: HOLDER.toLowerCase() },
+    ]);
   });
 });
 
@@ -766,6 +918,47 @@ describe("nft-claim rollback", () => {
       defaultVotingPower: 20,
     });
     nftChain.receiptStatus = "reverted";
+
+    const { body } = await claim({});
+
+    expect(body.success).toBe(false);
+    expect(body.code).toBe("chain_error");
+    expect(await allMembershipRows()).toEqual([]);
+  });
+
+  // The explicit gas limit skips simulation, so a redundant claim broadcasts
+  // and reverts on-chain with no readable reason. The route reads the voter
+  // back: power at or above the winner's tier means a concurrent claim landed
+  // first and this one already happened, not a chain_error.
+  it("maps a broadcast revert onto already_voter when the voter appeared meanwhile", async () => {
+    const core = await insertNftGroup({
+      name: "Core",
+      contractAddress: COLLECTION_721,
+      defaultVotingPower: 20,
+    });
+    nftChain.receiptStatus = "reverted";
+    nftChain.writeHook = () => setVotingPower(HOLDER, 20n);
+
+    const { body } = await claim({});
+
+    expect(body.success).toBe(true);
+    expect(body.alreadyVoter).toBe(true);
+    expect(Number(body.votingPower)).toBe(20);
+    expect(await membershipRows(HOLDER)).toEqual([
+      { voterGroupId: core, address: HOLDER.toLowerCase() },
+    ]);
+    // The transaction was broadcast, so the rate window stays held.
+    expect(await lastClaimAt()).not.toBeNull();
+  });
+
+  it("still fails a broadcast revert when the concurrent power is below the tier", async () => {
+    await insertNftGroup({
+      name: "Core",
+      contractAddress: COLLECTION_721,
+      defaultVotingPower: 20,
+    });
+    nftChain.receiptStatus = "reverted";
+    nftChain.writeHook = () => setVotingPower(HOLDER, 5n);
 
     const { body } = await claim({});
 
@@ -996,7 +1189,8 @@ describe("nft-claim refusal codes", () => {
     codes.add((await claim({})).body.code);
 
     await setLastClaimAt(null);
-    setVotingPower(HOLDER, 7n);
+    // At or above every tier: below the 20-vote tier this would be an upgrade.
+    setVotingPower(HOLDER, 30n);
     codes.add((await claim({})).body.code);
 
     expect(codes).toEqual(

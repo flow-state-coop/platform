@@ -45,6 +45,9 @@ export const nftChain = {
   failReads: new Set<string>(),
   validSignatures: new Set<string>(),
   writeError: null as string | null,
+  // Runs on every writeContract call, before the write settles: lets a test
+  // land a concurrent state change between a route's read and its receipt.
+  writeHook: null as (() => void) | null,
   receiptError: null as string | null,
   receiptStatus: "success" as "success" | "reverted",
   reads: [] as CallRecord[],
@@ -65,6 +68,7 @@ export function resetNftChain() {
   nftChain.failReads.clear();
   nftChain.validSignatures.clear();
   nftChain.writeError = null;
+  nftChain.writeHook = null;
   nftChain.receiptError = null;
   nftChain.receiptStatus = "success";
   nftChain.reads = [];
@@ -301,6 +305,7 @@ export function createNftMockWalletClient() {
           functionName,
           args,
         });
+        nftChain.writeHook?.();
         if (nftChain.writeError) throw new Error(nftChain.writeError);
         return TX_HASH;
       },

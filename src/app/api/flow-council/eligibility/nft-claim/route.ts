@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 
 // Without a cap, gas estimation hands an admin-supplied contract the whole
 // block limit at the bot's expense.
-const ADD_VOTER_GAS_LIMIT = 200_000n;
+const VOTER_WRITE_GAS_LIMIT = 200_000n;
 
 type RefusalCode =
   | "no_requirements"
@@ -112,14 +112,38 @@ export async function POST(request: Request) {
       requirements,
     });
 
-    // A wallet that already has power is never touched, however it got there.
-    if (evaluation.votingPower !== null && evaluation.votingPower > 0n) {
-      return Response.json({
-        success: true,
-        alreadyVoter: true,
-        code: "already_voter",
-        votingPower: evaluation.votingPower.toString(),
-      });
+    // A failed getVoter read flattens to zero: the claim then takes the
+    // addVoter path, which reverts for a real voter, and the post-revert read
+    // below repairs the answer.
+    const currentPower = evaluation.votingPower ?? 0n;
+
+    const winner = selectWinner(evaluation.rows, requirements);
+    const isUpgrade = currentPower > 0n;
+
+    // A recheck may only ever raise a voter's power, so a winner at or below
+    // what the wallet already holds is not a claim.
+    if (!winner || BigInt(winner.defaultVotingPower) <= currentPower) {
+      // An unresolved row outranks both verdicts: a read failure must never be
+      // presented as "you don't qualify", or to an existing voter as "no
+      // higher tier for you", when the unread tier could beat what they hold.
+      if (
+        evaluation.rows.some(
+          (row) => row.status === "unknown" && BigInt(row.votes) > currentPower,
+        )
+      ) {
+        return refusal("check_unavailable");
+      }
+
+      if (isUpgrade) {
+        return Response.json({
+          success: true,
+          alreadyVoter: true,
+          code: "already_voter",
+          votingPower: currentPower.toString(),
+        });
+      }
+
+      return refusal("not_eligible");
     }
 
     if (evaluation.botHasRole === false) {
@@ -135,18 +159,6 @@ export async function POST(request: Request) {
 
     if (!(await isFactoryCouncil(numericChainId, councilId))) {
       return refusal("council_unverified");
-    }
-
-    const winner = selectWinner(evaluation.rows, requirements);
-
-    if (!winner) {
-      // An unresolved row outranks a not-eligible verdict: a read failure must
-      // never be presented to a holder as "you don't qualify".
-      return refusal(
-        evaluation.rows.some((row) => row.status === "unknown")
-          ? "check_unavailable"
-          : "not_eligible",
-      );
     }
 
     // After consent and eligibility, so spam cannot lock out real claimers;
@@ -178,8 +190,8 @@ export async function POST(request: Request) {
     let previousGroupId: number | null = null;
 
     if (!inserted) {
-      // A row exists and on-chain power is 0, so this is a zeroed-out voter
-      // claiming again. Move it rather than reporting success and granting
+      // A row exists for a zeroed-out voter claiming again or for a voter
+      // moving up a tier. Move it rather than reporting success and granting
       // nothing.
       const existing = await db
         .selectFrom("voterGroupMembers")
@@ -229,9 +241,9 @@ export async function POST(request: Request) {
         account,
         address: councilId as Address,
         abi: flowCouncilAbi,
-        functionName: "addVoter",
+        functionName: isUpgrade ? "editVoter" : "addVoter",
         args: [address as Address, BigInt(winner.defaultVotingPower)],
-        gas: ADD_VOTER_GAS_LIMIT,
+        gas: VOTER_WRITE_GAS_LIMIT,
       });
 
       broadcast = true;
@@ -249,7 +261,8 @@ export async function POST(request: Request) {
       const errorMessage = (err as Error)?.message ?? "";
 
       // The wallet was added between the getVoter read and this broadcast, so
-      // the membership row is correct and the claim already happened.
+      // the membership row is correct and the claim already happened. Only a
+      // pre-broadcast simulation surfaces the revert by name.
       if (errorMessage.includes("ALREADY_ADDED")) {
         // Someone else set the power, so it is not ours to report.
         if (!broadcast) {
@@ -263,6 +276,41 @@ export async function POST(request: Request) {
           groupId: winner.id,
           groupName: winner.name,
         });
+      }
+
+      // The explicit gas limit skips simulation, so the same race reaches the
+      // chain and reverts there without a readable reason. A fresh read is the
+      // only thing that separates "a concurrent claim landed first" from a
+      // real failure: power at or above the winner's means the claim already
+      // happened and the membership row is correct.
+      if (reverted) {
+        let onChainPower: bigint | null = null;
+
+        try {
+          const voter = await publicClient.readContract({
+            address: councilId as Address,
+            abi: flowCouncilAbi,
+            functionName: "getVoter",
+            args: [address as Address],
+          });
+          onChainPower = BigInt(voter.votingPower);
+        } catch (probeErr) {
+          console.error("Voter read after reverted claim failed:", probeErr);
+        }
+
+        if (
+          onChainPower !== null &&
+          onChainPower >= BigInt(winner.defaultVotingPower)
+        ) {
+          return Response.json({
+            success: true,
+            alreadyVoter: true,
+            code: "already_voter",
+            votingPower: onChainPower.toString(),
+            groupId: winner.id,
+            groupName: winner.name,
+          });
+        }
       }
 
       // Only roll back on a provably terminal failure. A broadcast whose

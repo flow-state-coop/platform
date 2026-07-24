@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Button from "react-bootstrap/Button";
+import Stack from "react-bootstrap/Stack";
 import useFlowCouncil from "../hooks/flowCouncil";
 import EligibilityButton from "./EligibilityButton";
 import NftEligibilityModal, {
@@ -82,14 +83,36 @@ export default function VoterEligibility({
 
   if (councilMember && nftRequirements && nftRequirements.length > 0) {
     return (
-      <Button
-        variant="primary"
-        className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
-        style={{ width: isMobile ? "100%" : 240 }}
-        onClick={() => dispatchShowBallot({ type: "show" })}
-      >
-        View Ballot
-      </Button>
+      <>
+        <Stack
+          direction="vertical"
+          gap={2}
+          className="align-items-center flex-grow-0"
+          style={{ width: isMobile ? "100%" : 240 }}
+        >
+          <Button
+            variant="primary"
+            className="w-100 py-4 text-light rounded-4 fs-lg fw-semi-bold"
+            onClick={() => dispatchShowBallot({ type: "show" })}
+          >
+            View Ballot
+          </Button>
+          <Button
+            variant="link"
+            className="p-0 text-decoration-underline fw-semi-bold text-primary"
+            onClick={() => setShowModal(true)}
+          >
+            Recheck Eligibility
+          </Button>
+        </Stack>
+        <NftEligibilityModal
+          show={showModal}
+          onHide={() => setShowModal(false)}
+          chainId={chainId}
+          councilId={councilId}
+          requirements={nftRequirements}
+        />
+      </>
     );
   }
 
