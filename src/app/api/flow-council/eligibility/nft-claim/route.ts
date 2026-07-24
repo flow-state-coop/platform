@@ -145,6 +145,10 @@ export async function POST(request: Request) {
     const currentPower = evaluation.votingPower;
 
     const winner = selectWinner(evaluation.rows, requirements);
+    // Zero power takes the addVoter path on the assumption that revoking a
+    // voter deregisters the account on-chain. If a zeroed account were somehow
+    // still registered, addVoter reverts ALREADY_ADDED and the catch below
+    // answers already-voter instead of failing the claim.
     const isUpgrade = currentPower > 0n;
 
     // A recheck may only ever raise a voter's power, so a winner at or below

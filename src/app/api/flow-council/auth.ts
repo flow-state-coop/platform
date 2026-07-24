@@ -377,7 +377,10 @@ export async function isFactoryCouncil(
     }
 
     if (factoryCouncils.size >= FACTORY_COUNCIL_CACHE_LIMIT) {
-      factoryCouncils.delete(factoryCouncils.keys().next().value as string);
+      const leastRecentlyUsed = factoryCouncils.keys().next().value;
+      if (leastRecentlyUsed !== undefined) {
+        factoryCouncils.delete(leastRecentlyUsed);
+      }
     }
 
     factoryCouncils.set(key, true);

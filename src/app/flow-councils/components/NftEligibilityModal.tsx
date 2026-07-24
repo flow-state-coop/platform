@@ -232,9 +232,10 @@ export default function NftEligibilityModal({
       const data = await res.json();
 
       if (data.success) {
-        // The ALREADY_ADDED path deliberately omits votingPower, since another
-        // claim set it and this route never read it back. null falls through to
-        // the polled on-chain figure; Number(undefined) would render as NaN.
+        // An already-voter response omits votingPower when the route's fresh
+        // read could not resolve it. Number(undefined) is NaN, not a bug: the
+        // isFinite filter turns it into null, which falls through to the
+        // polled on-chain figure in the render.
         const granted = Number(data.votingPower);
         setGrantedVotes(Number.isFinite(granted) ? granted : null);
         setState(data.alreadyVoter ? "already-has-votes" : "granted");
