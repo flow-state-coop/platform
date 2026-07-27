@@ -15,7 +15,7 @@ import useFlowingAmount from "@/hooks/flowingAmount";
 import { networks } from "@/lib/networks";
 import { formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
-import EligibilityButton from "./EligibilityButton";
+import VoterEligibility from "./VoterEligibility";
 
 type PoolInfoProps = {
   name: string;
@@ -142,7 +142,7 @@ export default function PoolInfo(props: PoolInfoProps) {
       <Stack
         direction={isMobile ? "vertical" : "horizontal"}
         gap={4}
-        className="justify-content-end w-100 mt-8"
+        className="justify-content-end align-items-start w-100 mt-8"
       >
         <Button
           variant="secondary"
@@ -152,7 +152,7 @@ export default function PoolInfo(props: PoolInfoProps) {
         >
           Grow the Pie
         </Button>
-        <EligibilityButton
+        <VoterEligibility
           chainId={chainId}
           councilId={councilId}
           isMobile={isMobile}

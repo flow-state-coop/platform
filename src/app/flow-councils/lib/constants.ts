@@ -13,6 +13,17 @@ export const CELO_CHAIN_ID = 42220;
 // prevents bursts from racing the bot's nonce.
 export const METRICS_MIN_INTERVAL_MS = 60_000;
 
+// Minimum gap between NFT vote claims on a council. Each claim is an on-chain
+// tx paid by the bot, so this protects its nonce and gas the same way the
+// metrics interval does. Deliberately short: a 60s slot would serialize a
+// launch-day rush of 50 holders into 50 minutes.
+export const CLAIM_MIN_INTERVAL_MS = 3_000;
+
+// How long a claim signature stays valid, and how far ahead of the server a
+// client's clock may run before its signature is refused.
+export const CLAIM_SIGNATURE_TTL_MS = 5 * 60_000;
+export const CLAIM_SIGNATURE_SKEW_MS = 30_000;
+
 // After a request is rejected for ballot content the caller controls (an
 // unknown recipient, or weights that normalize to nothing), the submitting key
 // is cooled down for this window. Transient/infra failures and config states

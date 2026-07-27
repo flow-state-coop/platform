@@ -37,6 +37,7 @@ model Round {
   superappSplitterAddress  String?       @map("superapp_splitter_address") @db.VarChar(42)
   applicationsClosed       Boolean       @default(false) @map("applications_closed")
   details                  Json?
+  lastClaimAt              DateTime?     @map("last_claim_at")
   createdAt                DateTime      @default(now()) @map("created_at")
   updatedAt                DateTime      @default(now()) @updatedAt @map("updated_at")
   admins                   RoundAdmin[]
@@ -80,6 +81,11 @@ model VoterGroup {
   eligibilityMethod  String             @map("eligibility_method") @db.VarChar(50)
   defaultVotingPower Int                @default(10) @map("default_voting_power")
   lastBallotAt       DateTime?          @map("last_ballot_at")
+  nftContractAddress String?            @map("nft_contract_address") @db.VarChar(42)
+  nftTokenStandard   String?            @map("nft_token_standard") @db.VarChar(10)
+  nftTokenId         String?            @map("nft_token_id") @db.VarChar(78)
+  nftAcquisitionUrl  String?            @map("nft_acquisition_url")
+  nftCollectionName  String?            @map("nft_collection_name") @db.VarChar(100)
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @default(now()) @updatedAt @map("updated_at")
   round              Round              @relation(fields: [roundId], references: [id])
@@ -88,10 +94,14 @@ model VoterGroup {
 
   @@unique([roundId, name])
   @@map("voter_groups")
-  // Also has the partial unique index `voter_groups_round_metrics_unique`
-  // (round_id WHERE eligibility_method = 'metrics'), defined in raw SQL in the
-  // 20260617000000_add_metrics_voter migration. Prisma can't model partial
-  // indexes, so keep it in the migration — do not let `migrate dev` drop it.
+  // Also has two partial unique indexes, defined in raw SQL because Prisma can't
+  // model partial indexes — keep them in their migrations, do not let
+  // `migrate dev` drop them:
+  //   `voter_groups_round_metrics_unique` (round_id WHERE eligibility_method =
+  //     'metrics'), in 20260617000000_add_metrics_voter.
+  //   `voter_groups_round_nft_unique` (round_id, lower(nft_contract_address),
+  //     coalesce(nft_token_id, '') WHERE eligibility_method = 'nft'), in
+  //     20260721000000_add_nft_voter_group.
 }
 
 model MetricsApiKey {

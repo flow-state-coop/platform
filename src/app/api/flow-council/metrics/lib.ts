@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { createPublicClient, http } from "viem";
 import { getViemChain } from "@/lib/networks";
 import type { Network } from "@/types/network";
-import { buildBotSigner, getGroupByMethod } from "../bot";
+import { getBotSigner, getGroupByMethod } from "../bot";
 
 /**
  * Resolve the "metrics"-eligibility voter group for a council, if one exists.
@@ -12,22 +12,15 @@ export function getMetricsGroup(roundId: number) {
   return getGroupByMethod(roundId, "metrics");
 }
 
-const signerCache = new Map<number, ReturnType<typeof buildBotSigner>>();
-
 /**
  * Resolve the viem account + clients that sign on-chain actions as the Flow
  * State bot, memoized per chain so the ballot hot path doesn't rebuild HTTP
- * transports and re-derive the key on every request. Single seam for the wallet
- * model: today one centralized key signs for every council; a future per-council
- * HD wallet would be derived here from `network`/round instead.
+ * transports and re-derive the key on every request. The memo now lives in
+ * bot.ts so the claim path shares one signer, and one nonce manager, with this
+ * one.
  */
 export function getMetricsSigner(network: Network) {
-  const cached = signerCache.get(network.id);
-  if (cached) return cached;
-
-  const signer = buildBotSigner(network);
-  signerCache.set(network.id, signer);
-  return signer;
+  return getBotSigner(network);
 }
 
 const publicClientCache = new Map<

@@ -7,6 +7,19 @@ import { findRoundByCouncil } from "../../auth";
 
 export const revalidate = 60;
 
+type PublicGroup = {
+  groupId: number;
+  name: string;
+  eligibilityMethod: string;
+  defaultVotingPower: number;
+  members?: string[];
+  nftContractAddress?: string | null;
+  nftTokenStandard?: string | null;
+  nftTokenId?: string | null;
+  nftAcquisitionUrl?: string | null;
+  nftCollectionName?: string | null;
+};
+
 const queryParamsSchema = z.object({
   chainId: z.coerce
     .number()
@@ -28,6 +41,9 @@ export async function GET(request: Request) {
     }
 
     const { chainId, councilId } = parsed.data;
+    // Callers that only need the group metadata opt out of the member lists,
+    // which dominate the payload on large councils.
+    const includeMembers = searchParams.get("includeMembers") !== "0";
 
     const round = await findRoundByCouncil(chainId, councilId);
 
@@ -35,44 +51,66 @@ export async function GET(request: Request) {
       return Response.json({ groups: [] });
     }
 
-    const rows = await db
+    const groupRows = await db
       .selectFrom("voterGroups")
-      .leftJoin(
-        "voterGroupMembers",
-        "voterGroupMembers.voterGroupId",
-        "voterGroups.id",
-      )
       .select([
-        "voterGroups.id as groupId",
-        "voterGroups.name as name",
-        "voterGroups.eligibilityMethod as eligibilityMethod",
-        "voterGroupMembers.address as address",
+        "id as groupId",
+        "name",
+        "eligibilityMethod",
+        "defaultVotingPower",
+        "nftContractAddress",
+        "nftTokenStandard",
+        "nftTokenId",
+        "nftAcquisitionUrl",
+        "nftCollectionName",
       ])
-      .where("voterGroups.roundId", "=", round.id)
-      .orderBy("voterGroups.id", "asc")
+      .where("roundId", "=", round.id)
+      .orderBy("id", "asc")
       .execute();
 
-    const byGroup = new Map<
-      number,
-      { name: string; eligibilityMethod: string; members: string[] }
-    >();
+    // The member lists dominate the query cost as well as the payload, so an
+    // opted-out request never touches the members table at all.
+    const membersByGroup = new Map<number, string[]>();
 
-    for (const row of rows) {
-      let group = byGroup.get(row.groupId);
-      if (!group) {
-        group = {
-          name: row.name,
-          eligibilityMethod: row.eligibilityMethod,
-          members: [],
-        };
-        byGroup.set(row.groupId, group);
-      }
-      if (row.address) {
-        group.members.push(row.address);
+    if (includeMembers) {
+      const memberRows = await db
+        .selectFrom("voterGroupMembers")
+        .select(["voterGroupId", "address"])
+        .where("roundId", "=", round.id)
+        .execute();
+
+      for (const row of memberRows) {
+        const members = membersByGroup.get(row.voterGroupId);
+        if (members) {
+          members.push(row.address);
+        } else {
+          membersByGroup.set(row.voterGroupId, [row.address]);
+        }
       }
     }
 
-    return Response.json({ groups: Array.from(byGroup.values()) });
+    const groups: PublicGroup[] = groupRows.map((row) => ({
+      groupId: row.groupId,
+      name: row.name,
+      eligibilityMethod: row.eligibilityMethod,
+      defaultVotingPower: row.defaultVotingPower,
+      ...(includeMembers
+        ? { members: membersByGroup.get(row.groupId) ?? [] }
+        : {}),
+      // Only nft groups carry the requirement metadata the eligibility
+      // popup renders, so every other group keeps its existing shape.
+      ...(row.eligibilityMethod === "nft"
+        ? {
+            nftContractAddress: row.nftContractAddress,
+            nftTokenStandard: row.nftTokenStandard,
+            nftTokenId: row.nftTokenId,
+            nftAcquisitionUrl: row.nftAcquisitionUrl,
+            nftCollectionName: row.nftCollectionName,
+          }
+        : {}),
+    }));
+
+    return Response.json({ groups });
   } catch (err) {
     console.error(err);
     return errorResponse("There was an error, please try again later", 500);

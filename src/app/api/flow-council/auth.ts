@@ -1,5 +1,7 @@
 import { createPublicClient, http, parseAbi, Address, isAddress } from "viem";
 import { getServerSession } from "next-auth/next";
+import { gql } from "@apollo/client";
+import { getApolloClient } from "@/lib/apollo";
 import { db } from "./db";
 import { networks, getViemChain } from "@/lib/networks";
 import { ChannelType } from "@/generated/kysely";
@@ -324,5 +326,67 @@ export async function canModerateChannel(
 
     default:
       return false;
+  }
+}
+
+const COUNCIL_EXISTS_QUERY = gql`
+  query FlowCouncilExists($councilId: String!) {
+    flowCouncil(id: $councilId) {
+      id
+    }
+  }
+`;
+
+const FACTORY_COUNCIL_CACHE_LIMIT = 500;
+
+// Map instead of Set for LRU behavior: a hit re-inserts its key, so eviction
+// drops the least recently used council, not the busiest early one.
+const factoryCouncils = new Map<string, true>();
+
+/** Drop the verified-council cache, so tests can control the guard. */
+export function resetFactoryCouncilCache() {
+  factoryCouncils.clear();
+}
+
+/**
+ * The subgraph only indexes FlowCouncilCreated events from the factory, so
+ * presence there is the proof of origin. Fails closed, and caches only
+ * positives since a council cannot become un-created.
+ */
+export async function isFactoryCouncil(
+  chainId: number,
+  councilId: string,
+): Promise<boolean> {
+  const key = `${chainId}:${councilId.toLowerCase()}`;
+
+  if (factoryCouncils.has(key)) {
+    factoryCouncils.delete(key);
+    factoryCouncils.set(key, true);
+    return true;
+  }
+
+  try {
+    const { data } = await getApolloClient("flowCouncil", chainId).query({
+      query: COUNCIL_EXISTS_QUERY,
+      variables: { councilId: councilId.toLowerCase() },
+      fetchPolicy: "no-cache",
+    });
+
+    if (!data?.flowCouncil?.id) {
+      return false;
+    }
+
+    if (factoryCouncils.size >= FACTORY_COUNCIL_CACHE_LIMIT) {
+      const leastRecentlyUsed = factoryCouncils.keys().next().value;
+      if (leastRecentlyUsed !== undefined) {
+        factoryCouncils.delete(leastRecentlyUsed);
+      }
+    }
+
+    factoryCouncils.set(key, true);
+    return true;
+  } catch (err) {
+    console.error("Council factory verification failed:", err);
+    return false;
   }
 }

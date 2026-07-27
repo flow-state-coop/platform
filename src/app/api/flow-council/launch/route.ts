@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createPublicClient, http, parseAbi, Address, isAddress } from "viem";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
+import { isFactoryCouncil } from "../auth";
 import { networks, getViemChain } from "@/lib/networks";
 import { DEFAULT_ADMIN_ROLE } from "@/app/flow-councils/lib/constants";
 
@@ -96,6 +97,17 @@ export async function POST(request: Request) {
         JSON.stringify({
           success: false,
           error: "Not an admin of this council",
+        }),
+      );
+    }
+
+    // hasRole is answered by the candidate contract, so a contract can simply
+    // return true for everyone.
+    if (!(await isFactoryCouncil(chainId, flowCouncilAddress))) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "That address is not a Flow Council deployed by the factory",
         }),
       );
     }

@@ -122,6 +122,7 @@ export type Round = {
   superappSplitterAddress: string | null;
   applicationsClosed: Generated<boolean>;
   details: unknown | null;
+  lastClaimAt: Timestamp | null;
   createdAt: Generated<Timestamp>;
   updatedAt: Generated<Timestamp>;
 };
@@ -168,6 +169,11 @@ export type VoterGroup = {
   eligibilityMethod: string;
   defaultVotingPower: Generated<number>;
   lastBallotAt: Timestamp | null;
+  nftContractAddress: string | null;
+  nftTokenStandard: string | null;
+  nftTokenId: string | null;
+  nftAcquisitionUrl: string | null;
+  nftCollectionName: string | null;
   createdAt: Generated<Timestamp>;
   updatedAt: Generated<Timestamp>;
 };

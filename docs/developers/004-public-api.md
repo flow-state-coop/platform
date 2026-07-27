@@ -32,20 +32,32 @@ Response:
 {
   "groups": [
     {
+      "groupId": 12,
       "name": "Core Contributors",
       "eligibilityMethod": "manual",
+      "defaultVotingPower": 10,
       "members": ["0xabc...", "0xdef..."]
     },
     {
-      "name": "GoodDollar Holders",
-      "eligibilityMethod": "gooddollar",
-      "members": ["0x123..."]
+      "groupId": 13,
+      "name": "Flowstaters Core NFT",
+      "eligibilityMethod": "nft",
+      "defaultVotingPower": 20,
+      "members": ["0x123..."],
+      "nftContractAddress": "0x9a2...",
+      "nftTokenStandard": "erc721",
+      "nftTokenId": null,
+      "nftAcquisitionUrl": "https://example.org/core-nft",
+      "nftCollectionName": "Flowstaters Core NFT"
     }
   ]
 }
 ```
 
-- `eligibilityMethod` is `"manual"` or `"gooddollar"` at launch.
+- `eligibilityMethod` is one of `"manual"`, `"gooddollar"`, `"metrics"`, or `"nft"`.
+- `defaultVotingPower` is the allocation a voter receives when first added through the group.
+- The five `nft*` fields are present **only** on `"nft"` groups. `nftTokenId` is `null` for ERC-721 collections. They describe the requirement the [NFT Eligibility API](006-nft-eligibility-api.md) evaluates.
+- Add **`&includeMembers=0`** to omit the `members` arrays. On a council with thousands of voters that is the bulk of the payload, and the eligibility popup uses this variant because it only needs group metadata.
 - An unknown `councilId` (not in the platform DB) returns `{ "groups": [] }`.
 - Per-voter allocations and cast-vote counts are not included; compute these from existing subgraph data combined with the membership lists.
 

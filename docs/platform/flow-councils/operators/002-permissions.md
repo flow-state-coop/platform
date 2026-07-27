@@ -25,7 +25,7 @@ The page is read-only unless your connected wallet is a Super Admin. Connect and
 :::
 
 ## Automated eligibility
-For councils with a GoodDollar voter group, a Flow State–sponsored bot is granted the **Voter Review** role so it can add verified voters automatically. Revoking that role from the bot is the kill switch for self-claim. See [Council Membership](004-membership.md) for the full flow.
+For councils with a GoodDollar or NFT Holder voter group, a Flow State–sponsored bot is granted the **Voter Review** role so it can add self-claiming voters automatically. It's the same one-time grant for both methods, and it's offered during group creation. Revoking that role from the bot is the kill switch for self-claim: claims stop working and voters are told eligibility is temporarily unavailable. See [Council Membership](004-membership.md) for the full flow.
 
 ## Going immutable
 :::warning[Removing your only Super Admin is permanent]

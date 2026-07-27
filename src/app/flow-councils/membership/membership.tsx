@@ -20,7 +20,7 @@ import Image from "react-bootstrap/Image";
 import Table from "react-bootstrap/Table";
 import Modal from "react-bootstrap/Modal";
 import InfoTooltip from "@/components/InfoTooltip";
-import { waitForReceipt } from "@/lib/utils";
+import { waitForReceipt, truncateAddress } from "@/lib/utils";
 import Sidebar from "@/app/flow-councils/components/Sidebar";
 import { useMediaQuery } from "@/hooks/mediaQuery";
 import { getApolloClient } from "@/lib/apollo";
@@ -47,6 +47,12 @@ import type {
   VoterGroup,
 } from "./voterTableTypes";
 import { prettyEligibility } from "./voterTableTypes";
+import NftGroupFields, {
+  emptyNftDraft,
+  nftDraftToConfig,
+  isNftDraftComplete,
+  type NftConfigDraft,
+} from "./NftGroupFields";
 
 type MembershipProps = { chainId?: number; councilId?: string };
 
@@ -93,6 +99,9 @@ export default function Membership(props: MembershipProps) {
     useState<EligibilityMethod>("manual");
   const [newGroupDefaultVotingPower, setNewGroupDefaultVotingPower] =
     useState("10");
+  const [newGroupNftDraft, setNewGroupNftDraft] =
+    useState<NftConfigDraft>(emptyNftDraft);
+  const [newGroupNftBlocked, setNewGroupNftBlocked] = useState(false);
   const [createGroupError, setCreateGroupError] = useState("");
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [createGroupSuccess, setCreateGroupSuccess] = useState(false);
@@ -324,6 +333,8 @@ export default function Membership(props: MembershipProps) {
     setNewGroupName("");
     setNewGroupEligibility("manual");
     setNewGroupDefaultVotingPower("10");
+    setNewGroupNftDraft(emptyNftDraft);
+    setNewGroupNftBlocked(false);
     setCreateGroupError("");
     setCreateGroupSuccess(false);
     setCreatedGroupId(null);
@@ -337,11 +348,12 @@ export default function Membership(props: MembershipProps) {
     const name = newGroupName.trim();
     const isGoodDollar = newGroupEligibility === "gooddollar";
     const isMetrics = newGroupEligibility === "metrics";
+    const isNft = newGroupEligibility === "nft";
     // Manual groups don't expose the field; they fall back to the default of 10
     // (the per-voter fallback used by the Add voters modal). GoodDollar's default
     // allocation and the metrics bot's vote power are user-editable, so those are
     // validated.
-    const usesVotePower = isGoodDollar || isMetrics;
+    const usesVotePower = isGoodDollar || isMetrics || isNft;
     const defaultVotingPower = usesVotePower
       ? Number(newGroupDefaultVotingPower)
       : 10;
@@ -375,11 +387,11 @@ export default function Membership(props: MembershipProps) {
     let newGroupId = createdGroupId;
 
     try {
-      // GoodDollar groups rely on the Flow State bot holding VOTER_MANAGER_ROLE
-      // to auto-add self-claiming voters. Grant it as part of creation so a
-      // group can't exist without the permissions that make it work. Skipped
-      // when the bot already holds the role for this council.
-      if (newGroupEligibility === "gooddollar" && !botHasVoterManagerRole) {
+      // GoodDollar and NFT groups rely on the Flow State bot holding
+      // VOTER_MANAGER_ROLE to auto-add self-claiming voters. Grant it as part of
+      // creation so a group can't exist without the permissions that make it
+      // work. Skipped when the bot already holds the role for this council.
+      if (automatedNeedsGrant) {
         if (connectedChain?.id !== chainId) {
           switchChain({ chainId });
           setCreateGroupError(
@@ -465,6 +477,9 @@ export default function Membership(props: MembershipProps) {
             name,
             eligibilityMethod: newGroupEligibility,
             defaultVotingPower,
+            ...(newGroupEligibility === "nft"
+              ? { nftConfig: nftDraftToConfig(newGroupNftDraft) }
+              : {}),
           }),
         });
         const data = await res.json();
@@ -548,15 +563,23 @@ export default function Membership(props: MembershipProps) {
   }
 
   // Granting the bot role is a DEFAULT_ADMIN-only onchain call, so a non-admin
-  // manager can't complete a GoodDollar create that still needs the grant.
-  const goodDollarNeedsGrant =
-    newGroupEligibility === "gooddollar" && !botHasVoterManagerRole;
-  const goodDollarBlockedForNonAdmin = goodDollarNeedsGrant && !isAdmin;
+  // manager can't complete a create that still needs the grant. Both automated
+  // self-claim methods need the bot to hold VOTER_MANAGER_ROLE.
+  const automatedNeedsGrant =
+    (newGroupEligibility === "gooddollar" || newGroupEligibility === "nft") &&
+    !botHasVoterManagerRole;
+  const grantBlockedForNonAdmin = automatedNeedsGrant && !isAdmin;
   const newGroupUsesVotePower =
-    newGroupEligibility === "gooddollar" || newGroupEligibility === "metrics";
+    newGroupEligibility === "gooddollar" ||
+    newGroupEligibility === "metrics" ||
+    newGroupEligibility === "nft";
   const hasMetricsGroup = groups.some(
     (group) => group.eligibilityMethod === "metrics",
   );
+  const hasGoodDollarGroup = groups.some(
+    (group) => group.eligibilityMethod === "gooddollar",
+  );
+  const hasNftGroup = groups.some((group) => group.eligibilityMethod === "nft");
 
   return (
     <>
@@ -831,16 +854,47 @@ export default function Membership(props: MembershipProps) {
               }
             >
               <option value="manual">Manual</option>
-              <option value="gooddollar" disabled={!isCelo}>
-                GoodDollar ID{!isCelo ? " (Celo only)" : ""}
+              <option value="gooddollar" disabled={!isCelo || hasNftGroup}>
+                GoodDollar ID
+                {!isCelo
+                  ? " (Celo only)"
+                  : hasNftGroup
+                    ? " (n/a - this council uses NFT eligibility)"
+                    : ""}
               </option>
               <option value="metrics" disabled={hasMetricsGroup}>
                 {hasMetricsGroup
                   ? "Metrics (n/a - one metrics voter per council)"
                   : "Metrics"}
               </option>
+              <option value="nft" disabled={hasGoodDollarGroup}>
+                {hasGoodDollarGroup
+                  ? "NFT Holder (n/a - this council uses GoodDollar eligibility)"
+                  : "NFT Holder"}
+              </option>
             </Form.Select>
           </Form.Group>
+          {newGroupEligibility === "nft" &&
+          !hasGoodDollarGroup &&
+          chainId &&
+          councilId ? (
+            <div className="mb-3">
+              <NftGroupFields
+                chainId={chainId}
+                councilId={councilId}
+                draft={newGroupNftDraft}
+                onChange={setNewGroupNftDraft}
+                onBlockedChange={setNewGroupNftBlocked}
+                onCollectionDetected={(collectionName, address) =>
+                  setNewGroupName(
+                    (current) =>
+                      current || collectionName || truncateAddress(address),
+                  )
+                }
+                disabled={isCreatingGroup}
+              />
+            </div>
+          ) : null}
           {newGroupUsesVotePower ? (
             <Form.Group className="mb-3">
               <Form.Label className="fw-semi-bold">
@@ -882,21 +936,24 @@ export default function Membership(props: MembershipProps) {
               programmatically.
             </Alert>
           ) : null}
-          {newGroupEligibility === "gooddollar" ? (
+          {newGroupEligibility === "gooddollar" ||
+          newGroupEligibility === "nft" ? (
             <Alert variant="info" className="mb-3">
               Automated eligibility is managed by a Flow State-sponsored bot.{" "}
-              {goodDollarNeedsGrant
+              {automatedNeedsGrant
                 ? "Creating this group will trigger a transaction to grant the necessary voter management permissions."
                 : "It already holds the voter management permissions it needs for this council."}
             </Alert>
           ) : null}
-          {goodDollarBlockedForNonAdmin ? (
+          {grantBlockedForNonAdmin ? (
             <Alert variant="warning" className="mb-3">
               Only a council admin can grant these permissions. Ask a council
               admin to create this group.
             </Alert>
           ) : null}
-          {newGroupEligibility === "gooddollar" && grantError ? (
+          {(newGroupEligibility === "gooddollar" ||
+            newGroupEligibility === "nft") &&
+          grantError ? (
             <Alert variant="danger" className="mb-3">
               {grantError}
             </Alert>
@@ -926,7 +983,12 @@ export default function Membership(props: MembershipProps) {
               isCreatingGroup ||
               isGranting ||
               createGroupSuccess ||
-              goodDollarBlockedForNonAdmin
+              grantBlockedForNonAdmin ||
+              (newGroupEligibility === "nft" &&
+                (hasGoodDollarGroup ||
+                  newGroupNftBlocked ||
+                  !isNftDraftComplete(newGroupNftDraft))) ||
+              (newGroupEligibility === "gooddollar" && hasNftGroup)
             }
           >
             {createGroupSuccess ? (
