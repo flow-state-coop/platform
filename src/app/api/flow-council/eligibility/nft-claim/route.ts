@@ -373,7 +373,7 @@ export async function POST(request: Request) {
 
     return Response.json({
       success: true,
-      votingPower: winner.defaultVotingPower,
+      votingPower: winner.defaultVotingPower.toString(),
       groupId: winner.id,
       groupName: winner.name,
     });
