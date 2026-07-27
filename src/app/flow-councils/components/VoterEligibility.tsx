@@ -15,6 +15,10 @@ type PublicGroup = {
   nftAcquisitionUrl?: string | null;
 };
 
+// Last known NFT requirements per council, so a remount renders the right
+// control immediately (stale-while-revalidate) instead of gating on the fetch.
+const nftRequirementsCache = new Map<string, NftRequirementGroup[]>();
+
 /**
  * Chooses between the NFT eligibility popup and the existing button. Councils
  * without an NFT group fall through to EligibilityButton untouched, which
@@ -34,17 +38,23 @@ export default function VoterEligibility({
   const { councilMember, dispatchShowBallot } = useFlowCouncil();
   const [nftRequirements, setNftRequirements] = useState<
     NftRequirementGroup[] | null
-  >(null);
+  >(() => nftRequirementsCache.get(`${chainId}:${councilId}`) ?? null);
   const [lookupFailed, setLookupFailed] = useState(false);
   const [lookupAttempt, setLookupAttempt] = useState(0);
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    const cacheKey = `${chainId}:${councilId}`;
 
     // Cleared at fetch start, not on success, so a retry or a council switch
     // can't render stale failure UI while the new lookup is in flight.
     setLookupFailed(false);
+
+    const cached = nftRequirementsCache.get(cacheKey);
+    if (cached) {
+      setNftRequirements(cached);
+    }
 
     (async () => {
       try {
@@ -53,25 +63,27 @@ export default function VoterEligibility({
         );
         const data = await res.json();
 
-        if (cancelled) {
-          return;
-        }
-
         if (!Array.isArray(data.groups)) {
-          setLookupFailed(true);
+          if (!cancelled) {
+            setLookupFailed(true);
+          }
           return;
         }
 
-        setNftRequirements(
-          data.groups
-            .filter((group: PublicGroup) => group.eligibilityMethod === "nft")
-            .map((group: PublicGroup) => ({
-              groupId: group.groupId,
-              name: group.name,
-              defaultVotingPower: group.defaultVotingPower,
-              nftAcquisitionUrl: group.nftAcquisitionUrl,
-            })),
-        );
+        const requirements = data.groups
+          .filter((group: PublicGroup) => group.eligibilityMethod === "nft")
+          .map((group: PublicGroup) => ({
+            groupId: group.groupId,
+            name: group.name,
+            defaultVotingPower: group.defaultVotingPower,
+            nftAcquisitionUrl: group.nftAcquisitionUrl,
+          }));
+
+        nftRequirementsCache.set(cacheKey, requirements);
+
+        if (!cancelled) {
+          setNftRequirements(requirements);
+        }
       } catch {
         if (!cancelled) {
           setLookupFailed(true);
