@@ -127,10 +127,10 @@ Content-Type: application/json
 Success:
 
 ```json
-{ "success": true, "votingPower": 20, "groupId": 13, "groupName": "Flowstaters Core NFT" }
+{ "success": true, "votingPower": "20", "groupId": 13, "groupName": "Flowstaters Core NFT" }
 ```
 
-The granted amount is the **largest single allocation** the wallet qualifies for, never the sum, and the wallet lands in exactly one group. Ties break toward the group with the lowest id (the one created first). Clients should render votes from this response rather than waiting for the subgraph, which lags the transaction by up to 30 seconds.
+`votingPower` is a decimal string here too. The granted amount is the **largest single allocation** the wallet qualifies for, never the sum, and the wallet lands in exactly one group. Ties break toward the group with the lowest id (the one created first). Clients should render votes from this response rather than waiting for the subgraph, which lags the transaction by up to 30 seconds.
 
 ### The signed message
 
@@ -167,6 +167,7 @@ Refusals return HTTP `200` with `"success": false` and a `code`, except `rate_li
 | `expired_signature` | `issuedAt` is older than 5 minutes or too far in the future. |
 | `chain_error` | The on-chain assignment failed. Nothing partial is left behind and the claim can be retried. |
 | `no_requirements` | The council has no NFT Holder groups configured. |
+| `council_not_found` | No council exists at that address on that chain. |
 | `council_unverified` | The council address wasn't deployed by the Flow Council factory, so the bot won't spend gas on it. |
 
 ### Rate limit
