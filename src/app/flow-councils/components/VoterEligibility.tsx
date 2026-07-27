@@ -42,6 +42,10 @@ export default function VoterEligibility({
   useEffect(() => {
     let cancelled = false;
 
+    // Cleared at fetch start, not on success, so a retry or a council switch
+    // can't render stale failure UI while the new lookup is in flight.
+    setLookupFailed(false);
+
     (async () => {
       try {
         const res = await fetch(
@@ -58,7 +62,6 @@ export default function VoterEligibility({
           return;
         }
 
-        setLookupFailed(false);
         setNftRequirements(
           data.groups
             .filter((group: PublicGroup) => group.eligibilityMethod === "nft")
