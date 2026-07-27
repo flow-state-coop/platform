@@ -24,6 +24,7 @@ const VOTER_WRITE_GAS_LIMIT = 200_000n;
 
 type RefusalCode =
   | "no_requirements"
+  | "council_not_found"
   | "invalid_signature"
   | "expired_signature"
   | "not_eligible"
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
     const round = await findRoundByCouncil(numericChainId, councilId);
 
     if (!round) {
-      return Response.json({ success: false, error: "Council not found" });
+      return refusal("council_not_found");
     }
 
     roundId = round.id;
