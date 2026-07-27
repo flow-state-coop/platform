@@ -49,6 +49,8 @@ const CLAIM_ERROR_COPY: Record<string, string> = {
   not_eligible: "This wallet doesn't meet any of the requirements yet.",
   no_requirements: "This council has no NFT requirements configured.",
   council_not_found: "This council couldn't be found. Refresh and try again.",
+  council_unverified:
+    "This council couldn't be verified. Contact the council admin.",
   invalid_signature: "That signature couldn't be verified. Try again.",
   expired_signature: "That signature expired. Try again.",
 };
