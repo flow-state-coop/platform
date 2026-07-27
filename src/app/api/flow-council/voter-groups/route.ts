@@ -743,9 +743,11 @@ export async function PATCH(request: Request) {
         assertNftCollectionUnique(groups, nftColumns, id);
       }
 
-      // Inside the lock: a claim landing between an unlocked count and this
-      // update would switch the method out from under a group that just
-      // gained its first member.
+      // The count runs under the council-group lock, so it cannot race another
+      // admin write, and a concurrent claim's member insert blocks on the
+      // locked group row. A claim that evaluated requirements before this
+      // commits can still insert afterward with the pre-switch allocation;
+      // that grant was valid under the config in force when it was checked.
       if (switchesNftMethod) {
         const memberCountRow = await trx
           .selectFrom("voterGroupMembers")

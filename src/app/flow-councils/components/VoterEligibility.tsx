@@ -132,6 +132,13 @@ export default function VoterEligibility({
     );
   }
 
+  // While the lookup is in flight the council's method is unknown, so render
+  // nothing rather than flash EligibilityButton's clickable GoodDollar UI on a
+  // council that turns out to be NFT-gated.
+  if (!nftRequirements && !lookupFailed) {
+    return null;
+  }
+
   if (!nftRequirements || nftRequirements.length === 0) {
     return (
       <EligibilityButton

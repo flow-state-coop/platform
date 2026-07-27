@@ -142,7 +142,7 @@ export default function PoolInfo(props: PoolInfoProps) {
       <Stack
         direction={isMobile ? "vertical" : "horizontal"}
         gap={4}
-        className="justify-content-end w-100 mt-8"
+        className="justify-content-end align-items-start w-100 mt-8"
       >
         <Button
           variant="secondary"

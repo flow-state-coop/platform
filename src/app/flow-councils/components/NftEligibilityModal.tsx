@@ -261,6 +261,9 @@ export default function NftEligibilityModal({
           ? "pending"
           : row.status;
 
+  // The list stays on screen through a grant or an unchanged recheck: the
+  // outcome renders as a banner above it, so users still see which
+  // requirements they did or didn't meet.
   const showsRequirementList =
     state === "list-loading" ||
     state === "list-resolved" ||
@@ -268,10 +271,17 @@ export default function NftEligibilityModal({
     state === "claiming-signing" ||
     state === "claiming-pending" ||
     state === "claim-error" ||
-    state === "council-unavailable";
+    state === "council-unavailable" ||
+    state === "granted" ||
+    state === "already-has-votes";
 
   const isClaiming =
     state === "claiming-signing" || state === "claiming-pending";
+
+  // The qualify/receive hints below the list describe a claim that hasn't
+  // happened yet, so they hide once the outcome banners take over.
+  const showsClaimContext =
+    state === "list-resolved" || state === "claim-error" || isClaiming;
 
   const votesLabel = (votes: number) =>
     `${votes} ${votes === 1 ? "vote" : "votes"}`;
@@ -296,43 +306,6 @@ export default function NftEligibilityModal({
         </Modal.Title>
       </Modal.Header>
       <Modal.Body className="p-4 pt-0">
-        {state === "already-has-votes" ? (
-          <Stack direction="vertical" gap={3}>
-            <span>
-              You have{" "}
-              <span className="fw-semi-bold">
-                {grantedVotes ?? councilMember?.votingPower}
-              </span>{" "}
-              votes in this council.
-            </span>
-            {rows.length > 0 &&
-            currentVotes > 0 &&
-            claimableVotes <= currentVotes ? (
-              <span className="text-info">
-                That&apos;s the highest allocation you currently qualify for.
-              </span>
-            ) : null}
-          </Stack>
-        ) : null}
-
-        {state === "granted" ? (
-          <Stack direction="vertical" gap={3}>
-            <Alert variant="success" className="mb-0">
-              {currentVotes > 0 ? (
-                <>
-                  Your votes increased to{" "}
-                  <span className="fw-semi-bold">{grantedVotes}</span>.
-                </>
-              ) : (
-                <>
-                  You received{" "}
-                  <span className="fw-semi-bold">{grantedVotes}</span> votes.
-                </>
-              )}
-            </Alert>
-          </Stack>
-        ) : null}
-
         {state === "no-requirements" ? (
           <span className="text-info">
             This council has no NFT requirements configured.
@@ -341,6 +314,32 @@ export default function NftEligibilityModal({
 
         {showsRequirementList ? (
           <Stack direction="vertical" gap={3}>
+            {state === "granted" ? (
+              <Alert variant="success" className="mb-0">
+                {currentVotes > 0 ? (
+                  <>
+                    Your votes increased to{" "}
+                    <span className="fw-semi-bold">{grantedVotes}</span>.
+                  </>
+                ) : (
+                  <>
+                    You received{" "}
+                    <span className="fw-semi-bold">{grantedVotes}</span> votes.
+                  </>
+                )}
+              </Alert>
+            ) : null}
+
+            {state === "already-has-votes" ? (
+              <span>
+                You have{" "}
+                <span className="fw-semi-bold">
+                  {grantedVotes ?? councilMember?.votingPower}
+                </span>{" "}
+                votes in this council.
+              </span>
+            ) : null}
+
             <span className="text-info">
               Ways to earn votes in this council:
             </span>
@@ -373,7 +372,16 @@ export default function NftEligibilityModal({
                   />
                 ))}
 
-            {state !== "council-unavailable" &&
+            {state === "already-has-votes" &&
+            rows.length > 0 &&
+            currentVotes > 0 &&
+            claimableVotes <= currentVotes ? (
+              <span className="text-info">
+                That&apos;s the highest allocation you currently qualify for.
+              </span>
+            ) : null}
+
+            {showsClaimContext &&
             currentVotes > 0 &&
             claimableVotes > currentVotes ? (
               <span>
@@ -383,7 +391,7 @@ export default function NftEligibilityModal({
                 </span>
                 .
               </span>
-            ) : metRows.length > 1 && state !== "council-unavailable" ? (
+            ) : metRows.length > 1 && showsClaimContext ? (
               <span>
                 You&apos;ll receive{" "}
                 <span className="fw-semi-bold">

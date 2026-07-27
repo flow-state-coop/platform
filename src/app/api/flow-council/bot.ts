@@ -39,7 +39,6 @@ export function loadNftRequirements(roundId: number) {
       "nftContractAddress",
       "nftTokenStandard",
       "nftTokenId",
-      "nftAcquisitionUrl",
     ])
     .where("roundId", "=", roundId)
     .where("eligibilityMethod", "=", "nft")

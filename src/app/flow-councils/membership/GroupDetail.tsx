@@ -511,6 +511,19 @@ export default function GroupDetail(props: GroupDetailProps) {
         onChainApplied = true;
       }
 
+      // Same principle for nftConfig: a PATCH that omits it leaves the NFT
+      // columns untouched, so name or allocation edits skip the server's
+      // on-chain collection re-probe (which can fail on a flaky RPC).
+      const storedNftDraft = nftDraftFromGroup(group);
+      const nftDraftDirty =
+        editNftDraft.contractAddress.trim().toLowerCase() !==
+          storedNftDraft.contractAddress.toLowerCase() ||
+        editNftDraft.tokenStandard !== storedNftDraft.tokenStandard ||
+        (editNftDraft.tokenStandard === "erc1155" &&
+          editNftDraft.tokenId.trim() !== storedNftDraft.tokenId) ||
+        editNftDraft.acquisitionUrl.trim() !== storedNftDraft.acquisitionUrl ||
+        editNftDraft.collectionName !== storedNftDraft.collectionName;
+
       const res = await fetch(`/api/flow-council/voter-groups?id=${group.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -525,7 +538,8 @@ export default function GroupDetail(props: GroupDetailProps) {
             ? { eligibilityMethod: editEligibility }
             : {}),
           ...(usesVotePower ? { defaultVotingPower } : {}),
-          ...(editEligibility === "nft"
+          ...(editEligibility === "nft" &&
+          (group.eligibilityMethod !== "nft" || nftDraftDirty)
             ? { nftConfig: nftDraftToConfig(editNftDraft) }
             : {}),
         }),
