@@ -14,7 +14,8 @@ import { describe, it, expect, afterAll, beforeEach, vi } from "vitest";
 //   refusal:  { success: false, code }
 //   codes:    already_voter | not_eligible | check_unavailable | rate_limited
 //             | bot_missing_role | invalid_signature | expired_signature
-//             | chain_error | no_requirements
+//             | chain_error | no_requirements | council_not_found
+//             | council_unverified
 //
 // The per-council rate-limit window lives in rounds.last_claim_at.
 
@@ -458,7 +459,7 @@ describe("nft-claim happy path", () => {
     const { body } = await claim({ address: HOLDER });
 
     expect(body.success).toBe(true);
-    expect(Number(body.votingPower)).toBe(20);
+    expect(body.votingPower).toBe("20");
     expect(body.groupId).toBe(core);
     expect(body.groupName).toBe("Core");
 
@@ -518,7 +519,7 @@ describe("nft-claim already-a-voter protection", () => {
     expect(body.success).toBe(true);
     expect(body.alreadyVoter).toBe(true);
     expect(body.code).toBe("already_voter");
-    expect(Number(body.votingPower)).toBe(30);
+    expect(body.votingPower).toBe("30");
     expect(nftChain.writes).toEqual([]);
     expect(await dbSnapshot()).toBe(before);
   });
@@ -568,7 +569,7 @@ describe("nft-claim re-claim after an admin zeroed the voter", () => {
     const { body } = await claim({});
 
     expect(body.success).toBe(true);
-    expect(Number(body.votingPower)).toBe(20);
+    expect(body.votingPower).toBe("20");
     expect(body.groupId).toBe(core);
 
     const writes = addVoterWrites();
@@ -619,7 +620,7 @@ describe("nft-claim tier upgrade", () => {
 
     expect(body.success).toBe(true);
     expect(body.alreadyVoter).toBeUndefined();
-    expect(Number(body.votingPower)).toBe(20);
+    expect(body.votingPower).toBe("20");
     expect(body.groupId).toBe(core);
 
     expect(addVoterWrites()).toEqual([]);
@@ -669,7 +670,7 @@ describe("nft-claim tier upgrade", () => {
 
     expect(body.success).toBe(true);
     expect(body.alreadyVoter).toBe(true);
-    expect(Number(body.votingPower)).toBe(20);
+    expect(body.votingPower).toBe("20");
     expect(nftChain.writes).toEqual([]);
     expect(await dbSnapshot()).toBe(before);
   });
@@ -759,7 +760,7 @@ describe("nft-claim overlapping eligibility", () => {
     const { body } = await claim({});
 
     expect(body.success).toBe(true);
-    expect(Number(body.votingPower)).toBe(20);
+    expect(body.votingPower).toBe("20");
     expect(body.groupId).toBe(core);
 
     const writes = addVoterWrites();
@@ -863,7 +864,7 @@ describe("nft-claim rollback", () => {
     const retry = await claim({});
 
     expect(retry.body.success).toBe(true);
-    expect(Number(retry.body.votingPower)).toBe(20);
+    expect(retry.body.votingPower).toBe("20");
     expect(await membershipRows(HOLDER)).toEqual([
       { voterGroupId: core, address: HOLDER.toLowerCase() },
     ]);
@@ -943,7 +944,7 @@ describe("nft-claim rollback", () => {
 
     expect(body.success).toBe(true);
     expect(body.alreadyVoter).toBe(true);
-    expect(Number(body.votingPower)).toBe(20);
+    expect(body.votingPower).toBe("20");
     expect(await membershipRows(HOLDER)).toEqual([
       { voterGroupId: core, address: HOLDER.toLowerCase() },
     ]);
@@ -996,7 +997,7 @@ describe("nft-claim rollback", () => {
 
     expect(body.success).toBe(true);
     expect(body.alreadyVoter).toBe(true);
-    expect(Number(body.votingPower)).toBe(30);
+    expect(body.votingPower).toBe("30");
   });
 });
 
@@ -1196,11 +1197,14 @@ describe("nft-claim refusal codes", () => {
     const { body } = await claim({ councilId: address("dead") });
 
     expect(body.success).toBe(false);
+    expect(body.code).toBe("council_not_found");
     expect(nftChain.writes).toEqual([]);
   });
 
   it("makes every refusal reachable and distinguishable", async () => {
     const codes = new Set<string>();
+
+    codes.add((await claim({ councilId: address("dead") })).body.code);
 
     await insertManualGroup("Manual");
     codes.add((await claim({})).body.code);
@@ -1241,6 +1245,7 @@ describe("nft-claim refusal codes", () => {
 
     expect(codes).toEqual(
       new Set([
+        "council_not_found",
         "no_requirements",
         "invalid_signature",
         "expired_signature",
