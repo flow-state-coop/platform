@@ -22,7 +22,15 @@ export const splitterChain = {
   // What the indexer reports as members, which can lag the chain.
   indexedMembers: [] as string[],
   writes: [] as { functionName: string; args: readonly unknown[] }[],
+  writeError: null as string | null,
+  // Fails the Nth write (1-based), for partial-write scenarios.
+  failWriteNumber: 0,
+  receiptStatus: "success" as "success" | "reverted",
+  // Runs before each write settles, so a test can change state mid-job.
+  writeHook: null as ((writeNumber: number) => void) | null,
 };
+
+export const SPLITTER_TX_HASH = `0x${"33".repeat(32)}`;
 
 export function resetSplitterChain() {
   splitterChain.admins = [TEST_POOL_ADMIN.toLowerCase()];
@@ -32,6 +40,54 @@ export function resetSplitterChain() {
   splitterChain.units = new Map();
   splitterChain.indexedMembers = [];
   splitterChain.writes = [];
+  splitterChain.writeError = null;
+  splitterChain.failWriteNumber = 0;
+  splitterChain.receiptStatus = "success";
+  splitterChain.writeHook = null;
+}
+
+/**
+ * Applies updateMembersUnits to the simulated chain, so a job converges the way
+ * it would in production. New recipients become visible to the indexer too,
+ * modelling an indexer that has caught up by the next read.
+ */
+export function createSplitterMockWalletClient() {
+  return {
+    writeContract: vi.fn(
+      async ({
+        functionName,
+        args = [],
+        nonce,
+      }: {
+        functionName: string;
+        args?: readonly unknown[];
+        nonce?: number;
+      }) => {
+        splitterChain.writes.push({ functionName, args });
+        const writeNumber = splitterChain.writes.length;
+        splitterChain.writeHook?.(writeNumber);
+
+        if (splitterChain.writeError) {
+          throw new Error(splitterChain.writeError);
+        }
+        if (splitterChain.failWriteNumber === writeNumber) {
+          throw new Error("execution reverted");
+        }
+
+        if (functionName === "updateMembersUnits") {
+          const members = (args[1] ?? []) as {
+            account: string;
+            units: bigint;
+          }[];
+          for (const member of members) {
+            setMember(member.account, member.units);
+          }
+        }
+
+        return `${SPLITTER_TX_HASH.slice(0, 60)}${String(nonce ?? 0).padStart(6, "0")}`;
+      },
+    ),
+  };
 }
 
 /** Put an address in the pool, visible to both the chain and the indexer. */
@@ -93,7 +149,7 @@ export function createSplitterMockPublicClient() {
     ),
     getTransactionCount: vi.fn(async () => 0),
     waitForTransactionReceipt: vi.fn(async ({ hash }: { hash: string }) => ({
-      status: "success",
+      status: splitterChain.receiptStatus,
       transactionHash: hash,
       gasUsed: 100_000n,
       effectiveGasPrice: 1_000_000n,
