@@ -15,7 +15,7 @@ const TOLERANCE = 1.5;
 test.beforeEach(async ({ page }) => {
   await installMockWallet(page);
   await installSubgraphMock(page);
-  await page.route("**/api/flow-council/voter-groups/profiles", (route) =>
+  await page.route("**/api/profiles/names", (route) =>
     route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({ success: true, names: {} }),
