@@ -60,6 +60,10 @@ const TABLES_TO_RESET = [
   "round_admin_emails",
   "round_admins",
   "rounds",
+  // Not related to any round, but the per-chain nonce ledger carries over
+  // between tests otherwise, so a suite asserting an exact nonce would see it
+  // climb with every earlier send in the run.
+  "bot_chain_locks",
 ] as const;
 
 export async function resetDb(db: Kysely<DB>): Promise<void> {

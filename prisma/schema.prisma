@@ -123,6 +123,22 @@ model MetricsApiKey {
   @@map("metrics_api_keys")
 }
 
+// Serializes transactions signed by the shared Flow State bot key, one row per
+// chain. `holder`/`expires_at` are the lease; `last_nonce` is a durable ledger
+// of the last nonce this platform broadcast, so the sender never depends on a
+// load-balanced RPC's pending view (two nodes can disagree, handing the same
+// nonce to two sends). Rows are created on demand by the first send on a chain.
+model BotChainLock {
+  chainId     Int       @id @map("chain_id")
+  holder      String?   @db.VarChar(64)
+  acquiredAt  DateTime? @map("acquired_at")
+  expiresAt   DateTime? @map("expires_at")
+  lastNonce   BigInt?   @map("last_nonce")
+  lastNonceAt DateTime? @map("last_nonce_at")
+
+  @@map("bot_chain_locks")
+}
+
 model VoterGroupMember {
   id           Int        @id @default(autoincrement())
   voterGroupId Int        @map("voter_group_id")

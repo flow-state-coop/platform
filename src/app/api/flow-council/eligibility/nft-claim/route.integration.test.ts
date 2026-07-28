@@ -55,7 +55,7 @@ vi.mock("@/lib/apollo", () => ({
 }));
 vi.mock("@/app/api/auth/[...nextauth]/route", () => ({ authOptions: {} }));
 
-vi.mock("../../db", async () => {
+vi.mock("@/app/api/db", async () => {
   const { getTestDb } = await import("@tests/helpers/db");
   return { db: getTestDb() };
 });

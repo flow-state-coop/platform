@@ -33,7 +33,7 @@ vi.mock("sns-validator", () => ({
   },
 }));
 
-vi.mock("@/app/api/flow-council/db", () => {
+vi.mock("@/app/api/db", () => {
   const db = {
     updateTable: vi.fn().mockReturnThis(),
     set: vi.fn().mockReturnThis(),

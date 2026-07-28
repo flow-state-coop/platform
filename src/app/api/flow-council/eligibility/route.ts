@@ -1,7 +1,7 @@
 import { Address, createPublicClient, http, isAddress } from "viem";
 import { db } from "../db";
 import { findRoundByCouncil } from "../auth";
-import { buildBotSigner, getGroupByMethod } from "../bot";
+import { getBotSigner, getGroupByMethod, sendBotTransaction } from "../bot";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks, getViemChain } from "@/lib/networks";
 import {
@@ -106,16 +106,22 @@ export async function POST(request: Request) {
       return Response.json({ success: true });
     }
 
-    const { account, publicClient, walletClient } = buildBotSigner(network);
+    const { account, publicClient, walletClient } = getBotSigner(network);
 
     try {
-      const hash = await walletClient.writeContract({
-        account,
-        address: councilId as Address,
-        abi: flowCouncilAbi,
-        functionName: "addVoter",
-        args: [address as Address, BigInt(goodDollarGroup.defaultVotingPower)],
-      });
+      const hash = await sendBotTransaction(network, (nonce) =>
+        walletClient.writeContract({
+          account,
+          nonce,
+          address: councilId as Address,
+          abi: flowCouncilAbi,
+          functionName: "addVoter",
+          args: [
+            address as Address,
+            BigInt(goodDollarGroup.defaultVotingPower),
+          ],
+        }),
+      );
 
       await publicClient.waitForTransactionReceipt({ hash, confirmations: 3 });
     } catch (err) {

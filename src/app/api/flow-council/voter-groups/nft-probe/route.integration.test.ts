@@ -25,7 +25,7 @@ vi.mock("viem", async (importOriginal) => {
 vi.mock("next-auth/next", () => ({ getServerSession: vi.fn() }));
 vi.mock("@/app/api/auth/[...nextauth]/route", () => ({ authOptions: {} }));
 
-vi.mock("../../db", async () => {
+vi.mock("@/app/api/db", async () => {
   const { getTestDb } = await import("@tests/helpers/db");
   return { db: getTestDb() };
 });

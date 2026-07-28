@@ -3,7 +3,12 @@ import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks } from "@/lib/networks";
 import { db } from "../../db";
 import { findRoundByCouncil, isFactoryCouncil } from "../../auth";
-import { getBotSigner, loadNftRequirements } from "../../bot";
+import {
+  getBotSigner,
+  loadNftRequirements,
+  sendBotTransaction,
+} from "../../bot";
+import { ChainBusyError } from "../../../botLock";
 import { getCouncilPublicClient } from "../../metrics/lib";
 import {
   claimRateWindow,
@@ -269,14 +274,17 @@ export async function POST(request: Request) {
     let reverted = false;
 
     try {
-      const hash = await walletClient.writeContract({
-        account,
-        address: councilId as Address,
-        abi: flowCouncilAbi,
-        functionName: isUpgrade ? "editVoter" : "addVoter",
-        args: [address as Address, BigInt(winner.defaultVotingPower)],
-        gas: VOTER_WRITE_GAS_LIMIT,
-      });
+      const hash = await sendBotTransaction(network, (nonce) =>
+        walletClient.writeContract({
+          account,
+          nonce,
+          address: councilId as Address,
+          abi: flowCouncilAbi,
+          functionName: isUpgrade ? "editVoter" : "addVoter",
+          args: [address as Address, BigInt(winner.defaultVotingPower)],
+          gas: VOTER_WRITE_GAS_LIMIT,
+        }),
+      );
 
       broadcast = true;
 
@@ -363,6 +371,13 @@ export async function POST(request: Request) {
 
       if (!broadcast) {
         await releaseRateWindow(round.id, previousLastClaimAt, claimedAt);
+      }
+
+      // Contention on the shared bot key, not a chain failure: nothing was
+      // broadcast, and the membership row and rate window were both just
+      // released, so the claim is cleanly retryable.
+      if (err instanceof ChainBusyError) {
+        return refusal("rate_limited", 429);
       }
 
       // RPC errors can embed provider URLs and revert data.

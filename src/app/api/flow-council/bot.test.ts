@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 
-vi.mock("./db", () => ({ db: {} }));
+vi.mock("@/app/api/db", () => ({ db: {} }));
 
 import { buildBotSigner } from "./bot";
 import { networks } from "@/lib/networks";

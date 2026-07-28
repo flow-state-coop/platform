@@ -34,6 +34,7 @@ type CallRecord = {
   address: string;
   functionName: string;
   args: readonly unknown[];
+  nonce?: number;
 };
 
 export const nftChain = {
@@ -50,6 +51,10 @@ export const nftChain = {
   writeHook: null as (() => void) | null,
   receiptError: null as string | null,
   receiptStatus: "success" as "success" | "reverted",
+  // What eth_getTransactionCount(pending) reports. Sends resolve their nonce as
+  // the greater of this and the stored ledger, so a test can simulate a
+  // load-balanced RPC lagging behind our own broadcasts by leaving it low.
+  pendingNonce: 0,
   reads: [] as CallRecord[],
   writes: [] as CallRecord[],
   receiptWaits: [] as string[],
@@ -71,6 +76,7 @@ export function resetNftChain() {
   nftChain.writeHook = null;
   nftChain.receiptError = null;
   nftChain.receiptStatus = "success";
+  nftChain.pendingNonce = 0;
   nftChain.reads = [];
   nftChain.writes = [];
   nftChain.receiptWaits = [];
@@ -280,6 +286,8 @@ export function createNftMockPublicClient() {
       },
     ),
 
+    getTransactionCount: vi.fn(async () => nftChain.pendingNonce),
+
     waitForTransactionReceipt: vi.fn(async ({ hash }: { hash: string }) => {
       nftChain.receiptWaits.push(hash);
       if (nftChain.receiptError) throw new Error(nftChain.receiptError);
@@ -295,15 +303,18 @@ export function createNftMockWalletClient() {
         address,
         functionName,
         args = [],
+        nonce,
       }: {
         address: unknown;
         functionName: string;
         args?: readonly unknown[];
+        nonce?: number;
       }) => {
         nftChain.writes.push({
           address: String(address ?? "").toLowerCase(),
           functionName,
           args,
+          nonce,
         });
         nftChain.writeHook?.();
         if (nftChain.writeError) throw new Error(nftChain.writeError);

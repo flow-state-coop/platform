@@ -7,6 +7,8 @@ import {
   METRICS_KEY_COOLDOWN_MS,
 } from "@/app/flow-councils/lib/constants";
 import { db } from "../../db";
+import { sendBotTransaction } from "../../bot";
+import { ChainBusyError } from "../../../botLock";
 import {
   errorResponse,
   readJsonBody,
@@ -265,15 +267,18 @@ export async function POST(request: Request) {
     }
     claimed = true;
 
-    const hash = await walletClient.writeContract({
-      account,
-      address: council,
-      abi: flowCouncilAbi,
-      functionName: "vote",
-      args: [
-        submission.map((v) => ({ recipient: v.recipient, amount: v.amount })),
-      ],
-    });
+    const hash = await sendBotTransaction(network, (nonce) =>
+      walletClient.writeContract({
+        account,
+        nonce,
+        address: council,
+        abi: flowCouncilAbi,
+        functionName: "vote",
+        args: [
+          submission.map((v) => ({ recipient: v.recipient, amount: v.amount })),
+        ],
+      }),
+    );
     broadcast = true;
 
     const receipt = await publicClient.waitForTransactionReceipt({
@@ -306,6 +311,12 @@ export async function POST(request: Request) {
         .where("lastBallotAt", "=", claimedAt)
         .execute()
         .catch((resetErr) => console.error(resetErr));
+    }
+    // Contention on the shared bot key, not a failure: nothing was broadcast
+    // and the claim was just released, so this is retryable like any other
+    // rate-limit rejection rather than a 502.
+    if (err instanceof ChainBusyError) {
+      return errorResponse("Too many ballots, please retry later", 429);
     }
     return errorResponse("There was an error submitting the ballot", 502);
   }

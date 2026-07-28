@@ -7,7 +7,7 @@ vi.mock("viem", async (importOriginal) => {
   return { ...actual, createPublicClient: vi.fn() };
 });
 
-vi.mock("./db", async () => {
+vi.mock("@/app/api/db", async () => {
   const { getTestDb } = await import("@tests/helpers/db");
   return { db: getTestDb() };
 });
