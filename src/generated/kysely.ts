@@ -144,6 +144,61 @@ export type RoundAdminEmail = {
     email: string;
     createdAt: Generated<Timestamp>;
 };
+export type SplitterApiKey = {
+    id: Generated<number>;
+    chainId: number;
+    poolId: string;
+    keyHash: string;
+    keyPrefix: string;
+    label: string;
+    lastUsedAt: Timestamp | null;
+    cooldownUntil: Timestamp | null;
+    revokedAt: Timestamp | null;
+    createdAt: Generated<Timestamp>;
+};
+export type SplitterIntegration = {
+    chainId: number;
+    poolId: string;
+    lastWriteAt: Timestamp | null;
+    createdAt: Generated<Timestamp>;
+};
+export type SplitterWriteHistory = {
+    id: Generated<number>;
+    chainId: number;
+    poolId: string;
+    keyId: number | null;
+    jobId: string | null;
+    changedCount: number;
+    status: string;
+    txHashes: string[];
+    gasUsed: string | null;
+    gasCostWei: string | null;
+    createdAt: Generated<Timestamp>;
+};
+export type SplitterWriteJob = {
+    id: string;
+    chainId: number;
+    poolId: string;
+    keyId: number;
+    payloadHash: string;
+    status: string;
+    target: unknown;
+    batchIndex: Generated<number>;
+    txHashes: string[];
+    attempt: Generated<number>;
+    heartbeatAt: Generated<Timestamp>;
+    error: string | null;
+    createdAt: Generated<Timestamp>;
+    updatedAt: Generated<Timestamp>;
+    expiresAt: Timestamp;
+};
+export type SplitterWrittenRegister = {
+    chainId: number;
+    poolId: string;
+    address: string;
+    units: string;
+    updatedAt: Generated<Timestamp>;
+};
 export type UserProfile = {
     id: Generated<number>;
     address: string;
@@ -205,6 +260,11 @@ export type DB = {
     roundAdminEmails: RoundAdminEmail;
     roundAdmins: RoundAdmin;
     rounds: Round;
+    splitterApiKeys: SplitterApiKey;
+    splitterIntegrations: SplitterIntegration;
+    splitterWriteHistory: SplitterWriteHistory;
+    splitterWriteJobs: SplitterWriteJob;
+    splitterWrittenRegister: SplitterWrittenRegister;
     userProfiles: UserProfile;
     voterGroupMembers: VoterGroupMember;
     voterGroups: VoterGroup;

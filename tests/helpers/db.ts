@@ -64,6 +64,13 @@ const TABLES_TO_RESET = [
   // between tests otherwise, so a suite asserting an exact nonce would see it
   // climb with every earlier send in the run.
   "bot_chain_locks",
+  // Splitter tables are keyed on (chain_id, pool_id) with no FK to rounds, so
+  // nothing above cascades into them.
+  "splitter_write_history",
+  "splitter_write_jobs",
+  "splitter_written_register",
+  "splitter_api_keys",
+  "splitter_integrations",
 ] as const;
 
 export async function resetDb(db: Kysely<DB>): Promise<void> {

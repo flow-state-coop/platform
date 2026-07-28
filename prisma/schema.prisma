@@ -152,6 +152,103 @@ model VoterGroupMember {
   @@map("voter_group_members")
 }
 
+// Flow Splitter API storage. Keyed on (chain_id, pool_id) with no FK into the
+// council tables: splitters have no round, and coupling them would let a
+// council-side delete cascade into an unrelated pool's integration.
+// `pool_id` is the uint256 pool id as text, following the nft_token_id
+// precedent above and avoiding numeric coercion surprises in Kysely.
+model SplitterApiKey {
+  id            Int       @id @default(autoincrement())
+  chainId       Int       @map("chain_id")
+  poolId        String    @map("pool_id") @db.VarChar(78)
+  keyHash       String    @unique @map("key_hash") @db.VarChar(64)
+  keyPrefix     String    @map("key_prefix") @db.VarChar(16)
+  label         String    @db.VarChar(100)
+  lastUsedAt    DateTime? @map("last_used_at")
+  cooldownUntil DateTime? @map("cooldown_until")
+  revokedAt     DateTime? @map("revoked_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([chainId, poolId])
+  @@map("splitter_api_keys")
+}
+
+// One row per API-controlled pool. Doubles as the rate-limit claim row, so it
+// is created on demand rather than depending on key-mint lifecycle.
+model SplitterIntegration {
+  chainId     Int       @map("chain_id")
+  poolId      String    @map("pool_id") @db.VarChar(78)
+  lastWriteAt DateTime? @map("last_write_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@id([chainId, poolId])
+  @@map("splitter_integrations")
+}
+
+// `heartbeat_at` is NOT NULL DEFAULT now() on purpose: the in-flight check that
+// stops a second write being accepted reads it directly, and a null on a
+// freshly queued row would read as "not running" and let two runners onto one
+// pool. Jobs expire (their target register is worthless once finished) while
+// history rows do not.
+model SplitterWriteJob {
+  id          String   @id @db.VarChar(36)
+  chainId     Int      @map("chain_id")
+  poolId      String   @map("pool_id") @db.VarChar(78)
+  keyId       Int      @map("key_id")
+  payloadHash String   @map("payload_hash") @db.VarChar(64)
+  status      String   @db.VarChar(20)
+  target      Json
+  batchIndex  Int      @default(0) @map("batch_index")
+  txHashes    String[] @map("tx_hashes")
+  attempt     Int      @default(0)
+  heartbeatAt DateTime @default(now()) @map("heartbeat_at")
+  error       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+  expiresAt   DateTime @map("expires_at")
+
+  @@index([chainId, poolId, status])
+  @@index([heartbeatAt])
+  @@map("splitter_write_jobs")
+}
+
+// The register the platform last wrote, per pool. A candidate-address list
+// only: units always come from the chain, so a human edit between API writes is
+// corrected by the next write rather than overwritten from stale data. Without
+// it a recipient added by one write and dropped by the next, before the indexer
+// caught up, would appear in neither source and keep receiving flow forever.
+model SplitterWrittenRegister {
+  chainId   Int      @map("chain_id")
+  poolId    String   @map("pool_id") @db.VarChar(78)
+  address   String   @db.VarChar(42)
+  units     String   @db.VarChar(78)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@id([chainId, poolId, address])
+  @@map("splitter_written_register")
+}
+
+// Kept indefinitely: it is what explains a register months later, and a row is
+// small. Cost is recorded per key as well as per pool, because the key is known
+// at write time and cannot be reconstructed later.
+model SplitterWriteHistory {
+  id           Int      @id @default(autoincrement())
+  chainId      Int      @map("chain_id")
+  poolId       String   @map("pool_id") @db.VarChar(78)
+  keyId        Int?     @map("key_id")
+  jobId        String?  @map("job_id") @db.VarChar(36)
+  changedCount Int      @map("changed_count")
+  status       String   @db.VarChar(20)
+  txHashes     String[] @map("tx_hashes")
+  gasUsed      String?  @map("gas_used") @db.VarChar(78)
+  gasCostWei   String?  @map("gas_cost_wei") @db.VarChar(78)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([chainId, poolId, createdAt])
+  @@index([keyId])
+  @@map("splitter_write_history")
+}
+
 model Project {
   id           Int              @id @default(autoincrement())
   details      Json?
