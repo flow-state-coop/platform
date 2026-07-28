@@ -9,6 +9,5 @@ export type Pool = {
 export type PoolMetadata = {
   name: string;
   description: string;
-  flowStateEligibility?: boolean;
   nftMintUrl?: string;
 };

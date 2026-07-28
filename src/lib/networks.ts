@@ -74,8 +74,6 @@ const networks: Network[] = [
     flowCouncilSubgraph: graphNetworkSubgraph(
       "5ia6BcTaQvPZAegF5yZLzATK5XpapgNMgqNPbaRp8RK5",
     ),
-    flowStateEligibilityNft: "0x6Ee1Cc715EAB6a1a661d34C1439Fc7f05Aa5f435",
-    flowStateEligibilityMinScore: 15,
     superfluidHost: "0xCf8Acb4eF033efF16E8080aed4c7D5B9285D2192",
     recipientSuperappFactory: "0x7C959499F285E8Ca70EfDC46afD15C36A58c087a",
     allo: "0x1133eA7Af70876e64665ecD07C0A0476d09465a1",
@@ -127,8 +125,6 @@ const networks: Network[] = [
     flowCouncilSubgraph: graphNetworkSubgraph(
       "9CgZ7PHVidLD1cxQ8cHbe7jcUxHBbuBS6JQXPhPUjAEo",
     ),
-    flowStateEligibilityNft: "0xA72c184738842626a920A8935092b7b3f35A3082",
-    flowStateEligibilityMinScore: 15,
     superfluidHost: "0x4C073B3baB6d8826b8C5b229f3cfdC1eC6E47E74",
     recipientSuperappFactory: "0xf29933097dFC1456e8B3d934d89D90e6bbED76e5",
     allo: "0x1133eA7Af70876e64665ecD07C0A0476d09465a1",
@@ -168,8 +164,6 @@ const networks: Network[] = [
     flowCouncilFactory: "0x589232342bfeCb372dbbc01d17e8D112a27fF125",
     flowCouncilSubgraph:
       "https://api.goldsky.com/api/public/project_cmbkdj2bd7cr601uwafoe4u3y/subgraphs/flow-council-celo/v0.4.2/gn",
-    flowStateEligibilityNft: "",
-    flowStateEligibilityMinScore: 15,
     superfluidHost: "0xA4Ff07cF81C02CFD356184879D953970cA957585",
     recipientSuperappFactory: "0x30093246dE28629d3840e0493c12bc5EE0041103",
     allo: "0x1133eA7Af70876e64665ecD07C0A0476d09465a1",
@@ -211,8 +205,6 @@ const networks: Network[] = [
     flowCouncilSubgraph: graphNetworkSubgraph(
       "ALonwCxpffeK1yBRj8ficdCJMcG5Xna1PuF3qgMMBFf2",
     ),
-    flowStateEligibilityNft: "0x09A62710a3BFC83aae2956F1D5B2363e4773Db7a",
-    flowStateEligibilityMinScore: 15,
     superfluidHost: "0x567c4B141ED61923967cA25Ef4906C8781069a10",
     recipientSuperappFactory: "0xC0d7774AbdFBD9a30BcC1b53E1A6D90d5804d934",
     allo: "0x1133eA7Af70876e64665ecD07C0A0476d09465a1",
@@ -262,8 +254,6 @@ const networks: Network[] = [
     flowCouncilFactory: "0xDD1a61127d910e6a7CD71788F0Ebb5A46DFDB424",
     flowCouncilSubgraph:
       "https://api.goldsky.com/api/public/project_cm2vlxq9s82qo01xtc11y9stm/subgraphs/flow-council-optimism-sepolia/v0.4.2/gn",
-    flowStateEligibilityNft: "0x1059A20C7aA0B4576B631d064730dB2E02940535",
-    flowStateEligibilityMinScore: 0.5,
     superfluidHost: "0xd399e2Fb5f4cf3722a11F65b88FAB6B2B8621005",
     recipientSuperappFactory: "0x77F9A5D05e37B0c1DAEbB425bf2C69Fa8d9BEF90",
     allo: "0x1133eA7Af70876e64665ecD07C0A0476d09465a1",
