@@ -148,7 +148,13 @@ export async function withChainSend<T>(
     const result = await broadcast(nonce);
     // Recorded before the caller waits for a receipt, so a crash during
     // confirmation still leaves the nonce accounted for.
-    await recordNonce(chainId, nonce);
+    //
+    // Never allowed to reject: the transaction is already on the wire by this
+    // point, and callers treat a rejection here as "nothing was sent" and roll
+    // back state that the chain has already committed. A lost ledger entry is
+    // recoverable, since the RPC's pending count is still a floor; a false
+    // "nothing was sent" is not.
+    await recordNonce(chainId, nonce).catch((err) => console.error(err));
     return result;
   } finally {
     await releaseLease(chainId, holder).catch((err) => console.error(err));

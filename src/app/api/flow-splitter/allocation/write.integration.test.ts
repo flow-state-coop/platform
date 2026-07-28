@@ -40,12 +40,17 @@ vi.mock("next/server", () => ({
   },
 }));
 
+vi.mock("next-auth/next", () => ({ getServerSession: vi.fn() }));
+vi.mock("@/app/api/auth/[...nextauth]/route", () => ({ authOptions: {} }));
+
 vi.mock("@/app/api/db", async () => {
   const { getTestDb } = await import("@tests/helpers/db");
   return { db: getTestDb() };
 });
 
+import { getServerSession } from "next-auth/next";
 import { POST as writePost } from "./route";
+import { GET as keysGet } from "../keys/route";
 import { GET as jobGet } from "../jobs/[jobId]/route";
 import { resetTransferabilityCache } from "../pool";
 import { hashApiKey } from "../../apiKeys";
@@ -54,6 +59,8 @@ import {
   resetSplitterChain,
   setMember,
   splitterChain,
+  TEST_POOL_ADDRESS,
+  TEST_POOL_ADMIN,
   TEST_POOL_ID,
   TEST_SPLITTER_CHAIN_ID as CHAIN_ID,
 } from "@tests/helpers/splitterChain";
@@ -125,6 +132,9 @@ beforeEach(async () => {
   resetSplitterChain();
   resetTransferabilityCache();
   deferred.length = 0;
+  vi.mocked(getServerSession).mockResolvedValue({
+    address: TEST_POOL_ADMIN,
+  } as never);
 });
 
 afterAll(async () => {
@@ -380,6 +390,67 @@ describe("splitter allocation write", () => {
     // Revoking blocks new submissions; it does not cancel accepted work.
     expect((await jobRow(body.jobId))?.status).toBe("succeeded");
     expect(splitterChain.units.get(A)).toBe(1_000_000n);
+  });
+
+  it("rejects a payload naming the pool itself, before any transaction", async () => {
+    const id = await seedKey();
+
+    const res = await write([
+      { address: A, weight: 1 },
+      { address: TEST_POOL_ADDRESS, weight: 1 },
+    ]);
+
+    // Naming the pool reverts on-chain, which mid-job would surface as a
+    // partial write with an inconsistent register.
+    expect(res.status).toBe(400);
+    expect(splitterChain.writes).toHaveLength(0);
+
+    const key = await db
+      .selectFrom("splitterApiKeys")
+      .select(["cooldownUntil"])
+      .where("id", "=", id)
+      .executeTakeFirst();
+    expect(key?.cooldownUntil).not.toBeNull();
+  });
+
+  it("does not spend the write window on a submission that changed nothing", async () => {
+    await seedKey();
+    setMember(A, 1_000_000n);
+
+    const first = await (await write([{ address: A, weight: 1 }])).json();
+    expect(first.status).toBe("no_change");
+
+    // A no-change sends no transaction and has no completion to measure from,
+    // so the next real write must not be blocked behind a 60s window.
+    const second = await write([
+      { address: A, weight: 1 },
+      { address: B, weight: 1 },
+    ]);
+    expect(second.status).toBe(202);
+  });
+
+  it("treats a zero-padded pool id as the same pool", async () => {
+    // Otherwise every per-pool limit is bypassable by re-spelling the id, and
+    // the mirror splits across spellings.
+    await db
+      .insertInto("splitterApiKeys")
+      .values({
+        chainId: CHAIN_ID,
+        poolId: TEST_POOL_ID,
+        keyHash: hashApiKey("splitter_padded"),
+        keyPrefix: "splitter_padded",
+        label: "padded",
+      })
+      .execute();
+
+    const res = await keysGet(
+      new Request(
+        `http://localhost/api/flow-splitter/keys?chainId=${CHAIN_ID}&poolId=0${TEST_POOL_ID}`,
+      ),
+    );
+    const body = await res.json();
+
+    expect(body.keys).toHaveLength(1);
   });
 
   it("hides another pool's job from a key that does not own it", async () => {

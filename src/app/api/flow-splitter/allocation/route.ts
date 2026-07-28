@@ -107,7 +107,29 @@ export async function POST(request: Request) {
     return errorResponse("Invalid request body", 400);
   }
 
+  // Naming the pool itself, or the splitter contract, reverts on-chain. Caught
+  // here rather than mid-job, where it would surface as a partial write with an
+  // inconsistent register. The pool address is public (the read endpoint
+  // returns it), so this is a caller fault and cools the key down.
+  const forbidden = payload.recipients.find((recipient) => {
+    const address = recipient.address.toLowerCase();
+    return (
+      address === pool.poolAddress.toLowerCase() ||
+      address === network.flowSplitter.toLowerCase()
+    );
+  });
+  if (forbidden) {
+    await coolDownKey(key.id, KEY_COOLDOWN_MS);
+    return errorResponse(
+      `${forbidden.address} cannot be a recipient of its own pool`,
+      400,
+    );
+  }
+
   await touchKey(key.id);
+
+  let claimedAt: Date | null = null;
+  let previousWriteAt: Date | null = null;
 
   try {
     // Refused before a job exists, which beats a job that dies on batch one.
@@ -144,19 +166,30 @@ export async function POST(request: Request) {
     }
 
     // Create-or-claim the write window, measured from the previous job's
-    // completion.
-    const claimed = await sql<{ pool_id: string }>`
+    // completion. The claim stamps an explicit timestamp rather than now(), so
+    // the catch below can hand the window back on a failure that was ours.
+    const existing = await db
+      .selectFrom("splitterIntegrations")
+      .select(["lastWriteAt"])
+      .where("chainId", "=", key.chainId)
+      .where("poolId", "=", key.poolId)
+      .executeTakeFirst();
+    previousWriteAt = existing?.lastWriteAt ?? null;
+    claimedAt = new Date();
+
+    const claimed = await sql<{ poolId: string }>`
       INSERT INTO splitter_integrations (chain_id, pool_id, last_write_at)
-      VALUES (${key.chainId}, ${key.poolId}, now())
+      VALUES (${key.chainId}, ${key.poolId}, ${claimedAt})
       ON CONFLICT (chain_id, pool_id) DO UPDATE
-         SET last_write_at = now()
+         SET last_write_at = ${claimedAt}
        WHERE splitter_integrations.last_write_at IS NULL
           OR splitter_integrations.last_write_at
-             < now() - make_interval(secs => ${MIN_WRITE_INTERVAL_MS / 1000})
+             < ${new Date(claimedAt.getTime() - MIN_WRITE_INTERVAL_MS)}
       RETURNING pool_id
     `.execute(db);
 
     if (claimed.rows.length === 0) {
+      claimedAt = null;
       return errorResponse(
         "Writes to this pool are rate limited, please retry later",
         429,
@@ -193,6 +226,23 @@ export async function POST(request: Request) {
           txHashes: [],
         })
         .execute();
+
+      // A submission that matches the chain sends no transaction and has no
+      // completion to measure the next interval from, so it hands the window
+      // back rather than blocking the next real write for a minute. This
+      // matches the council metrics API, where a skipped ballot does not
+      // consume its window either.
+      if (claimedAt) {
+        await db
+          .updateTable("splitterIntegrations")
+          .set({ lastWriteAt: previousWriteAt })
+          .where("chainId", "=", key.chainId)
+          .where("poolId", "=", key.poolId)
+          .where("lastWriteAt", "=", claimedAt)
+          .execute()
+          .catch((resetErr) => console.error(resetErr));
+        claimedAt = null;
+      }
 
       return Response.json({
         success: true,
@@ -241,6 +291,22 @@ export async function POST(request: Request) {
     // RPC and chain failures are ours, not the caller's, so the key is never
     // cooled down here and no provider detail is returned.
     console.error(err);
+
+    // Hand the write window back too. No job exists, so nothing will ever stamp
+    // a completion, and leaving it claimed would lock the caller out for a
+    // minute because of our outage. Guarded on our own timestamp so a claim
+    // that has since been taken by someone else is not disturbed.
+    if (claimedAt) {
+      await db
+        .updateTable("splitterIntegrations")
+        .set({ lastWriteAt: previousWriteAt })
+        .where("chainId", "=", key.chainId)
+        .where("poolId", "=", key.poolId)
+        .where("lastWriteAt", "=", claimedAt)
+        .execute()
+        .catch((resetErr) => console.error(resetErr));
+    }
+
     return errorResponse("There was an error, please try again later", 502);
   }
 }

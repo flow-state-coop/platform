@@ -130,7 +130,7 @@ Authorization: Bearer <key>
 }
 ```
 
-`status` is one of `queued`, `running`, `succeeded`, `failed`, or `no_change`. A key can only see jobs for its own pool. Jobs stay pollable for **seven days**, after which the endpoint returns `404`.
+`status` is one of `queued`, `running`, `succeeded`, or `failed`. A write that changed nothing never creates a job, so `no_change` is only ever a write response, never a job status. A key can only see jobs for its own pool. Jobs stay pollable for **seven days**, after which the endpoint returns `404`.
 
 Polling is also the recovery mechanism: a poll that finds a stalled job restarts it, resuming from where it stopped rather than starting over.
 
@@ -159,7 +159,7 @@ If some batches land and one fails, the register is left mid-update: shares no l
 |---|---|---|
 | `200` | `{ "success": true, … }` | Read succeeded, or a write that changed nothing (`status: "no_change"`). |
 | `202` | `{ "success": true, "status": "queued", "jobId": "…" }` | Write accepted. Poll the job for progress. |
-| `400` | `{ "error": "…" }` | Invalid body, invalid or duplicate address, or all weights zero. **Cools the key down.** |
+| `400` | `{ "error": "…" }` | Invalid or duplicate address, an address that is the pool itself, or all weights zero. **Cools the key down.** Malformed JSON also returns `400` but does not. |
 | `401` | `{ "error": "Unauthorized" }` | Missing, unknown, or revoked key. |
 | `404` | `{ "error": "Job not found" }` | Unknown job, a job belonging to another pool, or one past its seven-day expiry. |
 | `409` | `{ "error": "A write is already running for this pool…", "jobId": "…" }` | Another job is in flight for this pool. |

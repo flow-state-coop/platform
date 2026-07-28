@@ -6,7 +6,16 @@ export const MAX_ALLOCATION_ENTRIES = 1000;
 
 export const splitterQuerySchema = z.object({
   chainId: z.coerce.number().int().positive(),
-  poolId: z.string().regex(/^\d+$/, "Invalid pool ID"),
+  // Canonicalized, because the pool id is a storage key here but a uint256
+  // everywhere on-chain. Without this "32", "032" and "0032" authorize against
+  // the same pool while keying three different sets of rows, which would
+  // multiply the active-key cap, the write interval and the in-flight check,
+  // and split the written-register mirror so an address added under one
+  // spelling is invisible to a write under another.
+  poolId: z
+    .string()
+    .regex(/^\d{1,78}$/, "Invalid pool ID")
+    .transform((value) => BigInt(value).toString()),
 });
 
 export const splitterKeyCreateSchema = z.object({
