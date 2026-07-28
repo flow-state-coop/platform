@@ -121,6 +121,11 @@ export function isBotPoolAdmin(network: Network, poolId: string) {
 
 const transferabilityCache = new Map<string, boolean>();
 
+/** Test seam: the cache is keyed on a value that cannot change in production. */
+export function resetTransferabilityCache() {
+  transferabilityCache.clear();
+}
+
 /**
  * Read from the GDA pool, not the FlowSplitter, and fixed when the pool is
  * created, so it is safe to memoize for the process lifetime. Recipients of a
