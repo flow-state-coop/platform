@@ -52,22 +52,7 @@ export function planWrite(
     units: v.amount,
   }));
 
-  const current = new Map(
-    currentRegister.map((e) => [e.address.toLowerCase(), e.units]),
-  );
-
-  // Start from the target, then add an explicit zero for every current
-  // recipient the payload dropped. Without this the contract would leave them
-  // untouched and they would keep receiving flow.
-  const desired = new Map(target.map((e) => [e.address, e.units]));
-  for (const address of current.keys()) {
-    if (!desired.has(address)) desired.set(address, 0n);
-  }
-
-  const changed = [...desired.entries()]
-    .filter(([address, units]) => (current.get(address) ?? 0n) !== units)
-    .map(([address, units]) => ({ address, units }))
-    .sort((a, b) => a.address.localeCompare(b.address));
+  const changed = diffRegister(target, currentRegister);
 
   return {
     target,
@@ -75,4 +60,37 @@ export function planWrite(
     batches: splitIntoChunks(changed, CHUNK_SIZE),
     unchanged: changed.length === 0,
   };
+}
+
+/**
+ * The entries that have to be written to make `current` match `target`.
+ *
+ * Any address held in `current` but absent from `target` becomes an explicit
+ * zero: the contract only touches members named in the call, so a dropped
+ * recipient left out entirely would keep its shares and keep receiving flow.
+ *
+ * The job runner calls this before every batch against fresh chain state, which
+ * is what makes a resumed job converge rather than replay.
+ */
+export function diffRegister(
+  target: RegisterEntry[],
+  current: RegisterEntry[],
+): RegisterEntry[] {
+  const currentByAddress = new Map(
+    current.map((e) => [e.address.toLowerCase(), e.units]),
+  );
+
+  const desired = new Map(
+    target.map((e) => [e.address.toLowerCase(), e.units]),
+  );
+  for (const address of currentByAddress.keys()) {
+    if (!desired.has(address)) desired.set(address, 0n);
+  }
+
+  return [...desired.entries()]
+    .filter(
+      ([address, units]) => (currentByAddress.get(address) ?? 0n) !== units,
+    )
+    .map(([address, units]) => ({ address, units }))
+    .sort((a, b) => a.address.localeCompare(b.address));
 }

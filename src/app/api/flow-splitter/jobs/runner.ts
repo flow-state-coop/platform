@@ -7,7 +7,7 @@ import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
 import { getNetwork, isBotPoolAdmin } from "../pool";
 import { resolveCurrentRegister } from "../members";
 import { recordWrittenBatch } from "../mirror";
-import { planWrite, type RegisterEntry } from "../plan";
+import { diffRegister, type RegisterEntry } from "../plan";
 import { BOT_NOT_ADMIN_ERROR } from "../auth";
 
 // A job whose runner stopped reporting for this long is treated as dead and can
@@ -181,7 +181,7 @@ export async function runJob(jobId: string): Promise<void> {
         target.map((entry) => entry.address),
       );
 
-      const remaining = diffAgainst(target, current);
+      const remaining = diffRegister(target, current);
       if (remaining.length === 0) {
         await finish(job, "succeeded", txHashes, changedCount, gas);
         return;
@@ -263,34 +263,9 @@ export async function runJob(jobId: string): Promise<void> {
   }
 }
 
-function diffAgainst(
-  target: RegisterEntry[],
-  current: RegisterEntry[],
-): RegisterEntry[] {
-  const currentByAddress = new Map(
-    current.map((entry) => [entry.address.toLowerCase(), entry.units]),
-  );
-
-  const desired = new Map(
-    target.map((entry) => [entry.address.toLowerCase(), entry.units]),
-  );
-  for (const address of currentByAddress.keys()) {
-    if (!desired.has(address)) desired.set(address, 0n);
-  }
-
-  return [...desired.entries()]
-    .filter(
-      ([address, units]) => (currentByAddress.get(address) ?? 0n) !== units,
-    )
-    .map(([address, units]) => ({ address, units }))
-    .sort((a, b) => a.address.localeCompare(b.address));
-}
-
 async function resolvePoolAddress(job: JobRow): Promise<Address> {
   const { getPoolFromSubgraph } = await import("../pool");
   const pool = await getPoolFromSubgraph(job.chainId, job.poolId);
   if (!pool) throw new Error(`Pool ${job.poolId} not found`);
   return pool.poolAddress;
 }
-
-export { planWrite };
