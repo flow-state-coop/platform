@@ -134,6 +134,8 @@ Authorization: Bearer <key>
 
 Polling is also the recovery mechanism: a poll that finds a stalled job restarts it, resuming from where it stopped rather than starting over.
 
+Poll rather than assume a `202` means the write is already underway. The first run starts alongside the response, so an instance recycled in between leaves the job queued until something picks it up, and that something is your next poll.
+
 ### Recovering a lost job id
 
 If a write is rejected because a job is already running, the rejection carries that job's id and payload fingerprint, so a caller that lost the original response can still poll it and can tell its own submission from another system's:

@@ -250,6 +250,15 @@ export async function POST(request: Request) {
 
     const jobId = crypto.randomUUID();
 
+    // Also swept here, not only when a job is polled: a caller that submits and
+    // never polls, or gives up on a failure, would otherwise leave its rows
+    // behind for good. Any pool still being written now cleans up after itself.
+    await db
+      .deleteFrom("splitterWriteJobs")
+      .where("expiresAt", "<", new Date())
+      .execute()
+      .catch((err) => console.error(err));
+
     await db
       .insertInto("splitterWriteJobs")
       .values({

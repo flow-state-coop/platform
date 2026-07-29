@@ -268,11 +268,16 @@ async function hasOnChainRoleCached(
     return false;
   }
 
-  if (managerRoleCache.size >= MAX_MANAGER_ROLE_CACHE) {
-    const oldest = managerRoleCache.keys().next().value;
+  // Dropped before the size check rather than overwritten in place, so a
+  // refreshed entry moves to the tail and eviction drops the least recently
+  // read council instead of whichever was read first.
+  managerRoleCache.delete(key);
 
-    if (oldest !== undefined) {
-      managerRoleCache.delete(oldest);
+  if (managerRoleCache.size >= MAX_MANAGER_ROLE_CACHE) {
+    const leastRecentlyRead = managerRoleCache.keys().next().value;
+
+    if (leastRecentlyRead !== undefined) {
+      managerRoleCache.delete(leastRecentlyRead);
     }
   }
 

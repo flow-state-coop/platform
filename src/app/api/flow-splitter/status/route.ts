@@ -11,6 +11,8 @@ export const dynamic = "force-dynamic";
 const STATUS_REQUEST_LIMIT = 60;
 const STATUS_REQUEST_WINDOW_MS = 60_000;
 
+let warnedAboutMissingClientHeader = false;
+
 /**
  * Whether a pool is API-controlled, for the notice on the Share Register.
  *
@@ -30,6 +32,16 @@ export async function GET(request: Request) {
       request.headers.get("x-vercel-forwarded-for")?.trim() ||
       request.headers.get("x-real-ip")?.trim() ||
       "unknown";
+
+    // Behind a proxy that sets neither, every caller shares one window and the
+    // limit stops being per-caller. Said once per instance so a misconfigured
+    // deployment is visible without a line per request.
+    if (client === "unknown" && !warnedAboutMissingClientHeader) {
+      warnedAboutMissingClientHeader = true;
+      console.warn(
+        "Neither x-vercel-forwarded-for nor x-real-ip is set: the splitter status limit is shared across all callers",
+      );
+    }
 
     if (
       !allowRequest(

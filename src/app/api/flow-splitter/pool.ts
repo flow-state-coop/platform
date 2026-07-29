@@ -136,11 +136,16 @@ async function readAndCachePoolAdmin(
 ): Promise<boolean> {
   const value = await isPoolAdmin(network, poolId, account);
 
-  if (poolAdminCache.size >= MAX_POOL_ADMIN_CACHE) {
-    const oldest = poolAdminCache.keys().next().value;
+  // Dropped before the size check rather than overwritten in place, so a
+  // refreshed entry moves to the tail and eviction drops the least recently
+  // read pool instead of whichever was read first.
+  poolAdminCache.delete(key);
 
-    if (oldest !== undefined) {
-      poolAdminCache.delete(oldest);
+  if (poolAdminCache.size >= MAX_POOL_ADMIN_CACHE) {
+    const leastRecentlyRead = poolAdminCache.keys().next().value;
+
+    if (leastRecentlyRead !== undefined) {
+      poolAdminCache.delete(leastRecentlyRead);
     }
   }
 
