@@ -80,8 +80,21 @@ export function createSplitterMockWalletClient() {
         if (splitterChain.writeError) {
           throw new Error(splitterChain.writeError);
         }
+        // Wrapped the way viem wraps a revert raised while simulating the call,
+        // so the runner classifies it as it would in production. A bare Error
+        // here would exercise the transient path instead.
+        //
+        // Imported here rather than at module scope: the routes' `vi.mock`
+        // factory for viem imports this file, so a top-level viem import closes
+        // that loop and the suite dies during module load.
         if (splitterChain.failWriteNumber === writeNumber) {
-          throw new Error("execution reverted");
+          const { ContractFunctionExecutionError, ExecutionRevertedError } =
+            await import("viem");
+
+          throw new ContractFunctionExecutionError(
+            new ExecutionRevertedError({}),
+            { abi: [], functionName },
+          );
         }
 
         if (functionName === "updateMembersUnits") {

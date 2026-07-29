@@ -3,6 +3,7 @@ import type { Address } from "viem";
 import { getApolloClient } from "@/lib/apollo";
 import type { Network } from "@/types/network";
 import { db } from "../db";
+import { PermanentError } from "./errors";
 import { getUnitsForMembers } from "./pool";
 import type { RegisterEntry } from "./plan";
 
@@ -76,10 +77,12 @@ export async function getIndexedMembers(
     cursor = members[members.length - 1].id;
   }
 
-  console.warn(
-    `poolMembers pagination hit the ${MAX_PAGES}-page cap for pool ${poolAddress} on chain ${chainId}; the member list may be truncated`,
+  // Returning the truncated list would report a register missing its tail, and
+  // let a write leave those members' units standing while claiming it replaced
+  // the whole thing. Refusing is the only honest answer.
+  throw new PermanentError(
+    `Pool ${poolAddress} on chain ${chainId} has more than ${MAX_PAGES * PAGE_SIZE} members, which is beyond what this API can enumerate`,
   );
-  return indexed;
 }
 
 /** Addresses the platform last wrote for this pool. */

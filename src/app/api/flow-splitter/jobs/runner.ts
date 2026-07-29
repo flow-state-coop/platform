@@ -10,6 +10,12 @@ import { getIndexedMembers, resolveCurrentRegister } from "../members";
 import { pruneMirror, recordWrittenBatch } from "../mirror";
 import { diffRegister, type RegisterEntry } from "../plan";
 import { BOT_NOT_ADMIN_ERROR } from "../auth";
+import { PermanentError } from "../errors";
+import {
+  BaseError,
+  ContractFunctionRevertedError,
+  ExecutionRevertedError,
+} from "viem";
 
 // A job whose runner stopped reporting for this long is treated as dead and can
 // be reclaimed. This is what stops a crashed runner wedging a pool until
@@ -48,6 +54,15 @@ export type JobRow = {
   createdAt: Date;
 };
 
+export const SUPERSEDED_ERROR =
+  "Superseded by a newer write to this pool. Its allocation is the one that stands";
+
+// Guards every update to a job row. A runner scopes its writes to the attempt it
+// claimed and to a job still in flight, so one that was superseded, or that lost
+// its claim to a successor, cannot clobber the accounting or the terminal state
+// the winner already wrote.
+const IN_FLIGHT = ["queued", "running"] as const;
+
 /**
  * Take ownership of a job, atomically.
  *
@@ -55,29 +70,80 @@ export type JobRow = {
  * up its own submission); a running one only once its heartbeat has gone stale.
  * The conditional UPDATE is the only thing preventing the post-response runner
  * and a poll-triggered resume from both spending gas on the same job.
+ *
+ * A job the pool has moved past is refused outright. Reclaiming one would put
+ * two runners on the same pool driving it toward different targets, each undoing
+ * the other's batches until one happens to finish last.
  */
 export async function claimJob(jobId: string): Promise<JobRow | null> {
   const result = await sql<JobRow>`
-    UPDATE splitter_write_jobs
+    UPDATE splitter_write_jobs AS job
        SET status = 'running',
            heartbeat_at = now(),
            attempt = attempt + 1,
            updated_at = now()
-     WHERE id = ${jobId}
-       AND attempt < ${MAX_ATTEMPTS}
+     WHERE job.id = ${jobId}
+       AND job.attempt < ${MAX_ATTEMPTS}
        AND (
-         status = 'queued'
+         job.status = 'queued'
          OR (
-           status = 'running'
-           AND heartbeat_at < now() - make_interval(secs => ${HEARTBEAT_STALE_MS / 1000})
+           job.status = 'running'
+           AND job.heartbeat_at < now() - make_interval(secs => ${HEARTBEAT_STALE_MS / 1000})
          )
        )
-    RETURNING id, chain_id, pool_id, key_id, payload_hash, status, target,
-              batch_index, tx_hashes, changed_count, gas_used, gas_cost_wei,
-              attempt, created_at
+       AND NOT EXISTS (
+         SELECT 1
+           FROM splitter_write_jobs AS newer
+          WHERE newer.chain_id = job.chain_id
+            AND newer.pool_id = job.pool_id
+            AND newer.id <> job.id
+            AND newer.status IN ('queued', 'running')
+            AND newer.created_at > job.created_at
+       )
+    RETURNING job.id, job.chain_id, job.pool_id, job.key_id, job.payload_hash,
+              job.status, job.target, job.batch_index, job.tx_hashes,
+              job.changed_count, job.gas_used, job.gas_cost_wei, job.attempt,
+              job.created_at
   `.execute(db);
 
   return result.rows[0] ?? null;
+}
+
+/**
+ * Retire the jobs a newly accepted write replaces.
+ *
+ * A job whose runner died is left non-terminal on purpose, so a crash cannot
+ * wedge the pool. The cost is that nothing else marks it done: its caller's poll
+ * loop would never end, and the poll itself would resurrect it. Accepting a
+ * newer write for the same pool is what settles it.
+ *
+ * `exceptJobId` is null when the write that supersedes them needed no job of its
+ * own, which is a register that already matched. That still moves the pool past
+ * anything older, since the old job would drag it back to its own target.
+ */
+export async function supersedeJobs(
+  chainId: number,
+  poolId: string,
+  exceptJobId: string | null,
+): Promise<void> {
+  const superseded = await db
+    .updateTable("splitterWriteJobs")
+    .set({
+      status: "failed",
+      error: SUPERSEDED_ERROR,
+      heartbeatAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where("chainId", "=", chainId)
+    .where("poolId", "=", poolId)
+    .where("status", "in", IN_FLIGHT)
+    .$if(exceptJobId !== null, (qb) => qb.where("id", "!=", exceptJobId!))
+    .returningAll()
+    .execute();
+
+  for (const job of superseded) {
+    await recordHistory(job, "failed", progressOf(job));
+  }
 }
 
 /**
@@ -111,7 +177,7 @@ function progressOf(job: {
   };
 }
 
-async function heartbeat(jobId: string, progress: JobProgress) {
+async function heartbeat(job: JobRow, progress: JobProgress) {
   await db
     .updateTable("splitterWriteJobs")
     .set({
@@ -123,8 +189,82 @@ async function heartbeat(jobId: string, progress: JobProgress) {
       gasCostWei: progress.gas.costWei.toString(),
       updatedAt: new Date(),
     })
-    .where("id", "=", jobId)
+    .where("id", "=", job.id)
+    .where("attempt", "=", job.attempt)
+    .where("status", "in", IN_FLIGHT)
     .execute();
+}
+
+/**
+ * Whether retrying this could only produce the same answer.
+ *
+ * The distinction is "the chain rejected this" against "we never got an answer
+ * from it". A revert is deterministic, and viem raises one at simulation time as
+ * readily as it reports one on a receipt, so it has to be recognised in the
+ * error chain rather than only on the receipt status.
+ */
+function isPermanent(err: unknown): boolean {
+  if (err instanceof PermanentError) return true;
+
+  return (
+    err instanceof BaseError &&
+    err.walk(
+      (cause) =>
+        cause instanceof ExecutionRevertedError ||
+        cause instanceof ContractFunctionRevertedError,
+    ) !== null
+  );
+}
+
+async function requeue(job: JobRow, progress: JobProgress, attempt: number) {
+  await db
+    .updateTable("splitterWriteJobs")
+    .set({
+      status: "queued",
+      attempt,
+      heartbeatAt: new Date(),
+      txHashes: progress.txHashes,
+      batchIndex: progress.batchIndex,
+      changedCount: progress.changedCount,
+      gasUsed: progress.gas.used.toString(),
+      gasCostWei: progress.gas.costWei.toString(),
+      updatedAt: new Date(),
+    })
+    .where("id", "=", job.id)
+    .where("attempt", "=", job.attempt)
+    .where("status", "in", IN_FLIGHT)
+    .execute()
+    .catch((err) => console.error(err));
+}
+
+/**
+ * Bookkeeping only. A failure here must never propagate: the job's real outcome
+ * is already recorded, and re-entering the catch in `runJob` would report a
+ * correct register as an inconsistent partial write.
+ */
+async function recordHistory(
+  job: { id: string; chainId: number; poolId: string; keyId: number },
+  status: "succeeded" | "failed",
+  progress: JobProgress,
+) {
+  try {
+    await db
+      .insertInto("splitterWriteHistory")
+      .values({
+        chainId: job.chainId,
+        poolId: job.poolId,
+        keyId: job.keyId,
+        jobId: job.id,
+        changedCount: progress.changedCount,
+        status,
+        txHashes: progress.txHashes,
+        gasUsed: progress.gas.used.toString(),
+        gasCostWei: progress.gas.costWei.toString(),
+      })
+      .execute();
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 async function finish(
@@ -148,43 +288,23 @@ async function finish(
       updatedAt: new Date(),
     })
     .where("id", "=", job.id)
-    // Scoped to this runner's attempt, so a runner that was superseded cannot
-    // overwrite the terminal state a newer one already wrote.
     .where("attempt", "=", job.attempt)
+    .where("status", "in", IN_FLIGHT)
     .executeTakeFirst();
 
   if (settled.numUpdatedRows === 0n) return;
 
-  // Bookkeeping only. A failure here must never propagate: the job's real
-  // outcome is already recorded, and re-entering the catch below would report a
-  // correct register as an inconsistent partial write.
-  try {
-    await db
-      .insertInto("splitterWriteHistory")
-      .values({
-        chainId: job.chainId,
-        poolId: job.poolId,
-        keyId: job.keyId,
-        jobId: job.id,
-        changedCount,
-        status,
-        txHashes,
-        gasUsed: gas.used.toString(),
-        gasCostWei: gas.costWei.toString(),
-      })
-      .execute();
+  await recordHistory(job, status, progress);
 
-    // The minimum interval between writes is measured from the previous job's
-    // completion, not from when it was accepted, so it is stamped here.
-    await db
-      .updateTable("splitterIntegrations")
-      .set({ lastWriteAt: new Date() })
-      .where("chainId", "=", job.chainId)
-      .where("poolId", "=", job.poolId)
-      .execute();
-  } catch (err) {
-    console.error(err);
-  }
+  // The minimum interval between writes is measured from the previous job's
+  // completion, not from when it was accepted, so it is stamped here.
+  await db
+    .updateTable("splitterIntegrations")
+    .set({ lastWriteAt: new Date() })
+    .where("chainId", "=", job.chainId)
+    .where("poolId", "=", job.poolId)
+    .execute()
+    .catch((err) => console.error(err));
 }
 
 /**
@@ -262,7 +382,7 @@ export async function runJob(jobId: string): Promise<void> {
   // Keeps the job visibly alive across receipt waits and subgraph reads, which
   // together run longer than the staleness threshold.
   const ticker = setInterval(() => {
-    heartbeat(job.id, progress).catch((err) => console.error(err));
+    heartbeat(job, progress).catch((err) => console.error(err));
   }, HEARTBEAT_REFRESH_MS);
 
   try {
@@ -314,7 +434,7 @@ export async function runJob(jobId: string): Promise<void> {
       // findable orphan rather than an untraceable one.
       progress.txHashes.push(hash);
       progress.batchIndex += 1;
-      await heartbeat(job.id, progress);
+      await heartbeat(job, progress);
 
       const receipt = await publicClient.waitForTransactionReceipt({
         hash,
@@ -322,7 +442,7 @@ export async function runJob(jobId: string): Promise<void> {
       });
 
       if (receipt.status !== "success") {
-        throw new Error(`Batch transaction reverted: ${hash}`);
+        throw new PermanentError(`Batch transaction reverted: ${hash}`);
       }
 
       // Counted here rather than at broadcast, so a batch that reverted or was
@@ -331,6 +451,11 @@ export async function runJob(jobId: string): Promise<void> {
       progress.gas.used += receipt.gasUsed ?? 0n;
       progress.gas.costWei +=
         (receipt.gasUsed ?? 0n) * (receipt.effectiveGasPrice ?? 0n);
+
+      // Persisted before anything slower runs, so a kill between here and the
+      // next batch cannot lose what this one changed and have the job report a
+      // register it did move as untouched.
+      await heartbeat(job, progress);
 
       // Merged before advancing, so a job that dies here never loses what this
       // batch added.
@@ -359,27 +484,32 @@ export async function runJob(jobId: string): Promise<void> {
       const withinGrace =
         Date.now() - new Date(job.createdAt).getTime() < CHAIN_BUSY_GRACE_MS;
 
-      await db
-        .updateTable("splitterWriteJobs")
-        .set({
-          status: "queued",
-          attempt: withinGrace ? Math.max(0, job.attempt - 1) : job.attempt,
-          heartbeatAt: new Date(),
-          txHashes: progress.txHashes,
-          batchIndex: progress.batchIndex,
-          changedCount: progress.changedCount,
-          gasUsed: progress.gas.used.toString(),
-          gasCostWei: progress.gas.costWei.toString(),
-          updatedAt: new Date(),
-        })
-        .where("id", "=", job.id)
-        .where("attempt", "=", job.attempt)
-        .execute()
-        .catch((updateErr) => console.error(updateErr));
+      await requeue(
+        job,
+        progress,
+        withinGrace ? Math.max(0, job.attempt - 1) : job.attempt,
+      );
       return;
     }
 
     console.error(err);
+
+    // Everything a retry could plausibly fix gets one. Our subgraph or RPC being
+    // down is the likeliest way a write fails, and a receipt wait that timed out
+    // usually means the transaction landed anyway, so terminally failing here
+    // reports a register that did change as untouched. The retry costs nothing:
+    // the diff is re-derived from the chain before every batch, so a resumed job
+    // absorbs whatever landed instead of repeating it.
+    //
+    // The job is left running with a fresh heartbeat rather than requeued, so
+    // the staleness window paces the retries. Requeuing would have the caller's
+    // own poll spend all five attempts inside a few seconds, which no outage is
+    // short enough for.
+    if (!isPermanent(err) && job.attempt < MAX_ATTEMPTS) {
+      await heartbeat(job, progress).catch((hbErr) => console.error(hbErr));
+      return;
+    }
+
     await finish(
       job,
       "failed",
@@ -396,12 +526,6 @@ export async function runJob(jobId: string): Promise<void> {
   }
 }
 
-/**
- * Drop mirrored addresses that both the chain and the indexer now agree hold
- * nothing, so the record does not grow without bound. Anything either source
- * still knows about stays, since naming addresses the other two might miss is
- * the mirror's whole purpose.
- */
 async function pruneSettledAddresses(
   job: JobRow,
   chainId: number,

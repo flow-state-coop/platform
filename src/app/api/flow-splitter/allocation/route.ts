@@ -9,7 +9,7 @@ import { isBotPoolAdmin } from "../pool";
 import { planWrite, TARGET_TOTAL_UNITS } from "../plan";
 import { splitterAllocationSchema } from "../validation";
 import { BOT_NOT_ADMIN_ERROR } from "../auth";
-import { HEARTBEAT_STALE_MS, runJob } from "../jobs/runner";
+import { HEARTBEAT_STALE_MS, runJob, supersedeJobs } from "../jobs/runner";
 
 export const dynamic = "force-dynamic";
 
@@ -223,6 +223,13 @@ export async function POST(request: Request) {
     // Verified against the chain rather than the indexer, so a resubmitted
     // payload that changed nothing costs no gas and is not recorded as a write.
     if (plan.unchanged) {
+      // Nothing to write, but the pool has still moved past any job left open
+      // by a dead runner: resuming one would drag the register back to the
+      // target it was chasing.
+      await supersedeJobs(key.chainId, key.poolId, null).catch((err) =>
+        console.error(err),
+      );
+
       await db
         .insertInto("splitterWriteHistory")
         .values({
@@ -278,6 +285,15 @@ export async function POST(request: Request) {
         expiresAt: new Date(Date.now() + JOB_TTL_MS),
       })
       .execute();
+
+    // Only reached past the in-flight check above, so anything still open here
+    // is a job whose runner stopped reporting. Retiring it is what stops a poll
+    // on the old job resurrecting it to race this one toward a target the pool
+    // has already moved past. Ordered after the insert, so the new job is
+    // visible to `claimJob`'s own guard for the whole window.
+    await supersedeJobs(key.chainId, key.poolId, jobId).catch((err) =>
+      console.error(err),
+    );
 
     after(() => runJob(jobId).catch((err) => console.error(err)));
 

@@ -242,6 +242,43 @@ describe("splitter allocation write", () => {
     expect(res.status).toBe(202);
   });
 
+  it("retires the abandoned job the new write took the slot from", async () => {
+    await seedKey();
+    const first = await (await write([{ address: A, weight: 1 }])).json();
+    deferred.length = 0;
+
+    await db
+      .updateTable("splitterWriteJobs")
+      .set({
+        status: "running",
+        heartbeatAt: new Date(Date.now() - 10 * 60_000),
+      })
+      .where("id", "=", first.jobId)
+      .execute();
+    await db
+      .updateTable("splitterIntegrations")
+      .set({ lastWriteAt: new Date(Date.now() - 10 * 60_000) })
+      .execute();
+
+    const second = await (await write([{ address: B, weight: 1 }])).json();
+    await flushDeferred();
+
+    const abandoned = await jobRow(first.jobId);
+    expect(abandoned?.status).toBe("failed");
+    expect(abandoned?.error).toMatch(/superseded/i);
+
+    // The register is the newer job's, and polling the old one neither revives
+    // it nor drags the pool back to the target it was chasing.
+    await poll(first.jobId);
+    await flushDeferred();
+
+    expect(await jobRow(second.jobId).then((job) => job?.status)).toBe(
+      "succeeded",
+    );
+    expect(splitterChain.units.get(B)).toBe(1_000_000n);
+    expect(splitterChain.units.get(A) ?? 0n).toBe(0n);
+  });
+
   it("resumes a stalled job when its status is polled", async () => {
     await seedKey();
     const first = await (await write([{ address: A, weight: 1 }])).json();
@@ -288,6 +325,37 @@ describe("splitter allocation write", () => {
       .select(["address"])
       .execute();
     expect(mirrored.length).toBeGreaterThan(0);
+  });
+
+  // Our RPC or indexer being down is the likeliest way a write fails, and it is
+  // the one failure a retry can actually fix. Failing it at the first attempt
+  // spends none of the retry budget on the thing the budget is for.
+  it("keeps a job alive through an infrastructure failure and finishes it", async () => {
+    await seedKey();
+    splitterChain.writeError = "socket hang up";
+
+    const body = await (await write([{ address: A, weight: 1 }])).json();
+    await flushDeferred();
+
+    const stalled = await jobRow(body.jobId);
+    expect(stalled?.status).toBe("running");
+    expect(stalled?.error).toBeNull();
+
+    // The staleness window paces the retry, so age the job past it and poll,
+    // which is the same recovery path a crashed runner takes.
+    splitterChain.writeError = null;
+    await db
+      .updateTable("splitterWriteJobs")
+      .set({ heartbeatAt: new Date(Date.now() - 10 * 60_000) })
+      .where("id", "=", body.jobId)
+      .execute();
+
+    await poll(body.jobId);
+    await flushDeferred();
+
+    const job = await jobRow(body.jobId);
+    expect(job?.status).toBe("succeeded");
+    expect(splitterChain.units.get(A)).toBe(1_000_000n);
   });
 
   it("repairs a partial write with fewer transactions on re-submission", async () => {
