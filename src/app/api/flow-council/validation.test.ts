@@ -28,21 +28,32 @@ describe("validateProjectDetails", () => {
     expect(result.success).toBe(false);
   });
 
-  it("trims surrounding whitespace from the name", () => {
+  it("normalizes surrounding and internal whitespace in the name", () => {
     const result = validateProjectDetails({
-      name: "  Proj ",
+      name: "  My   Proj ",
+      description: MIN_DESCRIPTION,
+    });
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.name).toBe("My Proj");
+  });
+
+  it("strips invisible characters from the name", () => {
+    const result = validateProjectDetails({
+      name: "Proj\u200B",
       description: MIN_DESCRIPTION,
     });
     expect(result.success).toBe(true);
     expect(result.success && result.data.name).toBe("Proj");
   });
 
-  it("rejects a whitespace-only name", () => {
-    const result = validateProjectDetails({
-      name: "   ",
-      description: MIN_DESCRIPTION,
-    });
-    expect(result.success).toBe(false);
+  it("rejects a name that normalizes to nothing", () => {
+    for (const name of ["   ", "\u200B\u2060"]) {
+      const result = validateProjectDetails({
+        name,
+        description: MIN_DESCRIPTION,
+      });
+      expect(result.success).toBe(false);
+    }
   });
 
   it("rejects description below minimum length", () => {

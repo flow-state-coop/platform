@@ -12,9 +12,10 @@ import {
 } from "../validation";
 import { deleteObjectByPublicUrl } from "../s3";
 import { networks } from "@/lib/networks";
+import { nameSchema } from "../validation";
 
 const roundPatchSchema = z.object({
-  name: z.string().trim().min(1).max(200).optional(),
+  name: nameSchema({ max: 200 }).optional(),
   description: z.string().trim().min(1).max(5000).optional(),
   logoUrl: z
     .string()

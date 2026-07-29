@@ -4,6 +4,7 @@ import { createPublicClient, http, parseAbi, Address, isAddress } from "viem";
 import { db } from "../db";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { isFactoryCouncil } from "../auth";
+import { nameSchema } from "../validation";
 import { networks, getViemChain } from "@/lib/networks";
 import { DEFAULT_ADMIN_ROLE } from "@/app/flow-councils/lib/constants";
 
@@ -14,7 +15,7 @@ import { DEFAULT_ADMIN_ROLE } from "@/app/flow-councils/lib/constants";
 const launchSchema = z.object({
   chainId: z.number(),
   flowCouncilAddress: z.string(),
-  name: z.string().optional(),
+  name: nameSchema({ min: 0, max: 200 }).optional(),
   description: z.string().optional(),
   logoUrl: z.string().optional(),
   listed: z.boolean().optional(),

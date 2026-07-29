@@ -7,6 +7,7 @@ import {
 import { ALLOWED_REACTIONS } from "@/app/flow-councils/lib/constants";
 import { STRUCTURAL_TYPES } from "@/app/flow-councils/types/formSchema";
 import { normalizeUrl } from "@/app/flow-councils/utils/normalizeUrl";
+import { normalizeName, stripInvisibleCharacters } from "@/lib/normalizeName";
 import { isValidEmail } from "@/lib/email";
 import {
   normalizeSocialHandle,
@@ -28,6 +29,20 @@ export { isValidEmail } from "@/lib/email";
 
 export const MAX_STRING_LENGTH = 10_000;
 
+/**
+ * Schema for a human-facing name or title. Normalization runs before the length
+ * bounds so limits apply to what is actually stored, and an input that is only
+ * whitespace or invisible characters fails the minimum rather than persisting
+ * as an empty name.
+ */
+export function nameSchema({ min = 1, max }: { min?: number; max: number }) {
+  return z
+    .string()
+    .max(MAX_STRING_LENGTH)
+    .transform(normalizeName)
+    .pipe(z.string().min(min).max(max));
+}
+
 const smartContractSchema = z.object({
   type: z.enum(["projectAddress", "goodCollectivePool"]),
   network: z.string(),
@@ -40,7 +55,7 @@ const otherLinkSchema = z.object({
 });
 
 export const projectDetailsSchema = z.object({
-  name: z.string().trim().min(1),
+  name: nameSchema({ max: 200 }),
   description: z
     .string()
     .min(CHARACTER_LIMITS.projectDescription.min)
@@ -80,19 +95,19 @@ export const projectDetailsSchema = z.object({
 });
 
 const buildMilestoneSchema: z.ZodType<BuildMilestone> = z.object({
-  title: z.string(),
+  title: z.string().max(MAX_STRING_LENGTH).transform(stripInvisibleCharacters),
   description: z.string().max(CHARACTER_LIMITS.milestoneDescription.max),
   deliverables: z.array(z.string()),
 });
 
 const growthMilestoneSchema: z.ZodType<GrowthMilestone> = z.object({
-  title: z.string(),
+  title: z.string().max(MAX_STRING_LENGTH).transform(stripInvisibleCharacters),
   description: z.string().max(CHARACTER_LIMITS.milestoneDescription.max),
   activations: z.array(z.string()),
 });
 
 const teamMemberSchema: z.ZodType<TeamMember> = z.object({
-  name: z.string(),
+  name: nameSchema({ min: 0, max: MAX_STRING_LENGTH }),
   roleDescription: z.string(),
   telegram: z.string().optional(),
   githubOrLinkedin: z.string().optional(),
@@ -155,7 +170,7 @@ export { normalizeSocialHandle, extractSocialHandle };
 
 const socialAccountSchema = z.object({
   id: z.string().min(1).max(64),
-  name: z.string().trim().min(1).max(50),
+  name: nameSchema({ max: 50 }),
   xHandle: z.string().trim().max(50).optional(),
   farcasterHandle: z.string().trim().max(50).optional(),
 });
@@ -260,7 +275,7 @@ export function validateSocialCharLimits(
 }
 
 const evidenceLinkSchema = z.object({
-  name: z.string().min(1).max(200),
+  name: nameSchema({ max: 200 }),
   link: z
     .string()
     .max(2000)
@@ -310,7 +325,8 @@ export function makeMilestoneDefinitionSchema(opts: {
     title: z
       .string()
       .max(200, "Title exceeds 200 characters")
-      .refine((title) => title.trim() !== "", "Title is required"),
+      .transform(stripInvisibleCharacters)
+      .pipe(z.string().min(1, "Title is required")),
     description: z
       .string()
       .min(
@@ -919,7 +935,7 @@ export type NftConfig = z.infer<typeof nftConfigSchema>;
 //       "defaultVotingPower" integer 1–1_000_000
 export const voterGroupCreateSchema = z
   .object({
-    name: z.string().min(1).max(100),
+    name: nameSchema({ max: 100 }),
     eligibilityMethod: z.enum(["manual", "gooddollar", "metrics", "nft"]),
     defaultVotingPower: z.number().int().min(1).max(1_000_000),
     nftConfig: nftConfigSchema.optional(),
@@ -949,7 +965,7 @@ export const voterGroupCreateSchema = z
 // resulting group is an nft group depends on the stored row, so completeness
 // for the resulting method is enforced by the route, not here.
 export const voterGroupUpdateSchema = z.object({
-  name: z.string().min(1).max(100).optional(),
+  name: nameSchema({ max: 100 }).optional(),
   eligibilityMethod: z
     .enum(["manual", "gooddollar", "metrics", "nft"])
     .optional(),
