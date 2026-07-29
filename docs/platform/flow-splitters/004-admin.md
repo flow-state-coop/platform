@@ -45,13 +45,15 @@ You can mint keys before granting, but writes fail until the grant lands. If the
 
 ### Create and revoke keys
 
-![The API card showing the bot with admin access, a table of two API keys with prefixes and last-used dates, the key label field, and the write history table](./img/api-keys.png)
+![The API card showing the bot with admin access, a table of two API keys with prefixes, creators and last-used dates, the key label field, and the write history table](./img/api-keys.png)
 
 *Keys and write history, once an integration is running.*
 
-Give the key a label you'll recognize ("GoodBuilders metrics") and click **Create key**. The token is shown **once**, with a copy button. It is never stored in plaintext and can't be retrieved again; if you lose it, revoke the key and mint another.
+Give the key a label you'll recognize ("Social Metrics") and click **Create key**. The token is shown **once**, with a copy button. It is never stored in plaintext and can't be retrieved again; if you lose it, revoke the key and mint another.
 
-The table lists each key by label and prefix, when it was created, and when it was last used. **Revoke** asks for a confirm, then blocks that key immediately. Revoking does not cancel a write that was already accepted. A pool can hold **10 active keys**; revoking one frees a slot.
+The table lists each key by label and prefix, which admin created it, when it was created, and when it was last used. **Revoke** asks for a confirm, then blocks that key immediately. Revoking does not cancel a write that was already accepted. A pool can hold **10 active keys**; revoking one frees a slot.
+
+A key carries the authority of the admin who minted it, so removing that admin from the pool stops their keys working. Mint from an account you intend to keep as an admin, and re-key from a current admin if you remove the one an integration depends on.
 
 Hand the token to your external system and point it at the endpoints in **Build an integration** on the card. The full request format, limits, and error codes are in the [Flow Splitter API](../../developers/010-splitter-api.md) developer reference.
 

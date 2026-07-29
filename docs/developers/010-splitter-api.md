@@ -132,9 +132,13 @@ Authorization: Bearer <key>
 
 `status` is one of `queued`, `running`, `succeeded`, or `failed`. A write that changed nothing never creates a job, so `no_change` is only ever a write response, never a job status. A key can only see jobs for its own pool. Jobs stay pollable for **seven days**, after which the endpoint returns `404`.
 
-Polling is also the recovery mechanism: a poll that finds a stalled job restarts it, resuming from where it stopped rather than starting over.
+Polling is also the recovery mechanism: a poll that finds a stalled job restarts it, resuming from where it stopped rather than starting over. Infrastructure failures on our side (an RPC or indexer outage, a receipt wait that timed out) are retried this way too, up to five attempts, rather than failing the write; a job pauses for about two minutes between attempts, so keep polling rather than treating a quiet job as stuck.
 
 Poll rather than assume a `202` means the write is already underway. The first run starts alongside the response, so an instance recycled in between leaves the job queued until something picks it up, and that something is your next poll.
+
+### Superseded jobs
+
+Accepting a new write for a pool retires any earlier job that has not finished, marking it `failed` with `Superseded by a newer write to this pool. Its allocation is the one that stands`. A poll on the old job returns that rather than hanging, and the retired job is never resumed, so two jobs can never drive the same pool toward different targets.
 
 ### Recovering a lost job id
 
@@ -163,6 +167,7 @@ If some batches land and one fails, the register is left mid-update: shares no l
 | `202` | `{ "success": true, "status": "queued", "jobId": "…" }` | Write accepted. Poll the job for progress. |
 | `400` | `{ "error": "…" }` | Invalid or duplicate address, an address that is the pool itself, or all weights zero. **Cools the key down.** Malformed JSON also returns `400` but does not. |
 | `401` | `{ "error": "Unauthorized" }` | Missing, unknown, or revoked key. |
+| `403` | `{ "error": "The wallet that created this API key is no longer an admin…" }` | The key's creator lost pool admin, so the key lost the authority it was minted with. A current admin can mint a replacement. |
 | `404` | `{ "error": "Job not found" }` | Unknown job, a job belonging to another pool, or one past its seven-day expiry. |
 | `409` | `{ "error": "A write is already running for this pool…", "jobId": "…" }` | Another job is in flight for this pool. |
 | `409` | `{ "error": "The Flow State bot is not an admin of this pool…" }` | The bot's admin grant is missing or was withdrawn. Existing keys are left in place, so re-granting resumes the integration without minting a new key. |
@@ -177,7 +182,7 @@ The three rejection messages a caller is most likely to hit are worded distinctl
 
 ## Limits
 
-- **One job in flight per pool.** A job whose runner died stops reporting and releases its slot, so a crash cannot wedge a pool.
+- **One job in flight per pool.** A job whose runner died stops reporting and releases its slot, so a crash cannot wedge a pool. The write that takes the slot retires the abandoned job rather than leaving it to be resumed later.
 - **A 60-second minimum interval between writes**, measured from the previous job's completion. For a large register the job itself takes longer than the interval, so the in-flight rule is the real limit.
 - **A 60-second key cooldown** after a payload that is deterministically wrong. Failures that are the platform's fault (RPC down, chain congestion) never trigger it, so a healthy integration is never penalized for our outage. Polling a job is exempt, so a bad payload never blocks you from following, or recovering, a write that was already accepted.
 - **10 active keys per pool.** Revoking one frees a slot.
@@ -192,6 +197,7 @@ Keys are:
 - Scoped to a **single pool**. A key belongs to exactly one pool and cannot be pointed at another.
 - Not stored in plaintext. Only a keyed hash is persisted, and the token is shown once on creation.
 - Soft-revoked: a revoked key is rejected as missing, and revocation takes effect immediately. It does **not** cancel a job that was already accepted.
+- Bound to the admin who minted them. A key stops working if its creator is removed from the pool's admin set, so removing an admin on-chain takes back the capability they handed out. The admin page shows each key's creator alongside its label.
 
 ```
 Authorization: Bearer splitter_abc123...
@@ -199,7 +205,7 @@ Authorization: Bearer splitter_abc123...
 
 ## Limitations
 
-- **Multiple writers can overwrite each other.** With up to 10 keys per pool, two systems can both write. If one times out and retries, the other's write can land in between and be replaced. Nothing detects this; the write history in the admin UI makes it diagnosable after the fact. Coordinating writers is the pool owner's responsibility.
+- **Multiple writers can overwrite each other.** With up to 10 keys per pool, two systems can both write, and the later write replaces the earlier one wholesale. Nothing detects this; the write history in the admin UI makes it diagnosable after the fact. Coordinating writers is the pool owner's responsibility.
 - **Manual edits are not blocked.** A pool admin can still edit shares by hand, and the next API write will overwrite those changes. The admin page shows a notice to that effect when a pool has active keys.
 - **A recipient added by hand inside the indexer's lag window can be missed.** If a human adds a brand new recipient and an API write happens before the indexer catches up, that recipient is in neither source and keeps their shares, so the pool's total exceeds 1,000,000 and every percentage is slightly off until the next write picks them up. Superfluid provides no way to enumerate a pool's members on-chain, so this window is inherent.
 
