@@ -193,7 +193,8 @@ export async function authorizeCouncilManager(
   // wallet the bot broadcasts ballots and claims through.
   if (
     !allowRequest(
-      `council-manager:${session.address.toLowerCase()}`,
+      "council-manager",
+      session.address.toLowerCase(),
       MANAGER_REQUEST_LIMIT,
       MANAGER_REQUEST_WINDOW_MS,
     )

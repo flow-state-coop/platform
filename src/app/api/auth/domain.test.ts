@@ -4,7 +4,18 @@ vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 vi.mock("next-auth", () => ({ default: () => () => undefined }));
 vi.mock("next-auth/providers/credentials", () => ({ default: () => ({}) }));
 
-import { allowedSiweDomains, isAllowedSiweDomain } from "./[...nextauth]/route";
+import {
+  allowedSiweDomains,
+  isAllowedSiweDomain,
+  readCsrfNonce,
+} from "./[...nextauth]/route";
+import { hasUsableExpiry, SIWE_MESSAGE_LIFETIME_MS } from "@/lib/siwe";
+
+function cookieJar(jar: Record<string, string>) {
+  return {
+    get: (name: string) => (name in jar ? { value: jar[name] } : undefined),
+  };
+}
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -88,5 +99,65 @@ describe("isAllowedSiweDomain", () => {
 
     expect(isAllowedSiweDomain("localhost.attacker.com")).toBe(false);
     expect(isAllowedSiweDomain("evil.com")).toBe(false);
+  });
+});
+
+describe("readCsrfNonce", () => {
+  it("reads the __Host- prefixed cookie every HTTPS deployment gets", () => {
+    const nonce = readCsrfNonce(
+      cookieJar({ "__Host-next-auth.csrf-token": "abc123|hash" }),
+    );
+
+    expect(nonce).toBe("abc123");
+  });
+
+  it("reads the unprefixed cookie a plain-http dev server gets", () => {
+    const nonce = readCsrfNonce(
+      cookieJar({ "next-auth.csrf-token": "def456|hash" }),
+    );
+
+    expect(nonce).toBe("def456");
+  });
+
+  it("prefers the prefixed cookie when both are present", () => {
+    const nonce = readCsrfNonce(
+      cookieJar({
+        "__Host-next-auth.csrf-token": "secure|hash",
+        "next-auth.csrf-token": "stale|hash",
+      }),
+    );
+
+    expect(nonce).toBe("secure");
+  });
+
+  it("returns null rather than a nonce viem would skip checking", () => {
+    expect(readCsrfNonce(cookieJar({}))).toBeNull();
+    expect(
+      readCsrfNonce(cookieJar({ "next-auth.csrf-token": "|hash" })),
+    ).toBeNull();
+  });
+});
+
+describe("hasUsableExpiry", () => {
+  const now = new Date("2026-07-29T12:00:00Z");
+
+  it("accepts the lifetime the sign-in hook mints", () => {
+    const expirationTime = new Date(now.getTime() + SIWE_MESSAGE_LIFETIME_MS);
+
+    expect(hasUsableExpiry(expirationTime, now)).toBe(true);
+  });
+
+  it("refuses a message with no expiry, which never expires", () => {
+    expect(hasUsableExpiry(undefined, now)).toBe(false);
+  });
+
+  it("refuses an expiry that has already passed", () => {
+    expect(hasUsableExpiry(new Date(now.getTime() - 1000), now)).toBe(false);
+  });
+
+  it("refuses an expiry far enough out to be decorative", () => {
+    const expirationTime = new Date(now.getTime() + 24 * 60 * 60_000);
+
+    expect(hasUsableExpiry(expirationTime, now)).toBe(false);
   });
 });

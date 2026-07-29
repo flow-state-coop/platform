@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { privateKeyToAccount } from "viem/accounts";
 import { createSiweMessage } from "viem/siwe";
+import { SIWE_MESSAGE_LIFETIME_MS } from "@/lib/siwe";
 import { TEST_CHAIN_ID, TEST_PRIVATE_KEY } from "./mockEthereum";
 
 // Wait for the injected wallet to auto-connect. RainbowKit's injected
@@ -50,6 +51,7 @@ export async function signInViaSiweApi(page: Page): Promise<void> {
     version: "1",
     chainId: TEST_CHAIN_ID,
     nonce,
+    expirationTime: new Date(Date.now() + SIWE_MESSAGE_LIFETIME_MS),
   });
 
   const signature = await account.signMessage({ message });

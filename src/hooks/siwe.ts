@@ -3,6 +3,7 @@ import { getCsrfToken, signIn } from "next-auth/react";
 import { useAccount, useSignMessage, useSwitchChain } from "wagmi";
 import { ConnectorChainMismatchError } from "@wagmi/core";
 import { createSiweMessage } from "viem/siwe";
+import { SIWE_MESSAGE_LIFETIME_MS } from "@/lib/siwe";
 
 export default function useSiwe() {
   const { address, chain } = useAccount();
@@ -42,6 +43,7 @@ export default function useSiwe() {
         version: "1",
         chainId: chain.id,
         nonce,
+        expirationTime: new Date(Date.now() + SIWE_MESSAGE_LIFETIME_MS),
       });
 
       try {

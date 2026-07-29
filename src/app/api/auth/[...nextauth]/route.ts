@@ -4,12 +4,18 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { createPublicClient, http, type Hex } from "viem";
 import { parseSiweMessage, verifySiweMessage } from "viem/siwe";
 import { networks } from "@/lib/networks";
+import { hasUsableExpiry } from "@/lib/siwe";
+import { allowRequest, clientIdentifier } from "../../rateLimit";
 
+// Null on a chain the platform is not configured for. The chain id comes from
+// the unauthenticated message, so tolerating an unknown one meant a caller could
+// aim the verification eth_call wherever it liked.
 function getPublicClient(chainId: number) {
   const network = networks.find((n) => n.id === chainId);
+  if (!network) return null;
 
   return createPublicClient({
-    transport: http(network?.rpcUrl),
+    transport: http(network.rpcUrl),
   });
 }
 
@@ -72,6 +78,33 @@ export function isAllowedSiweDomain(domain: string): boolean {
   );
 }
 
+// NextAuth prefixes its cookies with __Host- whenever it issues secure ones,
+// which is every deployment served over HTTPS. Reading only the bare name finds
+// nothing in production, and viem skips the nonce comparison when the nonce is
+// undefined, so the whole replay defence silently stopped applying anywhere it
+// mattered. Both names are read, and a missing nonce fails the sign-in.
+const CSRF_COOKIE_NAMES = [
+  "__Host-next-auth.csrf-token",
+  "next-auth.csrf-token",
+];
+
+type CookieReader = { get: (name: string) => { value: string } | undefined };
+
+export function readCsrfNonce(cookies: CookieReader): string | null {
+  for (const name of CSRF_COOKIE_NAMES) {
+    const nonce = cookies.get(name)?.value.split("|")[0];
+    if (nonce) return nonce;
+  }
+
+  return null;
+}
+
+// Signing in is a human action a handful of times a day, and a shared office or
+// carrier NAT is one client here, so this is set to stop amplification rather
+// than to pace anybody.
+const SIGN_IN_LIMIT = 60;
+const SIGN_IN_WINDOW_MS = 60_000;
+
 const providers = [
   CredentialsProvider({
     name: "Ethereum",
@@ -87,8 +120,24 @@ const providers = [
         placeholder: "0x0",
       },
     },
-    async authorize(credentials) {
+    async authorize(credentials, req) {
       try {
+        // Before anything else, because verification is the expensive part:
+        // viem tries ERC-6492 deployless verification first, so every attempt
+        // with a garbage signature costs an eth_call on a chain the caller
+        // picks, against the same RPC quota the bot broadcasts through. Nothing
+        // here is authenticated, so the client is all there is to key on.
+        if (
+          !allowRequest(
+            "sign-in",
+            clientIdentifier(req?.headers),
+            SIGN_IN_LIMIT,
+            SIGN_IN_WINDOW_MS,
+          )
+        ) {
+          return null;
+        }
+
         const message = credentials?.message || "";
         const siweFields = parseSiweMessage(message);
 
@@ -103,10 +152,19 @@ const providers = [
           return null;
         }
 
-        const cookies = await nextCookies();
-        const nonce = cookies.get("next-auth.csrf-token")?.value.split("|")[0];
+        if (!hasUsableExpiry(siweFields.expirationTime)) {
+          return null;
+        }
+
+        const nonce = readCsrfNonce(await nextCookies());
+        if (!nonce) {
+          return null;
+        }
 
         const publicClient = getPublicClient(siweFields.chainId);
+        if (!publicClient) {
+          return null;
+        }
 
         const isValid = await verifySiweMessage(publicClient, {
           message,

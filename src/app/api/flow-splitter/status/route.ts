@@ -1,6 +1,6 @@
 import { db } from "../../db";
 import { errorResponse } from "../../utils";
-import { allowRequest } from "../../rateLimit";
+import { allowRequest, clientIdentifier } from "../../rateLimit";
 import { getNetwork } from "../pool";
 import { splitterQuerySchema } from "../validation";
 
@@ -24,18 +24,10 @@ let warnedAboutMissingClientHeader = false;
  */
 export async function GET(request: Request) {
   try {
-    // Read from the headers the platform sets itself. The leftmost entry of
-    // x-forwarded-for is whatever the caller sent, so keying on it hands out a
-    // fresh window per request and fills the shared window map with junk that
-    // evicts the limits protecting the signed-in routes.
-    const client =
-      request.headers.get("x-vercel-forwarded-for")?.trim() ||
-      request.headers.get("x-real-ip")?.trim() ||
-      "unknown";
+    const client = clientIdentifier(request.headers);
 
-    // Behind a proxy that sets neither, every caller shares one window and the
-    // limit stops being per-caller. Said once per instance so a misconfigured
-    // deployment is visible without a line per request.
+    // Said once per instance so a misconfigured deployment is visible without a
+    // line per request.
     if (client === "unknown" && !warnedAboutMissingClientHeader) {
       warnedAboutMissingClientHeader = true;
       console.warn(
@@ -45,7 +37,8 @@ export async function GET(request: Request) {
 
     if (
       !allowRequest(
-        `splitter-status:${client}`,
+        "splitter-status",
+        client,
         STATUS_REQUEST_LIMIT,
         STATUS_REQUEST_WINDOW_MS,
       )

@@ -25,6 +25,7 @@ const ADMIN_REQUEST_WINDOW_MS = 60_000;
 export type PoolAdminAuth =
   | {
       ok: true;
+      address: string;
       network: Network;
       pool: SplitterPool;
     }
@@ -91,7 +92,8 @@ export async function authorizePoolAdmin(
   // the RPC the bot broadcasts through, so this is not only about these routes.
   if (
     !allowRequest(
-      `splitter-admin:${session.address.toLowerCase()}`,
+      "splitter-admin",
+      session.address.toLowerCase(),
       ADMIN_REQUEST_LIMIT,
       ADMIN_REQUEST_WINDOW_MS,
     )
@@ -130,5 +132,10 @@ export async function authorizePoolAdmin(
     };
   }
 
-  return { ok: true, network, pool };
+  return {
+    ok: true,
+    address: (session.address as string).toLowerCase(),
+    network,
+    pool,
+  };
 }
