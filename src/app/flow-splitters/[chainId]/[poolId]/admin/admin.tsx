@@ -1786,14 +1786,25 @@ export default function Admin(props: AdminProps) {
                   won't be able to make changes after this transaction.
                 </Card.Text>
               )}
-              {poolConfig.immutable && botIsAdmin === undefined && (
-                // Otherwise the disabled button below has no explanation, and
-                // an RPC outage leaves the whole page silent about why.
-                <Card.Text className="mb-2 text-info">
-                  Checking whether the Flow State bot holds admin. Saving is
-                  blocked until that answers, so the revoke can include it.
-                </Card.Text>
-              )}
+              {poolConfig.immutable &&
+                botIsAdmin === undefined &&
+                (botStatusError ? (
+                  // A read that has permanently failed does not gate the save:
+                  // the revoke set is confirmed against the chain at submit
+                  // time, bot included, so this only costs the sharper of the
+                  // two confirm warnings.
+                  <Card.Text className="mb-2 text-info">
+                    Couldn&apos;t check whether the Flow State bot holds admin.
+                    Saving still revokes every admin the chain confirms,
+                    including the bot.
+                  </Card.Text>
+                ) : (
+                  // Otherwise the disabled button below has no explanation.
+                  <Card.Text className="mb-2 text-info">
+                    Checking whether the Flow State bot holds admin. Saving is
+                    blocked until that answers, so the revoke can include it.
+                  </Card.Text>
+                ))}
               <Button
                 disabled={
                   isTransactionLoading ||
@@ -1801,7 +1812,9 @@ export default function Admin(props: AdminProps) {
                   // out behind it at the next nonce, so a "No Admin" revoke set
                   // computed now is guaranteed to be one address short.
                   isGranting ||
-                  (poolConfig.immutable && botIsAdmin === undefined) ||
+                  (poolConfig.immutable &&
+                    botIsAdmin === undefined &&
+                    !botStatusError) ||
                   !hasChanges ||
                   (!poolConfig.immutable && !isValidAdminsEntry) ||
                   !isValidMembersEntry

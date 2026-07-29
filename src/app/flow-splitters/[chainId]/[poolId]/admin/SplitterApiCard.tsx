@@ -30,8 +30,7 @@ type SplitterApiCardProps = {
   transferabilityError: boolean;
   needsSignIn: boolean;
   // Null once the wallet is connected on the pool's chain; otherwise the step
-  // that has to happen first, so every action here reads the same as the rest
-  // of the page.
+  // that has to happen first.
   walletActionLabel: string | null;
   onPrepareWallet: () => void;
   onSignIn: () => void;
@@ -91,7 +90,6 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
   const eligibility = getApiEligibility({ hasAdmins, transferableUnits });
 
   const canManage = !needsSignIn && isAdmin;
-  const walletReady = !needsSignIn && !walletActionLabel;
 
   return (
     <Card className="bg-lace-100 rounded-4 border-0 mt-8 px-10 py-8">
@@ -206,22 +204,22 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
                         <Card.Text className="text-info mb-0">
                           A pool admin has to grant this.
                         </Card.Text>
-                      ) : walletReady ? (
-                        // Only rendered once the wallet is connected on the
-                        // right chain and signed in: otherwise this and the
-                        // keys section below would show the same button twice.
+                      ) : (
+                        // Granting is an on-chain transaction, so it needs a
+                        // wallet on the pool's chain and nothing else. Signing
+                        // in gates the key list below, not this.
                         <Button
                           disabled={isGranting}
                           className="px-8 py-3 rounded-4 fw-semi-bold"
-                          onClick={grant}
+                          onClick={walletActionLabel ? onPrepareWallet : grant}
                         >
                           {isGranting ? (
                             <Spinner size="sm" className="ms-2" />
                           ) : (
-                            "Grant admin access"
+                            (walletActionLabel ?? "Grant admin access")
                           )}
                         </Button>
-                      ) : null}
+                      )}
                       {grantError ? (
                         <Alert variant="danger" className="mt-3 mb-0">
                           {grantError}

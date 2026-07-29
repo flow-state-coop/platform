@@ -105,7 +105,7 @@ export default function SplitterWriteHistory(props: SplitterWriteHistoryProps) {
       <span className="fw-semi-bold d-block mb-2">Write history</span>
 
       {error ? (
-        <Alert variant="danger" className="mb-3">
+        <Alert variant="danger" className={writes.length > 0 ? "mb-3" : "mb-0"}>
           {error}
         </Alert>
       ) : null}
@@ -115,7 +115,11 @@ export default function SplitterWriteHistory(props: SplitterWriteHistoryProps) {
           <Spinner size="sm" />
         </Stack>
       ) : writes.length === 0 ? (
-        <p className="text-info mb-0">No API writes yet.</p>
+        // A failed load knows nothing about whether this pool has ever been
+        // written, so it must not answer the question the empty state answers.
+        error ? null : (
+          <p className="text-info mb-0">No API writes yet.</p>
+        )
       ) : (
         <>
           <Table responsive hover className="bg-white rounded-4 mb-3">
