@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, useState, useEffect } from "react";
+import { useMemo, useCallback, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Address, parseAbi, isAddress } from "viem";
 import {
@@ -12,6 +12,7 @@ import {
   useReadContract,
 } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useSession } from "next-auth/react";
 import Papa from "papaparse";
 import { waitForReceipt } from "@/lib/utils";
 import { writeContract } from "@wagmi/core";
@@ -31,9 +32,23 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { getApolloClient } from "@/lib/apollo";
 import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import useSiwe from "@/hooks/siwe";
+import { useEnsResolution } from "@/hooks/useEnsResolution";
+import { splitIntoChunks } from "@/app/flow-councils/lib/chunkQueue";
+import {
+  FLOW_STATE_BOT_ADDRESS,
+  KNOWN_ADDRESS_NAMES,
+} from "@/app/flow-councils/lib/constants";
 import { networks } from "@/lib/networks";
 import { isNumber, truncateStr } from "@/lib/utils";
 import { parseListed, serializeListed } from "@/lib/listedMetadata";
+import SplitterApiCard from "./SplitterApiCard";
+import UpdateConfirmModal from "./UpdateConfirmModal";
+import { getConfirmWarnings, isRemovingBotAdmin } from "./adminWarnings";
+import { useBotPoolAdmin } from "./useBotPoolAdmin";
+import { useGrantPoolAdmin } from "./useGrantPoolAdmin";
+import { useSplitterApiKeys } from "./useSplitterApiKeys";
+import { useSplitterApiStatus } from "./useSplitterApiStatus";
 
 type AdminProps = {
   chainId: number;
@@ -48,6 +63,13 @@ type PoolConfig = {
 
 type AdminEntry = { address: string; validationError: string };
 type MemberEntry = { address: string; units: string; validationError: string };
+
+const PROFILE_BATCH = 150;
+const ENS_LOOKUP_LIMIT = 100;
+
+// IFlowSplitter.AdminStatus
+const ADMIN_GRANTED = 0;
+const ADMIN_REVOKED = 1;
 
 const FLOW_SPLITTER_POOL_QUERY = gql`
   query FlowSplitterPoolQuery($poolId: String!) {
@@ -112,15 +134,32 @@ export default function Admin(props: AdminProps) {
   // changes for the Save Visibility button (kept in sync after a save so the
   // button disables immediately, without waiting for the next subgraph poll).
   const [committedListed, setCommittedListed] = useState(false);
+  const [profileNames, setProfileNames] = useState<Record<string, string>>({});
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const askedForProfile = useRef<Set<string>>(new Set());
 
   const { isMobile } = useMediaQuery();
+  const headerFontSize = isMobile ? "0.7rem" : "inherit";
+  // Every column states its own flex: react-bootstrap's `vstack` carries
+  // `flex: 1 1 auto`, so a cell wrapped in one grows while its header does not,
+  // and the two rows drift apart.
+  const addressColumnStyle = isMobile
+    ? { flex: "1 1 0%", minWidth: 0 }
+    : { flex: "1 1 460px", minWidth: 0, maxWidth: 460 };
+  const nameColumnStyle = { flex: "1 1 180px", minWidth: 0 };
+  const unitsColumnStyle = { flex: `0 0 ${isMobile ? 76 : 110}px` };
+  const shareColumnStyle = { flex: `0 0 ${isMobile ? 76 : 110}px` };
+  const shareGroupStyle = { flex: "0 0 auto" };
   const { data: walletClient } = useWalletClient();
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
+  const { data: session } = useSession();
+  const { handleSignIn } = useSiwe();
   const {
     data: flowSplitterPoolQueryRes,
     loading: flowSplitterPoolQueryLoading,
+    error: flowSplitterPoolQueryError,
   } = useQuery(FLOW_SPLITTER_POOL_QUERY, {
     client: getApolloClient("flowSplitter", chainId),
     variables: {
@@ -138,16 +177,20 @@ export default function Admin(props: AdminProps) {
       pollInterval: 10000,
       skip: !pool,
     });
-  const { data: unitsTrasnferability } = useReadContract({
-    address: pool?.poolAddress,
-    abi: parseAbi([
-      "function transferabilityForUnitsOwner() view returns (bool)",
-    ]),
-    functionName: "transferabilityForUnitsOwner",
-    query: { enabled: !!pool },
-  });
+  // Pinned to the pool's chain: unpinned, a wallet connected elsewhere reads a
+  // GDA pool address that means nothing on that chain.
+  const { data: unitsTrasnferability, isError: unitsTrasnferabilityError } =
+    useReadContract({
+      chainId,
+      address: pool?.poolAddress,
+      abi: parseAbi([
+        "function transferabilityForUnitsOwner() view returns (bool)",
+      ]),
+      functionName: "transferabilityForUnitsOwner",
+      query: { enabled: !!pool },
+    });
   const wagmiConfig = useConfig();
-  const publicClient = usePublicClient();
+  const publicClient = usePublicClient({ chainId });
   const postHog = usePostHog();
 
   const network = networks.find((network) => network.id === chainId);
@@ -168,6 +211,32 @@ export default function Admin(props: AdminProps) {
     (poolAdmin: { address: string }) =>
       poolAdmin.address === address?.toLowerCase(),
   );
+  const needsSignIn = !session || session.address !== address;
+  const {
+    botIsAdmin,
+    isError: botStatusError,
+    refetch: refetchBotStatus,
+  } = useBotPoolAdmin(chainId, network?.flowSplitter, poolId);
+  // Owned here, not in the API card: a grant and a "No Admin" save go out from
+  // the same wallet at consecutive nonces, so a save submitted while a grant is
+  // pending is guaranteed to be mined first and leave the pool immutable with
+  // the bot still holding admin. The save button has to be able to see this.
+  const {
+    grant,
+    isGranting,
+    error: grantError,
+  } = useGrantPoolAdmin(chainId, network?.flowSplitter, poolId);
+  const {
+    hasActiveKeys,
+    statusError: apiStatusError,
+    reload: reloadApiStatus,
+  } = useSplitterApiStatus(chainId, poolId);
+  const {
+    keys,
+    loading: keysLoading,
+    loadError: keysError,
+    reload: reloadKeys,
+  } = useSplitterApiKeys(chainId, poolId, isAdmin && !needsSignIn);
 
   const totalUnits = useMemo(
     () =>
@@ -228,6 +297,80 @@ export default function Admin(props: AdminProps) {
 
     return hasChangesAdmins || hasChangesMembers ? true : false;
   }, [poolConfig, poolAdmins, adminsEntry, superfluidQueryRes, membersEntry]);
+
+  // Joined-string key: the entry arrays get a new identity on every keystroke,
+  // so name lookups gate on the stable key instead of on the arrays. Empty on
+  // mobile, where the name column is not rendered at all and the lookups would
+  // be pure waste.
+  const profileAddressKey = useMemo(
+    () =>
+      isMobile
+        ? ""
+        : [
+            ...new Set(
+              [...adminsEntry, ...membersEntry, ...membersToRemove]
+                .map((entry) => entry.address.trim().toLowerCase())
+                .filter((entryAddress) => isAddress(entryAddress)),
+            ),
+          ]
+            .sort()
+            .join(","),
+    [isMobile, adminsEntry, membersEntry, membersToRemove],
+  );
+  const profileAddresses = useMemo(
+    () => (profileAddressKey === "" ? [] : profileAddressKey.split(",")),
+    [profileAddressKey],
+  );
+
+  // ENS is the last fallback, and it costs one mainnet reverse lookup per
+  // address. A share register runs to a thousand recipients, so resolving the
+  // whole list would fan out that many calls against a public endpoint. Only
+  // addresses no other source named are looked up, capped at a bound the
+  // endpoint tolerates.
+  const ensAddresses = useMemo(() => {
+    const unnamed = profileAddresses.filter(
+      (entryAddress) =>
+        !KNOWN_ADDRESS_NAMES[entryAddress] && !profileNames[entryAddress],
+    );
+
+    return unnamed.slice(0, ENS_LOOKUP_LIMIT);
+  }, [profileAddresses, profileNames]);
+
+  const { ensByAddress } = useEnsResolution(ensAddresses, {
+    avatars: false,
+  });
+
+  const displayName = (entryAddress: string) => {
+    const account = entryAddress.trim().toLowerCase();
+
+    return (
+      KNOWN_ADDRESS_NAMES[account] ??
+      profileNames[account] ??
+      ensByAddress?.[account]?.name ??
+      ""
+    );
+  };
+
+  // Irreversible for an integration, so they take an explicit confirm on top of
+  // the inline warning above the save button. Both inputs are read without
+  // signing in, so the confirm still fires for an admin who only connected a
+  // wallet.
+  const confirmWarnings = useMemo(
+    () =>
+      getConfirmWarnings({
+        immutable: poolConfig.immutable,
+        botIsAdmin,
+        hasActiveKeys,
+        removingBotAdmin: isRemovingBotAdmin({
+          indexedAdmins: (poolAdmins ?? []).map(
+            (poolAdmin: { address: string }) => poolAdmin.address,
+          ),
+          adminsEntry,
+          immutable: poolConfig.immutable,
+        }),
+      }),
+    [poolConfig.immutable, botIsAdmin, hasActiveKeys, poolAdmins, adminsEntry],
+  );
 
   const addPoolToWallet = useCallback(() => {
     if (!pool) {
@@ -292,6 +435,65 @@ export default function Admin(props: AdminProps) {
       }
     })();
   }, [superfluidQueryRes]);
+
+  useEffect(() => {
+    // Only addresses never asked about before: the set changes on every added
+    // row, and refetching the whole register each time means a thousand names
+    // re-requested to learn one. Tracked separately from `profileNames`, which
+    // an address with no profile never enters, so keying off that would retry
+    // those forever.
+    const unasked = profileAddresses.filter(
+      (entryAddress) => !askedForProfile.current.has(entryAddress),
+    );
+
+    if (unasked.length === 0) {
+      return;
+    }
+
+    for (const entryAddress of unasked) {
+      askedForProfile.current.add(entryAddress);
+    }
+
+    // Batches run together and each merges on its own. Sequentially awaiting
+    // seven batches costs seven round trips before a single name appears, and
+    // committing one combined map means a single failed batch would blank names
+    // that had already resolved. Nothing is discarded when the address set
+    // changes mid-flight: a name does not go stale, and dropping the response
+    // would strand every address in it, already marked as asked.
+    Promise.all(
+      splitIntoChunks(unasked, PROFILE_BATCH).map(async (batch) => {
+        try {
+          const res = await fetch("/api/profiles/names", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ addresses: batch }),
+          });
+          const data = await res.json();
+
+          if (!data.success || !data.names) {
+            throw new Error(data.error ?? "Profile name lookup failed");
+          }
+
+          const names: Record<string, string> = {};
+
+          for (const [profileAddress, name] of Object.entries(
+            data.names as Record<string, string>,
+          )) {
+            names[profileAddress.toLowerCase()] = name;
+          }
+
+          setProfileNames((prev) => ({ ...prev, ...names }));
+        } catch (err) {
+          // Un-marked so a later run retries: a batch that never answered is
+          // not the same as an address with no profile.
+          for (const entryAddress of batch) {
+            askedForProfile.current.delete(entryAddress);
+          }
+          console.error(err);
+        }
+      }),
+    );
+  }, [profileAddresses]);
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") {
@@ -389,6 +591,19 @@ export default function Admin(props: AdminProps) {
 
   const handleSubmit = async () => {
     if (!network || !address || !publicClient) {
+      // Silent here would be indistinguishable from a save the user cancelled
+      // in their wallet, which is worse now that a confirm precedes it.
+      setTransactionError("Wallet not ready, please reconnect");
+      return;
+    }
+
+    if (!poolAdmins) {
+      // Every admin update below is a diff against this list. Treating an
+      // unread one as empty would skip removals silently, and reading it as
+      // undefined throws mid-save.
+      setTransactionError(
+        "Couldn't read this pool's current admins. Please reload and try again.",
+      );
       return;
     }
 
@@ -412,14 +627,85 @@ export default function Admin(props: AdminProps) {
           ),
       );
 
-      const adminsToRemove = poolAdmins
-        .map((admin: { address: string }) => admin.address)
-        .filter(
-          (x: string) =>
-            !validAdmins
-              .map((admin: { address: string }) => admin.address)
-              .includes(x),
+      let adminUpdates: { account: Address; status: number }[];
+
+      if (poolConfig.immutable) {
+        // "No Admin" revokes only the admins named in the array, so anything
+        // absent from it keeps its role. Building that array from the subgraph
+        // alone leaves a grant the indexer has not caught up with in place, and
+        // the pool ends up immutable with someone still holding admin. Every
+        // candidate is therefore confirmed against the chain: the indexed set,
+        // whatever the form still lists, the bot, and the caller.
+        const candidates = [
+          ...new Set(
+            [
+              ...poolAdmins.map((admin: { address: string }) => admin.address),
+              ...adminsEntry.map((adminEntry) => adminEntry.address),
+              FLOW_STATE_BOT_ADDRESS,
+              address,
+            ]
+              .map((candidate: string) => candidate.trim().toLowerCase())
+              .filter((candidate) => isAddress(candidate)),
+          ),
+        ];
+
+        let stillAdmin: boolean[];
+
+        try {
+          stillAdmin = await Promise.all(
+            candidates.map(
+              (candidate) =>
+                publicClient.readContract({
+                  address: network.flowSplitter,
+                  abi: flowSplitterAbi,
+                  functionName: "isPoolAdmin",
+                  args: [BigInt(poolId), candidate as Address],
+                }) as Promise<boolean>,
+            ),
+          );
+        } catch (err) {
+          console.error(err);
+
+          setTransactionError(
+            "Couldn't check this pool's admins onchain. Please try again.",
+          );
+          setIsTransactionLoading(false);
+
+          return;
+        }
+
+        adminUpdates = candidates
+          .filter((_, i) => stillAdmin[i])
+          .map((adminAddress) => {
+            return { account: adminAddress as Address, status: ADMIN_REVOKED };
+          });
+      } else {
+        const validAdminAddresses = validAdmins.map((admin) =>
+          admin.address.toLowerCase(),
         );
+        const adminsToRemove = poolAdmins
+          .map((admin: { address: string }) => admin.address.toLowerCase())
+          .filter(
+            (adminAddress: string) =>
+              !validAdminAddresses.includes(adminAddress),
+          );
+
+        adminUpdates = validAdmins
+          .map((admin) => {
+            return {
+              account: admin.address as Address,
+              status: ADMIN_GRANTED,
+            };
+          })
+          .concat(
+            adminsToRemove.map((adminAddress: string) => {
+              return {
+                account: adminAddress as Address,
+                status: ADMIN_REVOKED,
+              };
+            }),
+          );
+      }
 
       const hash = await writeContract(wagmiConfig, {
         address: network.flowSplitter,
@@ -439,22 +725,7 @@ export default function Admin(props: AdminProps) {
                 return { account: member.address as Address, units: BigInt(0) };
               }),
             ),
-          poolConfig.immutable
-            ? poolAdmins.map((admin: { address: Address }) => {
-                return { account: admin.address, status: BigInt(1) };
-              })
-            : validAdmins
-                .map((admin) => {
-                  return {
-                    account: admin.address as Address,
-                    status: BigInt(0),
-                  };
-                })
-                .concat(
-                  adminsToRemove.map((adminAddress: string) => {
-                    return { account: adminAddress, status: BigInt(1) };
-                  }),
-                ),
+          adminUpdates,
           // Pass the current on-chain metadata through so a members/admins
           // edit never clobbers the listed flag (the dedicated visibility
           // action below owns metadata changes).
@@ -462,7 +733,17 @@ export default function Admin(props: AdminProps) {
         ],
       });
 
-      await waitForReceipt(publicClient, hash);
+      // waitForTransactionReceipt resolves on a revert rather than throwing, so
+      // without this a reverted update would report success and clear the
+      // pending removals while nothing changed onchain.
+      const receipt = await waitForReceipt(publicClient, hash);
+
+      if (receipt.status === "reverted") {
+        setTransactionError("The transaction reverted. Please try again.");
+        setIsTransactionLoading(false);
+
+        return;
+      }
 
       setIsTransactionLoading(false);
       setTransactionSuccess("Flow Splitter Updated Successfully");
@@ -494,7 +775,14 @@ export default function Admin(props: AdminProps) {
         args: [BigInt(poolId), serializeListed(poolConfig.listed)],
       });
 
-      await waitForReceipt(publicClient, hash);
+      const receipt = await waitForReceipt(publicClient, hash);
+
+      if (receipt.status === "reverted") {
+        setListedError("The transaction reverted. Please try again.");
+        setListedLoading(false);
+
+        return;
+      }
 
       setListedLoading(false);
       setCommittedListed(poolConfig.listed);
@@ -756,6 +1044,40 @@ export default function Admin(props: AdminProps) {
                   </Stack>
                   {!poolConfig.immutable && (
                     <div className="mt-4">
+                      <Stack
+                        direction="horizontal"
+                        gap={2}
+                        className="align-items-center mb-1"
+                      >
+                        <Card.Text
+                          className="m-0 flex-grow-1 ps-3"
+                          style={{
+                            ...addressColumnStyle,
+                            fontSize: headerFontSize,
+                          }}
+                        >
+                          Address
+                        </Card.Text>
+                        {!isMobile && (
+                          <Card.Text
+                            className="m-0 ps-3"
+                            style={{
+                              ...nameColumnStyle,
+                              fontSize: headerFontSize,
+                            }}
+                          >
+                            Profile Name
+                          </Card.Text>
+                        )}
+                        <span className="p-0 opacity-0">
+                          <Image
+                            src="/close.svg"
+                            alt=""
+                            width={28}
+                            height={28}
+                          />
+                        </span>
+                      </Stack>
                       {adminsEntry.map((adminEntry, i) => (
                         <Stack
                           direction="vertical"
@@ -770,11 +1092,12 @@ export default function Admin(props: AdminProps) {
                             <Form.Control
                               key={i}
                               type="text"
+                              placeholder="Admin Address"
                               value={adminEntry.address}
                               disabled={!isAdmin}
-                              className="border-0 fw-semi-bold"
+                              className="border-0 flex-grow-1 fw-semi-bold"
                               style={{
-                                width: !isMobile ? "50%" : "",
+                                ...addressColumnStyle,
                                 paddingTop: 12,
                                 paddingBottom: 12,
                               }}
@@ -803,6 +1126,20 @@ export default function Admin(props: AdminProps) {
                                 setAdminsEntry(prevAdminsEntry);
                               }}
                             />
+                            {!isMobile && (
+                              <Form.Control
+                                type="text"
+                                disabled
+                                aria-label="Admin Profile Name"
+                                value={displayName(adminEntry.address) || "N/A"}
+                                className="border-0 bg-white fw-semi-bold text-info"
+                                style={{
+                                  ...nameColumnStyle,
+                                  paddingTop: 12,
+                                  paddingBottom: 12,
+                                }}
+                              />
+                            )}
                             <Button
                               variant="transparent"
                               className="p-0 border-0"
@@ -886,6 +1223,69 @@ export default function Admin(props: AdminProps) {
                 />
               </Card.Header>
               <Card.Body className="p-0">
+                {hasActiveKeys ? (
+                  <Alert
+                    variant="warning"
+                    className="w-100 p-4 mb-4 fw-semi-bold"
+                  >
+                    This pool is API-controlled. Manual changes stay until the
+                    next API write, which replaces the whole register.
+                  </Alert>
+                ) : apiStatusError ? (
+                  // Silence here reads as "not API-controlled", and an admin
+                  // who believes that signs an edit the next API write undoes.
+                  <Alert
+                    variant="warning"
+                    className="w-100 p-4 mb-4 fw-semi-bold"
+                  >
+                    Couldn&apos;t check whether this pool is API-controlled. If
+                    it is, manual changes are replaced by the next API write.
+                  </Alert>
+                ) : null}
+                <Stack
+                  direction="horizontal"
+                  gap={isMobile ? 2 : 4}
+                  className="justify-content-start align-items-center mb-1"
+                >
+                  <Card.Text
+                    className="m-0 flex-grow-1 ps-3"
+                    style={{
+                      ...addressColumnStyle,
+                      fontSize: headerFontSize,
+                    }}
+                  >
+                    Address
+                  </Card.Text>
+                  {!isMobile && (
+                    <Card.Text
+                      className="m-0 ps-3"
+                      style={{ ...nameColumnStyle, fontSize: headerFontSize }}
+                    >
+                      Profile Name
+                    </Card.Text>
+                  )}
+                  <Card.Text
+                    className="m-0 text-center"
+                    style={{ ...unitsColumnStyle, fontSize: headerFontSize }}
+                  >
+                    Shares
+                  </Card.Text>
+                  <Stack
+                    direction="horizontal"
+                    gap={isMobile ? 1 : 2}
+                    className="align-items-center"
+                  >
+                    <Card.Text
+                      className="m-0 text-center"
+                      style={{ ...shareColumnStyle, fontSize: headerFontSize }}
+                    >
+                      Share %
+                    </Card.Text>
+                    <span className="p-0 opacity-0">
+                      <Image src="/close.svg" alt="" width={28} height={28} />
+                    </span>
+                  </Stack>
+                </Stack>
                 {membersEntry.map((memberEntry, i) => (
                   <Stack
                     direction="horizontal"
@@ -893,7 +1293,11 @@ export default function Admin(props: AdminProps) {
                     className="justify-content-start mb-3"
                     key={i}
                   >
-                    <Stack direction="vertical" className="w-100">
+                    <Stack
+                      direction="vertical"
+                      className="flex-grow-1"
+                      style={addressColumnStyle}
+                    >
                       <Stack direction="vertical" className="position-relative">
                         <Form.Control
                           type="text"
@@ -906,9 +1310,7 @@ export default function Admin(props: AdminProps) {
                               .includes(memberEntry.address.toLowerCase()) &&
                               !memberEntry.validationError)
                           }
-                          placeholder={
-                            isMobile ? "Address" : "Recipient Address"
-                          }
+                          placeholder="Recipient Address"
                           value={memberEntry.address}
                           className="bg-white border-0 fw-semi-bold"
                           style={{ paddingTop: 12, paddingBottom: 12 }}
@@ -953,11 +1355,25 @@ export default function Admin(props: AdminProps) {
                         ) : null}
                       </Stack>
                     </Stack>
-                    <Stack direction="vertical">
+                    {!isMobile && (
+                      <Form.Control
+                        type="text"
+                        disabled
+                        aria-label="Recipient Profile Name"
+                        value={displayName(memberEntry.address) || "N/A"}
+                        className="bg-white border-0 fw-semi-bold text-info"
+                        style={{
+                          ...nameColumnStyle,
+                          paddingTop: 12,
+                          paddingBottom: 12,
+                        }}
+                      />
+                    )}
+                    <Stack direction="vertical" style={unitsColumnStyle}>
                       <Form.Control
                         type="text"
                         inputMode="numeric"
-                        placeholder="Shares"
+                        aria-label="Recipient Shares"
                         disabled={!isAdmin}
                         value={memberEntry.units}
                         className="bg-white border-0 fw-semi-bold text-center"
@@ -984,7 +1400,7 @@ export default function Admin(props: AdminProps) {
                         }}
                       />
                     </Stack>
-                    <Stack direction="vertical">
+                    <Stack direction="vertical" style={shareGroupStyle}>
                       <Stack
                         direction="horizontal"
                         gap={isMobile ? 1 : 2}
@@ -1013,7 +1429,11 @@ export default function Admin(props: AdminProps) {
                                 )}%`
                           }
                           className="bg-white border-0 fw-semi-bold text-center"
-                          style={{ paddingTop: 12, paddingBottom: 12 }}
+                          style={{
+                            ...shareColumnStyle,
+                            paddingTop: 12,
+                            paddingBottom: 12,
+                          }}
                         />
                         <Button
                           variant="transparent"
@@ -1039,7 +1459,11 @@ export default function Admin(props: AdminProps) {
                     className="justify-content-start mb-3"
                     key={i}
                   >
-                    <Stack direction="vertical" className="w-100">
+                    <Stack
+                      direction="vertical"
+                      className="flex-grow-1"
+                      style={addressColumnStyle}
+                    >
                       <Stack direction="vertical" className="position-relative">
                         <Form.Control
                           disabled
@@ -1050,17 +1474,32 @@ export default function Admin(props: AdminProps) {
                         />
                       </Stack>
                     </Stack>
-                    <Stack direction="vertical">
+                    {!isMobile && (
+                      <Form.Control
+                        type="text"
+                        disabled
+                        aria-label="Removed Recipient Profile Name"
+                        value={displayName(memberEntry.address) || "N/A"}
+                        className="bg-white border-0 fw-semi-bold text-info"
+                        style={{
+                          ...nameColumnStyle,
+                          paddingTop: 12,
+                          paddingBottom: 12,
+                        }}
+                      />
+                    )}
+                    <Stack direction="vertical" style={unitsColumnStyle}>
                       <Form.Control
                         type="text"
                         disabled
                         inputMode="numeric"
+                        aria-label="Removed Recipient Shares"
                         value="0"
                         className="bg-white border-0 fw-semi-bold text-center"
                         style={{ paddingTop: 12, paddingBottom: 12 }}
                       />
                     </Stack>
-                    <Stack direction="vertical">
+                    <Stack direction="vertical" style={shareGroupStyle}>
                       <Stack
                         direction="horizontal"
                         gap={isMobile ? 1 : 2}
@@ -1069,14 +1508,19 @@ export default function Admin(props: AdminProps) {
                         <Form.Control
                           type="text"
                           disabled
+                          aria-label="Removed Recipient Share %"
                           value="Removed"
                           className="bg-white border-0 fw-semi-bold text-center"
-                          style={{ paddingTop: 12, paddingBottom: 12 }}
+                          style={{
+                            ...shareColumnStyle,
+                            paddingTop: 12,
+                            paddingBottom: 12,
+                          }}
                         />
                         <Button
                           variant="transparent"
                           disabled={!isAdmin}
-                          className="p-0"
+                          className="p-0 border-0"
                           onClick={() => {
                             setMembersToRemove((prev) =>
                               prev.filter(
@@ -1098,11 +1542,16 @@ export default function Admin(props: AdminProps) {
                     </Stack>
                   </Stack>
                 ))}
-                <Stack direction="horizontal" gap={isMobile ? 2 : 4}>
+                <Stack
+                  direction="horizontal"
+                  gap={isMobile ? 2 : 4}
+                  className="align-items-center"
+                >
                   <Button
                     variant="transparent"
                     disabled={!isAdmin}
-                    className="d-flex align-items-center w-100 p-0 text-primary text-decoration-underline border-0"
+                    className="d-flex align-items-center flex-grow-1 p-0 text-primary text-decoration-underline border-0"
+                    style={addressColumnStyle}
                     onClick={() =>
                       setMembersEntry((prev) =>
                         prev.concat({
@@ -1117,10 +1566,12 @@ export default function Admin(props: AdminProps) {
                       {isMobile ? "Add recipient" : "Add another recipient"}
                     </Card.Text>
                   </Button>
-                  <Stack>
+                  {!isMobile && <span style={nameColumnStyle} />}
+                  <Stack style={unitsColumnStyle}>
                     <Form.Control
                       type="text"
                       disabled
+                      aria-label="Total Shares"
                       className="bg-transparent text-info text-center border-0 fw-semi-bold"
                       value={totalUnits}
                     />
@@ -1133,8 +1584,10 @@ export default function Admin(props: AdminProps) {
                     <Form.Control
                       type="text"
                       disabled
+                      aria-label="Total Share %"
                       value="100%"
                       className="bg-transparent border-0 text-center fw-semi-bold"
+                      style={shareColumnStyle}
                     />
                     <span className="p-0 opacity-0">
                       <Image
@@ -1280,6 +1733,52 @@ export default function Admin(props: AdminProps) {
                 </Form.Group>
               </Card.Body>
             </Card>
+            <SplitterApiCard
+              network={network}
+              poolId={poolId}
+              isAdmin={isAdmin}
+              // Undefined while the pool read is unresolved or has failed. A
+              // pool with no admins really is permanently immutable, so
+              // collapsing "could not read" into that says so to an admin whose
+              // pool is fine.
+              hasAdmins={poolAdmins ? poolAdmins.length > 0 : undefined}
+              hasAdminsError={
+                !!flowSplitterPoolQueryError ||
+                (!flowSplitterPoolQueryLoading && !pool)
+              }
+              transferableUnits={unitsTrasnferability}
+              transferabilityError={unitsTrasnferabilityError}
+              needsSignIn={needsSignIn}
+              walletActionLabel={
+                !address
+                  ? "Connect Wallet"
+                  : connectedChain?.id !== chainId
+                    ? "Switch Network"
+                    : null
+              }
+              onPrepareWallet={() => {
+                if (!address && openConnectModal) {
+                  openConnectModal();
+                } else if (connectedChain?.id !== chainId) {
+                  switchChain({ chainId });
+                }
+              }}
+              onSignIn={handleSignIn}
+              botIsAdmin={botIsAdmin}
+              botStatusError={botStatusError}
+              grant={async () => {
+                if (await grant()) {
+                  refetchBotStatus();
+                }
+              }}
+              isGranting={isGranting}
+              grantError={grantError}
+              keys={keys}
+              keysLoading={keysLoading}
+              keysError={keysError}
+              reloadKeys={reloadKeys}
+              onKeysChanged={reloadApiStatus}
+            />
             <Stack direction="vertical" className="mt-8">
               {poolConfig.immutable && (
                 <Card.Text className="mb-2 text-danger">
@@ -1287,8 +1786,22 @@ export default function Admin(props: AdminProps) {
                   won't be able to make changes after this transaction.
                 </Card.Text>
               )}
+              {poolConfig.immutable && botIsAdmin === undefined && (
+                // Otherwise the disabled button below has no explanation, and
+                // an RPC outage leaves the whole page silent about why.
+                <Card.Text className="mb-2 text-info">
+                  Checking whether the Flow State bot holds admin. Saving is
+                  blocked until that answers, so the revoke can include it.
+                </Card.Text>
+              )}
               <Button
                 disabled={
+                  isTransactionLoading ||
+                  // A grant is broadcast but not yet mined: this save would go
+                  // out behind it at the next nonce, so a "No Admin" revoke set
+                  // computed now is guaranteed to be one address short.
+                  isGranting ||
+                  (poolConfig.immutable && botIsAdmin === undefined) ||
                   !hasChanges ||
                   (!poolConfig.immutable && !isValidAdminsEntry) ||
                   !isValidMembersEntry
@@ -1299,7 +1812,9 @@ export default function Admin(props: AdminProps) {
                     ? openConnectModal()
                     : connectedChain?.id !== chainId
                       ? switchChain({ chainId })
-                      : handleSubmit()
+                      : confirmWarnings.length > 0
+                        ? setShowConfirmModal(true)
+                        : handleSubmit()
                 }
               >
                 {isTransactionLoading ? (
@@ -1309,6 +1824,15 @@ export default function Admin(props: AdminProps) {
                 )}
               </Button>
             </Stack>
+            <UpdateConfirmModal
+              show={showConfirmModal}
+              warnings={confirmWarnings}
+              onConfirm={() => {
+                setShowConfirmModal(false);
+                handleSubmit();
+              }}
+              onClose={() => setShowConfirmModal(false)}
+            />
             <Toast
               show={!!transactionSuccess}
               autohide
