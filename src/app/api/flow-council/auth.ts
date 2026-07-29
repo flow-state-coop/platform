@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { gql } from "@apollo/client";
 import { getApolloClient } from "@/lib/apollo";
 import { db } from "./db";
+import { allowRequest } from "../rateLimit";
 import { networks, getViemChain } from "@/lib/networks";
 import { ChannelType } from "@/generated/kysely";
 import { authOptions } from "../auth/[...nextauth]/route";
@@ -26,7 +27,8 @@ export type ChannelContext = {
   applicationId?: number;
 };
 
-export async function hasOnChainRole(
+/** Throws on an unreadable chain, so a caller can tell that from "no role". */
+async function readOnChainRole(
   chainId: number,
   councilId: string,
   address: string,
@@ -39,38 +41,44 @@ export async function hasOnChainRole(
     transport: http(network.rpcUrl),
   });
 
-  try {
-    const [hasRecipientManagerRole, hasVoterManagerRole, hasDefaultAdminRole] =
-      await Promise.all([
-        publicClient.readContract({
-          address: councilId as Address,
-          abi: parseAbi([
-            "function hasRole(bytes32 role, address account) view returns (bool)",
-          ]),
-          functionName: "hasRole",
-          args: [RECIPIENT_MANAGER_ROLE, address as Address],
-        }),
-        publicClient.readContract({
-          address: councilId as Address,
-          abi: parseAbi([
-            "function hasRole(bytes32 role, address account) view returns (bool)",
-          ]),
-          functionName: "hasRole",
-          args: [VOTER_MANAGER_ROLE, address as Address],
-        }),
-        publicClient.readContract({
-          address: councilId as Address,
-          abi: parseAbi([
-            "function hasRole(bytes32 role, address account) view returns (bool)",
-          ]),
-          functionName: "hasRole",
-          args: [DEFAULT_ADMIN_ROLE, address as Address],
-        }),
-      ]);
+  const [hasRecipientManagerRole, hasVoterManagerRole, hasDefaultAdminRole] =
+    await Promise.all([
+      publicClient.readContract({
+        address: councilId as Address,
+        abi: parseAbi([
+          "function hasRole(bytes32 role, address account) view returns (bool)",
+        ]),
+        functionName: "hasRole",
+        args: [RECIPIENT_MANAGER_ROLE, address as Address],
+      }),
+      publicClient.readContract({
+        address: councilId as Address,
+        abi: parseAbi([
+          "function hasRole(bytes32 role, address account) view returns (bool)",
+        ]),
+        functionName: "hasRole",
+        args: [VOTER_MANAGER_ROLE, address as Address],
+      }),
+      publicClient.readContract({
+        address: councilId as Address,
+        abi: parseAbi([
+          "function hasRole(bytes32 role, address account) view returns (bool)",
+        ]),
+        functionName: "hasRole",
+        args: [DEFAULT_ADMIN_ROLE, address as Address],
+      }),
+    ]);
 
-    return (
-      hasRecipientManagerRole || hasVoterManagerRole || hasDefaultAdminRole
-    );
+  return hasRecipientManagerRole || hasVoterManagerRole || hasDefaultAdminRole;
+}
+
+export async function hasOnChainRole(
+  chainId: number,
+  councilId: string,
+  address: string,
+): Promise<boolean> {
+  try {
+    return await readOnChainRole(chainId, councilId, address);
   } catch (err) {
     console.error("Error checking roles:", err);
     return false;
@@ -146,10 +154,22 @@ export type CouncilManagerAuth =
  * Validates the network and council address, requires an authenticated session,
  * resolves the round, and confirms the caller holds a managing role on the
  * council. Returns the round id on success or a typed error + HTTP status.
+ *
+ * The role is read from the chain unless a caller opts into the cache, which
+ * only the routes whose whole effect is the response they return may do. Every
+ * other caller here mutates membership or mints a metrics key, and a key is
+ * never re-authorized against the role afterwards, so a stale `true` would
+ * survive revocation.
  */
+// Generous next to what the voter-group and key screens do, and low enough
+// that a loop cannot drive unbounded RPC work.
+const MANAGER_REQUEST_LIMIT = 60;
+const MANAGER_REQUEST_WINDOW_MS = 60_000;
+
 export async function authorizeCouncilManager(
   chainId: unknown,
   councilId: unknown,
+  { allowCachedRole = false }: { allowCachedRole?: boolean } = {},
 ): Promise<CouncilManagerAuth> {
   const network = networks.find((n) => n.id === chainId);
 
@@ -167,17 +187,33 @@ export async function authorizeCouncilManager(
     return { ok: false, error: "Unauthenticated", status: 401 };
   }
 
+  // Before the round lookup and the three hasRole calls below, because that is
+  // the work being protected. A SIWE session is self-serve, so without this any
+  // wallet can loop any council address and spend RPC quota shared with the
+  // wallet the bot broadcasts ballots and claims through.
+  if (
+    !allowRequest(
+      `council-manager:${session.address.toLowerCase()}`,
+      MANAGER_REQUEST_LIMIT,
+      MANAGER_REQUEST_WINDOW_MS,
+    )
+  ) {
+    return {
+      ok: false,
+      error: "Too many requests, please retry in a moment",
+      status: 429,
+    };
+  }
+
   const round = await findRoundByCouncil(chainId as number, councilId);
 
   if (!round) {
     return { ok: false, error: "Round not found", status: 404 };
   }
 
-  const hasRole = await hasOnChainRole(
-    chainId as number,
-    councilId,
-    session.address,
-  );
+  const readRole = allowCachedRole ? hasOnChainRoleCached : hasOnChainRole;
+
+  const hasRole = await readRole(chainId as number, councilId, session.address);
 
   if (!hasRole) {
     return {
@@ -188,6 +224,64 @@ export async function authorizeCouncilManager(
   }
 
   return { ok: true, roundId: round.id };
+}
+
+const MANAGER_ROLE_CACHE_TTL = 30_000;
+const MAX_MANAGER_ROLE_CACHE = 5_000;
+const managerRoleCache = new Map<string, { value: boolean; expiry: number }>();
+
+/** Test seam: the cache is process-wide and would carry between cases. */
+export function resetManagerRoleCache() {
+  managerRoleCache.clear();
+}
+
+/**
+ * `hasOnChainRole` for the management routes that only read, cached briefly
+ * with negatives.
+ *
+ * Scoped to `authorizeCouncilManager` rather than folded into `hasOnChainRole`
+ * itself: the channel permission checks call that on every read and write, and
+ * giving a revoked manager a stale window there is a different decision from
+ * giving one to a key listing. Same 60s exposure the existing `adminCache`
+ * already accepts, halved.
+ */
+async function hasOnChainRoleCached(
+  chainId: number,
+  councilId: string,
+  address: string,
+): Promise<boolean> {
+  const key = `${chainId}:${councilId.toLowerCase()}:${address.toLowerCase()}`;
+  const cached = managerRoleCache.get(key);
+
+  if (cached && cached.expiry > Date.now()) {
+    return cached.value;
+  }
+
+  let value: boolean;
+
+  try {
+    value = await readOnChainRole(chainId, councilId, address);
+  } catch (err) {
+    // Never cached. A read that failed is not a verdict, and storing it would
+    // lock a manager out for the rest of the window over one RPC blip.
+    console.error("Error checking roles:", err);
+    return false;
+  }
+
+  if (managerRoleCache.size >= MAX_MANAGER_ROLE_CACHE) {
+    const oldest = managerRoleCache.keys().next().value;
+
+    if (oldest !== undefined) {
+      managerRoleCache.delete(oldest);
+    }
+  }
+
+  managerRoleCache.set(key, {
+    value,
+    expiry: Date.now() + MANAGER_ROLE_CACHE_TTL,
+  });
+
+  return value;
 }
 
 export const adminCache = new Map<string, { value: boolean; expiry: number }>();
