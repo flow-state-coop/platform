@@ -1,4 +1,4 @@
-import { headers, cookies as nextCookies } from "next/headers";
+import { cookies as nextCookies } from "next/headers";
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { createPublicClient, http, type Hex } from "viem";
@@ -11,6 +11,40 @@ function getPublicClient(chainId: number) {
   return createPublicClient({
     transport: http(network?.rpcUrl),
   });
+}
+
+const PRODUCTION_HOST = "flowstate.network";
+
+/**
+ * Hosts a sign-in message may be signed for. Sourced from configuration only,
+ * never from the request.
+ */
+export function allowedSiweDomains(): string[] {
+  const hosts = new Set<string>([PRODUCTION_HOST]);
+
+  if (process.env.NEXTAUTH_URL) {
+    try {
+      hosts.add(new URL(process.env.NEXTAUTH_URL).host);
+    } catch {
+      console.error("NEXTAUTH_URL is set but is not a valid URL");
+    }
+  }
+
+  // A preview is reached on its branch alias as often as its deployment URL,
+  // and the message carries whichever the browser was on.
+  for (const platformHost of [
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    process.env.VERCEL_BRANCH_URL,
+    process.env.VERCEL_URL,
+  ]) {
+    if (platformHost) hosts.add(platformHost);
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    hosts.add("localhost:3000");
+  }
+
+  return [...hosts];
 }
 
 const providers = [
@@ -30,15 +64,20 @@ const providers = [
     },
     async authorize(credentials) {
       try {
-        const headersList = await headers();
         const message = credentials?.message || "";
         const siweFields = parseSiweMessage(message);
 
-        if (!siweFields.chainId || !siweFields.address) return null;
+        if (!siweFields.chainId || !siweFields.address || !siweFields.domain) {
+          return null;
+        }
 
-        const nextAuthUrl = new URL(
-          headersList.get("origin") ?? "https://flowstate.network",
-        );
+        // This is the domain check; the one in verifySiweMessage below only
+        // compares the message against itself.
+        if (!allowedSiweDomains().includes(siweFields.domain)) {
+          console.error(`Unrecognized sign-in domain: ${siweFields.domain}`);
+          return null;
+        }
+
         const cookies = await nextCookies();
         const nonce = cookies.get("next-auth.csrf-token")?.value.split("|")[0];
 
@@ -47,7 +86,7 @@ const providers = [
         const isValid = await verifySiweMessage(publicClient, {
           message,
           signature: credentials?.signature as Hex,
-          domain: nextAuthUrl.host,
+          domain: siweFields.domain,
           nonce,
         });
 
