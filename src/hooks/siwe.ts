@@ -9,6 +9,24 @@ export default function useSiwe() {
   const { signMessageAsync } = useSignMessage();
   const { switchChainAsync } = useSwitchChain();
 
+  // signIn resolves with an error rather than throwing, and every gated screen
+  // reads the session rather than this call, so a swallowed rejection leaves
+  // the page looking signed out with nothing said about why.
+  const submitSignature = useCallback(
+    async (message: string, signature: string) => {
+      const result = await signIn("credentials", {
+        message,
+        redirect: false,
+        signature,
+      });
+
+      if (!result?.ok) {
+        window.alert("Sign in failed, please try again.");
+      }
+    },
+    [],
+  );
+
   const handleSignIn = useCallback(async () => {
     try {
       if (!address || !chain) return;
@@ -29,21 +47,13 @@ export default function useSiwe() {
       try {
         const signature = await signMessageAsync({ message });
 
-        signIn("credentials", {
-          message,
-          redirect: false,
-          signature,
-        });
+        await submitSignature(message, signature);
       } catch (error) {
         if (error instanceof ConnectorChainMismatchError) {
           await switchChainAsync({ chainId: chain.id });
           const signature = await signMessageAsync({ message });
 
-          signIn("credentials", {
-            message,
-            redirect: false,
-            signature,
-          });
+          await submitSignature(message, signature);
         } else {
           throw error;
         }
@@ -54,7 +64,7 @@ export default function useSiwe() {
       }
       window.alert(error);
     }
-  }, [address, chain, signMessageAsync, switchChainAsync]);
+  }, [address, chain, signMessageAsync, switchChainAsync, submitSignature]);
 
   return { handleSignIn };
 }

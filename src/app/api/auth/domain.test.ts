@@ -4,7 +4,7 @@ vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 vi.mock("next-auth", () => ({ default: () => () => undefined }));
 vi.mock("next-auth/providers/credentials", () => ({ default: () => ({}) }));
 
-import { allowedSiweDomains } from "./[...nextauth]/route";
+import { allowedSiweDomains, isAllowedSiweDomain } from "./[...nextauth]/route";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -54,5 +54,39 @@ describe("allowedSiweDomains", () => {
 
     expect(() => allowedSiweDomains()).not.toThrow();
     expect(allowedSiweDomains()).toContain("flowstate.network");
+  });
+
+  it("accepts hosts named by SIWE_ALLOWED_DOMAINS", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("SIWE_ALLOWED_DOMAINS", "app.example.org, alias.example.org");
+
+    const hosts = allowedSiweDomains();
+
+    expect(hosts).toContain("app.example.org");
+    expect(hosts).toContain("alias.example.org");
+  });
+});
+
+describe("isAllowedSiweDomain", () => {
+  it("accepts a dev server on any port outside production", () => {
+    vi.stubEnv("NODE_ENV", "development");
+
+    expect(isAllowedSiweDomain("localhost:3001")).toBe(true);
+    expect(isAllowedSiweDomain("192.168.1.24:3000")).toBe(true);
+    expect(isAllowedSiweDomain("127.0.0.1:8080")).toBe(true);
+  });
+
+  it("refuses local hosts in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+
+    expect(isAllowedSiweDomain("localhost:3001")).toBe(false);
+    expect(isAllowedSiweDomain("192.168.1.24:3000")).toBe(false);
+  });
+
+  it("refuses a public host that only looks local", () => {
+    vi.stubEnv("NODE_ENV", "development");
+
+    expect(isAllowedSiweDomain("localhost.attacker.com")).toBe(false);
+    expect(isAllowedSiweDomain("evil.com")).toBe(false);
   });
 });

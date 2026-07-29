@@ -15,12 +15,27 @@ function getPublicClient(chainId: number) {
 
 const PRODUCTION_HOST = "flowstate.network";
 
+// A dev server takes whatever port is free, and is opened from a phone on the
+// LAN as often as from the machine running it. Outside production these are
+// matched by shape rather than listed, because a sign-in that silently fails on
+// the host the developer is actually browsing is worse than no gate at all.
+const LOCAL_HOST_PATTERN =
+  /^(localhost|127(\.\d{1,3}){3}|\[::1\]|10(\.\d{1,3}){3}|192\.168(\.\d{1,3}){2}|172\.(1[6-9]|2\d|3[01])(\.\d{1,3}){2})(:\d{1,5})?$/;
+
 /**
  * Hosts a sign-in message may be signed for. Sourced from configuration only,
- * never from the request.
+ * never from the request. SIWE_ALLOWED_DOMAINS names the deployments reached on
+ * an alias of their own, which no VERCEL_* variable carries.
  */
 export function allowedSiweDomains(): string[] {
   const hosts = new Set<string>([PRODUCTION_HOST]);
+
+  for (const configured of (process.env.SIWE_ALLOWED_DOMAINS ?? "").split(
+    ",",
+  )) {
+    const host = configured.trim();
+    if (host) hosts.add(host);
+  }
 
   if (process.env.NEXTAUTH_URL) {
     try {
@@ -45,6 +60,16 @@ export function allowedSiweDomains(): string[] {
   }
 
   return [...hosts];
+}
+
+export function isAllowedSiweDomain(domain: string): boolean {
+  if (allowedSiweDomains().includes(domain)) {
+    return true;
+  }
+
+  return (
+    process.env.NODE_ENV !== "production" && LOCAL_HOST_PATTERN.test(domain)
+  );
 }
 
 const providers = [
@@ -73,7 +98,7 @@ const providers = [
 
         // This is the domain check; the one in verifySiweMessage below only
         // compares the message against itself.
-        if (!allowedSiweDomains().includes(siweFields.domain)) {
+        if (!isAllowedSiweDomain(siweFields.domain)) {
           console.error(`Unrecognized sign-in domain: ${siweFields.domain}`);
           return null;
         }
