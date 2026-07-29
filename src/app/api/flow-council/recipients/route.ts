@@ -128,8 +128,12 @@ export async function GET(request: Request) {
           continue;
         }
 
-        if (details?.name) {
-          nameByAddress.set(app.fundingAddress.toLowerCase(), details.name);
+        // Callers match recipients by name, so surrounding whitespace on a
+        // legacy row (written before the project schema trimmed it) is a silent
+        // mismatch on their side rather than a cosmetic issue.
+        const name = details?.name?.trim();
+        if (name) {
+          nameByAddress.set(app.fundingAddress.toLowerCase(), name);
         }
       }
     }

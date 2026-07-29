@@ -28,6 +28,23 @@ describe("validateProjectDetails", () => {
     expect(result.success).toBe(false);
   });
 
+  it("trims surrounding whitespace from the name", () => {
+    const result = validateProjectDetails({
+      name: "  Proj ",
+      description: MIN_DESCRIPTION,
+    });
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.name).toBe("Proj");
+  });
+
+  it("rejects a whitespace-only name", () => {
+    const result = validateProjectDetails({
+      name: "   ",
+      description: MIN_DESCRIPTION,
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("rejects description below minimum length", () => {
     const result = validateProjectDetails({
       name: "Proj",

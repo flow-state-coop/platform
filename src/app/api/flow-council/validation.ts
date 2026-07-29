@@ -40,7 +40,7 @@ const otherLinkSchema = z.object({
 });
 
 export const projectDetailsSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().trim().min(1),
   description: z
     .string()
     .min(CHARACTER_LIMITS.projectDescription.min)
