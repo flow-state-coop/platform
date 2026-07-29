@@ -413,20 +413,22 @@ describe("splitter allocation write", () => {
     expect(key?.cooldownUntil).not.toBeNull();
   });
 
-  it("does not spend the write window on a submission that changed nothing", async () => {
+  it("spends the write window on a submission that changed nothing", async () => {
     await seedKey();
     setMember(A, 1_000_000n);
 
     const first = await (await write([{ address: A, weight: 1 }])).json();
     expect(first.status).toBe("no_change");
 
-    // A no-change sends no transaction and has no completion to measure from,
-    // so the next real write must not be blocked behind a 60s window.
+    // No transaction is sent, but resolving the register against the chain is
+    // the expensive part and it already ran. Handing the window back would let
+    // a loop resubmitting the current register drive that work, and a history
+    // row, without limit.
     const second = await write([
       { address: A, weight: 1 },
       { address: B, weight: 1 },
     ]);
-    expect(second.status).toBe(202);
+    expect(second.status).toBe(429);
   });
 
   it("treats a zero-padded pool id as the same pool", async () => {

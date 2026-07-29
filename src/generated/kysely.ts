@@ -187,6 +187,9 @@ export type SplitterWriteJob = {
   target: unknown;
   batchIndex: Generated<number>;
   txHashes: string[];
+  changedCount: Generated<number>;
+  gasUsed: Generated<string>;
+  gasCostWei: Generated<string>;
   attempt: Generated<number>;
   heartbeatAt: Generated<Timestamp>;
   error: string | null;

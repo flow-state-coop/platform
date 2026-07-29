@@ -20,7 +20,7 @@ export async function GET(
   { params }: { params: Promise<{ jobId: string }> },
 ) {
   try {
-    const auth = await authorizeApiKey(request);
+    const auth = await authorizeApiKey(request, { ignoreCooldown: true });
     if (!auth.ok) return auth.response;
 
     const { jobId } = await params;

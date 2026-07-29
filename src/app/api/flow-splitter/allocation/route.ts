@@ -84,7 +84,16 @@ const JOB_TTL_MS = 7 * 24 * 60 * 60 * 1000;
  * that is fragile.
  */
 export async function POST(request: Request) {
-  const auth = await authorizeApiKey(request);
+  // Authorization reads the subgraph and the chain, so it fails the way they
+  // do. Uncaught it would escape as a framework 500 with no body, which no
+  // documented response shape covers.
+  let auth;
+  try {
+    auth = await authorizeApiKey(request);
+  } catch (err) {
+    console.error(err);
+    return errorResponse("There was an error, please try again later", 502);
+  }
   if (!auth.ok) return auth.response;
 
   const { key, network, pool } = auth;
@@ -227,23 +236,10 @@ export async function POST(request: Request) {
         })
         .execute();
 
-      // A submission that matches the chain sends no transaction and has no
-      // completion to measure the next interval from, so it hands the window
-      // back rather than blocking the next real write for a minute. This
-      // matches the council metrics API, where a skipped ballot does not
-      // consume its window either.
-      if (claimedAt) {
-        await db
-          .updateTable("splitterIntegrations")
-          .set({ lastWriteAt: previousWriteAt })
-          .where("chainId", "=", key.chainId)
-          .where("poolId", "=", key.poolId)
-          .where("lastWriteAt", "=", claimedAt)
-          .execute()
-          .catch((resetErr) => console.error(resetErr));
-        claimedAt = null;
-      }
-
+      // The window stays claimed. No transaction was sent, but resolving the
+      // register against the chain is the expensive part and it already ran, so
+      // handing the window back would let a loop resubmitting the current
+      // register drive that work and a history row without limit.
       return Response.json({
         success: true,
         status: "no_change",

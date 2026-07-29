@@ -37,6 +37,9 @@ export type JobRow = {
   target: { address: string; units: string }[];
   batchIndex: number;
   txHashes: string[];
+  changedCount: number;
+  gasUsed: string;
+  gasCostWei: string;
   attempt: number;
 };
 
@@ -65,23 +68,54 @@ export async function claimJob(jobId: string): Promise<JobRow | null> {
          )
        )
     RETURNING id, chain_id, pool_id, key_id, payload_hash, status, target,
-              batch_index, tx_hashes, attempt
+              batch_index, tx_hashes, changed_count, gas_used, gas_cost_wei,
+              attempt
   `.execute(db);
 
   return result.rows[0] ?? null;
 }
 
-async function heartbeat(
-  jobId: string,
-  txHashes: string[],
-  batchIndex: number,
-) {
+/**
+ * What the job has actually done so far, carried on the row rather than in the
+ * runner. A resumed attempt inherits it, so what the write changed and what it
+ * cost describe the whole job and not just the attempt that happened to finish
+ * it. Only batches whose receipt came back successful count.
+ */
+type JobProgress = {
+  txHashes: string[];
+  batchIndex: number;
+  changedCount: number;
+  gas: { used: bigint; costWei: bigint };
+};
+
+function progressOf(job: {
+  txHashes: string[] | null;
+  batchIndex: number | null;
+  changedCount: number | null;
+  gasUsed: string | null;
+  gasCostWei: string | null;
+}): JobProgress {
+  return {
+    txHashes: [...(job.txHashes ?? [])],
+    batchIndex: job.batchIndex ?? 0,
+    changedCount: job.changedCount ?? 0,
+    gas: {
+      used: BigInt(job.gasUsed ?? "0"),
+      costWei: BigInt(job.gasCostWei ?? "0"),
+    },
+  };
+}
+
+async function heartbeat(jobId: string, progress: JobProgress) {
   await db
     .updateTable("splitterWriteJobs")
     .set({
       heartbeatAt: new Date(),
-      txHashes,
-      batchIndex,
+      txHashes: progress.txHashes,
+      batchIndex: progress.batchIndex,
+      changedCount: progress.changedCount,
+      gasUsed: progress.gas.used.toString(),
+      gasCostWei: progress.gas.costWei.toString(),
       updatedAt: new Date(),
     })
     .where("id", "=", jobId)
@@ -91,17 +125,20 @@ async function heartbeat(
 async function finish(
   job: JobRow,
   status: "succeeded" | "failed",
-  txHashes: string[],
-  changedCount: number,
-  gas: { used: bigint; costWei: bigint },
+  progress: JobProgress,
   error?: string,
 ) {
+  const { txHashes, changedCount, gas } = progress;
+
   const settled = await db
     .updateTable("splitterWriteJobs")
     .set({
       status,
       error: error ?? null,
       txHashes,
+      changedCount,
+      gasUsed: gas.used.toString(),
+      gasCostWei: gas.costWei.toString(),
       heartbeatAt: new Date(),
       updatedAt: new Date(),
     })
@@ -166,15 +203,13 @@ async function failExhausted(jobId: string): Promise<void> {
     return;
   }
 
-  const txHashes = job.txHashes ?? [];
+  const progress = progressOf(job);
 
   await finish(
     job as unknown as JobRow,
     "failed",
-    txHashes,
-    0,
-    { used: 0n, costWei: 0n },
-    txHashes.length > 0
+    progress,
+    progress.changedCount > 0
       ? "Some batches landed and the write did not complete after repeated attempts, so the register is inconsistent. Re-submit the same payload to repair it"
       : "The write did not complete after repeated attempts",
   );
@@ -199,16 +234,11 @@ export async function runJob(jobId: string): Promise<void> {
     return;
   }
 
+  const progress = progressOf(job);
+
   const network = getNetwork(job.chainId);
   if (!network) {
-    await finish(
-      job,
-      "failed",
-      job.txHashes ?? [],
-      0,
-      { used: 0n, costWei: 0n },
-      "Unsupported network",
-    );
+    await finish(job, "failed", progress, "Unsupported network");
     return;
   }
 
@@ -217,15 +247,10 @@ export async function runJob(jobId: string): Promise<void> {
     units: BigInt(entry.units),
   }));
 
-  const txHashes = [...(job.txHashes ?? [])];
-  let batchIndex = job.batchIndex ?? 0;
-  let changedCount = 0;
-  const gas = { used: 0n, costWei: 0n };
-
   // Keeps the job visibly alive across receipt waits and subgraph reads, which
   // together run longer than the staleness threshold.
   const ticker = setInterval(() => {
-    heartbeat(job.id, txHashes, batchIndex).catch((err) => console.error(err));
+    heartbeat(job.id, progress).catch((err) => console.error(err));
   }, HEARTBEAT_REFRESH_MS);
 
   try {
@@ -236,14 +261,7 @@ export async function runJob(jobId: string): Promise<void> {
       // Cheaper to re-check than to burn gas on a revert, and it stops a
       // running job at a batch boundary when the grant is withdrawn.
       if (!(await isBotPoolAdmin(network, job.poolId))) {
-        await finish(
-          job,
-          "failed",
-          txHashes,
-          changedCount,
-          gas,
-          BOT_NOT_ADMIN_ERROR,
-        );
+        await finish(job, "failed", progress, BOT_NOT_ADMIN_ERROR);
         return;
       }
 
@@ -257,12 +275,11 @@ export async function runJob(jobId: string): Promise<void> {
       const remaining = diffRegister(target, current);
       if (remaining.length === 0) {
         await pruneSettledAddresses(job, network.id, pool, current);
-        await finish(job, "succeeded", txHashes, changedCount, gas);
+        await finish(job, "succeeded", progress);
         return;
       }
 
       const batch = remaining.slice(0, CHUNK_SIZE);
-      changedCount += batch.length;
 
       const hash = await sendBotTransaction(network, (nonce) =>
         walletClient.writeContract({
@@ -283,9 +300,9 @@ export async function runJob(jobId: string): Promise<void> {
 
       // Recorded before waiting for the receipt, so a crash in between leaves a
       // findable orphan rather than an untraceable one.
-      txHashes.push(hash);
-      batchIndex += 1;
-      await heartbeat(job.id, txHashes, batchIndex);
+      progress.txHashes.push(hash);
+      progress.batchIndex += 1;
+      await heartbeat(job.id, progress);
 
       const receipt = await publicClient.waitForTransactionReceipt({
         hash,
@@ -296,8 +313,11 @@ export async function runJob(jobId: string): Promise<void> {
         throw new Error(`Batch transaction reverted: ${hash}`);
       }
 
-      gas.used += receipt.gasUsed ?? 0n;
-      gas.costWei +=
+      // Counted here rather than at broadcast, so a batch that reverted or was
+      // never sent is not reported as a change to the register.
+      progress.changedCount += batch.length;
+      progress.gas.used += receipt.gasUsed ?? 0n;
+      progress.gas.costWei +=
         (receipt.gasUsed ?? 0n) * (receipt.effectiveGasPrice ?? 0n);
 
       // Merged before advancing, so a job that dies here never loses what this
@@ -308,9 +328,7 @@ export async function runJob(jobId: string): Promise<void> {
     await finish(
       job,
       "failed",
-      txHashes,
-      changedCount,
-      gas,
+      progress,
       "The register did not converge within the batch limit",
     );
   } catch (err) {
@@ -326,8 +344,11 @@ export async function runJob(jobId: string): Promise<void> {
           status: "queued",
           attempt: Math.max(0, job.attempt - 1),
           heartbeatAt: new Date(),
-          txHashes,
-          batchIndex,
+          txHashes: progress.txHashes,
+          batchIndex: progress.batchIndex,
+          changedCount: progress.changedCount,
+          gasUsed: progress.gas.used.toString(),
+          gasCostWei: progress.gas.costWei.toString(),
           updatedAt: new Date(),
         })
         .where("id", "=", job.id)
@@ -341,12 +362,13 @@ export async function runJob(jobId: string): Promise<void> {
     await finish(
       job,
       "failed",
-      txHashes,
-      changedCount,
-      gas,
-      txHashes.length > 0
+      progress,
+      // Branching on hashes would call a first batch that reverted a partial
+      // write, when the register was never touched. Only a confirmed batch
+      // leaves it inconsistent.
+      progress.changedCount > 0
         ? "Some batches landed and one failed, so the register is inconsistent. Re-submit the same payload to repair it"
-        : "The write failed before any transaction was sent",
+        : "The write failed without changing the register",
     );
   } finally {
     clearInterval(ticker);
@@ -366,9 +388,20 @@ async function pruneSettledAddresses(
   current: RegisterEntry[],
 ): Promise<void> {
   try {
-    const indexed = new Set(await getIndexedMembers(chainId, poolAddress));
+    const indexedUnits = new Map(
+      (await getIndexedMembers(chainId, poolAddress)).map((member) => [
+        member.address,
+        member.units,
+      ]),
+    );
+    // Membership is the wrong test: the indexer keeps a PoolMember entity at
+    // zero units forever, so an address the platform zeroed is always still
+    // "known" and nothing would ever be pruned.
     const settled = current
-      .filter((entry) => entry.units === 0n && !indexed.has(entry.address))
+      .filter(
+        (entry) =>
+          entry.units === 0n && (indexedUnits.get(entry.address) ?? 0n) === 0n,
+      )
       .map((entry) => entry.address);
 
     await pruneMirror(job.chainId, job.poolId, settled);

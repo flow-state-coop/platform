@@ -28,8 +28,16 @@ function unauthorized() {
  * The pool is derived from the key rather than from a path or query parameter,
  * so a key cannot be pointed at a pool it does not own. An unknown token and a
  * revoked one get the same response, so revocation is not observable.
+ *
+ * `ignoreCooldown` is for polling a job that was already accepted. The cooldown
+ * exists to stop a caller resubmitting bad payloads, and refusing its polls
+ * would also refuse the resume they trigger, leaving a half-written register
+ * stuck for the length of a penalty it earned on a different request.
  */
-export async function authorizeApiKey(request: Request): Promise<KeyAuth> {
+export async function authorizeApiKey(
+  request: Request,
+  { ignoreCooldown = false }: { ignoreCooldown?: boolean } = {},
+): Promise<KeyAuth> {
   const authHeader = request.headers.get("authorization") ?? "";
   const provided = authHeader.startsWith("Bearer ")
     ? authHeader.slice(7).trim()
@@ -48,7 +56,11 @@ export async function authorizeApiKey(request: Request): Promise<KeyAuth> {
 
   // Rejected before any RPC work, and worded distinctly from the in-flight-job
   // and active-key-cap refusals so a caller can tell which limit it hit.
-  if (keyRow.cooldownUntil && new Date(keyRow.cooldownUntil) > new Date()) {
+  if (
+    !ignoreCooldown &&
+    keyRow.cooldownUntil &&
+    new Date(keyRow.cooldownUntil) > new Date()
+  ) {
     return { ok: false, response: errorResponse(KEY_COOLDOWN_ERROR, 429) };
   }
 

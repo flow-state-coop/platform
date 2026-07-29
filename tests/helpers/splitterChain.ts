@@ -176,11 +176,15 @@ export function createSplitterMockApolloClient() {
           const cursor = String(variables.cursor ?? "");
           const first = Number(variables.first ?? 1000);
 
+          // Units mirror the chain, modelling an indexer that has caught up.
+          // A member zeroed on-chain stays a PoolMember entity at zero units,
+          // which is what pruning has to distinguish.
           const rows = [...splitterChain.indexedMembers]
             .sort()
             .map((account) => ({
               id: `poolMember-${pool}-${account}`,
               account: { id: account },
+              units: (splitterChain.units.get(account) ?? 0n).toString(),
             }))
             .filter((row) => row.id > cursor)
             .slice(0, first);

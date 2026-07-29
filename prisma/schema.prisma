@@ -200,6 +200,9 @@ model SplitterWriteJob {
   target      Json
   batchIndex  Int      @default(0) @map("batch_index")
   txHashes    String[] @map("tx_hashes")
+  changedCount Int     @default(0) @map("changed_count")
+  gasUsed     String   @default("0") @map("gas_used") @db.VarChar(78)
+  gasCostWei  String   @default("0") @map("gas_cost_wei") @db.VarChar(78)
   attempt     Int      @default(0)
   heartbeatAt DateTime @default(now()) @map("heartbeat_at")
   error       String?

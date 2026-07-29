@@ -37,7 +37,13 @@ export const splitterAllocationSchema = z.object({
       z.object({
         address: z
           .string()
-          .refine(isAddress, "Invalid recipient address")
+          // Not strict: viem's default rejects any mixed-case address whose
+          // EIP-55 checksum does not match, so an integrator storing addresses
+          // upper-cased would be refused for formatting and cooled down for it.
+          .refine(
+            (a) => isAddress(a, { strict: false }),
+            "Invalid recipient address",
+          )
           .refine(
             (a) => a.toLowerCase() !== zeroAddress,
             "The zero address cannot be a recipient",

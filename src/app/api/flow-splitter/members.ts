@@ -14,7 +14,8 @@ const MAX_PAGES = 20;
 // Top-level poolMembers, not the nested pool { poolMembers } the admin page
 // uses: the nested form cannot page past The Graph's skip ceiling. Ids are
 // `poolMember-<pool>-<account>`, so an id_gt cursor with orderBy id pages
-// cleanly. Zero-unit members are returned, which is what pruning needs.
+// cleanly. Zero-unit members are returned, which is why pruning has to read
+// units rather than membership.
 const POOL_MEMBERS_QUERY = gql`
   query PoolMembers($pool: String!, $cursor: String!, $first: Int!) {
     poolMembers(
@@ -24,12 +25,15 @@ const POOL_MEMBERS_QUERY = gql`
       first: $first
     ) {
       id
+      units
       account {
         id
       }
     }
   }
 `;
+
+export type IndexedMember = { address: string; units: bigint };
 
 /**
  * Every address the indexer believes is a member of the pool, paginated.
@@ -41,9 +45,9 @@ const POOL_MEMBERS_QUERY = gql`
 export async function getIndexedMembers(
   chainId: number,
   poolAddress: Address,
-): Promise<string[]> {
+): Promise<IndexedMember[]> {
   const client = getApolloClient("superfluid", chainId);
-  const addresses: string[] = [];
+  const indexed: IndexedMember[] = [];
   let cursor = "";
 
   for (let page = 0; page < MAX_PAGES; page++) {
@@ -57,22 +61,25 @@ export async function getIndexedMembers(
       fetchPolicy: "no-cache",
     });
 
-    const members: { id: string; account: { id: string } }[] =
+    const members: { id: string; units: string; account: { id: string } }[] =
       data?.poolMembers ?? [];
-    if (members.length === 0) return addresses;
+    if (members.length === 0) return indexed;
 
     for (const member of members) {
-      addresses.push(member.account.id.toLowerCase());
+      indexed.push({
+        address: member.account.id.toLowerCase(),
+        units: BigInt(member.units ?? 0),
+      });
     }
 
-    if (members.length < PAGE_SIZE) return addresses;
+    if (members.length < PAGE_SIZE) return indexed;
     cursor = members[members.length - 1].id;
   }
 
   console.warn(
     `poolMembers pagination hit the ${MAX_PAGES}-page cap for pool ${poolAddress} on chain ${chainId}; the member list may be truncated`,
   );
-  return addresses;
+  return indexed;
 }
 
 /** Addresses the platform last wrote for this pool. */
@@ -116,7 +123,7 @@ export async function resolveCurrentRegister(
 
   const candidates = [
     ...new Set([
-      ...indexed,
+      ...indexed.map((member) => member.address),
       ...mirrored,
       ...extraAddresses.map((a) => a.toLowerCase()),
     ]),
