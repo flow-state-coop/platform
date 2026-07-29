@@ -119,6 +119,80 @@ export function isBotPoolAdmin(network: Network, poolId: string) {
   return isPoolAdmin(network, poolId, FLOW_STATE_BOT_ADDRESS);
 }
 
+const POOL_ADMIN_CACHE_TTL = 30_000;
+const MAX_POOL_ADMIN_CACHE = 5_000;
+const poolAdminCache = new Map<string, { value: boolean; expiry: number }>();
+
+/** Test seam: the cache is process-wide and would carry between cases. */
+export function resetPoolAdminCache() {
+  poolAdminCache.clear();
+}
+
+async function readAndCachePoolAdmin(
+  network: Network,
+  poolId: string,
+  account: Address,
+  key: string,
+): Promise<boolean> {
+  const value = await isPoolAdmin(network, poolId, account);
+
+  if (poolAdminCache.size >= MAX_POOL_ADMIN_CACHE) {
+    const oldest = poolAdminCache.keys().next().value;
+
+    if (oldest !== undefined) {
+      poolAdminCache.delete(oldest);
+    }
+  }
+
+  poolAdminCache.set(key, { value, expiry: Date.now() + POOL_ADMIN_CACHE_TTL });
+
+  return value;
+}
+
+/**
+ * Admin status for the page-facing reads, cached briefly including negatives.
+ *
+ * Only for requests whose whole effect is the response they return. Anything
+ * that hands out capability outliving the request uses `isPoolAdminFresh`, and
+ * the write path uses neither: `isBotPoolAdmin` gates whether the bot sends
+ * transactions at all, and the runner re-checks it before every batch, where a
+ * stale `true` burns gas on a revert and a stale `false` refuses a write that
+ * would have worked. Here the cost of being 30s behind is that a freshly
+ * granted admin waits half a minute to see the key list.
+ */
+export async function isPoolAdminCached(
+  network: Network,
+  poolId: string,
+  account: Address,
+): Promise<boolean> {
+  const key = `${network.id}:${poolId}:${account.toLowerCase()}`;
+  const cached = poolAdminCache.get(key);
+
+  if (cached && cached.expiry > Date.now()) {
+    return cached.value;
+  }
+
+  return readAndCachePoolAdmin(network, poolId, account, key);
+}
+
+/**
+ * Admin status straight from the chain, refreshing the cache on the way.
+ *
+ * Minting a key hands out write capability that is never re-authorized against
+ * the chain afterwards, so a revoked admin allowed through by a stale `true`
+ * keeps replacing the register long after the cache window closes. Revocation
+ * is fresh for the same reason in reverse.
+ */
+export async function isPoolAdminFresh(
+  network: Network,
+  poolId: string,
+  account: Address,
+): Promise<boolean> {
+  const key = `${network.id}:${poolId}:${account.toLowerCase()}`;
+
+  return readAndCachePoolAdmin(network, poolId, account, key);
+}
+
 const transferabilityCache = new Map<string, boolean>();
 
 /** Test seam: the cache is keyed on a value that cannot change in production. */

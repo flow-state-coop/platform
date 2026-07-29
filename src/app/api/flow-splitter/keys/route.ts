@@ -43,6 +43,7 @@ export async function GET(request: Request) {
     const auth = await authorizePoolAdmin(
       parsed.data.chainId,
       parsed.data.poolId,
+      { allowCachedRole: true },
     );
     if (!auth.ok) {
       return errorResponse(auth.error, auth.status);
@@ -63,7 +64,9 @@ export async function GET(request: Request) {
       .orderBy("id", "asc")
       .execute();
 
-    return Response.json({ success: true, keys, botIsAdmin: auth.botIsAdmin });
+    // No bot-admin status here: the admin page reads it from the chain itself,
+    // because it has to show it before anyone signs in.
+    return Response.json({ success: true, keys });
   } catch (err) {
     console.error(err);
     return errorResponse("There was an error, please try again later", 500);

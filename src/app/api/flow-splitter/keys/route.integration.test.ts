@@ -42,7 +42,8 @@ import {
   POST as keysPost,
   DELETE as keysDelete,
 } from "./route";
-import { resetTransferabilityCache } from "../pool";
+import { resetTransferabilityCache, resetPoolAdminCache } from "../pool";
+import { resetRateLimits } from "@/app/api/rateLimit";
 import { getTestDb, resetDb } from "@tests/helpers/db";
 import {
   resetSplitterChain,
@@ -92,6 +93,8 @@ beforeEach(async () => {
   await resetDb(db);
   resetSplitterChain();
   resetTransferabilityCache();
+  resetPoolAdminCache();
+  resetRateLimits();
   signedInAs(TEST_POOL_ADMIN);
 });
 
@@ -179,13 +182,13 @@ describe("splitter key management", () => {
     expect((await res.json()).error).toContain("transferable units");
   });
 
-  it("reports whether the bot holds admin, so keys can be minted before the grant", async () => {
+  it("mints and lists keys before the bot has been granted admin", async () => {
     splitterChain.botIsAdmin = false;
 
     const body = await (await mint()).json();
     expect(body.success).toBe(true);
 
     const listed = await (await list()).json();
-    expect(listed.botIsAdmin).toBe(false);
+    expect(listed.keys).toHaveLength(1);
   });
 });

@@ -1,30 +1,36 @@
 import { getServerSession } from "next-auth/next";
 import type { Address } from "viem";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import {
+  IMMUTABLE_POOL_ERROR,
+  TRANSFERABLE_POOL_ERROR,
+} from "@/lib/splitterEligibility";
 import type { Network } from "@/types/network";
+import { allowRequest } from "../rateLimit";
 import {
   getNetwork,
   getPoolFromSubgraph,
-  isBotPoolAdmin,
-  isPoolAdmin,
+  isPoolAdminCached,
+  isPoolAdminFresh,
   isTransferable,
   type SplitterPool,
 } from "./pool";
+
+// Generous next to what the admin page actually does (one keys fetch and one
+// history fetch per load, plus a page of history per click), and still low
+// enough that a loop cannot drive unbounded subgraph and RPC work.
+const ADMIN_REQUEST_LIMIT = 60;
+const ADMIN_REQUEST_WINDOW_MS = 60_000;
 
 export type PoolAdminAuth =
   | {
       ok: true;
       network: Network;
       pool: SplitterPool;
-      botIsAdmin: boolean;
     }
   | { ok: false; error: string; status: number };
 
-export const IMMUTABLE_POOL_ERROR =
-  "This pool has no admins and is permanently immutable, so it cannot be API-driven";
-
-export const TRANSFERABLE_POOL_ERROR =
-  "The API does not support pools with transferable units, because recipients can move units between writes";
+export { IMMUTABLE_POOL_ERROR, TRANSFERABLE_POOL_ERROR };
 
 export const BOT_NOT_ADMIN_ERROR =
   "The Flow State bot is not an admin of this pool, so it cannot update shares. Grant it admin access from the pool's admin page";
@@ -53,10 +59,21 @@ export async function checkPoolEligibility(
  * SIWE plus an on-chain admin check, for the pool-admin-facing routes (keys,
  * history, the merged allocation the API section shows). The admin page itself
  * still opens with only a connected wallet; this gates the privileged actions.
+ *
+ * The bot's own admin status is deliberately not read here. No route reports
+ * it: the admin page reads it from the chain itself, because it has to show it
+ * before anyone signs in, and every caller here was paying for an eth_call it
+ * discarded.
+ *
+ * The admin check is read from the chain unless a caller opts into the cache,
+ * which only the routes whose whole effect is the response they return may do.
+ * Minting a key hands out write capability that is never re-authorized against
+ * the chain afterwards, so a stale `true` there survives revocation.
  */
 export async function authorizePoolAdmin(
   chainId: number,
   poolId: string,
+  { allowCachedRole = false }: { allowCachedRole?: boolean } = {},
 ): Promise<PoolAdminAuth> {
   const network = getNetwork(chainId);
   if (!network) {
@@ -68,21 +85,43 @@ export async function authorizePoolAdmin(
     return { ok: false, error: "Unauthenticated", status: 401 };
   }
 
+  // Before the subgraph and the chain, because that is the work being
+  // protected: a SIWE session is self-serve, so without this any wallet can
+  // loop any pool id and spend our upstream quota. That quota is shared with
+  // the RPC the bot broadcasts through, so this is not only about these routes.
+  if (
+    !allowRequest(
+      `splitter-admin:${session.address.toLowerCase()}`,
+      ADMIN_REQUEST_LIMIT,
+      ADMIN_REQUEST_WINDOW_MS,
+    )
+  ) {
+    return {
+      ok: false,
+      error: "Too many requests, please retry in a moment",
+      status: 429,
+    };
+  }
+
   const pool = await getPoolFromSubgraph(chainId, poolId);
   if (!pool) {
     return { ok: false, error: "Pool not found", status: 404 };
   }
 
-  const ineligible = await checkPoolEligibility(network, pool);
+  // Independent once the pool is known, and each is a separate RPC round trip,
+  // so they run together. Eligibility still takes precedence over the admin
+  // check, matching the order a sequential version reported them in.
+  const readAdmin = allowCachedRole ? isPoolAdminCached : isPoolAdminFresh;
+
+  const [ineligible, callerIsAdmin] = await Promise.all([
+    checkPoolEligibility(network, pool),
+    readAdmin(network, poolId, session.address as Address),
+  ]);
+
   if (ineligible) {
     return { ok: false, ...ineligible };
   }
 
-  const callerIsAdmin = await isPoolAdmin(
-    network,
-    poolId,
-    session.address as Address,
-  );
   if (!callerIsAdmin) {
     return {
       ok: false,
@@ -91,10 +130,5 @@ export async function authorizePoolAdmin(
     };
   }
 
-  return {
-    ok: true,
-    network,
-    pool,
-    botIsAdmin: await isBotPoolAdmin(network, poolId),
-  };
+  return { ok: true, network, pool };
 }
