@@ -23,6 +23,10 @@ export const HEARTBEAT_STALE_MS = 2 * 60_000;
 const HEARTBEAT_REFRESH_MS = 30_000;
 
 const MAX_ATTEMPTS = 5;
+// How long a job keeps being refunded the attempts it loses to contention on
+// the shared bot key. Long enough to ride out any realistic queue on one chain,
+// short enough that it fails well inside the job's own seven-day expiry.
+const CHAIN_BUSY_GRACE_MS = 30 * 60_000;
 // A batch always shrinks the diff, so this only bounds a pathological case
 // where the chain refuses to converge.
 const MAX_BATCHES_PER_JOB = 200;
@@ -41,6 +45,7 @@ export type JobRow = {
   gasUsed: string;
   gasCostWei: string;
   attempt: number;
+  createdAt: Date;
 };
 
 /**
@@ -69,7 +74,7 @@ export async function claimJob(jobId: string): Promise<JobRow | null> {
        )
     RETURNING id, chain_id, pool_id, key_id, payload_hash, status, target,
               batch_index, tx_hashes, changed_count, gas_used, gas_cost_wei,
-              attempt
+              attempt, created_at
   `.execute(db);
 
   return result.rows[0] ?? null;
@@ -337,12 +342,21 @@ export async function runJob(jobId: string): Promise<void> {
     // leaving it running with a fresh heartbeat would lock it out of its own
     // recovery for the whole staleness window. The attempt is given back too,
     // since nothing was attempted on-chain.
+    //
+    // Only while the job is young, though. Refunding it forever means a job
+    // that never wins the lease never exhausts either, so it sits queued until
+    // its TTL expires and the caller's poll loop never terminates. Past the
+    // grace window the attempt stands, so sustained contention ends in a
+    // reported failure rather than silence.
     if (err instanceof ChainBusyError) {
+      const withinGrace =
+        Date.now() - new Date(job.createdAt).getTime() < CHAIN_BUSY_GRACE_MS;
+
       await db
         .updateTable("splitterWriteJobs")
         .set({
           status: "queued",
-          attempt: Math.max(0, job.attempt - 1),
+          attempt: withinGrace ? Math.max(0, job.attempt - 1) : job.attempt,
           heartbeatAt: new Date(),
           txHashes: progress.txHashes,
           batchIndex: progress.batchIndex,
