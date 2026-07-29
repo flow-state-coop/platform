@@ -6,13 +6,13 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { errorResponse, readJsonBody, PayloadTooLargeError } from "../../utils";
 import {
   MAX_DETAILS_SIZE,
+  nameSchema,
   normalizeSocialConfig,
   validateSocialCharLimits,
   socialConfigSchema,
 } from "../validation";
 import { deleteObjectByPublicUrl } from "../s3";
 import { networks } from "@/lib/networks";
-import { nameSchema } from "../validation";
 
 const roundPatchSchema = z.object({
   name: nameSchema({ max: 200 }).optional(),

@@ -38,6 +38,7 @@ describe("normalizeName", () => {
     expect(normalizeName(`Block${EN_SPACE}slide`)).toBe("Block slide");
     expect(normalizeName(`Block${IDEOGRAPHIC_SPACE}slide`)).toBe("Block slide");
     expect(normalizeName(`${BOM}Blockslide`)).toBe("Blockslide");
+    expect(normalizeName(`Block${BOM}slide`)).toBe("Blockslide");
   });
 
   it("removes invisible characters that survive a plain trim", () => {
@@ -97,6 +98,11 @@ describe("stripInvisibleCharacters", () => {
   it("still removes invisible characters", () => {
     expect(stripInvisibleCharacters(`Title${ZWSP}`)).toBe("Title");
     expect(stripInvisibleCharacters(`Ti${SOFT_HYPHEN}tle`)).toBe("Title");
+  });
+
+  it("removes a byte-order mark embedded mid-text, not just at the edges", () => {
+    expect(stripInvisibleCharacters(`Ti${BOM}tle`)).toBe("Title");
+    expect(stripInvisibleCharacters(`${BOM}Title${BOM}`)).toBe("Title");
   });
 
   it("removes non-whitespace control characters but keeps tabs and newlines", () => {
