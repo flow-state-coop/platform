@@ -55,6 +55,7 @@ export async function GET(request: Request) {
         "id",
         "label",
         "keyPrefix",
+        "createdBy",
         "lastUsedAt",
         "revokedAt",
         "createdAt",
@@ -140,8 +141,9 @@ export async function POST(request: Request) {
           keyHash: hash,
           keyPrefix: prefix,
           label: parsed.data.label,
+          createdBy: auth.address,
         })
-        .returning(["id", "label", "keyPrefix", "createdAt"])
+        .returning(["id", "label", "keyPrefix", "createdBy", "createdAt"])
         .executeTakeFirst();
     });
 

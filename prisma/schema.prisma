@@ -131,10 +131,10 @@ model MetricsApiKey {
 model BotChainLock {
   chainId     Int       @id @map("chain_id")
   holder      String?   @db.VarChar(64)
-  acquiredAt  DateTime? @map("acquired_at")
-  expiresAt   DateTime? @map("expires_at")
+  acquiredAt  DateTime? @map("acquired_at") @db.Timestamptz(6)
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(6)
   lastNonce   BigInt?   @map("last_nonce")
-  lastNonceAt DateTime? @map("last_nonce_at")
+  lastNonceAt DateTime? @map("last_nonce_at") @db.Timestamptz(6)
 
   @@map("bot_chain_locks")
 }
@@ -164,10 +164,11 @@ model SplitterApiKey {
   keyHash       String    @unique @map("key_hash") @db.VarChar(64)
   keyPrefix     String    @map("key_prefix") @db.VarChar(16)
   label         String    @db.VarChar(100)
-  lastUsedAt    DateTime? @map("last_used_at")
-  cooldownUntil DateTime? @map("cooldown_until")
-  revokedAt     DateTime? @map("revoked_at")
-  createdAt     DateTime  @default(now()) @map("created_at")
+  createdBy     String?   @map("created_by") @db.VarChar(42)
+  lastUsedAt    DateTime? @map("last_used_at") @db.Timestamptz(6)
+  cooldownUntil DateTime? @map("cooldown_until") @db.Timestamptz(6)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([chainId, poolId])
   @@map("splitter_api_keys")
@@ -178,8 +179,8 @@ model SplitterApiKey {
 model SplitterIntegration {
   chainId     Int       @map("chain_id")
   poolId      String    @map("pool_id") @db.VarChar(78)
-  lastWriteAt DateTime? @map("last_write_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
+  lastWriteAt DateTime? @map("last_write_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@id([chainId, poolId])
   @@map("splitter_integrations")
@@ -199,16 +200,16 @@ model SplitterWriteJob {
   status      String   @db.VarChar(20)
   target      Json
   batchIndex  Int      @default(0) @map("batch_index")
-  txHashes    String[] @map("tx_hashes")
+  txHashes    String[] @default([]) @map("tx_hashes")
   changedCount Int     @default(0) @map("changed_count")
   gasUsed     String   @default("0") @map("gas_used") @db.VarChar(78)
   gasCostWei  String   @default("0") @map("gas_cost_wei") @db.VarChar(78)
   attempt     Int      @default(0)
-  heartbeatAt DateTime @default(now()) @map("heartbeat_at")
+  heartbeatAt DateTime @default(now()) @map("heartbeat_at") @db.Timestamptz(6)
   error       String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
-  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz(6)
 
   @@index([chainId, poolId, status])
   @@index([heartbeatAt])
@@ -225,7 +226,7 @@ model SplitterWrittenRegister {
   poolId    String   @map("pool_id") @db.VarChar(78)
   address   String   @db.VarChar(42)
   units     String   @db.VarChar(78)
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@id([chainId, poolId, address])
   @@map("splitter_written_register")
@@ -242,10 +243,10 @@ model SplitterWriteHistory {
   jobId        String?  @map("job_id") @db.VarChar(36)
   changedCount Int      @map("changed_count")
   status       String   @db.VarChar(20)
-  txHashes     String[] @map("tx_hashes")
+  txHashes     String[] @default([]) @map("tx_hashes")
   gasUsed      String?  @map("gas_used") @db.VarChar(78)
   gasCostWei   String?  @map("gas_cost_wei") @db.VarChar(78)
-  createdAt    DateTime @default(now()) @map("created_at")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([chainId, poolId, createdAt])
   @@index([keyId])

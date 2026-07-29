@@ -8,6 +8,9 @@ import { getNetwork, getPoolFromSubgraph, type SplitterPool } from "./pool";
 export const KEY_COOLDOWN_ERROR =
   "This API key is cooling down after a recently rejected request, please retry later";
 
+export const KEY_CREATOR_NOT_ADMIN_ERROR =
+  "The wallet that created this API key is no longer an admin of the pool, so the key no longer grants access. A current admin can mint a replacement";
+
 export type ApiKeyRow = {
   id: number;
   chainId: number;
@@ -46,7 +49,14 @@ export async function authorizeApiKey(
 
   const keyRow = await db
     .selectFrom("splitterApiKeys")
-    .select(["id", "chainId", "poolId", "revokedAt", "cooldownUntil"])
+    .select([
+      "id",
+      "chainId",
+      "poolId",
+      "createdBy",
+      "revokedAt",
+      "cooldownUntil",
+    ])
     .where("keyHash", "=", hashApiKey(provided))
     .executeTakeFirst();
 
@@ -79,6 +89,18 @@ export async function authorizeApiKey(
     return {
       ok: false,
       response: errorResponse(ineligible.error, ineligible.status),
+    };
+  }
+
+  // A key is capability handed out by one admin, and removing that admin
+  // on-chain has to take it back with them. Otherwise a co-admin who minted a
+  // key before being removed keeps a token that redirects the whole pool.
+  // Free to check: the admin set arrives with the pool read above. Keys minted
+  // before this was recorded have no creator to check and are left alone.
+  if (keyRow.createdBy && !pool.adminAddresses.includes(keyRow.createdBy)) {
+    return {
+      ok: false,
+      response: errorResponse(KEY_CREATOR_NOT_ADMIN_ERROR, 403),
     };
   }
 

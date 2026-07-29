@@ -6,6 +6,7 @@ export type SplitterApiKey = {
   id: number;
   label: string;
   keyPrefix: string;
+  createdBy: string | null;
   lastUsedAt: string | null;
   revokedAt: string | null;
   createdAt: string;
@@ -22,8 +23,6 @@ export function useSplitterApiKeys(
   enabled: boolean,
 ) {
   const [keys, setKeys] = useState<SplitterApiKey[]>([]);
-  // Starts true so the panel opens on a spinner rather than flashing "No API
-  // keys yet" at a pool that has them.
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   // Only the newest request may write state: sign-in and the Apollo poll can

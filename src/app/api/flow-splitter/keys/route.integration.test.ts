@@ -125,6 +125,16 @@ describe("splitter key management", () => {
     expect((await list()).status).toBe(401);
   });
 
+  // Label and prefix are minter-chosen or opaque, so without this the remaining
+  // admins cannot tell a co-admin's key from a legitimate integration's.
+  it("records and lists the admin who minted a key", async () => {
+    await mint();
+
+    const listed = await (await list()).json();
+
+    expect(listed.keys[0].createdBy).toBe(TEST_POOL_ADMIN.toLowerCase());
+  });
+
   it("refuses a caller who is not a pool admin", async () => {
     signedInAs(OUTSIDER);
 

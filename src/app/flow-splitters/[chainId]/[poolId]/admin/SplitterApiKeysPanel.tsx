@@ -8,6 +8,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
 import Table from "react-bootstrap/Table";
 import CopyTooltip from "@/components/CopyTooltip";
+import { truncateStr } from "@/lib/utils";
 import type { SplitterApiKey } from "./useSplitterApiKeys";
 
 type SplitterApiKeysPanelProps = {
@@ -133,9 +134,7 @@ export default function SplitterApiKeysPanel(props: SplitterApiKeysPanelProps) {
         <Alert variant="danger" className="mb-3">
           {loadError}
         </Alert>
-      ) : null}
-
-      {loading ? (
+      ) : loading ? (
         <Stack direction="horizontal" className="justify-content-center py-3">
           <Spinner size="sm" />
         </Stack>
@@ -147,6 +146,7 @@ export default function SplitterApiKeysPanel(props: SplitterApiKeysPanelProps) {
             <tr>
               <th className="fw-semi-bold">Label</th>
               <th className="fw-semi-bold">Key</th>
+              <th className="fw-semi-bold">Created by</th>
               <th className="fw-semi-bold">Created</th>
               <th className="fw-semi-bold">Last used</th>
               <th />
@@ -158,6 +158,13 @@ export default function SplitterApiKeysPanel(props: SplitterApiKeysPanelProps) {
                 <td>{key.label}</td>
                 <td>
                   <code>{key.keyPrefix}…</code>
+                </td>
+                <td>
+                  {key.createdBy ? (
+                    <code>{truncateStr(key.createdBy, 12)}</code>
+                  ) : (
+                    "Unknown"
+                  )}
                 </td>
                 <td>{formatDate(key.createdAt)}</td>
                 <td>
@@ -227,7 +234,7 @@ export default function SplitterApiKeysPanel(props: SplitterApiKeysPanelProps) {
         <Form.Control
           id="splitter-api-key-label"
           type="text"
-          placeholder="e.g. GoodBuilders metrics"
+          placeholder="e.g. Social Metrics"
           value={newLabel}
           maxLength={100}
           disabled={isMinting}

@@ -43,6 +43,7 @@ import {
   setMember,
   setUnindexedMember,
   splitterChain,
+  TEST_POOL_ADMIN,
   TEST_POOL_ID,
   TEST_SPLITTER_CHAIN_ID as CHAIN_ID,
 } from "@tests/helpers/splitterChain";
@@ -189,6 +190,34 @@ describe("splitter allocation read", () => {
 
     expect(res.status).toBe(409);
     expect((await res.json()).error).toContain("immutable");
+  });
+
+  // A key is capability one admin handed out, so removing that admin on-chain
+  // has to take it back. Otherwise a co-admin keeps a token that can redirect
+  // the whole pool after they have been removed.
+  it("refuses a key whose creator is no longer a pool admin", async () => {
+    const id = await seedKey();
+    await db
+      .updateTable("splitterApiKeys")
+      .set({ createdBy: TEST_POOL_ADMIN.toLowerCase() })
+      .where("id", "=", id)
+      .execute();
+
+    expect((await read()).status).toBe(200);
+
+    splitterChain.admins = ["0x000000000000000000000000000000000000dead"];
+
+    const res = await read();
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toContain("no longer an admin");
+  });
+
+  it("serves a key minted before creators were recorded", async () => {
+    await seedKey();
+    splitterChain.admins = ["0x000000000000000000000000000000000000dead"];
+
+    expect((await read()).status).toBe(200);
   });
 
   it("refuses a key that is cooling down", async () => {

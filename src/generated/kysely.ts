@@ -153,6 +153,7 @@ export type SplitterApiKey = {
   keyHash: string;
   keyPrefix: string;
   label: string;
+  createdBy: string | null;
   lastUsedAt: Timestamp | null;
   cooldownUntil: Timestamp | null;
   revokedAt: Timestamp | null;
@@ -172,7 +173,7 @@ export type SplitterWriteHistory = {
   jobId: string | null;
   changedCount: number;
   status: string;
-  txHashes: string[];
+  txHashes: Generated<string[]>;
   gasUsed: string | null;
   gasCostWei: string | null;
   createdAt: Generated<Timestamp>;
@@ -186,7 +187,7 @@ export type SplitterWriteJob = {
   status: string;
   target: unknown;
   batchIndex: Generated<number>;
-  txHashes: string[];
+  txHashes: Generated<string[]>;
   changedCount: Generated<number>;
   gasUsed: Generated<string>;
   gasCostWei: Generated<string>;
