@@ -199,12 +199,19 @@ async function failExhausted(jobId: string): Promise<void> {
     .where("id", "=", jobId)
     .executeTakeFirst();
 
-  if (
-    !job ||
-    job.status !== "running" ||
-    job.attempt < MAX_ATTEMPTS ||
-    Date.now() - new Date(job.heartbeatAt).getTime() < HEARTBEAT_STALE_MS
-  ) {
+  if (!job || job.attempt < MAX_ATTEMPTS) {
+    return;
+  }
+
+  // A runner that stopped reporting has to be waited out, in case it is still
+  // alive and mid-batch. A queued job at the attempt cap has no runner to wait
+  // for: `claimJob` refuses it from here on, so nothing will ever pick it up
+  // again and it is already terminal in everything but name.
+  const abandoned =
+    job.status === "running" &&
+    Date.now() - new Date(job.heartbeatAt).getTime() >= HEARTBEAT_STALE_MS;
+
+  if (!abandoned && job.status !== "queued") {
     return;
   }
 

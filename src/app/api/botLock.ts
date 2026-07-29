@@ -105,6 +105,14 @@ export function resolveNonce(
   // getTime() off nothing.
   if (lastNonce == null || lastNonceAt == null) return pendingNonce;
   if (now - lastNonceAt.getTime() >= NONCE_LEDGER_STALENESS_MS) {
+    // Worth saying out loud: the ledger is ahead of the chain and has stopped
+    // being believable, which is what a broadcast that never landed looks like.
+    if (Number(lastNonce) + 1 > pendingNonce) {
+      console.warn(
+        `Nonce ledger for chain is stale at ${lastNonce} while the RPC reports ${pendingNonce} pending; trusting the RPC, which reuses the nonce a dropped broadcast released`,
+      );
+    }
+
     return pendingNonce;
   }
   return Math.max(pendingNonce, Number(lastNonce) + 1);

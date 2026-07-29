@@ -1,5 +1,6 @@
 import { vi } from "vitest";
 import { FLOW_STATE_BOT_ADDRESS } from "@/app/flow-councils/lib/constants";
+import { ChainBusyError } from "@/app/api/botLock";
 
 // Chain + subgraph simulator for the Flow Splitter API routes. Backs a mocked
 // viem public client and a mocked Apollo client so routes run end to end
@@ -23,6 +24,9 @@ export const splitterChain = {
   indexedMembers: [] as string[],
   writes: [] as { functionName: string; args: readonly unknown[] }[],
   writeError: null as string | null,
+  // Losing the shared bot key's lease, which the runner treats as contention
+  // rather than failure: nothing is broadcast and the job goes back to queued.
+  chainBusy: false,
   // Fails the Nth write (1-based), for partial-write scenarios.
   failWriteNumber: 0,
   receiptStatus: "success" as "success" | "reverted",
@@ -41,6 +45,7 @@ export function resetSplitterChain() {
   splitterChain.indexedMembers = [];
   splitterChain.writes = [];
   splitterChain.writeError = null;
+  splitterChain.chainBusy = false;
   splitterChain.failWriteNumber = 0;
   splitterChain.receiptStatus = "success";
   splitterChain.writeHook = null;
@@ -63,6 +68,11 @@ export function createSplitterMockWalletClient() {
         args?: readonly unknown[];
         nonce?: number;
       }) => {
+        // Raised before the broadcast, as the lease does in production.
+        if (splitterChain.chainBusy) {
+          throw new ChainBusyError(TEST_SPLITTER_CHAIN_ID);
+        }
+
         splitterChain.writes.push({ functionName, args });
         const writeNumber = splitterChain.writes.length;
         splitterChain.writeHook?.(writeNumber);

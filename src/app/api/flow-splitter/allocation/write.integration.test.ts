@@ -413,6 +413,43 @@ describe("splitter allocation write", () => {
     expect(key?.cooldownUntil).not.toBeNull();
   });
 
+  it("fails a job that never wins the bot key, once its grace window is up", async () => {
+    await seedKey();
+
+    const { jobId } = await (await write([{ address: A, weight: 1 }])).json();
+
+    splitterChain.chainBusy = true;
+    await flushDeferred();
+
+    // Contention is not the job's fault, so while it is young the attempt it
+    // spent is handed back and it waits for the next poll.
+    expect((await jobRow(jobId))?.status).toBe("queued");
+    expect((await jobRow(jobId))?.attempt).toBe(0);
+    expect(splitterChain.writes).toHaveLength(0);
+
+    await db
+      .updateTable("splitterWriteJobs")
+      .set({ createdAt: new Date(Date.now() - 31 * 60_000) })
+      .where("id", "=", jobId)
+      .execute();
+
+    // Past the grace window the attempts stand, so the job burns through them
+    // and is reported rather than sitting queued until it expires.
+    for (let i = 0; i < 6; i++) {
+      await poll(jobId);
+      await flushDeferred();
+    }
+
+    const job = await jobRow(jobId);
+    expect(job?.status).toBe("failed");
+    expect(job?.error).toBe(
+      "The write did not complete after repeated attempts",
+    );
+
+    const body = await (await poll(jobId)).json();
+    expect(body.job.status).toBe("failed");
+  });
+
   it("spends the write window on a submission that changed nothing", async () => {
     await seedKey();
     setMember(A, 1_000_000n);
