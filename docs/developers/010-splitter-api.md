@@ -8,11 +8,11 @@ description: Authenticated API for programmatically updating a Flow Splitter's s
 The **Flow Splitter API** lets an external system read a pool's recipients and shares, and replace them, with no human signing anything. The Flow State bot signs the transactions on the pool's behalf. Scoring, ranking, and scheduling are entirely the caller's responsibility; the platform ingests relative weights and handles the on-chain work.
 
 :::info
-Every endpoint requires a **Bearer API key** scoped to a single pool. Keys are minted and revoked by a pool admin from the pool's admin page (see [Flow Splitter Admin](../platform/flow-splitters/004-admin.md)). The token is shown once on creation; store it securely.
+Every endpoint requires a **Bearer API key** scoped to a single pool. Keys are minted and revoked by a pool admin from the API card on the pool's admin page (see [Flow Splitter Admin](../platform/flow-splitters/004-admin.md#api)). The token is shown once on creation; store it securely.
 :::
 
 :::warning
-For writes to work, the Flow State bot must hold **admin** on the pool. That is the same permission a human admin holds: the Flow Splitter contract has no narrower role, so the bot can also change pool settings and add or remove admins, including you. Grant it from the pool's admin page.
+For writes to work, the Flow State bot must hold **admin** on the pool. That is the same permission a human admin holds: the Flow Splitter contract has no narrower role, so the bot can also change pool settings and add or remove admins, including you. Grant it from the pool's admin page in [one transaction](../platform/flow-splitters/004-admin.md#grant-the-bot-admin).
 :::
 
 ## Read the current allocation
@@ -106,7 +106,7 @@ If the computed register already matches what is on-chain, the job completes wit
 { "success": true, "status": "no_change", "txHashes": [], "recipients": 2 }
 ```
 
-This is verified against the chain, not the indexer.
+This is verified against the chain, not the indexer. Resolving the register is the expensive part and it ran either way, so a `no_change` response still consumes the write interval below.
 
 ## Poll a job
 
@@ -177,7 +177,7 @@ The three rejection messages a caller is most likely to hit are worded distinctl
 
 - **One job in flight per pool.** A job whose runner died stops reporting and releases its slot, so a crash cannot wedge a pool.
 - **A 60-second minimum interval between writes**, measured from the previous job's completion. For a large register the job itself takes longer than the interval, so the in-flight rule is the real limit.
-- **A 60-second key cooldown** after a payload that is deterministically wrong. Failures that are the platform's fault (RPC down, chain congestion) never trigger it, so a healthy integration is never penalized for our outage.
+- **A 60-second key cooldown** after a payload that is deterministically wrong. Failures that are the platform's fault (RPC down, chain congestion) never trigger it, so a healthy integration is never penalized for our outage. Polling a job is exempt, so a bad payload never blocks you from following, or recovering, a write that was already accepted.
 - **10 active keys per pool.** Revoking one frees a slot.
 - **1000 recipients and 256 KB per payload.**
 

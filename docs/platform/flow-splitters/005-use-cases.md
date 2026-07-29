@@ -21,6 +21,8 @@ Think of it like the [Protocol Guild](https://protocol-guild.readthedocs.io/en/l
 
 Flow Splitters make updating stream allocations at scale simple. DAOs and communities can experiment with different (offchain) point systems, regularly update the shares in their Flow Splitter, and provide responsive, continuous rewards to the people/activities that drive value in their ecosystems.
 
+When that point system already lives in a script or a dashboard, the [API](004-admin.md#api) can push each new set of weights straight to the Share Register, with no wallet in the loop.
+
 ## Memeing (Str-meme-ing?)
 
 Flow Splitter shares are ERC20 tokens. You can give them a token name & ticker. They’ll display across wallets and block explorers like other tokens… but they’re not just like other tokens. They have built-in onchain distribution superpowers.
