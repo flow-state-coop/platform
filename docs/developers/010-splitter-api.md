@@ -46,7 +46,7 @@ The pool is derived from the key, so there is no pool parameter and a key cannot
 
 The recipient list is assembled from the indexer merged with the register the platform last wrote, and then every address in that set is verified on-chain. The merge matters: the indexer alone can miss a recipient the platform added moments earlier, and verifying units on-chain catches wrong numbers but cannot surface an address it was never told about.
 
-Reads are not rate limited.
+Reads count against the same **60 requests per minute per key** as everything else, and a key cooling down after a bad payload is refused here too. Neither limit is a write limit; those are separate and stricter.
 
 ## Write an allocation
 
@@ -66,7 +66,7 @@ Content-Type: application/json
 ```
 
 - **`recipients`**: 1 to 1000 entries. Order is not significant.
-- **`address`**: a valid EVM address. Duplicates and the zero address are rejected.
+- **`address`**: a valid EVM address. Duplicates, the zero address, this pool's own address, and any other Superfluid pool are rejected. A pool cannot hold shares in another pool, so splitters cannot be chained by naming one as a recipient of another.
 - **`weight`**: a finite, non-negative number representing this recipient's share relative to the others. Weights are arbitrary (scores, revenue, points) and do not have to sum to anything. At least one must be positive.
 
 ### The list is the complete register
@@ -134,6 +134,8 @@ Authorization: Bearer <key>
 
 Polling is also the recovery mechanism: a poll that finds a stalled job restarts it, resuming from where it stopped rather than starting over. Infrastructure failures on our side (an RPC or indexer outage, a receipt wait that timed out) are retried this way too, up to five attempts, rather than failing the write; a job pauses for about two minutes between attempts, so keep polling rather than treating a quiet job as stuck.
 
+Poll every **5 to 10 seconds**. A job takes at least a block to move, so anything tighter learns nothing and spends the 60-per-minute key budget you also need for the next write. This endpoint accepts a key that is cooling down, and one that has since been revoked, so a job already accepted can always be followed to the end.
+
 A resumed attempt waits out a transaction the previous one left unconfirmed instead of sending that batch again, so a congested chain costs time rather than duplicate transactions.
 
 Poll rather than assume a `202` means the write is already underway. The first run starts alongside the response, so an instance recycled in between leaves the job queued until something picks it up, and that something is your next poll.
@@ -165,13 +167,15 @@ A job that gave up with a transaction still unconfirmed says so instead, because
 
 **Re-submitting the same payload repairs it.** The platform recomputes what still needs changing rather than replaying the original batches, so the repair sends fewer transactions than the first attempt.
 
+With one exception, which the error names: a payload **the chain rejected** is rejected identically however many times it is sent, so that error asks for a corrected allocation instead of the same one. Because writes are full replacements, submitting the corrected allocation repairs the register in the same pass.
+
 ## Responses
 
 | Status | Body | Meaning |
 |---|---|---|
 | `200` | `{ "success": true, … }` | Read succeeded, or a write that changed nothing (`status: "no_change"`). |
 | `202` | `{ "success": true, "status": "queued", "jobId": "…" }` | Write accepted. Poll the job for progress. |
-| `400` | `{ "error": "…" }` | Invalid or duplicate address, an address that is the pool itself, or all weights zero. **Cools the key down.** Malformed JSON also returns `400` but does not. |
+| `400` | `{ "error": "…" }` | Invalid or duplicate address, an address that is the pool itself or another Superfluid pool, or all weights zero. **Cools the key down.** Malformed JSON also returns `400` but does not. |
 | `401` | `{ "error": "Unauthorized" }` | Missing, unknown, or revoked key. |
 | `403` | `{ "error": "The wallet that created this API key is no longer an admin…" }` | The key's creator lost pool admin, so the key lost the authority it was minted with. A current admin can mint a replacement. |
 | `404` | `{ "error": "Job not found" }` | Unknown job, a job belonging to another pool, or one past its seven-day expiry. |
@@ -184,6 +188,7 @@ A job that gave up with a transaction still unconfirmed says so instead, because
 | `413` | `{ "error": "…" }` | Request body exceeds 256 KB. |
 | `429` | `{ "error": "Writes to this pool are rate limited, please retry later" }` | Pool-level rate limit, measured from the previous job's completion. |
 | `429` | `{ "error": "This API key is cooling down…" }` | Key-level cooldown after a deterministically bad payload. |
+| `429` | `{ "error": "Too many requests for this API key…" }` | The key went over 60 requests in a minute, on any endpoint. |
 | `500` | `{ "error": "Wrong network" }` | The key's chain is no longer configured. Only reachable if a chain is retired while keys for it exist. |
 | `502` | `{ "error": "There was an error, please try again later" }` | RPC or chain error. The message is generic; provider details are never exposed. |
 
@@ -192,8 +197,9 @@ The three rejection messages a caller is most likely to hit are worded distinctl
 ## Limits
 
 - **One job in flight per pool.** A job whose runner died stops reporting and releases its slot, so a crash cannot wedge a pool. The write that takes the slot retires the abandoned job rather than leaving it to be resumed later.
-- **A 60-second minimum interval between writes**, measured from the previous job's completion. For a large register the job itself takes longer than the interval, so the in-flight rule is the real limit.
+- **A 60-second minimum interval between writes**, measured from the previous job's completion. For a large register the job itself takes longer than the interval, so the in-flight rule is the real limit. A `no_change` write spends the interval like any other: resolving the register against the chain is the expensive part and it ran either way, so a loop re-sending the current allocation is throttled the same as one re-sending a new one.
 - **A 60-second key cooldown** after a payload that is deterministically wrong. Failures that are the platform's fault (RPC down, chain congestion) never trigger it, so a healthy integration is never penalized for our outage. Polling a job is exempt, so a bad payload never blocks you from following, or recovering, a write that was already accepted.
+- **60 requests per minute per key**, counted across every endpoint including reads and job polls. Every authenticated request costs an indexer query and an on-chain read before its body is even read, which is what this bounds.
 - **10 active keys per pool.** Revoking one frees a slot.
 - **1000 recipients and 256 KB per payload.**
 
@@ -205,7 +211,7 @@ Keys are:
 
 - Scoped to a **single pool**. A key belongs to exactly one pool and cannot be pointed at another.
 - Not stored in plaintext. Only a keyed hash is persisted, and the token is shown once on creation.
-- Soft-revoked: a revoked key is rejected as missing, and revocation takes effect immediately. It does **not** cancel a job that was already accepted.
+- Soft-revoked: a revoked key is rejected as missing, and revocation takes effect immediately. It does **not** cancel a job that was already accepted, and it keeps working on that job's status endpoint alone, so the polls that carry a half-written register to completion still land.
 - Bound to the admin who minted them. A key stops working if its creator is removed from the pool's admin set, so removing an admin on-chain takes back the capability they handed out. The check reads the chain rather than the indexer, so a grant or a removal takes effect on the next request. The admin page shows each key's creator alongside its label.
 
 ```
