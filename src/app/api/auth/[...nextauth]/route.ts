@@ -26,7 +26,7 @@ const PRODUCTION_HOST = "flowstate.network";
 // matched by shape rather than listed, because a sign-in that silently fails on
 // the host the developer is actually browsing is worse than no gate at all.
 const LOCAL_HOST_PATTERN =
-  /^(localhost|127(\.\d{1,3}){3}|\[::1\]|10(\.\d{1,3}){3}|192\.168(\.\d{1,3}){2}|172\.(1[6-9]|2\d|3[01])(\.\d{1,3}){2})(:\d{1,5})?$/;
+  /^(localhost|127(\.\d{1,3}){3}|\[::1\]|10(\.\d{1,3}){3}|192\.168(\.\d{1,3}){2}|172\.(1[6-9]|2\d|3[01])(\.\d{1,3}){2})(:[1-9]\d{0,4})?$/;
 
 /**
  * Hosts a sign-in message may be signed for. Sourced from configuration only,
