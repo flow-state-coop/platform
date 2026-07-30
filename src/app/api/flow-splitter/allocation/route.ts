@@ -9,6 +9,7 @@ import { isBotPoolAdmin } from "../pool";
 import { planWrite, TARGET_TOTAL_UNITS } from "../plan";
 import { splitterAllocationSchema } from "../validation";
 import { BOT_NOT_ADMIN_ERROR } from "../auth";
+import { PermanentError } from "../errors";
 import { HEARTBEAT_STALE_MS, runJob, supersedeJobs } from "../jobs/runner";
 
 export const dynamic = "force-dynamic";
@@ -65,6 +66,11 @@ export async function GET(request: Request) {
   } catch (err) {
     // RPC and indexer errors can embed provider URLs, so log server-side only.
     console.error(err);
+
+    if (err instanceof PermanentError) {
+      return errorResponse(err.message, 409);
+    }
+
     return errorResponse("There was an error, please try again later", 502);
   }
 }
@@ -326,6 +332,13 @@ export async function POST(request: Request) {
         .where("lastWriteAt", "=", claimedAt)
         .execute()
         .catch((resetErr) => console.error(resetErr));
+    }
+
+    // A condition no retry can clear, a pool with more members than the API can
+    // enumerate, told to the caller. A 502 would have it retry forever while the
+    // one actionable thing about the refusal stayed in our logs.
+    if (err instanceof PermanentError) {
+      return errorResponse(err.message, 409);
     }
 
     return errorResponse("There was an error, please try again later", 502);

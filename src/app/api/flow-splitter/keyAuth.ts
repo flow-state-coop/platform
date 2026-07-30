@@ -3,7 +3,12 @@ import { errorResponse } from "../utils";
 import { hashApiKey } from "../apiKeys";
 import type { Network } from "@/types/network";
 import { checkPoolEligibility } from "./auth";
-import { getNetwork, getPoolFromSubgraph, type SplitterPool } from "./pool";
+import {
+  getNetwork,
+  getPoolFromSubgraph,
+  isPoolAdminFresh,
+  type SplitterPool,
+} from "./pool";
 
 export const KEY_COOLDOWN_ERROR =
   "This API key is cooling down after a recently rejected request, please retry later";
@@ -79,7 +84,20 @@ export async function authorizeApiKey(
     return { ok: false, response: errorResponse("Wrong network", 500) };
   }
 
-  const pool = await getPoolFromSubgraph(keyRow.chainId, keyRow.poolId);
+  // Independent reads, so they run together: the creator's admin status comes
+  // from the chain rather than from the pool record below, and waiting for that
+  // record first would only add a round trip.
+  const [pool, creatorIsAdmin] = await Promise.all([
+    getPoolFromSubgraph(keyRow.chainId, keyRow.poolId),
+    keyRow.createdBy
+      ? isPoolAdminFresh(
+          network,
+          keyRow.poolId,
+          keyRow.createdBy as `0x${string}`,
+        )
+      : Promise.resolve(true),
+  ]);
+
   if (!pool) {
     return { ok: false, response: errorResponse("Pool not found", 404) };
   }
@@ -95,9 +113,12 @@ export async function authorizeApiKey(
   // A key is capability handed out by one admin, and removing that admin
   // on-chain has to take it back with them. Otherwise a co-admin who minted a
   // key before being removed keeps a token that redirects the whole pool.
-  // Free to check: the admin set arrives with the pool read above. Keys minted
-  // before this was recorded have no creator to check and are left alone.
-  if (keyRow.createdBy && !pool.adminAddresses.includes(keyRow.createdBy)) {
+  //
+  // Read from the chain, never from the indexer: minting reads the chain too, so
+  // an admin granted moments ago would otherwise mint a key successfully and
+  // have its first call refused for not being an admin. Keys minted before this
+  // was recorded have no creator to check and are left alone.
+  if (!creatorIsAdmin) {
     return {
       ok: false,
       response: errorResponse(KEY_CREATOR_NOT_ADMIN_ERROR, 403),

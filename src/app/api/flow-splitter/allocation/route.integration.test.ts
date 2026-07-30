@@ -213,6 +213,35 @@ describe("splitter allocation read", () => {
     expect((await res.json()).error).toContain("no longer an admin");
   });
 
+  // The onboarding path: minting reads the chain, so authorizing against the
+  // indexer would refuse the new admin's first call for the length of its lag,
+  // and say they are no longer an admin while they hold the role.
+  it("serves a key whose creator the indexer has not caught up to", async () => {
+    const id = await seedKey();
+    await db
+      .updateTable("splitterApiKeys")
+      .set({ createdBy: TEST_POOL_ADMIN.toLowerCase() })
+      .where("id", "=", id)
+      .execute();
+
+    splitterChain.admins = ["0x000000000000000000000000000000000000dead"];
+    splitterChain.chainAdmins = [TEST_POOL_ADMIN.toLowerCase()];
+
+    expect((await read()).status).toBe(200);
+  });
+
+  it("refuses a pool with more members than it can enumerate", async () => {
+    await seedKey();
+    splitterChain.oversizedMemberCount = 20_001;
+
+    const res = await read();
+
+    // A truncated register would report a pool missing its tail. Nothing about
+    // the refusal can change on a retry, so it is not a 502.
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toContain("more than 20000 members");
+  });
+
   it("serves a key minted before creators were recorded", async () => {
     await seedKey();
     splitterChain.admins = ["0x000000000000000000000000000000000000dead"];
