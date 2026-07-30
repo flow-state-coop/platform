@@ -1795,8 +1795,9 @@ export default function Admin(props: AdminProps) {
                   // two confirm warnings.
                   <Card.Text className="mb-2 text-info">
                     Couldn&apos;t check whether the Flow State bot holds admin.
-                    Saving still revokes every admin the chain confirms,
-                    including the bot.
+                    Saving re-reads the admin set onchain and revokes everything
+                    it confirms, the bot included, so it goes through only once
+                    that read recovers.
                   </Card.Text>
                 ) : (
                   // Otherwise the disabled button below has no explanation.

@@ -16,6 +16,7 @@ import {
 } from "@/lib/splitterEligibility";
 import { truncateStr } from "@/lib/utils";
 import type { Network } from "@/types/network";
+import MintedKeyAlert from "./MintedKeyAlert";
 import SplitterApiKeysPanel from "./SplitterApiKeysPanel";
 import SplitterWriteHistory from "./SplitterWriteHistory";
 import type { SplitterApiKey } from "./useSplitterApiKeys";
@@ -82,6 +83,11 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
   } = props;
 
   const [origin, setOrigin] = useState("");
+  // Held here rather than in the keys panel: the token is shown once, and the
+  // panel unmounts on any of the reads that gate it (a subgraph poll that comes
+  // back empty, a session that lapses), which would take a key nobody has
+  // copied yet with it.
+  const [mintedToken, setMintedToken] = useState("");
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -90,6 +96,10 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
   const eligibility = getApiEligibility({ hasAdmins, transferableUnits });
 
   const canManage = !needsSignIn && isAdmin;
+  // The grant button carries the wallet step whenever it is on screen, so
+  // repeating it under the keys heading would render the same button twice.
+  const grantCarriesWalletStep =
+    !!walletActionLabel && isAdmin && botIsAdmin === false;
 
   return (
     <Card className="bg-lace-100 rounded-4 border-0 mt-8 px-10 py-8">
@@ -116,6 +126,10 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
         />
       </Card.Header>
       <Card.Body className="p-0">
+        <MintedKeyAlert
+          token={mintedToken}
+          onDismiss={() => setMintedToken("")}
+        />
         {eligibility.status === "unavailable" ? (
           <Card.Text className="text-info mb-0">
             {INELIGIBLE_COPY[eligibility.reason]}
@@ -230,21 +244,27 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
                 </div>
 
                 {!canManage ? (
-                  <div>
-                    <span className="fw-semi-bold d-block mb-2">API keys</span>
-                    {!isAdmin && !needsSignIn ? (
-                      <Card.Text className="text-info mb-0">
-                        Only this pool&apos;s admins can manage API keys.
-                      </Card.Text>
-                    ) : (
-                      <Button
-                        className="px-8 py-3 rounded-4 fw-semi-bold"
-                        onClick={walletActionLabel ? onPrepareWallet : onSignIn}
-                      >
-                        {walletActionLabel ?? "Sign In With Ethereum"}
-                      </Button>
-                    )}
-                  </div>
+                  grantCarriesWalletStep ? null : (
+                    <div>
+                      <span className="fw-semi-bold d-block mb-2">
+                        API keys
+                      </span>
+                      {!isAdmin && !needsSignIn ? (
+                        <Card.Text className="text-info mb-0">
+                          Only this pool&apos;s admins can manage API keys.
+                        </Card.Text>
+                      ) : (
+                        <Button
+                          className="px-8 py-3 rounded-4 fw-semi-bold"
+                          onClick={
+                            walletActionLabel ? onPrepareWallet : onSignIn
+                          }
+                        >
+                          {walletActionLabel ?? "Sign In With Ethereum"}
+                        </Button>
+                      )}
+                    </div>
+                  )
                 ) : (
                   <>
                     <div>
@@ -260,6 +280,7 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
                         keys={keys}
                         loading={keysLoading}
                         loadError={keysError}
+                        onMinted={setMintedToken}
                         reload={async () => {
                           await reloadKeys();
                           // The Share Register's API-controlled notice reads a

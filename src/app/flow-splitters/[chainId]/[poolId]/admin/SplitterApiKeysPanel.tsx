@@ -7,7 +7,6 @@ import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
 import Table from "react-bootstrap/Table";
-import CopyTooltip from "@/components/CopyTooltip";
 import { truncateStr } from "@/lib/utils";
 import type { SplitterApiKey } from "./useSplitterApiKeys";
 
@@ -17,6 +16,8 @@ type SplitterApiKeysPanelProps = {
   keys: SplitterApiKey[];
   loading: boolean;
   loadError: string;
+  // The token is shown once, above this panel, because it has to outlive it.
+  onMinted: (token: string) => void;
   reload: () => Promise<void>;
 };
 
@@ -25,12 +26,11 @@ function formatDate(value: string | null): string {
 }
 
 export default function SplitterApiKeysPanel(props: SplitterApiKeysPanelProps) {
-  const { chainId, poolId, keys, loading, loadError, reload } = props;
+  const { chainId, poolId, keys, loading, loadError, onMinted, reload } = props;
 
   const [newLabel, setNewLabel] = useState("");
   const [isMinting, setIsMinting] = useState(false);
   const [mintError, setMintError] = useState("");
-  const [mintedToken, setMintedToken] = useState("");
 
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
   const [revokingId, setRevokingId] = useState<number | null>(null);
@@ -46,7 +46,7 @@ export default function SplitterApiKeysPanel(props: SplitterApiKeysPanelProps) {
 
     setIsMinting(true);
     setMintError("");
-    setMintedToken("");
+    onMinted("");
 
     try {
       const res = await fetch("/api/flow-splitter/keys", {
@@ -61,7 +61,7 @@ export default function SplitterApiKeysPanel(props: SplitterApiKeysPanelProps) {
         return;
       }
 
-      setMintedToken(data.key.token);
+      onMinted(data.key.token);
       setNewLabel("");
       await reload();
     } catch {
@@ -99,36 +99,6 @@ export default function SplitterApiKeysPanel(props: SplitterApiKeysPanelProps) {
   return (
     <div>
       <span className="fw-semi-bold d-block mb-2">API keys</span>
-
-      {mintedToken ? (
-        <Alert
-          variant="success"
-          dismissible
-          onClose={() => setMintedToken("")}
-          // ph-no-capture blocks the whole subtree from session replay, so the
-          // token stays out of it even if the markup below is refactored and
-          // the `sensitive` text mask stops covering it.
-          className="ph-no-capture mb-3"
-        >
-          <p className="fw-semi-bold mb-1">
-            Copy your key now. It won&apos;t be shown again.
-          </p>
-          <CopyTooltip
-            contentClick="Copied"
-            contentHover="Copy key"
-            target={
-              // `sensitive` is what PostHog's session replay masks on (see
-              // maskTextSelector in providers.tsx). This page starts session
-              // recording, so without it every mint ships a working bearer
-              // token into the replay store.
-              <code className="sensitive d-block bg-white rounded-4 p-2 text-break text-start">
-                {mintedToken}
-              </code>
-            }
-            handleCopy={() => navigator.clipboard.writeText(mintedToken)}
-          />
-        </Alert>
-      ) : null}
 
       {loadError ? (
         <Alert variant="danger" className="mb-3">

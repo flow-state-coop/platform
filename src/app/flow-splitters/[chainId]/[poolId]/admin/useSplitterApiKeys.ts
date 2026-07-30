@@ -12,11 +12,6 @@ export type SplitterApiKey = {
   createdAt: string;
 };
 
-/**
- * Lives on the admin page rather than inside the keys panel because the
- * destructive-action warnings need the active count too, and a second copy of
- * this fetch would let the two disagree.
- */
 export function useSplitterApiKeys(
   chainId: number,
   poolId: string,
