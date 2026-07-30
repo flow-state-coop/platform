@@ -36,6 +36,7 @@ vi.mock("@/app/api/db", async () => {
   return { db: getTestDb() };
 });
 
+import { sql } from "kysely";
 import { getServerSession } from "next-auth/next";
 import { GET as historyGet } from "./route";
 import { resetTransferabilityCache, resetPoolAdminCache } from "../pool";
@@ -174,9 +175,7 @@ describe("splitter write history", () => {
 
     const last = first.writes[9];
     const second = await (
-      await history(
-        `&limit=10&beforeId=${last.id}&beforeCreatedAt=${encodeURIComponent(last.createdAt)}`,
-      )
+      await history(`&limit=10&beforeId=${last.id}`)
     ).json();
 
     expect(second.writes).toHaveLength(2);
@@ -203,9 +202,7 @@ describe("splitter write history", () => {
 
     const last = first.writes[9];
     const second = await (
-      await history(
-        `&limit=10&beforeId=${last.id}&beforeCreatedAt=${encodeURIComponent(last.createdAt)}`,
-      )
+      await history(`&limit=10&beforeId=${last.id}`)
     ).json();
 
     const ids = first.writes
@@ -213,6 +210,44 @@ describe("splitter write history", () => {
       .map((write: { id: number }) => write.id);
 
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  // Postgres keeps timestamps to the microsecond and JSON only to the
+  // millisecond, so a cursor carrying one would skip whatever shares that
+  // millisecond with the row it was taken from.
+  it("skips no row whose timestamp shares a millisecond with the cursor's", async () => {
+    for (let i = 0; i < 3; i++) {
+      await seedWrite({
+        changedCount: i,
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+      });
+    }
+
+    const rows = await db
+      .selectFrom("splitterWriteHistory")
+      .select(["id"])
+      .orderBy("id", "asc")
+      .execute();
+
+    for (const [index, row] of rows.entries()) {
+      await sql`
+        update splitter_write_history
+           set created_at = ${`2026-01-01T00:00:00.000${index + 1}00Z`}::timestamptz
+         where id = ${row.id}
+      `.execute(db);
+    }
+
+    const seen: number[] = [];
+    let cursor = "";
+
+    for (let page = 0; page < 3; page++) {
+      const body = await (await history(`&limit=1${cursor}`)).json();
+      expect(body.writes).toHaveLength(1);
+      seen.push(body.writes[0].id);
+      cursor = `&beforeId=${body.writes[0].id}`;
+    }
+
+    expect(seen).toEqual(rows.map((row) => row.id).reverse());
   });
 
   // Silently returning page one would be appended to page one by the client.
@@ -223,7 +258,8 @@ describe("splitter write history", () => {
     });
 
     expect((await history("&beforeId=notanumber")).status).toBe(400);
-    expect((await history("&beforeId=1")).status).toBe(400);
+    expect((await history("&beforeId=0")).status).toBe(400);
+    expect((await history("&beforeId=1.5")).status).toBe(400);
   });
 
   it("refuses an unauthenticated caller and a non-admin", async () => {

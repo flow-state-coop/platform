@@ -33,6 +33,11 @@ function parseLimit(value: string | null) {
  * Paginated by cursor rather than offset. An API-controlled pool can take a
  * write every minute, and a row inserted between two pages shifts an offset
  * window far enough to render a write the caller has already seen.
+ *
+ * The cursor is the serial id alone, never the timestamp: Postgres keeps these
+ * to the microsecond and a JSON timestamp only to the millisecond, so a cursor
+ * carrying one would skip any row sharing that millisecond with the row it was
+ * taken from.
  */
 export async function GET(request: Request) {
   try {
@@ -58,24 +63,18 @@ export async function GET(request: Request) {
     const limit = parseLimit(searchParams.get("limit"));
 
     const rawBeforeId = searchParams.get("beforeId");
-    const rawBeforeCreatedAt = searchParams.get("beforeCreatedAt");
-    let cursor: { id: number; createdAt: Date } | null = null;
+    let cursor: number | null = null;
 
-    if (rawBeforeId !== null || rawBeforeCreatedAt !== null) {
+    if (rawBeforeId !== null) {
       const beforeId = Number(rawBeforeId);
-      const beforeCreatedAt = new Date(rawBeforeCreatedAt ?? "invalid");
 
       // Falling back to the newest page would hand a caller asking for page two
       // a second copy of page one, which it would append.
-      if (
-        !Number.isInteger(beforeId) ||
-        beforeId <= 0 ||
-        Number.isNaN(beforeCreatedAt.valueOf())
-      ) {
+      if (!Number.isInteger(beforeId) || beforeId <= 0) {
         return errorResponse("Invalid pagination cursor", 400);
       }
 
-      cursor = { id: beforeId, createdAt: beforeCreatedAt };
+      cursor = beforeId;
     }
 
     // One extra row answers "is there a next page" without a second count query.
@@ -97,20 +96,11 @@ export async function GET(request: Request) {
       ])
       .where("splitterWriteHistory.chainId", "=", chainId)
       .where("splitterWriteHistory.poolId", "=", poolId)
-      .orderBy("splitterWriteHistory.createdAt", "desc")
       .orderBy("splitterWriteHistory.id", "desc")
       .limit(limit + 1);
 
     if (cursor) {
-      query = query.where((eb) =>
-        eb.or([
-          eb("splitterWriteHistory.createdAt", "<", cursor.createdAt),
-          eb.and([
-            eb("splitterWriteHistory.createdAt", "=", cursor.createdAt),
-            eb("splitterWriteHistory.id", "<", cursor.id),
-          ]),
-        ]),
-      );
+      query = query.where("splitterWriteHistory.id", "<", cursor);
     }
 
     const rows = await query.execute();

@@ -60,11 +60,18 @@ export default function SplitterWriteHistory(props: SplitterWriteHistoryProps) {
       setLoading(true);
       setError("");
 
-      // Paged by the last row rather than by an offset: this pool can take a
-      // write a minute, and an offset would re-render a row the caller has seen.
-      const cursorParams = cursor
-        ? `&beforeId=${cursor.id}&beforeCreatedAt=${encodeURIComponent(cursor.createdAt)}`
-        : "";
+      // A load from the top is either the first one or a different pool, and
+      // leaving the old rows up would credit them to whichever pool is on screen
+      // now until the response lands.
+      if (!cursor) {
+        setWrites([]);
+        setHasMore(false);
+      }
+
+      // Paged by the last row's id rather than by an offset: this pool can take
+      // a write a minute, and an offset would re-render a row the caller has
+      // seen.
+      const cursorParams = cursor ? `&beforeId=${cursor.id}` : "";
 
       try {
         const res = await fetch(
