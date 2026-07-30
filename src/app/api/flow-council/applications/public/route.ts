@@ -6,6 +6,7 @@ import { errorResponse } from "../../../utils";
 import { findRoundByCouncil } from "../../auth";
 import { ProjectDetails, SmartContract } from "@/types/project";
 import { ApplicationStatus } from "@/generated/kysely";
+import { normalizeName } from "@/lib/normalizeName";
 
 export const dynamic = "force-dynamic";
 
@@ -87,9 +88,13 @@ export async function GET(request: Request) {
         .filter(Boolean)
         .join("|");
 
+      // Normalized on read for the same reason as the recipients endpoint:
+      // machine consumers match projects by name across both, so a legacy row
+      // written before the schema normalized names must not surface here as a
+      // different string than it does there.
       return {
         project_id: app.projectId,
-        project_name: details?.name ?? "",
+        project_name: details?.name ? normalizeName(details.name) : "",
         application_status: STATUS_LABELS[app.status] || app.status,
         status: app.status,
         project_description: details?.description ?? "",
