@@ -212,6 +212,27 @@ type JobProgress = {
   gas: { used: bigint; costWei: bigint };
 };
 
+/**
+ * Whether the last broadcast is still unaccounted for.
+ *
+ * `batchIndex` advances only once a receipt has been seen and paid for, so a
+ * hash beyond it is a transaction some attempt put on the wire and no attempt
+ * ever settled. That is both what has to be waited out on a resume and what
+ * makes settling it idempotent: an already-counted receipt is never re-counted.
+ */
+function hasUnsettledBatch(progress: JobProgress): boolean {
+  return progress.txHashes.length > progress.batchIndex;
+}
+
+function gasOf(receipt: {
+  gasUsed?: bigint;
+  effectiveGasPrice?: bigint;
+}): JobProgress["gas"] {
+  const used = receipt.gasUsed ?? 0n;
+
+  return { used, costWei: used * (receipt.effectiveGasPrice ?? 0n) };
+}
+
 function progressOf(job: {
   txHashes: string[] | null;
   batchIndex: number | null;
@@ -341,6 +362,7 @@ async function finish(
       status,
       error: error ?? null,
       txHashes,
+      batchIndex: progress.batchIndex,
       changedCount,
       gasUsed: gas.used.toString(),
       gasCostWei: gas.costWei.toString(),
@@ -369,13 +391,39 @@ async function finish(
 
 const REPAIR_INSTRUCTION = "Re-submit the same payload to repair it";
 
+// A payload the chain refused is refused again on every retry, so telling the
+// caller to re-send it unchanged builds a loop that never terminates. Writes are
+// full replacements, so the corrected allocation is also the repair.
+const REJECTED_INSTRUCTION =
+  "Re-submitting it unchanged will be rejected the same way; submit a corrected allocation, which repairs the register too";
+
 /**
  * What a job that could not finish tells its caller. Three outcomes, not two: a
  * confirmed batch leaves the register inconsistent, a batch broadcast without a
  * receipt can still land after the job gives up and needs the same repair, and
  * only a job with nothing outstanding can say the register was never touched.
+ *
+ * `rejected` separates a payload the chain refused from an outage on our side.
+ * Both can leave the register mid-update, but only one of them is repaired by
+ * sending the same thing again.
  */
-function failedMessage(changed: boolean, unconfirmed: boolean): string {
+function failedMessage(
+  changed: boolean,
+  unconfirmed: boolean,
+  rejected: boolean,
+): string {
+  if (rejected) {
+    if (changed) {
+      return `Some batches landed and the chain rejected one, so the register is inconsistent. ${REJECTED_INSTRUCTION}`;
+    }
+
+    if (unconfirmed) {
+      return `A batch was broadcast and never confirmed and the chain rejected another, so whether the register changed is unknown. ${REJECTED_INSTRUCTION}`;
+    }
+
+    return `The chain rejected this allocation and the register was not changed. ${REJECTED_INSTRUCTION}`;
+  }
+
   if (changed) {
     return `Some batches landed and one failed, so the register is inconsistent. ${REPAIR_INSTRUCTION}`;
   }
@@ -429,19 +477,35 @@ async function failExhausted(jobId: string): Promise<void> {
 
   const progress = progressOf(job);
 
-  // A revert is terminal on the attempt that saw it, so a hash on the row with
-  // nothing counted against it is a broadcast no attempt saw confirmed.
   await finish(
     job as unknown as JobRow,
     "failed",
     progress,
-    exhaustedMessage(progress.changedCount > 0, progress.txHashes.length > 0),
+    exhaustedMessage(progress.changedCount > 0, hasUnsettledBatch(progress)),
   );
+}
+
+type SettledBroadcast = {
+  outcome: "none" | "landed";
+  // Null when the node has never heard of the transaction: it was dropped, so
+  // there is nothing to pay for and nothing to account.
+  gas: JobProgress["gas"] | null;
+};
+
+function settledFrom(receipt: {
+  status: string;
+  gasUsed?: bigint;
+  effectiveGasPrice?: bigint;
+}): SettledBroadcast {
+  return {
+    outcome: receipt.status === "success" ? "landed" : "none",
+    gas: gasOf(receipt),
+  };
 }
 
 /**
  * Wait out a broadcast a previous attempt never saw confirmed, and report what
- * became of it.
+ * became of it and what it cost.
  *
  * A transaction that landed is absorbed by the next diff rather than repeated.
  * One still sitting in the mempool is the case that costs money: re-sending its
@@ -449,31 +513,30 @@ async function failExhausted(jobId: string): Promise<void> {
  * stall clears both mine and both are paid for. A transaction the node has
  * never heard of was dropped and its nonce is free again, so the batch can go
  * out afresh.
+ *
+ * The gas comes back because the attempt that broadcast this died before it
+ * could count it. Left here it would be an orphan the pool paid for twice over
+ * and never saw in its own accounting.
  */
 async function settleBroadcast(
   publicClient: ReturnType<typeof getBotSigner>["publicClient"],
   hash: `0x${string}`,
-): Promise<"none" | "landed" | "unconfirmed"> {
+): Promise<SettledBroadcast> {
   const receipt = await publicClient
     .getTransactionReceipt({ hash })
     .catch(() => null);
 
-  if (receipt) {
-    return receipt.status === "success" ? "landed" : "none";
-  }
+  if (receipt) return settledFrom(receipt);
 
   const inMempool = await publicClient
     .getTransaction({ hash })
     .catch(() => null);
 
-  if (!inMempool) return "none";
+  if (!inMempool) return { outcome: "none", gas: null };
 
-  const settled = await publicClient.waitForTransactionReceipt({
-    hash,
-    confirmations: 1,
-  });
-
-  return settled.status === "success" ? "landed" : "none";
+  return settledFrom(
+    await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 }),
+  );
 }
 
 /**
@@ -486,7 +549,8 @@ async function settleBroadcast(
  * progress counter, not an offset.
  *
  * The key is never re-validated: revoking a key blocks new submissions but does
- * not cancel a job that was already accepted.
+ * not cancel a job that was already accepted, and the job's own status route
+ * keeps accepting that key so the polls driving this recovery still land.
  */
 export async function runJob(jobId: string): Promise<void> {
   const job = await claimJob(jobId);
@@ -508,8 +572,11 @@ export async function runJob(jobId: string): Promise<void> {
   // What a previous attempt left on the wire: a batch that landed changed the
   // register even though no attempt could count its entries, and one still
   // unaccounted for may change it after this job gives up.
-  let outstanding: "none" | "landed" | "unconfirmed" =
-    progress.txHashes.length > 0 ? "unconfirmed" : "none";
+  let outstanding: "none" | "landed" | "unconfirmed" = hasUnsettledBatch(
+    progress,
+  )
+    ? "unconfirmed"
+    : "none";
 
   const network = getNetwork(job.chainId);
   if (!network) {
@@ -532,12 +599,25 @@ export async function runJob(jobId: string): Promise<void> {
     const { account, publicClient, walletClient } = getBotSigner(network);
     const pool = await resolvePoolAddress(job);
 
-    const inherited = progress.txHashes.at(-1);
+    const inherited = hasUnsettledBatch(progress)
+      ? progress.txHashes.at(-1)
+      : undefined;
+
     if (inherited) {
-      outstanding = await settleBroadcast(
+      const settled = await settleBroadcast(
         publicClient,
         inherited as `0x${string}`,
       );
+
+      outstanding = settled.outcome;
+
+      // Advancing the counter alongside the gas is what keeps a second resume
+      // from paying for this transaction all over again.
+      if (settled.gas) {
+        progress.gas.used += settled.gas.used;
+        progress.gas.costWei += settled.gas.costWei;
+        progress.batchIndex += 1;
+      }
     }
 
     for (let i = 0; i < MAX_BATCHES_PER_JOB; i++) {
@@ -586,9 +666,10 @@ export async function runJob(jobId: string): Promise<void> {
       );
 
       // Recorded before waiting for the receipt, so a crash in between leaves a
-      // findable orphan rather than an untraceable one.
+      // findable orphan rather than an untraceable one. The batch counter stays
+      // put until a receipt is in hand, which is what marks the hash as still
+      // owing an answer.
       progress.txHashes.push(hash);
-      progress.batchIndex += 1;
       outstanding = "unconfirmed";
       await heartbeat(job, progress);
 
@@ -600,6 +681,13 @@ export async function runJob(jobId: string): Promise<void> {
       // Either status settles what this batch did, revert included.
       outstanding = "none";
 
+      // Counted before the revert check: a batch the chain rejected changed
+      // nothing, but the pool still paid for it.
+      const spent = gasOf(receipt);
+      progress.gas.used += spent.used;
+      progress.gas.costWei += spent.costWei;
+      progress.batchIndex += 1;
+
       if (receipt.status !== "success") {
         throw new PermanentError(`Batch transaction reverted: ${hash}`);
       }
@@ -607,9 +695,6 @@ export async function runJob(jobId: string): Promise<void> {
       // Counted here rather than at broadcast, so a batch that reverted or was
       // never sent is not reported as a change to the register.
       progress.changedCount += batch.length;
-      progress.gas.used += receipt.gasUsed ?? 0n;
-      progress.gas.costWei +=
-        (receipt.gasUsed ?? 0n) * (receipt.effectiveGasPrice ?? 0n);
 
       // Persisted before anything slower runs, so a kill between here and the
       // next batch cannot lose what this one changed and have the job report a
@@ -676,6 +761,7 @@ export async function runJob(jobId: string): Promise<void> {
       failedMessage(
         progress.changedCount > 0 || outstanding === "landed",
         outstanding === "unconfirmed",
+        isPermanent(err),
       ),
     );
   } finally {
