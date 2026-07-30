@@ -348,8 +348,21 @@ async function recordHistory(
   }
 }
 
+/**
+ * What settling a job actually needs off the row. Narrower than `JobRow` so the
+ * paths that read a job back from the database can hand one over without
+ * reconstructing the decoded `target` they never look at.
+ */
+type SettlingJob = {
+  id: string;
+  chainId: number;
+  poolId: string;
+  keyId: number;
+  attempt: number;
+};
+
 async function finish(
-  job: JobRow,
+  job: SettlingJob,
   status: "succeeded" | "failed",
   progress: JobProgress,
   error?: string,
@@ -455,7 +468,20 @@ function exhaustedMessage(changed: boolean, unconfirmed: boolean): string {
 async function failExhausted(jobId: string): Promise<void> {
   const job = await db
     .selectFrom("splitterWriteJobs")
-    .selectAll()
+    .select([
+      "id",
+      "chainId",
+      "poolId",
+      "keyId",
+      "attempt",
+      "status",
+      "heartbeatAt",
+      "txHashes",
+      "batchIndex",
+      "changedCount",
+      "gasUsed",
+      "gasCostWei",
+    ])
     .where("id", "=", jobId)
     .executeTakeFirst();
 
@@ -478,7 +504,7 @@ async function failExhausted(jobId: string): Promise<void> {
   const progress = progressOf(job);
 
   await finish(
-    job as unknown as JobRow,
+    job,
     "failed",
     progress,
     exhaustedMessage(progress.changedCount > 0, hasUnsettledBatch(progress)),
