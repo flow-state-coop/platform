@@ -324,9 +324,14 @@ export function makeMilestoneDefinitionSchema(opts: {
   return z.object({
     title: z
       .string()
-      .max(200, "Title exceeds 200 characters")
+      .max(MAX_STRING_LENGTH)
       .transform(stripInvisibleCharacters)
-      .pipe(z.string().min(1, "Title is required")),
+      .pipe(
+        z
+          .string()
+          .min(1, "Title is required")
+          .max(200, "Title exceeds 200 characters"),
+      ),
     description: z
       .string()
       .min(
