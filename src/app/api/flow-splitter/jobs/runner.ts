@@ -74,6 +74,12 @@ const IN_FLIGHT = ["queued", "running"] as const;
  * A job the pool has moved past is refused outright. Reclaiming one would put
  * two runners on the same pool driving it toward different targets, each undoing
  * the other's batches until one happens to finish last.
+ *
+ * Any newer job counts, whatever its status. Writes are full replacements, so a
+ * later one makes this target obsolete whether it is still running or already
+ * finished, and reading the status instead would hand the job back as soon as
+ * its successor settled. That also keeps the guard independent of the
+ * best-effort retirement in `supersedeJobs` having succeeded.
  */
 export async function claimJob(jobId: string): Promise<JobRow | null> {
   const result = await sql<JobRow>`
@@ -97,7 +103,6 @@ export async function claimJob(jobId: string): Promise<JobRow | null> {
           WHERE newer.chain_id = job.chain_id
             AND newer.pool_id = job.pool_id
             AND newer.id <> job.id
-            AND newer.status IN ('queued', 'running')
             AND newer.created_at > job.created_at
        )
     RETURNING job.id, job.chain_id, job.pool_id, job.key_id, job.payload_hash,
@@ -147,6 +152,54 @@ export async function supersedeJobs(
 }
 
 /**
+ * Settle a job `claimJob` will never hand out again because the pool has moved
+ * past it.
+ *
+ * `supersedeJobs` is best-effort and the write it belongs to still returns 202,
+ * so a failed retirement leaves the old job open. The guard keeps it from
+ * running, but nothing would mark it done, and its caller's poll loop would
+ * never end. The poll that tries to resume it retires it instead.
+ */
+async function retireIfSuperseded(jobId: string): Promise<boolean> {
+  const result = await sql<{
+    id: string;
+    chainId: number;
+    poolId: string;
+    keyId: number;
+    txHashes: string[] | null;
+    batchIndex: number | null;
+    changedCount: number | null;
+    gasUsed: string | null;
+    gasCostWei: string | null;
+  }>`
+    UPDATE splitter_write_jobs AS job
+       SET status = 'failed',
+           error = ${SUPERSEDED_ERROR},
+           heartbeat_at = now(),
+           updated_at = now()
+     WHERE job.id = ${jobId}
+       AND job.status IN ('queued', 'running')
+       AND EXISTS (
+         SELECT 1
+           FROM splitter_write_jobs AS newer
+          WHERE newer.chain_id = job.chain_id
+            AND newer.pool_id = job.pool_id
+            AND newer.id <> job.id
+            AND newer.created_at > job.created_at
+       )
+    RETURNING job.id, job.chain_id, job.pool_id, job.key_id, job.tx_hashes,
+              job.batch_index, job.changed_count, job.gas_used, job.gas_cost_wei
+  `.execute(db);
+
+  const retired = result.rows[0];
+  if (!retired) return false;
+
+  await recordHistory(retired, "failed", progressOf(retired));
+
+  return true;
+}
+
+/**
  * What the job has actually done so far, carried on the row rather than in the
  * runner. A resumed attempt inherits it, so what the write changed and what it
  * cost describe the whole job and not just the attempt that happened to finish
@@ -177,8 +230,13 @@ function progressOf(job: {
   };
 }
 
-async function heartbeat(job: JobRow, progress: JobProgress) {
-  await db
+/**
+ * Report liveness and progress, and answer whether the row is still ours. That
+ * answer is the only thing that tells a runner it lost its claim: every other
+ * guard here protects the database, not the gas.
+ */
+async function heartbeat(job: JobRow, progress: JobProgress): Promise<boolean> {
+  const beat = await db
     .updateTable("splitterWriteJobs")
     .set({
       heartbeatAt: new Date(),
@@ -192,7 +250,9 @@ async function heartbeat(job: JobRow, progress: JobProgress) {
     .where("id", "=", job.id)
     .where("attempt", "=", job.attempt)
     .where("status", "in", IN_FLIGHT)
-    .execute();
+    .executeTakeFirst();
+
+  return beat.numUpdatedRows > 0n;
 }
 
 /**
@@ -307,6 +367,38 @@ async function finish(
     .catch((err) => console.error(err));
 }
 
+const REPAIR_INSTRUCTION = "Re-submit the same payload to repair it";
+
+/**
+ * What a job that could not finish tells its caller. Three outcomes, not two: a
+ * confirmed batch leaves the register inconsistent, a batch broadcast without a
+ * receipt can still land after the job gives up and needs the same repair, and
+ * only a job with nothing outstanding can say the register was never touched.
+ */
+function failedMessage(changed: boolean, unconfirmed: boolean): string {
+  if (changed) {
+    return `Some batches landed and one failed, so the register is inconsistent. ${REPAIR_INSTRUCTION}`;
+  }
+
+  if (unconfirmed) {
+    return `A batch was broadcast and never confirmed, so whether the register changed is unknown. ${REPAIR_INSTRUCTION}`;
+  }
+
+  return "The write failed without changing the register";
+}
+
+function exhaustedMessage(changed: boolean, unconfirmed: boolean): string {
+  if (changed) {
+    return `Some batches landed and the write did not complete after repeated attempts, so the register is inconsistent. ${REPAIR_INSTRUCTION}`;
+  }
+
+  if (unconfirmed) {
+    return `A batch was broadcast and never confirmed and the write did not complete after repeated attempts, so whether the register changed is unknown. ${REPAIR_INSTRUCTION}`;
+  }
+
+  return "The write did not complete after repeated attempts";
+}
+
 /**
  * A job nobody can claim any more, because it burned through its attempts, has
  * to be told to the caller. Left alone it would sit at `running` with no error
@@ -337,14 +429,51 @@ async function failExhausted(jobId: string): Promise<void> {
 
   const progress = progressOf(job);
 
+  // A revert is terminal on the attempt that saw it, so a hash on the row with
+  // nothing counted against it is a broadcast no attempt saw confirmed.
   await finish(
     job as unknown as JobRow,
     "failed",
     progress,
-    progress.changedCount > 0
-      ? "Some batches landed and the write did not complete after repeated attempts, so the register is inconsistent. Re-submit the same payload to repair it"
-      : "The write did not complete after repeated attempts",
+    exhaustedMessage(progress.changedCount > 0, progress.txHashes.length > 0),
   );
+}
+
+/**
+ * Wait out a broadcast a previous attempt never saw confirmed, and report what
+ * became of it.
+ *
+ * A transaction that landed is absorbed by the next diff rather than repeated.
+ * One still sitting in the mempool is the case that costs money: re-sending its
+ * batch puts a second transaction on the wire at the next nonce, and when the
+ * stall clears both mine and both are paid for. A transaction the node has
+ * never heard of was dropped and its nonce is free again, so the batch can go
+ * out afresh.
+ */
+async function settleBroadcast(
+  publicClient: ReturnType<typeof getBotSigner>["publicClient"],
+  hash: `0x${string}`,
+): Promise<"none" | "landed" | "unconfirmed"> {
+  const receipt = await publicClient
+    .getTransactionReceipt({ hash })
+    .catch(() => null);
+
+  if (receipt) {
+    return receipt.status === "success" ? "landed" : "none";
+  }
+
+  const inMempool = await publicClient
+    .getTransaction({ hash })
+    .catch(() => null);
+
+  if (!inMempool) return "none";
+
+  const settled = await publicClient.waitForTransactionReceipt({
+    hash,
+    confirmations: 1,
+  });
+
+  return settled.status === "success" ? "landed" : "none";
 }
 
 /**
@@ -362,11 +491,25 @@ async function failExhausted(jobId: string): Promise<void> {
 export async function runJob(jobId: string): Promise<void> {
   const job = await claimJob(jobId);
   if (!job) {
-    await failExhausted(jobId).catch((err) => console.error(err));
+    // The two reasons a claim is refused, both of which have to end up on the
+    // row or the caller polls a job that will never move again.
+    try {
+      if (!(await retireIfSuperseded(jobId))) {
+        await failExhausted(jobId);
+      }
+    } catch (err) {
+      console.error(err);
+    }
     return;
   }
 
   const progress = progressOf(job);
+
+  // What a previous attempt left on the wire: a batch that landed changed the
+  // register even though no attempt could count its entries, and one still
+  // unaccounted for may change it after this job gives up.
+  let outstanding: "none" | "landed" | "unconfirmed" =
+    progress.txHashes.length > 0 ? "unconfirmed" : "none";
 
   const network = getNetwork(job.chainId);
   if (!network) {
@@ -389,7 +532,19 @@ export async function runJob(jobId: string): Promise<void> {
     const { account, publicClient, walletClient } = getBotSigner(network);
     const pool = await resolvePoolAddress(job);
 
+    const inherited = progress.txHashes.at(-1);
+    if (inherited) {
+      outstanding = await settleBroadcast(
+        publicClient,
+        inherited as `0x${string}`,
+      );
+    }
+
     for (let i = 0; i < MAX_BATCHES_PER_JOB; i++) {
+      // A job that lost its claim stops here rather than spending another
+      // batch's gas on a target the pool has already moved past.
+      if (!(await heartbeat(job, progress))) return;
+
       // Cheaper to re-check than to burn gas on a revert, and it stops a
       // running job at a batch boundary when the grant is withdrawn.
       if (!(await isBotPoolAdmin(network, job.poolId))) {
@@ -434,12 +589,16 @@ export async function runJob(jobId: string): Promise<void> {
       // findable orphan rather than an untraceable one.
       progress.txHashes.push(hash);
       progress.batchIndex += 1;
+      outstanding = "unconfirmed";
       await heartbeat(job, progress);
 
       const receipt = await publicClient.waitForTransactionReceipt({
         hash,
         confirmations: 1,
       });
+
+      // Either status settles what this batch did, revert included.
+      outstanding = "none";
 
       if (receipt.status !== "success") {
         throw new PermanentError(`Batch transaction reverted: ${hash}`);
@@ -514,12 +673,10 @@ export async function runJob(jobId: string): Promise<void> {
       job,
       "failed",
       progress,
-      // Branching on hashes would call a first batch that reverted a partial
-      // write, when the register was never touched. Only a confirmed batch
-      // leaves it inconsistent.
-      progress.changedCount > 0
-        ? "Some batches landed and one failed, so the register is inconsistent. Re-submit the same payload to repair it"
-        : "The write failed without changing the register",
+      failedMessage(
+        progress.changedCount > 0 || outstanding === "landed",
+        outstanding === "unconfirmed",
+      ),
     );
   } finally {
     clearInterval(ticker);

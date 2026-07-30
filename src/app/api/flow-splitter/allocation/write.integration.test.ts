@@ -52,10 +52,12 @@ import { getServerSession } from "next-auth/next";
 import { POST as writePost } from "./route";
 import { GET as keysGet } from "../keys/route";
 import { GET as jobGet } from "../jobs/[jobId]/route";
+import { SUPERSEDED_ERROR } from "../jobs/runner";
 import { resetTransferabilityCache } from "../pool";
 import { hashApiKey } from "../../apiKeys";
 import { getTestDb, resetDb } from "@tests/helpers/db";
 import {
+  mineStalledWrites,
   resetSplitterChain,
   setMember,
   splitterChain,
@@ -125,6 +127,15 @@ async function jobRow(jobId: string) {
     .selectAll()
     .where("id", "=", jobId)
     .executeTakeFirst();
+}
+
+/** The staleness window paces the retries, so a test has to skip past it. */
+async function ageHeartbeat(jobId: string) {
+  await db
+    .updateTable("splitterWriteJobs")
+    .set({ heartbeatAt: new Date(Date.now() - 10 * 60_000) })
+    .where("id", "=", jobId)
+    .execute();
 }
 
 beforeEach(async () => {
@@ -277,6 +288,156 @@ describe("splitter allocation write", () => {
     );
     expect(splitterChain.units.get(B)).toBe(1_000_000n);
     expect(splitterChain.units.get(A) ?? 0n).toBe(0n);
+  });
+
+  // Losing the claim is the only thing that stops a runner. Without it a job the
+  // pool has moved past keeps driving the register toward its own target, and
+  // the winner's batches are undone by a job that cannot even record what it
+  // spent the gas on.
+  it("stops a runner the pool moved past between batches", async () => {
+    await seedKey();
+    const recipients = Array.from({ length: 60 }, (_, i) => ({
+      address: `0x${(i + 1).toString(16).padStart(40, "0")}`,
+      weight: i + 1,
+    }));
+
+    const body = await (await write(recipients)).json();
+
+    // What a newer write's supersession does to the row, applied while the job
+    // is between its two batches.
+    splitterChain.writeHook = async () => {
+      splitterChain.writeHook = null;
+      await db
+        .updateTable("splitterWriteJobs")
+        .set({ status: "failed", error: SUPERSEDED_ERROR })
+        .where("id", "=", body.jobId)
+        .execute();
+    };
+
+    await flushDeferred();
+
+    expect(splitterChain.writes).toHaveLength(1);
+    const job = await jobRow(body.jobId);
+    expect(job?.status).toBe("failed");
+    expect(job?.error).toBe(SUPERSEDED_ERROR);
+  });
+
+  // `supersedeJobs` is best-effort and its write still answers 202, so the
+  // claim guard cannot depend on the retirement having landed.
+  it("refuses an older job once the newer one has finished, and retires it", async () => {
+    await seedKey();
+    const first = await (await write([{ address: A, weight: 1 }])).json();
+    deferred.length = 0;
+
+    await db
+      .updateTable("splitterWriteJobs")
+      .set({
+        status: "running",
+        heartbeatAt: new Date(Date.now() - 10 * 60_000),
+      })
+      .where("id", "=", first.jobId)
+      .execute();
+    await db
+      .updateTable("splitterIntegrations")
+      .set({ lastWriteAt: new Date(Date.now() - 10 * 60_000) })
+      .execute();
+
+    const second = await (await write([{ address: B, weight: 1 }])).json();
+    await flushDeferred();
+    expect((await jobRow(second.jobId))?.status).toBe("succeeded");
+
+    // A retirement that never landed leaves the old job open next to a
+    // successor that is already terminal.
+    await db
+      .updateTable("splitterWriteJobs")
+      .set({
+        status: "running",
+        error: null,
+        heartbeatAt: new Date(Date.now() - 10 * 60_000),
+      })
+      .where("id", "=", first.jobId)
+      .execute();
+    splitterChain.writes = [];
+
+    await poll(first.jobId);
+    await flushDeferred();
+
+    expect(splitterChain.writes).toHaveLength(0);
+    expect(splitterChain.units.get(B)).toBe(1_000_000n);
+    expect(splitterChain.units.get(A) ?? 0n).toBe(0n);
+
+    // Reported rather than left running, or the caller's poll loop never ends.
+    const retired = await jobRow(first.jobId);
+    expect(retired?.status).toBe("failed");
+    expect(retired?.error).toMatch(/superseded/i);
+  });
+
+  // A receipt that never arrives usually means the transaction is still in the
+  // mempool. Re-sending its batch would put a second one on the wire at the next
+  // nonce, and when the stall clears both mine and both are paid for.
+  it("waits out a pending transaction instead of broadcasting the batch again", async () => {
+    await seedKey();
+    splitterChain.stallWriteNumber = 1;
+
+    const body = await (await write([{ address: A, weight: 1 }])).json();
+    await flushDeferred();
+
+    expect(splitterChain.writes).toHaveLength(1);
+    expect((await jobRow(body.jobId))?.status).toBe("running");
+    expect((await jobRow(body.jobId))?.txHashes).toHaveLength(1);
+
+    await ageHeartbeat(body.jobId);
+    await poll(body.jobId);
+    await flushDeferred();
+
+    expect(splitterChain.writes).toHaveLength(1);
+
+    // Once it mines, the resumed job absorbs it rather than repeating it.
+    mineStalledWrites();
+    await ageHeartbeat(body.jobId);
+    await poll(body.jobId);
+    await flushDeferred();
+
+    expect(splitterChain.writes).toHaveLength(1);
+    expect(splitterChain.units.get(A)).toBe(1_000_000n);
+    expect((await jobRow(body.jobId))?.status).toBe("succeeded");
+  });
+
+  it("says a broadcast was never confirmed rather than that nothing changed", async () => {
+    await seedKey();
+    splitterChain.stallWriteNumber = 1;
+
+    const body = await (await write([{ address: A, weight: 1 }])).json();
+    await flushDeferred();
+
+    for (let i = 0; i < 5; i++) {
+      await ageHeartbeat(body.jobId);
+      await poll(body.jobId);
+      await flushDeferred();
+    }
+
+    // The register may still change when the stall clears, so the caller needs
+    // the repair instruction rather than a promise that nothing happened.
+    const job = await jobRow(body.jobId);
+    expect(job?.status).toBe("failed");
+    expect(job?.error).toContain("never confirmed");
+    expect(job?.error).toContain("Re-submit the same payload");
+  });
+
+  it("refuses a write to a pool with more members than it can enumerate", async () => {
+    await seedKey();
+    splitterChain.oversizedMemberCount = 20_001;
+
+    const res = await write([{ address: A, weight: 1 }]);
+
+    // No retry can shrink the pool, so a 502 would have the caller loop forever
+    // while the only actionable thing about the refusal sat in our logs.
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toContain("more than 20000 members");
+
+    const jobs = await db.selectFrom("splitterWriteJobs").selectAll().execute();
+    expect(jobs).toHaveLength(0);
+    expect(splitterChain.writes).toHaveLength(0);
   });
 
   it("resumes a stalled job when its status is polled", async () => {
