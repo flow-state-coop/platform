@@ -52,8 +52,10 @@ import { getServerSession } from "next-auth/next";
 import { POST as writePost } from "./route";
 import { GET as keysGet } from "../keys/route";
 import { GET as jobGet } from "../jobs/[jobId]/route";
+import { GET as allocationGet } from "./route";
 import { SUPERSEDED_ERROR } from "../jobs/runner";
 import { resetTransferabilityCache } from "../pool";
+import { resetRateLimits } from "@/app/api/rateLimit";
 import { hashApiKey } from "../../apiKeys";
 import { getTestDb, resetDb } from "@tests/helpers/db";
 import {
@@ -142,6 +144,9 @@ beforeEach(async () => {
   await resetDb(db);
   resetSplitterChain();
   resetTransferabilityCache();
+  // The truncate restarts identity, so every test's key is id 1 again and the
+  // per-key window would otherwise carry the whole file's requests.
+  resetRateLimits();
   deferred.length = 0;
   vi.mocked(getServerSession).mockResolvedValue({
     address: TEST_POOL_ADMIN,
@@ -400,7 +405,42 @@ describe("splitter allocation write", () => {
 
     expect(splitterChain.writes).toHaveLength(1);
     expect(splitterChain.units.get(A)).toBe(1_000_000n);
-    expect((await jobRow(body.jobId))?.status).toBe("succeeded");
+
+    // The attempt that broadcast it died before it could account for the gas,
+    // so the resume that settled the receipt has to, or the pool pays for a
+    // transaction that never appears in its own accounting.
+    const job = await jobRow(body.jobId);
+    expect(job?.status).toBe("succeeded");
+    expect(BigInt(job?.gasUsed ?? "0")).toBeGreaterThan(0n);
+    expect(BigInt(job?.gasCostWei ?? "0")).toBeGreaterThan(0n);
+  });
+
+  it("does not pay twice for a settled broadcast across two resumes", async () => {
+    await seedKey();
+    splitterChain.stallWriteNumber = 1;
+
+    const body = await (await write([{ address: A, weight: 1 }])).json();
+    await flushDeferred();
+
+    mineStalledWrites();
+    await ageHeartbeat(body.jobId);
+    await poll(body.jobId);
+    await flushDeferred();
+
+    const settled = await jobRow(body.jobId);
+
+    // Resuming a job whose every batch is already accounted for must not add
+    // that batch's gas a second time.
+    await db
+      .updateTable("splitterWriteJobs")
+      .set({ status: "queued" })
+      .where("id", "=", body.jobId)
+      .execute();
+    await ageHeartbeat(body.jobId);
+    await poll(body.jobId);
+    await flushDeferred();
+
+    expect((await jobRow(body.jobId))?.gasUsed).toBe(settled?.gasUsed);
   });
 
   it("says a broadcast was never confirmed rather than that nothing changed", async () => {
@@ -478,6 +518,10 @@ describe("splitter allocation write", () => {
     expect(job?.status).toBe("failed");
     expect(job?.txHashes.length).toBeGreaterThanOrEqual(1);
     expect(job?.error).toContain("inconsistent");
+    // A revert is deterministic, so the caller is asked for a corrected
+    // allocation rather than a re-send that would be rejected identically.
+    expect(job?.error).toContain("corrected allocation");
+    expect(job?.error).not.toContain("Re-submit the same payload");
 
     // The mirror holds what the first batch landed, so those addresses can
     // still be zeroed by a later write.
@@ -619,6 +663,58 @@ describe("splitter allocation write", () => {
     // Revoking blocks new submissions; it does not cancel accepted work.
     expect((await jobRow(body.jobId))?.status).toBe("succeeded");
     expect(splitterChain.units.get(A)).toBe(1_000_000n);
+  });
+
+  it("still lets a revoked key poll the job it started, and nothing else", async () => {
+    const id = await seedKey();
+    const { jobId } = await (await write([{ address: A, weight: 1 }])).json();
+
+    await db
+      .updateTable("splitterApiKeys")
+      .set({ revokedAt: new Date() })
+      .where("id", "=", id)
+      .execute();
+
+    // The poll is the whole recovery mechanism, so refusing it would strand a
+    // half-written register until the job expired.
+    const polled = await poll(jobId);
+    expect(polled.status).toBe(200);
+    expect((await polled.json()).job.id).toBe(jobId);
+
+    expect(
+      (
+        await allocationGet(
+          new Request("http://localhost/api/flow-splitter/allocation", {
+            headers: { authorization: `Bearer ${TOKEN}` },
+          }),
+        )
+      ).status,
+    ).toBe(401);
+    expect((await write([{ address: B, weight: 1 }])).status).toBe(401);
+  });
+
+  it("rejects a payload naming another Superfluid pool, before any transaction", async () => {
+    const id = await seedKey();
+    const otherPool = "0x00000000000000000000000000000000000000ff";
+    splitterChain.otherPools = [otherPool];
+
+    const res = await write([
+      { address: A, weight: 1 },
+      { address: otherPool, weight: 1 },
+    ]);
+
+    // A pool cannot hold units in another pool, and the revert is permanent, so
+    // a job would half-write the register and never repair on re-submission.
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("cannot hold shares");
+    expect(splitterChain.writes).toHaveLength(0);
+
+    const key = await db
+      .selectFrom("splitterApiKeys")
+      .select(["cooldownUntil"])
+      .where("id", "=", id)
+      .executeTakeFirst();
+    expect(key?.cooldownUntil).not.toBeNull();
   });
 
   it("rejects a payload naming the pool itself, before any transaction", async () => {

@@ -20,7 +20,14 @@ export async function GET(
   { params }: { params: Promise<{ jobId: string }> },
 ) {
   try {
-    const auth = await authorizeApiKey(request, { ignoreCooldown: true });
+    // Every exemption here exists so that recovery cannot be locked out by a
+    // penalty or a revocation the job predates, and the cached role because a
+    // poll hands out no capability beyond the status it reports.
+    const auth = await authorizeApiKey(request, {
+      ignoreCooldown: true,
+      allowRevoked: true,
+      allowCachedRole: true,
+    });
     if (!auth.ok) return auth.response;
 
     const { jobId } = await params;

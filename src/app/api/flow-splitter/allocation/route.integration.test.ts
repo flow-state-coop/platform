@@ -36,6 +36,8 @@ vi.mock("@/app/api/db", async () => {
 
 import { GET as allocationGet } from "./route";
 import { resetTransferabilityCache } from "../pool";
+import { KEY_RATE_LIMIT_ERROR } from "../keyAuth";
+import { resetRateLimits } from "@/app/api/rateLimit";
 import { hashApiKey } from "../../apiKeys";
 import { getTestDb, resetDb } from "@tests/helpers/db";
 import {
@@ -82,6 +84,9 @@ beforeEach(async () => {
   await resetDb(db);
   resetSplitterChain();
   resetTransferabilityCache();
+  // The truncate restarts identity, so every test's key is id 1 again and the
+  // per-key window would otherwise carry the whole file's requests.
+  resetRateLimits();
 });
 
 afterAll(async () => {
@@ -261,6 +266,32 @@ describe("splitter allocation read", () => {
 
     expect(res.status).toBe(429);
     expect((await res.json()).error).toContain("cooling down");
+  });
+
+  it("refuses a key that has gone over its request rate", async () => {
+    await seedKey();
+    setMember(A, 1_000n);
+
+    for (let i = 0; i < 60; i++) {
+      expect((await read()).status).toBe(200);
+    }
+
+    const res = await read();
+
+    expect(res.status).toBe(429);
+    expect((await res.json()).error).toBe(KEY_RATE_LIMIT_ERROR);
+  });
+
+  it("counts the rate limit per key, not across the pool", async () => {
+    await seedKey();
+    await seedKey("splitter_second_token");
+
+    for (let i = 0; i < 60; i++) {
+      await read();
+    }
+
+    expect((await read()).status).toBe(429);
+    expect((await read("splitter_second_token")).status).toBe(200);
   });
 
   it("records the key's last use", async () => {
