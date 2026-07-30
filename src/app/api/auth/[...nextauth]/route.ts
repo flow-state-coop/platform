@@ -145,8 +145,10 @@ const providers = [
           return null;
         }
 
-        // This is the domain check; the one in verifySiweMessage below only
-        // compares the message against itself.
+        // The only domain check there is. `verifySiweMessage` below is given no
+        // domain on purpose: the only one available here is the message's own,
+        // so passing it would compare the message against itself and read like
+        // enforcement while accepting anything.
         if (!isAllowedSiweDomain(siweFields.domain)) {
           console.error(`Unrecognized sign-in domain: ${siweFields.domain}`);
           return null;
@@ -169,7 +171,6 @@ const providers = [
         const isValid = await verifySiweMessage(publicClient, {
           message,
           signature: credentials?.signature as Hex,
-          domain: siweFields.domain,
           nonce,
         });
 
