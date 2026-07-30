@@ -7,6 +7,7 @@ import { getApolloClient } from "@/lib/apollo";
 import { errorResponse } from "../../utils";
 import { findRoundByCouncil } from "../auth";
 import { ProjectDetails } from "@/types/project";
+import { normalizeName } from "@/lib/normalizeName";
 
 export const dynamic = "force-dynamic";
 
@@ -128,10 +129,11 @@ export async function GET(request: Request) {
           continue;
         }
 
-        // Callers match recipients by name, so surrounding whitespace on a
-        // legacy row (written before the project schema trimmed it) is a silent
-        // mismatch on their side rather than a cosmetic issue.
-        const name = details?.name?.trim();
+        // Callers match recipients by name, so stray whitespace or invisible
+        // characters on a legacy row (written before the project schema
+        // normalized them) are a silent mismatch on their side rather than a
+        // cosmetic issue.
+        const name = details?.name ? normalizeName(details.name) : undefined;
         if (name) {
           nameByAddress.set(app.fundingAddress.toLowerCase(), name);
         }
