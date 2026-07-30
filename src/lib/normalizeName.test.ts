@@ -10,6 +10,10 @@ const SOFT_HYPHEN = "\u00AD";
 const WORD_JOINER = "\u2060";
 const ZWJ = "\u200D";
 const ZWNJ = "\u200C";
+const RLM = "\u200F";
+const RLO = "\u202E";
+const FSI = "\u2068";
+const COMBINING_ACUTE = "\u0301";
 
 describe("normalizeName", () => {
   it("leaves a clean name untouched", () => {
@@ -57,12 +61,32 @@ describe("normalizeName", () => {
     expect(normalizeName("Blockslide\u0000")).toBe("Blockslide");
   });
 
+  it("folds every whitespace control into a separator", () => {
+    for (const control of ["\t", "\n", "\v", "\f", "\r"]) {
+      expect(normalizeName(`Block${control}slide`)).toBe("Block slide");
+    }
+  });
+
+  it("removes bidi overrides and isolates but keeps the marks", () => {
+    expect(normalizeName(`Block${RLO}slide`)).toBe("Blockslide");
+    expect(normalizeName(`Block${FSI}slide`)).toBe("Blockslide");
+    expect(normalizeName(`Blockslide${RLM}`)).toBe(`Blockslide${RLM}`);
+  });
+
   it("unicode-normalizes so identical-looking names compare equal", () => {
     const composed: string = "Caf\u00E9";
     const decomposed: string = "Cafe\u0301";
     expect(composed === decomposed).toBe(false);
     expect(normalizeName(decomposed)).toBe(composed);
     expect(normalizeName(decomposed)).toBe(normalizeName(composed));
+  });
+
+  it("composes across a stripped invisible instead of leaving it decomposed", () => {
+    const blocked = `Cafe${ZWSP}${COMBINING_ACUTE}`;
+    const normalized = normalizeName(blocked);
+    expect(normalized).toBe("Caf\u00E9");
+    expect(normalized).toBe(normalized.normalize("NFC"));
+    expect(normalizeName(normalized)).toBe(normalized);
   });
 
   it("preserves ZWJ and ZWNJ, meaningful in emoji and Perso-Arabic script", () => {
@@ -112,6 +136,14 @@ describe("stripInvisibleCharacters", () => {
 
   it("unicode-normalizes", () => {
     expect(stripInvisibleCharacters("Cafe\u0301")).toBe("Caf\u00E9");
+  });
+
+  it("composes across a stripped invisible instead of leaving it decomposed", () => {
+    const normalized = stripInvisibleCharacters(
+      `Cafe${ZWSP}${COMBINING_ACUTE}`,
+    );
+    expect(normalized).toBe("Caf\u00E9");
+    expect(normalized).toBe(normalized.normalize("NFC"));
   });
 
   it("is idempotent", () => {
