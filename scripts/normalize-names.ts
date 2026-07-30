@@ -9,6 +9,10 @@
  * reflowing those would rewrite their content for no consumer benefit. New
  * writes still get the full single-line treatment from nameSchema.
  *
+ * The dry run also reports any row whose name already exceeds the write-path
+ * length cap, since that row's owner cannot re-save it until someone shortens
+ * it.
+ *
  * Run:         pnpm tsx scripts/normalize-names.ts
  * Dry run:     DRY_RUN=1 pnpm tsx scripts/normalize-names.ts
  *
@@ -16,23 +20,38 @@
  * projects.details.name.
  */
 import { db } from "../src/app/api/flow-council/db";
-import { stripInvisibleCharacters } from "../src/lib/normalizeName";
+import {
+  normalizeName,
+  stripInvisibleCharacters,
+} from "../src/lib/normalizeName";
 
 const DRY_RUN = process.env.DRY_RUN === "1";
 
 type Json = Record<string, unknown>;
 
-function parse(value: unknown): Json | null {
+function parse(value: unknown, label: string): Json | null {
   try {
     const parsed = typeof value === "string" ? JSON.parse(value) : value;
-    return parsed && typeof parsed === "object" ? (parsed as Json) : null;
+    if (parsed && typeof parsed === "object") return parsed as Json;
+    console.log(`SKIP ${label}: details is not an object`);
+    return null;
   } catch {
+    console.log(`SKIP ${label}: corrupt details JSON`);
     return null;
   }
 }
 
 let changed = 0;
 let skippedEmpty = 0;
+let overCap = 0;
+
+type FieldOptions = {
+  // The write-path length limit for this field, checked against what the write
+  // path (normalizeName) would produce rather than the gentler value this
+  // script stores: a row already over the limit can't be re-saved by its owner.
+  max: number;
+  normalize?: (value: string) => string;
+};
 
 /**
  * Normalize one string field in place. A value that normalizes to nothing is
@@ -43,16 +62,26 @@ function normalizeField(
   holder: Json,
   key: string,
   label: string,
-  normalize: (value: string) => string = stripInvisibleCharacters,
+  options: FieldOptions,
 ): boolean {
   const value = holder[key];
   if (typeof value !== "string") return false;
 
-  const next = normalize(value);
+  const writePathLength = normalizeName(value).length;
+  if (writePathLength > options.max) {
+    console.log(
+      `OVER CAP ${label}: ${writePathLength} chars against a ${options.max} limit; the owner's next save will fail validation`,
+    );
+    overCap++;
+  }
+
+  const next = (options.normalize ?? stripInvisibleCharacters)(value);
   if (next === value) return false;
 
   if (next.length === 0) {
-    console.log(`SKIP ${label}: normalizes to empty (${JSON.stringify(value)})`);
+    console.log(
+      `SKIP ${label}: normalizes to empty (${JSON.stringify(value)})`,
+    );
     skippedEmpty++;
     return false;
   }
@@ -70,7 +99,7 @@ function normalizeArray(
   key: string,
   field: string,
   label: string,
-  normalize?: (value: string) => string,
+  options: FieldOptions,
 ): boolean {
   const list = holder[key];
   if (!Array.isArray(list)) return false;
@@ -83,28 +112,44 @@ function normalizeArray(
           entry as Json,
           field,
           `${label}[${i}].${field}`,
-          normalize,
+          options,
         ) || touched;
     }
   });
   return touched;
 }
 
+// Mirrors the write-path caps in src/app/api/flow-council/validation.ts.
+const CAPS = {
+  projectName: 200,
+  roundName: 200,
+  socialAccountName: 50,
+  voterGroupName: 100,
+  teamMemberName: 10_000,
+  milestoneTitle: 10_000,
+};
+
 async function normalizeProjects() {
-  const rows = await db.selectFrom("projects").select(["id", "details"]).execute();
+  const rows = await db
+    .selectFrom("projects")
+    .select(["id", "details"])
+    .execute();
 
   for (const row of rows) {
-    const details = parse(row.details);
+    const label = `project ${row.id}`;
+    const details = parse(row.details, label);
     if (!details) continue;
 
-    const label = `project ${row.id}`;
-    let touched = normalizeField(details, "name", `${label}.name`);
+    let touched = normalizeField(details, "name", `${label}.name`, {
+      max: CAPS.projectName,
+    });
 
     const social = details.social;
     if (social && typeof social === "object") {
       touched =
-        normalizeArray(social as Json, "accounts", "name", `${label}.social`) ||
-        touched;
+        normalizeArray(social as Json, "accounts", "name", `${label}.social`, {
+          max: CAPS.socialAccountName,
+        }) || touched;
     }
 
     if (touched && !DRY_RUN) {
@@ -124,10 +169,10 @@ async function normalizeApplications() {
     .execute();
 
   for (const row of rows) {
-    const details = parse(row.details);
+    const label = `application ${row.id}`;
+    const details = parse(row.details, label);
     if (!details) continue;
 
-    const label = `application ${row.id}`;
     let touched = false;
 
     for (const goals of ["buildGoals", "growthGoals"]) {
@@ -139,6 +184,7 @@ async function normalizeApplications() {
             "milestones",
             "title",
             `${label}.${goals}.milestones`,
+            { max: CAPS.milestoneTitle },
           ) || touched;
       }
     }
@@ -152,6 +198,7 @@ async function normalizeApplications() {
             primary as Json,
             "name",
             `${label}.team.primaryContact.name`,
+            { max: CAPS.teamMemberName },
           ) || touched;
       }
       touched =
@@ -160,6 +207,7 @@ async function normalizeApplications() {
           "additionalTeammates",
           "name",
           `${label}.team.additionalTeammates`,
+          { max: CAPS.teamMemberName },
         ) || touched;
     }
 
@@ -174,20 +222,26 @@ async function normalizeApplications() {
 }
 
 async function normalizeRounds() {
-  const rows = await db.selectFrom("rounds").select(["id", "details"]).execute();
+  const rows = await db
+    .selectFrom("rounds")
+    .select(["id", "details"])
+    .execute();
 
   for (const row of rows) {
-    const details = parse(row.details);
+    const label = `round ${row.id}`;
+    const details = parse(row.details, label);
     if (!details) continue;
 
-    const label = `round ${row.id}`;
-    let touched = normalizeField(details, "name", `${label}.name`);
+    let touched = normalizeField(details, "name", `${label}.name`, {
+      max: CAPS.roundName,
+    });
 
     const social = details.social;
     if (social && typeof social === "object") {
       touched =
-        normalizeArray(social as Json, "accounts", "name", `${label}.social`) ||
-        touched;
+        normalizeArray(social as Json, "accounts", "name", `${label}.social`, {
+          max: CAPS.socialAccountName,
+        }) || touched;
     }
 
     if (touched && !DRY_RUN) {
@@ -201,11 +255,22 @@ async function normalizeRounds() {
 }
 
 async function normalizeVoterGroups() {
-  const rows = await db.selectFrom("voterGroups").select(["id", "name"]).execute();
+  const rows = await db
+    .selectFrom("voterGroups")
+    .select(["id", "name"])
+    .execute();
 
   for (const row of rows) {
     const holder: Json = { name: row.name };
-    if (!normalizeField(holder, "name", `voterGroup ${row.id}.name`)) continue;
+    const touched = normalizeField(
+      holder,
+      "name",
+      `voterGroup ${row.id}.name`,
+      {
+        max: CAPS.voterGroupName,
+      },
+    );
+    if (!touched) continue;
 
     if (!DRY_RUN) {
       await db
@@ -226,7 +291,7 @@ async function main() {
   await normalizeVoterGroups();
 
   console.log(
-    `\n${DRY_RUN ? "[DRY RUN] " : ""}Done. ${DRY_RUN ? "Would change" : "Changed"}: ${changed}, skipped (normalize to empty): ${skippedEmpty}`,
+    `\n${DRY_RUN ? "[DRY RUN] " : ""}Done. ${DRY_RUN ? "Would change" : "Changed"}: ${changed}, skipped (normalize to empty): ${skippedEmpty}, over the write-path cap: ${overCap}`,
   );
 }
 
