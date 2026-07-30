@@ -202,6 +202,9 @@ describe("splitter allocation write", () => {
     // Shown as a no-change, not as a duplicate write.
     expect(history).toHaveLength(1);
     expect(history[0].status).toBe("no_change");
+    // Zero rather than null: nothing was spent, which is not the same as not
+    // knowing what was spent.
+    expect(history[0].gasCostWei).toBe("0");
   });
 
   it("zeroes a recipient the new payload dropped", async () => {

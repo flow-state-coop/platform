@@ -39,6 +39,10 @@ const STATUS_LABELS: Record<string, string> = {
 function formatGasCost(gasCostWei: string, symbol: string) {
   const amount = Number(formatEther(BigInt(gasCostWei)));
 
+  // A write that sent no transaction costs exactly nothing, and the exponential
+  // form below renders that as "0.00e+0", which reads like a rounding artifact.
+  if (amount === 0) return `0 ${symbol}`;
+
   return `${amount < 0.000001 ? amount.toExponential(2) : amount.toFixed(6)} ${symbol}`;
 }
 

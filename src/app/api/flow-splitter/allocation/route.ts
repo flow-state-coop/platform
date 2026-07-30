@@ -262,6 +262,12 @@ export async function POST(request: Request) {
           changedCount: 0,
           status: "no_change",
           txHashes: [],
+          // Zero, not null: no transaction was sent, so the cost is known to be
+          // nothing rather than unrecorded. Null is what a row predating gas
+          // accounting means, and a total over the column should not have to
+          // tell the two apart.
+          gasUsed: "0",
+          gasCostWei: "0",
         })
         .execute();
 

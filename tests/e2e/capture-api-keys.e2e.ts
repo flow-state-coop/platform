@@ -47,7 +47,7 @@ const WRITES = [
     changedCount: 0,
     status: "no_change",
     txHashes: [],
-    gasCostWei: null,
+    gasCostWei: "0",
     createdAt: "2026-07-29T07:41:00.000Z",
     keyLabel: "Revenue share sync",
   },
