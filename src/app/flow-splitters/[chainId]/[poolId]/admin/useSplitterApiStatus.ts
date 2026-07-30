@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 /**
  * Whether the pool is API-controlled, readable without signing in.
@@ -15,13 +15,23 @@ export function useSplitterApiStatus(chainId: number, poolId: string) {
     undefined,
   );
   const [statusError, setStatusError] = useState(false);
+  // Only the newest request may write state: minting a key reloads this while a
+  // pool switch can have one in flight, and the older response landing last
+  // would answer for the pool that is no longer on screen.
+  const requestId = useRef(0);
 
   const load = useCallback(async () => {
+    const id = ++requestId.current;
+
     try {
       const res = await fetch(
         `/api/flow-splitter/status?chainId=${chainId}&poolId=${poolId}`,
       );
       const data = await res.json();
+
+      if (id !== requestId.current) {
+        return;
+      }
 
       if (!data.success) {
         throw new Error(data.error ?? "Couldn't read the pool's API status");
@@ -31,11 +41,19 @@ export function useSplitterApiStatus(chainId: number, poolId: string) {
       setStatusError(false);
     } catch (err) {
       console.error(err);
-      setStatusError(true);
+
+      if (id === requestId.current) {
+        setStatusError(true);
+      }
     }
   }, [chainId, poolId]);
 
+  // `load` is memoized on the pool, so this fires on a pool switch and never on
+  // the reloads that follow a mint, where dropping back to "unknown" would
+  // flicker the notice the caller just changed.
   useEffect(() => {
+    setHasActiveKeys(undefined);
+    setStatusError(false);
     load();
   }, [load]);
 

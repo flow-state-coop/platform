@@ -35,12 +35,14 @@ type SplitterApiCardProps = {
   walletActionLabel: string | null;
   onPrepareWallet: () => void;
   onSignIn: () => void;
-  // The bot's status and the grant both live on the page, not here: the save
-  // button has to be able to disable itself while a grant is in flight.
+  // The bot's status and the grant both live on the page, not here: the two
+  // transactions go out from the same wallet at consecutive nonces, so each
+  // button has to be able to disable itself while the other is in flight.
   botIsAdmin: boolean | undefined;
   botStatusError: boolean;
   grant: () => Promise<void>;
   isGranting: boolean;
+  isSaving: boolean;
   grantError: string;
   keys: SplitterApiKey[];
   keysLoading: boolean;
@@ -74,6 +76,7 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
     botStatusError,
     grant,
     isGranting,
+    isSaving,
     grantError,
     keys,
     keysLoading,
@@ -221,9 +224,12 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
                       ) : (
                         // Granting is an on-chain transaction, so it needs a
                         // wallet on the pool's chain and nothing else. Signing
-                        // in gates the key list below, not this.
+                        // in gates the key list below, not this. A save already
+                        // in flight blocks it: a "No Admin" save computes its
+                        // revoke set now and would be mined first, leaving the
+                        // pool immutable with the bot holding admin.
                         <Button
-                          disabled={isGranting}
+                          disabled={isGranting || isSaving}
                           className="px-8 py-3 rounded-4 fw-semi-bold"
                           onClick={walletActionLabel ? onPrepareWallet : grant}
                         >
@@ -339,7 +345,7 @@ Content-Type: application/json
                 </li>
                 <li>
                   Limits: one write in flight per pool, one write every 60
-                  seconds, 10 active keys.
+                  seconds, 60 requests a minute per key, 10 active keys.
                 </li>
               </ul>
               <p className="text-info mt-2 mb-0">

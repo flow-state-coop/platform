@@ -218,9 +218,9 @@ export default function Admin(props: AdminProps) {
     refetch: refetchBotStatus,
   } = useBotPoolAdmin(chainId, network?.flowSplitter, poolId);
   // Owned here, not in the API card: a grant and a "No Admin" save go out from
-  // the same wallet at consecutive nonces, so a save submitted while a grant is
-  // pending is guaranteed to be mined first and leave the pool immutable with
-  // the bot still holding admin. The save button has to be able to see this.
+  // the same wallet at consecutive nonces, so whichever is submitted second is
+  // guaranteed to be mined second and leave the pool immutable with the bot
+  // still holding admin. Each button has to be able to see the other.
   const {
     grant,
     isGranting,
@@ -1772,6 +1772,7 @@ export default function Admin(props: AdminProps) {
                 }
               }}
               isGranting={isGranting}
+              isSaving={isTransactionLoading}
               grantError={grantError}
               keys={keys}
               keysLoading={keysLoading}
