@@ -23,7 +23,7 @@ A Flow Splitter is either **Listed** or **Unlisted**. Only Listed Splitters are 
 
 The **API** card at the bottom of the admin page lets an external system (a metrics job, a revenue feed, a cron script) replace the Share Register with no human signing anything. You post relative weights, the platform normalizes them, and the Flow State bot signs the onchain updates.
 
-Everyone sees the endpoint reference and the current Share Register. Managing keys and granting the bot require you to hold Admin on the pool and to **Sign In With Ethereum** from the card.
+Everyone sees the endpoint reference and the current Share Register. Both privileged actions need you to hold Admin on the pool, and they ask for different things beyond that: granting the bot is an onchain transaction, so it needs a wallet connected on the pool's chain and nothing more, while managing keys needs **Sign In With Ethereum** from the card.
 
 :::warning[Two kinds of pool can never use the API]
 A pool with **no admins** is permanently immutable, and a pool with **transferable shares** lets recipients move shares between writes, so the register the API believes it owns can be changed by someone else. Both are fixed at launch. The card hides everything but the explanation on those pools, and every API call is refused.

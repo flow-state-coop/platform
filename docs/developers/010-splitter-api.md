@@ -134,11 +134,15 @@ Authorization: Bearer <key>
 
 Polling is also the recovery mechanism: a poll that finds a stalled job restarts it, resuming from where it stopped rather than starting over. Infrastructure failures on our side (an RPC or indexer outage, a receipt wait that timed out) are retried this way too, up to five attempts, rather than failing the write; a job pauses for about two minutes between attempts, so keep polling rather than treating a quiet job as stuck.
 
+A resumed attempt waits out a transaction the previous one left unconfirmed instead of sending that batch again, so a congested chain costs time rather than duplicate transactions.
+
 Poll rather than assume a `202` means the write is already underway. The first run starts alongside the response, so an instance recycled in between leaves the job queued until something picks it up, and that something is your next poll.
 
 ### Superseded jobs
 
-Accepting a new write for a pool retires any earlier job that has not finished, marking it `failed` with `Superseded by a newer write to this pool. Its allocation is the one that stands`. A poll on the old job returns that rather than hanging, and the retired job is never resumed, so two jobs can never drive the same pool toward different targets.
+Accepting a new write for a pool retires any earlier job that has not finished, marking it `failed` with `Superseded by a newer write to this pool. Its allocation is the one that stands`. A poll on the old job returns that rather than hanging.
+
+An older job is never resumed either, and that does not depend on the retirement above: a job is refused the moment a later write exists for its pool, whatever became of that write, and one already running stops at its next batch boundary. Two jobs cannot drive the same pool toward different targets.
 
 ### Recovering a lost job id
 
@@ -157,6 +161,8 @@ If a write is rejected because a job is already running, the rejection carries t
 
 If some batches land and one fails, the register is left mid-update: shares no longer sum to the target total, so every recipient's percentage and live stream rate is wrong until it is repaired. The job reports itself `failed`, names the transactions that landed, and says the register is inconsistent.
 
+A job that gave up with a transaction still unconfirmed says so instead, because that transaction can still mine after the job is over. It carries the same repair instruction: the error distinguishes a register that changed, one that might have, and one that was never touched.
+
 **Re-submitting the same payload repairs it.** The platform recomputes what still needs changing rather than replaying the original batches, so the repair sends fewer transactions than the first attempt.
 
 ## Responses
@@ -169,13 +175,16 @@ If some batches land and one fails, the register is left mid-update: shares no l
 | `401` | `{ "error": "Unauthorized" }` | Missing, unknown, or revoked key. |
 | `403` | `{ "error": "The wallet that created this API key is no longer an admin…" }` | The key's creator lost pool admin, so the key lost the authority it was minted with. A current admin can mint a replacement. |
 | `404` | `{ "error": "Job not found" }` | Unknown job, a job belonging to another pool, or one past its seven-day expiry. |
+| `404` | `{ "error": "Pool not found" }` | The key's pool is not in the indexer, which normally means the id was never deployed on that chain. |
 | `409` | `{ "error": "A write is already running for this pool…", "jobId": "…" }` | Another job is in flight for this pool. |
 | `409` | `{ "error": "The Flow State bot is not an admin of this pool…" }` | The bot's admin grant is missing or was withdrawn. Existing keys are left in place, so re-granting resumes the integration without minting a new key. |
 | `409` | `{ "error": "This pool has no admins and is permanently immutable…" }` | The pool was set to "No Admin" and can never be API-driven. |
 | `409` | `{ "error": "The API does not support pools with transferable units…" }` | Recipients can move units between writes, so the register cannot be owned by the API. |
+| `409` | `{ "error": "Pool … has more than 20000 members…" }` | The pool is larger than the API can enumerate, so it cannot describe or replace the register honestly. Nothing about this changes on a retry. |
 | `413` | `{ "error": "…" }` | Request body exceeds 256 KB. |
 | `429` | `{ "error": "Writes to this pool are rate limited, please retry later" }` | Pool-level rate limit, measured from the previous job's completion. |
 | `429` | `{ "error": "This API key is cooling down…" }` | Key-level cooldown after a deterministically bad payload. |
+| `500` | `{ "error": "Wrong network" }` | The key's chain is no longer configured. Only reachable if a chain is retired while keys for it exist. |
 | `502` | `{ "error": "There was an error, please try again later" }` | RPC or chain error. The message is generic; provider details are never exposed. |
 
 The three rejection messages a caller is most likely to hit are worded distinctly on purpose, so you can tell a **running job** from a **key cooldown** from the **active-key cap**.
@@ -197,7 +206,7 @@ Keys are:
 - Scoped to a **single pool**. A key belongs to exactly one pool and cannot be pointed at another.
 - Not stored in plaintext. Only a keyed hash is persisted, and the token is shown once on creation.
 - Soft-revoked: a revoked key is rejected as missing, and revocation takes effect immediately. It does **not** cancel a job that was already accepted.
-- Bound to the admin who minted them. A key stops working if its creator is removed from the pool's admin set, so removing an admin on-chain takes back the capability they handed out. The admin page shows each key's creator alongside its label.
+- Bound to the admin who minted them. A key stops working if its creator is removed from the pool's admin set, so removing an admin on-chain takes back the capability they handed out. The check reads the chain rather than the indexer, so a grant or a removal takes effect on the next request. The admin page shows each key's creator alongside its label.
 
 ```
 Authorization: Bearer splitter_abc123...
