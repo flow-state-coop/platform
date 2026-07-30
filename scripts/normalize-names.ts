@@ -29,7 +29,10 @@ const DRY_RUN = process.env.DRY_RUN === "1";
 
 type Json = Record<string, unknown>;
 
+// An empty details column is an ordinary draft row, not a data problem, so it
+// stays quiet; anything else that fails to read is worth a line.
 function parse(value: unknown, label: string): Json | null {
+  if (value === null || value === undefined) return null;
   try {
     const parsed = typeof value === "string" ? JSON.parse(value) : value;
     if (parsed && typeof parsed === "object") return parsed as Json;
@@ -126,7 +129,8 @@ const CAPS = {
   socialAccountName: 50,
   voterGroupName: 100,
   teamMemberName: 10_000,
-  milestoneTitle: 10_000,
+  legacyMilestoneTitle: 10_000,
+  dynamicMilestoneTitle: 200,
 };
 
 async function normalizeProjects() {
@@ -184,7 +188,27 @@ async function normalizeApplications() {
             "milestones",
             "title",
             `${label}.${goals}.milestones`,
-            { max: CAPS.milestoneTitle },
+            { max: CAPS.legacyMilestoneTitle },
+          ) || touched;
+      }
+    }
+
+    // Dynamic rounds keep their answers under details.round / details.attestation
+    // keyed by form element id. Only milestone elements hold arrays of objects
+    // with a title, so a title is the one field to normalize here; everything
+    // else in those arrays is a plain string.
+    for (const section of ["round", "attestation"]) {
+      const values = details[section];
+      if (!values || typeof values !== "object") continue;
+
+      for (const elementId of Object.keys(values as Json)) {
+        touched =
+          normalizeArray(
+            values as Json,
+            elementId,
+            "title",
+            `${label}.${section}.${elementId}`,
+            { max: CAPS.dynamicMilestoneTitle },
           ) || touched;
       }
     }
