@@ -11,6 +11,10 @@ const GDA_POOL_ABI = parseAbi([
   "function getUnits(address memberAddress) view returns (uint128)",
 ]);
 
+const GDA_FORWARDER_ABI = parseAbi([
+  "function isPool(address token, address account) view returns (bool)",
+]);
+
 // A single multicall over an unbounded member list would blow past the
 // provider's response limits on a large register.
 const UNITS_CHUNK_SIZE = 250;
@@ -263,4 +267,43 @@ export async function getUnitsForMembers(
   }
 
   return units;
+}
+
+/**
+ * Which of these addresses are themselves GDA pools.
+ *
+ * A pool cannot hold units in another pool: `updateMemberUnits` reverts on one,
+ * and a revert is permanent, so a recipient like this poisons every batch it
+ * lands in and leaves the register half written. Chaining splitters is a natural
+ * thing for an integrator to try, so it is refused at admission rather than
+ * discovered mid-job.
+ */
+export async function findPoolRecipients(
+  network: Network,
+  token: Address,
+  addresses: string[],
+): Promise<string[]> {
+  if (addresses.length === 0) return [];
+
+  const client = getSplitterPublicClient(network);
+  const pools: string[] = [];
+
+  for (let i = 0; i < addresses.length; i += UNITS_CHUNK_SIZE) {
+    const chunk = addresses.slice(i, i + UNITS_CHUNK_SIZE);
+    const results = (await client.multicall({
+      allowFailure: false,
+      contracts: chunk.map((address) => ({
+        address: network.gdaForwarder,
+        abi: GDA_FORWARDER_ABI,
+        functionName: "isPool" as const,
+        args: [token, address as Address],
+      })),
+    })) as unknown as boolean[];
+
+    chunk.forEach((address, index) => {
+      if (results[index]) pools.push(address);
+    });
+  }
+
+  return pools;
 }

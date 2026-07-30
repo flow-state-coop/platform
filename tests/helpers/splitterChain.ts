@@ -45,6 +45,9 @@ export const splitterChain = {
   // A pool with more members than the API will enumerate. Pages are generated
   // from the cursor rather than materialized.
   oversizedMemberCount: 0,
+  // Extra addresses `isPool` answers true for. The pool under test always is
+  // one, so these are the other pools an integrator might name as a recipient.
+  otherPools: [] as string[],
 };
 
 export const SPLITTER_TX_HASH = `0x${"33".repeat(32)}`;
@@ -67,6 +70,7 @@ export function resetSplitterChain() {
   splitterChain.pending = new Map();
   splitterChain.receipts = new Map();
   splitterChain.oversizedMemberCount = 0;
+  splitterChain.otherPools = [];
 }
 
 /** Mine what stalled broadcasts were carrying, as a cleared mempool would. */
@@ -187,6 +191,13 @@ function readContract({
     case "getUnits": {
       const account = String(args[0] ?? "").toLowerCase();
       return splitterChain.units.get(account) ?? 0n;
+    }
+    case "isPool": {
+      const account = String(args[1] ?? "").toLowerCase();
+      return (
+        account === TEST_POOL_ADDRESS.toLowerCase() ||
+        splitterChain.otherPools.includes(account)
+      );
     }
     default:
       throw new Error(`splitterChain has no handler for ${functionName}()`);

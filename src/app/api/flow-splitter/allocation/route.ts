@@ -5,7 +5,7 @@ import { db } from "../../db";
 import { errorResponse, readJsonBody, PayloadTooLargeError } from "../../utils";
 import { authorizeApiKey, coolDownKey, touchKey } from "../keyAuth";
 import { resolveCurrentRegister } from "../members";
-import { isBotPoolAdmin } from "../pool";
+import { findPoolRecipients, isBotPoolAdmin } from "../pool";
 import { planWrite, TARGET_TOTAL_UNITS } from "../plan";
 import { splitterAllocationSchema } from "../validation";
 import { BOT_NOT_ADMIN_ERROR } from "../auth";
@@ -150,6 +150,22 @@ export async function POST(request: Request) {
     // Refused before a job exists, which beats a job that dies on batch one.
     if (!(await isBotPoolAdmin(network, key.poolId))) {
       return errorResponse(BOT_NOT_ADMIN_ERROR, 409);
+    }
+
+    // The string check above catches this pool; any other GDA pool has to be
+    // read from the chain. Both revert the same way, and a revert is permanent,
+    // so the whole payload is refused before a job can half-write the register.
+    const nested = await findPoolRecipients(
+      network,
+      pool.token,
+      payload.recipients.map((recipient) => recipient.address),
+    );
+    if (nested.length > 0) {
+      await coolDownKey(key.id, KEY_COOLDOWN_MS);
+      return errorResponse(
+        `${nested[0]} is a Superfluid pool, and a pool cannot hold shares in another pool`,
+        400,
+      );
     }
 
     // In flight means actively reporting progress, never a bare status check:
