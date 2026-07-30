@@ -27,6 +27,18 @@ export async function waitForAutoConnect(page: Page): Promise<void> {
   }
 }
 
+// Keep a page signed out. `AutoSiwe` in providers.tsx prompts for SIWE the
+// first time a wallet connects, and the mock wallet signs without a human, so
+// every page load would otherwise end up authenticated and no test could see
+// the states meant for a visitor who has only connected a wallet. Failing the
+// nonce fetch makes the prompt bow out quietly: `handleSignIn` returns before
+// it asks the wallet for anything.
+export async function preventAutoSignIn(page: Page): Promise<void> {
+  await page.route("**/api/auth/csrf", (route) =>
+    route.fulfill({ contentType: "application/json", body: "{}" }),
+  );
+}
+
 // Bootstrap a NextAuth SIWE session without walking the UI. Fetches CSRF,
 // constructs a matching SIWE message, signs it in Node with viem, and POSTs
 // the credentials callback — same request the app would make after clicking

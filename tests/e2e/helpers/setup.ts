@@ -12,9 +12,12 @@ export function readFixture(): E2eFixture {
 // Installs the mock wallet + Node-side sign bridge. Must run before any
 // navigation: the provider script is injected via addInitScript and needs
 // __nodeSign to exist at the moment wagmi reads window.ethereum.
-export async function installMockWallet(page: Page): Promise<void> {
+export async function installMockWallet(
+  page: Page,
+  { chainId }: { chainId?: number } = {},
+): Promise<void> {
   await attachSiweSignBridge(page, TEST_PRIVATE_KEY);
   await page.addInitScript({
-    content: buildMockEthereumScript(TEST_PRIVATE_KEY),
+    content: buildMockEthereumScript(TEST_PRIVATE_KEY, chainId),
   });
 }

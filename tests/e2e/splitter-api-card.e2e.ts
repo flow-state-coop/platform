@@ -7,8 +7,16 @@ import {
   TRUE_WORD,
   type AnswerCall,
 } from "./helpers/rpcMock";
-import { enterAuthenticated } from "./helpers/signIn";
+import {
+  enterAuthenticated,
+  preventAutoSignIn,
+  waitForAutoConnect,
+} from "./helpers/signIn";
 import { getTestAccount, TEST_CHAIN_ID } from "./helpers/mockEthereum";
+
+// Any configured chain that is not the fixtures' one, for the wrong-network
+// states the card gates its actions on.
+const OTHER_CHAIN_ID = 8453;
 
 const TRANSFERABILITY_SELECTOR = "0x7e80bd5e";
 
@@ -35,8 +43,18 @@ function json(body: unknown) {
   return { contentType: "application/json", body: JSON.stringify(body) };
 }
 
-async function openAdmin(page: Page, answerCall?: AnswerCall) {
-  await installMockWallet(page);
+type OpenOptions = {
+  answerCall?: AnswerCall;
+  // Left false for the states that are meant to render before anyone signs in:
+  // bootstrapping a session would satisfy the very gate under test.
+  signIn?: boolean;
+  walletChainId?: number;
+};
+
+async function openAdmin(page: Page, options: OpenOptions = {}) {
+  const { answerCall, signIn = false, walletChainId } = options;
+
+  await installMockWallet(page, { chainId: walletChainId });
   await installSubgraphMock(page);
   await installRpcMock(page, answerCall);
 
@@ -53,11 +71,18 @@ async function openAdmin(page: Page, answerCall?: AnswerCall) {
     route.fulfill(json({ success: true, writes: [], hasMore: false })),
   );
 
-  await enterAuthenticated(page, ADMIN_PATH);
+  if (signIn) {
+    await enterAuthenticated(page, ADMIN_PATH);
+    return;
+  }
+
+  await preventAutoSignIn(page);
+  await page.goto(ADMIN_PATH, { waitUntil: "domcontentloaded" });
+  await waitForAutoConnect(page);
 }
 
 test("lists a key against the admin who minted it", async ({ page }) => {
-  await openAdmin(page, botHoldsAdmin);
+  await openAdmin(page, { answerCall: botHoldsAdmin, signIn: true });
 
   await expect(page.getByText("Has admin access")).toBeVisible();
 
@@ -72,28 +97,45 @@ test("lists a key against the admin who minted it", async ({ page }) => {
 test("offers the grant without a signed-in session when the bot has no admin", async ({
   page,
 }) => {
-  // No answerCall, so isPoolAdmin(bot) reads false rather than failing.
+  // No session, and no answerCall so isPoolAdmin(bot) reads false rather than
+  // failing.
   await openAdmin(page);
 
   await expect(page.getByText("No admin access")).toBeVisible();
 
   // Granting is an on-chain transaction, so it needs a wallet and not SIWE. The
   // button stays visible rather than disappearing behind a sign-in it never
-  // required.
+  // required, and the keys section below is the only thing asking for one.
   await expect(
     page.getByRole("button", { name: "Grant admin access" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Sign In With Ethereum" }),
+  ).toBeVisible();
+});
+
+test("asks to switch network once, not once per section", async ({ page }) => {
+  await openAdmin(page, { walletChainId: OTHER_CHAIN_ID });
+
+  // The grant slot carries the wallet step, so the keys section must not repeat
+  // it: two identically labelled buttons say nothing about which to press.
+  const switchNetwork = page.getByRole("button", { name: "Switch Network" });
+
+  await expect(switchNetwork).toHaveCount(1);
+  await expect(switchNetwork).toBeVisible();
 });
 
 test("says the pool cannot be API-driven when shares are transferable", async ({
   page,
 }) => {
   // transferabilityForUnitsOwner() is the only read that answers true here.
-  await openAdmin(page, (callData) =>
-    callData.toLowerCase().startsWith(TRANSFERABILITY_SELECTOR)
-      ? TRUE_WORD
-      : undefined,
-  );
+  await openAdmin(page, {
+    signIn: true,
+    answerCall: (callData) =>
+      callData.toLowerCase().startsWith(TRANSFERABILITY_SELECTOR)
+        ? TRUE_WORD
+        : undefined,
+  });
 
   await expect(
     page.getByText("The API does not support pools with transferable shares", {

@@ -101,10 +101,18 @@ in order:
    signer that handles `personal_sign` requests from the browser.
 2. Injects a fake EIP-1193 provider at `window.ethereum` via
    `page.addInitScript`. The provider presents as MetaMask on OP Sepolia
-   (chainId 11155420) with the address derived from `TEST_PRIVATE_KEY`.
+   (chainId 11155420) with the address derived from `TEST_PRIVATE_KEY`. Pass
+   `installMockWallet(page, { chainId })` to connect on another configured chain
+   instead, which is how the wrong-network states are tested.
 
 The sign bridge only signs messages that match `/Sign in with Ethereum/i`.
 Anything else is rejected, including `eth_signTypedData_v4`.
+
+The app prompts for SIWE by itself the first time a wallet connects, and the
+bridge signs it without a human, so a page ends up **authenticated even when the
+test never signs in**. Any test covering what a visitor sees before signing in
+has to call `preventAutoSignIn(page)` before navigating, or it will silently
+assert against a signed-in page.
 
 ## Adding a new test
 

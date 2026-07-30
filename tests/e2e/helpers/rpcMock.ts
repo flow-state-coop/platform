@@ -2,7 +2,6 @@ import type { Page } from "@playwright/test";
 import { decodeFunctionData, encodeFunctionResult, parseAbi } from "viem";
 import { networks } from "@/lib/networks";
 import { FLOW_STATE_BOT_ADDRESS } from "@/app/flow-councils/lib/constants";
-import { TEST_CHAIN_ID } from "./mockEthereum";
 
 // Every `view` call the pages under test make returns a bool or a small number,
 // so one zero word is the default answer: no admin, not transferable, zero units.
@@ -61,7 +60,11 @@ function answerCallData(data: string, answer?: AnswerCall): `0x${string}` {
 
 type JsonRpcRequest = { id: number; method: string; params?: unknown[] };
 
-function answer(request: JsonRpcRequest, answerCall?: AnswerCall) {
+function answer(
+  request: JsonRpcRequest,
+  chainId: number,
+  answerCall?: AnswerCall,
+) {
   const data = String(
     (request.params?.[0] as { data?: string } | undefined)?.data ?? "",
   );
@@ -71,7 +74,7 @@ function answer(request: JsonRpcRequest, answerCall?: AnswerCall) {
     id: request.id,
     result:
       request.method === "eth_chainId"
-        ? `0x${TEST_CHAIN_ID.toString(16)}`
+        ? `0x${chainId.toString(16)}`
         : request.method === "eth_blockNumber"
           ? "0x1"
           : answerCallData(data, answerCall),
@@ -83,26 +86,32 @@ function answer(request: JsonRpcRequest, answerCall?: AnswerCall) {
  * injected wallet mock never sees. Without it a page with a `useReadContract`
  * reaches a public RPC, which is slow and can fail for reasons unrelated to the
  * test.
+ *
+ * Every configured chain is answered, not only the one the fixtures live on: a
+ * wallet on the wrong network has wagmi reading balances and block numbers
+ * against that chain's transport too, and each host reports its own id so the
+ * connector does not see a mismatch.
  */
 export async function installRpcMock(
   page: Page,
   answerCall?: AnswerCall,
 ): Promise<void> {
-  const rpcHost = new URL(
-    networks.find((network) => network.id === TEST_CHAIN_ID)!.rpcUrl,
-  ).host;
+  const chainIdByHost = new Map(
+    networks.map((network) => [new URL(network.rpcUrl).host, network.id]),
+  );
 
   await page.route(
-    (url) => url.host === rpcHost,
+    (url) => chainIdByHost.has(url.host),
     async (route) => {
+      const chainId = chainIdByHost.get(new URL(route.request().url()).host)!;
       const payload = JSON.parse(route.request().postData() ?? "{}");
 
       await route.fulfill({
         contentType: "application/json",
         body: JSON.stringify(
           Array.isArray(payload)
-            ? payload.map((entry) => answer(entry, answerCall))
-            : answer(payload, answerCall),
+            ? payload.map((entry) => answer(entry, chainId, answerCall))
+            : answer(payload, chainId, answerCall),
         ),
       });
     },
