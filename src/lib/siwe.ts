@@ -1,6 +1,10 @@
-// Long enough for a hardware wallet or a mobile deep link, and for the clock
-// skew between the signer and the server that checks it.
-export const SIWE_MESSAGE_LIFETIME_MS = 10 * 60_000;
+// The expiry is stamped from the signer's own clock and checked against the
+// server's, so the gap between these two constants is the whole skew budget: a
+// browser behind by more than the lifetime signs a message that is already
+// expired on arrival, and one ahead by more than the remainder signs one the
+// server reads as decorative. Both directions have to fit, with room left for a
+// hardware wallet or a mobile deep link.
+export const SIWE_MESSAGE_LIFETIME_MS = 20 * 60_000;
 const MAX_SIWE_MESSAGE_LIFETIME_MS = 30 * 60_000;
 
 /**
