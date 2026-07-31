@@ -100,6 +100,27 @@ describe("isAllowedSiweDomain", () => {
     expect(isAllowedSiweDomain("localhost.attacker.com")).toBe(false);
     expect(isAllowedSiweDomain("evil.com")).toBe(false);
   });
+
+  // The right shape is not an address. Both of these matched while the pattern
+  // was doing its own arithmetic.
+  it("refuses an out-of-range octet or port", () => {
+    vi.stubEnv("NODE_ENV", "development");
+
+    expect(isAllowedSiweDomain("192.168.999.999")).toBe(false);
+    expect(isAllowedSiweDomain("127.0.0.256:3000")).toBe(false);
+    expect(isAllowedSiweDomain("127.0.0.1:99999")).toBe(false);
+    expect(isAllowedSiweDomain("127.0.0.1:65535")).toBe(true);
+  });
+
+  // Public ranges that the shape alone does not separate from a LAN address.
+  it("refuses a routable address that is not on a private range", () => {
+    vi.stubEnv("NODE_ENV", "development");
+
+    expect(isAllowedSiweDomain("8.8.8.8:3000")).toBe(false);
+    expect(isAllowedSiweDomain("172.15.0.1:3000")).toBe(false);
+    expect(isAllowedSiweDomain("172.32.0.1:3000")).toBe(false);
+    expect(isAllowedSiweDomain("172.16.0.1:3000")).toBe(true);
+  });
 });
 
 describe("readCsrfNonce", () => {

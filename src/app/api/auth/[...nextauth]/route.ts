@@ -26,7 +26,35 @@ const PRODUCTION_HOST = "flowstate.network";
 // matched by shape rather than listed, because a sign-in that silently fails on
 // the host the developer is actually browsing is worse than no gate at all.
 const LOCAL_HOST_PATTERN =
-  /^(localhost|127(\.\d{1,3}){3}|\[::1\]|10(\.\d{1,3}){3}|192\.168(\.\d{1,3}){2}|172\.(1[6-9]|2\d|3[01])(\.\d{1,3}){2})(:[1-9]\d{0,4})?$/;
+  /^(localhost|\[::1\]|(?<ip>\d{1,3}(?:\.\d{1,3}){3}))(?::(?<port>[1-9]\d{0,4}))?$/;
+
+// The ranges are checked as numbers rather than spelled into the pattern above.
+// A regex doing arithmetic is what let `192.168.999.999` and port `99999`
+// through: both are the right shape and neither is an address.
+function isLoopbackOrPrivate(ip: string): boolean {
+  const octets = ip.split(".").map(Number);
+  if (octets.some((octet) => octet > 255)) return false;
+
+  const [first, second] = octets;
+
+  return (
+    first === 127 ||
+    first === 10 ||
+    (first === 192 && second === 168) ||
+    (first === 172 && second >= 16 && second <= 31)
+  );
+}
+
+function isLocalHost(domain: string): boolean {
+  const match = LOCAL_HOST_PATTERN.exec(domain);
+  if (!match) return false;
+
+  const { ip, port } = match.groups ?? {};
+
+  if (port !== undefined && Number(port) > 65_535) return false;
+
+  return ip === undefined || isLoopbackOrPrivate(ip);
+}
 
 /**
  * Hosts a sign-in message may be signed for. Sourced from configuration only,
@@ -73,9 +101,7 @@ export function isAllowedSiweDomain(domain: string): boolean {
     return true;
   }
 
-  return (
-    process.env.NODE_ENV !== "production" && LOCAL_HOST_PATTERN.test(domain)
-  );
+  return process.env.NODE_ENV !== "production" && isLocalHost(domain);
 }
 
 // NextAuth prefixes its cookies with __Host- whenever it issues secure ones,
