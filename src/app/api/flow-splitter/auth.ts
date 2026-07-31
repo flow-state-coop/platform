@@ -2,8 +2,10 @@ import { getServerSession } from "next-auth/next";
 import type { Address } from "viem";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import {
+  API_INELIGIBILITY_ERRORS,
   IMMUTABLE_POOL_ERROR,
   TRANSFERABLE_POOL_ERROR,
+  getApiEligibility,
 } from "@/lib/splitterEligibility";
 import type { Network } from "@/types/network";
 import { allowRequest } from "../rateLimit";
@@ -40,20 +42,28 @@ export const BOT_NOT_ADMIN_ERROR =
  * Refusals that apply to every API surface on a pool, read from the chain
  * rather than from the admin page's form state. A pool switched to "No Admin"
  * after its keys were minted must stop serving reads as well as writes.
+ *
+ * The decision itself lives in `getApiEligibility`, the same predicate the
+ * admin page renders from, so the two surfaces cannot disagree about which
+ * pools are eligible. The transferability read is skipped for a pool with no
+ * admins, which the predicate refuses before looking at it.
  */
 export async function checkPoolEligibility(
   network: Network,
   pool: SplitterPool,
 ): Promise<{ error: string; status: number } | null> {
-  if (pool.adminAddresses.length === 0) {
-    return { error: IMMUTABLE_POOL_ERROR, status: 409 };
-  }
+  const hasAdmins = pool.adminAddresses.length > 0;
 
-  if (await isTransferable(network, pool.poolAddress)) {
-    return { error: TRANSFERABLE_POOL_ERROR, status: 409 };
-  }
+  const eligibility = getApiEligibility({
+    hasAdmins,
+    transferableUnits: hasAdmins
+      ? await isTransferable(network, pool.poolAddress)
+      : undefined,
+  });
 
-  return null;
+  return eligibility.status === "unavailable"
+    ? { error: API_INELIGIBILITY_ERRORS[eligibility.reason], status: 409 }
+    : null;
 }
 
 /**

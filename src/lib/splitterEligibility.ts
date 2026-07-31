@@ -8,6 +8,11 @@ export const TRANSFERABLE_POOL_ERROR =
 
 export type ApiIneligibility = "immutable" | "transferable";
 
+export const API_INELIGIBILITY_ERRORS: Record<ApiIneligibility, string> = {
+  immutable: IMMUTABLE_POOL_ERROR,
+  transferable: TRANSFERABLE_POOL_ERROR,
+};
+
 export type ApiEligibility =
   | { status: "available" }
   | { status: "unknown" }
