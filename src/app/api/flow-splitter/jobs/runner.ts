@@ -1,0 +1,969 @@
+import { sql } from "kysely";
+import type { Address } from "viem";
+import { CHUNK_SIZE } from "@/app/flow-councils/lib/chunkQueue";
+import { db } from "../../db";
+import { getBotSigner, sendBotTransaction } from "../../bot";
+import { ChainBusyError } from "../../botLock";
+import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
+import { getNetwork, getPoolFromSubgraph, isBotPoolAdmin } from "../pool";
+import { getIndexedMembers, resolveCurrentRegister } from "../members";
+import { pruneMirror, recordWrittenBatch } from "../mirror";
+import { diffRegister, type RegisterEntry } from "../plan";
+import { BOT_NOT_ADMIN_ERROR } from "../auth";
+import { PermanentError, RevertedError } from "../errors";
+import {
+  BaseError,
+  ContractFunctionRevertedError,
+  ExecutionRevertedError,
+  TransactionNotFoundError,
+  TransactionReceiptNotFoundError,
+  decodeFunctionData,
+} from "viem";
+
+// A job whose runner stopped reporting for this long is treated as dead and can
+// be reclaimed. This is what stops a crashed runner wedging a pool until
+// someone edits the database.
+export const HEARTBEAT_STALE_MS = 2 * 60_000;
+
+// The heartbeat is refreshed on this interval for as long as a runner is alive.
+// Without it a runner waiting on a slow receipt (viem's default receipt timeout
+// alone is longer than the staleness threshold) would look dead while working,
+// and a status poll would hand the same job to a second runner.
+const HEARTBEAT_REFRESH_MS = 30_000;
+
+const MAX_ATTEMPTS = 5;
+// How long a job keeps being refunded the attempts it loses to contention on
+// the shared bot key. Long enough to ride out any realistic queue on one chain,
+// short enough that it fails well inside the job's own seven-day expiry.
+const CHAIN_BUSY_GRACE_MS = 30 * 60_000;
+// A batch always shrinks the diff, so this only bounds a pathological case
+// where the chain refuses to converge.
+const MAX_BATCHES_PER_JOB = 200;
+
+export type JobRow = {
+  id: string;
+  chainId: number;
+  poolId: string;
+  keyId: number;
+  payloadHash: string;
+  status: string;
+  target: { address: string; units: string }[];
+  batchIndex: number;
+  txHashes: string[];
+  changedCount: number;
+  gasUsed: string;
+  gasCostWei: string;
+  attempt: number;
+  createdAt: Date;
+};
+
+export const SUPERSEDED_ERROR =
+  "Superseded by a newer write to this pool. Its allocation is the one that stands";
+
+// Guards every update to a job row. A runner scopes its writes to the attempt it
+// claimed and to a job still in flight, so one that was superseded, or that lost
+// its claim to a successor, cannot clobber the accounting or the terminal state
+// the winner already wrote.
+const IN_FLIGHT = ["queued", "running"] as const;
+
+/**
+ * Take ownership of a job, atomically.
+ *
+ * A queued job can be claimed immediately (that is the `after()` runner picking
+ * up its own submission); a running one only once its heartbeat has gone stale.
+ * The conditional UPDATE is the only thing preventing the post-response runner
+ * and a poll-triggered resume from both spending gas on the same job.
+ *
+ * A job the pool has moved past is refused outright. Reclaiming one would put
+ * two runners on the same pool driving it toward different targets, each undoing
+ * the other's batches until one happens to finish last.
+ *
+ * Any newer job counts, whatever its status. Writes are full replacements, so a
+ * later one makes this target obsolete whether it is still running or already
+ * finished, and reading the status instead would hand the job back as soon as
+ * its successor settled. That also keeps the guard independent of the
+ * best-effort retirement in `supersedeJobs` having succeeded.
+ */
+export async function claimJob(jobId: string): Promise<JobRow | null> {
+  const result = await sql<JobRow>`
+    UPDATE splitter_write_jobs AS job
+       SET status = 'running',
+           heartbeat_at = now(),
+           attempt = attempt + 1,
+           updated_at = now()
+     WHERE job.id = ${jobId}
+       AND job.attempt < ${MAX_ATTEMPTS}
+       AND (
+         job.status = 'queued'
+         OR (
+           job.status = 'running'
+           AND job.heartbeat_at < now() - make_interval(secs => ${HEARTBEAT_STALE_MS / 1000})
+         )
+       )
+       AND NOT EXISTS (
+         SELECT 1
+           FROM splitter_write_jobs AS newer
+          WHERE newer.chain_id = job.chain_id
+            AND newer.pool_id = job.pool_id
+            AND newer.id <> job.id
+            AND newer.created_at > job.created_at
+       )
+    RETURNING job.id, job.chain_id, job.pool_id, job.key_id, job.payload_hash,
+              job.status, job.target, job.batch_index, job.tx_hashes,
+              job.changed_count, job.gas_used, job.gas_cost_wei, job.attempt,
+              job.created_at
+  `.execute(db);
+
+  return result.rows[0] ?? null;
+}
+
+/**
+ * Retire the jobs a newly accepted write replaces.
+ *
+ * A job whose runner died is left non-terminal on purpose, so a crash cannot
+ * wedge the pool. The cost is that nothing else marks it done: its caller's poll
+ * loop would never end, and the poll itself would resurrect it. Accepting a
+ * newer write for the same pool is what settles it.
+ *
+ * `exceptJobId` is null when the write that supersedes them needed no job of its
+ * own, which is a register that already matched. That still moves the pool past
+ * anything older, since the old job would drag it back to its own target.
+ */
+export async function supersedeJobs(
+  chainId: number,
+  poolId: string,
+  exceptJobId: string | null,
+): Promise<void> {
+  const superseded = await db
+    .updateTable("splitterWriteJobs")
+    .set({
+      status: "failed",
+      error: SUPERSEDED_ERROR,
+      heartbeatAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where("chainId", "=", chainId)
+    .where("poolId", "=", poolId)
+    .where("status", "in", IN_FLIGHT)
+    .$if(exceptJobId !== null, (qb) => qb.where("id", "!=", exceptJobId!))
+    .returningAll()
+    .execute();
+
+  for (const job of superseded) {
+    await recordHistory(job, "failed", progressOf(job));
+  }
+}
+
+/**
+ * Settle a job `claimJob` will never hand out again because the pool has moved
+ * past it.
+ *
+ * `supersedeJobs` is best-effort and the write it belongs to still returns 202,
+ * so a failed retirement leaves the old job open. The guard keeps it from
+ * running, but nothing would mark it done, and its caller's poll loop would
+ * never end. The poll that tries to resume it retires it instead.
+ */
+async function retireIfSuperseded(jobId: string): Promise<boolean> {
+  const result = await sql<{
+    id: string;
+    chainId: number;
+    poolId: string;
+    keyId: number;
+    txHashes: string[] | null;
+    batchIndex: number | null;
+    changedCount: number | null;
+    gasUsed: string | null;
+    gasCostWei: string | null;
+  }>`
+    UPDATE splitter_write_jobs AS job
+       SET status = 'failed',
+           error = ${SUPERSEDED_ERROR},
+           heartbeat_at = now(),
+           updated_at = now()
+     WHERE job.id = ${jobId}
+       AND job.status IN ('queued', 'running')
+       AND EXISTS (
+         SELECT 1
+           FROM splitter_write_jobs AS newer
+          WHERE newer.chain_id = job.chain_id
+            AND newer.pool_id = job.pool_id
+            AND newer.id <> job.id
+            AND newer.created_at > job.created_at
+       )
+    RETURNING job.id, job.chain_id, job.pool_id, job.key_id, job.tx_hashes,
+              job.batch_index, job.changed_count, job.gas_used, job.gas_cost_wei
+  `.execute(db);
+
+  const retired = result.rows[0];
+  if (!retired) return false;
+
+  await recordHistory(retired, "failed", progressOf(retired));
+
+  return true;
+}
+
+/**
+ * What the job has actually done so far, carried on the row rather than in the
+ * runner. A resumed attempt inherits it, so what the write changed and what it
+ * cost describe the whole job and not just the attempt that happened to finish
+ * it. Only batches whose receipt came back successful count.
+ */
+type JobProgress = {
+  txHashes: string[];
+  batchIndex: number;
+  changedCount: number;
+  gas: { used: bigint; costWei: bigint };
+};
+
+/**
+ * Whether the last broadcast is still unaccounted for.
+ *
+ * `batchIndex` advances only once a receipt has been seen and paid for, so a
+ * hash beyond it is a transaction some attempt put on the wire and no attempt
+ * ever settled. That is both what has to be waited out on a resume and what
+ * makes settling it idempotent: an already-counted receipt is never re-counted.
+ */
+function hasUnsettledBatch(progress: JobProgress): boolean {
+  return progress.txHashes.length > progress.batchIndex;
+}
+
+function gasOf(receipt: {
+  gasUsed?: bigint;
+  effectiveGasPrice?: bigint;
+}): JobProgress["gas"] {
+  const used = receipt.gasUsed ?? 0n;
+
+  return { used, costWei: used * (receipt.effectiveGasPrice ?? 0n) };
+}
+
+function progressOf(job: {
+  txHashes: string[] | null;
+  batchIndex: number | null;
+  changedCount: number | null;
+  gasUsed: string | null;
+  gasCostWei: string | null;
+}): JobProgress {
+  return {
+    txHashes: [...(job.txHashes ?? [])],
+    batchIndex: job.batchIndex ?? 0,
+    changedCount: job.changedCount ?? 0,
+    gas: {
+      used: BigInt(job.gasUsed ?? "0"),
+      costWei: BigInt(job.gasCostWei ?? "0"),
+    },
+  };
+}
+
+/**
+ * Report liveness and progress, and answer whether the row is still ours. That
+ * answer is the only thing that tells a runner it lost its claim: every other
+ * guard here protects the database, not the gas.
+ */
+async function heartbeat(job: JobRow, progress: JobProgress): Promise<boolean> {
+  const beat = await db
+    .updateTable("splitterWriteJobs")
+    .set({
+      heartbeatAt: new Date(),
+      txHashes: progress.txHashes,
+      batchIndex: progress.batchIndex,
+      changedCount: progress.changedCount,
+      gasUsed: progress.gas.used.toString(),
+      gasCostWei: progress.gas.costWei.toString(),
+      updatedAt: new Date(),
+    })
+    .where("id", "=", job.id)
+    .where("attempt", "=", job.attempt)
+    .where("status", "in", IN_FLIGHT)
+    .executeTakeFirst();
+
+  return beat.numUpdatedRows > 0n;
+}
+
+/**
+ * Whether the chain rejected what we sent.
+ *
+ * The distinction from an ordinary failure is "the chain rejected this" against
+ * "we never got an answer from it". A revert is deterministic, and viem raises
+ * one at simulation time as readily as it reports one on a receipt, so it has to
+ * be recognised in the error chain rather than only on the receipt status.
+ */
+function isRejected(err: unknown): boolean {
+  if (err instanceof RevertedError) return true;
+
+  return (
+    err instanceof BaseError &&
+    err.walk(
+      (cause) =>
+        cause instanceof ExecutionRevertedError ||
+        cause instanceof ContractFunctionRevertedError,
+    ) !== null
+  );
+}
+
+/** Whether retrying this could only produce the same answer. */
+function isPermanent(err: unknown): boolean {
+  return err instanceof PermanentError || isRejected(err);
+}
+
+async function requeue(job: JobRow, progress: JobProgress, attempt: number) {
+  await db
+    .updateTable("splitterWriteJobs")
+    .set({
+      status: "queued",
+      attempt,
+      heartbeatAt: new Date(),
+      txHashes: progress.txHashes,
+      batchIndex: progress.batchIndex,
+      changedCount: progress.changedCount,
+      gasUsed: progress.gas.used.toString(),
+      gasCostWei: progress.gas.costWei.toString(),
+      updatedAt: new Date(),
+    })
+    .where("id", "=", job.id)
+    .where("attempt", "=", job.attempt)
+    .where("status", "in", IN_FLIGHT)
+    .execute()
+    .catch((err) => console.error(err));
+}
+
+/**
+ * Bookkeeping only. A failure here must never propagate: the job's real outcome
+ * is already recorded, and re-entering the catch in `runJob` would report a
+ * correct register as an inconsistent partial write.
+ */
+async function recordHistory(
+  job: { id: string; chainId: number; poolId: string; keyId: number },
+  status: "succeeded" | "failed",
+  progress: JobProgress,
+) {
+  try {
+    await db
+      .insertInto("splitterWriteHistory")
+      .values({
+        chainId: job.chainId,
+        poolId: job.poolId,
+        keyId: job.keyId,
+        jobId: job.id,
+        changedCount: progress.changedCount,
+        status,
+        txHashes: progress.txHashes,
+        gasUsed: progress.gas.used.toString(),
+        gasCostWei: progress.gas.costWei.toString(),
+      })
+      .execute();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+/**
+ * What settling a job actually needs off the row. Narrower than `JobRow` so the
+ * paths that read a job back from the database can hand one over without
+ * reconstructing the decoded `target` they never look at.
+ */
+type SettlingJob = {
+  id: string;
+  chainId: number;
+  poolId: string;
+  keyId: number;
+  attempt: number;
+};
+
+async function finish(
+  job: SettlingJob,
+  status: "succeeded" | "failed",
+  progress: JobProgress,
+  error?: string,
+) {
+  const { txHashes, changedCount, gas } = progress;
+
+  const settled = await db
+    .updateTable("splitterWriteJobs")
+    .set({
+      status,
+      error: error ?? null,
+      txHashes,
+      batchIndex: progress.batchIndex,
+      changedCount,
+      gasUsed: gas.used.toString(),
+      gasCostWei: gas.costWei.toString(),
+      heartbeatAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where("id", "=", job.id)
+    .where("attempt", "=", job.attempt)
+    .where("status", "in", IN_FLIGHT)
+    .executeTakeFirst();
+
+  if (settled.numUpdatedRows === 0n) return;
+
+  await recordHistory(job, status, progress);
+
+  // The minimum interval between writes is measured from the previous job's
+  // completion, not from when it was accepted, so it is stamped here.
+  await db
+    .updateTable("splitterIntegrations")
+    .set({ lastWriteAt: new Date() })
+    .where("chainId", "=", job.chainId)
+    .where("poolId", "=", job.poolId)
+    .execute()
+    .catch((err) => console.error(err));
+}
+
+const REPAIR_INSTRUCTION = "Re-submit the same payload to repair it";
+
+// A payload the chain refused is refused again on every retry, so telling the
+// caller to re-send it unchanged builds a loop that never terminates. Writes are
+// full replacements, so the corrected allocation is also the repair.
+const REJECTED_INSTRUCTION =
+  "Re-submitting it unchanged will be rejected the same way; submit a corrected allocation, which repairs the register too";
+
+/**
+ * What a job that could not finish tells its caller. Three outcomes, not two: a
+ * confirmed batch leaves the register inconsistent, a batch broadcast without a
+ * receipt can still land after the job gives up and needs the same repair, and
+ * only a job with nothing outstanding can say the register was never touched.
+ *
+ * `rejected` separates a payload the chain refused from an outage on our side.
+ * Both can leave the register mid-update, but only one of them is repaired by
+ * sending the same thing again.
+ */
+function failedMessage(
+  changed: boolean,
+  unconfirmed: boolean,
+  rejected: boolean,
+): string {
+  if (rejected) {
+    if (changed) {
+      return `Some batches landed and the chain rejected one, so the register is inconsistent. ${REJECTED_INSTRUCTION}`;
+    }
+
+    if (unconfirmed) {
+      return `A batch was broadcast and never confirmed and the chain rejected another, so whether the register changed is unknown. ${REJECTED_INSTRUCTION}`;
+    }
+
+    return `The chain rejected this allocation and the register was not changed. ${REJECTED_INSTRUCTION}`;
+  }
+
+  if (changed) {
+    return `Some batches landed and one failed, so the register is inconsistent. ${REPAIR_INSTRUCTION}`;
+  }
+
+  if (unconfirmed) {
+    return `A batch was broadcast and never confirmed, so whether the register changed is unknown. ${REPAIR_INSTRUCTION}`;
+  }
+
+  return "The write failed without changing the register";
+}
+
+/**
+ * What a job stopped by a condition we refused ourselves tells its caller.
+ *
+ * The reason is the error's own message, because it is the only actionable
+ * thing about the refusal: "this pool has more members than the API can
+ * enumerate" is something the caller can act on, and the generic rejected
+ * wording ("submit a corrected allocation") is advice that would not help.
+ * The admission path surfaces the same messages verbatim.
+ */
+function blockedMessage(
+  reason: string,
+  changed: boolean,
+  unconfirmed: boolean,
+): string {
+  if (changed) {
+    return `${reason}. Some batches had already landed, so the register is inconsistent`;
+  }
+
+  if (unconfirmed) {
+    return `${reason}. A batch was broadcast and never confirmed, so whether the register changed is unknown`;
+  }
+
+  return `${reason}. The register was not changed`;
+}
+
+function exhaustedMessage(changed: boolean, unconfirmed: boolean): string {
+  if (changed) {
+    return `Some batches landed and the write did not complete after repeated attempts, so the register is inconsistent. ${REPAIR_INSTRUCTION}`;
+  }
+
+  if (unconfirmed) {
+    return `A batch was broadcast and never confirmed and the write did not complete after repeated attempts, so whether the register changed is unknown. ${REPAIR_INSTRUCTION}`;
+  }
+
+  return "The write did not complete after repeated attempts";
+}
+
+/**
+ * A job nobody can claim any more, because it burned through its attempts, has
+ * to be told to the caller. Left alone it would sit at `running` with no error
+ * until it expired, and an integrator's poll loop would never terminate.
+ *
+ * A runner that stopped reporting has to be waited out, in case it is still
+ * alive and mid-batch. A queued job at the attempt cap has no runner to wait
+ * for: `claimJob` refuses it from here on, so nothing will ever pick it up
+ * again and it is already terminal in everything but name.
+ *
+ * One statement, not a read followed by `finish`: a runner still alive can
+ * heartbeat new progress between the two, and the terminal write would then
+ * carry a stale snapshot over it, losing a transaction hash from the
+ * accounting. Checked in the WHERE instead, a fresh heartbeat wins the race,
+ * and a heartbeat after this write loses to the status guard every update
+ * shares.
+ */
+async function failExhausted(jobId: string): Promise<void> {
+  const result = await sql<{
+    id: string;
+    chainId: number;
+    poolId: string;
+    keyId: number;
+    txHashes: string[] | null;
+    batchIndex: number | null;
+    changedCount: number | null;
+    gasUsed: string | null;
+    gasCostWei: string | null;
+  }>`
+    UPDATE splitter_write_jobs AS job
+       SET status = 'failed',
+           error = CASE
+             WHEN job.changed_count > 0
+               THEN ${exhaustedMessage(true, false)}
+             WHEN COALESCE(array_length(job.tx_hashes, 1), 0) > job.batch_index
+               THEN ${exhaustedMessage(false, true)}
+             ELSE ${exhaustedMessage(false, false)}
+           END,
+           heartbeat_at = now(),
+           updated_at = now()
+     WHERE job.id = ${jobId}
+       AND job.attempt >= ${MAX_ATTEMPTS}
+       AND (
+         job.status = 'queued'
+         OR (
+           job.status = 'running'
+           AND job.heartbeat_at < now() - make_interval(secs => ${HEARTBEAT_STALE_MS / 1000})
+         )
+       )
+    RETURNING job.id, job.chain_id, job.pool_id, job.key_id, job.tx_hashes,
+              job.batch_index, job.changed_count, job.gas_used, job.gas_cost_wei
+  `.execute(db);
+
+  const failed = result.rows[0];
+  if (!failed) return;
+
+  await recordHistory(failed, "failed", progressOf(failed));
+
+  // The minimum interval between writes is measured from the previous job's
+  // completion, matching `finish`.
+  await db
+    .updateTable("splitterIntegrations")
+    .set({ lastWriteAt: new Date() })
+    .where("chainId", "=", failed.chainId)
+    .where("poolId", "=", failed.poolId)
+    .execute()
+    .catch((err) => console.error(err));
+}
+
+type SettledBroadcast = {
+  outcome: "none" | "landed";
+  // Null when the node has never heard of the transaction: it was dropped, so
+  // there is nothing to pay for and nothing to account.
+  gas: JobProgress["gas"] | null;
+  reverted: boolean;
+  // How many register entries the transaction updated, read back from its own
+  // calldata so a landed batch the broadcasting attempt never counted still
+  // shows up in what the job reports as changed. Null when unknowable: the
+  // transaction was dropped, or its body could not be fetched or decoded.
+  entries: number | null;
+};
+
+// Only "the node does not know this transaction" may classify a broadcast as
+// dropped. A transport failure has to propagate instead: swallowing it would
+// re-send a batch whose original may still mine, and write the original off as
+// costing nothing.
+function isNotFound(err: unknown): boolean {
+  return (
+    err instanceof BaseError &&
+    err.walk(
+      (cause) =>
+        cause instanceof TransactionNotFoundError ||
+        cause instanceof TransactionReceiptNotFoundError,
+    ) !== null
+  );
+}
+
+function nullIfNotFound(err: unknown): null {
+  if (isNotFound(err)) return null;
+  throw err;
+}
+
+function batchSizeOf(input: `0x${string}` | undefined): number | null {
+  if (!input) return null;
+
+  try {
+    const { functionName, args } = decodeFunctionData({
+      abi: flowSplitterAbi,
+      data: input,
+    });
+
+    return functionName === "updateMembersUnits"
+      ? (args[1] as unknown[]).length
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function settledFrom(
+  receipt: {
+    status: string;
+    gasUsed?: bigint;
+    effectiveGasPrice?: bigint;
+  },
+  input: `0x${string}` | undefined,
+): SettledBroadcast {
+  const reverted = receipt.status !== "success";
+
+  return {
+    outcome: reverted ? "none" : "landed",
+    gas: gasOf(receipt),
+    reverted,
+    entries: reverted ? null : batchSizeOf(input),
+  };
+}
+
+/**
+ * Wait out a broadcast a previous attempt never saw confirmed, and report what
+ * became of it and what it cost.
+ *
+ * A transaction that landed is absorbed by the next diff rather than repeated.
+ * One still sitting in the mempool is the case that costs money: re-sending its
+ * batch puts a second transaction on the wire at the next nonce, and when the
+ * stall clears both mine and both are paid for. A transaction the node has
+ * never heard of was dropped and its nonce is free again, so the batch can go
+ * out afresh.
+ *
+ * The gas comes back because the attempt that broadcast this died before it
+ * could count it. Left here it would be an orphan the pool paid for twice over
+ * and never saw in its own accounting.
+ */
+async function settleBroadcast(
+  publicClient: ReturnType<typeof getBotSigner>["publicClient"],
+  hash: `0x${string}`,
+): Promise<SettledBroadcast> {
+  const receipt = await publicClient
+    .getTransactionReceipt({ hash })
+    .catch(nullIfNotFound);
+
+  if (receipt) {
+    // Calldata fetch is best-effort: the receipt already settles what the
+    // broadcast did and cost, the body only refines the changed-entry count.
+    const mined = await publicClient.getTransaction({ hash }).catch(() => null);
+
+    return settledFrom(receipt, mined?.input);
+  }
+
+  const inMempool = await publicClient
+    .getTransaction({ hash })
+    .catch(nullIfNotFound);
+
+  if (!inMempool) {
+    return { outcome: "none", gas: null, reverted: false, entries: null };
+  }
+
+  return settledFrom(
+    await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 }),
+    inMempool.input,
+  );
+}
+
+/**
+ * Drive a job to completion, one batch per iteration.
+ *
+ * The diff is re-derived from chain state before every batch rather than
+ * replaying a stored partition, so a resumed job converges on the target
+ * instead of repeating work, and a transaction that landed while the runner was
+ * dead is absorbed rather than sent again. `batch_index` is therefore a
+ * progress counter, not an offset.
+ *
+ * The key is never re-validated: revoking a key blocks new submissions but does
+ * not cancel a job that was already accepted, and the job's own status route
+ * keeps accepting that key so the polls driving this recovery still land.
+ */
+export async function runJob(jobId: string): Promise<void> {
+  const job = await claimJob(jobId);
+  if (!job) {
+    // The two reasons a claim is refused, both of which have to end up on the
+    // row or the caller polls a job that will never move again.
+    try {
+      if (!(await retireIfSuperseded(jobId))) {
+        await failExhausted(jobId);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    return;
+  }
+
+  const progress = progressOf(job);
+
+  // What a previous attempt left on the wire: a batch that landed changed the
+  // register even though no attempt could count its entries, and one still
+  // unaccounted for may change it after this job gives up.
+  let outstanding: "none" | "landed" | "unconfirmed" = hasUnsettledBatch(
+    progress,
+  )
+    ? "unconfirmed"
+    : "none";
+
+  const network = getNetwork(job.chainId);
+  if (!network) {
+    await finish(job, "failed", progress, "Unsupported network");
+    return;
+  }
+
+  const target: RegisterEntry[] = job.target.map((entry) => ({
+    address: entry.address,
+    units: BigInt(entry.units),
+  }));
+
+  // Keeps the job visibly alive across receipt waits and subgraph reads, which
+  // together run longer than the staleness threshold.
+  const ticker = setInterval(() => {
+    heartbeat(job, progress).catch((err) => console.error(err));
+  }, HEARTBEAT_REFRESH_MS);
+
+  try {
+    const { account, publicClient, walletClient } = getBotSigner(network);
+    const pool = await resolvePoolAddress(job);
+
+    const inherited = hasUnsettledBatch(progress)
+      ? progress.txHashes.at(-1)
+      : undefined;
+
+    if (inherited) {
+      const settled = await settleBroadcast(
+        publicClient,
+        inherited as `0x${string}`,
+      );
+
+      outstanding = settled.outcome;
+
+      // The counter advances whatever became of it, because what it marks is
+      // that the broadcast has been accounted for, and one the node never
+      // heard of is accounted for at nothing. Leaving it behind for those
+      // would keep the hash count one ahead of it for the rest of the job, and
+      // the next resume would settle, and pay for, a batch already counted.
+      progress.batchIndex += 1;
+
+      if (settled.gas) {
+        progress.gas.used += settled.gas.used;
+        progress.gas.costWei += settled.gas.costWei;
+      }
+
+      // An inherited batch that landed changed the register just like one this
+      // attempt watched land, so it counts toward what the job reports as
+      // changed rather than only toward what it cost.
+      if (settled.outcome === "landed") {
+        progress.changedCount += settled.entries ?? 0;
+      }
+
+      // Re-sending a batch the chain rejected buys another revert and another
+      // batch's gas, so an inherited revert is as terminal as one this attempt
+      // watched land.
+      if (settled.reverted) {
+        throw new RevertedError(`Batch transaction reverted: ${inherited}`);
+      }
+    }
+
+    for (let i = 0; i < MAX_BATCHES_PER_JOB; i++) {
+      // A job that lost its claim stops here rather than spending another
+      // batch's gas on a target the pool has already moved past.
+      if (!(await heartbeat(job, progress))) return;
+
+      // Cheaper to re-check than to burn gas on a revert, and it stops a
+      // running job at a batch boundary when the grant is withdrawn.
+      if (!(await isBotPoolAdmin(network, job.poolId))) {
+        await finish(job, "failed", progress, BOT_NOT_ADMIN_ERROR);
+        return;
+      }
+
+      const current = await resolveCurrentRegister(
+        network,
+        job.poolId,
+        pool,
+        target.map((entry) => entry.address),
+      );
+
+      const remaining = diffRegister(target, current);
+      if (remaining.length === 0) {
+        await pruneSettledAddresses(job, network.id, pool, current);
+        await finish(job, "succeeded", progress);
+        return;
+      }
+
+      const batch = remaining.slice(0, CHUNK_SIZE);
+
+      // Mirrored before the send, not after the receipt. The receipt wait is
+      // tens of seconds, and a kill inside it would leave a batch on-chain that
+      // the mirror never learned: if the next write drops one of its addresses
+      // while the indexer still lags, that address is in no source at all and
+      // keeps receiving flow. The mirror only ever names candidate addresses,
+      // whose units are read from the chain, so a batch that never lands leaves
+      // harmless extra candidates that `pruneSettledAddresses` clears.
+      await recordWrittenBatch(job.chainId, job.poolId, batch);
+
+      const hash = await sendBotTransaction(network, (nonce) =>
+        walletClient.writeContract({
+          account,
+          nonce,
+          address: network.flowSplitter as Address,
+          abi: flowSplitterAbi,
+          functionName: "updateMembersUnits",
+          args: [
+            BigInt(job.poolId),
+            batch.map((entry) => ({
+              account: entry.address as Address,
+              units: entry.units,
+            })),
+          ],
+        }),
+      );
+
+      // Recorded before waiting for the receipt, so a crash in between leaves a
+      // findable orphan rather than an untraceable one. The batch counter stays
+      // put until a receipt is in hand, which is what marks the hash as still
+      // owing an answer.
+      progress.txHashes.push(hash);
+      outstanding = "unconfirmed";
+      await heartbeat(job, progress);
+
+      const receipt = await publicClient.waitForTransactionReceipt({
+        hash,
+        confirmations: 1,
+      });
+
+      // Either status settles what this batch did, revert included.
+      outstanding = "none";
+
+      // Counted before the revert check: a batch the chain rejected changed
+      // nothing, but the pool still paid for it.
+      const spent = gasOf(receipt);
+      progress.gas.used += spent.used;
+      progress.gas.costWei += spent.costWei;
+      progress.batchIndex += 1;
+
+      if (receipt.status !== "success") {
+        throw new RevertedError(`Batch transaction reverted: ${hash}`);
+      }
+
+      // Counted here rather than at broadcast, so a batch that reverted or was
+      // never sent is not reported as a change to the register.
+      progress.changedCount += batch.length;
+
+      // Persisted before anything slower runs, so a kill between here and the
+      // next batch cannot lose what this one changed and have the job report a
+      // register it did move as untouched.
+      await heartbeat(job, progress);
+    }
+
+    await finish(
+      job,
+      "failed",
+      progress,
+      "The register did not converge within the batch limit",
+    );
+  } catch (err) {
+    // Contention on the shared bot key is not a failure: nothing was broadcast.
+    // The job goes back to queued so the next poll can claim it immediately;
+    // leaving it running with a fresh heartbeat would lock it out of its own
+    // recovery for the whole staleness window. The attempt is given back too,
+    // since nothing was attempted on-chain.
+    //
+    // Only while the job is young, though. Refunding it forever means a job
+    // that never wins the lease never exhausts either, so it sits queued until
+    // its TTL expires and the caller's poll loop never terminates. Past the
+    // grace window the attempt stands, so sustained contention ends in a
+    // reported failure rather than silence.
+    if (err instanceof ChainBusyError) {
+      const withinGrace =
+        Date.now() - new Date(job.createdAt).getTime() < CHAIN_BUSY_GRACE_MS;
+
+      await requeue(
+        job,
+        progress,
+        withinGrace ? Math.max(0, job.attempt - 1) : job.attempt,
+      );
+      return;
+    }
+
+    console.error(err);
+
+    // Everything a retry could plausibly fix gets one. Our subgraph or RPC being
+    // down is the likeliest way a write fails, and a receipt wait that timed out
+    // usually means the transaction landed anyway, so terminally failing here
+    // reports a register that did change as untouched. The retry costs nothing:
+    // the diff is re-derived from the chain before every batch, so a resumed job
+    // absorbs whatever landed instead of repeating it.
+    //
+    // The job is left running with a fresh heartbeat rather than requeued, so
+    // the staleness window paces the retries. Requeuing would have the caller's
+    // own poll spend all five attempts inside a few seconds, which no outage is
+    // short enough for.
+    if (!isPermanent(err) && job.attempt < MAX_ATTEMPTS) {
+      await heartbeat(job, progress).catch((hbErr) => console.error(hbErr));
+      return;
+    }
+
+    const changed = progress.changedCount > 0 || outstanding === "landed";
+    const unconfirmed = outstanding === "unconfirmed";
+    const rejected = isRejected(err);
+
+    await finish(
+      job,
+      "failed",
+      progress,
+      // A condition we refused ourselves carries its own reason; only a
+      // rejection by the chain gets the generic "send a corrected allocation"
+      // advice, which for anything else would be advice that cannot work.
+      !rejected && err instanceof PermanentError
+        ? blockedMessage(err.message, changed, unconfirmed)
+        : failedMessage(changed, unconfirmed, rejected),
+    );
+  } finally {
+    clearInterval(ticker);
+  }
+}
+
+async function pruneSettledAddresses(
+  job: JobRow,
+  chainId: number,
+  poolAddress: Address,
+  current: RegisterEntry[],
+): Promise<void> {
+  try {
+    const indexedUnits = new Map(
+      (await getIndexedMembers(chainId, poolAddress)).map((member) => [
+        member.address,
+        member.units,
+      ]),
+    );
+    // Membership is the wrong test: the indexer keeps a PoolMember entity at
+    // zero units forever, so an address the platform zeroed is always still
+    // "known" and nothing would ever be pruned.
+    const settled = current
+      .filter(
+        (entry) =>
+          entry.units === 0n && (indexedUnits.get(entry.address) ?? 0n) === 0n,
+      )
+      .map((entry) => entry.address);
+
+    await pruneMirror(job.chainId, job.poolId, settled);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function resolvePoolAddress(job: JobRow): Promise<Address> {
+  const pool = await getPoolFromSubgraph(job.chainId, job.poolId);
+  if (!pool) throw new Error(`Pool ${job.poolId} not found`);
+  return pool.poolAddress;
+}

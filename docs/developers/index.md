@@ -17,6 +17,7 @@ These pages are written for developers who want to run the app locally, understa
 - **[Public API](004-public-api.md)**: the unauthenticated endpoints you can build against.
 - **[Metrics API](005-metrics-api.md)**: the authenticated endpoint for pushing automated ballots to a metrics voter group.
 - **[NFT Eligibility API](006-nft-eligibility-api.md)**: the endpoints behind NFT Holder voter groups and the voter eligibility popup.
+- **[Flow Splitter API](010-splitter-api.md)**: the authenticated endpoints for reading and programmatically replacing a splitter's share register.
 - **[Contracts](007-contracts.md)**: the on-chain contracts the platform reads and writes.
 - **[Testing](008-testing.md)**: unit, integration, and end-to-end test workflows.
 - **[Contributing](009-contributing.md)**: how to open a PR and where the docs live.

@@ -1,13 +1,43 @@
 import { useCallback } from "react";
 import { getCsrfToken, signIn } from "next-auth/react";
 import { useAccount, useSignMessage, useSwitchChain } from "wagmi";
-import { ConnectorChainMismatchError } from "@wagmi/core";
+import {
+  BaseError as WagmiBaseError,
+  ConnectorChainMismatchError,
+} from "@wagmi/core";
+import { BaseError } from "viem";
 import { createSiweMessage } from "viem/siwe";
+import { SIWE_MESSAGE_LIFETIME_MS } from "@/lib/siwe";
+import { useSignInError } from "@/context/SignInError";
+
+const SIGN_IN_FAILED = "Sign in failed, please try again.";
 
 export default function useSiwe() {
   const { address, chain } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const { switchChainAsync } = useSwitchChain();
+  const { showSignInError, clearSignInError } = useSignInError();
+
+  // signIn resolves with an error rather than throwing, and every gated screen
+  // reads the session rather than this call, so a swallowed rejection leaves
+  // the page looking signed out with nothing said about why.
+  const submitSignature = useCallback(
+    async (message: string, signature: string) => {
+      const result = await signIn("credentials", {
+        message,
+        redirect: false,
+        signature,
+      });
+
+      if (result?.ok) {
+        clearSignInError();
+      } else {
+        console.error(result?.error);
+        showSignInError(SIGN_IN_FAILED);
+      }
+    },
+    [showSignInError, clearSignInError],
+  );
 
   const handleSignIn = useCallback(async () => {
     try {
@@ -24,26 +54,19 @@ export default function useSiwe() {
         version: "1",
         chainId: chain.id,
         nonce,
+        expirationTime: new Date(Date.now() + SIWE_MESSAGE_LIFETIME_MS),
       });
 
       try {
         const signature = await signMessageAsync({ message });
 
-        signIn("credentials", {
-          message,
-          redirect: false,
-          signature,
-        });
+        await submitSignature(message, signature);
       } catch (error) {
         if (error instanceof ConnectorChainMismatchError) {
           await switchChainAsync({ chainId: chain.id });
           const signature = await signMessageAsync({ message });
 
-          signIn("credentials", {
-            message,
-            redirect: false,
-            signature,
-          });
+          await submitSignature(message, signature);
         } else {
           throw error;
         }
@@ -52,9 +75,26 @@ export default function useSiwe() {
       if (error instanceof Error && error.name === "UserRejectedRequestError") {
         return;
       }
-      window.alert(error);
+
+      console.error(error);
+
+      const message =
+        error instanceof BaseError || error instanceof WagmiBaseError
+          ? error.shortMessage
+          : error instanceof Error
+            ? error.message
+            : "";
+
+      showSignInError(message || SIGN_IN_FAILED);
     }
-  }, [address, chain, signMessageAsync, switchChainAsync]);
+  }, [
+    address,
+    chain,
+    signMessageAsync,
+    switchChainAsync,
+    submitSignature,
+    showSignInError,
+  ]);
 
   return { handleSignIn };
 }

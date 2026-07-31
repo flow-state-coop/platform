@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { privateKeyToAccount } from "viem/accounts";
 import { createSiweMessage } from "viem/siwe";
+import { SIWE_MESSAGE_LIFETIME_MS } from "@/lib/siwe";
 import { TEST_CHAIN_ID, TEST_PRIVATE_KEY } from "./mockEthereum";
 
 // Wait for the injected wallet to auto-connect. RainbowKit's injected
@@ -24,6 +25,18 @@ export async function waitForAutoConnect(page: Page): Promise<void> {
     await page.reload({ waitUntil: "domcontentloaded" });
     await accountChip.waitFor({ state: "visible", timeout: 15_000 });
   }
+}
+
+// Keep a page signed out. `AutoSiwe` in providers.tsx prompts for SIWE the
+// first time a wallet connects, and the mock wallet signs without a human, so
+// every page load would otherwise end up authenticated and no test could see
+// the states meant for a visitor who has only connected a wallet. Failing the
+// nonce fetch makes the prompt bow out quietly: `handleSignIn` returns before
+// it asks the wallet for anything.
+export async function preventAutoSignIn(page: Page): Promise<void> {
+  await page.route("**/api/auth/csrf", (route) =>
+    route.fulfill({ contentType: "application/json", body: "{}" }),
+  );
 }
 
 // Bootstrap a NextAuth SIWE session without walking the UI. Fetches CSRF,
@@ -50,6 +63,7 @@ export async function signInViaSiweApi(page: Page): Promise<void> {
     version: "1",
     chainId: TEST_CHAIN_ID,
     nonce,
+    expirationTime: new Date(Date.now() + SIWE_MESSAGE_LIFETIME_MS),
   });
 
   const signature = await account.signMessage({ message });

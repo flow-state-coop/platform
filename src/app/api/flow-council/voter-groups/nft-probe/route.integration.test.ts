@@ -25,13 +25,15 @@ vi.mock("viem", async (importOriginal) => {
 vi.mock("next-auth/next", () => ({ getServerSession: vi.fn() }));
 vi.mock("@/app/api/auth/[...nextauth]/route", () => ({ authOptions: {} }));
 
-vi.mock("../../db", async () => {
+vi.mock("@/app/api/db", async () => {
   const { getTestDb } = await import("@tests/helpers/db");
   return { db: getTestDb() };
 });
 
 import { getAddress } from "viem";
 import { POST as probePost } from "./route";
+import { resetManagerRoleCache } from "@/app/api/flow-council/auth";
+import { resetRateLimits } from "@/app/api/rateLimit";
 import {
   getTestDb,
   resetDb,
@@ -75,6 +77,8 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetDb(db);
   await seedTestData(db);
+  resetManagerRoleCache();
+  resetRateLimits();
   resetNftChain();
   setContract(COLLECTION_721, { kind: "erc721", name: "Flowstaters" });
   setContract(COLLECTION_1155, { kind: "erc1155", name: "Community Pass" });

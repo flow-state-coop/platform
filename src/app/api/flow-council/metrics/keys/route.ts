@@ -56,6 +56,7 @@ export async function GET(request: Request) {
     const auth = await authorizeCouncilManager(
       parsed.data.chainId,
       parsed.data.councilId,
+      { allowCachedRole: true },
     );
 
     if (!auth.ok) {

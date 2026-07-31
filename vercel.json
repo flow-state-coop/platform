@@ -1,8 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/flow-caster/sup/distribution",
-      "schedule": "0 22 * * *"
-    }
-  ]
-}

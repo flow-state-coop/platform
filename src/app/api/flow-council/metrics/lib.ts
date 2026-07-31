@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import { createPublicClient, http } from "viem";
 import { getViemChain } from "@/lib/networks";
 import type { Network } from "@/types/network";
@@ -46,38 +45,14 @@ export function getCouncilPublicClient(network: Network) {
   return client;
 }
 
-function getApiKeySecret(): string {
-  const secret = process.env.METRICS_API_KEY_SECRET;
-  if (!secret) {
-    throw new Error("METRICS_API_KEY_SECRET is not configured");
-  }
-  return secret;
-}
+// Re-exported so council routes keep one import site; the implementation is
+// shared with flow-splitter keys, which differ only in their token prefix.
+export { hashApiKey } from "../../apiKeys";
 
-/**
- * Keyed hash of an API token, for both storage and lookup. HMAC rather than a
- * bare sha256 so a leaked `metrics_api_keys` table can't be used to forge usable
- * tokens without also holding the server secret.
- */
-export function hashApiKey(token: string): string {
-  return crypto
-    .createHmac("sha256", getApiKeySecret())
-    .update(token)
-    .digest("hex");
-}
+import { generateApiKey as mintApiKey } from "../../apiKeys";
 
 const API_KEY_PREFIX = "metrics_";
 
-/**
- * Mint a new API key. The plaintext `token` is returned to the caller exactly
- * once; only the keyed `hash` is persisted, and `prefix` (the leading 16 chars,
- * non-secret) is stored for display in the management UI.
- */
-export function generateApiKey(): {
-  token: string;
-  hash: string;
-  prefix: string;
-} {
-  const token = `${API_KEY_PREFIX}${crypto.randomBytes(32).toString("base64url")}`;
-  return { token, hash: hashApiKey(token), prefix: token.slice(0, 16) };
+export function generateApiKey() {
+  return mintApiKey(API_KEY_PREFIX);
 }

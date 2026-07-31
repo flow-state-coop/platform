@@ -7,7 +7,7 @@ type CopyTooltipProps = {
   contentClick: string;
   contentHover: string;
   target: React.JSX.Element;
-  handleCopy: () => void;
+  handleCopy: () => void | Promise<void>;
 };
 
 const UpdatingTooltip = forwardRef(function UpdatingTooltip(
@@ -34,26 +34,42 @@ function CopyTooltip(props: CopyTooltipProps) {
   const { contentClick, contentHover, target, handleCopy } = props;
 
   const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
 
   const handleMouseEnter = () => setShowTooltip(true);
   const handleMouseLeave = () => {
-    if (!copied) {
+    if (!copied && !failed) {
       setShowTooltip(false);
     }
   };
-  const handleClick = () => {
-    if (copied) {
+  const handleClick = async () => {
+    if (copied || failed) {
       return;
     }
 
-    handleCopy();
+    // Awaited, and never reported as copied on a rejection: the clipboard
+    // write can fail (permissions policy, an unfocused document), and some of
+    // what this copies, a freshly minted API key, cannot be recovered once its
+    // one-time display is dismissed on the strength of a "Copied" that lied.
+    let ok = true;
+    try {
+      await handleCopy();
+    } catch (err) {
+      console.error(err);
+      ok = false;
+    }
 
-    setCopied(true);
+    if (ok) {
+      setCopied(true);
+    } else {
+      setFailed(true);
+    }
 
     setTimeout(() => {
       setShowTooltip(false);
       setCopied(false);
+      setFailed(false);
     }, 4000);
   };
 
@@ -67,7 +83,7 @@ function CopyTooltip(props: CopyTooltipProps) {
           id="tooltip-key"
           showTooltip={showTooltip}
         >
-          {copied ? contentClick : contentHover}
+          {failed ? "Copy failed" : copied ? contentClick : contentHover}
         </UpdatingTooltip>
       }
     >

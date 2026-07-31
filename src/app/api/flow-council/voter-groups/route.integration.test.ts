@@ -36,7 +36,7 @@ vi.mock("@/lib/apollo", () => ({
   }),
 }));
 
-vi.mock("../db", async () => {
+vi.mock("@/app/api/db", async () => {
   const { getTestDb } = await import("@tests/helpers/db");
   return { db: getTestDb() };
 });
@@ -54,6 +54,8 @@ import {
   DELETE as memberDelete,
 } from "./members/route";
 import { GET as publicGet } from "./public/route";
+import { resetManagerRoleCache } from "@/app/api/flow-council/auth";
+import { resetRateLimits } from "@/app/api/rateLimit";
 import {
   getTestDb,
   resetDb,
@@ -81,6 +83,8 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetDb(db);
   await seedTestData(db);
+  resetManagerRoleCache();
+  resetRateLimits();
   apolloVotersRef.current = [];
   resetNftChain();
   seedContracts();

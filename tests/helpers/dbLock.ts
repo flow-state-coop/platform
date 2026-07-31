@@ -66,6 +66,20 @@ export async function acquireTestDbLock(label: string): Promise<void> {
     connectionString: directConnectionString(connectionString),
     application_name: `test-db-lock:${label}`,
   });
+
+  // Neon terminates this connection when the compute restarts, and an idle
+  // session is the likeliest one to lose. Without a listener that arrives as an
+  // unhandled 'error' event, which kills the run with a bare Postgres code and
+  // no indication of what the suite was doing — a module-load failure elsewhere
+  // reads as a database outage. The lock goes with the connection either way, so
+  // saying so is all that is left to do.
+  client.on("error", (err: Error & { code?: string }) => {
+    if (holder === client) holder = null;
+    console.error(
+      `shared test database lock connection dropped (${err.code ?? err.message}); another run may now acquire it`,
+    );
+  });
+
   await client.connect();
 
   const deadline = Date.now() + timeoutMs;

@@ -14,10 +14,17 @@ export function getTestAccount() {
 // The script installs an EIP-1193 provider at window.ethereum that answers
 // read methods synchronously and bridges signing methods back to Node via
 // window.__nodeSign (registered by attachSiweSignBridge).
-export function buildMockEthereumScript(privateKey: `0x${string}`): string {
+//
+// `chainId` is the chain the wallet reports it is connected to. It defaults to
+// the chain the fixtures live on; pass another configured chain to exercise the
+// wrong-network states, which every page gates its actions on.
+export function buildMockEthereumScript(
+  privateKey: `0x${string}`,
+  chainId: number = TEST_CHAIN_ID,
+): string {
   const account = privateKeyToAccount(privateKey);
   const address = account.address;
-  const chainIdHex = toHex(TEST_CHAIN_ID);
+  const chainIdHex = toHex(chainId);
 
   return `
     (function() {

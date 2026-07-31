@@ -1,9 +1,8 @@
-import { createPublicClient, createWalletClient, http } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
 import { db } from "./db";
-import { getViemChain } from "@/lib/networks";
-import { FLOW_STATE_BOT_ADDRESS } from "@/app/flow-councils/lib/constants";
-import type { Network } from "@/types/network";
+
+// Re-exported so council routes keep a single import site for the bot wallet
+// while the signer itself is shared with non-council APIs (flow-splitter).
+export { buildBotSigner, getBotSigner, sendBotTransaction } from "../bot";
 
 /**
  * Resolve the single voter group on a council that uses a given automated
@@ -44,57 +43,4 @@ export function loadNftRequirements(roundId: number) {
     .where("eligibilityMethod", "=", "nft")
     .orderBy("id", "asc")
     .execute();
-}
-
-/**
- * Build the viem account + clients that sign on-chain actions as the Flow State
- * bot. Single seam for the wallet model: today one centralized key signs for
- * every council; a future per-council HD wallet would be derived here from the
- * network/round instead. Callers on a hot path memoize the result per chain.
- */
-export function buildBotSigner(network: Network) {
-  const pk = process.env.FLOW_STATE_ELIGIBILITY_PK;
-  if (!pk) {
-    throw new Error("FLOW_STATE_ELIGIBILITY_PK is not configured");
-  }
-  // Deliberately no viem nonceManager: it consumes a nonce before the send and
-  // never returns it, so one rejected broadcast gaps every later transaction
-  // from this key, across every route sharing it.
-  const account = privateKeyToAccount(pk as `0x${string}`);
-
-  // On-chain role grants point at FLOW_STATE_BOT_ADDRESS while transactions
-  // are signed by this key, so drift between them (a key rotation without a
-  // constant update) silently breaks every automated claim. Integration tests
-  // run a throwaway key by design, so they are the one environment where the
-  // identity check must not run.
-  if (
-    process.env.NODE_ENV !== "test" &&
-    account.address.toLowerCase() !== FLOW_STATE_BOT_ADDRESS.toLowerCase()
-  ) {
-    throw new Error(
-      "FLOW_STATE_ELIGIBILITY_PK does not derive FLOW_STATE_BOT_ADDRESS",
-    );
-  }
-  const viemChain = getViemChain(network.id);
-  const publicClient = createPublicClient({
-    chain: viemChain,
-    transport: http(network.rpcUrl),
-  });
-  const walletClient = createWalletClient({
-    chain: viemChain,
-    transport: http(network.rpcUrl),
-  });
-  return { account, publicClient, walletClient };
-}
-
-const signerCache = new Map<number, ReturnType<typeof buildBotSigner>>();
-
-/** The bot signer for a network, memoized per chain. */
-export function getBotSigner(network: Network) {
-  const cached = signerCache.get(network.id);
-  if (cached) return cached;
-
-  const signer = buildBotSigner(network);
-  signerCache.set(network.id, signer);
-  return signer;
 }
