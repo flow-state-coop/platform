@@ -44,6 +44,8 @@ The pool is derived from the key, so there is no pool parameter and a key cannot
 }
 ```
 
+`totalUnits` is what the pool currently holds; `targetTotalUnits` is the nominal total a write normalizes to, and is a constant. The two are not expected to match: rounding leaves a write [a few units short](#normalization), and a pool the API has not written yet, or one left mid-update by a partial write, can hold anything at all. Percentages are computed against `totalUnits`, so they are meaningful in every case.
+
 The recipient list is assembled from the indexer merged with the register the platform last wrote, and then every address in that set is verified on-chain. The merge matters: the indexer alone can miss a recipient the platform added moments earlier, and verifying units on-chain catches wrong numbers but cannot surface an address it was never told about.
 
 Reads count against the same **60 requests per minute per key** as everything else, and a key cooling down after a bad payload is refused here too. Neither limit is a write limit; those are separate and stricter.
@@ -81,7 +83,9 @@ Weights are normalized to a total of at most **1,000,000** shares, so each recip
 2. Each entry receives a floor allocation proportional to its weight. Leftover units go to the largest fractional remainders, **except when entries are tied for the last unit**, in which case the tied unit is dropped rather than handed to whichever address sorts first.
 3. Recipients that round to zero end up with zero shares.
 
-Because tied leftover units are dropped, the total lands **at or just under 1,000,000, never over**. An even three-way split gives 333,333 each, totalling 999,999. The first API write moves the pool to this total regardless of what it was before.
+Because tied leftover units are dropped, the total lands **at or just under 1,000,000, never over**. An even three-way split gives 333,333 each, totalling 999,999. The first API write moves the pool to this total regardless of what it was before. Flow is split in proportion to units held, so a total a few units short changes nothing about how the stream divides; do not reconcile it against `targetTotalUnits`.
+
+A recipient carrying **less than one millionth of the total weight** rounds to zero and receives nothing. The write is accepted either way, and nothing in the response singles those recipients out, so a caller with a long tail of small weights should check the register afterwards with `GET /api/flow-splitter/allocation`.
 
 ### Writes are asynchronous
 
@@ -169,6 +173,8 @@ A job that gave up with a transaction still unconfirmed says so instead, because
 
 With one exception, which the error names: a payload **the chain rejected** is rejected identically however many times it is sent, so that error asks for a corrected allocation instead of the same one. Because writes are full replacements, submitting the corrected allocation repairs the register in the same pass.
 
+A job can also stop on a condition the platform itself refuses, such as a pool grown past the member count the API can enumerate. Those errors lead with the condition rather than with repair advice, because nothing about the payload is what has to change.
+
 ## Responses
 
 | Status | Body | Meaning |
@@ -189,6 +195,7 @@ With one exception, which the error names: a payload **the chain rejected** is r
 | `429` | `{ "error": "Writes to this pool are rate limited, please retry later" }` | Pool-level rate limit, measured from the previous job's completion. |
 | `429` | `{ "error": "This API key is cooling down…" }` | Key-level cooldown after a deterministically bad payload. |
 | `429` | `{ "error": "Too many requests for this API key…" }` | The key went over 60 requests in a minute, on any endpoint. |
+| `429` | `{ "error": "Too many requests, please retry in a moment" }` | The calling host went over 600 requests in a minute, counting requests whose token matched no key. |
 | `500` | `{ "error": "Wrong network" }` | The key's chain is no longer configured. Only reachable if a chain is retired while keys for it exist. |
 | `502` | `{ "error": "There was an error, please try again later" }` | RPC or chain error. The message is generic; provider details are never exposed. |
 
@@ -200,6 +207,7 @@ The three rejection messages a caller is most likely to hit are worded distinctl
 - **A 60-second minimum interval between writes**, measured from the previous job's completion. For a large register the job itself takes longer than the interval, so the in-flight rule is the real limit. A `no_change` write spends the interval like any other: resolving the register against the chain is the expensive part and it ran either way, so a loop re-sending the current allocation is throttled the same as one re-sending a new one.
 - **A 60-second key cooldown** after a payload that is deterministically wrong. Failures that are the platform's fault (RPC down, chain congestion) never trigger it, so a healthy integration is never penalized for our outage. Polling a job is exempt, so a bad payload never blocks you from following, or recovering, a write that was already accepted.
 - **60 requests per minute per key**, counted across every endpoint including reads and job polls. Every authenticated request costs an indexer query and an on-chain read before its body is even read, which is what this bounds.
+- **600 requests per minute per calling host**, which is the per-key limit at the active-key cap, so an integration cannot reach it however many keys it holds. It exists for the requests no key limit can see: a token matching no key has no key to count against.
 - **10 active keys per pool.** Revoking one frees a slot.
 - **1000 recipients and 256 KB per payload.**
 
