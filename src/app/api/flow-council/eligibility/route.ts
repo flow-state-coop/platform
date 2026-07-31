@@ -2,6 +2,7 @@ import { Address, createPublicClient, http, isAddress } from "viem";
 import { db } from "../db";
 import { findRoundByCouncil } from "../auth";
 import { getBotSigner, getGroupByMethod, sendBotTransaction } from "../bot";
+import { ChainBusyError } from "../../botLock";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { networks, getViemChain } from "@/lib/networks";
 import {
@@ -144,6 +145,16 @@ export async function POST(request: Request) {
           .execute();
       } catch (rollbackErr) {
         console.error("Failed to roll back voter membership row:", rollbackErr);
+      }
+
+      // Contention on the shared bot key, not a chain failure: nothing was
+      // broadcast and the membership row was just rolled back, so the claim is
+      // cleanly retryable and says so with a status, as its sibling routes do.
+      if (err instanceof ChainBusyError) {
+        return Response.json(
+          { success: false, error: "Too many requests, please retry later" },
+          { status: 429 },
+        );
       }
 
       // Log the raw error server-side only — RPC/contract errors can embed
