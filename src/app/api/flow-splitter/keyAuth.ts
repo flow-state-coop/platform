@@ -2,7 +2,7 @@ import { db } from "../db";
 import { errorResponse } from "../utils";
 import { hashApiKey } from "../apiKeys";
 import type { Network } from "@/types/network";
-import { allowRequest } from "../rateLimit";
+import { allowRequest, clientIdentifier } from "../rateLimit";
 import { checkPoolEligibility } from "./auth";
 import {
   getNetwork,
@@ -18,6 +18,15 @@ import {
 // the admin routes use.
 const KEY_REQUEST_LIMIT = 60;
 const KEY_REQUEST_WINDOW_MS = 60_000;
+
+// The per-key limit below cannot see a token that matches no key, so a caller
+// guessing tokens would drive one lookup per request past it. Keyed on the
+// origin instead, and set at the per-key limit times the active-key cap, so no
+// legitimate integration can reach it however many keys it holds.
+const ORIGIN_REQUEST_LIMIT = 600;
+const ORIGIN_REQUEST_WINDOW_MS = 60_000;
+
+const ORIGIN_RATE_LIMIT_ERROR = "Too many requests, please retry in a moment";
 
 export const KEY_COOLDOWN_ERROR =
   "This API key is cooling down after a recently rejected request, please retry later";
@@ -80,6 +89,17 @@ export async function authorizeApiKey(
     : "";
   if (!provided) return { ok: false, response: unauthorized() };
 
+  if (
+    !allowRequest(
+      "splitter-origin",
+      clientIdentifier(request.headers),
+      ORIGIN_REQUEST_LIMIT,
+      ORIGIN_REQUEST_WINDOW_MS,
+    )
+  ) {
+    return { ok: false, response: errorResponse(ORIGIN_RATE_LIMIT_ERROR, 429) };
+  }
+
   const keyRow = await db
     .selectFrom("splitterApiKeys")
     .select([
@@ -137,7 +157,7 @@ export async function authorizeApiKey(
     getPoolFromSubgraph(keyRow.chainId, keyRow.poolId),
     keyRow.createdBy
       ? readAdmin(network, keyRow.poolId, keyRow.createdBy as `0x${string}`)
-      : Promise.resolve(true),
+      : Promise.resolve(false),
   ]);
 
   if (!pool) {
@@ -158,8 +178,11 @@ export async function authorizeApiKey(
   //
   // Read from the chain, never from the indexer: minting reads the chain too, so
   // an admin granted moments ago would otherwise mint a key successfully and
-  // have its first call refused for not being an admin. Keys minted before this
-  // was recorded have no creator to check and are left alone.
+  // have its first call refused for not being an admin.
+  //
+  // A key with no creator recorded fails closed. Minting has always written one,
+  // so no such row exists; treating one as authorized would be a key nobody can
+  // revoke by losing their admin role.
   if (!creatorIsAdmin) {
     return {
       ok: false,

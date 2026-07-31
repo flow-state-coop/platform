@@ -66,6 +66,7 @@ async function seedKey(token = TOKEN, poolId = TEST_POOL_ID) {
       keyHash: hashApiKey(token),
       keyPrefix: token.slice(0, 16),
       label: "read key",
+      createdBy: TEST_POOL_ADMIN.toLowerCase(),
     })
     .returning("id")
     .executeTakeFirstOrThrow();
@@ -201,12 +202,7 @@ describe("splitter allocation read", () => {
   // has to take it back. Otherwise a co-admin keeps a token that can redirect
   // the whole pool after they have been removed.
   it("refuses a key whose creator is no longer a pool admin", async () => {
-    const id = await seedKey();
-    await db
-      .updateTable("splitterApiKeys")
-      .set({ createdBy: TEST_POOL_ADMIN.toLowerCase() })
-      .where("id", "=", id)
-      .execute();
+    await seedKey();
 
     expect((await read()).status).toBe(200);
 
@@ -222,12 +218,7 @@ describe("splitter allocation read", () => {
   // indexer would refuse the new admin's first call for the length of its lag,
   // and say they are no longer an admin while they hold the role.
   it("serves a key whose creator the indexer has not caught up to", async () => {
-    const id = await seedKey();
-    await db
-      .updateTable("splitterApiKeys")
-      .set({ createdBy: TEST_POOL_ADMIN.toLowerCase() })
-      .where("id", "=", id)
-      .execute();
+    await seedKey();
 
     splitterChain.admins = ["0x000000000000000000000000000000000000dead"];
     splitterChain.chainAdmins = [TEST_POOL_ADMIN.toLowerCase()];
@@ -247,11 +238,17 @@ describe("splitter allocation read", () => {
     expect((await res.json()).error).toContain("more than 20000 members");
   });
 
-  it("serves a key minted before creators were recorded", async () => {
-    await seedKey();
-    splitterChain.admins = ["0x000000000000000000000000000000000000dead"];
+  // Minting has always recorded a creator, so a row without one is not a
+  // legacy key: it is a key no admin's removal can ever take back.
+  it("refuses a key with no creator recorded", async () => {
+    const id = await seedKey();
+    await db
+      .updateTable("splitterApiKeys")
+      .set({ createdBy: null })
+      .where("id", "=", id)
+      .execute();
 
-    expect((await read()).status).toBe(200);
+    expect((await read()).status).toBe(403);
   });
 
   it("refuses a key that is cooling down", async () => {
