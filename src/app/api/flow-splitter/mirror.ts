@@ -2,14 +2,19 @@ import { db } from "../db";
 import type { RegisterEntry } from "./plan";
 
 /**
- * Record what a confirmed batch wrote.
+ * Record the addresses a batch is about to write.
  *
- * Called per batch rather than per job on purpose: a job that fails halfway
- * must still record what its completed batches added, or an address it
- * introduced could be orphaned. If one write adds an address and the next drops
- * it before the indexer catches up, the address is in neither the indexer's
- * list nor the new payload, so nothing would ever zero it and it would keep
- * receiving flow forever.
+ * Called per batch, and before the batch is broadcast rather than after its
+ * receipt: an address this write introduces has to be recorded or it can be
+ * orphaned, and the receipt wait is the longest window in which the runner can
+ * be killed. If one write adds an address and the next drops it before the
+ * indexer catches up, the address is in neither the indexer's list nor the new
+ * payload, so nothing would ever zero it and it would keep receiving flow
+ * forever.
+ *
+ * Recording a batch that then never lands is the harmless direction: only the
+ * addresses are ever read back, units always come from the chain, and
+ * `pruneMirror` drops whatever settles at zero.
  */
 export async function recordWrittenBatch(
   chainId: number,

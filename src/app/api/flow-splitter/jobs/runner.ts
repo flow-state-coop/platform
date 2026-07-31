@@ -10,7 +10,7 @@ import { getIndexedMembers, resolveCurrentRegister } from "../members";
 import { pruneMirror, recordWrittenBatch } from "../mirror";
 import { diffRegister, type RegisterEntry } from "../plan";
 import { BOT_NOT_ADMIN_ERROR } from "../auth";
-import { PermanentError } from "../errors";
+import { PermanentError, RevertedError } from "../errors";
 import {
   BaseError,
   ContractFunctionRevertedError,
@@ -277,15 +277,15 @@ async function heartbeat(job: JobRow, progress: JobProgress): Promise<boolean> {
 }
 
 /**
- * Whether retrying this could only produce the same answer.
+ * Whether the chain rejected what we sent.
  *
- * The distinction is "the chain rejected this" against "we never got an answer
- * from it". A revert is deterministic, and viem raises one at simulation time as
- * readily as it reports one on a receipt, so it has to be recognised in the
- * error chain rather than only on the receipt status.
+ * The distinction from an ordinary failure is "the chain rejected this" against
+ * "we never got an answer from it". A revert is deterministic, and viem raises
+ * one at simulation time as readily as it reports one on a receipt, so it has to
+ * be recognised in the error chain rather than only on the receipt status.
  */
-function isPermanent(err: unknown): boolean {
-  if (err instanceof PermanentError) return true;
+function isRejected(err: unknown): boolean {
+  if (err instanceof RevertedError) return true;
 
   return (
     err instanceof BaseError &&
@@ -295,6 +295,11 @@ function isPermanent(err: unknown): boolean {
         cause instanceof ContractFunctionRevertedError,
     ) !== null
   );
+}
+
+/** Whether retrying this could only produce the same answer. */
+function isPermanent(err: unknown): boolean {
+  return err instanceof PermanentError || isRejected(err);
 }
 
 async function requeue(job: JobRow, progress: JobProgress, attempt: number) {
@@ -448,6 +453,31 @@ function failedMessage(
   return "The write failed without changing the register";
 }
 
+/**
+ * What a job stopped by a condition we refused ourselves tells its caller.
+ *
+ * The reason is the error's own message, because it is the only actionable
+ * thing about the refusal: "this pool has more members than the API can
+ * enumerate" is something the caller can act on, and the generic rejected
+ * wording ("submit a corrected allocation") is advice that would not help.
+ * The admission path surfaces the same messages verbatim.
+ */
+function blockedMessage(
+  reason: string,
+  changed: boolean,
+  unconfirmed: boolean,
+): string {
+  if (changed) {
+    return `${reason}. Some batches had already landed, so the register is inconsistent`;
+  }
+
+  if (unconfirmed) {
+    return `${reason}. A batch was broadcast and never confirmed, so whether the register changed is unknown`;
+  }
+
+  return `${reason}. The register was not changed`;
+}
+
 function exhaustedMessage(changed: boolean, unconfirmed: boolean): string {
   if (changed) {
     return `Some batches landed and the write did not complete after repeated attempts, so the register is inconsistent. ${REPAIR_INSTRUCTION}`;
@@ -516,6 +546,7 @@ type SettledBroadcast = {
   // Null when the node has never heard of the transaction: it was dropped, so
   // there is nothing to pay for and nothing to account.
   gas: JobProgress["gas"] | null;
+  reverted: boolean;
 };
 
 function settledFrom(receipt: {
@@ -523,9 +554,12 @@ function settledFrom(receipt: {
   gasUsed?: bigint;
   effectiveGasPrice?: bigint;
 }): SettledBroadcast {
+  const reverted = receipt.status !== "success";
+
   return {
-    outcome: receipt.status === "success" ? "landed" : "none",
+    outcome: reverted ? "none" : "landed",
     gas: gasOf(receipt),
+    reverted,
   };
 }
 
@@ -558,7 +592,7 @@ async function settleBroadcast(
     .getTransaction({ hash })
     .catch(() => null);
 
-  if (!inMempool) return { outcome: "none", gas: null };
+  if (!inMempool) return { outcome: "none", gas: null, reverted: false };
 
   return settledFrom(
     await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 }),
@@ -637,12 +671,23 @@ export async function runJob(jobId: string): Promise<void> {
 
       outstanding = settled.outcome;
 
-      // Advancing the counter alongside the gas is what keeps a second resume
-      // from paying for this transaction all over again.
+      // The counter advances whatever became of it, because what it marks is
+      // that the broadcast has been accounted for, and one the node never
+      // heard of is accounted for at nothing. Leaving it behind for those
+      // would keep the hash count one ahead of it for the rest of the job, and
+      // the next resume would settle, and pay for, a batch already counted.
+      progress.batchIndex += 1;
+
       if (settled.gas) {
         progress.gas.used += settled.gas.used;
         progress.gas.costWei += settled.gas.costWei;
-        progress.batchIndex += 1;
+      }
+
+      // Re-sending a batch the chain rejected buys another revert and another
+      // batch's gas, so an inherited revert is as terminal as one this attempt
+      // watched land.
+      if (settled.reverted) {
+        throw new RevertedError(`Batch transaction reverted: ${inherited}`);
       }
     }
 
@@ -673,6 +718,15 @@ export async function runJob(jobId: string): Promise<void> {
       }
 
       const batch = remaining.slice(0, CHUNK_SIZE);
+
+      // Mirrored before the send, not after the receipt. The receipt wait is
+      // tens of seconds, and a kill inside it would leave a batch on-chain that
+      // the mirror never learned: if the next write drops one of its addresses
+      // while the indexer still lags, that address is in no source at all and
+      // keeps receiving flow. The mirror only ever names candidate addresses,
+      // whose units are read from the chain, so a batch that never lands leaves
+      // harmless extra candidates that `pruneSettledAddresses` clears.
+      await recordWrittenBatch(job.chainId, job.poolId, batch);
 
       const hash = await sendBotTransaction(network, (nonce) =>
         walletClient.writeContract({
@@ -715,7 +769,7 @@ export async function runJob(jobId: string): Promise<void> {
       progress.batchIndex += 1;
 
       if (receipt.status !== "success") {
-        throw new PermanentError(`Batch transaction reverted: ${hash}`);
+        throw new RevertedError(`Batch transaction reverted: ${hash}`);
       }
 
       // Counted here rather than at broadcast, so a batch that reverted or was
@@ -726,10 +780,6 @@ export async function runJob(jobId: string): Promise<void> {
       // next batch cannot lose what this one changed and have the job report a
       // register it did move as untouched.
       await heartbeat(job, progress);
-
-      // Merged before advancing, so a job that dies here never loses what this
-      // batch added.
-      await recordWrittenBatch(job.chainId, job.poolId, batch);
     }
 
     await finish(
@@ -780,15 +830,20 @@ export async function runJob(jobId: string): Promise<void> {
       return;
     }
 
+    const changed = progress.changedCount > 0 || outstanding === "landed";
+    const unconfirmed = outstanding === "unconfirmed";
+    const rejected = isRejected(err);
+
     await finish(
       job,
       "failed",
       progress,
-      failedMessage(
-        progress.changedCount > 0 || outstanding === "landed",
-        outstanding === "unconfirmed",
-        isPermanent(err),
-      ),
+      // A condition we refused ourselves carries its own reason; only a
+      // rejection by the chain gets the generic "send a corrected allocation"
+      // advice, which for anything else would be advice that cannot work.
+      !rejected && err instanceof PermanentError
+        ? blockedMessage(err.message, changed, unconfirmed)
+        : failedMessage(changed, unconfirmed, rejected),
     );
   } finally {
     clearInterval(ticker);
