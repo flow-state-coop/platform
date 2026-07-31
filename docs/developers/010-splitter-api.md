@@ -46,6 +46,8 @@ The pool is derived from the key, so there is no pool parameter and a key cannot
 
 `totalUnits` is what the pool currently holds; `targetTotalUnits` is the nominal total a write normalizes to, and is a constant. The two are not expected to match: rounding leaves a write [a few units short](#normalization), and a pool the API has not written yet, or one left mid-update by a partial write, can hold anything at all. Percentages are computed against `totalUnits`, so they are meaningful in every case.
 
+`percentage` is truncated to four decimal places, so a column of them can sum to slightly less than 100: an even three-way split reads 33.3333 three times. Treat `units` as the number of record; the percentage is there to be read.
+
 The recipient list is assembled from the indexer merged with the register the platform last wrote, and then every address in that set is verified on-chain. The merge matters: the indexer alone can miss a recipient the platform added moments earlier, and verifying units on-chain catches wrong numbers but cannot surface an address it was never told about.
 
 Reads count against the same **60 requests per minute per key** as everything else, and a key cooling down after a bad payload is refused here too. Neither limit is a write limit; those are separate and stricter.
