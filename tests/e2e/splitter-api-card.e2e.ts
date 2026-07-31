@@ -34,8 +34,8 @@ const KEYS = [
     keyPrefix: "splitter_7Kq2wR",
     createdBy: getTestAccount().address.toLowerCase(),
     createdAt: "2026-07-14T10:12:00.000Z",
-    lastUsedAt: "2026-07-29T08:41:00.000Z",
-    revokedAt: null,
+    lastUsedAt: "2026-07-29T08:41:00.000Z" as string | null,
+    revokedAt: null as string | null,
   },
 ];
 
@@ -144,6 +144,69 @@ test("asks to switch network once, not once per section", async ({ page }) => {
 
   await expect(switchNetwork).toHaveCount(1);
   await expect(switchNetwork).toBeVisible();
+});
+
+test("mints a key from the label form and revokes one through its confirm", async ({
+  page,
+}) => {
+  await openAdmin(page, { answerCall: botHoldsAdmin, signIn: true });
+
+  // Later registrations win, so this replaces openAdmin's static keys route
+  // with one that remembers what the mint and the revoke changed.
+  let keys = [...KEYS];
+  await page.route("**/api/flow-splitter/keys*", (route) => {
+    const method = route.request().method();
+
+    if (method === "POST") {
+      keys = [
+        ...keys,
+        {
+          id: 2,
+          label: "New integration",
+          keyPrefix: "splitter_9Ab3xY",
+          createdBy: getTestAccount().address.toLowerCase(),
+          createdAt: "2026-07-31T09:00:00.000Z",
+          lastUsedAt: null,
+          revokedAt: null,
+        },
+      ];
+      return route.fulfill(
+        json({
+          success: true,
+          key: {
+            id: 2,
+            token: "splitter_9Ab3xYtestOnlyToken",
+            keyPrefix: "splitter_9Ab3xY",
+          },
+        }),
+      );
+    }
+
+    if (method === "DELETE") {
+      keys = keys.map((key) =>
+        key.id === 1 ? { ...key, revokedAt: "2026-07-31T09:05:00.000Z" } : key,
+      );
+      return route.fulfill(json({ success: true }));
+    }
+
+    return route.fulfill(json({ success: true, keys }));
+  });
+
+  // Enter submits the label form, and the one-time token renders above the
+  // card rather than inside the panel that will re-render under it.
+  await page.getByLabel("Key label").fill("New integration");
+  await page.getByLabel("Key label").press("Enter");
+
+  await expect(
+    page.getByText("Copy your key now", { exact: false }),
+  ).toBeVisible();
+  await expect(page.getByText("splitter_9Ab3xYtestOnlyToken")).toBeVisible();
+
+  const row = page.getByRole("row").filter({ hasText: "Social Metrics" });
+  await row.getByRole("button", { name: "Revoke" }).click();
+  await row.getByRole("button", { name: "Confirm" }).click();
+
+  await expect(row.getByText("Revoked")).toBeVisible();
 });
 
 test("says the pool cannot be API-driven when shares are transferable", async ({

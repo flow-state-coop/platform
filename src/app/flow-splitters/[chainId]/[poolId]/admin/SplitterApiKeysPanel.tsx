@@ -38,6 +38,14 @@ export default function SplitterApiKeysPanel(props: SplitterApiKeysPanelProps) {
   const [revokingId, setRevokingId] = useState<number | null>(null);
   const [revokeError, setRevokeError] = useState("");
 
+  // Revoked keys accumulate for as long as the pool rotates against the
+  // active-key cap, so only the freshest few stay visible. Active keys always
+  // show; the server orders by id, so the slice is the most recent.
+  const activeKeys = keys.filter((key) => !key.revokedAt);
+  const revokedKeys = keys.filter((key) => key.revokedAt);
+  const shownKeys = activeKeys.concat(revokedKeys.slice(-5));
+  const hiddenRevoked = revokedKeys.length - Math.min(revokedKeys.length, 5);
+
   const handleMint = async () => {
     const label = newLabel.trim();
 
@@ -124,7 +132,7 @@ export default function SplitterApiKeysPanel(props: SplitterApiKeysPanelProps) {
             </tr>
           </thead>
           <tbody>
-            {keys.map((key) => (
+            {shownKeys.map((key) => (
               <tr key={key.id}>
                 <td>{key.label}</td>
                 <td>
@@ -170,7 +178,10 @@ export default function SplitterApiKeysPanel(props: SplitterApiKeysPanelProps) {
                         variant="link"
                         className="fw-semi-bold text-decoration-none p-0"
                         disabled={revokingId === key.id}
-                        onClick={() => setConfirmingId(null)}
+                        onClick={() => {
+                          setConfirmingId(null);
+                          setRevokeError("");
+                        }}
                       >
                         Cancel
                       </Button>
@@ -180,7 +191,10 @@ export default function SplitterApiKeysPanel(props: SplitterApiKeysPanelProps) {
                       size="sm"
                       variant="outline-danger"
                       className="fw-semi-bold rounded-4"
-                      onClick={() => setConfirmingId(key.id)}
+                      onClick={() => {
+                        setConfirmingId(key.id);
+                        setRevokeError("");
+                      }}
                     >
                       Revoke
                     </Button>
@@ -192,33 +206,47 @@ export default function SplitterApiKeysPanel(props: SplitterApiKeysPanelProps) {
         </Table>
       )}
 
+      {hiddenRevoked > 0 ? (
+        <p className="text-info mb-3">
+          And {hiddenRevoked} older revoked{" "}
+          {hiddenRevoked === 1 ? "key" : "keys"}.
+        </p>
+      ) : null}
+
       {revokeError ? (
         <Alert variant="danger" className="mb-3">
           {revokeError}
         </Alert>
       ) : null}
 
-      <Form.Label htmlFor="splitter-api-key-label" className="fw-semi-bold">
-        Key label
-      </Form.Label>
-      <Stack direction="horizontal" gap={2} className="align-items-start">
-        <Form.Control
-          id="splitter-api-key-label"
-          type="text"
-          placeholder="e.g. Social Metrics"
-          value={newLabel}
-          maxLength={100}
-          disabled={isMinting}
-          onChange={(e) => setNewLabel(e.target.value)}
-        />
-        <Button
-          className="fw-semi-bold flex-shrink-0 rounded-4"
-          disabled={isMinting}
-          onClick={handleMint}
-        >
-          {isMinting ? <Spinner size="sm" /> : "Create key"}
-        </Button>
-      </Stack>
+      <Form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleMint();
+        }}
+      >
+        <Form.Label htmlFor="splitter-api-key-label" className="fw-semi-bold">
+          Key label
+        </Form.Label>
+        <Stack direction="horizontal" gap={2} className="align-items-start">
+          <Form.Control
+            id="splitter-api-key-label"
+            type="text"
+            placeholder="e.g. Social Metrics"
+            value={newLabel}
+            maxLength={100}
+            disabled={isMinting}
+            onChange={(e) => setNewLabel(e.target.value)}
+          />
+          <Button
+            type="submit"
+            className="fw-semi-bold flex-shrink-0 rounded-4"
+            disabled={isMinting}
+          >
+            {isMinting ? <Spinner size="sm" /> : "Create key"}
+          </Button>
+        </Stack>
+      </Form>
 
       {mintError ? (
         <Alert variant="danger" className="mt-2 mb-0">

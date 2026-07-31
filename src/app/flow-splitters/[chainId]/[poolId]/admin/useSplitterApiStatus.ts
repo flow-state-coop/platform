@@ -57,5 +57,15 @@ export function useSplitterApiStatus(chainId: number, poolId: string) {
     load();
   }, [load]);
 
+  // The mint and revoke flows on this page reload explicitly, but another tab
+  // or another admin can change the answer while the page sits open, and the
+  // Share Register's API-controlled notice is only as good as this value. The
+  // interval bounds that staleness; `load` keeps the previous answer until the
+  // response lands, so a refresh never flickers the notice.
+  useEffect(() => {
+    const interval = setInterval(load, 30_000);
+    return () => clearInterval(interval);
+  }, [load]);
+
   return { hasActiveKeys, statusError, reload: load };
 }

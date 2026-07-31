@@ -211,6 +211,17 @@ export default function Admin(props: AdminProps) {
     (poolAdmin: { address: string }) =>
       poolAdmin.address === address?.toLowerCase(),
   );
+  // The chain-derived member rows last adopted into the form, as address/units
+  // pairs. Empty means "adopt the next snapshot unconditionally": initial load,
+  // a pool switch, and after a save, whose result replaces whatever was typed.
+  const lastSyncedMembers = useRef("");
+
+  useEffect(() => {
+    // The page survives a client-side pool switch, so the baseline has to
+    // drop with it: edits on one pool must not block adopting the next
+    // pool's register into the form.
+    lastSyncedMembers.current = "";
+  }, [chainId, poolId]);
   const needsSignIn = !session || session.address !== address;
   const {
     botIsAdmin,
@@ -415,26 +426,45 @@ export default function Admin(props: AdminProps) {
   }, [flowSplitterPoolQueryLoading, pool, poolAdmins]);
 
   useEffect(() => {
-    (async () => {
-      if (!superfluidQueryRes?.pool?.poolMembers) {
-        return;
-      }
+    if (!superfluidQueryRes?.pool?.poolMembers) {
+      return;
+    }
 
-      const membersEntry = superfluidQueryRes.pool.poolMembers
-        .filter((member: { units: string }) => member.units !== "0")
-        .map((member: { account: { id: string }; units: string }) => {
-          return {
-            address: member.account.id,
-            units: member.units,
-            validationError: "",
-          };
-        });
+    const chainMembers = superfluidQueryRes.pool.poolMembers
+      .filter((member: { units: string }) => member.units !== "0")
+      .map((member: { account: { id: string }; units: string }) => {
+        return {
+          address: member.account.id,
+          units: member.units,
+          validationError: "",
+        };
+      });
 
-      if (membersEntry.length > 0) {
-        setMembersEntry(membersEntry);
-      }
-    })();
-  }, [superfluidQueryRes]);
+    if (chainMembers.length === 0) {
+      return;
+    }
+
+    const snapshot = JSON.stringify(
+      chainMembers.map((entry: MemberEntry) => [entry.address, entry.units]),
+    );
+    const formState = JSON.stringify(
+      membersEntry.map((entry) => [entry.address.toLowerCase(), entry.units]),
+    );
+
+    // An edited form is left alone: an API-controlled pool can legitimately
+    // change on-chain every minute, and rebuilding the rows would reset them
+    // under the admin's cursor. Nothing correctness-bearing depends on this
+    // refresh, since the save flow re-checks the register against the chain at
+    // submit time.
+    const dirty =
+      lastSyncedMembers.current !== "" &&
+      formState !== lastSyncedMembers.current;
+
+    if (!dirty && snapshot !== lastSyncedMembers.current) {
+      setMembersEntry(chainMembers);
+      lastSyncedMembers.current = snapshot;
+    }
+  }, [superfluidQueryRes, membersEntry]);
 
   useEffect(() => {
     // Only addresses never asked about before: the set changes on every added
@@ -748,6 +778,11 @@ export default function Admin(props: AdminProps) {
       setIsTransactionLoading(false);
       setTransactionSuccess("Flow Splitter Updated Successfully");
       setMembersToRemove([]);
+      // The save can have granted or revoked the bot's own admin row, which
+      // the API card reads through this hook; without the refetch the card
+      // keeps reporting the status from before the transaction.
+      refetchBotStatus();
+      lastSyncedMembers.current = "";
     } catch (err) {
       console.error(err);
 
@@ -1733,7 +1768,11 @@ export default function Admin(props: AdminProps) {
                 </Form.Group>
               </Card.Body>
             </Card>
+            {/* Keyed by pool so a client-side pool switch cannot carry one
+                pool's freshly minted key, or half-typed panel state, into
+                another pool's card. */}
             <SplitterApiCard
+              key={`${chainId}-${poolId}`}
               network={network}
               poolId={poolId}
               isAdmin={isAdmin}
@@ -1768,9 +1807,7 @@ export default function Admin(props: AdminProps) {
               botIsAdmin={botIsAdmin}
               botStatusError={botStatusError}
               grant={async () => {
-                if (await grant()) {
-                  refetchBotStatus();
-                }
+                await grant(() => refetchBotStatus());
               }}
               isGranting={isGranting}
               isSaving={isTransactionLoading}
