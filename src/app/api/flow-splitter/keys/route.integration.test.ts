@@ -141,6 +141,30 @@ describe("splitter key management", () => {
     expect((await mint()).status).toBe(403);
   });
 
+  it("refuses an outsider on list and revoke, not only mint", async () => {
+    const body = await (await mint()).json();
+
+    signedInAs(OUTSIDER);
+
+    expect((await list()).status).toBe(403);
+    expect((await revoke(body.key.id)).status).toBe(403);
+
+    signedInAs(TEST_POOL_ADMIN);
+    const listed = await (await list()).json();
+    expect(listed.keys[0].revokedAt).toBeNull();
+  });
+
+  it("cannot revoke a key through another pool's id", async () => {
+    const body = await (await mint()).json();
+
+    // Same shape as revoking a key that does not exist, so key ids are not
+    // probeable across pools.
+    expect((await revoke(body.key.id, "43")).status).toBe(404);
+
+    const listed = await (await list()).json();
+    expect(listed.keys[0].revokedAt).toBeNull();
+  });
+
   it("caps a pool at ten active keys and frees a slot on revoke", async () => {
     for (let i = 0; i < 10; i++) {
       expect((await mint(`key ${i}`)).status).toBe(200);

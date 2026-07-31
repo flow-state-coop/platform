@@ -169,14 +169,20 @@ describe("withChainSend lease", () => {
     const slowHeld = new Promise<void>((resolve) => {
       releaseSlow = resolve;
     });
+    let signalAcquired!: () => void;
+    const acquired = new Promise<void>((resolve) => {
+      signalAcquired = resolve;
+    });
 
     const slow = withChainSend(CHAIN_A, stuckAtZero, async () => {
+      signalAcquired();
       await slowHeld;
       return "0xslow";
     });
 
-    // Let the send take the lease before the row is handed to someone else.
-    await sleep(200);
+    // The broadcast callback only runs once the lease is held, so this waits
+    // out the acquire round trip exactly, where a fixed sleep raced it.
+    await acquired;
 
     // Expire the in-flight lease and hand the row to a new holder, exactly as
     // an expiry-driven takeover would.

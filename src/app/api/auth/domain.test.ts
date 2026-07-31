@@ -121,6 +121,28 @@ describe("isAllowedSiweDomain", () => {
     expect(isAllowedSiweDomain("172.32.0.1:3000")).toBe(false);
     expect(isAllowedSiweDomain("172.16.0.1:3000")).toBe(true);
   });
+
+  // The whole gate rests on exact matching: none of these are string tricks
+  // the allowlist should fall for. Browsers lowercase location.host, so the
+  // uppercase refusal fails closed rather than locking anyone out.
+  it("accepts only the exact production host in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+
+    expect(isAllowedSiweDomain("flowstate.network")).toBe(true);
+    expect(isAllowedSiweDomain("sub.flowstate.network")).toBe(false);
+    expect(isAllowedSiweDomain("flowstate.network:8443")).toBe(false);
+    expect(isAllowedSiweDomain("flowstate.network.evil.com")).toBe(false);
+    expect(isAllowedSiweDomain("FLOWSTATE.NETWORK")).toBe(false);
+  });
+
+  it("treats IPv6 loopback as local, gated the same as the rest", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    expect(isAllowedSiweDomain("[::1]:3000")).toBe(true);
+
+    vi.unstubAllEnvs();
+    vi.stubEnv("NODE_ENV", "production");
+    expect(isAllowedSiweDomain("[::1]:3000")).toBe(false);
+  });
 });
 
 describe("readCsrfNonce", () => {
