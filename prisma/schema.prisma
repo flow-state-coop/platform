@@ -212,7 +212,7 @@ model SplitterWriteJob {
   expiresAt   DateTime @map("expires_at") @db.Timestamptz(6)
 
   @@index([chainId, poolId, status])
-  @@index([heartbeatAt])
+  @@index([expiresAt])
   @@map("splitter_write_jobs")
 }
 
@@ -248,7 +248,7 @@ model SplitterWriteHistory {
   gasCostWei   String?  @map("gas_cost_wei") @db.VarChar(78)
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  @@index([chainId, poolId, createdAt])
+  @@index([chainId, poolId, id])
   @@index([keyId])
   @@map("splitter_write_history")
 }
