@@ -142,7 +142,9 @@ async function readAndCachePoolAdmin(
 
   // Dropped before the size check rather than overwritten in place, so a
   // refreshed entry moves to the tail and eviction drops the least recently
-  // read pool instead of whichever was read first.
+  // refreshed pool instead of whichever was read first. A cache hit does not
+  // reorder anything, but nothing survives past the TTL without being
+  // refreshed, so insertion order tracks recency within that window.
   poolAdminCache.delete(key);
 
   if (poolAdminCache.size >= MAX_POOL_ADMIN_CACHE) {

@@ -53,6 +53,10 @@ function isLocalHost(domain: string): boolean {
 
   if (port !== undefined && Number(port) > 65_535) return false;
 
+  // No `ip` group means the pattern matched a name rather than a quad, which is
+  // only ever `localhost` or `[::1]`. Both are loopback by their own spelling,
+  // so there is nothing left to range-check.
+
   return ip === undefined || isLoopbackOrPrivate(ip);
 }
 
