@@ -274,9 +274,35 @@ export async function POST(request: Request) {
       )
       .digest("hex");
 
+    // A register that matches the target can still be about to change: a dead
+    // runner's last broadcast may be sitting in the mempool, and answering
+    // "no change" while superseding its job would settle that job in the
+    // database only. The transaction then mines, moves the register, and no
+    // job exists to notice or repair it. So the shortcut below is only taken
+    // when nothing is left on the wire; otherwise a job is created that
+    // inherits the orphan broadcast, waits it out, and converges on the target,
+    // which also books the orphan's gas instead of losing it.
+    let inheritedBroadcast: string | null = null;
+
+    if (plan.unchanged) {
+      const openJobs = await db
+        .selectFrom("splitterWriteJobs")
+        .select(["txHashes", "batchIndex"])
+        .where("chainId", "=", key.chainId)
+        .where("poolId", "=", key.poolId)
+        .where("status", "in", ["queued", "running"])
+        .orderBy("createdAt", "desc")
+        .execute();
+
+      inheritedBroadcast =
+        openJobs
+          .find((job) => (job.txHashes?.length ?? 0) > (job.batchIndex ?? 0))
+          ?.txHashes?.at(-1) ?? null;
+    }
+
     // Verified against the chain rather than the indexer, so a resubmitted
     // payload that changed nothing costs no gas and is not recorded as a write.
-    if (plan.unchanged) {
+    if (plan.unchanged && !inheritedBroadcast) {
       // Nothing to write, but the pool has still moved past any job left open
       // by a dead runner: resuming one would drag the register back to the
       // target it was chasing.
@@ -341,7 +367,9 @@ export async function POST(request: Request) {
             units: e.units.toString(),
           })),
         ),
-        txHashes: [],
+        // Seeding the hash beyond the batch counter is what hands the orphan
+        // to the runner's own settle path, as if this job had broadcast it.
+        txHashes: inheritedBroadcast ? [inheritedBroadcast] : [],
         expiresAt: new Date(Date.now() + JOB_TTL_MS),
       })
       .execute();

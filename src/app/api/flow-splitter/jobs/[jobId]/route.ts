@@ -21,12 +21,12 @@ export async function GET(
 ) {
   try {
     // Every exemption here exists so that recovery cannot be locked out by a
-    // penalty or a revocation the job predates, and the cached role because a
-    // poll hands out no capability beyond the status it reports.
+    // penalty, a revocation, or an admin removal the job predates. A poll hands
+    // out no capability beyond the status it reports.
     const auth = await authorizeApiKey(request, {
       ignoreCooldown: true,
       allowRevoked: true,
-      allowCachedRole: true,
+      allowRemovedCreator: true,
     });
     if (!auth.ok) return auth.response;
 

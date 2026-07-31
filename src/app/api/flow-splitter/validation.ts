@@ -14,7 +14,15 @@ export const splitterQuerySchema = z.object({
   // spelling is invisible to a write under another.
   poolId: z
     .string()
-    .regex(/^\d{1,78}$/, "Invalid pool ID")
+    // One predicate, not a regex check plus a bound check: zod runs every
+    // check even after one fails, so a separate bound refine would call
+    // BigInt on input the regex already rejected and throw. The bound matters
+    // because 78 digits fit values past uint256 max, which the ABI encoder
+    // would otherwise turn into a 500.
+    .refine(
+      (value) => /^\d{1,78}$/.test(value) && BigInt(value) <= 2n ** 256n - 1n,
+      "Invalid pool ID",
+    )
     .transform((value) => BigInt(value).toString()),
 });
 

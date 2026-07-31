@@ -7,7 +7,6 @@ import { checkPoolEligibility } from "./auth";
 import {
   getNetwork,
   getPoolFromSubgraph,
-  isPoolAdminCached,
   isPoolAdminFresh,
   type SplitterPool,
 } from "./pool";
@@ -23,7 +22,7 @@ const KEY_REQUEST_WINDOW_MS = 60_000;
 // guessing tokens would drive one lookup per request past it. Keyed on the
 // origin instead, and set at the per-key limit times the active-key cap, so no
 // legitimate integration can reach it however many keys it holds.
-const ORIGIN_REQUEST_LIMIT = 600;
+export const ORIGIN_REQUEST_LIMIT = 600;
 const ORIGIN_REQUEST_WINDOW_MS = 60_000;
 
 const ORIGIN_RATE_LIMIT_ERROR = "Too many requests, please retry in a moment";
@@ -67,20 +66,21 @@ function unauthorized() {
  * on that one route, where everywhere else a revoked key is indistinguishable
  * from an unknown one.
  *
- * `allowCachedRole` is for the same route, and for the same reason as its
- * counterpart on `authorizePoolAdmin`: only a request whose whole effect is the
- * response it returns may read the creator's admin status from the cache.
+ * `allowRemovedCreator` is the last piece of the same guarantee: removing the
+ * minting admin kills the key, but a job accepted while they held the role
+ * still needs its polls to land, or the removal strands a half-written register
+ * with the one mechanism that could finish it locked out.
  */
 export async function authorizeApiKey(
   request: Request,
   {
     ignoreCooldown = false,
     allowRevoked = false,
-    allowCachedRole = false,
+    allowRemovedCreator = false,
   }: {
     ignoreCooldown?: boolean;
     allowRevoked?: boolean;
-    allowCachedRole?: boolean;
+    allowRemovedCreator?: boolean;
   } = {},
 ): Promise<KeyAuth> {
   const authHeader = request.headers.get("authorization") ?? "";
@@ -151,13 +151,17 @@ export async function authorizeApiKey(
   // Independent reads, so they run together: the creator's admin status comes
   // from the chain rather than from the pool record below, and waiting for that
   // record first would only add a round trip.
-  const readAdmin = allowCachedRole ? isPoolAdminCached : isPoolAdminFresh;
-
   const [pool, creatorIsAdmin] = await Promise.all([
     getPoolFromSubgraph(keyRow.chainId, keyRow.poolId),
-    keyRow.createdBy
-      ? readAdmin(network, keyRow.poolId, keyRow.createdBy as `0x${string}`)
-      : Promise.resolve(false),
+    allowRemovedCreator
+      ? Promise.resolve(true)
+      : keyRow.createdBy
+        ? isPoolAdminFresh(
+            network,
+            keyRow.poolId,
+            keyRow.createdBy as `0x${string}`,
+          )
+        : Promise.resolve(false),
   ]);
 
   if (!pool) {

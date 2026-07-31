@@ -15,6 +15,9 @@ import {
   BaseError,
   ContractFunctionRevertedError,
   ExecutionRevertedError,
+  TransactionNotFoundError,
+  TransactionReceiptNotFoundError,
+  decodeFunctionData,
 } from "viem";
 
 // A job whose runner stopped reporting for this long is treated as dead and can
@@ -494,51 +497,69 @@ function exhaustedMessage(changed: boolean, unconfirmed: boolean): string {
  * A job nobody can claim any more, because it burned through its attempts, has
  * to be told to the caller. Left alone it would sit at `running` with no error
  * until it expired, and an integrator's poll loop would never terminate.
+ *
+ * A runner that stopped reporting has to be waited out, in case it is still
+ * alive and mid-batch. A queued job at the attempt cap has no runner to wait
+ * for: `claimJob` refuses it from here on, so nothing will ever pick it up
+ * again and it is already terminal in everything but name.
+ *
+ * One statement, not a read followed by `finish`: a runner still alive can
+ * heartbeat new progress between the two, and the terminal write would then
+ * carry a stale snapshot over it, losing a transaction hash from the
+ * accounting. Checked in the WHERE instead, a fresh heartbeat wins the race,
+ * and a heartbeat after this write loses to the status guard every update
+ * shares.
  */
 async function failExhausted(jobId: string): Promise<void> {
-  const job = await db
-    .selectFrom("splitterWriteJobs")
-    .select([
-      "id",
-      "chainId",
-      "poolId",
-      "keyId",
-      "attempt",
-      "status",
-      "heartbeatAt",
-      "txHashes",
-      "batchIndex",
-      "changedCount",
-      "gasUsed",
-      "gasCostWei",
-    ])
-    .where("id", "=", jobId)
-    .executeTakeFirst();
+  const result = await sql<{
+    id: string;
+    chainId: number;
+    poolId: string;
+    keyId: number;
+    txHashes: string[] | null;
+    batchIndex: number | null;
+    changedCount: number | null;
+    gasUsed: string | null;
+    gasCostWei: string | null;
+  }>`
+    UPDATE splitter_write_jobs AS job
+       SET status = 'failed',
+           error = CASE
+             WHEN job.changed_count > 0
+               THEN ${exhaustedMessage(true, false)}
+             WHEN COALESCE(array_length(job.tx_hashes, 1), 0) > job.batch_index
+               THEN ${exhaustedMessage(false, true)}
+             ELSE ${exhaustedMessage(false, false)}
+           END,
+           heartbeat_at = now(),
+           updated_at = now()
+     WHERE job.id = ${jobId}
+       AND job.attempt >= ${MAX_ATTEMPTS}
+       AND (
+         job.status = 'queued'
+         OR (
+           job.status = 'running'
+           AND job.heartbeat_at < now() - make_interval(secs => ${HEARTBEAT_STALE_MS / 1000})
+         )
+       )
+    RETURNING job.id, job.chain_id, job.pool_id, job.key_id, job.tx_hashes,
+              job.batch_index, job.changed_count, job.gas_used, job.gas_cost_wei
+  `.execute(db);
 
-  if (!job || job.attempt < MAX_ATTEMPTS) {
-    return;
-  }
+  const failed = result.rows[0];
+  if (!failed) return;
 
-  // A runner that stopped reporting has to be waited out, in case it is still
-  // alive and mid-batch. A queued job at the attempt cap has no runner to wait
-  // for: `claimJob` refuses it from here on, so nothing will ever pick it up
-  // again and it is already terminal in everything but name.
-  const abandoned =
-    job.status === "running" &&
-    Date.now() - new Date(job.heartbeatAt).getTime() >= HEARTBEAT_STALE_MS;
+  await recordHistory(failed, "failed", progressOf(failed));
 
-  if (!abandoned && job.status !== "queued") {
-    return;
-  }
-
-  const progress = progressOf(job);
-
-  await finish(
-    job,
-    "failed",
-    progress,
-    exhaustedMessage(progress.changedCount > 0, hasUnsettledBatch(progress)),
-  );
+  // The minimum interval between writes is measured from the previous job's
+  // completion, matching `finish`.
+  await db
+    .updateTable("splitterIntegrations")
+    .set({ lastWriteAt: new Date() })
+    .where("chainId", "=", failed.chainId)
+    .where("poolId", "=", failed.poolId)
+    .execute()
+    .catch((err) => console.error(err));
 }
 
 type SettledBroadcast = {
@@ -547,19 +568,65 @@ type SettledBroadcast = {
   // there is nothing to pay for and nothing to account.
   gas: JobProgress["gas"] | null;
   reverted: boolean;
+  // How many register entries the transaction updated, read back from its own
+  // calldata so a landed batch the broadcasting attempt never counted still
+  // shows up in what the job reports as changed. Null when unknowable: the
+  // transaction was dropped, or its body could not be fetched or decoded.
+  entries: number | null;
 };
 
-function settledFrom(receipt: {
-  status: string;
-  gasUsed?: bigint;
-  effectiveGasPrice?: bigint;
-}): SettledBroadcast {
+// Only "the node does not know this transaction" may classify a broadcast as
+// dropped. A transport failure has to propagate instead: swallowing it would
+// re-send a batch whose original may still mine, and write the original off as
+// costing nothing.
+function isNotFound(err: unknown): boolean {
+  return (
+    err instanceof BaseError &&
+    err.walk(
+      (cause) =>
+        cause instanceof TransactionNotFoundError ||
+        cause instanceof TransactionReceiptNotFoundError,
+    ) !== null
+  );
+}
+
+function nullIfNotFound(err: unknown): null {
+  if (isNotFound(err)) return null;
+  throw err;
+}
+
+function batchSizeOf(input: `0x${string}` | undefined): number | null {
+  if (!input) return null;
+
+  try {
+    const { functionName, args } = decodeFunctionData({
+      abi: flowSplitterAbi,
+      data: input,
+    });
+
+    return functionName === "updateMembersUnits"
+      ? (args[1] as unknown[]).length
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function settledFrom(
+  receipt: {
+    status: string;
+    gasUsed?: bigint;
+    effectiveGasPrice?: bigint;
+  },
+  input: `0x${string}` | undefined,
+): SettledBroadcast {
   const reverted = receipt.status !== "success";
 
   return {
     outcome: reverted ? "none" : "landed",
     gas: gasOf(receipt),
     reverted,
+    entries: reverted ? null : batchSizeOf(input),
   };
 }
 
@@ -584,18 +651,27 @@ async function settleBroadcast(
 ): Promise<SettledBroadcast> {
   const receipt = await publicClient
     .getTransactionReceipt({ hash })
-    .catch(() => null);
+    .catch(nullIfNotFound);
 
-  if (receipt) return settledFrom(receipt);
+  if (receipt) {
+    // Calldata fetch is best-effort: the receipt already settles what the
+    // broadcast did and cost, the body only refines the changed-entry count.
+    const mined = await publicClient.getTransaction({ hash }).catch(() => null);
+
+    return settledFrom(receipt, mined?.input);
+  }
 
   const inMempool = await publicClient
     .getTransaction({ hash })
-    .catch(() => null);
+    .catch(nullIfNotFound);
 
-  if (!inMempool) return { outcome: "none", gas: null, reverted: false };
+  if (!inMempool) {
+    return { outcome: "none", gas: null, reverted: false, entries: null };
+  }
 
   return settledFrom(
     await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 }),
+    inMempool.input,
   );
 }
 
@@ -681,6 +757,13 @@ export async function runJob(jobId: string): Promise<void> {
       if (settled.gas) {
         progress.gas.used += settled.gas.used;
         progress.gas.costWei += settled.gas.costWei;
+      }
+
+      // An inherited batch that landed changed the register just like one this
+      // attempt watched land, so it counts toward what the job reports as
+      // changed rather than only toward what it cost.
+      if (settled.outcome === "landed") {
+        progress.changedCount += settled.entries ?? 0;
       }
 
       // Re-sending a batch the chain rejected buys another revert and another

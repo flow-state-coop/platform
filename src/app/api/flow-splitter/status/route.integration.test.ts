@@ -93,6 +93,9 @@ describe("splitter API status", () => {
   it("rejects a malformed pool id and an unknown chain", async () => {
     expect((await status("notanumber")).status).toBe(400);
     expect((await status(TEST_POOL_ID, 999999)).status).toBe(400);
+    // 78 digits fit values past uint256 max, which used to surface as a 500
+    // from the ABI encoder instead of a 400.
+    expect((await status("9".repeat(78))).status).toBe(400);
   });
 
   // The only route here with no credential at all.

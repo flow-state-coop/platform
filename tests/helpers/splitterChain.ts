@@ -42,12 +42,18 @@ export const splitterChain = {
   stallWriteNumber: 0,
   pending: new Map<string, { account: string; units: bigint }[]>(),
   receipts: new Map<string, "success" | "reverted">(),
+  // Every broadcast's members, mined or stuck, so getTransaction can serve the
+  // calldata the runner decodes when it inherits a batch.
+  bodies: new Map<string, { account: string; units: bigint }[]>(),
   // A pool with more members than the API will enumerate. Pages are generated
   // from the cursor rather than materialized.
   oversizedMemberCount: 0,
   // Extra addresses `isPool` answers true for. The pool under test always is
   // one, so these are the other pools an integrator might name as a recipient.
   otherPools: [] as string[],
+  // Fails every subgraph query, for the paths that must answer 502 without
+  // penalizing the key.
+  subgraphError: null as string | null,
 };
 
 export const SPLITTER_TX_HASH = `0x${"33".repeat(32)}`;
@@ -69,8 +75,10 @@ export function resetSplitterChain() {
   splitterChain.stallWriteNumber = 0;
   splitterChain.pending = new Map();
   splitterChain.receipts = new Map();
+  splitterChain.bodies = new Map();
   splitterChain.oversizedMemberCount = 0;
   splitterChain.otherPools = [];
+  splitterChain.subgraphError = null;
 }
 
 /** Mine what stalled broadcasts were carrying, as a cleared mempool would. */
@@ -137,6 +145,7 @@ export function createSplitterMockWalletClient() {
             ? ((args[1] ?? []) as { account: string; units: bigint }[])
             : [];
         const hash = `${SPLITTER_TX_HASH.slice(0, 60)}${String(nonce ?? 0).padStart(6, "0")}`;
+        splitterChain.bodies.set(hash, members);
 
         // On the wire and stuck there: no receipt, and the units stay as they
         // were until the mempool clears.
@@ -230,20 +239,43 @@ export function createSplitterMockPublicClient() {
 
       return receiptFor(hash, splitterChain.receiptStatus);
     }),
+    // Thrown as viem's own not-found types, not bare Errors: the runner
+    // classifies "the node does not know this transaction" apart from a
+    // transport failure by exactly these types, and a bare Error here would
+    // exercise the transport path for every miss.
     getTransactionReceipt: vi.fn(async ({ hash }: { hash: string }) => {
       const status = splitterChain.receipts.get(hash);
       if (!status) {
-        throw new Error(`Transaction receipt for ${hash} could not be found`);
+        const { TransactionReceiptNotFoundError } = await import("viem");
+        throw new TransactionReceiptNotFoundError({
+          hash: hash as `0x${string}`,
+        });
       }
 
       return receiptFor(hash, status);
     }),
     getTransaction: vi.fn(async ({ hash }: { hash: string }) => {
-      if (!splitterChain.pending.has(hash)) {
-        throw new Error(`Transaction ${hash} could not be found`);
+      const members = splitterChain.bodies.get(hash);
+      if (!members) {
+        const { TransactionNotFoundError } = await import("viem");
+        throw new TransactionNotFoundError({ hash: hash as `0x${string}` });
       }
 
-      return { hash, blockNumber: null };
+      const { encodeFunctionData } = await import("viem");
+      const { flowSplitterAbi } = await import("@/lib/abi/flowSplitter");
+
+      return {
+        hash,
+        blockNumber: splitterChain.pending.has(hash) ? null : 1n,
+        input: encodeFunctionData({
+          abi: flowSplitterAbi,
+          functionName: "updateMembersUnits",
+          args: [
+            BigInt(TEST_POOL_ID),
+            members as { account: `0x${string}`; units: bigint }[],
+          ],
+        }),
+      };
     }),
   };
 }
@@ -271,6 +303,10 @@ export function createSplitterMockApolloClient() {
         query: unknown;
         variables?: Record<string, unknown>;
       }) => {
+        if (splitterChain.subgraphError) {
+          throw new Error(splitterChain.subgraphError);
+        }
+
         if ("cursor" in variables) {
           const pool = String(variables.pool ?? "");
           const cursor = String(variables.cursor ?? "");

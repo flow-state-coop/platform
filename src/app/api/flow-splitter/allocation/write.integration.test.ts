@@ -54,8 +54,13 @@ import { GET as keysGet } from "../keys/route";
 import { GET as jobGet } from "../jobs/[jobId]/route";
 import { GET as allocationGet } from "./route";
 import { SUPERSEDED_ERROR } from "../jobs/runner";
+import { ORIGIN_REQUEST_LIMIT } from "../keyAuth";
 import { resetTransferabilityCache } from "../pool";
-import { resetRateLimits } from "@/app/api/rateLimit";
+import {
+  allowRequest,
+  clientIdentifier,
+  resetRateLimits,
+} from "@/app/api/rateLimit";
 import { hashApiKey } from "../../apiKeys";
 import { getTestDb, resetDb } from "@tests/helpers/db";
 import {
@@ -557,7 +562,7 @@ describe("splitter allocation write", () => {
   // the one failure a retry can actually fix. Failing it at the first attempt
   // spends none of the retry budget on the thing the budget is for.
   it("keeps a job alive through an infrastructure failure and finishes it", async () => {
-    await seedKey();
+    const id = await seedKey();
     splitterChain.writeError = "socket hang up";
 
     const body = await (await write([{ address: A, weight: 1 }])).json();
@@ -566,6 +571,15 @@ describe("splitter allocation write", () => {
     const stalled = await jobRow(body.jobId);
     expect(stalled?.status).toBe("running");
     expect(stalled?.error).toBeNull();
+
+    // Our failure, so the "never penalized for our outage" half of the
+    // cooldown contract holds too.
+    const key = await db
+      .selectFrom("splitterApiKeys")
+      .select(["cooldownUntil"])
+      .where("id", "=", id)
+      .executeTakeFirst();
+    expect(key?.cooldownUntil).toBeNull();
 
     // The staleness window paces the retry, so age the job past it and poll,
     // which is the same recovery path a crashed runner takes.
@@ -655,6 +669,259 @@ describe("splitter allocation write", () => {
       .where("id", "=", id)
       .executeTakeFirst();
     expect(key?.cooldownUntil).not.toBeNull();
+  });
+
+  it("rejects more recipients than the documented cap, and cools the key", async () => {
+    const id = await seedKey();
+    const recipients = Array.from({ length: 1001 }, (_, i) => ({
+      address: `0x${(i + 1).toString(16).padStart(40, "0")}`,
+      weight: 1,
+    }));
+
+    const res = await write(recipients);
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("At most 1000 recipients");
+
+    const key = await db
+      .selectFrom("splitterApiKeys")
+      .select(["cooldownUntil"])
+      .where("id", "=", id)
+      .executeTakeFirst();
+    expect(key?.cooldownUntil).not.toBeNull();
+    expect(
+      await db.selectFrom("splitterWriteJobs").selectAll().execute(),
+    ).toHaveLength(0);
+  });
+
+  it("rejects duplicate recipients however they are cased", async () => {
+    const id = await seedKey();
+
+    // The contract accepts duplicates silently with the last one winning, so
+    // validation is the only guard, and it has to see through casing.
+    const res = await write([
+      { address: A, weight: 1 },
+      { address: A.toUpperCase().replace("0X", "0x"), weight: 2 },
+    ]);
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("Duplicate");
+
+    const key = await db
+      .selectFrom("splitterApiKeys")
+      .select(["cooldownUntil"])
+      .where("id", "=", id)
+      .executeTakeFirst();
+    expect(key?.cooldownUntil).not.toBeNull();
+  });
+
+  it("rejects the zero address as a recipient", async () => {
+    await seedKey();
+
+    const res = await write([
+      { address: A, weight: 1 },
+      { address: `0x${"0".repeat(40)}`, weight: 1 },
+    ]);
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("zero address");
+  });
+
+  it("refuses an oversized body without cooling the key", async () => {
+    const id = await seedKey();
+
+    const res = await writePost(
+      new Request("http://localhost/api/flow-splitter/allocation", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${TOKEN}`,
+          "content-type": "application/json",
+        },
+        // Valid recipients under 300 KB of padding: the size cap has to fire
+        // before the schema ever sees the body.
+        body: JSON.stringify({
+          recipients: [{ address: A, weight: 1 }],
+          padding: "x".repeat(300_000),
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(413);
+
+    // The caller learns the exact limit from the 413; unlike a bad payload it
+    // carries no cooldown today, and this pins that.
+    const key = await db
+      .selectFrom("splitterApiKeys")
+      .select(["cooldownUntil"])
+      .where("id", "=", id)
+      .executeTakeFirst();
+    expect(key?.cooldownUntil).toBeNull();
+    expect(
+      await db.selectFrom("splitterWriteJobs").selectAll().execute(),
+    ).toHaveLength(0);
+  });
+
+  it("creates at most one job when two writes race", async () => {
+    await seedKey();
+
+    // Both can pass the read-then-act in-flight check; the atomic write-window
+    // claim is what must let exactly one through.
+    const [first, second] = await Promise.all([
+      write([{ address: A, weight: 1 }]),
+      write([{ address: B, weight: 1 }]),
+    ]);
+
+    const statuses = [first.status, second.status].sort((x, y) => x - y);
+    expect(statuses[0]).toBe(202);
+    expect([409, 429]).toContain(statuses[1]);
+
+    expect(
+      await db.selectFrom("splitterWriteJobs").selectAll().execute(),
+    ).toHaveLength(1);
+
+    await flushDeferred();
+  });
+
+  it("answers 502 without cooling the key when the subgraph is down", async () => {
+    const id = await seedKey();
+    splitterChain.subgraphError = "connect ECONNREFUSED 10.0.0.1:443";
+
+    const res = await write([{ address: A, weight: 1 }]);
+
+    expect(res.status).toBe(502);
+    // Our outage, so no provider detail leaks and the key pays nothing.
+    expect((await res.json()).error).not.toContain("ECONNREFUSED");
+
+    const key = await db
+      .selectFrom("splitterApiKeys")
+      .select(["cooldownUntil"])
+      .where("id", "=", id)
+      .executeTakeFirst();
+    expect(key?.cooldownUntil).toBeNull();
+  });
+
+  it("refuses a host looping past the origin limit, before any key lookup", async () => {
+    await seedKey();
+
+    for (let i = 0; i < ORIGIN_REQUEST_LIMIT; i++) {
+      allowRequest(
+        "splitter-origin",
+        clientIdentifier(new Headers()),
+        ORIGIN_REQUEST_LIMIT,
+        60_000,
+      );
+    }
+
+    // Counted for every request from the host: a valid key is refused the same
+    // as a token that matches nothing, which is the 401 it would otherwise be.
+    const keyed = await write([{ address: A, weight: 1 }]);
+    expect(keyed.status).toBe(429);
+    expect((await keyed.json()).error).toBe(
+      "Too many requests, please retry in a moment",
+    );
+
+    const unmatched = await write([{ address: A, weight: 1 }], "splitter_no");
+    expect(unmatched.status).toBe(429);
+  });
+
+  it("does not answer no_change while a dead job's broadcast is unsettled", async () => {
+    await seedKey();
+    setMember(B, 1_000_000n);
+    splitterChain.stallWriteNumber = 1;
+
+    // Target A replaces B, but the only batch stalls in the mempool.
+    const first = await (await write([{ address: A, weight: 1 }])).json();
+    await flushDeferred();
+    expect((await jobRow(first.jobId))?.status).toBe("running");
+
+    await ageHeartbeat(first.jobId);
+    await db
+      .updateTable("splitterIntegrations")
+      .set({ lastWriteAt: new Date(Date.now() - 10 * 60_000) })
+      .execute();
+
+    // B alone matches the chain today, but the moment the orphan mines it will
+    // not: answering no_change here would settle the dead job in the database
+    // while its transaction rewrites the register with nothing left to repair
+    // it.
+    const res = await write([{ address: B, weight: 1 }]);
+    const body = await res.json();
+
+    expect(res.status).toBe(202);
+    expect(body.status).toBe("queued");
+
+    await flushDeferred();
+
+    // The repair job inherits the orphan and waits it out like its own.
+    mineStalledWrites();
+    await ageHeartbeat(body.jobId);
+    await poll(body.jobId);
+    await flushDeferred();
+
+    const job = await jobRow(body.jobId);
+    expect(job?.status).toBe("succeeded");
+    expect(splitterChain.units.get(B)).toBe(1_000_000n);
+    expect(splitterChain.units.get(A) ?? 0n).toBe(0n);
+    // The orphan's gas and entries are booked on the repair job, not lost.
+    expect(BigInt(job?.gasUsed ?? "0")).toBeGreaterThan(0n);
+    expect(job?.changedCount).toBeGreaterThan(0);
+
+    expect((await jobRow(first.jobId))?.status).toBe("failed");
+  });
+
+  it("still answers no_change when nothing is left on the wire", async () => {
+    await seedKey();
+    setMember(A, 1_000_000n);
+
+    // A dead job with every broadcast settled must not block the shortcut.
+    const first = await (await write([{ address: B, weight: 1 }])).json();
+    deferred.length = 0;
+    await db
+      .updateTable("splitterWriteJobs")
+      .set({
+        status: "running",
+        heartbeatAt: new Date(Date.now() - 10 * 60_000),
+      })
+      .where("id", "=", first.jobId)
+      .execute();
+    await db
+      .updateTable("splitterIntegrations")
+      .set({ lastWriteAt: new Date(Date.now() - 10 * 60_000) })
+      .execute();
+
+    const body = await (await write([{ address: A, weight: 1 }])).json();
+
+    expect(body.status).toBe("no_change");
+    expect((await jobRow(first.jobId))?.status).toBe("failed");
+  });
+
+  it("lets a key poll a job after its minting admin was removed", async () => {
+    await seedKey();
+    const { jobId } = await (await write([{ address: A, weight: 1 }])).json();
+    // The runner dies before it ever ran.
+    deferred.length = 0;
+    await db
+      .updateTable("splitterWriteJobs")
+      .set({
+        status: "running",
+        heartbeatAt: new Date(Date.now() - 10 * 60_000),
+      })
+      .where("id", "=", jobId)
+      .execute();
+
+    // The creator loses admin while the pool keeps another, so the key is dead
+    // for new work but its accepted job still needs its polls.
+    splitterChain.admins = ["0x3333333333333333333333333333333333333333"];
+
+    expect((await write([{ address: B, weight: 1 }])).status).toBe(403);
+
+    const polled = await poll(jobId);
+    expect(polled.status).toBe(200);
+
+    // The poll is the recovery mechanism, so it has to actually recover.
+    await flushDeferred();
+    expect((await jobRow(jobId))?.status).toBe("succeeded");
+    expect(splitterChain.units.get(A)).toBe(1_000_000n);
   });
 
   it("rejects a payload whose weights are all zero", async () => {
