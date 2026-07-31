@@ -4,11 +4,15 @@ import { useAccount, useSignMessage, useSwitchChain } from "wagmi";
 import { ConnectorChainMismatchError } from "@wagmi/core";
 import { createSiweMessage } from "viem/siwe";
 import { SIWE_MESSAGE_LIFETIME_MS } from "@/lib/siwe";
+import { useSignInError } from "@/components/SignInErrorProvider";
+
+const SIGN_IN_FAILED = "Sign in failed, please try again.";
 
 export default function useSiwe() {
   const { address, chain } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const { switchChainAsync } = useSwitchChain();
+  const showSignInError = useSignInError();
 
   // signIn resolves with an error rather than throwing, and every gated screen
   // reads the session rather than this call, so a swallowed rejection leaves
@@ -22,10 +26,10 @@ export default function useSiwe() {
       });
 
       if (!result?.ok) {
-        window.alert("Sign in failed, please try again.");
+        showSignInError(SIGN_IN_FAILED);
       }
     },
-    [],
+    [showSignInError],
   );
 
   const handleSignIn = useCallback(async () => {
@@ -64,9 +68,21 @@ export default function useSiwe() {
       if (error instanceof Error && error.name === "UserRejectedRequestError") {
         return;
       }
-      window.alert(error);
+
+      // The wallet's own wording is worth keeping ("chain mismatch", "no
+      // account"), but only its message: rendering the error itself printed the
+      // class name and whatever the connector attached to it.
+      console.error(error);
+      showSignInError(error instanceof Error ? error.message : SIGN_IN_FAILED);
     }
-  }, [address, chain, signMessageAsync, switchChainAsync, submitSignature]);
+  }, [
+    address,
+    chain,
+    signMessageAsync,
+    switchChainAsync,
+    submitSignature,
+    showSignInError,
+  ]);
 
   return { handleSignIn };
 }
