@@ -1748,6 +1748,7 @@ export default function Admin(props: AdminProps) {
               }
               transferableUnits={unitsTrasnferability}
               transferabilityError={unitsTrasnferabilityError}
+              isWalletConnected={!!address}
               needsSignIn={needsSignIn}
               walletActionLabel={
                 !address

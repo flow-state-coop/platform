@@ -49,13 +49,15 @@ type OpenOptions = {
   // bootstrapping a session would satisfy the very gate under test.
   signIn?: boolean;
   walletChainId?: number;
+  // Defaults to the connected wallet, so the page renders for an admin.
+  poolAdmins?: string[];
 };
 
 async function openAdmin(page: Page, options: OpenOptions = {}) {
-  const { answerCall, signIn = false, walletChainId } = options;
+  const { answerCall, signIn = false, walletChainId, poolAdmins } = options;
 
   await installMockWallet(page, { chainId: walletChainId });
-  await installSubgraphMock(page);
+  await installSubgraphMock(page, { splitterPoolAdmins: poolAdmins });
   await installRpcMock(page, answerCall);
 
   await page.route("**/api/profiles/names", (route) =>
@@ -112,6 +114,25 @@ test("offers the grant without a signed-in session when the bot has no admin", a
   await expect(
     page.getByRole("button", { name: "Sign In With Ethereum" }),
   ).toBeVisible();
+});
+
+test("tells a non-admin they cannot manage keys instead of asking for a sign-in", async ({
+  page,
+}) => {
+  // Adminship follows from the connected address, so the answer is already
+  // known: walking someone through SIWE only to refuse them afterwards spends
+  // a signature to tell them something the page could have said first.
+  await openAdmin(page, {
+    answerCall: botHoldsAdmin,
+    poolAdmins: ["0x000000000000000000000000000000000000dead"],
+  });
+
+  await expect(
+    page.getByText("Only this pool's admins can manage API keys."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Sign In With Ethereum" }),
+  ).toHaveCount(0);
 });
 
 test("asks to switch network once, not once per section", async ({ page }) => {

@@ -37,7 +37,7 @@ const SPLITTER_MEMBER_ADDRESS =
 
 // The splitter admin page reads the pool and its admin set from the Flow
 // Splitter subgraph, then the token and GDA members from Superfluid's.
-function buildFlowSplitterPoolResponse() {
+function buildFlowSplitterPoolResponse(admins?: string[]) {
   const fx = readFixture();
   return {
     data: {
@@ -48,7 +48,9 @@ function buildFlowSplitterPoolResponse() {
           symbol: "E2E",
           token: SPLITTER_TOKEN_ADDRESS,
           metadata: JSON.stringify({ listed: true }),
-          poolAdmins: [{ address: fx.walletAddress.toLowerCase() }],
+          poolAdmins: (admins ?? [fx.walletAddress]).map((address) => ({
+            address: address.toLowerCase(),
+          })),
         },
       ],
     },
@@ -97,9 +99,14 @@ const POOL_RESPONSE = {
 // accepts null results but errors on missing selected fields. Extracting
 // the top-level field name from the query string makes the fallback safe
 // for any unknown subgraph query the app issues.
-export async function installSubgraphMock(page: Page): Promise<void> {
+export async function installSubgraphMock(
+  page: Page,
+  options: { splitterPoolAdmins?: string[] } = {},
+): Promise<void> {
   const flowCouncilResponse = buildFlowCouncilResponse();
-  const flowSplitterPoolResponse = buildFlowSplitterPoolResponse();
+  const flowSplitterPoolResponse = buildFlowSplitterPoolResponse(
+    options.splitterPoolAdmins,
+  );
   await page.route(
     /goldsky\.com|superfluid\.dev|thegraph\.com|ormilabs\.com/i,
     async (route) => {

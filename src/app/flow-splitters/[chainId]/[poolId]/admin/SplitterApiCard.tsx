@@ -29,6 +29,7 @@ type SplitterApiCardProps = {
   hasAdminsError: boolean;
   transferableUnits: boolean | undefined;
   transferabilityError: boolean;
+  isWalletConnected: boolean;
   needsSignIn: boolean;
   // Null once the wallet is connected on the pool's chain; otherwise the step
   // that has to happen first.
@@ -68,6 +69,7 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
     hasAdminsError,
     transferableUnits,
     transferabilityError,
+    isWalletConnected,
     needsSignIn,
     walletActionLabel,
     onPrepareWallet,
@@ -255,7 +257,11 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
                       <span className="fw-semi-bold d-block mb-2">
                         API keys
                       </span>
-                      {!isAdmin && !needsSignIn ? (
+                      {/* Adminship follows from the connected address alone,
+                          so a visitor who is not one is told so instead of
+                          being walked through a sign-in that reveals the same
+                          thing. */}
+                      {isWalletConnected && !isAdmin ? (
                         <Card.Text className="text-info mb-0">
                           Only this pool&apos;s admins can manage API keys.
                         </Card.Text>
@@ -308,8 +314,9 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
               </span>
               <p className="text-info mb-2">
                 POST relative weights for this pool. The API normalizes them to
-                1,000,000 shares, so each recipient&apos;s share reads as parts
-                per million and the caller stays stateless about the register.
+                at most 1,000,000 shares, so each recipient&apos;s share reads
+                as parts per million and the caller stays stateless about the
+                register.
               </p>
               <pre className="bg-white rounded-4 p-3 mb-2 text-break overflow-auto">
                 <code>{`POST ${origin}/api/flow-splitter/allocation

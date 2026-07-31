@@ -17,6 +17,8 @@ type SplitterApiKeysPanelProps = {
   loading: boolean;
   loadError: string;
   // The token is shown once, above this panel, because it has to outlive it.
+  // Only ever called with a token: a mint that fails must not take down the
+  // previous one, which may not have been copied yet and cannot be recovered.
   onMinted: (token: string) => void;
   reload: () => Promise<void>;
 };
@@ -46,7 +48,6 @@ export default function SplitterApiKeysPanel(props: SplitterApiKeysPanelProps) {
 
     setIsMinting(true);
     setMintError("");
-    onMinted("");
 
     try {
       const res = await fetch("/api/flow-splitter/keys", {
