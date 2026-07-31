@@ -74,6 +74,11 @@ export function allowRequest(
  * x-forwarded-for is whatever the caller sent, so keying on it hands out a fresh
  * window per request and fills the map with junk. Behind a proxy that sets
  * neither, every caller shares one window and the limit stops being per-caller.
+ *
+ * Off Vercel both properties fail at once: x-real-ip is client-settable unless
+ * the fronting proxy strips it, so a caller minting identities gets a fresh
+ * window each and churns everyone else's out of the bounded map. A self-hosted
+ * deployment has to terminate these headers at its own proxy.
  */
 export function clientIdentifier(
   headers: Headers | Record<string, unknown> | undefined,
