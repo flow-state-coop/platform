@@ -85,6 +85,7 @@ async function seedKey(token = TOKEN) {
       keyHash: hashApiKey(token),
       keyPrefix: token.slice(0, 16),
       label: "write key",
+      createdBy: TEST_POOL_ADMIN.toLowerCase(),
     })
     .returning("id")
     .executeTakeFirstOrThrow();
@@ -233,6 +234,23 @@ describe("splitter allocation write", () => {
     expect(body.payloadHash).toBe(first.payloadHash);
     // Worded distinctly from a cooldown and from the key cap.
     expect(body.error).toContain("already running");
+  });
+
+  it("refuses a second write before reading the chain for it", async () => {
+    await seedKey();
+    const otherPool = "0x00000000000000000000000000000000000000ff";
+    splitterChain.otherPools = [otherPool];
+
+    await write([{ address: A, weight: 1 }]);
+
+    // Naming another pool is a 400, but only the multicall over every
+    // recipient can find it. A caller that is refused anyway must not be able
+    // to drive that work, on the endpoint the bot broadcasts through, once a
+    // request.
+    const res = await write([{ address: otherPool, weight: 1 }]);
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toContain("already running");
   });
 
   it("does not let a job with a dead heartbeat block a new write", async () => {

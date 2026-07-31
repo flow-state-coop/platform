@@ -104,6 +104,11 @@ export async function POST(request: Request) {
 
   const { key, network, pool } = auth;
 
+  // Recorded before the payload is even parsed: a key failing validation in a
+  // loop is the most active a key can be, and "Last used" is what an admin
+  // reads to find it.
+  await touchKey(key.id);
+
   let payload;
   try {
     const json = await readJsonBody(request, MAX_BODY_SIZE);
@@ -141,33 +146,26 @@ export async function POST(request: Request) {
     );
   }
 
-  await touchKey(key.id);
-
   let claimedAt: Date | null = null;
   let previousWriteAt: Date | null = null;
 
+  // Handing the write window back, for a refusal that leaves no job behind to
+  // ever stamp a completion. Guarded on our own timestamp, so a claim since
+  // taken by someone else is not disturbed.
+  const releaseWriteWindow = async () => {
+    if (!claimedAt) return;
+
+    await db
+      .updateTable("splitterIntegrations")
+      .set({ lastWriteAt: previousWriteAt })
+      .where("chainId", "=", key.chainId)
+      .where("poolId", "=", key.poolId)
+      .where("lastWriteAt", "=", claimedAt)
+      .execute()
+      .catch((resetErr) => console.error(resetErr));
+  };
+
   try {
-    // Refused before a job exists, which beats a job that dies on batch one.
-    if (!(await isBotPoolAdmin(network, key.poolId))) {
-      return errorResponse(BOT_NOT_ADMIN_ERROR, 409);
-    }
-
-    // The string check above catches this pool; any other GDA pool has to be
-    // read from the chain. Both revert the same way, and a revert is permanent,
-    // so the whole payload is refused before a job can half-write the register.
-    const nested = await findPoolRecipients(
-      network,
-      pool.token,
-      payload.recipients.map((recipient) => recipient.address),
-    );
-    if (nested.length > 0) {
-      await coolDownKey(key.id, KEY_COOLDOWN_MS);
-      return errorResponse(
-        `${nested[0]} is a Superfluid pool, and a pool cannot hold shares in another pool`,
-        400,
-      );
-    }
-
     // In flight means actively reporting progress, never a bare status check:
     // a job whose runner died stops reporting and releases its slot, so a crash
     // cannot wedge a pool until someone edits the database.
@@ -224,6 +222,40 @@ export async function POST(request: Request) {
       return errorResponse(
         "Writes to this pool are rate limited, please retry later",
         429,
+      );
+    }
+
+    // Both chain reads below sit behind the two refusals above, which cost a
+    // query each. Ahead of them a caller looping valid payloads would be
+    // refused every time and still drive an eth_call and a multicall over its
+    // whole payload per request, against the same endpoint the bot broadcasts
+    // through, which is the work the per-key limit exists to bound.
+
+    // Refused before a job exists, which beats a job that dies on batch one.
+    // The window goes back: the pool is not the caller's to fix, and no job
+    // will ever stamp a completion to release it.
+    if (!(await isBotPoolAdmin(network, key.poolId))) {
+      await releaseWriteWindow();
+      return errorResponse(BOT_NOT_ADMIN_ERROR, 409);
+    }
+
+    // The string check above catches this pool; any other GDA pool has to be
+    // read from the chain. Both revert the same way, and a revert is permanent,
+    // so the whole payload is refused before a job can half-write the register.
+    const nested = await findPoolRecipients(
+      network,
+      pool.token,
+      payload.recipients.map((recipient) => recipient.address),
+    );
+    if (nested.length > 0) {
+      // The window stays claimed, for the same reason the no-change path keeps
+      // it: the multicall already ran, and it is the expensive part. The key's
+      // own cooldown is the same 60 seconds, so a caller correcting the payload
+      // waits no longer than it already would.
+      await coolDownKey(key.id, KEY_COOLDOWN_MS);
+      return errorResponse(
+        `${nested[0]} is a Superfluid pool, and a pool cannot hold shares in another pool`,
+        400,
       );
     }
 
@@ -343,18 +375,8 @@ export async function POST(request: Request) {
 
     // Hand the write window back too. No job exists, so nothing will ever stamp
     // a completion, and leaving it claimed would lock the caller out for a
-    // minute because of our outage. Guarded on our own timestamp so a claim
-    // that has since been taken by someone else is not disturbed.
-    if (claimedAt) {
-      await db
-        .updateTable("splitterIntegrations")
-        .set({ lastWriteAt: previousWriteAt })
-        .where("chainId", "=", key.chainId)
-        .where("poolId", "=", key.poolId)
-        .where("lastWriteAt", "=", claimedAt)
-        .execute()
-        .catch((resetErr) => console.error(resetErr));
-    }
+    // minute because of our outage.
+    await releaseWriteWindow();
 
     // A condition no retry can clear, a pool with more members than the API can
     // enumerate, told to the caller. A 502 would have it retry forever while the
