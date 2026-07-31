@@ -155,6 +155,16 @@ const providers = [
         }
 
         if (!hasUsableExpiry(siweFields.expirationTime)) {
+          // Logged against our own clock, because that comparison is the whole
+          // check: the expiry is stamped by the signer's browser, and a machine
+          // far enough behind signs a message that is already expired on
+          // arrival. Silently it is indistinguishable from a bad signature, and
+          // the alert the caller sees says nothing about a clock.
+          console.error(
+            `Unusable sign-in expiry: ${
+              siweFields.expirationTime?.toISOString() ?? "absent"
+            }, ours is ${new Date().toISOString()}`,
+          );
           return null;
         }
 
