@@ -26,7 +26,7 @@ import { FlowCouncilContextProvider } from "@/context/FlowCouncil";
 import ConsentGate from "@/components/ConsentGate";
 import { NotificationGateProvider } from "@/context/NotificationGate";
 import useSiwe from "@/hooks/siwe";
-import SignInErrorProvider from "@/components/SignInErrorProvider";
+import { SignInErrorProvider } from "@/context/SignInError";
 import { networks } from "@/lib/networks";
 import { WALLET_CONNECT_PROJECT_ID, DEFAULT_CHAIN_ID } from "@/lib/constants";
 import "@rainbow-me/rainbowkit/styles.css";
@@ -274,8 +274,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <WagmiProvider config={config}>
         <QueryClientProvider client={queryClient}>
           <SessionProvider>
-            {/* Outside everything that signs in, because AutoSiwe below and
-                useRequireAuth render nothing of their own to fail in. */}
             <SignInErrorProvider>
               <AuthSync switchInProgressRef={switchInProgressRef} />
               <AutoSiwe switchInProgressRef={switchInProgressRef} />

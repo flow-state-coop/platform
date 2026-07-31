@@ -1,10 +1,14 @@
 import { useCallback } from "react";
 import { getCsrfToken, signIn } from "next-auth/react";
 import { useAccount, useSignMessage, useSwitchChain } from "wagmi";
-import { ConnectorChainMismatchError } from "@wagmi/core";
+import {
+  BaseError as WagmiBaseError,
+  ConnectorChainMismatchError,
+} from "@wagmi/core";
+import { BaseError } from "viem";
 import { createSiweMessage } from "viem/siwe";
 import { SIWE_MESSAGE_LIFETIME_MS } from "@/lib/siwe";
-import { useSignInError } from "@/components/SignInErrorProvider";
+import { useSignInError } from "@/context/SignInError";
 
 const SIGN_IN_FAILED = "Sign in failed, please try again.";
 
@@ -12,7 +16,7 @@ export default function useSiwe() {
   const { address, chain } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const { switchChainAsync } = useSwitchChain();
-  const showSignInError = useSignInError();
+  const { showSignInError, clearSignInError } = useSignInError();
 
   // signIn resolves with an error rather than throwing, and every gated screen
   // reads the session rather than this call, so a swallowed rejection leaves
@@ -25,11 +29,14 @@ export default function useSiwe() {
         signature,
       });
 
-      if (!result?.ok) {
+      if (result?.ok) {
+        clearSignInError();
+      } else {
+        console.error(result?.error);
         showSignInError(SIGN_IN_FAILED);
       }
     },
-    [showSignInError],
+    [showSignInError, clearSignInError],
   );
 
   const handleSignIn = useCallback(async () => {
@@ -69,11 +76,16 @@ export default function useSiwe() {
         return;
       }
 
-      // The wallet's own wording is worth keeping ("chain mismatch", "no
-      // account"), but only its message: rendering the error itself printed the
-      // class name and whatever the connector attached to it.
       console.error(error);
-      showSignInError(error instanceof Error ? error.message : SIGN_IN_FAILED);
+
+      const message =
+        error instanceof BaseError || error instanceof WagmiBaseError
+          ? error.shortMessage
+          : error instanceof Error
+            ? error.message
+            : "";
+
+      showSignInError(message || SIGN_IN_FAILED);
     }
   }, [
     address,
