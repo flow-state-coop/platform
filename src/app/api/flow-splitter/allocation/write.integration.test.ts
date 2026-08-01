@@ -62,7 +62,7 @@ import {
   resetRateLimits,
 } from "@/app/api/rateLimit";
 import { hashApiKey } from "../../apiKeys";
-import { getTestDb, resetDb } from "@tests/helpers/db";
+import { getTestDb, resetDb, unlockTestPool } from "@tests/helpers/db";
 import {
   mineStalledWrites,
   resetSplitterChain,
@@ -153,6 +153,9 @@ beforeEach(async () => {
   // The truncate restarts identity, so every test's key is id 1 again and the
   // per-key window would otherwise carry the whole file's requests.
   resetRateLimits();
+  // Writes on a mainnet are behind the one-time payment; this file is about
+  // the job mechanics, and the gate itself is covered by the unlock suite.
+  await unlockTestPool(db, CHAIN_ID, TEST_POOL_ID);
   deferred.length = 0;
   vi.mocked(getServerSession).mockResolvedValue({
     address: TEST_POOL_ADMIN,

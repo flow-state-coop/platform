@@ -49,6 +49,7 @@ import { useBotPoolAdmin } from "./useBotPoolAdmin";
 import { useGrantPoolAdmin } from "./useGrantPoolAdmin";
 import { useSplitterApiKeys } from "./useSplitterApiKeys";
 import { useSplitterApiStatus } from "./useSplitterApiStatus";
+import { useUnlockPool } from "./useUnlockPool";
 
 type AdminProps = {
   chainId: number;
@@ -239,9 +240,15 @@ export default function Admin(props: AdminProps) {
   } = useGrantPoolAdmin(chainId, network?.flowSplitter, poolId);
   const {
     hasActiveKeys,
+    unlocked,
     statusError: apiStatusError,
     reload: reloadApiStatus,
   } = useSplitterApiStatus(chainId, poolId);
+  const {
+    unlock,
+    isUnlocking,
+    error: unlockError,
+  } = useUnlockPool(chainId, poolId);
   const {
     keys,
     loading: keysLoading,
@@ -1812,6 +1819,13 @@ export default function Admin(props: AdminProps) {
               isGranting={isGranting}
               isSaving={isTransactionLoading}
               grantError={grantError}
+              unlocked={unlocked}
+              unlockStatusError={apiStatusError}
+              unlock={async () => {
+                await unlock(() => reloadApiStatus());
+              }}
+              isUnlocking={isUnlocking}
+              unlockError={unlockError}
               keys={keys}
               keysLoading={keysLoading}
               keysError={keysError}
@@ -1850,8 +1864,12 @@ export default function Admin(props: AdminProps) {
                   isTransactionLoading ||
                   // A grant is broadcast but not yet mined: this save would go
                   // out behind it at the next nonce, so a "No Admin" revoke set
-                  // computed now is guaranteed to be one address short.
+                  // computed now is guaranteed to be one address short. An
+                  // unlock payment in flight blocks it the same way: a
+                  // "No Admin" save mined before the claim would strand a
+                  // payment on a pool that can never be unlocked.
                   isGranting ||
+                  isUnlocking ||
                   (poolConfig.immutable &&
                     botIsAdmin === undefined &&
                     !botStatusError) ||

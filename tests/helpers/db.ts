@@ -71,6 +71,7 @@ const TABLES_TO_RESET = [
   "splitter_written_register",
   "splitter_api_keys",
   "splitter_integrations",
+  "splitter_unlock_payments",
 ] as const;
 
 export async function resetDb(db: Kysely<DB>): Promise<void> {
@@ -78,6 +79,30 @@ export async function resetDb(db: Kysely<DB>): Promise<void> {
   await sql`truncate table ${sql.join(identifiers)} restart identity cascade`.execute(
     db,
   );
+}
+
+/**
+ * Records a verified unlock payment so the splitter write gate opens. The hash
+ * embeds the pool id, so unlocking two pools in one test cannot collide on the
+ * (chain_id, tx_hash) unique.
+ */
+export async function unlockTestPool(
+  db: Kysely<DB>,
+  chainId: number,
+  poolId: string,
+): Promise<void> {
+  await db
+    .insertInto("splitterUnlockPayments")
+    .values({
+      chainId,
+      poolId,
+      txHash: `0x${BigInt(poolId).toString(16).padStart(64, "0")}`,
+      payer: TEST_ADMIN_ADDRESS,
+      token: "0x0b2c639c533813f4aa9d7837caf62653d097ff85",
+      amount: "10000000",
+    })
+    .onConflict((oc) => oc.columns(["chainId", "txHash"]).doNothing())
+    .execute();
 }
 
 const MIN_DESCRIPTION = "x".repeat(CHARACTER_LIMITS.projectDescription.min);

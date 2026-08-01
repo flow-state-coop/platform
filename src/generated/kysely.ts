@@ -165,6 +165,16 @@ export type SplitterIntegration = {
   lastWriteAt: Timestamp | null;
   createdAt: Generated<Timestamp>;
 };
+export type SplitterUnlockPayment = {
+  id: Generated<number>;
+  chainId: number;
+  poolId: string;
+  txHash: string;
+  payer: string;
+  token: string;
+  amount: string;
+  createdAt: Generated<Timestamp>;
+};
 export type SplitterWriteHistory = {
   id: Generated<number>;
   chainId: number;
@@ -268,6 +278,7 @@ export type DB = {
   rounds: Round;
   splitterApiKeys: SplitterApiKey;
   splitterIntegrations: SplitterIntegration;
+  splitterUnlockPayments: SplitterUnlockPayment;
   splitterWriteHistory: SplitterWriteHistory;
   splitterWriteJobs: SplitterWriteJob;
   splitterWrittenRegister: SplitterWrittenRegister;

@@ -45,6 +45,11 @@ export const splitterChain = {
   // Every broadcast's members, mined or stuck, so getTransaction can serve the
   // calldata the runner decodes when it inherits a batch.
   bodies: new Map<string, { account: string; units: bigint }[]>(),
+  // Receipts for transactions the simulator did not broadcast (the unlock
+  // payments), keyed by hash and served ahead of the write receipts. Shaped by
+  // the test, so a payment can carry whatever logs, sender and status the
+  // scenario needs.
+  externalReceipts: new Map<string, unknown>(),
   // A pool with more members than the API will enumerate. Pages are generated
   // from the cursor rather than materialized.
   oversizedMemberCount: 0,
@@ -76,6 +81,7 @@ export function resetSplitterChain() {
   splitterChain.pending = new Map();
   splitterChain.receipts = new Map();
   splitterChain.bodies = new Map();
+  splitterChain.externalReceipts = new Map();
   splitterChain.oversizedMemberCount = 0;
   splitterChain.otherPools = [];
   splitterChain.subgraphError = null;
@@ -244,6 +250,11 @@ export function createSplitterMockPublicClient() {
     // transport failure by exactly these types, and a bare Error here would
     // exercise the transport path for every miss.
     getTransactionReceipt: vi.fn(async ({ hash }: { hash: string }) => {
+      const external = splitterChain.externalReceipts.get(hash);
+      if (external) {
+        return external;
+      }
+
       const status = splitterChain.receipts.get(hash);
       if (!status) {
         const { TransactionReceiptNotFoundError } = await import("viem");

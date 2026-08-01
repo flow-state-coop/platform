@@ -14,6 +14,10 @@ import {
   getApiEligibility,
   type ApiIneligibility,
 } from "@/lib/splitterEligibility";
+import {
+  SPLITTER_UNLOCK_PRICE_LABEL,
+  isSplitterUnlockRequired,
+} from "@/lib/splitterUnlock";
 import { truncateStr } from "@/lib/utils";
 import type { Network } from "@/types/network";
 import MintedKeyAlert from "./MintedKeyAlert";
@@ -45,6 +49,11 @@ type SplitterApiCardProps = {
   isGranting: boolean;
   isSaving: boolean;
   grantError: string;
+  unlocked: boolean | undefined;
+  unlockStatusError: boolean;
+  unlock: () => Promise<void>;
+  isUnlocking: boolean;
+  unlockError: string;
   keys: SplitterApiKey[];
   keysLoading: boolean;
   keysError: string;
@@ -80,6 +89,11 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
     isGranting,
     isSaving,
     grantError,
+    unlocked,
+    unlockStatusError,
+    unlock,
+    isUnlocking,
+    unlockError,
     keys,
     keysLoading,
     keysError,
@@ -101,10 +115,21 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
   const eligibility = getApiEligibility({ hasAdmins, transferableUnits });
 
   const canManage = !needsSignIn && isAdmin;
-  // The grant button carries the wallet step whenever it is on screen, so
-  // repeating it under the keys heading would render the same button twice.
+  const unlockNeeded =
+    isSplitterUnlockRequired(network.id) && unlocked === false;
+  // Whichever section's button is highest on screen carries the step that has
+  // to happen first (wallet, then sign-in), so the sections below must not
+  // render the same button again. The unlock section sits above the grant,
+  // which sits above the keys heading.
+  const unlockCarriesWalletStep =
+    !!walletActionLabel && isAdmin && unlockNeeded;
+  const unlockCarriesSignInStep =
+    !walletActionLabel && needsSignIn && isAdmin && unlockNeeded;
   const grantCarriesWalletStep =
-    !!walletActionLabel && isAdmin && botIsAdmin === false;
+    !unlockCarriesWalletStep &&
+    !!walletActionLabel &&
+    isAdmin &&
+    botIsAdmin === false;
 
   return (
     <Card className="bg-lace-100 rounded-4 border-0 mt-8 px-10 py-8">
@@ -160,6 +185,62 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
               )
             ) : (
               <>
+                {unlockNeeded ? (
+                  <div>
+                    <span className="fw-semi-bold d-block mb-2">
+                      Unlock API writes
+                    </span>
+                    <Card.Text className="text-info mb-3">
+                      Programmatic writes are locked until a pool admin makes a
+                      one-time payment of {SPLITTER_UNLOCK_PRICE_LABEL} for this
+                      pool. Reading the register and minting keys work without
+                      it.
+                    </Card.Text>
+                    {!isAdmin ? (
+                      <Card.Text className="text-info mb-0">
+                        A pool admin has to unlock this.
+                      </Card.Text>
+                    ) : (
+                      // Paying is a transaction plus an authenticated claim,
+                      // so it needs the wallet on the pool's chain and a
+                      // signed-in session, in that order. A save already in
+                      // flight blocks it: a "No Admin" save mined first would
+                      // leave the payment claimable by nobody.
+                      <Button
+                        disabled={isUnlocking || isGranting || isSaving}
+                        className="px-8 py-3 rounded-4 fw-semi-bold"
+                        onClick={
+                          walletActionLabel
+                            ? onPrepareWallet
+                            : needsSignIn
+                              ? onSignIn
+                              : unlock
+                        }
+                      >
+                        {isUnlocking ? (
+                          <Spinner size="sm" className="ms-2" />
+                        ) : (
+                          (walletActionLabel ??
+                          (needsSignIn
+                            ? "Sign In With Ethereum"
+                            : `Pay ${SPLITTER_UNLOCK_PRICE_LABEL} to unlock`))
+                        )}
+                      </Button>
+                    )}
+                    {unlockError ? (
+                      <Alert variant="danger" className="mt-3 mb-0">
+                        {unlockError}
+                      </Alert>
+                    ) : null}
+                  </div>
+                ) : unlocked === undefined &&
+                  unlockStatusError &&
+                  isSplitterUnlockRequired(network.id) ? (
+                  <Card.Text className="text-info mb-0">
+                    Couldn&apos;t check whether this pool&apos;s API writes are
+                    unlocked. Reload to try again.
+                  </Card.Text>
+                ) : null}
                 <div>
                   <span className="fw-semi-bold d-block mb-2">
                     Flow State automation bot
@@ -223,7 +304,7 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
                         <Card.Text className="text-info mb-0">
                           A pool admin has to grant this.
                         </Card.Text>
-                      ) : (
+                      ) : unlockCarriesWalletStep ? null : (
                         // Granting is an on-chain transaction, so it needs a
                         // wallet on the pool's chain and nothing else. Signing
                         // in gates the key list below, not this. A save already
@@ -231,7 +312,7 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
                         // revoke set now and would be mined first, leaving the
                         // pool immutable with the bot holding admin.
                         <Button
-                          disabled={isGranting || isSaving}
+                          disabled={isGranting || isUnlocking || isSaving}
                           className="px-8 py-3 rounded-4 fw-semi-bold"
                           onClick={walletActionLabel ? onPrepareWallet : grant}
                         >
@@ -252,6 +333,8 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
                 </div>
 
                 {!canManage ? (
+                  unlockCarriesWalletStep ||
+                  unlockCarriesSignInStep ||
                   grantCarriesWalletStep ? null : (
                     <div>
                       <span className="fw-semi-bold d-block mb-2">

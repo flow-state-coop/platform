@@ -26,6 +26,12 @@ or remove admins, including you. Grant it from the pool's admin page in
 [one transaction](../platform/flow-splitters/004-admin.md#grant-the-bot-admin).
 :::
 
+:::info Writes are unlocked per pool with a **one-time payment of 10 USDC**,
+made by a pool admin from the same API card. Reads, key minting, and job polls
+work without it, so an integration can be built and tested end to end before
+anyone pays; a write on a locked pool returns `402`. OP Sepolia is not gated.
+:::
+
 ## Read the current allocation
 
 ```
@@ -294,6 +300,7 @@ what has to change.
 | `200`  | `{ "success": true, … }`                                                     | Read succeeded, or a write that changed nothing (`status: "no_change"`).                                                                                                                  |
 | `202`  | `{ "success": true, "status": "queued", "jobId": "…" }`                      | Write accepted. Poll the job for progress.                                                                                                                                                |
 | `400`  | `{ "error": "…" }`                                                           | Invalid or duplicate address, an address that is the pool itself or another Superfluid pool, or all weights zero. **Cools the key down.** Malformed JSON also returns `400` but does not. |
+| `402`  | `{ "error": "This pool's API is locked…" }`                                  | The pool's one-time unlock has not been paid. A pool admin can pay it from the pool's admin page; nothing about the key or the payload is at fault, and no cooldown is triggered.          |
 | `401`  | `{ "error": "Unauthorized" }`                                                | Missing, unknown, or revoked key.                                                                                                                                                         |
 | `403`  | `{ "error": "The wallet that created this API key is no longer an admin…" }` | The key's creator lost pool admin, so the key lost the authority it was minted with. A current admin can mint a replacement.                                                              |
 | `404`  | `{ "error": "Job not found" }`                                               | Unknown job, a job belonging to another pool, or one past its seven-day expiry.                                                                                                           |

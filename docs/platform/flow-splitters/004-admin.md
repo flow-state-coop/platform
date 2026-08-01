@@ -23,11 +23,17 @@ A Flow Splitter is either **Listed** or **Unlisted**. Only Listed Splitters are 
 
 The **API** card at the bottom of the admin page lets an external system (a metrics job, a revenue feed, a cron script) replace the Share Register with no human signing anything. You post relative weights, the platform normalizes them, and the Flow State bot signs the onchain updates.
 
-Everyone sees the endpoint reference and the current Share Register. Both privileged actions need you to hold Admin on the pool, and they ask for different things beyond that: granting the bot is an onchain transaction, so it needs a wallet connected on the pool's chain and nothing more, while managing keys needs **Sign In With Ethereum** from the card.
+Everyone sees the endpoint reference and the current Share Register. The privileged actions need you to hold Admin on the pool, and they ask for different things beyond that: granting the bot is an onchain transaction, so it needs a wallet connected on the pool's chain and nothing more, while unlocking writes and managing keys need **Sign In With Ethereum** from the card.
 
 :::warning[Two kinds of pool can never use the API]
 A pool with **no admins** is permanently immutable, and a pool with **transferable shares** lets recipients move shares between writes, so the register the API believes it owns can be changed by someone else. Both are fixed at launch. The card hides everything but the explanation on those pools, and every API call is refused.
 :::
+
+### Unlock API writes
+
+Programmatic writes are unlocked per pool with a **one-time payment of 10 USDC**, sent on the pool's chain to the Flow State bot's address. The card leads with **Pay 10 USDC to unlock** until that is done, and the section disappears once it is. Reads, key minting, and job polls work without paying, so an integration can be built and tested end to end first; a write on a locked pool is refused with a clear error rather than accepted and dropped. OP Sepolia pools are not gated, so a testnet integration costs nothing.
+
+Pay from the wallet you signed in with: a payment is claimed for the pool by the wallet that sent it, which is what stops anyone else claiming yours. If verification is interrupted after the transfer went out, click the button again; the payment is found and counted rather than charged twice.
 
 ### Grant the bot admin
 
