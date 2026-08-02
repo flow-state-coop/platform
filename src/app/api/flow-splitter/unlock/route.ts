@@ -1,4 +1,4 @@
-import { TransactionReceiptNotFoundError } from "viem";
+import { TransactionReceiptNotFoundError, type Address } from "viem";
 import { db } from "../../db";
 import { errorResponse, readJsonBody, PayloadTooLargeError } from "../../utils";
 import { authorizePoolAdmin } from "../auth";
@@ -29,9 +29,12 @@ function unlocked() {
  *
  * The caller names the transaction; everything that matters about it is read
  * from the chain: that it succeeded, that it moved at least the price in this
- * chain's USDC to the bot address, and that it was sent by the admin claiming
- * it. The sender check is what stops a third party watching the chain from
- * racing a payment it did not make onto a pool the payer never meant to unlock.
+ * chain's USDC to the bot address, and that it was sent, or funded, by the
+ * admin claiming it. The transaction's sender covers a wallet broadcasting its
+ * own payment; the funds' source covers a contract wallet such as a Safe,
+ * where an executor EOA broadcasts and the USDC leaves the signed-in address.
+ * Either binding stops a third party watching the chain from racing a payment
+ * it did not make onto a pool the payer never meant to unlock.
  *
  * Idempotent for the retry that matters: re-claiming a transaction already
  * recorded for this pool answers unlocked rather than refusing, so a client
@@ -115,16 +118,28 @@ export async function POST(request: Request) {
       return errorResponse(UNLOCK_TX_REVERTED_ERROR, 400);
     }
 
-    if (receipt.from.toLowerCase() !== auth.address) {
-      return errorResponse(UNLOCK_TX_WRONG_SENDER_ERROR, 403);
-    }
-
+    // A claimer who sent the transaction gets credit for everything it moved
+    // to the bot, so a payment routed through a splitting contract still
+    // counts. A claimer who did not send it only gets credit for funds that
+    // left their own wallet, which is the contract-wallet case. When neither
+    // yields the price, the refusal names the real fault: wrong wallet only if
+    // the transaction genuinely pays the bot, otherwise not a payment.
+    const claimerSentTx = receipt.from.toLowerCase() === auth.address;
     const payment = findUnlockPayment(receipt, {
       token,
       receiver: FLOW_STATE_BOT_ADDRESS,
+      ...(claimerSentTx ? {} : { payer: auth.address as Address }),
     });
     if (!payment) {
-      return errorResponse(UNLOCK_TX_NOT_PAYMENT_ERROR, 400);
+      const paidBySomeoneElse =
+        !claimerSentTx &&
+        findUnlockPayment(receipt, {
+          token,
+          receiver: FLOW_STATE_BOT_ADDRESS,
+        });
+      return paidBySomeoneElse
+        ? errorResponse(UNLOCK_TX_WRONG_SENDER_ERROR, 403)
+        : errorResponse(UNLOCK_TX_NOT_PAYMENT_ERROR, 400);
     }
 
     const inserted = await db

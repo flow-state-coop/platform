@@ -13,14 +13,22 @@ export type UnlockPayment = {
  * several transfers still counts, and every other event in the receipt is
  * ignored rather than trusted.
  *
- * The payer reported is the funds' source in the first counted transfer, a
- * best-effort audit field: a payment routed through an intermediary can draw
- * on several sources and only the first is recorded. Who may claim the receipt
- * never rests on it; the route decides that on the transaction's sender.
+ * With `payer` set, only transfers leaving that address count. The route uses
+ * this when the claimer did not send the transaction (a contract wallet whose
+ * executor broadcast it), so another party's funds in the same receipt cannot
+ * satisfy the price. Without it, the payer reported is the funds' source in
+ * the first counted transfer, a best-effort audit field: a payment routed
+ * through an intermediary can draw on several sources and only the first is
+ * recorded. Who may claim the receipt never rests on that field; the route
+ * decides it on the transaction's sender or the filter here.
  */
 export function findUnlockPayment(
   receipt: { logs: Log[] },
-  { token, receiver }: { token: Address; receiver: Address },
+  {
+    token,
+    receiver,
+    payer,
+  }: { token: Address; receiver: Address; payer?: Address },
 ): UnlockPayment | null {
   const transfers = parseEventLogs({
     abi: erc20Abi,
@@ -29,7 +37,8 @@ export function findUnlockPayment(
   }).filter(
     (log) =>
       log.address.toLowerCase() === token.toLowerCase() &&
-      log.args.to.toLowerCase() === receiver.toLowerCase(),
+      log.args.to.toLowerCase() === receiver.toLowerCase() &&
+      (!payer || log.args.from.toLowerCase() === payer.toLowerCase()),
   );
 
   const amount = transfers.reduce((sum, log) => sum + log.args.value, 0n);

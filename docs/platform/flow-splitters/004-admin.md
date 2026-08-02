@@ -33,7 +33,7 @@ A pool with **no admins** is permanently immutable, and a pool with **transferab
 
 Programmatic writes are unlocked per pool with a **one-time payment of 10 USDC**, sent on the pool's chain to the Flow State bot's address. The card leads with **Pay 10 USDC to unlock** until that is done, and the section disappears once it is. Reads, key minting, and job polls work without paying, so an integration can be built and tested end to end first; a write on a locked pool is refused with a clear error rather than accepted and dropped. OP Sepolia pools are not gated, so a testnet integration costs nothing.
 
-Pay from the wallet you signed in with: a payment is claimed for the pool by the wallet that sent it, which is what stops anyone else claiming yours. If verification is interrupted after the transfer went out, click the button again; the payment is found and counted rather than charged twice.
+Pay from the wallet you signed in with: a payment is claimed for the pool by the wallet that sent it, or by the wallet the USDC left when a contract wallet such as a Safe pays through an executor, which is what stops anyone else claiming yours. If verification is interrupted after the transfer went out, click the button again; the payment is found and counted rather than charged twice.
 
 ### Grant the bot admin
 

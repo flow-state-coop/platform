@@ -251,16 +251,56 @@ describe("splitter unlock", () => {
     expect((await res.json()).error).toBe(UNLOCK_TX_REVERTED_ERROR);
   });
 
-  it("refuses a payment sent by a wallet other than the signed-in admin", async () => {
-    // A real payment, but claimed by an admin who did not send it: the sender
-    // check is what stops a bystander racing someone else's payment onto a
-    // different pool.
+  it("refuses a payment the signed-in admin neither sent nor funded", async () => {
+    // A real payment, but claimed by an admin who did not send the transaction
+    // and whose wallet none of the funds left: either binding would have let a
+    // bystander race someone else's payment onto a different pool.
     splitterChain.externalReceipts.set(PAY_TX, payment({ from: OUTSIDER }));
 
     const res = await claim();
 
     expect(res.status).toBe(403);
     expect((await res.json()).error).toBe(UNLOCK_TX_WRONG_SENDER_ERROR);
+  });
+
+  it("accepts a contract wallet's payment broadcast by an executor", async () => {
+    // A Safe pays: the receipt's sender is the executor EOA, never the
+    // signed-in admin, so the binding is the USDC leaving the admin's wallet.
+    splitterChain.externalReceipts.set(
+      PAY_TX,
+      payment({
+        from: OUTSIDER,
+        logs: [
+          transferLog(
+            USDC,
+            TEST_POOL_ADMIN,
+            FLOW_STATE_BOT_ADDRESS,
+            SPLITTER_UNLOCK_PRICE,
+          ),
+        ],
+      }),
+    );
+
+    const claimed = await claim();
+    expect((await claimed.json()).unlocked).toBe(true);
+
+    const recorded = await db
+      .selectFrom("splitterUnlockPayments")
+      .select("payer")
+      .executeTakeFirstOrThrow();
+    expect(recorded.payer).toBe(TEST_POOL_ADMIN.toLowerCase());
+  });
+
+  it("calls a non-payment by a different sender a non-payment, not a wrong wallet", async () => {
+    splitterChain.externalReceipts.set(
+      PAY_TX,
+      payment({ from: OUTSIDER, to: OUTSIDER }),
+    );
+
+    const res = await claim();
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe(UNLOCK_TX_NOT_PAYMENT_ERROR);
   });
 
   it("refuses a transaction that is not a payment", async () => {

@@ -150,6 +150,42 @@ describe("findUnlockPayment", () => {
     expect(payment).toEqual({ payer: PAYER, amount: SPLITTER_UNLOCK_PRICE });
   });
 
+  it("counts only the named payer's transfers when one is given", () => {
+    const payment = findUnlockPayment(
+      receiptWith([
+        transferLog(USDC, OTHER, RECEIVER, SPLITTER_UNLOCK_PRICE),
+        transferLog(USDC, PAYER, RECEIVER, 6_000_000n),
+        transferLog(USDC, PAYER, RECEIVER, 4_000_000n),
+      ]),
+      { ...expected, payer: PAYER },
+    );
+
+    expect(payment).toEqual({ payer: PAYER, amount: SPLITTER_UNLOCK_PRICE });
+  });
+
+  it("does not let another wallet's payment satisfy a named payer", () => {
+    expect(
+      findUnlockPayment(
+        receiptWith([
+          transferLog(USDC, OTHER, RECEIVER, SPLITTER_UNLOCK_PRICE),
+        ]),
+        { ...expected, payer: PAYER },
+      ),
+    ).toBeNull();
+  });
+
+  it("matches a named payer case-insensitively", () => {
+    const payment = findUnlockPayment(
+      receiptWith([transferLog(USDC, PAYER, RECEIVER, SPLITTER_UNLOCK_PRICE)]),
+      {
+        ...expected,
+        payer: PAYER.toUpperCase().replace("0X", "0x") as Address,
+      },
+    );
+
+    expect(payment?.amount).toBe(SPLITTER_UNLOCK_PRICE);
+  });
+
   it("matches token and receiver case-insensitively", () => {
     const payment = findUnlockPayment(
       receiptWith([

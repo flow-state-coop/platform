@@ -43,7 +43,7 @@ export const UNLOCK_TX_NOT_PAYMENT_ERROR =
   "This transaction does not include a 10 USDC payment to the Flow State bot on this pool's network";
 
 export const UNLOCK_TX_WRONG_SENDER_ERROR =
-  "This transaction was not sent by your signed-in wallet. Sign in with the wallet that paid to unlock the pool";
+  "This payment did not come from your signed-in wallet. Sign in with the wallet that paid to unlock the pool";
 
 export const UNLOCK_TX_USED_ERROR =
   "This transaction has already been used to unlock a different pool";
