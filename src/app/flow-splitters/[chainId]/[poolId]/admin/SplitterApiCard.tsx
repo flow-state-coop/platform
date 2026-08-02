@@ -130,6 +130,10 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
     !!walletActionLabel &&
     isAdmin &&
     botIsAdmin === false;
+  const stepCarriedAbove =
+    unlockCarriesWalletStep ||
+    unlockCarriesSignInStep ||
+    grantCarriesWalletStep;
 
   return (
     <Card className="bg-lace-100 rounded-4 border-0 mt-8 px-10 py-8">
@@ -333,9 +337,7 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
                 </div>
 
                 {!canManage ? (
-                  unlockCarriesWalletStep ||
-                  unlockCarriesSignInStep ||
-                  grantCarriesWalletStep ? null : (
+                  stepCarriedAbove ? null : (
                     <div>
                       <span className="fw-semi-bold d-block mb-2">
                         API keys

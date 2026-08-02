@@ -77,6 +77,9 @@ export async function POST(request: Request) {
       return unlocked();
     }
 
+    // Any claim on an already-unlocked pool answers unlocked without reading
+    // the hash: there is nothing left to pay for. What this reveals is already
+    // public through the unauthenticated status endpoint.
     const existing = await db
       .selectFrom("splitterUnlockPayments")
       .select("id")

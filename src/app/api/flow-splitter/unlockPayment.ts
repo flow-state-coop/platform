@@ -13,9 +13,10 @@ export type UnlockPayment = {
  * several transfers still counts, and every other event in the receipt is
  * ignored rather than trusted.
  *
- * The payer reported is the funds' source in the first counted transfer, which
- * is what belongs in the payment record; who may claim the receipt is the
- * route's decision, made on the transaction's sender.
+ * The payer reported is the funds' source in the first counted transfer, a
+ * best-effort audit field: a payment routed through an intermediary can draw
+ * on several sources and only the first is recorded. Who may claim the receipt
+ * never rests on it; the route decides that on the transaction's sender.
  */
 export function findUnlockPayment(
   receipt: { logs: Log[] },
