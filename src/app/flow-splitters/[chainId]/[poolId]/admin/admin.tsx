@@ -246,6 +246,9 @@ export default function Admin(props: AdminProps) {
   } = useSplitterApiStatus(chainId, poolId);
   const {
     unlock,
+    checkPayment,
+    claimTx,
+    hasPendingPayment,
     isUnlocking,
     error: unlockError,
   } = useUnlockPool(chainId, poolId);
@@ -1824,8 +1827,16 @@ export default function Admin(props: AdminProps) {
               unlock={async () => {
                 await unlock(() => reloadApiStatus());
               }}
+              checkPayment={async () => {
+                await checkPayment(() => reloadApiStatus());
+              }}
+              claimTx={async (txHash) => {
+                await claimTx(txHash, () => reloadApiStatus());
+              }}
+              hasPendingPayment={hasPendingPayment}
               isUnlocking={isUnlocking}
               unlockError={unlockError}
+              hasActiveKeys={hasActiveKeys}
               keys={keys}
               keysLoading={keysLoading}
               keysError={keysError}

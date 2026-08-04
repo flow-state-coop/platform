@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useConfig, usePublicClient } from "wagmi";
 import { writeContract } from "@wagmi/core";
 import { erc20Abi } from "viem";
@@ -88,25 +88,126 @@ async function claim(
     return {
       ok: false,
       error:
-        "Couldn't verify the payment. Retry in a moment; a payment already sent will be found rather than charged again.",
+        "Couldn't reach the server to check the payment. Check your connection and try again.",
     };
   }
 }
 
+/**
+ * Pays for and claims the pool's one-time API unlock.
+ *
+ * `hasPendingPayment` is true while a broadcast payment has not been counted
+ * by the server, which is the state the card renders as "find my payment"
+ * rather than "pay". `checkPayment` retries the claim of that stored payment
+ * and never pays; `claimTx` claims a hash the admin entered by hand, for when
+ * the stored one was lost with the browser storage. `unlock` is the only path
+ * that can move money, and even it claims an existing pending payment instead
+ * of paying when it finds one.
+ */
 export function useUnlockPool(chainId: number, poolId: string) {
   const wagmiConfig = useConfig();
   const publicClient = usePublicClient({ chainId });
 
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [error, setError] = useState("");
+  const [hasPendingPayment, setHasPendingPayment] = useState(false);
+
+  // localStorage is unavailable during server render, so the pending state is
+  // read on mount and on a pool switch rather than in the initializer.
+  useEffect(() => {
+    setError("");
+    setHasPendingPayment(!!readPendingTx(chainId, poolId));
+  }, [chainId, poolId]);
+
+  const settlePendingClaim = useCallback(
+    async (
+      txHash: string,
+      onUnlocked?: () => Promise<unknown>,
+    ): Promise<boolean> => {
+      const claimed = await claim(chainId, poolId, txHash);
+
+      if (claimed.ok) {
+        clearPendingTx(chainId, poolId);
+        setHasPendingPayment(false);
+        await onUnlocked?.();
+        return true;
+      }
+
+      if (PENDING_TX_DEAD_ERRORS.includes(claimed.error)) {
+        clearPendingTx(chainId, poolId);
+        setHasPendingPayment(false);
+      }
+
+      setError(claimed.error);
+      return false;
+    },
+    [chainId, poolId],
+  );
 
   // `onUnlocked` runs inside the unlocking window, so the caller can refresh
   // whatever reads the unlock status before the button re-enables.
+  const checkPayment = useCallback(
+    async (onUnlocked?: () => Promise<unknown>): Promise<boolean> => {
+      const pending = readPendingTx(chainId, poolId);
+
+      if (!pending) {
+        setHasPendingPayment(false);
+        return false;
+      }
+
+      try {
+        setIsUnlocking(true);
+        setError("");
+
+        return await settlePendingClaim(pending, onUnlocked);
+      } finally {
+        setIsUnlocking(false);
+      }
+    },
+    [chainId, poolId, settlePendingClaim],
+  );
+
+  const claimTx = useCallback(
+    async (
+      txHash: `0x${string}`,
+      onUnlocked?: () => Promise<unknown>,
+    ): Promise<boolean> => {
+      try {
+        setIsUnlocking(true);
+        setError("");
+
+        const claimed = await claim(chainId, poolId, txHash);
+
+        if (!claimed.ok) {
+          // The entered hash is not stored as pending: a typo held there
+          // would hide the pay button behind a payment that never existed.
+          setError(claimed.error);
+          return false;
+        }
+
+        // Whatever hash was stored is superseded: the pool is unlocked.
+        clearPendingTx(chainId, poolId);
+        setHasPendingPayment(false);
+        await onUnlocked?.();
+
+        return true;
+      } finally {
+        setIsUnlocking(false);
+      }
+    },
+    [chainId, poolId],
+  );
+
   const unlock = useCallback(
     async (onUnlocked?: () => Promise<unknown>): Promise<boolean> => {
       const usdc = SPLITTER_UNLOCK_USDC[chainId];
 
-      if (!publicClient || !usdc) {
+      if (!usdc) {
+        setError("Payments are not configured for this network");
+        return false;
+      }
+
+      if (!publicClient) {
         setError("Wallet not ready");
         return false;
       }
@@ -115,22 +216,14 @@ export function useUnlockPool(chainId: number, poolId: string) {
         setIsUnlocking(true);
         setError("");
 
+        // Found here only through a race (another tab, stale state): a click
+        // that discovers an unsettled payment claims it and stops, because
+        // paying while one is outstanding is exactly the double charge the
+        // stored hash exists to prevent.
         const pending = readPendingTx(chainId, poolId);
         if (pending) {
-          const claimed = await claim(chainId, poolId, pending);
-
-          if (claimed.ok) {
-            clearPendingTx(chainId, poolId);
-            await onUnlocked?.();
-            return true;
-          }
-
-          if (!PENDING_TX_DEAD_ERRORS.includes(claimed.error)) {
-            setError(claimed.error);
-            return false;
-          }
-
-          clearPendingTx(chainId, poolId);
+          setHasPendingPayment(true);
+          return await settlePendingClaim(pending, onUnlocked);
         }
 
         // Pinned to the pool's chain so wagmi refuses a wallet on the wrong
@@ -144,36 +237,28 @@ export function useUnlockPool(chainId: number, poolId: string) {
         });
 
         writePendingTx(chainId, poolId, hash);
+        setHasPendingPayment(true);
 
         const receipt = await waitForReceipt(publicClient, hash);
 
         if (receipt.status === "reverted") {
           // A reverted transfer paid nothing, so there is no payment to guard.
           clearPendingTx(chainId, poolId);
+          setHasPendingPayment(false);
           setError("The payment transaction reverted. Please try again.");
           return false;
         }
 
-        const claimed = await claim(chainId, poolId, hash);
-
-        if (!claimed.ok) {
-          setError(claimed.error);
-          return false;
-        }
-
-        clearPendingTx(chainId, poolId);
-        await onUnlocked?.();
-
-        return true;
+        return await settlePendingClaim(hash, onUnlocked);
       } catch (err) {
         console.error(err);
 
         // Reached from the wallet call or the receipt wait. If the transfer
-        // was broadcast its hash is already stored, so the next attempt claims
-        // it rather than paying again.
+        // was broadcast its hash is already stored and the card is showing
+        // the recovery copy, which says everything there is to say.
         setError(
           readPendingTx(chainId, poolId)
-            ? "Couldn't confirm the payment. Retry in a moment; a payment already sent will be found rather than charged again."
+            ? ""
             : "The payment was not sent. Please try again.",
         );
 
@@ -182,8 +267,15 @@ export function useUnlockPool(chainId: number, poolId: string) {
         setIsUnlocking(false);
       }
     },
-    [wagmiConfig, publicClient, chainId, poolId],
+    [wagmiConfig, publicClient, chainId, poolId, settlePendingClaim],
   );
 
-  return { unlock, isUnlocking, error };
+  return {
+    unlock,
+    checkPayment,
+    claimTx,
+    hasPendingPayment,
+    isUnlocking,
+    error,
+  };
 }
