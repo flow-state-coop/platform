@@ -80,18 +80,22 @@ export async function POST(request: Request) {
       return unlocked();
     }
 
-    // Any claim on an already-unlocked pool answers unlocked without reading
-    // the hash: there is nothing left to pay for. What this reveals is already
-    // public through the unauthenticated status endpoint.
-    const existing = await db
+    // A transaction already recorded is answered from the record alone, so
+    // the re-claim that lost its response needs no second chain read, and a
+    // hash recorded for a different pool is refused before one. A claim
+    // naming a new transaction is verified and recorded even when the pool
+    // is already unlocked, as when two tabs pay at once, so the table stays
+    // a complete account of what reached the bot.
+    const recorded = await db
       .selectFrom("splitterUnlockPayments")
-      .select("id")
+      .select("poolId")
       .where("chainId", "=", chainId)
-      .where("poolId", "=", poolId)
-      .limit(1)
+      .where("txHash", "=", txHash)
       .executeTakeFirst();
-    if (existing) {
-      return unlocked();
+    if (recorded) {
+      return recorded.poolId === poolId
+        ? unlocked()
+        : errorResponse(UNLOCK_TX_USED_ERROR, 409);
     }
 
     const token = SPLITTER_UNLOCK_USDC[chainId];

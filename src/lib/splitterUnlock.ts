@@ -28,8 +28,9 @@ export function isSplitterUnlockRequired(chainId: number): boolean {
 
 // Shared between the claim route and the unlock hook, which tells a refusal it
 // can retry from one that means the stored transaction will never be a payment.
-// Compared by identity on the client, so the wording can change freely as long
-// as both sides import from here.
+// Compared by identity on the client, which holds only while client and server
+// run the same build. During deploy skew a reworded refusal reads as retryable,
+// which fails safe, keeping the stored hash and showing the message.
 export const SPLITTER_LOCKED_ERROR =
   "This pool's API is locked. A pool admin can unlock it with a one-time payment of 10 USDC from the pool's admin page";
 

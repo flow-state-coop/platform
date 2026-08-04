@@ -359,6 +359,27 @@ describe("splitter unlock", () => {
     expect(payments).toHaveLength(1);
   });
 
+  it("records a second real payment on an already-unlocked pool", async () => {
+    // Two tabs paying at once both send real transfers. The second claim
+    // lands after the first unlocked the pool, and its money reached the bot
+    // all the same, so it is verified and recorded rather than answered away
+    // unread.
+    const SECOND_TX = `0x${"bb".repeat(32)}`;
+    splitterChain.externalReceipts.set(PAY_TX, payment());
+    splitterChain.externalReceipts.set(SECOND_TX, payment());
+
+    await claim();
+    const second = await claim(SECOND_TX);
+
+    expect((await second.json()).unlocked).toBe(true);
+
+    const payments = await db
+      .selectFrom("splitterUnlockPayments")
+      .select("txHash")
+      .execute();
+    expect(payments.map((p) => p.txHash).sort()).toEqual([PAY_TX, SECOND_TX]);
+  });
+
   it("never lets one payment unlock two pools, whatever the hash casing", async () => {
     splitterChain.externalReceipts.set(PAY_TX, payment());
     await claim();
