@@ -107,8 +107,6 @@ export default function SplitterApiKeysPanel(props: SplitterApiKeysPanelProps) {
 
   return (
     <div>
-      <span className="fw-semi-bold d-block mb-2">API keys</span>
-
       {loadError ? (
         <Alert variant="danger" className="mb-3">
           {loadError}

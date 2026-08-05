@@ -61,7 +61,11 @@ describe("splitter API status", () => {
     const res = await status();
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ success: true, hasActiveKeys: false });
+    expect(await res.json()).toEqual({
+      success: true,
+      hasActiveKeys: false,
+      unlocked: false,
+    });
   });
 
   it("reports an active key without requiring a session", async () => {

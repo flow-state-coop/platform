@@ -1,7 +1,7 @@
-import { test } from "@playwright/test";
+import { test, type Page } from "@playwright/test";
 import { installMockWallet } from "./helpers/setup";
 import { installSubgraphMock } from "./helpers/subgraphMock";
-import { botHoldsAdmin, installRpcMock } from "./helpers/rpcMock";
+import { botHoldsAdmin, installRpcMock, type AnswerCall } from "./helpers/rpcMock";
 import { enterAuthenticated } from "./helpers/signIn";
 import { getTestAccount, TEST_CHAIN_ID } from "./helpers/mockEthereum";
 
@@ -66,30 +66,38 @@ function json(body: unknown) {
   return { contentType: "application/json", body: JSON.stringify(body) };
 }
 
-// Not a test: it rewrites a tracked PNG, so it stays skipped unless asked for.
-// Recapture with `CAPTURE_DOCS=1 npx playwright test capture-api-keys` against a
-// running `pnpm dev`, then eyeball the image before committing it.
+// Not tests: they rewrite tracked PNGs, so they stay skipped unless asked for.
+// Recapture with `CAPTURE_DOCS=1 npx playwright test capture-api-keys` against
+// a running `pnpm dev`, then eyeball the images before committing them.
 test.skip(
   !process.env.CAPTURE_DOCS,
-  "set CAPTURE_DOCS=1 to rewrite the admin docs screenshot",
+  "set CAPTURE_DOCS=1 to rewrite the admin docs screenshots",
 );
 
-test("capture the API card for the admin docs", async ({ page }) => {
+async function openAdminCard(
+  page: Page,
+  state: {
+    answerCall?: AnswerCall;
+    hasActiveKeys: boolean;
+    keys: typeof KEYS;
+    writes: typeof WRITES;
+  },
+) {
   await installMockWallet(page);
   await installSubgraphMock(page);
-  await installRpcMock(page, botHoldsAdmin);
+  await installRpcMock(page, state.answerCall);
 
   await page.route("**/api/profiles/names", (route) =>
     route.fulfill(json({ success: true, names: {} })),
   );
   await page.route("**/api/flow-splitter/status*", (route) =>
-    route.fulfill(json({ success: true, hasActiveKeys: true })),
+    route.fulfill(json({ success: true, hasActiveKeys: state.hasActiveKeys })),
   );
   await page.route("**/api/flow-splitter/keys*", (route) =>
-    route.fulfill(json({ success: true, keys: KEYS })),
+    route.fulfill(json({ success: true, keys: state.keys })),
   );
   await page.route("**/api/flow-splitter/history*", (route) =>
-    route.fulfill(json({ success: true, writes: WRITES, hasMore: false })),
+    route.fulfill(json({ success: true, writes: state.writes, hasMore: false })),
   );
 
   await page.setViewportSize({ width: 1280, height: 1400 });
@@ -97,7 +105,7 @@ test("capture the API card for the admin docs", async ({ page }) => {
 
   const card = page
     .locator(".card")
-    .filter({ hasText: "Flow State automation bot" })
+    .filter({ hasText: "Bot admin access" })
     .first();
 
   await card.waitFor({ state: "visible" });
@@ -116,7 +124,30 @@ test("capture the API card for the admin docs", async ({ page }) => {
     }
   });
 
+  return card;
+}
+
+test("capture the API card for the admin docs", async ({ page }) => {
+  const card = await openAdminCard(page, {
+    answerCall: botHoldsAdmin,
+    hasActiveKeys: true,
+    keys: KEYS,
+    writes: WRITES,
+  });
+
   await card.screenshot({
     path: "docs/platform/flow-splitters/img/api-keys.png",
+  });
+});
+
+test("capture the API card before the bot holds admin", async ({ page }) => {
+  const card = await openAdminCard(page, {
+    hasActiveKeys: false,
+    keys: [],
+    writes: [],
+  });
+
+  await card.screenshot({
+    path: "docs/platform/flow-splitters/img/api-grant.png",
   });
 });

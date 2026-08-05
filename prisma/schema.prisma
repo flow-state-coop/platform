@@ -253,6 +253,27 @@ model SplitterWriteHistory {
   @@map("splitter_write_history")
 }
 
+// One-time API unlock payments, one row per verified on-chain transaction
+// rather than a flag on the integration row: the record of who paid what, in
+// which token, is what any future usage-based pricing starts from, and it
+// cannot be reconstructed later. A pool is unlocked when it has at least one
+// row. The (chain_id, tx_hash) unique is the replay guard: one payment can
+// never unlock two pools.
+model SplitterUnlockPayment {
+  id        Int      @id @default(autoincrement())
+  chainId   Int      @map("chain_id")
+  poolId    String   @map("pool_id") @db.VarChar(78)
+  txHash    String   @map("tx_hash") @db.VarChar(66)
+  payer     String   @db.VarChar(42)
+  token     String   @db.VarChar(42)
+  amount    String   @db.VarChar(78)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([chainId, txHash])
+  @@index([chainId, poolId])
+  @@map("splitter_unlock_payments")
+}
+
 model Project {
   id           Int              @id @default(autoincrement())
   details      Json?

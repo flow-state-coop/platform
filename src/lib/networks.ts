@@ -111,7 +111,10 @@ const networks: Network[] = [
     label: "base",
     icon: "/base.svg",
     blockExplorer: "https://basescan.org",
-    rpcUrl: "https://base-rpc.publicnode.com",
+    // publicnode bills eth_getTransactionReceipt as an archive call and refuses
+    // it without a token, even for a block mined seconds ago, which breaks
+    // every receipt read on this chain. Any replacement must serve receipts.
+    rpcUrl: "https://mainnet.base.org",
     superfluidExplorer: "https://explorer.superfluid.finance/base-mainnet",
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:

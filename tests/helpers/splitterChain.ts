@@ -45,6 +45,11 @@ export const splitterChain = {
   // Every broadcast's members, mined or stuck, so getTransaction can serve the
   // calldata the runner decodes when it inherits a batch.
   bodies: new Map<string, { account: string; units: bigint }[]>(),
+  // Receipts for transactions the simulator did not broadcast (the unlock
+  // payments), keyed by hash and served ahead of the write receipts. Shaped by
+  // the test, so a payment can carry whatever logs, sender and status the
+  // scenario needs.
+  externalReceipts: new Map<string, unknown>(),
   // A pool with more members than the API will enumerate. Pages are generated
   // from the cursor rather than materialized.
   oversizedMemberCount: 0,
@@ -54,6 +59,10 @@ export const splitterChain = {
   // Fails every subgraph query, for the paths that must answer 502 without
   // penalizing the key.
   subgraphError: null as string | null,
+  // An endpoint that answers but refuses the receipt read, which is not the
+  // not-found the callers classify. Thrown as a bare Error, the way a transport
+  // failure or a provider's own JSON-RPC error arrives.
+  receiptReadError: null as string | null,
 };
 
 export const SPLITTER_TX_HASH = `0x${"33".repeat(32)}`;
@@ -76,9 +85,11 @@ export function resetSplitterChain() {
   splitterChain.pending = new Map();
   splitterChain.receipts = new Map();
   splitterChain.bodies = new Map();
+  splitterChain.externalReceipts = new Map();
   splitterChain.oversizedMemberCount = 0;
   splitterChain.otherPools = [];
   splitterChain.subgraphError = null;
+  splitterChain.receiptReadError = null;
 }
 
 /** Mine what stalled broadcasts were carrying, as a cleared mempool would. */
@@ -244,6 +255,15 @@ export function createSplitterMockPublicClient() {
     // transport failure by exactly these types, and a bare Error here would
     // exercise the transport path for every miss.
     getTransactionReceipt: vi.fn(async ({ hash }: { hash: string }) => {
+      if (splitterChain.receiptReadError) {
+        throw new Error(splitterChain.receiptReadError);
+      }
+
+      const external = splitterChain.externalReceipts.get(hash);
+      if (external) {
+        return external;
+      }
+
       const status = splitterChain.receipts.get(hash);
       if (!status) {
         const { TransactionReceiptNotFoundError } = await import("viem");

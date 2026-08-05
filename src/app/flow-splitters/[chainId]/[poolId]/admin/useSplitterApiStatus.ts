@@ -3,17 +3,19 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
 /**
- * Whether the pool is API-controlled, readable without signing in.
+ * Whether the pool is API-controlled and whether its writes are unlocked,
+ * readable without signing in.
  *
- * Undefined until it resolves and if it fails, so the caller can avoid
- * promising a pool is not API-controlled when it simply could not tell.
- * `statusError` separates the two, because a read that has failed is not
- * loading and the page has to say so rather than wait forever.
+ * Undefined until they resolve and if they fail, so the caller can avoid
+ * promising a pool is not API-controlled, or still locked, when it simply
+ * could not tell. `statusError` separates the two, because a read that has
+ * failed is not loading and the page has to say so rather than wait forever.
  */
 export function useSplitterApiStatus(chainId: number, poolId: string) {
   const [hasActiveKeys, setHasActiveKeys] = useState<boolean | undefined>(
     undefined,
   );
+  const [unlocked, setUnlocked] = useState<boolean | undefined>(undefined);
   const [statusError, setStatusError] = useState(false);
   // Only the newest request may write state: minting a key reloads this while a
   // pool switch can have one in flight, and the older response landing last
@@ -38,6 +40,7 @@ export function useSplitterApiStatus(chainId: number, poolId: string) {
       }
 
       setHasActiveKeys(data.hasActiveKeys);
+      setUnlocked(data.unlocked);
       setStatusError(false);
     } catch (err) {
       console.error(err);
@@ -53,6 +56,7 @@ export function useSplitterApiStatus(chainId: number, poolId: string) {
   // flicker the notice the caller just changed.
   useEffect(() => {
     setHasActiveKeys(undefined);
+    setUnlocked(undefined);
     setStatusError(false);
     load();
   }, [load]);
@@ -67,5 +71,5 @@ export function useSplitterApiStatus(chainId: number, poolId: string) {
     return () => clearInterval(interval);
   }, [load]);
 
-  return { hasActiveKeys, statusError, reload: load };
+  return { hasActiveKeys, unlocked, statusError, reload: load };
 }

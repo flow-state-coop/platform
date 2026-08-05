@@ -10,6 +10,8 @@ import { planWrite, TARGET_TOTAL_UNITS } from "../plan";
 import { splitterAllocationSchema } from "../validation";
 import { BOT_NOT_ADMIN_ERROR } from "../auth";
 import { PermanentError } from "../errors";
+import { isPoolUnlocked } from "../unlock";
+import { SPLITTER_LOCKED_ERROR } from "@/lib/splitterUnlock";
 import { HEARTBEAT_STALE_MS, runJob, supersedeJobs } from "../jobs/runner";
 
 export const dynamic = "force-dynamic";
@@ -108,6 +110,20 @@ export async function POST(request: Request) {
   // loop is the most active a key can be, and "Last used" is what an admin
   // reads to find it.
   await touchKey(key.id);
+
+  // Before the payload is read: a locked pool refuses every write the same
+  // way, so validating one first is work spent on a request whose outcome is
+  // already known. Reads stay open, so an integration can be built and
+  // evaluated before anyone pays. 402 rather than 403, worded apart from every
+  // other refusal: the key is fine, the pool is unpaid.
+  try {
+    if (!(await isPoolUnlocked(key.chainId, key.poolId))) {
+      return errorResponse(SPLITTER_LOCKED_ERROR, 402);
+    }
+  } catch (err) {
+    console.error(err);
+    return errorResponse("There was an error, please try again later", 502);
+  }
 
   let payload;
   try {

@@ -2,6 +2,7 @@ import { db } from "../../db";
 import { errorResponse } from "../../utils";
 import { allowRequest, clientIdentifier } from "../../rateLimit";
 import { getNetwork } from "../pool";
+import { isPoolUnlocked } from "../unlock";
 import { splitterQuerySchema } from "../validation";
 
 export const dynamic = "force-dynamic";
@@ -14,13 +15,15 @@ const STATUS_REQUEST_WINDOW_MS = 60_000;
 let warnedAboutMissingClientHeader = false;
 
 /**
- * Whether a pool is API-controlled, for the notice on the Share Register.
+ * Whether a pool is API-controlled, for the notice on the Share Register, and
+ * whether its writes are unlocked, for the API card's payment section.
  *
- * Deliberately unauthenticated and deliberately a bare boolean. Manual editing
+ * Deliberately unauthenticated and deliberately bare booleans. Manual editing
  * needs only a connected wallet, so an admin who never signs in is exactly the
  * person the notice is for, and gating it behind SIWE like the key list would
  * hide it from them. Nothing about a key is exposed: whether a pool is driven
- * by the API is already visible on-chain from the bot holding admin.
+ * by the API is already visible on-chain from the bot holding admin, and
+ * whether it is unlocked from the payment sitting on the bot's address.
  */
 export async function GET(request: Request) {
   try {
@@ -62,16 +65,23 @@ export async function GET(request: Request) {
       return errorResponse("Wrong network", 400);
     }
 
-    const activeKey = await db
-      .selectFrom("splitterApiKeys")
-      .select("id")
-      .where("chainId", "=", parsed.data.chainId)
-      .where("poolId", "=", parsed.data.poolId)
-      .where("revokedAt", "is", null)
-      .limit(1)
-      .executeTakeFirst();
+    const [activeKey, poolUnlocked] = await Promise.all([
+      db
+        .selectFrom("splitterApiKeys")
+        .select("id")
+        .where("chainId", "=", parsed.data.chainId)
+        .where("poolId", "=", parsed.data.poolId)
+        .where("revokedAt", "is", null)
+        .limit(1)
+        .executeTakeFirst(),
+      isPoolUnlocked(parsed.data.chainId, parsed.data.poolId),
+    ]);
 
-    return Response.json({ success: true, hasActiveKeys: !!activeKey });
+    return Response.json({
+      success: true,
+      hasActiveKeys: !!activeKey,
+      unlocked: poolUnlocked,
+    });
   } catch (err) {
     console.error(err);
     return errorResponse("There was an error, please try again later", 500);

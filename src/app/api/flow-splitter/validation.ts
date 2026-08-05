@@ -30,6 +30,15 @@ export const splitterKeyCreateSchema = z.object({
   label: z.string().min(1).max(100),
 });
 
+// Lower-cased so the (chain_id, tx_hash) unique constraint cannot be dodged by
+// resubmitting the same hash in different casing.
+export const splitterUnlockSchema = z.object({
+  txHash: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]{64}$/, "Invalid transaction hash")
+    .transform((value) => value.toLowerCase() as `0x${string}`),
+});
+
 /**
  * Weights are arbitrary positive numbers (scores, revenue, points) and do not
  * have to sum to anything; normalization happens after validation.

@@ -113,7 +113,9 @@ export default function SplitterWriteHistory(props: SplitterWriteHistoryProps) {
 
   return (
     <div>
-      <span className="fw-semi-bold d-block mb-2">Write history</span>
+      <span className="fw-semi-bold d-block mb-2 text-secondary">
+        Write history
+      </span>
 
       {error ? (
         <Alert variant="danger" className={writes.length > 0 ? "mb-3" : "mb-0"}>
