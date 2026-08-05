@@ -37,6 +37,13 @@ export const SPLITTER_LOCKED_ERROR =
 export const UNLOCK_TX_NOT_FOUND_ERROR =
   "Transaction not found. If it was just sent, wait for it to confirm and retry";
 
+// A node that answers but will not serve the receipt (rate limit, an endpoint
+// that bills the read as archive access, a transport failure). Nothing is known
+// about the transaction yet, so this is retryable and worded to say the payment
+// is still there, apart from the refusals that mean it never counted.
+export const UNLOCK_TX_UNREADABLE_ERROR =
+  "Couldn't read the transaction from the network. Your payment is safe, please retry in a moment";
+
 export const UNLOCK_TX_REVERTED_ERROR =
   "The payment transaction reverted, so nothing was paid";
 

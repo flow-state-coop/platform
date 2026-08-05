@@ -11,6 +11,7 @@ import {
   UNLOCK_TX_NOT_FOUND_ERROR,
   UNLOCK_TX_NOT_PAYMENT_ERROR,
   UNLOCK_TX_REVERTED_ERROR,
+  UNLOCK_TX_UNREADABLE_ERROR,
   UNLOCK_TX_USED_ERROR,
   UNLOCK_TX_WRONG_SENDER_ERROR,
   isSplitterUnlockRequired,
@@ -115,7 +116,11 @@ export async function POST(request: Request) {
       if (err instanceof TransactionReceiptNotFoundError) {
         return errorResponse(UNLOCK_TX_NOT_FOUND_ERROR, 400);
       }
-      throw err;
+      // Every other failure here is the node, not the claim. A receipt the
+      // endpoint refuses to serve otherwise reads as "there was an error",
+      // which sends an admin hunting a payment sitting on-chain intact.
+      console.error(err);
+      return errorResponse(UNLOCK_TX_UNREADABLE_ERROR, 502);
     }
 
     if (receipt.status !== "success") {

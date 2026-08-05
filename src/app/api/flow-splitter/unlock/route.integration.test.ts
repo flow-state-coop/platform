@@ -63,6 +63,7 @@ import {
   UNLOCK_TX_NOT_FOUND_ERROR,
   UNLOCK_TX_NOT_PAYMENT_ERROR,
   UNLOCK_TX_REVERTED_ERROR,
+  UNLOCK_TX_UNREADABLE_ERROR,
   UNLOCK_TX_USED_ERROR,
   UNLOCK_TX_WRONG_SENDER_ERROR,
 } from "@/lib/splitterUnlock";
@@ -240,6 +241,25 @@ describe("splitter unlock", () => {
 
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe(UNLOCK_TX_NOT_FOUND_ERROR);
+  });
+
+  it("tells an unreadable receipt apart from a transaction that is not there", async () => {
+    // The endpoint answers, but refuses this read. Nothing is known about the
+    // payment, so the answer has to be retryable and say so. Reported as a
+    // generic failure it reads as "your money is gone".
+    splitterChain.externalReceipts.set(PAY_TX, payment());
+    splitterChain.receiptReadError =
+      "Archive requests require a personal token";
+
+    const res = await claim();
+
+    expect(res.status).toBe(502);
+    expect((await res.json()).error).toBe(UNLOCK_TX_UNREADABLE_ERROR);
+
+    // Nothing was recorded, so the claim that follows a working endpoint still
+    // counts the payment.
+    splitterChain.receiptReadError = null;
+    expect((await claim()).status).toBe(200);
   });
 
   it("refuses a reverted transaction", async () => {
