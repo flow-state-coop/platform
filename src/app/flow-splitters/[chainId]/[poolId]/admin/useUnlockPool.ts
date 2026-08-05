@@ -185,7 +185,17 @@ export function useUnlockPool(chainId: number, poolId: string) {
           return false;
         }
 
-        // Whatever hash was stored is superseded: the pool is unlocked.
+        // A stored hash names a transfer that was broadcast and never counted.
+        // Unlocking the pool with a different one does not make it disappear,
+        // so it is claimed too before the only record of it is dropped, and the
+        // payments table stays a complete account of what reached the bot. The
+        // pool is already unlocked, so failing that claim costs the admin
+        // nothing and must not fail the one they asked for.
+        const pending = readPendingTx(chainId, poolId);
+        if (pending && pending !== txHash) {
+          await claim(chainId, poolId, pending);
+        }
+
         clearPendingTx(chainId, poolId);
         setHasPendingPayment(false);
         await onUnlocked?.();

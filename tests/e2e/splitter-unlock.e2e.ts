@@ -135,6 +135,26 @@ test("keeps the recovery state when the claim is refused retryably", async ({
   ).toHaveCount(0);
 });
 
+test("claims the stored payment too when another hash is verified by hand", async ({
+  page,
+}) => {
+  const STORED_TX = `0x${"cd".repeat(32)}`;
+  const { claims } = await openLockedAdmin(page, { pendingTx: STORED_TX });
+
+  await page
+    .getByRole("button", { name: "Already paid? Verify the transaction" })
+    .click();
+  await page.getByLabel("Payment transaction").fill(PAYMENT_TX);
+  await page.getByRole("button", { name: "Verify payment" }).click();
+
+  // The stored hash names a transfer that reached the bot and was never
+  // counted. Unlocking with a different one drops the only record of it, so it
+  // has to be claimed before that happens.
+  await expect
+    .poll(() => claims.map((claim) => (claim as { txHash: string }).txHash))
+    .toEqual([PAYMENT_TX, STORED_TX]);
+});
+
 test("claims a payment pasted as a block explorer link", async ({ page }) => {
   const { claims } = await openLockedAdmin(page);
 
