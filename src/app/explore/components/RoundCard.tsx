@@ -78,7 +78,8 @@ export default function RoundCard(props: RoundCardProps) {
                 Total Funding Streamed
               </Card.Text>
               <Card.Text className="text-center fw-semi-bold m-0">
-                {!!activeStreamCount && `${activeStreamCount} active streams`}
+                {!!activeStreamCount &&
+                  `${activeStreamCount} active stream${activeStreamCount === 1 ? "" : "s"}`}
               </Card.Text>
             </>
           ) : (
