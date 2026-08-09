@@ -36,9 +36,41 @@ const GDA_POOL_QUERY = gql`
   }
 `;
 
+const SUPER_APP_FUNDERS_QUERY = gql`
+  query SuperAppFundersQuery($superApp: ID!, $token: String!) {
+    account(id: $superApp) {
+      accountTokenSnapshots(where: { token: $token }) {
+        totalInflowRate
+        totalAmountStreamedInUntilUpdatedAt
+        updatedAtTimestamp
+      }
+      inflows(where: { currentFlowRate_gt: "0", token: $token }) {
+        id
+      }
+    }
+  }
+`;
+
 type Account = {
   id: string;
   accountTokenSnapshots: Inflow[];
+};
+
+type SuperAppFunders = {
+  account: {
+    accountTokenSnapshots: {
+      totalInflowRate: `${number}`;
+      totalAmountStreamedInUntilUpdatedAt: `${number}`;
+      updatedAtTimestamp: number;
+    }[];
+    inflows: { id: string }[];
+  } | null;
+};
+
+const GOOD_BUILDERS_S4 = {
+  pool: "0xe6cedec2bc4cd5a13744516f533a46dcb3e6c416",
+  superApp: "0xf4dfaabbc75bd9dbd31499236e5c06eba0d3dab8",
+  token: "0x62b8b11039fcfe5ab0c56e502b1c372a3d2a9c7a",
 };
 
 const FLOW_GUILD_ADDRESSES = {
@@ -89,6 +121,29 @@ function computePoolPairFlowInfo(
   };
 }
 
+function computeFlowCouncilFlowInfo(
+  superAppFunders: SuperAppFunders,
+  pool: GDAPool | undefined,
+) {
+  const snapshot = superAppFunders.account?.accountTokenSnapshots[0];
+
+  return snapshot
+    ? {
+        totalStreamedUntilUpdatedAt:
+          snapshot.totalAmountStreamedInUntilUpdatedAt,
+        flowRate: snapshot.totalInflowRate,
+        updatedAt: Number(snapshot.updatedAtTimestamp),
+        funderCount: superAppFunders.account?.inflows.length ?? 0,
+      }
+    : {
+        totalStreamedUntilUpdatedAt:
+          pool?.totalAmountFlowedDistributedUntilUpdatedAt ?? "0",
+        flowRate: pool?.flowRate ?? "0",
+        updatedAt: pool?.updatedAtTimestamp ?? 0,
+        funderCount: pool?.poolDistributors.length ?? 0,
+      };
+}
+
 export default async function Page() {
   const arbSubgraph = networks.find(
     (n) => n.id === arbitrum.id,
@@ -111,6 +166,7 @@ export default async function Page() {
     goodDollarQueryRes,
     goodBuildersS3QueryRes,
     goodBuildersS4QueryRes,
+    goodBuildersS4FundersQueryRes,
     flowCasterArbQueryRes,
     flowCasterArbTeamQueryRes,
     flowCasterBaseCrackedDevsQueryRes,
@@ -140,7 +196,11 @@ export default async function Page() {
       token: "0x62b8b11039fcfe5ab0c56e502b1c372a3d2a9c7a",
     }),
     request<{ pool: GDAPool }>(celoSubgraph, GDA_POOL_QUERY, {
-      gdaPool: "0xe6cedec2bc4cd5a13744516f533a46dcb3e6c416",
+      gdaPool: GOOD_BUILDERS_S4.pool,
+    }),
+    request<SuperAppFunders>(celoSubgraph, SUPER_APP_FUNDERS_QUERY, {
+      superApp: GOOD_BUILDERS_S4.superApp,
+      token: GOOD_BUILDERS_S4.token,
     }),
     request<{ pool: GDAPool }>(arbSubgraph, GDA_POOL_QUERY, {
       gdaPool: FLOW_CASTER_ARB_POOLS[0],
@@ -155,6 +215,11 @@ export default async function Page() {
       gdaPool: FLOW_CASTER_BASE_POOLS[1],
     }),
   ]);
+
+  const goodBuildersS4FlowInfo = computeFlowCouncilFlowInfo(
+    goodBuildersS4FundersQueryRes,
+    goodBuildersS4QueryRes.pool,
+  );
 
   const now = (Date.now() / 1000) | 0;
   const flowCasterArbFlowInfo = computePoolPairFlowInfo(
@@ -178,7 +243,7 @@ export default async function Page() {
       goodBuildersS3Inflow={
         goodBuildersS3QueryRes.account.accountTokenSnapshots[0]
       }
-      goodBuildersS4Pool={goodBuildersS4QueryRes.pool}
+      goodBuildersS4FlowInfo={goodBuildersS4FlowInfo}
       flowCasterArbFlowInfo={flowCasterArbFlowInfo}
       flowCasterFlowInfo={flowCasterFlowInfo}
     />

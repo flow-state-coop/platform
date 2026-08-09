@@ -14,6 +14,13 @@ type PoolPairFlowInfo = {
   donors: number;
 };
 
+type FlowCouncilFlowInfo = {
+  totalStreamedUntilUpdatedAt: string;
+  flowRate: string;
+  updatedAt: number;
+  funderCount: number;
+};
+
 type ExploreProps = {
   coreInflow: Inflow;
   greenpillInflow: Inflow;
@@ -21,7 +28,7 @@ type ExploreProps = {
   chonesGuildInflow: Inflow;
   goodDollarPool: GDAPool;
   goodBuildersS3Inflow: Inflow;
-  goodBuildersS4Pool: GDAPool;
+  goodBuildersS4FlowInfo: FlowCouncilFlowInfo;
   flowCasterArbFlowInfo: PoolPairFlowInfo;
   flowCasterFlowInfo: PoolPairFlowInfo;
 };
@@ -41,7 +48,7 @@ export default function Explore(props: ExploreProps) {
     chonesGuildInflow,
     goodDollarPool,
     goodBuildersS3Inflow,
-    goodBuildersS4Pool,
+    goodBuildersS4FlowInfo,
     flowCasterArbFlowInfo,
     flowCasterFlowInfo,
   } = props;
@@ -90,13 +97,12 @@ export default function Explore(props: ExploreProps) {
             name="GoodBuilders S4"
             image="/good-dollar.png"
             roundType="Flow Council"
-            totalStreamedUntilUpdatedAt={BigInt(
-              goodBuildersS4Pool?.totalAmountFlowedDistributedUntilUpdatedAt ??
-                0,
-            ).toString()}
-            flowRate={BigInt(goodBuildersS4Pool?.flowRate ?? 0).toString()}
-            updatedAt={goodBuildersS4Pool?.updatedAtTimestamp}
-            activeStreamCount={goodBuildersS4Pool?.poolDistributors.length}
+            totalStreamedUntilUpdatedAt={
+              goodBuildersS4FlowInfo.totalStreamedUntilUpdatedAt
+            }
+            flowRate={goodBuildersS4FlowInfo.flowRate}
+            updatedAt={goodBuildersS4FlowInfo.updatedAt}
+            activeStreamCount={goodBuildersS4FlowInfo.funderCount}
             tokenSymbol="G$"
             link="/goodbuilders-4"
           />
