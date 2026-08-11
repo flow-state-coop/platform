@@ -45,6 +45,7 @@ model Round {
   messages                 Message[]
   voterGroups              VoterGroup[]
   voterGroupMembers        VoterGroupMember[]
+  goodDollarClaimedRoots   GoodDollarClaimedRoot[]
   metricsApiKeys           MetricsApiKey[]
 
   @@unique([chainId, flowCouncilAddress])
@@ -150,6 +151,24 @@ model VoterGroupMember {
 
   @@unique([roundId, address])
   @@map("voter_group_members")
+}
+
+// One row per GoodDollar identity that has claimed a voter slot on a council.
+// `rootAddress` is the identity (the whitelisted root); `address` is the wallet
+// that holds the voting power, which for a connected wallet is not the root.
+// Kept out of voter_group_members because roots are meaningless to the manual,
+// metrics, and NFT methods, and nullable columns can't carry a unique that
+// still enforces anything.
+model GoodDollarClaimedRoot {
+  id          Int      @id @default(autoincrement())
+  roundId     Int      @map("round_id")
+  rootAddress String   @map("root_address") @db.VarChar(42)
+  address     String   @db.VarChar(42)
+  createdAt   DateTime @default(now()) @map("created_at")
+  round       Round    @relation(fields: [roundId], references: [id])
+
+  @@unique([roundId, rootAddress])
+  @@map("gooddollar_claimed_roots")
 }
 
 // Flow Splitter API storage. Keyed on (chain_id, pool_id) with no FK into the

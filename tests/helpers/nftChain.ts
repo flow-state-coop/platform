@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import { zeroAddress } from "viem";
 import { FLOW_STATE_BOT_ADDRESS } from "@/app/flow-councils/lib/constants";
 import { TEST_ADMIN_ADDRESS } from "./db";
 
@@ -40,6 +41,9 @@ type CallRecord = {
 export const nftChain = {
   contracts: new Map<string, NftContractFixture>(),
   voters: new Map<string, bigint>(),
+  // Wallet -> GoodDollar identity root on Celo. Absent means the wallet belongs
+  // to no verified identity, which the contract reports as the zero address.
+  whitelistedRoots: new Map<string, string>(),
   botHasRole: true,
   managerAddress: TEST_ADMIN_ADDRESS,
   // `${address}:${functionName}` or `${address}:*`
@@ -68,6 +72,7 @@ export const nftChain = {
 export function resetNftChain() {
   nftChain.contracts.clear();
   nftChain.voters.clear();
+  nftChain.whitelistedRoots.clear();
   nftChain.botHasRole = true;
   nftChain.managerAddress = TEST_ADMIN_ADDRESS;
   nftChain.failReads.clear();
@@ -89,6 +94,11 @@ export function setContract(address: string, fixture: NftContractFixture) {
 
 export function setVotingPower(address: string, power: bigint) {
   nftChain.voters.set(address.toLowerCase(), power);
+}
+
+/** Links a wallet to the GoodDollar identity that verified it. */
+export function setWhitelistedRoot(address: string, root: string) {
+  nftChain.whitelistedRoots.set(address.toLowerCase(), root.toLowerCase());
 }
 
 export function failRead(address: string, functionName = "*") {
@@ -134,6 +144,11 @@ function callContract(
   if (functionName === "getVoter") {
     const account = String(args[0] ?? "").toLowerCase();
     return { votingPower: nftChain.voters.get(account) ?? 0n, votes: [] };
+  }
+
+  if (functionName === "getWhitelistedRoot") {
+    const account = String(args[0] ?? "").toLowerCase();
+    return nftChain.whitelistedRoots.get(account) ?? zeroAddress;
   }
 
   const fixture = nftChain.contracts.get(address);

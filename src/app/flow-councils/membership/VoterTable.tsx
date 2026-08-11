@@ -184,6 +184,12 @@ export default function VoterTable(props: VoterTableProps) {
   const [submitPhase, setSubmitPhase] = useState<SubmitPhase>("idle");
   const [saveError, setSaveError] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
+  // Addresses the server refused because their GoodDollar identity is already
+  // voting here, mapped to the wallet holding it. Server-side because only Celo
+  // knows which wallets a holder has connected to one identity.
+  const [identityConflicts, setIdentityConflicts] = useState<
+    Record<string, string>
+  >({});
 
   const [moveTarget, setMoveTarget] = useState<SubgraphVoter | null>(null);
   const [moveToGroupId, setMoveToGroupId] = useState<string>("");
@@ -382,6 +388,9 @@ export default function VoterTable(props: VoterTableProps) {
         errors[row.id] = "Already a voter";
       } else if (seen.has(addr)) {
         errors[row.id] = "Duplicate";
+      } else if (identityConflicts[addr]) {
+        errors[row.id] =
+          `Same GoodDollar identity as ${truncateAddress(identityConflicts[addr])}`;
       } else if (!isValidVotes(row.votes)) {
         errors[row.id] = "Votes must be 1–1M";
       }
@@ -392,7 +401,7 @@ export default function VoterTable(props: VoterTableProps) {
     }
 
     return errors;
-  }, [newRows, existingOnchainSet]);
+  }, [newRows, existingOnchainSet, identityConflicts]);
 
   // Existing voters whose staged votes differ from the committed value (and that
   // aren't being removed).
@@ -768,6 +777,21 @@ export default function VoterTable(props: VoterTableProps) {
         const data = await res.json().catch(() => null);
 
         if (!res.ok || !data?.success) {
+          // Nothing was written, so flagging the offending rows lets the
+          // manager drop them and save the rest.
+          if (Array.isArray(data?.rejectedAddresses)) {
+            setIdentityConflicts(
+              Object.fromEntries(
+                data.rejectedAddresses.map(
+                  (rejected: { address: string; sameIdentityAs: string }) => [
+                    rejected.address.toLowerCase(),
+                    rejected.sameIdentityAs,
+                  ],
+                ),
+              ),
+            );
+          }
+
           setSaveError(data?.error ?? "Failed to add voters");
           setSubmitPhase("idle");
           return;

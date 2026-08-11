@@ -6,6 +6,7 @@ import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import useFlowCouncil from "../hooks/flowCouncil";
 import { useGoodDollarVerification } from "../hooks/useGoodDollarVerification";
+import { truncateAddress } from "@/lib/utils";
 
 type EligibilityStatus =
   | "idle"
@@ -13,6 +14,7 @@ type EligibilityStatus =
   | "confirmed"
   | "viewBallot"
   | "failed"
+  | "alreadyClaimed"
   | "verifying";
 
 const GD_VERIFY_RETURN_PARAM = "gdVerified";
@@ -40,6 +42,7 @@ export default function EligibilityButton({
   const pathname = usePathname();
   const router = useRouter();
   const [status, setStatus] = useState<EligibilityStatus>("idle");
+  const [claimedBy, setClaimedBy] = useState<string | null>(null);
   const [pendingCheck, setPendingCheck] = useState(false);
   const [pendingVerifyReturn, setPendingVerifyReturn] = useState(false);
   // Self-claim is opt-in per council: only surface the button when an admin has
@@ -60,6 +63,11 @@ export default function EligibilityButton({
 
       if (data.success) {
         setStatus("confirmed");
+      } else if (data.alreadyClaimed) {
+        // The verification is real, so face verification would only pass again
+        // and land back here. Only the wallet holding the slot can vote.
+        setClaimedBy(data.claimedBy ?? null);
+        setStatus("alreadyClaimed");
       } else if (data.notWhitelisted) {
         // "failed" routes into face verification, so it is reserved for a
         // definitive not-whitelisted answer. Transient errors (RPC hiccups on
@@ -290,6 +298,24 @@ export default function EligibilityButton({
         onClick={handleJoinToVote}
       >
         Join to Vote
+      </Button>
+    );
+  }
+
+  if (status === "alreadyClaimed") {
+    return (
+      <Button
+        variant="primary"
+        className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
+        style={{ width: isMobile ? "100%" : 240 }}
+        title={
+          claimedBy
+            ? `Your GoodDollar identity is already voting on this Council with ${truncateAddress(claimedBy)}. Switch to that wallet to vote.`
+            : "Your GoodDollar identity is already voting on this Council with another wallet. Switch to that wallet to vote."
+        }
+        disabled
+      >
+        Already Claimed
       </Button>
     );
   }

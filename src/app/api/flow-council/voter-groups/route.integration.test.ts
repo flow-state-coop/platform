@@ -66,8 +66,17 @@ import {
   TEST_CHAIN_ID,
 } from "@tests/helpers/db";
 import { mockSession, mockUnauthenticated } from "@tests/helpers/session";
-import { nftChain, resetNftChain, setContract } from "@tests/helpers/nftChain";
-import { CELO_CHAIN_ID } from "@/app/flow-councils/lib/constants";
+import {
+  nftChain,
+  resetNftChain,
+  setContract,
+  setWhitelistedRoot,
+  failRead,
+} from "@tests/helpers/nftChain";
+import {
+  CELO_CHAIN_ID,
+  GOODDOLLAR_IDENTITY_ADDRESS,
+} from "@/app/flow-councils/lib/constants";
 
 const db = getTestDb();
 
@@ -544,6 +553,149 @@ describe("voter-groups members", () => {
     const body = await readJson(res);
     expect(body.success).toBe(true);
     expect(await memberCount(g)).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Manual adds on a GoodDollar council. Self-claim is not the only way an
+// identity could end up with two voters: its holder can connect any number of
+// wallets to it, and a manager pasting two of them would otherwise hand the
+// same human a vote each.
+// ---------------------------------------------------------------------------
+
+describe("voter-groups members on a GoodDollar council", () => {
+  const base = { chainId: TEST_CHAIN_ID, councilId: TEST_COUNCIL_ADDRESS };
+
+  async function claimedRoots() {
+    return db
+      .selectFrom("gooddollarClaimedRoots")
+      .select(["rootAddress", "address"])
+      .execute();
+  }
+
+  it("records the identity behind a hand-added verified wallet", async () => {
+    const g = await createGroup("GoodDollar", "gooddollar");
+    setWhitelistedRoot(A1, A1);
+
+    const res = await memberPost(
+      jsonRequest("POST", MEMBERS, { ...base, groupId: g, address: A1 }),
+    );
+
+    expect((await readJson(res)).success).toBe(true);
+    expect(await claimedRoots()).toEqual([
+      { rootAddress: A1.toLowerCase(), address: A1.toLowerCase() },
+    ]);
+  });
+
+  it("refuses a wallet whose identity already claimed, writing nothing", async () => {
+    const g = await createGroup("GoodDollar", "gooddollar");
+    setWhitelistedRoot(A1, A1);
+    setWhitelistedRoot(A2, A1);
+    await memberPost(
+      jsonRequest("POST", MEMBERS, { ...base, groupId: g, address: A1 }),
+    );
+
+    const res = await memberPost(
+      jsonRequest("POST", MEMBERS, {
+        ...base,
+        groupId: g,
+        addresses: [A2, A3],
+      }),
+    );
+    const body = await readJson(res);
+
+    expect(res.status).toBe(409);
+    expect(body.success).toBe(false);
+    expect(body.rejectedAddresses).toEqual([
+      { address: A2.toLowerCase(), sameIdentityAs: A1.toLowerCase() },
+    ]);
+    // All or nothing: A3 was addable and is still not a member.
+    expect(await memberCount(g)).toBe(1);
+  });
+
+  it("refuses two wallets of one identity pasted together", async () => {
+    const g = await createGroup("GoodDollar", "gooddollar");
+    setWhitelistedRoot(A1, A1);
+    setWhitelistedRoot(A2, A1);
+
+    const res = await memberPost(
+      jsonRequest("POST", MEMBERS, {
+        ...base,
+        groupId: g,
+        addresses: [A1, A2],
+      }),
+    );
+
+    expect(res.status).toBe(409);
+    expect((await readJson(res)).rejectedAddresses).toEqual([
+      { address: A2.toLowerCase(), sameIdentityAs: A1.toLowerCase() },
+    ]);
+    expect(await memberCount(g)).toBe(0);
+  });
+
+  it("adds unverified wallets untouched", async () => {
+    const g = await createGroup("GoodDollar", "gooddollar");
+
+    const res = await memberPost(
+      jsonRequest("POST", MEMBERS, {
+        ...base,
+        groupId: g,
+        addresses: [A1, A2],
+      }),
+    );
+
+    expect((await readJson(res)).insertedCount).toBe(2);
+    expect(await claimedRoots()).toEqual([]);
+  });
+
+  it("releases the identity when the voter is removed", async () => {
+    const g = await createGroup("GoodDollar", "gooddollar");
+    setWhitelistedRoot(A1, A1);
+    setWhitelistedRoot(A2, A1);
+    await memberPost(
+      jsonRequest("POST", MEMBERS, { ...base, groupId: g, address: A1 }),
+    );
+
+    await memberDelete(
+      jsonRequest("DELETE", MEMBERS, { ...base, address: A1 }),
+    );
+
+    expect(await claimedRoots()).toEqual([]);
+
+    // The identity is free again, so another of its wallets can take the spot.
+    const res = await memberPost(
+      jsonRequest("POST", MEMBERS, { ...base, groupId: g, address: A2 }),
+    );
+    expect((await readJson(res)).success).toBe(true);
+    expect(await claimedRoots()).toEqual([
+      { rootAddress: A1.toLowerCase(), address: A2.toLowerCase() },
+    ]);
+  });
+
+  it("fails closed when Celo cannot be reached", async () => {
+    const g = await createGroup("GoodDollar", "gooddollar");
+    failRead(GOODDOLLAR_IDENTITY_ADDRESS, "getWhitelistedRoot");
+
+    const res = await memberPost(
+      jsonRequest("POST", MEMBERS, { ...base, groupId: g, address: A1 }),
+    );
+
+    expect(res.status).toBe(503);
+    expect(await memberCount(g)).toBe(0);
+  });
+
+  it("leaves a council with no GoodDollar group off Celo entirely", async () => {
+    const g = await createGroup("Manual");
+    setWhitelistedRoot(A1, A1);
+
+    await memberPost(
+      jsonRequest("POST", MEMBERS, { ...base, groupId: g, address: A1 }),
+    );
+
+    expect(
+      nftChain.reads.some((read) => read.functionName === "getWhitelistedRoot"),
+    ).toBe(false);
+    expect(await claimedRoots()).toEqual([]);
   });
 });
 

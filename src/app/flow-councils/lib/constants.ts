@@ -48,6 +48,15 @@ export const GOODDOLLAR_IDENTITY_ABI = [
     outputs: [{ name: "", type: "bool", internalType: "bool" }],
     stateMutability: "view",
   },
+  // Verification lives on one address (the root); wallets the holder connects
+  // to it answer false to isWhitelisted and resolve back through this.
+  {
+    type: "function",
+    name: "getWhitelistedRoot",
+    inputs: [{ name: "account", type: "address", internalType: "address" }],
+    outputs: [{ name: "", type: "address", internalType: "address" }],
+    stateMutability: "view",
+  },
 ] as const;
 
 // Flow State bot that holds VOTER_MANAGER_ROLE to add GoodDollar-verified

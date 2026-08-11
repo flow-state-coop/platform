@@ -1,15 +1,14 @@
-import { Address, createPublicClient, http, isAddress } from "viem";
+import { Address, isAddress } from "viem";
 import { db } from "../db";
 import { findRoundByCouncil } from "../auth";
 import { getBotSigner, getGroupByMethod, sendBotTransaction } from "../bot";
 import { ChainBusyError } from "../../botLock";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
-import { networks, getViemChain } from "@/lib/networks";
+import { networks } from "@/lib/networks";
 import {
-  CELO_CHAIN_ID,
-  GOODDOLLAR_IDENTITY_ABI,
-  GOODDOLLAR_IDENTITY_ADDRESS,
-} from "@/app/flow-councils/lib/constants";
+  createCeloIdentityClient,
+  resolveVerifiedRoot,
+} from "@/app/flow-councils/lib/goodDollarIdentity";
 
 export const dynamic = "force-dynamic";
 
@@ -59,32 +58,79 @@ export async function POST(request: Request) {
       });
     }
 
-    const celoNetwork = networks.find(
-      (network) => network.id === CELO_CHAIN_ID,
-    );
-    if (!celoNetwork) {
+    const celoPublicClient = createCeloIdentityClient();
+
+    if (!celoPublicClient) {
       return Response.json({ success: false, error: "Celo network missing" });
     }
-    const celoPublicClient = createPublicClient({
-      chain: getViemChain(celoNetwork.id),
-      transport: http(celoNetwork.rpcUrl),
-    });
 
-    const isWhitelisted = await celoPublicClient.readContract({
-      address: GOODDOLLAR_IDENTITY_ADDRESS,
-      abi: GOODDOLLAR_IDENTITY_ABI,
-      functionName: "isWhitelisted",
-      args: [address as Address],
-    });
+    // The claiming wallet may be one its holder connected to a GoodDollar
+    // identity anchored elsewhere, so eligibility is decided on the root. The
+    // root never becomes the voter, though: the ballot is signed by the wallet
+    // in front of us.
+    const root = await resolveVerifiedRoot(
+      celoPublicClient,
+      address as Address,
+    );
 
     // notWhitelisted marks the one failure that should send the user into
     // face verification; every other success:false is an error the client
     // should treat as retryable instead.
-    if (!isWhitelisted) {
+    if (!root) {
       return Response.json({
         success: false,
         notWhitelisted: true,
         error: "Not whitelisted",
+      });
+    }
+
+    const claimingAddress = (address as string).toLowerCase();
+    const rootAddress = root.toLowerCase();
+
+    // One identity, one slot. Without this an identity's holder claims once per
+    // wallet they have connected to it, since each carries a different address.
+    const claimed = await db
+      .selectFrom("gooddollarClaimedRoots")
+      .select(["address"])
+      .where("roundId", "=", round.id)
+      .where("rootAddress", "=", rootAddress)
+      .executeTakeFirst();
+
+    if (claimed && claimed.address !== claimingAddress) {
+      return Response.json({
+        success: false,
+        alreadyClaimed: true,
+        claimedBy: claimed.address,
+        error: "This GoodDollar identity already voted from another wallet",
+      });
+    }
+
+    // Claim the identity before the membership row, so the gate also covers a
+    // wallet that is already a voter through another group: that path returns
+    // early below without ever reaching an insert.
+    const claimedRoot = claimed
+      ? null
+      : await db
+          .insertInto("gooddollarClaimedRoots")
+          .values({
+            roundId: round.id,
+            rootAddress,
+            address: claimingAddress,
+          })
+          .onConflict((oc) =>
+            oc.columns(["roundId", "rootAddress"]).doNothing(),
+          )
+          .returning(["id"])
+          .executeTakeFirst();
+
+    // Nothing inserted against a root the lookup said was free means a wallet
+    // connected to the same identity claimed it in between, which the lookup
+    // alone can't settle.
+    if (!claimed && !claimedRoot) {
+      return Response.json({
+        success: false,
+        alreadyClaimed: true,
+        error: "This GoodDollar identity already voted from another wallet",
       });
     }
 
@@ -97,7 +143,7 @@ export async function POST(request: Request) {
       .values({
         voterGroupId: goodDollarGroup.id,
         roundId: round.id,
-        address: (address as string).toLowerCase(),
+        address: claimingAddress,
       })
       .onConflict((oc) => oc.columns(["roundId", "address"]).doNothing())
       .returning(["id"])
@@ -134,7 +180,9 @@ export async function POST(request: Request) {
         return Response.json({ success: true });
       }
 
-      // Roll back the membership row so a retry can re-attempt the onchain call.
+      // Roll back so a retry can re-attempt the onchain call. The claimed root
+      // goes with it, but only when this request is what recorded it, else a
+      // failed re-claim would release a slot another wallet is still holding.
       // Guard the rollback itself: if it throws, log it but still surface the
       // original onchain error below, rather than letting the rollback failure
       // propagate to the outer catch (which would lose the onchain error).
@@ -143,6 +191,13 @@ export async function POST(request: Request) {
           .deleteFrom("voterGroupMembers")
           .where("id", "=", inserted.id)
           .execute();
+
+        if (claimedRoot) {
+          await db
+            .deleteFrom("gooddollarClaimedRoots")
+            .where("id", "=", claimedRoot.id)
+            .execute();
+        }
       } catch (rollbackErr) {
         console.error("Failed to roll back voter membership row:", rollbackErr);
       }
