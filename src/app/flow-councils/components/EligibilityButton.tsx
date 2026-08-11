@@ -7,7 +7,6 @@ import Spinner from "react-bootstrap/Spinner";
 import Stack from "react-bootstrap/Stack";
 import useFlowCouncil from "../hooks/flowCouncil";
 import { useGoodDollarVerification } from "../hooks/useGoodDollarVerification";
-import { truncateAddress } from "@/lib/utils";
 
 type EligibilityStatus =
   | "idle"
@@ -43,7 +42,6 @@ export default function EligibilityButton({
   const pathname = usePathname();
   const router = useRouter();
   const [status, setStatus] = useState<EligibilityStatus>("idle");
-  const [claimedBy, setClaimedBy] = useState<string | null>(null);
   const [pendingCheck, setPendingCheck] = useState(false);
   const [pendingVerifyReturn, setPendingVerifyReturn] = useState(false);
   // Self-claim is opt-in per council: only surface the button when an admin has
@@ -67,7 +65,6 @@ export default function EligibilityButton({
       } else if (data.alreadyClaimed) {
         // The verification is real, so face verification would only pass again
         // and land back here. Only the wallet holding the slot can vote.
-        setClaimedBy(data.claimedBy ?? null);
         setStatus("alreadyClaimed");
       } else if (data.notWhitelisted) {
         // "failed" routes into face verification, so it is reserved for a
@@ -317,11 +314,10 @@ export default function EligibilityButton({
         >
           Already Claimed
         </Button>
-        {/* Onscreen rather than a tooltip: which wallet to switch to is the
-            only way out of this state, and touch devices never see a title. */}
+        {/* Onscreen rather than a tooltip: switching wallets is the only way
+            out of this state, and touch devices never see a title. */}
         <span className="text-center">
-          Your GoodDollar identity votes here with{" "}
-          {claimedBy ? truncateAddress(claimedBy) : "another wallet"}.
+          Your GoodDollar identity already votes here with another wallet.
         </span>
       </Stack>
     );

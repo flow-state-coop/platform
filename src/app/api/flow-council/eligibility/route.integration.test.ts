@@ -161,7 +161,6 @@ describe("gooddollar eligibility self-claim", () => {
 
     expect(body.success).toBe(false);
     expect(body.alreadyClaimed).toBe(true);
-    expect(body.claimedBy).toBe(CLAIMANT);
     expect(botChain.writes).toHaveLength(0);
     expect(await memberCount()).toBe(1);
   });

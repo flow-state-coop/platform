@@ -96,11 +96,13 @@ export async function POST(request: Request) {
       .where("rootAddress", "=", rootAddress)
       .executeTakeFirst();
 
+    // Which wallet holds the slot stays server-side. Nothing authenticates this
+    // route, so returning it would let anyone resolve a wallet to the others
+    // its holder connected to the same identity.
     if (claimed && claimed.address !== claimingAddress) {
       return Response.json({
         success: false,
         alreadyClaimed: true,
-        claimedBy: claimed.address,
         error: "This GoodDollar identity already voted from another wallet",
       });
     }
