@@ -1,5 +1,4 @@
 import { vi } from "vitest";
-import { zeroAddress } from "viem";
 import { FLOW_STATE_BOT_ADDRESS } from "@/app/flow-councils/lib/constants";
 import { TEST_ADMIN_ADDRESS } from "./db";
 
@@ -16,6 +15,11 @@ export const ERC1155_INTERFACE_ID = "0xd9b67a26";
 export const ERC165_INVALID_INTERFACE_ID = "0xffffffff";
 
 export const TX_HASH = `0x${"11".repeat(32)}`;
+
+// Spelled out rather than imported from viem: the `vi.mock("viem")` factory in
+// every suite using this helper imports the helper back, so importing viem here
+// closes a module cycle through a mocked module and hangs the loader.
+const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
 
 // Every simulated RPC failure carries provider detail that must never reach a
 // client response. Tests assert this sentinel is absent from response bodies.
@@ -148,7 +152,7 @@ function callContract(
 
   if (functionName === "getWhitelistedRoot") {
     const account = String(args[0] ?? "").toLowerCase();
-    return nftChain.whitelistedRoots.get(account) ?? zeroAddress;
+    return nftChain.whitelistedRoots.get(account) ?? ZERO_ADDRESS;
   }
 
   const fixture = nftChain.contracts.get(address);
