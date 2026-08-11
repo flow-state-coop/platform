@@ -4,6 +4,7 @@ import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
+import Stack from "react-bootstrap/Stack";
 import useFlowCouncil from "../hooks/flowCouncil";
 import { useGoodDollarVerification } from "../hooks/useGoodDollarVerification";
 import { truncateAddress } from "@/lib/utils";
@@ -304,19 +305,25 @@ export default function EligibilityButton({
 
   if (status === "alreadyClaimed") {
     return (
-      <Button
-        variant="primary"
-        className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
+      <Stack
+        direction="vertical"
+        gap={2}
         style={{ width: isMobile ? "100%" : 240 }}
-        title={
-          claimedBy
-            ? `Your GoodDollar identity is already voting on this Council with ${truncateAddress(claimedBy)}. Switch to that wallet to vote.`
-            : "Your GoodDollar identity is already voting on this Council with another wallet. Switch to that wallet to vote."
-        }
-        disabled
       >
-        Already Claimed
-      </Button>
+        <Button
+          variant="primary"
+          className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
+          disabled
+        >
+          Already Claimed
+        </Button>
+        {/* Onscreen rather than a tooltip: which wallet to switch to is the
+            only way out of this state, and touch devices never see a title. */}
+        <span className="text-center">
+          Your GoodDollar identity votes here with{" "}
+          {claimedBy ? truncateAddress(claimedBy) : "another wallet"}.
+        </span>
+      </Stack>
     );
   }
 

@@ -753,6 +753,7 @@ export default function VoterTable(props: VoterTableProps) {
     try {
       setSubmitPhase("saving");
       setSaveError("");
+      setIdentityConflicts({});
 
       const byAccount = new Map(
         voters.map((v) => [v.account.toLowerCase(), v]),

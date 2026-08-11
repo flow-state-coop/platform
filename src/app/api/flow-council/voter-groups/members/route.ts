@@ -325,36 +325,41 @@ export async function DELETE(request: Request) {
       );
     }
 
-    let query = db
-      .deleteFrom("voterGroupMembers")
-      .where("roundId", "=", auth.roundId)
-      .where("address", "in", lowered);
-
-    // Optionally scope the delete to one group. Single-membership means an
-    // address sits in at most one group per council, but scoping makes the
-    // contract precise: a caller removing from group A never deletes a row that
-    // was concurrently moved to group B. Omitted → council-wide (back-compat).
-    if (Number.isInteger(groupId) && groupId > 0) {
-      query = query.where("voterGroupId", "=", groupId);
-    }
-
-    const removed = await query.returning(["address"]).execute();
-
-    // Release the GoodDollar identities the removed wallets were holding, so a
-    // council can't accumulate identities that are locked out with no voter to
-    // show for it. Keyed on the rows actually deleted: a group-scoped delete
-    // that matched nothing must not release a claim still held elsewhere.
-    if (removed.length > 0) {
-      await db
-        .deleteFrom("gooddollarClaimedRoots")
+    // One transaction, so a failure between the two can't drop the voter while
+    // leaving their identity claimed, which would lock it out of the council
+    // with no voter to show for it.
+    await db.transaction().execute(async (trx) => {
+      let query = trx
+        .deleteFrom("voterGroupMembers")
         .where("roundId", "=", auth.roundId)
-        .where(
-          "address",
-          "in",
-          removed.map((row) => row.address),
-        )
-        .execute();
-    }
+        .where("address", "in", lowered);
+
+      // Optionally scope the delete to one group. Single-membership means an
+      // address sits in at most one group per council, but scoping makes the
+      // contract precise: a caller removing from group A never deletes a row
+      // that was concurrently moved to group B. Omitted → council-wide
+      // (back-compat).
+      if (Number.isInteger(groupId) && groupId > 0) {
+        query = query.where("voterGroupId", "=", groupId);
+      }
+
+      const removed = await query.returning(["address"]).execute();
+
+      // Release the GoodDollar identities the removed wallets were holding.
+      // Keyed on the rows actually deleted: a group-scoped delete that matched
+      // nothing must not release a claim still held elsewhere.
+      if (removed.length > 0) {
+        await trx
+          .deleteFrom("gooddollarClaimedRoots")
+          .where("roundId", "=", auth.roundId)
+          .where(
+            "address",
+            "in",
+            removed.map((row) => row.address),
+          )
+          .execute();
+      }
+    });
 
     return Response.json({ success: true });
   } catch (err) {
