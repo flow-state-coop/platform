@@ -185,21 +185,25 @@ export async function POST(request: Request) {
       // Roll back so a retry can re-attempt the onchain call. The claimed root
       // goes with it, but only when this request is what recorded it, else a
       // failed re-claim would release a slot another wallet is still holding.
-      // Guard the rollback itself: if it throws, log it but still surface the
-      // original onchain error below, rather than letting the rollback failure
-      // propagate to the outer catch (which would lose the onchain error).
+      // One transaction, so a half-applied rollback can't drop the voter while
+      // leaving the identity claimed. Guard the rollback itself: if it throws,
+      // log it but still surface the original onchain error below, rather than
+      // letting the rollback failure propagate to the outer catch (which would
+      // lose the onchain error).
       try {
-        await db
-          .deleteFrom("voterGroupMembers")
-          .where("id", "=", inserted.id)
-          .execute();
-
-        if (claimedRoot) {
-          await db
-            .deleteFrom("gooddollarClaimedRoots")
-            .where("id", "=", claimedRoot.id)
+        await db.transaction().execute(async (trx) => {
+          await trx
+            .deleteFrom("voterGroupMembers")
+            .where("id", "=", inserted.id)
             .execute();
-        }
+
+          if (claimedRoot) {
+            await trx
+              .deleteFrom("gooddollarClaimedRoots")
+              .where("id", "=", claimedRoot.id)
+              .execute();
+          }
+        });
       } catch (rollbackErr) {
         console.error("Failed to roll back voter membership row:", rollbackErr);
       }
