@@ -23,7 +23,11 @@ export default function SupCampaignBanner() {
       />
       <Card.Text className="m-0 fs-lg">
         Stream G$ to the GoodBuilders S4 Flow Council to earn $SUP:{" "}
-        <Card.Link href={LEARN_MORE_URL} target="_blank">
+        <Card.Link
+          href={LEARN_MORE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           Learn more
         </Card.Link>
         .
