@@ -37,6 +37,9 @@ export const GOODBUILDERS_COUNCIL_ADDRESSES: `0x${string}`[] = [
   "0xfabef1abae4998146e8a8422813eb787caa26ec2",
 ];
 
+export const GOODBUILDERS_S4_COUNCIL_ADDRESS: `0x${string}` =
+  "0x582e3314d4ef56c18930acb10bb64313525e7820";
+
 export const GOODDOLLAR_IDENTITY_ADDRESS: `0x${string}` =
   "0xC361A6E67822a0EDc17D899227dd9FC50BD62F42";
 

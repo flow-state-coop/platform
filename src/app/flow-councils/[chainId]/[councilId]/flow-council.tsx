@@ -16,6 +16,7 @@ import GranteeCardSkeleton from "@/app/flow-councils/components/GranteeCardSkele
 import FeedTab from "@/app/flow-councils/components/FeedTab";
 import RoundBanner from "@/app/flow-councils/components/RoundBanner";
 import RoundBannerSkeleton from "@/app/flow-councils/components/RoundBannerSkeleton";
+import SupCampaignBanner from "@/app/flow-councils/components/SupCampaignBanner";
 import GranteeDetails from "@/app/flow-councils/components/GranteeDetails";
 import Ballot from "@/app/flow-councils/components/Ballot";
 import DistributionPoolFunding from "@/app/flow-councils/components/DistributionPoolFunding";
@@ -26,6 +27,10 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowCouncil from "../../hooks/flowCouncil";
 import useAnimateVoteBubble from "../../hooks/animateVoteBubble";
 import { networks } from "@/lib/networks";
+import {
+  CELO_CHAIN_ID,
+  GOODBUILDERS_S4_COUNCIL_ADDRESS,
+} from "@/app/flow-councils/lib/constants";
 import { shuffle, getPlaceholderImageSrc, generateColor } from "@/lib/utils";
 
 const SKELETON_COUNT = 4;
@@ -88,6 +93,9 @@ export default function FlowCouncil({
   const granteeSkeletons = Array.from({ length: SKELETON_COUNT }, (_, i) => (
     <GranteeCardSkeleton key={i} />
   ));
+  const isGoodBuildersS4 =
+    chainId === CELO_CHAIN_ID &&
+    councilId.toLowerCase() === GOODBUILDERS_S4_COUNCIL_ADDRESS;
 
   const getGrantee = useCallback(
     (recipient: {
@@ -320,6 +328,7 @@ export default function FlowCouncil({
         onMouseUp={clearZeroVotes}
         onTouchEnd={clearZeroVotes}
       >
+        {isGoodBuildersS4 && <SupCampaignBanner />}
         {isRoundLoading ? (
           <RoundBannerSkeleton />
         ) : (

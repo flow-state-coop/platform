@@ -105,6 +105,7 @@ export default function Explore(props: ExploreProps) {
             activeStreamCount={goodBuildersS4FlowInfo.funderCount}
             tokenSymbol="G$"
             link="/goodbuilders-4"
+            showSupRewards
           />
           <RoundCard
             name="Core Contributors"
