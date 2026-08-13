@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useAccount } from "wagmi";
+import { useSession } from "next-auth/react";
+import { useAccount, useSignMessage } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Button from "react-bootstrap/Button";
 import Spinner from "react-bootstrap/Spinner";
 import Stack from "react-bootstrap/Stack";
 import useFlowCouncil from "../hooks/flowCouncil";
 import { useGoodDollarVerification } from "../hooks/useGoodDollarVerification";
+import { buildClaimMessage } from "../lib/claimMessage";
 
 type EligibilityStatus =
   | "idle"
@@ -35,6 +37,8 @@ export default function EligibilityButton({
   isMobile: boolean;
 }) {
   const { address, isConnected } = useAccount();
+  const { data: session } = useSession();
+  const { signMessageAsync } = useSignMessage();
   const { openConnectModal } = useConnectModal();
   const { councilMember, dispatchShowBallot } = useFlowCouncil();
   const { generateFVLink, checkIsWhitelisted } = useGoodDollarVerification();
@@ -50,13 +54,42 @@ export default function EligibilityButton({
   const watchIdRef = useRef(0);
 
   const checkEligibility = useCallback(async () => {
+    if (!address) {
+      return;
+    }
+
     setStatus("checking");
+
+    // The spot is bound to whichever wallet claims it, permanently, so the
+    // route has to know this wallet consented. Signing in already proved that,
+    // and connecting prompts for it, so only a wallet that skipped sign-in is
+    // asked to sign here. A declined prompt grants nothing and is not a
+    // failure state.
+    const issuedAt = Date.now();
+    let signature: string | undefined;
+
+    if (session?.address?.toLowerCase() !== address.toLowerCase()) {
+      try {
+        signature = await signMessageAsync({
+          message: buildClaimMessage({ chainId, councilId, address, issuedAt }),
+        });
+      } catch {
+        setStatus("idle");
+        return;
+      }
+    }
 
     try {
       const res = await fetch("/api/flow-council/eligibility", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, chainId, councilId }),
+        body: JSON.stringify({
+          address,
+          chainId,
+          councilId,
+          signature,
+          issuedAt,
+        }),
       });
       const data = await res.json();
 
@@ -77,7 +110,7 @@ export default function EligibilityButton({
     } catch {
       setStatus("idle");
     }
-  }, [address, chainId, councilId]);
+  }, [address, chainId, councilId, session?.address, signMessageAsync]);
 
   const watchVerification = useCallback(
     async (popup: Window | null) => {
@@ -133,6 +166,15 @@ export default function EligibilityButton({
       watchIdOnMount.current++;
     };
   }, []);
+
+  // Every status describes the connected wallet, so a new one starts over.
+  // "alreadyClaimed" in particular is only escapable this way: the identity
+  // holds a slot with another wallet, and that wallet is what has to connect.
+  // Cancels any verification watch still polling for the old wallet.
+  useEffect(() => {
+    watchIdRef.current++;
+    setStatus("idle");
+  }, [address]);
 
   useEffect(() => {
     if (pendingCheck && isConnected && address) {

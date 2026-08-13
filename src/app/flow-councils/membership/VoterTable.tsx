@@ -780,20 +780,36 @@ export default function VoterTable(props: VoterTableProps) {
         if (!res.ok || !data?.success) {
           // Nothing was written, so flagging the offending rows lets the
           // manager drop them and save the rest.
-          if (Array.isArray(data?.rejectedAddresses)) {
+          const rejected: { address: string; sameIdentityAs: string }[] =
+            Array.isArray(data?.rejectedAddresses)
+              ? data.rejectedAddresses
+              : [];
+
+          if (rejected.length > 0) {
             setIdentityConflicts(
               Object.fromEntries(
-                data.rejectedAddresses.map(
-                  (rejected: { address: string; sameIdentityAs: string }) => [
-                    rejected.address.toLowerCase(),
-                    rejected.sameIdentityAs,
-                  ],
-                ),
+                rejected.map((entry) => [
+                  entry.address.toLowerCase(),
+                  entry.sameIdentityAs,
+                ]),
               ),
             );
           }
 
-          setSaveError(data?.error ?? "Failed to add voters");
+          // Adds are written before the removals reach the chain, and an
+          // identity is only released once its voter's removal lands, so
+          // swapping one wallet of an identity for another takes two saves.
+          const swappingWallets =
+            rejected.length > 0 &&
+            rejected.every((entry) =>
+              removed.has(entry.sameIdentityAs.toLowerCase()),
+            );
+
+          setSaveError(
+            swappingWallets
+              ? "That GoodDollar identity's spot is still held by the voter you're removing. Save the removal first, then add the new wallet."
+              : (data?.error ?? "Failed to add voters"),
+          );
           setSubmitPhase("idle");
           return;
         }
@@ -929,6 +945,9 @@ export default function VoterTable(props: VoterTableProps) {
     setImportNote("");
     setImportError("");
     setSaveError("");
+    // Flags from the last refused save, else re-adding an address the server has
+    // since released stays blocked with no way to clear it.
+    setIdentityConflicts({});
   };
 
   const paginationItems = useMemo(() => {
