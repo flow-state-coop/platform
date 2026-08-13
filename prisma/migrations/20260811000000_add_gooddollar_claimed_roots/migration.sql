@@ -30,12 +30,16 @@ END $$;
 
 -- Backfill the councils already running self-claim. A wallet that claimed did
 -- it by passing an isWhitelisted check, which only a root answers true to, so
--- it is its own root. A wallet an admin added by hand may be a connected wallet
--- instead, and its root goes unrecorded here — SQL cannot ask Celo. Those, and
--- the verified voters sitting in the manual groups of a GoodDollar council, are
--- covered at claim time instead: a wallet whose root is already voting on the
--- council is refused, and enabling GoodDollar on a council from now on records
--- its existing voters' identities up front.
+-- it is its own root.
+--
+-- That is everything SQL can settle, and it is not everything. A wallet an
+-- admin added by hand may be one its holder connected to an identity anchored
+-- elsewhere, and a verified voter may sit in a manual group; both leave the
+-- real root unrecorded, and only Celo can resolve it. The claim route refuses a
+-- wallet whose root is itself voting here, which covers the roots but not those
+-- two cases, so councils that predate claim tracking need one pass of
+-- scripts/backfill-gooddollar-claims.ts. Councils that enable GoodDollar from
+-- here on are seeded as the group is created.
 INSERT INTO "gooddollar_claimed_roots" ("round_id", "root_address", "address")
 SELECT m."round_id", lower(m."address"), lower(m."address")
 FROM "voter_group_members" m
