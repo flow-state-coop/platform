@@ -180,6 +180,9 @@ describe("gooddollar eligibility self-claim", () => {
     ).json();
 
     expect(body.success).toBe(false);
+    // Named so the client can tell a signature it should re-sign from one it
+    // never should.
+    expect(body.reason).toBe("invalid_signature");
     expect(botChain.writes).toHaveLength(0);
     expect(await memberCount()).toBe(0);
     expect(await claimedRoots()).toEqual([]);
@@ -222,6 +225,9 @@ describe("gooddollar eligibility self-claim", () => {
     ).json();
 
     expect(body.success).toBe(false);
+    // The timestamp came from the claimer's clock, so signing again is what
+    // answers it; the client needs to be told that apart from a bad signature.
+    expect(body.reason).toBe("expired_signature");
     expect(botChain.writes).toHaveLength(0);
     expect(await memberCount()).toBe(0);
   });
@@ -345,15 +351,50 @@ describe("gooddollar eligibility self-claim", () => {
     expect(await memberCount()).toBe(1);
   });
 
-  it("skips the on-chain call when the wallet is already a member", async () => {
+  it("skips the on-chain call when the wallet already votes on the council", async () => {
     await db
       .insertInto("voterGroupMembers")
       .values({ voterGroupId: groupId, roundId, address: CLAIMANT })
       .execute();
+    onRead("getVoter", ([account]) => ({
+      account,
+      votingPower: 10n,
+      votes: [],
+    }));
 
     const body = await (await claim()).json();
 
     expect(body).toEqual({ success: true });
     expect(botChain.writes).toHaveLength(0);
+  });
+
+  it("re-sends addVoter when the membership row has no voter behind it", async () => {
+    // What an earlier attempt leaves behind when its broadcast is dropped: the
+    // rows stay so the identity keeps its slot, and only the chain says the
+    // voter never landed. Answering success on the row alone would confirm a
+    // wallet that cannot vote, forever.
+    await db
+      .insertInto("voterGroupMembers")
+      .values({ voterGroupId: groupId, roundId, address: CLAIMANT })
+      .execute();
+    await db
+      .insertInto("gooddollarClaimedRoots")
+      .values({ roundId, rootAddress: CLAIMANT, address: CLAIMANT })
+      .execute();
+    onRead("getVoter", ([account]) => ({
+      account,
+      votingPower: 0n,
+      votes: [],
+    }));
+
+    const body = await (await claim()).json();
+
+    expect(body).toEqual({ success: true });
+    expect(botChain.writes).toHaveLength(1);
+    expect(botChain.writes[0].functionName).toBe("addVoter");
+    expect(await memberCount()).toBe(1);
+    expect(await claimedRoots()).toEqual([
+      { rootAddress: CLAIMANT, address: CLAIMANT },
+    ]);
   });
 });

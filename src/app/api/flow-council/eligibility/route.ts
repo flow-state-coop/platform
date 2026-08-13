@@ -157,7 +157,18 @@ export async function POST(request: Request) {
       });
 
       if (!verification.ok) {
-        return Response.json({ success: false, error: "Invalid signature" });
+        // The two failures need different things from the client: an expired
+        // timestamp is fixed by signing again, a bad signature never is.
+        // Flattening them leaves a claimer whose clock drifted with a dead
+        // button and no way to know a retry would work.
+        return Response.json({
+          success: false,
+          reason: verification.code,
+          error:
+            verification.code === "expired_signature"
+              ? "Signature expired, please sign again"
+              : "Invalid signature",
+        });
       }
     }
 
@@ -245,29 +256,32 @@ export async function POST(request: Request) {
       throw err;
     }
 
-    if (!memberId) {
-      return Response.json({ success: true });
-    }
-
     // Roll back so a retry can re-attempt the on-chain call. The claimed root
     // goes with it, but only when this request is what recorded it, else a
     // failed re-claim would release a slot another wallet is still holding.
     // One transaction, so a half-applied rollback can't drop the voter while
-    // leaving the identity claimed. Guard the rollback itself: if it throws,
-    // log it but still surface the original error to the caller, rather than
-    // letting the rollback failure propagate to the outer catch.
-    const rollback = async (memberRowId: number, claimRowId: number | null) => {
+    // leaving the identity claimed, and the claim goes first because that is
+    // the order the claim above took the two in; the reverse deadlocks against
+    // an admin's removal. Guard the rollback itself: if it throws, log it but
+    // still surface the original error to the caller, rather than letting the
+    // rollback failure propagate to the outer catch.
+    const rollback = async (
+      memberRowId: number | null,
+      claimRowId: number | null,
+    ) => {
       try {
         await db.transaction().execute(async (trx) => {
-          await trx
-            .deleteFrom("voterGroupMembers")
-            .where("id", "=", memberRowId)
-            .execute();
-
           if (claimRowId) {
             await trx
               .deleteFrom("gooddollarClaimedRoots")
               .where("id", "=", claimRowId)
+              .execute();
+          }
+
+          if (memberRowId) {
+            await trx
+              .deleteFrom("voterGroupMembers")
+              .where("id", "=", memberRowId)
               .execute();
           }
         });
@@ -275,6 +289,36 @@ export async function POST(request: Request) {
         console.error("Failed to roll back voter membership row:", rollbackErr);
       }
     };
+
+    // No row inserted means this wallet is already a member here, from another
+    // group on this council or from an earlier attempt whose receipt wait timed
+    // out. Only the chain says whether that attempt's addVoter ever landed:
+    // answering success on the row alone leaves a wallet whose broadcast was
+    // dropped confirmed here, holding its identity's only slot, with no vote on
+    // the council and no retry that can repair it, since every retry reads the
+    // same row and gives the same answer.
+    if (!memberId) {
+      let votingPower = 0n;
+
+      try {
+        ({ votingPower } = await publicClient.readContract({
+          address: councilId as Address,
+          abi: flowCouncilAbi,
+          functionName: "getVoter",
+          args: [address as Address],
+        }));
+      } catch (err) {
+        // getVoter reverts for an account the council doesn't know, which an
+        // RPC failure is indistinguishable from here. Either way the broadcast
+        // below settles it, since a voter that is already added answers
+        // ALREADY_ADDED and that is read as success.
+        console.error(err);
+      }
+
+      if (votingPower > 0n) {
+        return Response.json({ success: true });
+      }
+    }
 
     let hash: `0x${string}`;
 
