@@ -185,6 +185,9 @@ export async function POST(request: Request) {
 
     // Councils that enabled GoodDollar after their voters were added carry no
     // claim for them, so the root voting here is what marks the slot taken.
+    // A root claiming for itself is exempt because it can only ever be the one
+    // voter its identity is entitled to: the claim below either records it or
+    // conflicts and finds this same wallet already holding the slot.
     if (rootAddress !== claimingAddress) {
       const votingRoots = await loadVotingRoots(round.id, [rootAddress]);
 
