@@ -253,6 +253,16 @@ export async function POST(request: Request) {
         return alreadyClaimedResponse();
       }
 
+      // The slot changed hands mid-request, so there is no verdict to give,
+      // only a clean re-attempt. Named here rather than left to the generic
+      // 500 so the race reads as what it is.
+      if (err instanceof ClaimRaceError) {
+        return Response.json(
+          { success: false, error: "The claim was contested, please retry" },
+          { status: 409 },
+        );
+      }
+
       throw err;
     }
 

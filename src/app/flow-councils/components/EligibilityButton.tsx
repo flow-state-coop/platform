@@ -34,6 +34,11 @@ const MAX_WATCH_MS = 10 * 60_000;
 const SIGN_IN_SETTLE_MS = 6_000;
 const GENERIC_CLAIM_ERROR = "There was an error, please try again";
 
+// The refusals a fresh attempt can answer. An expired timestamp came from this
+// machine's clock, so re-signing is what fixes it; anything else re-sent
+// verbatim would only fail the same way.
+const isRetryableReason = (reason?: string) => reason === "expired_signature";
+
 export default function EligibilityButton({
   chainId,
   councilId,
@@ -76,9 +81,8 @@ export default function EligibilityButton({
     setStatus("checking");
     setClaimError("");
 
-    // Two attempts at most, and only for a signature the server called expired:
-    // the timestamp it refused came from this machine's clock, so signing again
-    // is the one thing that can answer it.
+    // Two attempts at most, and a second one only for a refusal that
+    // isRetryableReason says a fresh signature can answer.
     for (let attempt = 0; attempt < 2; attempt++) {
       // The spot is bound to whichever wallet claims it, permanently, so the
       // route has to know this wallet consented. Signing in already proved
@@ -141,7 +145,7 @@ export default function EligibilityButton({
         return;
       }
 
-      if (attempt === 0 && signature && data.reason === "expired_signature") {
+      if (attempt === 0 && signature && isRetryableReason(data.reason)) {
         continue;
       }
 

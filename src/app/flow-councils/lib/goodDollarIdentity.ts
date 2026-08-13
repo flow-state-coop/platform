@@ -67,7 +67,8 @@ export async function resolveVerifiedRoots(
           // Fail the whole batch rather than resolve part of it: an unverified
           // wallet answers the zero address instead of reverting, so a failure
           // here is the RPC and not one address, and reading on would hand back
-          // a map that silently calls unreadable wallets unverified.
+          // a map that silently calls unreadable wallets unverified. The raw
+          // viem error propagates as-is; callers catch it and fail closed.
           allowFailure: false,
         }),
       ),
