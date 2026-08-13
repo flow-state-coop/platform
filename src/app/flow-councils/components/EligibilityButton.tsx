@@ -26,6 +26,13 @@ const WHITELIST_POLL_INTERVAL_MS = 4_000;
 // redirect returns before giving up.
 const WHITELIST_GRACE_MS = 60_000;
 const MAX_WATCH_MS = 10 * 60_000;
+// How long a check that started by connecting waits for the sign-in connecting
+// prompted for. A session for this wallet is proof enough to claim, so checking
+// before it resolves asks for a second signature the sign-in was about to make
+// unnecessary. Bounded because dismissing that prompt is allowed, and then the
+// claim signature is the only proof left.
+const SIGN_IN_SETTLE_MS = 6_000;
+const GENERIC_CLAIM_ERROR = "There was an error, please try again";
 
 export default function EligibilityButton({
   chainId,
@@ -37,7 +44,7 @@ export default function EligibilityButton({
   isMobile: boolean;
 }) {
   const { address, isConnected } = useAccount();
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const { signMessageAsync } = useSignMessage();
   const { openConnectModal } = useConnectModal();
   const { councilMember, dispatchShowBallot } = useFlowCouncil();
@@ -46,52 +53,97 @@ export default function EligibilityButton({
   const pathname = usePathname();
   const router = useRouter();
   const [status, setStatus] = useState<EligibilityStatus>("idle");
+  const [claimError, setClaimError] = useState("");
   const [pendingCheck, setPendingCheck] = useState(false);
   const [pendingVerifyReturn, setPendingVerifyReturn] = useState(false);
   // Self-claim is opt-in per council: only surface the button when an admin has
   // created a "gooddollar" voter group for this council.
   const [hasGoodDollarGroup, setHasGoodDollarGroup] = useState(false);
   const watchIdRef = useRef(0);
+  const checkIdRef = useRef(0);
 
   const checkEligibility = useCallback(async () => {
     if (!address) {
       return;
     }
 
+    // Every verdict below describes the wallet the check started with, and the
+    // request outlives a wallet change, so it is cancelled the same way the
+    // verification watch is. Without this, wallet A's answer lands on B.
+    const checkId = ++checkIdRef.current;
+    const isCurrent = () => checkIdRef.current === checkId;
+
     setStatus("checking");
+    setClaimError("");
 
-    // The spot is bound to whichever wallet claims it, permanently, so the
-    // route has to know this wallet consented. Signing in already proved that,
-    // and connecting prompts for it, so only a wallet that skipped sign-in is
-    // asked to sign here. A declined prompt grants nothing and is not a
-    // failure state.
-    const issuedAt = Date.now();
-    let signature: string | undefined;
+    // Two attempts at most, and only for a signature the server called expired:
+    // the timestamp it refused came from this machine's clock, so signing again
+    // is the one thing that can answer it.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      // The spot is bound to whichever wallet claims it, permanently, so the
+      // route has to know this wallet consented. Signing in already proved
+      // that, and connecting prompts for it, so only a wallet that skipped
+      // sign-in is asked to sign here. A declined prompt grants nothing and is
+      // not a failure state.
+      const issuedAt = Date.now();
+      let signature: string | undefined;
 
-    if (session?.address?.toLowerCase() !== address.toLowerCase()) {
+      if (session?.address?.toLowerCase() !== address.toLowerCase()) {
+        try {
+          signature = await signMessageAsync({
+            message: buildClaimMessage({
+              chainId,
+              councilId,
+              address,
+              issuedAt,
+            }),
+          });
+        } catch {
+          if (isCurrent()) {
+            setStatus("idle");
+          }
+
+          return;
+        }
+      }
+
+      let data: {
+        success?: boolean;
+        alreadyClaimed?: boolean;
+        notWhitelisted?: boolean;
+        reason?: string;
+        error?: string;
+      };
+
       try {
-        signature = await signMessageAsync({
-          message: buildClaimMessage({ chainId, councilId, address, issuedAt }),
+        const res = await fetch("/api/flow-council/eligibility", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            address,
+            chainId,
+            councilId,
+            signature,
+            issuedAt,
+          }),
         });
+        data = await res.json();
       } catch {
-        setStatus("idle");
+        if (isCurrent()) {
+          setStatus("idle");
+          setClaimError(GENERIC_CLAIM_ERROR);
+        }
+
         return;
       }
-    }
 
-    try {
-      const res = await fetch("/api/flow-council/eligibility", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address,
-          chainId,
-          councilId,
-          signature,
-          issuedAt,
-        }),
-      });
-      const data = await res.json();
+      if (!isCurrent()) {
+        return;
+      }
+
+      if (attempt === 0 && signature && data.reason === "expired_signature") {
+        continue;
+      }
 
       if (data.success) {
         setStatus("confirmed");
@@ -101,14 +153,17 @@ export default function EligibilityButton({
         setStatus("alreadyClaimed");
       } else if (data.notWhitelisted) {
         // "failed" routes into face verification, so it is reserved for a
-        // definitive not-whitelisted answer. Transient errors (RPC hiccups on
-        // the bot's addVoter call) reset to idle for a plain re-check.
+        // definitive not-whitelisted answer. Everything else is transient (an
+        // RPC hiccup on the bot's addVoter call, a signature the server
+        // refused), so the button stays clickable for a plain re-check and
+        // says what happened rather than resetting to nothing.
         setStatus("failed");
       } else {
         setStatus("idle");
+        setClaimError(data.error ?? GENERIC_CLAIM_ERROR);
       }
-    } catch {
-      setStatus("idle");
+
+      return;
     }
   }, [address, chainId, councilId, session?.address, signMessageAsync]);
 
@@ -173,15 +228,45 @@ export default function EligibilityButton({
   // Cancels any verification watch still polling for the old wallet.
   useEffect(() => {
     watchIdRef.current++;
+    checkIdRef.current++;
     setStatus("idle");
+    setClaimError("");
   }, [address]);
 
   useEffect(() => {
-    if (pendingCheck && isConnected && address) {
-      setPendingCheck(false);
-      checkEligibility();
+    if (
+      !pendingCheck ||
+      !isConnected ||
+      !address ||
+      sessionStatus === "loading"
+    )
+      return;
+
+    // Connecting prompts for sign-in, and a session for this wallet is proof
+    // enough to claim, so the check waits for it rather than racing it into a
+    // second signature prompt. The wait ends the moment the session lands, and
+    // gives up after a grace window because dismissing sign-in is allowed.
+    if (session?.address?.toLowerCase() !== address.toLowerCase()) {
+      setStatus("checking");
+
+      const timeout = setTimeout(() => {
+        setPendingCheck(false);
+        checkEligibility();
+      }, SIGN_IN_SETTLE_MS);
+
+      return () => clearTimeout(timeout);
     }
-  }, [pendingCheck, isConnected, address, checkEligibility]);
+
+    setPendingCheck(false);
+    checkEligibility();
+  }, [
+    pendingCheck,
+    isConnected,
+    address,
+    session?.address,
+    sessionStatus,
+    checkEligibility,
+  ]);
 
   useEffect(() => {
     if (councilMember && status === "idle") {
@@ -406,18 +491,26 @@ export default function EligibilityButton({
   }
 
   return (
-    <Button
-      variant="primary"
-      className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
+    <Stack
+      direction="vertical"
+      gap={2}
       style={{ width: isMobile ? "100%" : 240 }}
-      onClick={handleClick}
-      disabled={status === "checking"}
     >
-      {status === "checking" ? (
-        <Spinner size="sm" />
-      ) : (
-        "Check Voter Eligibility"
-      )}
-    </Button>
+      <Button
+        variant="primary"
+        className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
+        onClick={handleClick}
+        disabled={status === "checking"}
+      >
+        {status === "checking" ? (
+          <Spinner size="sm" />
+        ) : (
+          "Check Voter Eligibility"
+        )}
+      </Button>
+      {claimError ? (
+        <span className="text-center text-danger">{claimError}</span>
+      ) : null}
+    </Stack>
   );
 }
