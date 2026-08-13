@@ -116,6 +116,10 @@ export function createBotMockPublicClient() {
 
     getTransactionCount: vi.fn(async () => botChain.pendingNonce),
 
+    // Every claimant here is an EOA, which is what routes the signature check
+    // through local ECDSA rather than the ERC-1271 path.
+    getCode: vi.fn(async () => undefined),
+
     waitForTransactionReceipt: vi.fn(async ({ hash }: { hash: string }) => {
       botChain.receiptWaits.push(hash);
       if (botChain.receiptError) throw new Error(botChain.receiptError);
