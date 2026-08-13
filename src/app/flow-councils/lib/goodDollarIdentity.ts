@@ -64,6 +64,10 @@ export async function resolveVerifiedRoots(
             functionName: "getWhitelistedRoot",
             args: [address],
           })),
+          // Fail the whole batch rather than resolve part of it: an unverified
+          // wallet answers the zero address instead of reverting, so a failure
+          // here is the RPC and not one address, and reading on would hand back
+          // a map that silently calls unreadable wallets unverified.
           allowFailure: false,
         }),
       ),

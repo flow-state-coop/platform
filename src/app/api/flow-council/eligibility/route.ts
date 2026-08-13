@@ -143,9 +143,10 @@ export async function POST(request: Request) {
     // signature covers everyone who dismissed that prompt, since sign-in is
     // optional here and refusing them the claim would be worse.
     const session = await getServerSession(authOptions);
-    const signedInAs = session?.address?.toLowerCase();
+    const provenBySignIn =
+      session?.address?.toLowerCase() === (address as string).toLowerCase();
 
-    if (signedInAs !== (address as string).toLowerCase()) {
+    if (!provenBySignIn) {
       const verification = await verifyClaimSignature({
         client: getCouncilPublicClient(network) as PublicClient,
         chainId: numericChainId,
