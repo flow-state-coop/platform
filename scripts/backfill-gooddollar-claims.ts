@@ -53,7 +53,7 @@ async function main() {
   let held = 0;
 
   for (const { roundId } of councils) {
-    const claims = await loadClaimsForExistingVoters(roundId);
+    const { claims } = await loadClaimsForExistingVoters(roundId);
 
     for (const claim of claims) {
       const existing = await db

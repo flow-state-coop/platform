@@ -55,6 +55,7 @@ import {
 } from "./members/route";
 import { GET as publicGet } from "./public/route";
 import { resetManagerRoleCache } from "@/app/api/flow-council/auth";
+import { votersMissingFromSnapshot } from "@/app/api/flow-council/gooddollar";
 import { resetRateLimits } from "@/app/api/rateLimit";
 import {
   getTestDb,
@@ -725,6 +726,34 @@ describe("voter-groups members on a GoodDollar council", () => {
     ]);
     expect(await memberCount(g)).toBe(0);
   });
+
+  it("records the identity of a root already voting when it is re-added", async () => {
+    // The membership row is a no-op here and the claim is the point. The
+    // identity lookup ran before the transaction, so skipping the claim because
+    // this wallet is the one holding the slot leaves a removal landing in
+    // between free to reopen it, with the wallet added back and its identity
+    // unrecorded.
+    const manual = await createGroup("Manual");
+    const g = await createGroup("GoodDollar", "gooddollar");
+    setWhitelistedRoot(A1, A1);
+    await db
+      .insertInto("voterGroupMembers")
+      .values({
+        voterGroupId: manual,
+        roundId: await roundId(),
+        address: A1.toLowerCase(),
+      })
+      .execute();
+
+    const res = await memberPost(
+      jsonRequest("POST", MEMBERS, { ...base, groupId: g, address: A1 }),
+    );
+
+    expect((await readJson(res)).success).toBe(true);
+    expect(await claimedRoots()).toEqual([
+      { rootAddress: A1.toLowerCase(), address: A1.toLowerCase() },
+    ]);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -816,6 +845,32 @@ describe("voter-groups enabling GoodDollar on a council with voters", () => {
     expect(await claimedRoots(rid)).toEqual([
       { rootAddress: A1.toLowerCase(), address: A1.toLowerCase() },
     ]);
+  });
+
+  it("names a voter added after the identity sweep ran", async () => {
+    // What the seed reads under the council's lock before committing. The sweep
+    // resolves the council as it stands, outside the transaction, so a voter
+    // added in between is one nothing looked up, and seeding anyway would turn
+    // self-claim on with that wallet's identity free for a second wallet.
+    const rid = await seedCeloCouncil();
+    const manual = await seedCeloVoter(rid, A1);
+    await db
+      .insertInto("voterGroupMembers")
+      .values({
+        voterGroupId: manual,
+        roundId: rid,
+        address: A2.toLowerCase(),
+      })
+      .execute();
+
+    const missing = await db.transaction().execute((trx) =>
+      votersMissingFromSnapshot(trx, rid, {
+        claims: [],
+        addresses: new Set([A1.toLowerCase()]),
+      }),
+    );
+
+    expect(missing).toEqual([A2.toLowerCase()]);
   });
 
   it("fails closed when Celo cannot be reached", async () => {

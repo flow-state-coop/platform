@@ -19,6 +19,15 @@ export const IDENTITY_CONFLICT_ERROR =
 
 export type IdentityClaim = { rootAddress: string; address: string };
 
+// The claims a council's voters resolve to, alongside the addresses they were
+// resolved from. The sweep runs on Celo before the transaction that writes it,
+// so the addresses are what says whether the snapshot still describes the
+// council when it lands.
+export type IdentitySnapshot = {
+  claims: IdentityClaim[];
+  addresses: Set<string>;
+};
+
 /**
  * Read-only Celo client for GoodDollar identity lookups, memoized per chain
  * alongside every other council read client.
@@ -37,7 +46,7 @@ export function getCeloIdentityClient() {
  */
 export async function loadClaimsForExistingVoters(
   roundId: number,
-): Promise<IdentityClaim[]> {
+): Promise<IdentitySnapshot> {
   const members = await db
     .selectFrom("voterGroupMembers")
     .select(["address"])
@@ -45,8 +54,12 @@ export async function loadClaimsForExistingVoters(
     .orderBy("id", "asc")
     .execute();
 
+  const addresses = new Set(
+    members.map((member) => member.address.toLowerCase()),
+  );
+
   if (members.length === 0) {
-    return [];
+    return { claims: [], addresses };
   }
 
   const roots = await resolveVerifiedRoots(
@@ -55,21 +68,65 @@ export async function loadClaimsForExistingVoters(
   );
 
   const claims: IdentityClaim[] = [];
-  const taken = new Set<string>();
+  const holders = new Map<string, string>();
+  const conflicts: string[] = [];
 
   for (const member of members) {
     const address = member.address.toLowerCase();
     const root = roots.get(address);
 
-    if (!root || taken.has(root)) {
+    if (!root) {
       continue;
     }
 
-    taken.add(root);
+    const holder = holders.get(root);
+
+    if (holder) {
+      conflicts.push(`${address} shares ${root} with ${holder}`);
+      continue;
+    }
+
+    holders.set(root, address);
     claims.push({ rootAddress: root, address });
   }
 
-  return claims;
+  // A council can reach this with two wallets of one identity already voting,
+  // which is a double vote no seeding can undo: recording the first wallet is
+  // all the table can say, and removing the second is an admin's call. Say so
+  // rather than picking silently.
+  if (conflicts.length > 0) {
+    console.warn(
+      `round ${roundId}: ${conflicts.length} voter(s) share a GoodDollar identity with another voter on this council; ${conflicts.join(", ")}`,
+    );
+  }
+
+  return { claims, addresses };
+}
+
+/**
+ * The council's voters that `snapshot` never looked up.
+ *
+ * The identity sweep runs on Celo outside the transaction that seeds it, so a
+ * manual add landing in between is a wallet self-claim is about to cover with
+ * its identity unrecorded, which is the second spot the claim table exists to
+ * refuse. Read inside the transaction that holds the council's lock, where a
+ * non-empty answer means the snapshot is stale and the request should be made
+ * again rather than committed.
+ */
+export async function votersMissingFromSnapshot(
+  trx: Transaction<DB>,
+  roundId: number,
+  snapshot: IdentitySnapshot,
+): Promise<string[]> {
+  const members = await trx
+    .selectFrom("voterGroupMembers")
+    .select(["address"])
+    .where("roundId", "=", roundId)
+    .execute();
+
+  return members
+    .map((member) => member.address.toLowerCase())
+    .filter((address) => !snapshot.addresses.has(address));
 }
 
 export async function insertClaims(

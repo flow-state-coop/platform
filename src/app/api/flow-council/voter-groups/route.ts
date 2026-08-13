@@ -24,7 +24,8 @@ import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import {
   insertClaims,
   loadClaimsForExistingVoters,
-  type IdentityClaim,
+  votersMissingFromSnapshot,
+  type IdentitySnapshot,
 } from "../gooddollar";
 import {
   CELO_CHAIN_ID,
@@ -239,7 +240,7 @@ function asNftDuplicateError(err: unknown): HttpError | null {
  * Kept outside the transactions below so the Celo round trip never holds the
  * council's row locks.
  */
-async function resolveSeedClaims(roundId: number): Promise<IdentityClaim[]> {
+async function resolveSeedClaims(roundId: number): Promise<IdentitySnapshot> {
   try {
     return await loadClaimsForExistingVoters(roundId);
   } catch (err) {
@@ -249,6 +250,31 @@ async function resolveSeedClaims(roundId: number): Promise<IdentityClaim[]> {
       503,
     );
   }
+}
+
+/**
+ * Write the seeded claims, once the council still looks the way the sweep found
+ * it. A voter added between the two is one the sweep never resolved, so
+ * committing here would turn self-claim on with that wallet's identity
+ * unrecorded and a second spot open to it. Runs under the council's lock, where
+ * the add either already landed and is seen, or is still waiting on the lock and
+ * will find self-claim enabled when it gets it.
+ */
+async function seedClaims(
+  trx: Transaction<DB>,
+  roundId: number,
+  snapshot: IdentitySnapshot,
+): Promise<void> {
+  const missing = await votersMissingFromSnapshot(trx, roundId, snapshot);
+
+  if (missing.length > 0) {
+    throw new HttpError(
+      "Voters were added to this council while GoodDollar eligibility was being enabled, please try again",
+      409,
+    );
+  }
+
+  await insertClaims(trx, roundId, snapshot.claims);
 }
 
 async function lockCouncilGroups(
@@ -542,10 +568,10 @@ export async function POST(request: Request) {
         ? await resolveNftColumns(Number(chainId), parsed.data.nftConfig)
         : null;
 
-    const seedClaims =
+    const identitySnapshot =
       parsed.data.eligibilityMethod === "gooddollar"
         ? await resolveSeedClaims(auth.roundId)
-        : [];
+        : null;
 
     // The exclusivity and duplicate guards are check-then-write, so they run in
     // one transaction with the council's group rows locked. Without the lock two
@@ -580,8 +606,8 @@ export async function POST(request: Request) {
         throw err;
       }
 
-      if (group) {
-        await insertClaims(trx, auth.roundId, seedClaims);
+      if (group && identitySnapshot) {
+        await seedClaims(trx, auth.roundId, identitySnapshot);
       }
 
       return group;
@@ -756,11 +782,11 @@ export async function PATCH(request: Request) {
     // Switching a group to GoodDollar turns self-claim on for the whole council,
     // so it records the identity behind every wallet already voting here for the
     // same reason POST does.
-    const seedClaims =
+    const identitySnapshot =
       resultingMethod === "gooddollar" &&
       group.eligibilityMethod !== "gooddollar"
         ? await resolveSeedClaims(auth.roundId)
-        : [];
+        : null;
 
     const updates: {
       name?: string;
@@ -831,7 +857,9 @@ export async function PATCH(request: Request) {
         throw err;
       }
 
-      await insertClaims(trx, auth.roundId, seedClaims);
+      if (identitySnapshot) {
+        await seedClaims(trx, auth.roundId, identitySnapshot);
+      }
     });
 
     return Response.json({ success: true });
@@ -946,26 +974,26 @@ export async function DELETE(request: Request) {
       // the emptiness guard above, so it is provably empty and clearing its
       // members would delete nothing.
       if (target.eligibilityMethod === "metrics") {
-        const removed = await trx
-          .deleteFrom("voterGroupMembers")
-          .where("voterGroupId", "=", id)
-          .returning(["address"])
-          .execute();
-
         // A voter moved into this group may be holding a GoodDollar identity,
         // and dropping the membership row without releasing it would lock that
-        // identity out of the council with no voter to show for it.
-        if (removed.length > 0) {
-          await trx
-            .deleteFrom("gooddollarClaimedRoots")
-            .where("roundId", "=", auth.roundId)
-            .where(
-              "address",
-              "in",
-              removed.map((row) => row.address),
-            )
-            .execute();
-        }
+        // identity out of the council with no voter to show for it. Released
+        // first, which is the order the claim route takes the two in; the
+        // reverse deadlocks against a claim landing at the same moment.
+        await trx
+          .deleteFrom("gooddollarClaimedRoots")
+          .where("roundId", "=", auth.roundId)
+          .where("address", "in", (eb) =>
+            eb
+              .selectFrom("voterGroupMembers")
+              .select("address")
+              .where("voterGroupId", "=", id),
+          )
+          .execute();
+
+        await trx
+          .deleteFrom("voterGroupMembers")
+          .where("voterGroupId", "=", id)
+          .execute();
       }
 
       await trx

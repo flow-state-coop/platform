@@ -33,6 +33,11 @@ class IdentityAlreadyClaimed extends Error {
   }
 }
 
+// Self-claim was turned on for this council while the add was in flight, so its
+// identity lookups never ran and the group that just switched seeded its claims
+// from a council this add was not yet part of.
+class GoodDollarEnabledMidRequest extends Error {}
+
 function identityConflictResponse(rejected: IdentityRejection[]) {
   return Response.json(
     {
@@ -155,12 +160,18 @@ export async function POST(request: Request) {
         const holder =
           heldBy.get(root) ?? (votingRoots.has(root) ? root : undefined);
 
-        if (!holder) {
-          heldBy.set(root, address);
-          claims.push({ rootAddress: root, address });
-        } else if (holder !== address) {
+        if (holder && holder !== address) {
           rejected.push({ address, sameIdentityAs: holder });
+          continue;
         }
+
+        // Queued even when this wallet is the recorded holder already. The
+        // lookup above ran outside the transaction, so a removal releasing the
+        // claim in between would otherwise re-add the wallet with its identity
+        // unrecorded, free for the next wallet its holder connected. The insert
+        // below tolerates the row being there, it is the same claim.
+        heldBy.set(root, address);
+        claims.push({ rootAddress: root, address });
       }
 
       // All or nothing, so a paste that trips the gate leaves nothing half
@@ -182,6 +193,29 @@ export async function POST(request: Request) {
 
     try {
       await db.transaction().execute(async (trx) => {
+        // The same council row the voter-groups route locks before switching a
+        // group to GoodDollar, so an add and that switch never interleave. The
+        // identity lookups above ran before this lock, so whichever request
+        // arrives second sees the other's writes and gives up rather than
+        // adding wallets the switch's seed will never look up.
+        await trx
+          .selectFrom("rounds")
+          .select("id")
+          .where("id", "=", auth.roundId)
+          .forUpdate()
+          .execute();
+
+        const goodDollarNow = await trx
+          .selectFrom("voterGroups")
+          .select("id")
+          .where("roundId", "=", auth.roundId)
+          .where("eligibilityMethod", "=", "gooddollar")
+          .executeTakeFirst();
+
+        if (goodDollarNow && !goodDollarGroup) {
+          throw new GoodDollarEnabledMidRequest();
+        }
+
         for (let i = 0; i < claims.length; i += INSERT_BATCH) {
           const chunk = claims.slice(i, i + INSERT_BATCH);
           const rows = await trx
@@ -255,6 +289,13 @@ export async function POST(request: Request) {
     } catch (err) {
       if (err instanceof IdentityAlreadyClaimed) {
         return identityConflictResponse(err.rejected);
+      }
+
+      if (err instanceof GoodDollarEnabledMidRequest) {
+        return errorResponse(
+          "GoodDollar eligibility was enabled for this council while these voters were being added, please try again",
+          409,
+        );
       }
 
       throw err;
@@ -371,40 +412,49 @@ export async function DELETE(request: Request) {
       );
     }
 
+    // Optionally scope the delete to one group. Single-membership means an
+    // address sits in at most one group per council, but scoping makes the
+    // contract precise: a caller removing from group A never deletes a row that
+    // was concurrently moved to group B. Omitted → council-wide (back-compat).
+    const scopedToGroup = Number.isInteger(groupId) && groupId > 0;
+
     // One transaction, so a failure between the two can't drop the voter while
     // leaving their identity claimed, which would lock it out of the council
     // with no voter to show for it.
     await db.transaction().execute(async (trx) => {
+      // Claims first, then the membership rows they belong to, which is the
+      // order the claim route takes them in. Taking them the other way round
+      // here is a deadlock against a claim landing at the same moment, each
+      // holding the row the other is waiting on.
+      //
+      // The subquery is the same set the delete below matches, so a
+      // group-scoped delete that matches nothing still releases nothing.
+      await trx
+        .deleteFrom("gooddollarClaimedRoots")
+        .where("roundId", "=", auth.roundId)
+        .where("address", "in", (eb) => {
+          const members = eb
+            .selectFrom("voterGroupMembers")
+            .select("address")
+            .where("roundId", "=", auth.roundId)
+            .where("address", "in", lowered);
+
+          return scopedToGroup
+            ? members.where("voterGroupId", "=", groupId)
+            : members;
+        })
+        .execute();
+
       let query = trx
         .deleteFrom("voterGroupMembers")
         .where("roundId", "=", auth.roundId)
         .where("address", "in", lowered);
 
-      // Optionally scope the delete to one group. Single-membership means an
-      // address sits in at most one group per council, but scoping makes the
-      // contract precise: a caller removing from group A never deletes a row
-      // that was concurrently moved to group B. Omitted → council-wide
-      // (back-compat).
-      if (Number.isInteger(groupId) && groupId > 0) {
+      if (scopedToGroup) {
         query = query.where("voterGroupId", "=", groupId);
       }
 
-      const removed = await query.returning(["address"]).execute();
-
-      // Release the GoodDollar identities the removed wallets were holding.
-      // Keyed on the rows actually deleted: a group-scoped delete that matched
-      // nothing must not release a claim still held elsewhere.
-      if (removed.length > 0) {
-        await trx
-          .deleteFrom("gooddollarClaimedRoots")
-          .where("roundId", "=", auth.roundId)
-          .where(
-            "address",
-            "in",
-            removed.map((row) => row.address),
-          )
-          .execute();
-      }
+      await query.execute();
     });
 
     return Response.json({ success: true });
