@@ -4,9 +4,11 @@ import { errorResponse } from "../../../utils";
 import { authorizeCouncilManager } from "../../auth";
 import { getGroupByMethod } from "../../bot";
 import {
-  createCeloIdentityClient,
-  resolveVerifiedRoots,
-} from "@/app/flow-councils/lib/goodDollarIdentity";
+  getCeloIdentityClient,
+  loadVotingRoots,
+  IDENTITY_CONFLICT_ERROR,
+} from "../../gooddollar";
+import { resolveVerifiedRoots } from "@/app/flow-councils/lib/goodDollarIdentity";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +22,27 @@ const MAX_BATCH_ADDRESSES = 5000;
 // add (up to MAX_BATCH_ADDRESSES) never emits one multi-thousand-row statement.
 const INSERT_BATCH = 500;
 
+type IdentityRejection = { address: string; sameIdentityAs: string };
+
 // Rolls the add back when a GoodDollar identity is claimed between the check
-// and the insert.
-class IdentityAlreadyClaimed extends Error {}
+// and the insert. Carries the offending addresses so the race answers with the
+// same payload the pre-check does, and the add list can flag those rows.
+class IdentityAlreadyClaimed extends Error {
+  constructor(readonly rejected: IdentityRejection[]) {
+    super(IDENTITY_CONFLICT_ERROR);
+  }
+}
+
+function identityConflictResponse(rejected: IdentityRejection[]) {
+  return Response.json(
+    {
+      success: false,
+      error: IDENTITY_CONFLICT_ERROR,
+      rejectedAddresses: rejected,
+    },
+    { status: 409 },
+  );
+}
 
 export async function POST(request: Request) {
   try {
@@ -86,17 +106,11 @@ export async function POST(request: Request) {
     const claims: { rootAddress: string; address: string }[] = [];
 
     if (goodDollarGroup) {
-      const celoPublicClient = createCeloIdentityClient();
-
-      if (!celoPublicClient) {
-        return errorResponse("Celo network missing", 500);
-      }
-
       let roots: Map<string, string>;
 
       try {
         roots = await resolveVerifiedRoots(
-          celoPublicClient,
+          getCeloIdentityClient(),
           unique as Address[],
         );
       } catch (err) {
@@ -109,20 +123,27 @@ export async function POST(request: Request) {
         );
       }
 
+      const distinctRoots = Array.from(new Set(roots.values()));
+
       const heldBy = new Map(
-        roots.size === 0
+        distinctRoots.length === 0
           ? []
           : (
               await db
                 .selectFrom("gooddollarClaimedRoots")
                 .select(["rootAddress", "address"])
                 .where("roundId", "=", auth.roundId)
-                .where("rootAddress", "in", Array.from(new Set(roots.values())))
+                .where("rootAddress", "in", distinctRoots)
                 .execute()
             ).map((row) => [row.rootAddress, row.address]),
       );
 
-      const rejected: { address: string; sameIdentityAs: string }[] = [];
+      // A council that enabled GoodDollar after its voters were added carries
+      // no claim for them, so a root voting here holds its identity's slot just
+      // as a recorded claim would.
+      const votingRoots = await loadVotingRoots(auth.roundId, distinctRoots);
+
+      const rejected: IdentityRejection[] = [];
 
       for (const address of unique) {
         const root = roots.get(address);
@@ -131,7 +152,8 @@ export async function POST(request: Request) {
           continue;
         }
 
-        const holder = heldBy.get(root);
+        const holder =
+          heldBy.get(root) ?? (votingRoots.has(root) ? root : undefined);
 
         if (!holder) {
           heldBy.set(root, address);
@@ -144,15 +166,7 @@ export async function POST(request: Request) {
       // All or nothing, so a paste that trips the gate leaves nothing half
       // written and the manager can fix the list and add again.
       if (rejected.length > 0) {
-        return Response.json(
-          {
-            success: false,
-            error:
-              "Some addresses share a GoodDollar identity with a voter on this council",
-            rejectedAddresses: rejected,
-          },
-          { status: 409 },
-        );
+        return identityConflictResponse(rejected);
       }
     }
 
@@ -176,13 +190,48 @@ export async function POST(request: Request) {
             .onConflict((oc) =>
               oc.columns(["roundId", "rootAddress"]).doNothing(),
             )
-            .returning(["address"])
+            .returning(["rootAddress"])
             .execute();
 
+          if (rows.length === chunk.length) {
+            continue;
+          }
+
           // A claim the lookup above found free but that no longer inserts was
-          // taken in between, by a self-claim or another manager's add.
-          if (rows.length !== chunk.length) {
-            throw new IdentityAlreadyClaimed();
+          // taken in between, by a self-claim or another manager's add. Read
+          // the holders back rather than counting rows: the wallet being added
+          // may be the one that took it, which is no conflict at all.
+          const landed = new Set(rows.map((row) => row.rootAddress));
+          const contested = chunk.filter(
+            (claim) => !landed.has(claim.rootAddress),
+          );
+          const holders = new Map(
+            (
+              await trx
+                .selectFrom("gooddollarClaimedRoots")
+                .select(["rootAddress", "address"])
+                .where("roundId", "=", auth.roundId)
+                .where(
+                  "rootAddress",
+                  "in",
+                  contested.map((claim) => claim.rootAddress),
+                )
+                .execute()
+            ).map((row) => [row.rootAddress, row.address]),
+          );
+
+          const rejected = contested
+            .filter((claim) => {
+              const holder = holders.get(claim.rootAddress);
+              return holder !== undefined && holder !== claim.address;
+            })
+            .map((claim) => ({
+              address: claim.address,
+              sameIdentityAs: holders.get(claim.rootAddress) as string,
+            }));
+
+          if (rejected.length > 0) {
+            throw new IdentityAlreadyClaimed(rejected);
           }
         }
 
@@ -205,10 +254,7 @@ export async function POST(request: Request) {
       });
     } catch (err) {
       if (err instanceof IdentityAlreadyClaimed) {
-        return errorResponse(
-          "Some addresses share a GoodDollar identity with a voter on this council",
-          409,
-        );
+        return identityConflictResponse(err.rejected);
       }
 
       throw err;

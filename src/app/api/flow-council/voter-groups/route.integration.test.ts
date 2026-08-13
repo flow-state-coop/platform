@@ -697,6 +697,182 @@ describe("voter-groups members on a GoodDollar council", () => {
     ).toBe(false);
     expect(await claimedRoots()).toEqual([]);
   });
+
+  it("refuses a wallet whose root is already voting with no claim recorded", async () => {
+    // A council that enabled GoodDollar after A1 was already a voter: nothing
+    // recorded the identity, so only the root voting here says the slot is
+    // taken.
+    const manual = await createGroup("Manual");
+    const g = await createGroup("GoodDollar", "gooddollar");
+    setWhitelistedRoot(A1, A1);
+    setWhitelistedRoot(A2, A1);
+    await db
+      .insertInto("voterGroupMembers")
+      .values({
+        voterGroupId: manual,
+        roundId: await roundId(),
+        address: A1.toLowerCase(),
+      })
+      .execute();
+
+    const res = await memberPost(
+      jsonRequest("POST", MEMBERS, { ...base, groupId: g, address: A2 }),
+    );
+
+    expect(res.status).toBe(409);
+    expect((await readJson(res)).rejectedAddresses).toEqual([
+      { address: A2.toLowerCase(), sameIdentityAs: A1.toLowerCase() },
+    ]);
+    expect(await memberCount(g)).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Turning self-claim on. A council's existing voters were never
+// identity-checked, so without recording the identity behind each of them the
+// other wallets their holders connected could take a second spot.
+// ---------------------------------------------------------------------------
+
+describe("voter-groups enabling GoodDollar on a council with voters", () => {
+  const celoBase = { chainId: CELO_CHAIN_ID, councilId: CELO_COUNCIL_ADDRESS };
+
+  async function seedCeloVoter(rid: number, address: string) {
+    const group = await db
+      .insertInto("voterGroups")
+      .values({
+        roundId: rid,
+        name: "Manual",
+        eligibilityMethod: "manual",
+        defaultVotingPower: 10,
+      })
+      .returning("id")
+      .executeTakeFirstOrThrow();
+
+    await db
+      .insertInto("voterGroupMembers")
+      .values({
+        voterGroupId: group.id,
+        roundId: rid,
+        address: address.toLowerCase(),
+      })
+      .execute();
+
+    return group.id;
+  }
+
+  async function claimedRoots(rid: number) {
+    return db
+      .selectFrom("gooddollarClaimedRoots")
+      .select(["rootAddress", "address"])
+      .where("roundId", "=", rid)
+      .execute();
+  }
+
+  it("records existing voters' identities when a GoodDollar group is created", async () => {
+    const rid = await seedCeloCouncil();
+    await seedCeloVoter(rid, A1);
+    setWhitelistedRoot(A1, A1);
+    setWhitelistedRoot(A2, A1);
+
+    const res = await groupsPost(
+      jsonRequest("POST", BASE, {
+        ...celoBase,
+        name: "GoodDollar",
+        eligibilityMethod: "gooddollar",
+        defaultVotingPower: 5,
+      }),
+    );
+    const body = await readJson(res);
+
+    expect(body.success).toBe(true);
+    expect(await claimedRoots(rid)).toEqual([
+      { rootAddress: A1.toLowerCase(), address: A1.toLowerCase() },
+    ]);
+
+    // Which is what turns away the second wallet its holder connected.
+    const add = await memberPost(
+      jsonRequest("POST", MEMBERS, {
+        ...celoBase,
+        groupId: body.id,
+        address: A2,
+      }),
+    );
+    expect(add.status).toBe(409);
+  });
+
+  it("records them when a group is switched to GoodDollar", async () => {
+    const rid = await seedCeloCouncil();
+    const manual = await seedCeloVoter(rid, A1);
+    setWhitelistedRoot(A1, A1);
+
+    const res = await groupsPatch(
+      jsonRequest("PATCH", `${BASE}?id=${manual}`, {
+        ...celoBase,
+        eligibilityMethod: "gooddollar",
+      }),
+    );
+
+    expect((await readJson(res)).success).toBe(true);
+    expect(await claimedRoots(rid)).toEqual([
+      { rootAddress: A1.toLowerCase(), address: A1.toLowerCase() },
+    ]);
+  });
+
+  it("fails closed when Celo cannot be reached", async () => {
+    const rid = await seedCeloCouncil();
+    await seedCeloVoter(rid, A1);
+    failRead(GOODDOLLAR_IDENTITY_ADDRESS, "getWhitelistedRoot");
+
+    const res = await groupsPost(
+      jsonRequest("POST", BASE, {
+        ...celoBase,
+        name: "GoodDollar",
+        eligibilityMethod: "gooddollar",
+        defaultVotingPower: 5,
+      }),
+    );
+
+    expect(res.status).toBe(503);
+    const groups = await db
+      .selectFrom("voterGroups")
+      .select("id")
+      .where("roundId", "=", rid)
+      .where("eligibilityMethod", "=", "gooddollar")
+      .execute();
+    expect(groups).toEqual([]);
+  });
+
+  it("releases the identity of a voter left in a deleted metrics group", async () => {
+    const base = { chainId: TEST_CHAIN_ID, councilId: TEST_COUNCIL_ADDRESS };
+    const rid = await roundId();
+    const metrics = await createGroup("Metrics", "metrics");
+    await createGroup("Manual");
+    await db
+      .insertInto("voterGroupMembers")
+      .values({
+        voterGroupId: metrics,
+        roundId: rid,
+        address: A1.toLowerCase(),
+      })
+      .execute();
+    await db
+      .insertInto("gooddollarClaimedRoots")
+      .values({
+        roundId: rid,
+        rootAddress: A1.toLowerCase(),
+        address: A1.toLowerCase(),
+      })
+      .execute();
+
+    const res = await groupsDelete(
+      jsonRequest("DELETE", `${BASE}?id=${metrics}`, base),
+    );
+
+    expect((await readJson(res)).success).toBe(true);
+    // Else the identity is locked out of the council with no voter to show
+    // for it, and no API left to release it.
+    expect(await claimedRoots(rid)).toEqual([]);
+  });
 });
 
 // ---------------------------------------------------------------------------

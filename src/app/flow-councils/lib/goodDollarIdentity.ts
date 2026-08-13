@@ -1,33 +1,18 @@
+import { Address, PublicClient, zeroAddress } from "viem";
 import {
-  Address,
-  PublicClient,
-  createPublicClient,
-  http,
-  zeroAddress,
-} from "viem";
-import {
-  CELO_CHAIN_ID,
   GOODDOLLAR_IDENTITY_ABI,
   GOODDOLLAR_IDENTITY_ADDRESS,
 } from "@/app/flow-councils/lib/constants";
-import { networks, getViemChain } from "@/lib/networks";
+import { splitIntoChunks } from "@/app/flow-councils/lib/chunkQueue";
 
 // Addresses per multicall when resolving a batch. A manual add accepts
 // thousands of addresses, which is far more than one eth_call can carry.
 const ROOT_LOOKUP_BATCH = 250;
 
-export function createCeloIdentityClient(): PublicClient | null {
-  const celoNetwork = networks.find((network) => network.id === CELO_CHAIN_ID);
-
-  if (!celoNetwork) {
-    return null;
-  }
-
-  return createPublicClient({
-    chain: getViemChain(celoNetwork.id),
-    transport: http(celoNetwork.rpcUrl),
-  }) as PublicClient;
-}
+// Multicalls in flight at once. The batches are independent reads, so awaiting
+// them one after another turns a 5000-address add into 20 serial round trips on
+// a public RPC; a few at a time keeps that short without hammering the node.
+const MAX_CONCURRENT_LOOKUPS = 4;
 
 /**
  * Resolves a wallet to the GoodDollar identity that verified it, or null when
@@ -67,24 +52,33 @@ export async function resolveVerifiedRoots(
   addresses: Address[],
 ): Promise<Map<string, string>> {
   const roots = new Map<string, string>();
+  const batches = splitIntoChunks(addresses, ROOT_LOOKUP_BATCH);
 
-  for (let i = 0; i < addresses.length; i += ROOT_LOOKUP_BATCH) {
-    const chunk = addresses.slice(i, i + ROOT_LOOKUP_BATCH);
-    const results = await client.multicall({
-      contracts: chunk.map((address) => ({
-        address: GOODDOLLAR_IDENTITY_ADDRESS,
-        abi: GOODDOLLAR_IDENTITY_ABI,
-        functionName: "getWhitelistedRoot",
-        args: [address],
-      })),
-      allowFailure: false,
-    });
+  for (const wave of splitIntoChunks(batches, MAX_CONCURRENT_LOOKUPS)) {
+    const waveResults = await Promise.all(
+      wave.map((batch) =>
+        client.multicall({
+          contracts: batch.map((address) => ({
+            address: GOODDOLLAR_IDENTITY_ADDRESS,
+            abi: GOODDOLLAR_IDENTITY_ABI,
+            functionName: "getWhitelistedRoot",
+            args: [address],
+          })),
+          allowFailure: false,
+        }),
+      ),
+    );
 
-    results.forEach((root, index) => {
-      if (root !== zeroAddress) {
-        roots.set(chunk[index].toLowerCase(), String(root).toLowerCase());
-      }
-    });
+    waveResults.forEach((results, batchIndex) =>
+      results.forEach((root, index) => {
+        if (root !== zeroAddress) {
+          roots.set(
+            wave[batchIndex][index].toLowerCase(),
+            String(root).toLowerCase(),
+          );
+        }
+      }),
+    );
   }
 
   return roots;

@@ -22,6 +22,11 @@ import {
 } from "../nft/detect";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import {
+  insertClaims,
+  loadClaimsForExistingVoters,
+  type IdentityClaim,
+} from "../gooddollar";
+import {
   CELO_CHAIN_ID,
   FLOW_STATE_BOT_ADDRESS,
 } from "@/app/flow-councils/lib/constants";
@@ -221,6 +226,29 @@ function asNftDuplicateError(err: unknown): HttpError | null {
   return message.includes("voter_groups_round_nft_unique")
     ? new HttpError(NFT_DUPLICATE_ERROR, 409)
     : null;
+}
+
+/**
+ * Resolve the identity behind every wallet already voting on the council, ready
+ * to be recorded alongside the group that turns self-claim on. A council's
+ * existing voters were never identity-checked, so without this every other
+ * wallet their holders connected could claim a second spot the moment GoodDollar
+ * eligibility appears. Fails closed, as the manual add does: adding without the
+ * check is what hands an identity a second voter.
+ *
+ * Kept outside the transactions below so the Celo round trip never holds the
+ * council's row locks.
+ */
+async function resolveSeedClaims(roundId: number): Promise<IdentityClaim[]> {
+  try {
+    return await loadClaimsForExistingVoters(roundId);
+  } catch (err) {
+    console.error(err);
+    throw new HttpError(
+      "Could not reach GoodDollar on Celo to check identities, please try again",
+      503,
+    );
+  }
 }
 
 async function lockCouncilGroups(
@@ -514,6 +542,11 @@ export async function POST(request: Request) {
         ? await resolveNftColumns(Number(chainId), parsed.data.nftConfig)
         : null;
 
+    const seedClaims =
+      parsed.data.eligibilityMethod === "gooddollar"
+        ? await resolveSeedClaims(auth.roundId)
+        : [];
+
     // The exclusivity and duplicate guards are check-then-write, so they run in
     // one transaction with the council's group rows locked. Without the lock two
     // concurrent requests both read "no conflict" and both write.
@@ -526,8 +559,10 @@ export async function POST(request: Request) {
         assertNftCollectionUnique(groups, nftColumns);
       }
 
+      let group;
+
       try {
-        return await trx
+        group = await trx
           .insertInto("voterGroups")
           .values({
             roundId: auth.roundId,
@@ -544,6 +579,12 @@ export async function POST(request: Request) {
         if (duplicate) throw duplicate;
         throw err;
       }
+
+      if (group) {
+        await insertClaims(trx, auth.roundId, seedClaims);
+      }
+
+      return group;
     });
 
     if (!inserted) {
@@ -712,6 +753,15 @@ export async function PATCH(request: Request) {
       nftColumns = CLEARED_NFT_COLUMNS;
     }
 
+    // Switching a group to GoodDollar turns self-claim on for the whole council,
+    // so it records the identity behind every wallet already voting here for the
+    // same reason POST does.
+    const seedClaims =
+      resultingMethod === "gooddollar" &&
+      group.eligibilityMethod !== "gooddollar"
+        ? await resolveSeedClaims(auth.roundId)
+        : [];
+
     const updates: {
       name?: string;
       eligibilityMethod?: string;
@@ -780,6 +830,8 @@ export async function PATCH(request: Request) {
         }
         throw err;
       }
+
+      await insertClaims(trx, auth.roundId, seedClaims);
     });
 
     return Response.json({ success: true });
@@ -894,10 +946,26 @@ export async function DELETE(request: Request) {
       // the emptiness guard above, so it is provably empty and clearing its
       // members would delete nothing.
       if (target.eligibilityMethod === "metrics") {
-        await trx
+        const removed = await trx
           .deleteFrom("voterGroupMembers")
           .where("voterGroupId", "=", id)
+          .returning(["address"])
           .execute();
+
+        // A voter moved into this group may be holding a GoodDollar identity,
+        // and dropping the membership row without releasing it would lock that
+        // identity out of the council with no voter to show for it.
+        if (removed.length > 0) {
+          await trx
+            .deleteFrom("gooddollarClaimedRoots")
+            .where("roundId", "=", auth.roundId)
+            .where(
+              "address",
+              "in",
+              removed.map((row) => row.address),
+            )
+            .execute();
+        }
       }
 
       await trx
