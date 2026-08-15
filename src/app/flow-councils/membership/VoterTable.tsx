@@ -799,10 +799,12 @@ export default function VoterTable(props: VoterTableProps) {
           // Adds are written before the removals reach the chain, and an
           // identity is only released once its voter's removal lands, so
           // swapping one wallet of an identity for another takes two saves.
+          // removedAccounts, not the raw staged set: a stale entry for a voter
+          // no longer in this group is a removal this save won't perform.
           const swappingWallets =
             rejected.length > 0 &&
             rejected.every((entry) =>
-              removed.has(entry.sameIdentityAs.toLowerCase()),
+              removedAccounts.includes(entry.sameIdentityAs.toLowerCase()),
             );
 
           setSaveError(
