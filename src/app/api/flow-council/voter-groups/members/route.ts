@@ -6,7 +6,9 @@ import { getGroupByMethod } from "../../bot";
 import {
   getCeloIdentityClient,
   loadVotingRoots,
+  CELO_UNREACHABLE_ERROR,
   IDENTITY_CONFLICT_ERROR,
+  INSERT_BATCH,
 } from "../../gooddollar";
 import { resolveVerifiedRoots } from "@/app/flow-councils/lib/goodDollarIdentity";
 
@@ -17,10 +19,6 @@ export const dynamic = "force-dynamic";
 // time out or exhaust memory. Mirrors the profiles endpoint's 500 cap, scaled
 // up since this is an authenticated manager-only write.
 const MAX_BATCH_ADDRESSES = 5000;
-
-// Rows per INSERT statement. Mirrors the lazy-seed migration's batch so a large
-// add (up to MAX_BATCH_ADDRESSES) never emits one multi-thousand-row statement.
-const INSERT_BATCH = 500;
 
 type IdentityRejection = { address: string; sameIdentityAs: string };
 
@@ -119,13 +117,8 @@ export async function POST(request: Request) {
           unique as Address[],
         );
       } catch (err) {
-        // Fail closed: adding without the identity check is what lets an
-        // identity collect a second voter.
         console.error(err);
-        return errorResponse(
-          "Could not reach GoodDollar on Celo to check identities, please try again",
-          503,
-        );
+        return errorResponse(CELO_UNREACHABLE_ERROR, 503);
       }
 
       const distinctRoots = Array.from(new Set(roots.values()));

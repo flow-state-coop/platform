@@ -41,15 +41,9 @@ export const GOODDOLLAR_IDENTITY_ADDRESS: `0x${string}` =
   "0xC361A6E67822a0EDc17D899227dd9FC50BD62F42";
 
 export const GOODDOLLAR_IDENTITY_ABI = [
-  {
-    type: "function",
-    name: "isWhitelisted",
-    inputs: [{ name: "_account", type: "address", internalType: "address" }],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
-    stateMutability: "view",
-  },
   // Verification lives on one address (the root); wallets the holder connects
-  // to it answer false to isWhitelisted and resolve back through this.
+  // to it answer false to isWhitelisted, so every lookup resolves through this
+  // rather than checking the connected wallet directly.
   {
     type: "function",
     name: "getWhitelistedRoot",

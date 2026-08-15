@@ -10,12 +10,17 @@ import { resolveVerifiedRoots } from "@/app/flow-councils/lib/goodDollarIdentity
 // Celo is a static entry in `networks`, so the lookup can't miss.
 const CELO_NETWORK = networks.find((network) => network.id === CELO_CHAIN_ID)!;
 
-// Rows per INSERT when seeding claims, matching the members endpoint so a
-// council with thousands of voters never emits one enormous statement.
-const CLAIM_INSERT_BATCH = 500;
+// Rows per INSERT statement wherever claims or members are written in bulk, so
+// a council with thousands of voters never emits one enormous statement.
+export const INSERT_BATCH = 500;
 
 export const IDENTITY_CONFLICT_ERROR =
   "Some addresses share a GoodDollar identity with a voter on this council";
+
+// Both identity-checked writes (manual add, group switch) fail closed on it:
+// writing without the check is what hands an identity a second voter.
+export const CELO_UNREACHABLE_ERROR =
+  "Could not reach GoodDollar on Celo to check identities, please try again";
 
 export type IdentityClaim = { rootAddress: string; address: string };
 
@@ -134,12 +139,12 @@ export async function insertClaims(
   roundId: number,
   claims: IdentityClaim[],
 ): Promise<void> {
-  for (let i = 0; i < claims.length; i += CLAIM_INSERT_BATCH) {
+  for (let i = 0; i < claims.length; i += INSERT_BATCH) {
     await trx
       .insertInto("gooddollarClaimedRoots")
       .values(
         claims
-          .slice(i, i + CLAIM_INSERT_BATCH)
+          .slice(i, i + INSERT_BATCH)
           .map((claim) => ({ roundId, ...claim })),
       )
       .onConflict((oc) => oc.columns(["roundId", "rootAddress"]).doNothing())

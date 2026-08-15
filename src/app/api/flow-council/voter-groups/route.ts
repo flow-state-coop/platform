@@ -25,6 +25,7 @@ import {
   insertClaims,
   loadClaimsForExistingVoters,
   votersMissingFromSnapshot,
+  CELO_UNREACHABLE_ERROR,
   type IdentitySnapshot,
 } from "../gooddollar";
 import {
@@ -245,10 +246,7 @@ async function resolveSeedClaims(roundId: number): Promise<IdentitySnapshot> {
     return await loadClaimsForExistingVoters(roundId);
   } catch (err) {
     console.error(err);
-    throw new HttpError(
-      "Could not reach GoodDollar on Celo to check identities, please try again",
-      503,
-    );
+    throw new HttpError(CELO_UNREACHABLE_ERROR, 503);
   }
 }
 
