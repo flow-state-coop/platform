@@ -33,8 +33,10 @@ async function main() {
     console.log("[DRY RUN] No claims will be written.");
   }
 
-  // One probe before the sweep, so an unreachable Celo fails here rather than
-  // halfway through with some councils seeded and others not.
+  // One probe before the sweep, so a Celo that is down from the start fails
+  // before anything is written. It proves nothing about the rest of the run;
+  // Celo can still drop mid-sweep, and then the catch below names the council
+  // the run stopped on.
   await resolveVerifiedRoot(
     getCeloIdentityClient(),
     "0x0000000000000000000000000000000000000001" as Address,
@@ -53,7 +55,17 @@ async function main() {
   let held = 0;
 
   for (const { roundId } of councils) {
-    const { claims } = await loadClaimsForExistingVoters(roundId);
+    let claims;
+
+    try {
+      ({ claims } = await loadClaimsForExistingVoters(roundId));
+    } catch (err) {
+      console.error(
+        `Stopped at round ${roundId}. Councils before it are seeded; ` +
+          `re-running is safe and resumes from here.`,
+      );
+      throw err;
+    }
 
     for (const claim of claims) {
       const existing = await db
