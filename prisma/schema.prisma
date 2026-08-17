@@ -168,6 +168,7 @@ model GoodDollarClaimedRoot {
   round       Round    @relation(fields: [roundId], references: [id])
 
   @@unique([roundId, rootAddress])
+  @@index([roundId, address])
   @@map("gooddollar_claimed_roots")
 }
 

@@ -559,6 +559,29 @@ export async function POST(request: Request) {
       }
     }
 
+    // The same name and method guards the transaction below enforces under
+    // lock, run early on an unlocked read. They can miss a concurrent write,
+    // which the locked re-check answers; they exist so a request these reject
+    // either way never first pays for the NFT probe or the Celo identity
+    // sweep.
+    const existingGroups = await db
+      .selectFrom("voterGroups")
+      .select([
+        "id",
+        "name",
+        "eligibilityMethod",
+        "nftContractAddress",
+        "nftTokenId",
+      ])
+      .where("roundId", "=", auth.roundId)
+      .execute();
+
+    assertMethodExclusivity(existingGroups, parsed.data.eligibilityMethod);
+
+    if (existingGroups.some((g) => g.name === parsed.data.name)) {
+      return errorResponse("A group with that name already exists", 409);
+    }
+
     // Probed outside the transaction below so the RPC round trip never holds
     // the council's row locks.
     const nftColumns =
