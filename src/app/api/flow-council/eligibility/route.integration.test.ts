@@ -277,7 +277,7 @@ describe("gooddollar eligibility self-claim", () => {
     expect(await memberCount()).toBe(1);
   });
 
-  it("rolls the membership row back when the send fails", async () => {
+  it("keeps the rows when the send fails, since the broadcast may have landed", async () => {
     botChain.writeError = RPC_ERROR_MESSAGE;
 
     const body = await (await claim()).json();
@@ -285,10 +285,15 @@ describe("gooddollar eligibility self-claim", () => {
     expect(body.success).toBe(false);
     // Provider detail must never reach the caller.
     expect(JSON.stringify(body)).not.toContain(RPC_ERROR_SENTINEL);
-    // Rolled back so a retry can re-attempt the on-chain call.
-    expect(await memberCount()).toBe(0);
-    // Including the claim, else the identity is locked out with no voter.
-    expect(await claimedRoots()).toEqual([]);
+    // A throw from the send is no proof nothing was broadcast: the node may
+    // have taken the transaction before the connection dropped, and then it
+    // still mines. Releasing the identity here would hand a sibling wallet a
+    // second voter, so the rows stay and the next attempt repairs itself
+    // through the getVoter check.
+    expect(await memberCount()).toBe(1);
+    expect(await claimedRoots()).toEqual([
+      { rootAddress: CLAIMANT, address: CLAIMANT },
+    ]);
   });
 
   it("keeps the claim when a re-claim by the holding wallet fails to send", async () => {
@@ -349,6 +354,37 @@ describe("gooddollar eligibility self-claim", () => {
     expect(body.alreadyClaimed).toBe(true);
     expect(botChain.writes).toHaveLength(0);
     expect(await memberCount()).toBe(1);
+  });
+
+  it("confirms a wallet already in another group without touching the chain", async () => {
+    // Manager-added into a manual group. Single-group membership means that
+    // group keeps the wallet and its allocation, so there is nothing to send;
+    // reading the conflict as a dropped broadcast instead would addVoter at
+    // the GoodDollar group's default power.
+    const manual = await db
+      .insertInto("voterGroups")
+      .values({ roundId, name: "Manual", eligibilityMethod: "manual" })
+      .returning("id")
+      .executeTakeFirstOrThrow();
+    await db
+      .insertInto("voterGroupMembers")
+      .values({ voterGroupId: manual.id, roundId, address: CLAIMANT })
+      .execute();
+    onRead("getVoter", ([account]) => ({
+      account,
+      votingPower: 0n,
+      votes: [],
+    }));
+
+    const body = await (await claim()).json();
+
+    expect(body).toEqual({ success: true });
+    expect(botChain.writes).toHaveLength(0);
+    // The identity still gets recorded against the wallet, closing the slot
+    // to its siblings.
+    expect(await claimedRoots()).toEqual([
+      { rootAddress: CLAIMANT, address: CLAIMANT },
+    ]);
   });
 
   it("skips the on-chain call when the wallet already votes on the council", async () => {

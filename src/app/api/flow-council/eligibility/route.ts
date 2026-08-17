@@ -219,9 +219,10 @@ export async function POST(request: Request) {
     // failure between the two orphans whichever row landed first.
     let claimedRootId: number | null;
     let memberId: number | null;
+    let existingGroupId: number | null;
 
     try {
-      ({ claimedRootId, memberId } = await db
+      ({ claimedRootId, memberId, existingGroupId } = await db
         .transaction()
         .execute(async (trx) => {
           const claimed = await claimIdentity(
@@ -232,9 +233,8 @@ export async function POST(request: Request) {
           );
 
           // The UNIQUE(round_id, address) constraint means an address already
-          // in any group on this council yields no row, in which case the
-          // on-chain addVoter is skipped entirely (single-group membership:
-          // the existing group wins).
+          // in any group on this council yields no row (single-group
+          // membership: the existing group wins).
           const inserted = await trx
             .insertInto("voterGroupMembers")
             .values({
@@ -246,7 +246,35 @@ export async function POST(request: Request) {
             .returning(["id"])
             .executeTakeFirst();
 
-          return { claimedRootId: claimed, memberId: inserted?.id ?? null };
+          if (inserted) {
+            return {
+              claimedRootId: claimed,
+              memberId: inserted.id,
+              existingGroupId: null,
+            };
+          }
+
+          // Which group holds the address decides what the conflict means, so
+          // it is read back here, where a removal racing this request still
+          // rolls the claim above back with the rest of the transaction.
+          const existing = await trx
+            .selectFrom("voterGroupMembers")
+            .select(["voterGroupId"])
+            .where("roundId", "=", round.id)
+            .where("address", "=", claimingAddress)
+            .executeTakeFirst();
+
+          if (!existing) {
+            throw new ClaimRaceError(
+              `Membership of ${claimingAddress} was released mid-request for round ${round.id}`,
+            );
+          }
+
+          return {
+            claimedRootId: claimed,
+            memberId: null,
+            existingGroupId: existing.voterGroupId,
+          };
         }));
     } catch (err) {
       if (err instanceof IdentityAlreadyClaimed) {
@@ -300,8 +328,15 @@ export async function POST(request: Request) {
       }
     };
 
-    // No row inserted means this wallet is already a member here, from another
-    // group on this council or from an earlier attempt whose receipt wait timed
+    // No row inserted means this wallet is already a member here. In another
+    // group, the existing membership and its allocation stand, so there is
+    // nothing to broadcast, and certainly not an addVoter at this group's
+    // default power.
+    if (!memberId && existingGroupId !== goodDollarGroup.id) {
+      return Response.json({ success: true });
+    }
+
+    // In this group, the row is an earlier attempt whose receipt wait timed
     // out. Only the chain says whether that attempt's addVoter ever landed:
     // answering success on the row alone leaves a wallet whose broadcast was
     // dropped confirmed here, holding its identity's only slot, with no vote on
@@ -332,9 +367,10 @@ export async function POST(request: Request) {
 
     let hash: `0x${string}`;
 
-    // Split from the wait below because only a failure here is provably
-    // pre-broadcast: sendBotTransaction returns as soon as the transaction is
-    // out, so anything thrown after it can still mine.
+    // Split from the wait below because the two failures answer differently,
+    // not because a throw here proves nothing was sent. A connection the RPC
+    // dropped after the node took the transaction throws here too, and still
+    // mines.
     try {
       hash = await sendBotTransaction(network, (nonce) =>
         walletClient.writeContract({
@@ -358,18 +394,25 @@ export async function POST(request: Request) {
         return Response.json({ success: true });
       }
 
-      await rollback(memberId, claimedRootId);
-
-      // Contention on the shared bot key, not a chain failure: nothing was
-      // broadcast and the membership row was just rolled back, so the claim is
-      // cleanly retryable and says so with a status, as its sibling routes do.
+      // Contention on the shared bot key is raised by the lock before anything
+      // reaches an RPC, so it is the one throw that proves nothing was
+      // broadcast and the rows can be rolled back for a clean retry, said with
+      // a status as the sibling routes do.
       if (err instanceof ChainBusyError) {
+        await rollback(memberId, claimedRootId);
+
         return Response.json(
           { success: false, error: "Too many requests, please retry later" },
           { status: 429 },
         );
       }
 
+      // Anything else may have thrown after the node accepted the transaction,
+      // which still mines. Rolling back would free the identity slot while the
+      // on-chain voter lands, handing a sibling wallet a second vote, so the
+      // rows stay and the next attempt self-repairs through the getVoter check
+      // above, exactly as the receipt-wait path below does.
+      //
       // Log the raw error server-side only — RPC/contract errors can embed
       // provider URLs, contract addresses, or revert data, so never return the
       // message to the client.
