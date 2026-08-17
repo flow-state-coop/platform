@@ -911,6 +911,10 @@ export default function VoterTable(props: VoterTableProps) {
       setEditedPower({});
       setRemoved(new Set());
       setImportNote("");
+      // Flags from the refused save that told the manager to remove first; the
+      // removal just landed, so re-adding the freed wallet must not stay
+      // blocked behind them.
+      setIdentityConflicts({});
       setShowConfirm(false);
       setSubmitPhase("idle");
     }, 1200);
