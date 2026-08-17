@@ -36,6 +36,11 @@ class IdentityAlreadyClaimed extends Error {
 // from a council this add was not yet part of.
 class GoodDollarEnabledMidRequest extends Error {}
 
+// A claim that refused to insert but shows no holder on the read-back was
+// released in between by a concurrent removal, so the add is worth another
+// attempt rather than a verdict.
+class ClaimRaceError extends Error {}
+
 function identityConflictResponse(rejected: IdentityRejection[]) {
   return Response.json(
     {
@@ -247,11 +252,17 @@ export async function POST(request: Request) {
             ).map((row) => [row.rootAddress, row.address]),
           );
 
+          // A contested root with no holder left was released between the
+          // refused insert and this read. Letting it fall through the filter
+          // below would add its wallet as a member with the identity
+          // unrecorded, leaving the slot open to a sibling wallet, so the
+          // whole add retries instead.
+          if (contested.some((claim) => !holders.has(claim.rootAddress))) {
+            throw new ClaimRaceError();
+          }
+
           const rejected = contested
-            .filter((claim) => {
-              const holder = holders.get(claim.rootAddress);
-              return holder !== undefined && holder !== claim.address;
-            })
+            .filter((claim) => holders.get(claim.rootAddress) !== claim.address)
             .map((claim) => ({
               address: claim.address,
               sameIdentityAs: holders.get(claim.rootAddress) as string,
@@ -287,6 +298,13 @@ export async function POST(request: Request) {
       if (err instanceof GoodDollarEnabledMidRequest) {
         return errorResponse(
           "GoodDollar eligibility was enabled for this council while these voters were being added, please try again",
+          409,
+        );
+      }
+
+      if (err instanceof ClaimRaceError) {
+        return errorResponse(
+          "A GoodDollar identity in this batch changed hands mid-request, please try again",
           409,
         );
       }
