@@ -26,6 +26,12 @@ A **manual** group is a list you curate by hand. Add voters by pasting addresses
 ### GoodDollar groups (Celo only)
 A **GoodDollar** group lets verified [GoodDollar](https://www.gooddollar.org/) identities **self-claim** their spot on the Council—no admin action needed per voter. New claimants are automatically added with the group's default vote allocation.
 
+A GoodDollar identity is anchored to the wallet that passed face verification, and its holder can connect other wallets to it. Any of them can claim, and the wallet that claims is the one that votes. A claim has to come from that wallet, which the sign-in offered at connection already proves; anyone who skipped that sign-in is asked for a short signature instead. Each identity gets a single spot per council, though, so once someone has claimed, their other connected wallets are turned away. Which wallet holds the spot is never disclosed to them, since anyone could otherwise map a wallet to the rest of its holder's.
+
+The same rule covers voters you add by hand on a council that has a GoodDollar group. An address whose identity is already voting is flagged in the add list, named against the wallet holding the spot, and nothing is saved until you drop it, so a paste of two wallets belonging to one person can't slip through. Remove a voter and their identity is released, free to claim again. Because that release only lands with the removal transaction, swapping one wallet of an identity for another takes two saves, the removal first.
+
+Turning a group into a GoodDollar group records the identity behind every wallet already voting on the council, so nobody's second wallet can claim a spot their first one already holds.
+
 Because adding voters happens automatically, a Flow State–sponsored bot needs permission to manage membership. When you create a GoodDollar group, you'll be prompted to grant that bot the **Voter Review** role in a single transaction. Self-claim works only while the bot holds that role, so revoking it is the kill switch for automated eligibility. GoodDollar groups are available only on **Celo**.
 
 A council uses one automated method or the other: a council with a GoodDollar group can't add an [NFT Holder](#nft-holder-groups) group, and vice versa.

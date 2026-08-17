@@ -16,6 +16,11 @@ export const ERC165_INVALID_INTERFACE_ID = "0xffffffff";
 
 export const TX_HASH = `0x${"11".repeat(32)}`;
 
+// Spelled out rather than imported from viem: the `vi.mock("viem")` factory in
+// every suite using this helper imports the helper back, so importing viem here
+// closes a module cycle through a mocked module and hangs the loader.
+const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
+
 // Every simulated RPC failure carries provider detail that must never reach a
 // client response. Tests assert this sentinel is absent from response bodies.
 export const RPC_ERROR_SENTINEL = "rpc-secret-3f9c";
@@ -40,6 +45,9 @@ type CallRecord = {
 export const nftChain = {
   contracts: new Map<string, NftContractFixture>(),
   voters: new Map<string, bigint>(),
+  // Wallet -> GoodDollar identity root on Celo. Absent means the wallet belongs
+  // to no verified identity, which the contract reports as the zero address.
+  whitelistedRoots: new Map<string, string>(),
   botHasRole: true,
   managerAddress: TEST_ADMIN_ADDRESS,
   // `${address}:${functionName}` or `${address}:*`
@@ -68,6 +76,7 @@ export const nftChain = {
 export function resetNftChain() {
   nftChain.contracts.clear();
   nftChain.voters.clear();
+  nftChain.whitelistedRoots.clear();
   nftChain.botHasRole = true;
   nftChain.managerAddress = TEST_ADMIN_ADDRESS;
   nftChain.failReads.clear();
@@ -89,6 +98,11 @@ export function setContract(address: string, fixture: NftContractFixture) {
 
 export function setVotingPower(address: string, power: bigint) {
   nftChain.voters.set(address.toLowerCase(), power);
+}
+
+/** Links a wallet to the GoodDollar identity that verified it. */
+export function setWhitelistedRoot(address: string, root: string) {
+  nftChain.whitelistedRoots.set(address.toLowerCase(), root.toLowerCase());
 }
 
 export function failRead(address: string, functionName = "*") {
@@ -134,6 +148,11 @@ function callContract(
   if (functionName === "getVoter") {
     const account = String(args[0] ?? "").toLowerCase();
     return { votingPower: nftChain.voters.get(account) ?? 0n, votes: [] };
+  }
+
+  if (functionName === "getWhitelistedRoot") {
+    const account = String(args[0] ?? "").toLowerCase();
+    return nftChain.whitelistedRoots.get(account) ?? ZERO_ADDRESS;
   }
 
   const fixture = nftChain.contracts.get(address);

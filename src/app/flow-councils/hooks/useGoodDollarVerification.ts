@@ -10,10 +10,7 @@ import {
   PublicClient,
 } from "viem";
 import { IdentitySDK, SupportedChains } from "@goodsdks/citizen-sdk";
-import {
-  GOODDOLLAR_IDENTITY_ABI,
-  GOODDOLLAR_IDENTITY_ADDRESS,
-} from "@/app/flow-councils/lib/constants";
+import { resolveVerifiedRoot } from "@/app/flow-councils/lib/goodDollarIdentity";
 
 export function useGoodDollarVerification() {
   const { address, connector } = useAccount();
@@ -50,17 +47,20 @@ export function useGoodDollarVerification() {
     [address, connector, celoPublicClient],
   );
 
+  // Advisory only, and resolved the same way the eligibility route resolves it
+  // so a wallet connected to a verified identity is never sent back through
+  // face verification it has already passed.
   const checkIsWhitelisted = useCallback(async (): Promise<boolean> => {
     if (!address || !celoPublicClient) {
       return false;
     }
 
-    return celoPublicClient.readContract({
-      address: GOODDOLLAR_IDENTITY_ADDRESS,
-      abi: GOODDOLLAR_IDENTITY_ABI,
-      functionName: "isWhitelisted",
-      args: [address],
-    });
+    const root = await resolveVerifiedRoot(
+      celoPublicClient as PublicClient,
+      address,
+    );
+
+    return root !== null;
   }, [address, celoPublicClient]);
 
   return { generateFVLink, checkIsWhitelisted };

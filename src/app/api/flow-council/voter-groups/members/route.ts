@@ -1,7 +1,16 @@
-import { isAddress } from "viem";
+import { Address, isAddress } from "viem";
 import { db } from "../../db";
 import { errorResponse } from "../../../utils";
 import { authorizeCouncilManager } from "../../auth";
+import { getGroupByMethod } from "../../bot";
+import {
+  getCeloIdentityClient,
+  loadVotingRoots,
+  CELO_UNREACHABLE_ERROR,
+  IDENTITY_CONFLICT_ERROR,
+  INSERT_BATCH,
+} from "../../gooddollar";
+import { resolveVerifiedRoots } from "@/app/flow-councils/lib/goodDollarIdentity";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +20,37 @@ export const dynamic = "force-dynamic";
 // up since this is an authenticated manager-only write.
 const MAX_BATCH_ADDRESSES = 5000;
 
-// Rows per INSERT statement. Mirrors the lazy-seed migration's batch so a large
-// add (up to MAX_BATCH_ADDRESSES) never emits one multi-thousand-row statement.
-const INSERT_BATCH = 500;
+type IdentityRejection = { address: string; sameIdentityAs: string };
+
+// Rolls the add back when a GoodDollar identity is claimed between the check
+// and the insert. Carries the offending addresses so the race answers with the
+// same payload the pre-check does, and the add list can flag those rows.
+class IdentityAlreadyClaimed extends Error {
+  constructor(readonly rejected: IdentityRejection[]) {
+    super(IDENTITY_CONFLICT_ERROR);
+  }
+}
+
+// Self-claim was turned on for this council while the add was in flight, so its
+// identity lookups never ran and the group that just switched seeded its claims
+// from a council this add was not yet part of.
+class GoodDollarEnabledMidRequest extends Error {}
+
+// A claim that refused to insert but shows no holder on the read-back was
+// released in between by a concurrent removal, so the add is worth another
+// attempt rather than a verdict.
+class ClaimRaceError extends Error {}
+
+function identityConflictResponse(rejected: IdentityRejection[]) {
+  return Response.json(
+    {
+      success: false,
+      error: IDENTITY_CONFLICT_ERROR,
+      rejectedAddresses: rejected,
+    },
+    { status: 409 },
+  );
+}
 
 export async function POST(request: Request) {
   try {
@@ -67,6 +104,81 @@ export async function POST(request: Request) {
       return errorResponse("Group not found", 404);
     }
 
+    const unique = Array.from(new Set(valid.map((a) => a.toLowerCase())));
+
+    // On a council with GoodDollar self-claim, a manual add is the other way an
+    // identity could end up with two voters: its holder can connect any number
+    // of wallets to it, and each carries a different address. Wallets belonging
+    // to no verified identity resolve to nothing and are added as before.
+    const goodDollarGroup = await getGroupByMethod(auth.roundId, "gooddollar");
+    const claims: { rootAddress: string; address: string }[] = [];
+
+    if (goodDollarGroup) {
+      let roots: Map<string, string>;
+
+      try {
+        roots = await resolveVerifiedRoots(
+          getCeloIdentityClient(),
+          unique as Address[],
+        );
+      } catch (err) {
+        console.error(err);
+        return errorResponse(CELO_UNREACHABLE_ERROR, 503);
+      }
+
+      const distinctRoots = Array.from(new Set(roots.values()));
+
+      const heldBy = new Map(
+        distinctRoots.length === 0
+          ? []
+          : (
+              await db
+                .selectFrom("gooddollarClaimedRoots")
+                .select(["rootAddress", "address"])
+                .where("roundId", "=", auth.roundId)
+                .where("rootAddress", "in", distinctRoots)
+                .execute()
+            ).map((row) => [row.rootAddress, row.address]),
+      );
+
+      // A council that enabled GoodDollar after its voters were added carries
+      // no claim for them, so a root voting here holds its identity's slot just
+      // as a recorded claim would.
+      const votingRoots = await loadVotingRoots(auth.roundId, distinctRoots);
+
+      const rejected: IdentityRejection[] = [];
+
+      for (const address of unique) {
+        const root = roots.get(address);
+
+        if (!root) {
+          continue;
+        }
+
+        const holder =
+          heldBy.get(root) ?? (votingRoots.has(root) ? root : undefined);
+
+        if (holder && holder !== address) {
+          rejected.push({ address, sameIdentityAs: holder });
+          continue;
+        }
+
+        // Queued even when this wallet is the recorded holder already. The
+        // lookup above ran outside the transaction, so a removal releasing the
+        // claim in between would otherwise re-add the wallet with its identity
+        // unrecorded, free for the next wallet its holder connected. The insert
+        // below tolerates the row being there, it is the same claim.
+        heldBy.set(root, address);
+        claims.push({ rootAddress: root, address });
+      }
+
+      // All or nothing, so a paste that trips the gate leaves nothing half
+      // written and the manager can fix the list and add again.
+      if (rejected.length > 0) {
+        return identityConflictResponse(rejected);
+      }
+    }
+
     // Dedupe within the request, then insert in chunks inside one transaction:
     // the batch stays all-or-nothing without ever emitting a single
     // multi-thousand-row statement. The UNIQUE(roundId, address) constraint +
@@ -75,27 +187,130 @@ export async function POST(request: Request) {
     // skipped and not returned) are accumulated so the caller can roll back
     // exactly those rows on a later failure — skipped addresses belong to
     // another group and must not be touched.
-    const unique = Array.from(new Set(valid.map((a) => a.toLowerCase())));
     const insertedAddresses: string[] = [];
 
-    await db.transaction().execute(async (trx) => {
-      for (let i = 0; i < unique.length; i += INSERT_BATCH) {
-        const rows = await trx
-          .insertInto("voterGroupMembers")
-          .values(
-            unique.slice(i, i + INSERT_BATCH).map((addr) => ({
-              voterGroupId: groupId,
-              roundId: auth.roundId,
-              address: addr,
-            })),
-          )
-          .onConflict((oc) => oc.columns(["roundId", "address"]).doNothing())
-          .returning(["address"])
+    try {
+      await db.transaction().execute(async (trx) => {
+        // The same council row the voter-groups route locks before switching a
+        // group to GoodDollar, so an add and that switch never interleave. The
+        // identity lookups above ran before this lock, so whichever request
+        // arrives second sees the other's writes and gives up rather than
+        // adding wallets the switch's seed will never look up.
+        await trx
+          .selectFrom("rounds")
+          .select("id")
+          .where("id", "=", auth.roundId)
+          .forUpdate()
           .execute();
 
-        insertedAddresses.push(...rows.map((row) => row.address));
+        const goodDollarNow = await trx
+          .selectFrom("voterGroups")
+          .select("id")
+          .where("roundId", "=", auth.roundId)
+          .where("eligibilityMethod", "=", "gooddollar")
+          .executeTakeFirst();
+
+        if (goodDollarNow && !goodDollarGroup) {
+          throw new GoodDollarEnabledMidRequest();
+        }
+
+        for (let i = 0; i < claims.length; i += INSERT_BATCH) {
+          const chunk = claims.slice(i, i + INSERT_BATCH);
+          const rows = await trx
+            .insertInto("gooddollarClaimedRoots")
+            .values(chunk.map((claim) => ({ roundId: auth.roundId, ...claim })))
+            .onConflict((oc) =>
+              oc.columns(["roundId", "rootAddress"]).doNothing(),
+            )
+            .returning(["rootAddress"])
+            .execute();
+
+          if (rows.length === chunk.length) {
+            continue;
+          }
+
+          // A claim the lookup above found free but that no longer inserts was
+          // taken in between, by a self-claim or another manager's add. Read
+          // the holders back rather than counting rows: the wallet being added
+          // may be the one that took it, which is no conflict at all.
+          const landed = new Set(rows.map((row) => row.rootAddress));
+          const contested = chunk.filter(
+            (claim) => !landed.has(claim.rootAddress),
+          );
+          const holders = new Map(
+            (
+              await trx
+                .selectFrom("gooddollarClaimedRoots")
+                .select(["rootAddress", "address"])
+                .where("roundId", "=", auth.roundId)
+                .where(
+                  "rootAddress",
+                  "in",
+                  contested.map((claim) => claim.rootAddress),
+                )
+                .execute()
+            ).map((row) => [row.rootAddress, row.address]),
+          );
+
+          // A contested root with no holder left was released between the
+          // refused insert and this read. Letting it fall through the filter
+          // below would add its wallet as a member with the identity
+          // unrecorded, leaving the slot open to a sibling wallet, so the
+          // whole add retries instead.
+          if (contested.some((claim) => !holders.has(claim.rootAddress))) {
+            throw new ClaimRaceError();
+          }
+
+          const rejected = contested
+            .filter((claim) => holders.get(claim.rootAddress) !== claim.address)
+            .map((claim) => ({
+              address: claim.address,
+              sameIdentityAs: holders.get(claim.rootAddress) as string,
+            }));
+
+          if (rejected.length > 0) {
+            throw new IdentityAlreadyClaimed(rejected);
+          }
+        }
+
+        for (let i = 0; i < unique.length; i += INSERT_BATCH) {
+          const rows = await trx
+            .insertInto("voterGroupMembers")
+            .values(
+              unique.slice(i, i + INSERT_BATCH).map((addr) => ({
+                voterGroupId: groupId,
+                roundId: auth.roundId,
+                address: addr,
+              })),
+            )
+            .onConflict((oc) => oc.columns(["roundId", "address"]).doNothing())
+            .returning(["address"])
+            .execute();
+
+          insertedAddresses.push(...rows.map((row) => row.address));
+        }
+      });
+    } catch (err) {
+      if (err instanceof IdentityAlreadyClaimed) {
+        return identityConflictResponse(err.rejected);
       }
-    });
+
+      if (err instanceof GoodDollarEnabledMidRequest) {
+        return errorResponse(
+          "GoodDollar eligibility was enabled for this council while these voters were being added, please try again",
+          409,
+        );
+      }
+
+      if (err instanceof ClaimRaceError) {
+        return errorResponse(
+          "A GoodDollar identity in this batch changed hands mid-request, please try again",
+          409,
+        );
+      }
+
+      throw err;
+    }
 
     return Response.json({
       success: true,
@@ -208,20 +423,50 @@ export async function DELETE(request: Request) {
       );
     }
 
-    let query = db
-      .deleteFrom("voterGroupMembers")
-      .where("roundId", "=", auth.roundId)
-      .where("address", "in", lowered);
-
     // Optionally scope the delete to one group. Single-membership means an
     // address sits in at most one group per council, but scoping makes the
     // contract precise: a caller removing from group A never deletes a row that
     // was concurrently moved to group B. Omitted → council-wide (back-compat).
-    if (Number.isInteger(groupId) && groupId > 0) {
-      query = query.where("voterGroupId", "=", groupId);
-    }
+    const scopedToGroup = Number.isInteger(groupId) && groupId > 0;
 
-    await query.execute();
+    // One transaction, so a failure between the two can't drop the voter while
+    // leaving their identity claimed, which would lock it out of the council
+    // with no voter to show for it.
+    await db.transaction().execute(async (trx) => {
+      // Claims first, then the membership rows they belong to, which is the
+      // order the claim route takes them in. Taking them the other way round
+      // here is a deadlock against a claim landing at the same moment, each
+      // holding the row the other is waiting on.
+      //
+      // The subquery is the same set the delete below matches, so a
+      // group-scoped delete that matches nothing still releases nothing.
+      await trx
+        .deleteFrom("gooddollarClaimedRoots")
+        .where("roundId", "=", auth.roundId)
+        .where("address", "in", (eb) => {
+          const members = eb
+            .selectFrom("voterGroupMembers")
+            .select("address")
+            .where("roundId", "=", auth.roundId)
+            .where("address", "in", lowered);
+
+          return scopedToGroup
+            ? members.where("voterGroupId", "=", groupId)
+            : members;
+        })
+        .execute();
+
+      let query = trx
+        .deleteFrom("voterGroupMembers")
+        .where("roundId", "=", auth.roundId)
+        .where("address", "in", lowered);
+
+      if (scopedToGroup) {
+        query = query.where("voterGroupId", "=", groupId);
+      }
+
+      await query.execute();
+    });
 
     return Response.json({ success: true });
   } catch (err) {

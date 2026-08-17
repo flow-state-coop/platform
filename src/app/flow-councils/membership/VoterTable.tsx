@@ -184,6 +184,12 @@ export default function VoterTable(props: VoterTableProps) {
   const [submitPhase, setSubmitPhase] = useState<SubmitPhase>("idle");
   const [saveError, setSaveError] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
+  // Addresses the server refused because their GoodDollar identity is already
+  // voting here, mapped to the wallet holding it. Server-side because only Celo
+  // knows which wallets a holder has connected to one identity.
+  const [identityConflicts, setIdentityConflicts] = useState<
+    Record<string, string>
+  >({});
 
   const [moveTarget, setMoveTarget] = useState<SubgraphVoter | null>(null);
   const [moveToGroupId, setMoveToGroupId] = useState<string>("");
@@ -382,6 +388,9 @@ export default function VoterTable(props: VoterTableProps) {
         errors[row.id] = "Already a voter";
       } else if (seen.has(addr)) {
         errors[row.id] = "Duplicate";
+      } else if (identityConflicts[addr]) {
+        errors[row.id] =
+          `Same GoodDollar identity as ${truncateAddress(identityConflicts[addr])}`;
       } else if (!isValidVotes(row.votes)) {
         errors[row.id] = "Votes must be 1–1M";
       }
@@ -392,7 +401,7 @@ export default function VoterTable(props: VoterTableProps) {
     }
 
     return errors;
-  }, [newRows, existingOnchainSet]);
+  }, [newRows, existingOnchainSet, identityConflicts]);
 
   // Existing voters whose staged votes differ from the committed value (and that
   // aren't being removed).
@@ -744,6 +753,7 @@ export default function VoterTable(props: VoterTableProps) {
     try {
       setSubmitPhase("saving");
       setSaveError("");
+      setIdentityConflicts({});
 
       const byAccount = new Map(
         voters.map((v) => [v.account.toLowerCase(), v]),
@@ -768,7 +778,40 @@ export default function VoterTable(props: VoterTableProps) {
         const data = await res.json().catch(() => null);
 
         if (!res.ok || !data?.success) {
-          setSaveError(data?.error ?? "Failed to add voters");
+          // Nothing was written, so flagging the offending rows lets the
+          // manager drop them and save the rest.
+          const rejected: { address: string; sameIdentityAs: string }[] =
+            Array.isArray(data?.rejectedAddresses)
+              ? data.rejectedAddresses
+              : [];
+
+          if (rejected.length > 0) {
+            setIdentityConflicts(
+              Object.fromEntries(
+                rejected.map((entry) => [
+                  entry.address.toLowerCase(),
+                  entry.sameIdentityAs,
+                ]),
+              ),
+            );
+          }
+
+          // Adds are written before the removals reach the chain, and an
+          // identity is only released once its voter's removal lands, so
+          // swapping one wallet of an identity for another takes two saves.
+          // removedAccounts, not the raw staged set: a stale entry for a voter
+          // no longer in this group is a removal this save won't perform.
+          const swappingWallets =
+            rejected.length > 0 &&
+            rejected.every((entry) =>
+              removedAccounts.includes(entry.sameIdentityAs.toLowerCase()),
+            );
+
+          setSaveError(
+            swappingWallets
+              ? "That GoodDollar identity's spot is still held by the voter you're removing. Save the removal first, then add the new wallet."
+              : (data?.error ?? "Failed to add voters"),
+          );
           setSubmitPhase("idle");
           return;
         }
@@ -868,6 +911,10 @@ export default function VoterTable(props: VoterTableProps) {
       setEditedPower({});
       setRemoved(new Set());
       setImportNote("");
+      // Flags from the refused save that told the manager to remove first; the
+      // removal just landed, so re-adding the freed wallet must not stay
+      // blocked behind them.
+      setIdentityConflicts({});
       setShowConfirm(false);
       setSubmitPhase("idle");
     }, 1200);
@@ -904,6 +951,9 @@ export default function VoterTable(props: VoterTableProps) {
     setImportNote("");
     setImportError("");
     setSaveError("");
+    // Flags from the last refused save, else re-adding an address the server has
+    // since released stays blocked with no way to clear it.
+    setIdentityConflicts({});
   };
 
   const paginationItems = useMemo(() => {

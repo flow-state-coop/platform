@@ -46,6 +46,13 @@ export type BotChainLock = {
   lastNonce: string | null;
   lastNonceAt: Timestamp | null;
 };
+export type GoodDollarClaimedRoot = {
+  id: Generated<number>;
+  roundId: number;
+  rootAddress: string;
+  address: string;
+  createdAt: Generated<Timestamp>;
+};
 export type InboxItem = {
   id: Generated<number>;
   recipientAddress: string;
@@ -264,6 +271,7 @@ export type VoterGroupMember = {
 export type DB = {
   applications: Application;
   botChainLocks: BotChainLock;
+  gooddollarClaimedRoots: GoodDollarClaimedRoot;
   inboxItems: InboxItem;
   messageReactions: MessageReaction;
   messages: Message;

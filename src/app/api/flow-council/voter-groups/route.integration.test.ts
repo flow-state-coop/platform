@@ -55,6 +55,7 @@ import {
 } from "./members/route";
 import { GET as publicGet } from "./public/route";
 import { resetManagerRoleCache } from "@/app/api/flow-council/auth";
+import { votersMissingFromSnapshot } from "@/app/api/flow-council/gooddollar";
 import { resetRateLimits } from "@/app/api/rateLimit";
 import {
   getTestDb,
@@ -66,8 +67,17 @@ import {
   TEST_CHAIN_ID,
 } from "@tests/helpers/db";
 import { mockSession, mockUnauthenticated } from "@tests/helpers/session";
-import { nftChain, resetNftChain, setContract } from "@tests/helpers/nftChain";
-import { CELO_CHAIN_ID } from "@/app/flow-councils/lib/constants";
+import {
+  nftChain,
+  resetNftChain,
+  setContract,
+  setWhitelistedRoot,
+  failRead,
+} from "@tests/helpers/nftChain";
+import {
+  CELO_CHAIN_ID,
+  GOODDOLLAR_IDENTITY_ADDRESS,
+} from "@/app/flow-councils/lib/constants";
 
 const db = getTestDb();
 
@@ -544,6 +554,379 @@ describe("voter-groups members", () => {
     const body = await readJson(res);
     expect(body.success).toBe(true);
     expect(await memberCount(g)).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Manual adds on a GoodDollar council. Self-claim is not the only way an
+// identity could end up with two voters: its holder can connect any number of
+// wallets to it, and a manager pasting two of them would otherwise hand the
+// same human a vote each.
+// ---------------------------------------------------------------------------
+
+describe("voter-groups members on a GoodDollar council", () => {
+  const base = { chainId: TEST_CHAIN_ID, councilId: TEST_COUNCIL_ADDRESS };
+
+  async function claimedRoots() {
+    return db
+      .selectFrom("gooddollarClaimedRoots")
+      .select(["rootAddress", "address"])
+      .execute();
+  }
+
+  it("records the identity behind a hand-added verified wallet", async () => {
+    const g = await createGroup("GoodDollar", "gooddollar");
+    setWhitelistedRoot(A1, A1);
+
+    const res = await memberPost(
+      jsonRequest("POST", MEMBERS, { ...base, groupId: g, address: A1 }),
+    );
+
+    expect((await readJson(res)).success).toBe(true);
+    expect(await claimedRoots()).toEqual([
+      { rootAddress: A1.toLowerCase(), address: A1.toLowerCase() },
+    ]);
+  });
+
+  it("refuses a wallet whose identity already claimed, writing nothing", async () => {
+    const g = await createGroup("GoodDollar", "gooddollar");
+    setWhitelistedRoot(A1, A1);
+    setWhitelistedRoot(A2, A1);
+    await memberPost(
+      jsonRequest("POST", MEMBERS, { ...base, groupId: g, address: A1 }),
+    );
+
+    const res = await memberPost(
+      jsonRequest("POST", MEMBERS, {
+        ...base,
+        groupId: g,
+        addresses: [A2, A3],
+      }),
+    );
+    const body = await readJson(res);
+
+    expect(res.status).toBe(409);
+    expect(body.success).toBe(false);
+    expect(body.rejectedAddresses).toEqual([
+      { address: A2.toLowerCase(), sameIdentityAs: A1.toLowerCase() },
+    ]);
+    // All or nothing: A3 was addable and is still not a member.
+    expect(await memberCount(g)).toBe(1);
+  });
+
+  it("refuses two wallets of one identity pasted together", async () => {
+    const g = await createGroup("GoodDollar", "gooddollar");
+    setWhitelistedRoot(A1, A1);
+    setWhitelistedRoot(A2, A1);
+
+    const res = await memberPost(
+      jsonRequest("POST", MEMBERS, {
+        ...base,
+        groupId: g,
+        addresses: [A1, A2],
+      }),
+    );
+
+    expect(res.status).toBe(409);
+    expect((await readJson(res)).rejectedAddresses).toEqual([
+      { address: A2.toLowerCase(), sameIdentityAs: A1.toLowerCase() },
+    ]);
+    expect(await memberCount(g)).toBe(0);
+  });
+
+  it("adds unverified wallets untouched", async () => {
+    const g = await createGroup("GoodDollar", "gooddollar");
+
+    const res = await memberPost(
+      jsonRequest("POST", MEMBERS, {
+        ...base,
+        groupId: g,
+        addresses: [A1, A2],
+      }),
+    );
+
+    expect((await readJson(res)).insertedCount).toBe(2);
+    expect(await claimedRoots()).toEqual([]);
+  });
+
+  it("releases the identity when the voter is removed", async () => {
+    const g = await createGroup("GoodDollar", "gooddollar");
+    setWhitelistedRoot(A1, A1);
+    setWhitelistedRoot(A2, A1);
+    await memberPost(
+      jsonRequest("POST", MEMBERS, { ...base, groupId: g, address: A1 }),
+    );
+
+    await memberDelete(
+      jsonRequest("DELETE", MEMBERS, { ...base, address: A1 }),
+    );
+
+    expect(await claimedRoots()).toEqual([]);
+
+    // The identity is free again, so another of its wallets can take the spot.
+    const res = await memberPost(
+      jsonRequest("POST", MEMBERS, { ...base, groupId: g, address: A2 }),
+    );
+    expect((await readJson(res)).success).toBe(true);
+    expect(await claimedRoots()).toEqual([
+      { rootAddress: A1.toLowerCase(), address: A2.toLowerCase() },
+    ]);
+  });
+
+  it("fails closed when Celo cannot be reached", async () => {
+    const g = await createGroup("GoodDollar", "gooddollar");
+    failRead(GOODDOLLAR_IDENTITY_ADDRESS, "getWhitelistedRoot");
+
+    const res = await memberPost(
+      jsonRequest("POST", MEMBERS, { ...base, groupId: g, address: A1 }),
+    );
+
+    expect(res.status).toBe(503);
+    expect(await memberCount(g)).toBe(0);
+  });
+
+  it("leaves a council with no GoodDollar group off Celo entirely", async () => {
+    const g = await createGroup("Manual");
+    setWhitelistedRoot(A1, A1);
+
+    await memberPost(
+      jsonRequest("POST", MEMBERS, { ...base, groupId: g, address: A1 }),
+    );
+
+    expect(
+      nftChain.reads.some((read) => read.functionName === "getWhitelistedRoot"),
+    ).toBe(false);
+    expect(await claimedRoots()).toEqual([]);
+  });
+
+  it("refuses a wallet whose root is already voting with no claim recorded", async () => {
+    // A council that enabled GoodDollar after A1 was already a voter: nothing
+    // recorded the identity, so only the root voting here says the slot is
+    // taken.
+    const manual = await createGroup("Manual");
+    const g = await createGroup("GoodDollar", "gooddollar");
+    setWhitelistedRoot(A1, A1);
+    setWhitelistedRoot(A2, A1);
+    await db
+      .insertInto("voterGroupMembers")
+      .values({
+        voterGroupId: manual,
+        roundId: await roundId(),
+        address: A1.toLowerCase(),
+      })
+      .execute();
+
+    const res = await memberPost(
+      jsonRequest("POST", MEMBERS, { ...base, groupId: g, address: A2 }),
+    );
+
+    expect(res.status).toBe(409);
+    expect((await readJson(res)).rejectedAddresses).toEqual([
+      { address: A2.toLowerCase(), sameIdentityAs: A1.toLowerCase() },
+    ]);
+    expect(await memberCount(g)).toBe(0);
+  });
+
+  it("records the identity of a root already voting when it is re-added", async () => {
+    // The membership row is a no-op here and the claim is the point. The
+    // identity lookup ran before the transaction, so skipping the claim because
+    // this wallet is the one holding the slot leaves a removal landing in
+    // between free to reopen it, with the wallet added back and its identity
+    // unrecorded.
+    const manual = await createGroup("Manual");
+    const g = await createGroup("GoodDollar", "gooddollar");
+    setWhitelistedRoot(A1, A1);
+    await db
+      .insertInto("voterGroupMembers")
+      .values({
+        voterGroupId: manual,
+        roundId: await roundId(),
+        address: A1.toLowerCase(),
+      })
+      .execute();
+
+    const res = await memberPost(
+      jsonRequest("POST", MEMBERS, { ...base, groupId: g, address: A1 }),
+    );
+
+    expect((await readJson(res)).success).toBe(true);
+    expect(await claimedRoots()).toEqual([
+      { rootAddress: A1.toLowerCase(), address: A1.toLowerCase() },
+    ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Turning self-claim on. A council's existing voters were never
+// identity-checked, so without recording the identity behind each of them the
+// other wallets their holders connected could take a second spot.
+// ---------------------------------------------------------------------------
+
+describe("voter-groups enabling GoodDollar on a council with voters", () => {
+  const celoBase = { chainId: CELO_CHAIN_ID, councilId: CELO_COUNCIL_ADDRESS };
+
+  async function seedCeloVoter(rid: number, address: string) {
+    const group = await db
+      .insertInto("voterGroups")
+      .values({
+        roundId: rid,
+        name: "Manual",
+        eligibilityMethod: "manual",
+        defaultVotingPower: 10,
+      })
+      .returning("id")
+      .executeTakeFirstOrThrow();
+
+    await db
+      .insertInto("voterGroupMembers")
+      .values({
+        voterGroupId: group.id,
+        roundId: rid,
+        address: address.toLowerCase(),
+      })
+      .execute();
+
+    return group.id;
+  }
+
+  async function claimedRoots(rid: number) {
+    return db
+      .selectFrom("gooddollarClaimedRoots")
+      .select(["rootAddress", "address"])
+      .where("roundId", "=", rid)
+      .execute();
+  }
+
+  it("records existing voters' identities when a GoodDollar group is created", async () => {
+    const rid = await seedCeloCouncil();
+    await seedCeloVoter(rid, A1);
+    setWhitelistedRoot(A1, A1);
+    setWhitelistedRoot(A2, A1);
+
+    const res = await groupsPost(
+      jsonRequest("POST", BASE, {
+        ...celoBase,
+        name: "GoodDollar",
+        eligibilityMethod: "gooddollar",
+        defaultVotingPower: 5,
+      }),
+    );
+    const body = await readJson(res);
+
+    expect(body.success).toBe(true);
+    expect(await claimedRoots(rid)).toEqual([
+      { rootAddress: A1.toLowerCase(), address: A1.toLowerCase() },
+    ]);
+
+    // Which is what turns away the second wallet its holder connected.
+    const add = await memberPost(
+      jsonRequest("POST", MEMBERS, {
+        ...celoBase,
+        groupId: body.id,
+        address: A2,
+      }),
+    );
+    expect(add.status).toBe(409);
+  });
+
+  it("records them when a group is switched to GoodDollar", async () => {
+    const rid = await seedCeloCouncil();
+    const manual = await seedCeloVoter(rid, A1);
+    setWhitelistedRoot(A1, A1);
+
+    const res = await groupsPatch(
+      jsonRequest("PATCH", `${BASE}?id=${manual}`, {
+        ...celoBase,
+        eligibilityMethod: "gooddollar",
+      }),
+    );
+
+    expect((await readJson(res)).success).toBe(true);
+    expect(await claimedRoots(rid)).toEqual([
+      { rootAddress: A1.toLowerCase(), address: A1.toLowerCase() },
+    ]);
+  });
+
+  it("names a voter added after the identity sweep ran", async () => {
+    // What the seed reads under the council's lock before committing. The sweep
+    // resolves the council as it stands, outside the transaction, so a voter
+    // added in between is one nothing looked up, and seeding anyway would turn
+    // self-claim on with that wallet's identity free for a second wallet.
+    const rid = await seedCeloCouncil();
+    const manual = await seedCeloVoter(rid, A1);
+    await db
+      .insertInto("voterGroupMembers")
+      .values({
+        voterGroupId: manual,
+        roundId: rid,
+        address: A2.toLowerCase(),
+      })
+      .execute();
+
+    const missing = await db.transaction().execute((trx) =>
+      votersMissingFromSnapshot(trx, rid, {
+        claims: [],
+        addresses: new Set([A1.toLowerCase()]),
+      }),
+    );
+
+    expect(missing).toEqual([A2.toLowerCase()]);
+  });
+
+  it("fails closed when Celo cannot be reached", async () => {
+    const rid = await seedCeloCouncil();
+    await seedCeloVoter(rid, A1);
+    failRead(GOODDOLLAR_IDENTITY_ADDRESS, "getWhitelistedRoot");
+
+    const res = await groupsPost(
+      jsonRequest("POST", BASE, {
+        ...celoBase,
+        name: "GoodDollar",
+        eligibilityMethod: "gooddollar",
+        defaultVotingPower: 5,
+      }),
+    );
+
+    expect(res.status).toBe(503);
+    const groups = await db
+      .selectFrom("voterGroups")
+      .select("id")
+      .where("roundId", "=", rid)
+      .where("eligibilityMethod", "=", "gooddollar")
+      .execute();
+    expect(groups).toEqual([]);
+  });
+
+  it("releases the identity of a voter left in a deleted metrics group", async () => {
+    const base = { chainId: TEST_CHAIN_ID, councilId: TEST_COUNCIL_ADDRESS };
+    const rid = await roundId();
+    const metrics = await createGroup("Metrics", "metrics");
+    await createGroup("Manual");
+    await db
+      .insertInto("voterGroupMembers")
+      .values({
+        voterGroupId: metrics,
+        roundId: rid,
+        address: A1.toLowerCase(),
+      })
+      .execute();
+    await db
+      .insertInto("gooddollarClaimedRoots")
+      .values({
+        roundId: rid,
+        rootAddress: A1.toLowerCase(),
+        address: A1.toLowerCase(),
+      })
+      .execute();
+
+    const res = await groupsDelete(
+      jsonRequest("DELETE", `${BASE}?id=${metrics}`, base),
+    );
+
+    expect((await readJson(res)).success).toBe(true);
+    // Else the identity is locked out of the council with no voter to show
+    // for it, and no API left to release it.
+    expect(await claimedRoots(rid)).toEqual([]);
   });
 });
 
