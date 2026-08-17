@@ -59,7 +59,13 @@ export default function EligibilityButton({
   const router = useRouter();
   const [status, setStatus] = useState<EligibilityStatus>("idle");
   const [claimError, setClaimError] = useState("");
-  const [pendingCheck, setPendingCheck] = useState(false);
+  // A queued check remembers what it is waiting on: "connect" waits out the
+  // sign-in prompt a fresh connect opens, "session" only waits for the already
+  // running session fetch to answer. Only the first has a prompt in flight
+  // that is worth a grace window.
+  const [pendingCheck, setPendingCheck] = useState<
+    false | "connect" | "session"
+  >(false);
   const [pendingVerifyReturn, setPendingVerifyReturn] = useState(false);
   // Self-claim is opt-in per council: only surface the button when an admin has
   // created a "gooddollar" voter group for this council.
@@ -146,6 +152,9 @@ export default function EligibilityButton({
       }
 
       if (attempt === 0 && signature && isRetryableReason(data.reason)) {
+        // The retry opens a second wallet prompt, which unexplained looks like
+        // a double charge for the same click.
+        setClaimError("The first signature expired, please sign once more");
         continue;
       }
 
@@ -247,10 +256,13 @@ export default function EligibilityButton({
       return;
 
     // Connecting prompts for sign-in, and a session for this wallet is proof
-    // enough to claim, so the check waits for it rather than racing it into a
-    // second signature prompt. The wait ends the moment the session lands, and
-    // gives up after a grace window because dismissing sign-in is allowed.
-    if (session?.address?.toLowerCase() !== address.toLowerCase()) {
+    // enough to claim, so a check queued behind that connect waits for the
+    // prompt rather than racing it into a second signature. The wait ends the
+    // moment the session lands, and gives up after a grace window because
+    // dismissing sign-in is allowed. Nothing else is worth waiting on: a
+    // session signed in as another wallet is not going to become this one, and
+    // a check that only waited out the session fetch has no prompt in flight.
+    if (pendingCheck === "connect" && sessionStatus === "unauthenticated") {
       setStatus("checking");
 
       const timeout = setTimeout(() => {
@@ -353,13 +365,23 @@ export default function EligibilityButton({
 
   const handleClick = () => {
     if (!isConnected) {
-      setPendingCheck(true);
+      setPendingCheck("connect");
       openConnectModal?.();
       return;
     }
 
     if (councilMember) {
       dispatchShowBallot({ type: "show" });
+      return;
+    }
+
+    // A click that lands while the session is still loading waits for the
+    // answer, else it asks for a signature the session may be about to make
+    // unnecessary.
+    if (sessionStatus === "loading") {
+      setStatus("checking");
+      setClaimError("");
+      setPendingCheck("session");
       return;
     }
 
@@ -371,7 +393,7 @@ export default function EligibilityButton({
     // address, so run the cheap eligibility re-check instead of jumping
     // straight into face verification.
     if (!isConnected || !address) {
-      setPendingCheck(true);
+      setPendingCheck("connect");
       openConnectModal?.();
       return;
     }
