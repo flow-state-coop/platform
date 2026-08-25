@@ -81,10 +81,11 @@ export default function useGdaPoolOnChain({
     totals?.[2]?.status === "success"
       ? (totals[2]!.result as Address)
       : undefined;
+  // Only units the indexer is missing count as staleness. A read that comes
+  // back zero, from a wrong-network call or a failing RPC, must never wipe out
+  // member data the indexer does have.
   const isIndexerStale =
-    totalUnits !== undefined &&
-    (indexedTotalUnits === undefined ||
-      BigInt(indexedTotalUnits) !== totalUnits);
+    totalUnits !== undefined && totalUnits > BigInt(indexedTotalUnits ?? 0);
 
   const memberAddresses = useMemo(
     () =>

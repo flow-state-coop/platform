@@ -62,6 +62,7 @@ const SPLITTER_SUPERFLUID_RESPONSE = {
     token: { id: SPLITTER_TOKEN_ADDRESS, symbol: "USDCx" },
     pool: {
       id: SPLITTER_POOL_ADDRESS,
+      totalUnits: "100",
       poolMembers: [{ account: { id: SPLITTER_MEMBER_ADDRESS }, units: "100" }],
       poolDistributors: [],
     },
@@ -91,6 +92,7 @@ const POOL_RESPONSE = {
       poolMembers: [],
       poolDistributors: [],
     },
+    token: { id: "0x8043cbb06a8d8f9f2a6e14f95e08d16f62f27692", symbol: "G$" },
   },
 };
 
@@ -116,6 +118,10 @@ export async function installSubgraphMock(
         payload = flowCouncilResponse;
       } else if (/FlowSplitterPoolQuery/.test(body) || /pools\s*\(/.test(body)) {
         payload = flowSplitterPoolResponse;
+      } else if (/DistributionPoolQuery/.test(body)) {
+        // Selects the pool and its super token in one query, so it has to be
+        // matched before the splitter branch below, which its shape also fits.
+        payload = POOL_RESPONSE;
       } else if (/poolMembers/.test(body) && /token\s*\(/.test(body)) {
         // The splitter pages select the token and the GDA pool in one query,
         // so the token-only response below would be missing a selected field.

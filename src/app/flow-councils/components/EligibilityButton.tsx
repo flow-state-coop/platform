@@ -458,6 +458,7 @@ export default function EligibilityButton({
       <Stack
         direction="vertical"
         gap={2}
+        className="flex-grow-0"
         style={{ width: isMobile ? "100%" : 240 }}
       >
         <Button
@@ -520,6 +521,7 @@ export default function EligibilityButton({
     <Stack
       direction="vertical"
       gap={2}
+      className="flex-grow-0"
       style={{ width: isMobile ? "100%" : 240 }}
     >
       <Button
