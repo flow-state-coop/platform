@@ -305,8 +305,17 @@ export default function Review(props: ReviewProps) {
     () => networks.find((n) => n.id === chainId),
     [chainId],
   );
+  const applicationFundingAddresses = useMemo(
+    () => applications.map((application) => application.fundingAddress),
+    [applications],
+  );
   const { pool: distributionPool, loading: distributionPoolLoading } =
-    useDistributionPoolQuery(network, flowCouncil?.distributionPool);
+    useDistributionPoolQuery({
+      network,
+      distributionPool: flowCouncil?.distributionPool,
+      superToken: flowCouncil?.superToken,
+      members: applicationFundingAddresses,
+    });
   const poolMembershipByAddress = useMemo(() => {
     const map = new Map<string, { isConnected: boolean }>();
     const members = distributionPool?.poolMembers as

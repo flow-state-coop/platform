@@ -21,7 +21,9 @@ import InstantDistribution from "@/app/flow-splitters/components/InstantDistribu
 import { getApolloClient } from "@/lib/apollo";
 import { networks } from "@/lib/networks";
 import { truncateStr } from "@/lib/utils";
+import { GDAPool } from "@/types/gdaPool";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
+import useGdaPoolOnChain from "@/hooks/gdaPoolOnChain";
 
 type FlowSplitterProps = {
   chainId: number;
@@ -58,6 +60,7 @@ const SUPERFLUID_QUERY = gql`
     pool(id: $gdaPool) {
       id
       flowRate
+      adjustmentFlowRate
       totalUnits
       totalAmountFlowedDistributedUntilUpdatedAt
       totalAmountInstantlyDistributedUntilUpdatedAt
@@ -74,10 +77,6 @@ const SUPERFLUID_QUERY = gql`
           id
         }
         flowRate
-      }
-      token {
-        id
-        symbol
       }
       poolCreatedEvent {
         timestamp
@@ -173,7 +172,76 @@ export default function FlowSplitter(props: FlowSplitterProps) {
     symbol: superfluidQueryRes?.token.symbol ?? "N/A",
     icon: "",
   };
-  const poolMember = superfluidQueryRes?.pool?.poolMembers.find(
+  const indexedPool = superfluidQueryRes?.pool;
+  const memberCandidates = useMemo(
+    () => [
+      ...((indexedPool?.poolMembers ?? []) as GDAPool["poolMembers"]).map(
+        (member) => member.account.id,
+      ),
+      ...(address ? [address] : []),
+    ],
+    [indexedPool, address],
+  );
+  const {
+    totalUnits: onChainTotalUnits,
+    memberFlowRate: onChainMemberFlowRate,
+    members: onChainMembers,
+    isIndexerStale,
+    isMembersPending,
+  } = useGdaPoolOnChain({
+    network,
+    poolAddress: pool?.poolAddress,
+    members: memberCandidates,
+    indexedTotalUnits: indexedPool?.totalUnits,
+  });
+  const gdaPool = useMemo(() => {
+    if (!indexedPool) {
+      return undefined;
+    }
+
+    const token = {
+      id: superfluidQueryRes?.token?.id ?? pool?.token ?? "",
+      symbol: superfluidQueryRes?.token?.symbol ?? "",
+    };
+
+    if (
+      !isIndexerStale ||
+      isMembersPending ||
+      onChainTotalUnits === undefined
+    ) {
+      return { ...indexedPool, token };
+    }
+
+    const flowRate = BigInt(indexedPool.flowRate);
+    const memberFlowRate = onChainMemberFlowRate ?? BigInt(0);
+
+    return {
+      ...indexedPool,
+      token,
+      totalUnits: onChainTotalUnits.toString(),
+      adjustmentFlowRate: (flowRate > memberFlowRate
+        ? flowRate - memberFlowRate
+        : BigInt(0)
+      ).toString(),
+      poolMembers: onChainMembers
+        .filter((member) => member.units > BigInt(0))
+        .map((member) => ({
+          account: { id: member.address },
+          units: member.units.toString(),
+          isConnected: member.isConnected,
+        })),
+    };
+  }, [
+    indexedPool,
+    superfluidQueryRes,
+    pool,
+    onChainTotalUnits,
+    onChainMemberFlowRate,
+    onChainMembers,
+    isIndexerStale,
+    isMembersPending,
+  ]);
+  const poolMember = gdaPool?.poolMembers.find(
     (member: { account: { id: string } }) =>
       member.account.id === address?.toLowerCase(),
   );
@@ -234,7 +302,9 @@ export default function FlowSplitter(props: FlowSplitterProps) {
         direction="vertical"
         className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
       >
-        {flowSplitterPoolQueryLoading || superfluidQueryLoading ? (
+        {flowSplitterPoolQueryLoading ||
+        superfluidQueryLoading ||
+        isMembersPending ? (
           <span className="position-absolute top-50 start-50 translate-middle">
             <Spinner />
           </span>
@@ -328,7 +398,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
               </Button>
             </Stack>
             <PoolGraph
-              pool={superfluidQueryRes?.pool}
+              pool={gdaPool}
               chainId={chainId}
               network={network}
               ensByAddress={ensByAddress}
@@ -387,7 +457,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
           show={showOpenFlow}
           network={network!}
           token={poolToken}
-          pool={superfluidQueryRes?.pool}
+          pool={gdaPool}
           handleClose={() => setShowOpenFlow(false)}
         />
       )}
@@ -396,7 +466,7 @@ export default function FlowSplitter(props: FlowSplitterProps) {
           show={showInstantDistribution}
           network={network!}
           token={poolToken}
-          pool={superfluidQueryRes?.pool}
+          pool={gdaPool}
           handleClose={() => setShowInstantDistribution(false)}
         />
       )}

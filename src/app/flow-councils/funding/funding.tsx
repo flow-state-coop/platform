@@ -43,6 +43,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import useFlowingAmount from "@/hooks/flowingAmount";
 import useSuperTokenBalanceOfNow from "@/hooks/superTokenBalanceOfNow";
 import useSuperTokenType from "@/hooks/superTokenType";
+import useGdaPoolOnChain from "@/hooks/gdaPoolOnChain";
 import useTransactionsQueue from "@/hooks/transactionsQueue";
 import useCouncilMetadata from "@/app/flow-councils/hooks/councilMetadata";
 import useSplitterReads from "@/app/flow-councils/hooks/useSplitterReads";
@@ -180,7 +181,17 @@ export default function Funding(props: FundingProps) {
     pollInterval: 10000,
   });
 
+  const onChainPool = useGdaPoolOnChain({
+    network,
+    poolAddress: distributionPoolAddress,
+    indexedTotalUnits: poolUnitsRes?.pool?.totalUnits,
+  });
+
   const hasGdaRecipient = useMemo<boolean | null>(() => {
+    if (onChainPool.totalUnits !== undefined) {
+      return onChainPool.totalUnits > 0n;
+    }
+
     const pool = poolUnitsRes?.pool;
     if (!pool) return null;
     try {
@@ -188,7 +199,7 @@ export default function Funding(props: FundingProps) {
     } catch {
       return null;
     }
-  }, [poolUnitsRes]);
+  }, [poolUnitsRes, onChainPool.totalUnits]);
 
   const noGdaRecipientYet = hasGdaRecipient === false;
 

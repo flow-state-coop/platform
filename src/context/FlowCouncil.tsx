@@ -203,11 +203,22 @@ function FlowCouncilContextProviderInner({
   const council = useCouncilQuery(network, councilId, isVotingPage);
   const councilMetadata = useFlowCouncilMetadata(Number(chainId), councilId);
   const projects = useRecipientsQuery(network, council?.recipients, councilId);
-  const { pool: distributionPool } = useDistributionPoolQuery(
-    network,
-    council?.distributionPool,
-    isVotingPage,
+  const poolMemberCandidates = useMemo(
+    () => [
+      ...((council?.recipients ?? []) as { account: string }[]).map(
+        (recipient) => recipient.account,
+      ),
+      ...(address ? [address] : []),
+    ],
+    [council?.recipients, address],
   );
+  const { pool: distributionPool } = useDistributionPoolQuery({
+    network,
+    distributionPool: council?.distributionPool,
+    superToken: council?.superToken,
+    members: poolMemberCandidates,
+    enabled: isVotingPage,
+  });
   const currentBallot = useBallotQuery(
     network,
     councilId,
@@ -273,7 +284,7 @@ function FlowCouncilContextProviderInner({
     (token) => token.address.toLowerCase() === council?.superToken,
   ) ?? {
     address: distributionPool?.token.id ?? "0x",
-    symbol: distributionPool?.token.symbol,
+    symbol: distributionPool?.token.symbol ?? "",
     icon: "",
   };
   const superAppFunderData = useSuperAppFundersQuery(

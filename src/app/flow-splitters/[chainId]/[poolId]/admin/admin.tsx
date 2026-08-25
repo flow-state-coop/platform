@@ -32,6 +32,7 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { getApolloClient } from "@/lib/apollo";
 import { flowSplitterAbi } from "@/lib/abi/flowSplitter";
 import { useMediaQuery } from "@/hooks/mediaQuery";
+import useGdaPoolOnChain from "@/hooks/gdaPoolOnChain";
 import useSiwe from "@/hooks/siwe";
 import { useEnsResolution } from "@/hooks/useEnsResolution";
 import { splitIntoChunks } from "@/app/flow-councils/lib/chunkQueue";
@@ -64,6 +65,7 @@ type PoolConfig = {
 
 type AdminEntry = { address: string; validationError: string };
 type MemberEntry = { address: string; units: string; validationError: string };
+type RegisterMember = { account: { id: string }; units: string };
 
 const PROFILE_BATCH = 150;
 const ENS_LOOKUP_LIMIT = 100;
@@ -95,7 +97,8 @@ const SUPERFLUID_QUERY = gql`
     }
     pool(id: $gdaPool) {
       id
-      poolMembers {
+      totalUnits
+      poolMembers(first: 1000) {
         account {
           id
         }
@@ -198,6 +201,53 @@ export default function Admin(props: AdminProps) {
   const poolToken = network?.tokens.find(
     (token) => token.address.toLowerCase() === pool?.token,
   );
+  const indexedPoolMembers = superfluidQueryRes?.pool?.poolMembers as
+    | RegisterMember[]
+    | undefined;
+  const memberCandidates = useMemo(
+    () => (indexedPoolMembers ?? []).map((member) => member.account.id),
+    [indexedPoolMembers],
+  );
+  const {
+    totalUnits: onChainTotalUnits,
+    members: onChainMembers,
+    isIndexerStale,
+    isMembersPending,
+  } = useGdaPoolOnChain({
+    network,
+    poolAddress: pool?.poolAddress,
+    members: memberCandidates,
+    indexedTotalUnits: superfluidQueryRes?.pool?.totalUnits,
+  });
+  // Where the indexer has fallen behind, the register falls back to on-chain
+  // units for the members the page can name. The rest cannot be enumerated,
+  // since Celo's public RPC caps a log scan at 5000 blocks.
+  const poolMembers = useMemo(() => {
+    if (!indexedPoolMembers) {
+      return undefined;
+    }
+
+    if (!isIndexerStale) {
+      return indexedPoolMembers;
+    }
+
+    if (isMembersPending) {
+      return undefined;
+    }
+
+    return onChainMembers.map((member) => ({
+      account: { id: member.address },
+      units: member.units.toString(),
+    }));
+  }, [indexedPoolMembers, onChainMembers, isIndexerStale, isMembersPending]);
+  const isRegisterIncomplete =
+    !!poolMembers &&
+    onChainTotalUnits !== undefined &&
+    onChainTotalUnits >
+      poolMembers.reduce(
+        (totalUnits, member) => totalUnits + BigInt(member.units),
+        BigInt(0),
+      );
   const isValidAdminsEntry = adminsEntry.every(
     (adminEntry) =>
       adminEntry.validationError === "" && adminEntry.address !== "",
@@ -290,11 +340,8 @@ export default function Admin(props: AdminProps) {
     const hasChangesAdmins =
       poolConfig.immutable ||
       (sortedPoolAdmins && !compareArrays(sortedPoolAdmins, sortedAdminsEntry));
-    const sortedPoolMembers = superfluidQueryRes?.pool?.poolMembers
-      ? [...superfluidQueryRes.pool.poolMembers].sort(
-          (a: { account: { id: string } }, b: { account: { id: string } }) =>
-            a.account.id > b.account.id ? -1 : 1,
-        )
+    const sortedPoolMembers = poolMembers
+      ? [...poolMembers].sort((a, b) => (a.account.id > b.account.id ? -1 : 1))
       : [];
     const sortedMembersEntry = membersEntry
       ? [...membersEntry].sort((a, b) =>
@@ -305,19 +352,19 @@ export default function Admin(props: AdminProps) {
       sortedPoolMembers &&
       (!compareArrays(
         sortedPoolMembers
-          .filter((member: { units: string }) => member.units !== "0")
-          .map((member: { account: { id: string } }) => member.account.id),
+          .filter((member) => member.units !== "0")
+          .map((member) => member.account.id),
         sortedMembersEntry.map((member) => member.address.toLowerCase()),
       ) ||
         !compareArrays(
           sortedPoolMembers
-            .filter((member: { units: string }) => member.units !== "0")
-            .map((member: { units: string }) => member.units),
+            .filter((member) => member.units !== "0")
+            .map((member) => member.units),
           sortedMembersEntry.map((member) => member.units),
         ));
 
     return hasChangesAdmins || hasChangesMembers ? true : false;
-  }, [poolConfig, poolAdmins, adminsEntry, superfluidQueryRes, membersEntry]);
+  }, [poolConfig, poolAdmins, adminsEntry, poolMembers, membersEntry]);
 
   // Joined-string key: the entry arrays get a new identity on every keystroke,
   // so name lookups gate on the stable key instead of on the arrays. Empty on
@@ -436,13 +483,13 @@ export default function Admin(props: AdminProps) {
   }, [flowSplitterPoolQueryLoading, pool, poolAdmins]);
 
   useEffect(() => {
-    if (!superfluidQueryRes?.pool?.poolMembers) {
+    if (!poolMembers) {
       return;
     }
 
-    const chainMembers = superfluidQueryRes.pool.poolMembers
-      .filter((member: { units: string }) => member.units !== "0")
-      .map((member: { account: { id: string }; units: string }) => {
+    const chainMembers = poolMembers
+      .filter((member) => member.units !== "0")
+      .map((member) => {
         return {
           address: member.account.id,
           units: member.units,
@@ -455,7 +502,7 @@ export default function Admin(props: AdminProps) {
     }
 
     const snapshot = JSON.stringify(
-      chainMembers.map((entry: MemberEntry) => [entry.address, entry.units]),
+      chainMembers.map((entry) => [entry.address, entry.units]),
     );
     const formState = JSON.stringify(
       membersEntry.map((entry) => [entry.address.toLowerCase(), entry.units]),
@@ -474,7 +521,7 @@ export default function Admin(props: AdminProps) {
       setMembersEntry(chainMembers);
       lastSyncedMembers.current = snapshot;
     }
-  }, [superfluidQueryRes, membersEntry]);
+  }, [poolMembers, membersEntry]);
 
   useEffect(() => {
     // Only addresses never asked about before: the set changes on every added
@@ -548,9 +595,8 @@ export default function Admin(props: AdminProps) {
       ),
     );
 
-    const existingPoolMember = superfluidQueryRes?.pool?.poolMembers?.find(
-      (member: { account: { id: string } }) =>
-        member.account.id === memberEntry.address.toLowerCase(),
+    const existingPoolMember = poolMembers?.find(
+      (member) => member.account.id === memberEntry.address.toLowerCase(),
     );
 
     if (
@@ -606,9 +652,9 @@ export default function Admin(props: AdminProps) {
         }
 
         const csvAddresses = data.map((row) => row[0].toLowerCase());
-        const existingMembers = superfluidQueryRes?.pool.poolMembers;
+        const existingMembers = poolMembers ?? [];
         const excludedMembers = existingMembers.filter(
-          (existingMember: { account: { id: string }; units: string }) =>
+          (existingMember) =>
             existingMember.units !== "0" &&
             !csvAddresses.some(
               (address) => existingMember.account.id === address,
@@ -660,8 +706,8 @@ export default function Admin(props: AdminProps) {
         (memberEntry) =>
           memberEntry.validationError === "" &&
           memberEntry.address !== "" &&
-          !superfluidQueryRes?.pool?.poolMembers.some(
-            (member: { account: { id: string }; units: string }) =>
+          !poolMembers?.some(
+            (member) =>
               member.account.id === memberEntry.address &&
               member.units === memberEntry.units,
           ),
@@ -846,7 +892,9 @@ export default function Admin(props: AdminProps) {
         direction="vertical"
         className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
       >
-        {flowSplitterPoolQueryLoading || superfluidQueryLoading ? (
+        {flowSplitterPoolQueryLoading ||
+        superfluidQueryLoading ||
+        isMembersPending ? (
           <span className="position-absolute top-50 start-50 translate-middle">
             <Spinner />
           </span>
@@ -1268,6 +1316,15 @@ export default function Admin(props: AdminProps) {
                 />
               </Card.Header>
               <Card.Body className="p-0">
+                {isRegisterIncomplete && (
+                  <Alert
+                    variant="warning"
+                    className="w-100 p-4 mb-4 fw-semi-bold"
+                  >
+                    This register may be missing recipients, so wait until it
+                    resolves before editing shares.
+                  </Alert>
+                )}
                 {hasActiveKeys ? (
                   <Alert
                     variant="warning"
@@ -1348,10 +1405,8 @@ export default function Admin(props: AdminProps) {
                           type="text"
                           disabled={
                             !isAdmin ||
-                            (superfluidQueryRes?.pool?.poolMembers
-                              .map((member: { account: { id: string } }) =>
-                                member.account.id.toLowerCase(),
-                              )
+                            (poolMembers
+                              ?.map((member) => member.account.id.toLowerCase())
                               .includes(memberEntry.address.toLowerCase()) &&
                               !memberEntry.validationError)
                           }
