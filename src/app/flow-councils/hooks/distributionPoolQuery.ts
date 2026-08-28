@@ -15,7 +15,7 @@ const SUPERFLUID_QUERY = gql`
       totalAmountFlowedDistributedUntilUpdatedAt
       updatedAtTimestamp
       totalUnits
-      poolMembers(first: 1000) {
+      poolMembers(first: 1000, where: { units_not: "0" }) {
         account {
           id
         }
@@ -131,14 +131,16 @@ export default function useDistributionPoolQuery({
         indexedPool?.updatedAtTimestamp ?? onChain.updatedAtTimestamp,
       totalUnits: onChain.totalUnits.toString() as GDAPool["totalUnits"],
       token,
-      poolMembers: onChain.members.map((member) => ({
-        account: { id: member.address },
-        units: member.units.toString() as `${number}`,
-        totalAmountReceivedUntilUpdatedAt:
-          member.totalAmountReceived.toString() as `${number}`,
-        updatedAtTimestamp: onChain.updatedAtTimestamp,
-        isConnected: member.isConnected,
-      })),
+      poolMembers: onChain.members
+        .filter((member) => member.units > BigInt(0))
+        .map((member) => ({
+          account: { id: member.address },
+          units: member.units.toString() as `${number}`,
+          totalAmountReceivedUntilUpdatedAt:
+            member.totalAmountReceived.toString() as `${number}`,
+          updatedAtTimestamp: onChain.updatedAtTimestamp,
+          isConnected: member.isConnected,
+        })),
       poolDistributors: indexedPool?.poolDistributors ?? [],
     };
   }, [indexedPool, indexedToken, onChain, superToken, distributionPool]);
