@@ -3,6 +3,7 @@
 import Stack from "react-bootstrap/Stack";
 import RoundCard from "./components/RoundCard";
 import MarkeeSign from "./components/MarkeeSign";
+import SupRewardsCta from "./components/SupRewardsCta";
 import { Inflow } from "@/types/inflow";
 import { GDAPool } from "@/types/gdaPool";
 import { useMediaQuery } from "@/hooks/mediaQuery";
@@ -119,20 +120,11 @@ export default function Explore(props: ExploreProps) {
             activeStreamCount={coreInflow?.activeIncomingStreamCount}
             tokenSymbol="ETHx"
             link="/flow-guilds/core"
+            showSupRewards
           />
-          <RoundCard
-            name="Guild Guild"
-            image="/guild-guild.png"
-            roundType="Flow Guild"
-            totalStreamedUntilUpdatedAt={BigInt(
-              guildGuildInflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,
-            ).toString()}
-            flowRate={BigInt(guildGuildInflow?.totalInflowRate ?? 0).toString()}
-            updatedAt={guildGuildInflow?.updatedAtTimestamp}
-            activeStreamCount={guildGuildInflow?.activeIncomingStreamCount}
-            tokenSymbol="ETHx"
-            link="/flow-guilds/guild-guild"
-          />
+        </div>
+        <div className="mb-6">
+          <SupRewardsCta />
         </div>
         <span className="fs-4 fw-semi-bold">Completed</span>
         <div
@@ -151,6 +143,19 @@ export default function Explore(props: ExploreProps) {
                   : "",
           }}
         >
+          <RoundCard
+            name="Guild Guild"
+            image="/guild-guild.png"
+            roundType="Flow Guild"
+            totalStreamedUntilUpdatedAt={BigInt(
+              guildGuildInflow?.totalAmountStreamedInUntilUpdatedAt ?? 0,
+            ).toString()}
+            flowRate={BigInt(guildGuildInflow?.totalInflowRate ?? 0).toString()}
+            updatedAt={guildGuildInflow?.updatedAtTimestamp}
+            activeStreamCount={guildGuildInflow?.activeIncomingStreamCount}
+            tokenSymbol="ETHx"
+            link="/flow-guilds/guild-guild"
+          />
           <RoundCard
             name="Arbitrum Mini Apps"
             image="/arb.png"
