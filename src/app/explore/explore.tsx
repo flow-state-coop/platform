@@ -30,6 +30,7 @@ type ExploreProps = {
   goodDollarPool: GDAPool;
   goodBuildersS3Inflow: Inflow;
   goodBuildersS4FlowInfo: FlowCouncilFlowInfo;
+  markeeCorePool: GDAPool;
   flowCasterArbFlowInfo: PoolPairFlowInfo;
   flowCasterFlowInfo: PoolPairFlowInfo;
 };
@@ -50,6 +51,7 @@ export default function Explore(props: ExploreProps) {
     goodDollarPool,
     goodBuildersS3Inflow,
     goodBuildersS4FlowInfo,
+    markeeCorePool,
     flowCasterArbFlowInfo,
     flowCasterFlowInfo,
   } = props;
@@ -120,6 +122,20 @@ export default function Explore(props: ExploreProps) {
             activeStreamCount={coreInflow?.activeIncomingStreamCount}
             tokenSymbol="ETHx"
             link="/flow-guilds/core"
+            showSupRewards
+          />
+          <RoundCard
+            name="Markee Core"
+            image="/markee.png"
+            roundType="Flow Splitter"
+            totalStreamedUntilUpdatedAt={BigInt(
+              markeeCorePool?.totalAmountFlowedDistributedUntilUpdatedAt ?? 0,
+            ).toString()}
+            flowRate={BigInt(markeeCorePool?.flowRate ?? 0).toString()}
+            updatedAt={markeeCorePool?.updatedAtTimestamp}
+            activeStreamCount={markeeCorePool?.poolDistributors.length}
+            tokenSymbol="MARKEEx"
+            link="/flow-splitters/8453/47"
             showSupRewards
           />
         </div>
