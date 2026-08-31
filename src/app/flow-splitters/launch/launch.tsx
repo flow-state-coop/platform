@@ -1057,6 +1057,58 @@ export default function Launch(props: LaunchProps) {
             </Form.Group>
           </Card.Body>
         </Card>
+        <Card className="bg-lace-100 rounded-4 border-0 mt-8 p-4">
+          <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-5 text-secondary fw-semi-bold">
+            Automated Updates (API)
+            <InfoTooltip
+              position={{ top: true }}
+              target={
+                <Image
+                  src="/info.svg"
+                  alt="Info"
+                  width={18}
+                  height={18}
+                  className="align-top"
+                />
+              }
+              content={
+                <p className="m-0 p-2">
+                  You post relative weights, the platform normalizes them into
+                  shares, and the Flow State bot signs the onchain updates.
+                  <br />
+                  <br />
+                  Setup is three steps on the Configuration page. Mint an API
+                  key, grant the bot admin in one transaction (it then holds the
+                  same powers as any other admin), and pay the unlock.
+                  <br />
+                  <br />
+                  Reads, keys, and job polls are free, so you can build and test
+                  an integration before paying. OP Sepolia isn't gated.
+                </p>
+              }
+            />
+          </Card.Header>
+          <Card.Body className="p-0">
+            <Card.Text className="mt-2 text-info">
+              After launch, the Configuration page can hand the Share Register
+              to an external system (a metrics job, a revenue feed, a cron
+              script) that updates it with no human signing anything. Writes
+              unlock there with a one-time payment of 10 USDC.
+              <br />
+              {poolConfig.immutable || poolConfig.transferableUnits
+                ? "Your selections above rule this out. The API needs an admin and non-transferable shares."
+                : "It needs an admin and non-transferable shares, both fixed at launch."}
+              <br />
+              <Card.Link
+                href="https://docs.flowstate.network/developers/splitter-api"
+                target="_blank"
+                className="text-primary"
+              >
+                Flow Splitter API docs
+              </Card.Link>
+            </Card.Text>
+          </Card.Body>
+        </Card>
         <Stack direction="vertical" className="mt-6">
           {poolConfig.immutable && (
             <Card.Text className="mb-1 text-danger">
