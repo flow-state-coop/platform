@@ -28,6 +28,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { isNumber } from "@/lib/utils";
 import { serializeListed } from "@/lib/listedMetadata";
+import { SPLITTER_UNLOCK_PRICE_LABEL } from "@/lib/splitterUnlock";
 
 type LaunchProps = { defaultNetwork: Network };
 
@@ -1093,7 +1094,8 @@ export default function Launch(props: LaunchProps) {
               After launch, the Configuration page can hand the Share Register
               to an external system (a metrics job, a revenue feed, a cron
               script) that updates it with no human signing anything. Writes
-              unlock there with a one-time payment of 10 USDC.
+              unlock there with a one-time payment of{" "}
+              {SPLITTER_UNLOCK_PRICE_LABEL}.
               <br />
               {poolConfig.immutable || poolConfig.transferableUnits
                 ? "Your selections above rule this out. The API needs an admin and non-transferable shares."
