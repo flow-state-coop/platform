@@ -73,6 +73,8 @@ const GOOD_BUILDERS_S4 = {
   token: "0x62b8b11039fcfe5ab0c56e502b1c372a3d2a9c7a",
 };
 
+const MARKEE_CORE_SPLITTER_POOL = "0x55a182bc1d575b5a6521f672bc6abed04c1c8272";
+
 const FLOW_GUILD_ADDRESSES = {
   ["core"]: {
     safeAddress: "0x0d9d26375b882e0ddb38a781a40e80945e3d0b9b",
@@ -167,6 +169,7 @@ export default async function Page() {
     goodBuildersS3QueryRes,
     goodBuildersS4QueryRes,
     goodBuildersS4FundersQueryRes,
+    markeeCoreQueryRes,
     flowCasterArbQueryRes,
     flowCasterArbTeamQueryRes,
     flowCasterBaseCrackedDevsQueryRes,
@@ -201,6 +204,9 @@ export default async function Page() {
     request<SuperAppFunders>(celoSubgraph, SUPER_APP_FUNDERS_QUERY, {
       superApp: GOOD_BUILDERS_S4.superApp,
       token: GOOD_BUILDERS_S4.token,
+    }),
+    request<{ pool: GDAPool }>(baseSubgraph, GDA_POOL_QUERY, {
+      gdaPool: MARKEE_CORE_SPLITTER_POOL,
     }),
     request<{ pool: GDAPool }>(arbSubgraph, GDA_POOL_QUERY, {
       gdaPool: FLOW_CASTER_ARB_POOLS[0],
@@ -244,6 +250,7 @@ export default async function Page() {
         goodBuildersS3QueryRes.account.accountTokenSnapshots[0]
       }
       goodBuildersS4FlowInfo={goodBuildersS4FlowInfo}
+      markeeCorePool={markeeCoreQueryRes.pool}
       flowCasterArbFlowInfo={flowCasterArbFlowInfo}
       flowCasterFlowInfo={flowCasterFlowInfo}
     />
