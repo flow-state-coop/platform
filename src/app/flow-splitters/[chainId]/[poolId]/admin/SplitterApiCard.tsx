@@ -511,7 +511,7 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
   return (
     <Card className="bg-lace-100 rounded-4 border-0 mt-8 px-10 py-8">
       <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-6 text-secondary fw-semi-bold">
-        API
+        Automated Updates (Beta)
         <InfoTooltip
           position={{ top: true }}
           target={
@@ -525,9 +525,8 @@ export default function SplitterApiCard(props: SplitterApiCardProps) {
           }
           content={
             <p className="m-0 p-2">
-              Let an external system replace this pool&apos;s share register
-              programmatically. The Flow State bot signs the transactions, so it
-              must hold admin on this pool.
+              Set an (offchain) external system to programmatically update this
+              Flow Splitter&apos;s share register via API.
             </p>
           }
         />

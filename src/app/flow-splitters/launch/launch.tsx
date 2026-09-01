@@ -28,6 +28,7 @@ import { useMediaQuery } from "@/hooks/mediaQuery";
 import { networks } from "@/lib/networks";
 import { isNumber } from "@/lib/utils";
 import { serializeListed } from "@/lib/listedMetadata";
+import { SPLITTER_UNLOCK_PRICE_LABEL } from "@/lib/splitterUnlock";
 
 type LaunchProps = { defaultNetwork: Network };
 
@@ -1055,6 +1056,51 @@ export default function Launch(props: LaunchProps) {
                 </FormCheck>
               </Stack>
             </Form.Group>
+          </Card.Body>
+        </Card>
+        <Card className="bg-lace-100 rounded-4 border-0 mt-8 p-4">
+          <Card.Header className="d-flex gap-1 mb-3 bg-transparent border-0 rounded-4 p-0 fs-5 text-secondary fw-semi-bold">
+            Automated Updates (Beta)
+            <InfoTooltip
+              position={{ top: true }}
+              target={
+                <Image
+                  src="/info.svg"
+                  alt="Info"
+                  width={18}
+                  height={18}
+                  className="align-top"
+                />
+              }
+              content={
+                <p className="m-0 p-2">
+                  Set an (offchain) external system to programmatically update
+                  this Flow Splitter&apos;s share register via API.
+                </p>
+              }
+            />
+          </Card.Header>
+          <Card.Body className="p-0">
+            <Card.Text className="mt-2 text-info">
+              Flow Splitters launched with contract admins enabled and
+              non-transferable shares can utilize Flow State&apos;s Flow
+              Splitter API to drive programmatic Share Register updates from an
+              external system (e.g. metrics cron job, automated sign-up flow,
+              etc.).
+              <br />
+              <br />
+              You can set this up from your Flow Splitter&apos;s configuration
+              page after launch. A one-time payment of{" "}
+              {SPLITTER_UNLOCK_PRICE_LABEL} is required during the beta period.
+              <br />
+              <Card.Link
+                href="https://docs.flowstate.network/developers/splitter-api"
+                target="_blank"
+                className="text-primary"
+              >
+                Flow Splitter API docs
+              </Card.Link>
+            </Card.Text>
           </Card.Body>
         </Card>
         <Stack direction="vertical" className="mt-6">
