@@ -71,6 +71,11 @@ export default function PoolInfo(props: PoolInfoProps) {
   const superfluidExplorer = networks.find(
     (network) => network.id === chainId,
   )?.superfluidExplorer;
+  const splitterAddress = councilMetadata.superappSplitterAddress;
+  const fundersHref =
+    superfluidExplorer && splitterAddress
+      ? `${superfluidExplorer.replace(/\/$/, "")}/accounts/${splitterAddress}?tab=streams`
+      : null;
 
   return (
     <div
@@ -135,7 +140,15 @@ export default function PoolInfo(props: PoolInfoProps) {
             <td className="w-25 bg-transparent">
               {formatNumber(Number(formatEther(poolTotal)))}
             </td>
-            <td className="w-25 bg-transparent">{formatNumber(funderCount)}</td>
+            <td className="w-25 bg-transparent">
+              {fundersHref ? (
+                <Card.Link href={fundersHref} target="_blank">
+                  {formatNumber(funderCount)}
+                </Card.Link>
+              ) : (
+                formatNumber(funderCount)
+              )}
+            </td>
           </tr>
         </tbody>
       </Table>
