@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Stack from "react-bootstrap/Stack";
 import Button from "react-bootstrap/Button";
 import CloseButton from "react-bootstrap/CloseButton";
@@ -10,48 +10,55 @@ import Spinner from "react-bootstrap/Spinner";
 import Image from "react-bootstrap/Image";
 import Nav from "react-bootstrap/Nav";
 import Tab from "react-bootstrap/Tab";
-import { Address, BaseError, formatEther, parseEther } from "viem";
-import { base } from "wagmi/chains";
+import { Address, PublicClient, formatEther, parseEther } from "viem";
 import {
   useAccount,
-  useBalance,
+  usePublicClient,
   useReadContract,
-  useReadContracts,
   useSwitchChain,
-  useWaitForTransactionReceipt,
-  useWriteContract,
 } from "wagmi";
-import { markeeAbi, markeeLeaderboardAbi } from "@/lib/abi/markee";
+import { markeeLeaderboardAbi } from "@/lib/abi/markee";
 import { ZERO_ADDRESS } from "@/lib/constants";
 import { truncateAddress } from "@/lib/utils";
+import useTransactionsQueue from "@/hooks/transactionsQueue";
+import {
+  MarkeeBoard,
+  useMarkeeBacker,
+  useSuperfluidAgreements,
+} from "../hooks/markee";
 import {
   FLOW_STATE_MARKEE_ADDRESS,
-  FLOW_STATE_MARKEE_URL,
+  GAS_RESERVE_WEI,
+  MARKEE_CHAIN_ID,
   MARKEE_NETWORK_URL,
-  MIN_INCREMENT,
   MONOSPACE_FONT,
+  StreamFunding,
+  StreamMode,
+  buildCreateMarkeeCall,
+  buildStreamCalls,
+  buildUpdateMessageCall,
+  ceilToThousandthEth,
+  computeStreamFunding,
   displayOwnerName,
   flaggedKey,
+  formatEthAmountInput,
+  formatMonthlyRate,
+  formatRunway,
+  isBelowMinimumRate,
+  maxMonthlyFor,
+  monthlyToRatePerSec,
+  monthlyToWin,
+  buildStopStreamCall,
+  buildWithdrawDepositCall,
+  parseCreatedMarkee,
+  runwaySeconds,
 } from "../lib/markee";
 
-export type MarkeeTab = "buy" | "boost";
+type MarkeeTab = "buy" | "back" | "edit";
 
 type MarkeeModalProps = {
-  topMessage: string;
-  topMessageOwner: string;
-  takeTopSpotWei: bigint | null;
-  activeTab: MarkeeTab;
-  onSelectTab: (tab: MarkeeTab) => void;
-  message: string;
-  onMessageChange: (value: string) => void;
-  buyerName: string;
-  onBuyerNameChange: (value: string) => void;
-  ethAmount: string;
-  onEthAmountChange: (value: string) => void;
-  boostAmount: string;
-  onBoostAmountChange: (value: string) => void;
-  selectedMarkee: Address | null;
-  onSelectMarkee: (address: Address) => void;
+  isOpen: boolean;
+  board: MarkeeBoard;
   flagged: Set<string>;
   onConnectWallet: () => void;
   onClose: () => void;
@@ -59,6 +66,10 @@ type MarkeeModalProps = {
 };
 
 const MAX_AMOUNT_DIGITS = 8;
+const POOL_POLL_ATTEMPTS = 12;
+const POOL_POLL_INTERVAL_MS = 1500;
+
+class MarkeeFlowError extends Error {}
 
 function sanitizeAmountInput(value: string): string | null {
   if (!/^\d*\.?\d*$/.test(value)) {
@@ -84,42 +95,61 @@ function parseEthInput(value: string): bigint | null {
   }
 }
 
-function formatEthDisplay(wei: bigint) {
-  return parseFloat(formatEther(wei)).toFixed(3);
+// createMarkee deploys the refund pool in the same tx, but the RPC can lag
+// behind the receipt, so poll until poolOf resolves.
+async function waitForPool(publicClient: PublicClient, markee: Address) {
+  for (let attempt = 0; attempt < POOL_POLL_ATTEMPTS; attempt++) {
+    if (attempt > 0) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, POOL_POLL_INTERVAL_MS),
+      );
+    }
+
+    const pool = await publicClient.readContract({
+      address: FLOW_STATE_MARKEE_ADDRESS,
+      abi: markeeLeaderboardAbi,
+      functionName: "poolOf",
+      args: [markee],
+    });
+
+    if (pool !== ZERO_ADDRESS) {
+      return pool;
+    }
+  }
+
+  throw new MarkeeFlowError("The refund pool is not ready yet, try again");
 }
 
-function balanceToAmountInput(balance: bigint) {
-  const [intPart, fracPart = ""] = formatEther(balance).split(".");
-  const fracDigits = Math.max(0, MAX_AMOUNT_DIGITS - intPart.length);
-  const frac = fracPart.slice(0, fracDigits).replace(/0+$/, "");
-
-  return frac ? `${intPart}.${frac}` : intPart;
-}
-
-function AmountSection({
-  title,
+function RateSection({
   amount,
   onAmountChange,
   presets,
   placeholder,
   isConnected,
-  balance,
+  ethBalance,
+  ethxBalance,
+  ratePerSec,
+  funding,
+  runway,
+  isBelowMinimum,
+  minimumMonthly,
 }: {
-  title: string;
   amount: string;
   onAmountChange: (value: string) => void;
   presets: { label: string; value: string }[];
   placeholder: string;
   isConnected: boolean;
-  balance: bigint;
+  ethBalance: bigint;
+  ethxBalance: bigint;
+  ratePerSec: bigint;
+  funding: StreamFunding;
+  runway: bigint | null;
+  isBelowMinimum: boolean;
+  minimumMonthly: string | null;
 }) {
-  const amountWei = parseEthInput(amount);
-  const exceedsBalance =
-    isConnected && amountWei !== null && amountWei > balance;
-
   return (
     <Form.Group>
-      <Form.Label className="fw-semi-bold">{title}</Form.Label>
+      <Form.Label className="fw-semi-bold">ETH per month</Form.Label>
       {presets.length > 0 && (
         <Stack direction="horizontal" gap={2} className="mb-2 flex-wrap">
           {presets.map((preset) => (
@@ -127,7 +157,7 @@ function AmountSection({
               key={preset.label}
               variant="outline-primary"
               size="sm"
-              className="rounded-4 fw-semi-bold"
+              className="rounded-4 fw-semi-bold px-3"
               onClick={() => onAmountChange(preset.value)}
             >
               {preset.label}
@@ -150,17 +180,37 @@ function AmountSection({
         }}
       />
       {isConnected && (
-        <Button
-          variant="link"
-          className="p-0 mt-1 fs-sm text-decoration-none"
-          onClick={() => onAmountChange(balanceToAmountInput(balance))}
+        <Stack
+          direction="horizontal"
+          gap={3}
+          className="flex-wrap fs-sm text-secondary mt-1"
         >
-          Balance: {parseFloat(formatEther(balance)).toFixed(4)} ETH
-        </Button>
+          <span>ETH: {parseFloat(formatEther(ethBalance)).toFixed(4)}</span>
+          <span>ETHx: {parseFloat(formatEther(ethxBalance)).toFixed(4)}</span>
+        </Stack>
       )}
-      {exceedsBalance && (
+      {isConnected && ratePerSec > 0n && !isBelowMinimum && (
+        <p className="fs-sm mb-0 mt-2">
+          {funding.wrapValue > 0n && (
+            <>
+              Wraps {parseFloat(formatEther(funding.wrapValue)).toFixed(4)} ETH
+              to ETHx
+              {funding.depositTopUp > 0n &&
+                ` (${parseFloat(formatEther(funding.depositTopUp)).toFixed(6)} refundable deposit)`}
+              {" · "}
+            </>
+          )}
+          {formatRunway(runway)}
+        </p>
+      )}
+      {isBelowMinimum && minimumMonthly !== null && (
         <p className="text-danger fs-sm mb-0 mt-2">
-          Amount exceeds your balance
+          The minimum is {minimumMonthly} ETH per month
+        </p>
+      )}
+      {isConnected && ratePerSec > 0n && funding.isInsufficient && (
+        <p className="text-danger fs-sm mb-0 mt-2">
+          Not enough ETH on Base to fund this stream
         </p>
       )}
     </Form.Group>
@@ -168,222 +218,336 @@ function AmountSection({
 }
 
 export default function MarkeeModal(props: MarkeeModalProps) {
-  const {
-    topMessage,
-    topMessageOwner,
-    takeTopSpotWei,
-    activeTab,
-    onSelectTab,
-    message,
-    onMessageChange,
-    buyerName,
-    onBuyerNameChange,
-    ethAmount,
-    onEthAmountChange,
-    boostAmount,
-    onBoostAmountChange,
-    selectedMarkee,
-    onSelectMarkee,
-    flagged,
-    onConnectWallet,
-    onClose,
-    onTxSuccess,
-  } = props;
+  const { isOpen, board, flagged, onConnectWallet, onClose, onTxSuccess } =
+    props;
+
+  const [activeTab, setActiveTab] = useState<MarkeeTab>("buy");
+  const [message, setMessage] = useState("");
+  const [buyerName, setBuyerName] = useState("");
+  const [monthlyAmount, setMonthlyAmount] = useState("");
+  const [selectedMarkee, setSelectedMarkee] = useState<Address | null>(null);
+  const [editMarkee, setEditMarkee] = useState<Address | null>(null);
+  const [editText, setEditText] = useState("");
+  const [pendingLabel, setPendingLabel] = useState("");
+  const [flowError, setFlowError] = useState("");
+  const [successHash, setSuccessHash] = useState<string | null>(null);
+
+  const createdRef = useRef<{ markee: Address; pool: Address } | null>(null);
 
   const { address, isConnected, chainId } = useAccount();
-  const isOnBase = isConnected && chainId === base.id;
+  const isOnBase = isConnected && chainId === MARKEE_CHAIN_ID;
   const { switchChain } = useSwitchChain();
-  const { data: balanceQuery } = useBalance({ address, chainId: base.id });
-  const balance = balanceQuery?.value ?? 0n;
+  const publicClient = usePublicClient({ chainId: MARKEE_CHAIN_ID });
+  const backer = useMarkeeBacker(address, isOpen);
+  const { cfaAgreement, gdaAgreement } = useSuperfluidAgreements(isOpen);
+  const { transactionError, executeTransactions } = useTransactionsQueue();
 
-  const { data: configData } = useReadContracts({
-    contracts: [
-      {
-        chainId: base.id,
-        address: FLOW_STATE_MARKEE_ADDRESS,
-        abi: markeeLeaderboardAbi,
-        functionName: "minimumPrice",
-      },
-      {
-        chainId: base.id,
-        address: FLOW_STATE_MARKEE_ADDRESS,
-        abi: markeeLeaderboardAbi,
-        functionName: "maxMessageLength",
-      },
-    ],
-  });
-  const minimumPrice =
-    configData?.[0]?.status === "success" ? configData[0].result : null;
-  const maxMessageLength =
-    configData?.[1]?.status === "success" ? Number(configData[1].result) : null;
-
-  const {
-    data: topMarkeesData,
-    isError: isTopMarkeesError,
-    isLoading: isTopMarkeesLoading,
-  } = useReadContract({
-    chainId: base.id,
-    address: FLOW_STATE_MARKEE_ADDRESS,
-    abi: markeeLeaderboardAbi,
-    functionName: "getTopMarkees",
-    args: [10n],
-    query: { enabled: activeTab === "boost" },
-  });
-
-  const topMarkees = useMemo(() => {
-    if (!topMarkeesData) {
-      return [];
-    }
-
-    const [topAddresses, topFunds] = topMarkeesData;
-
-    return topAddresses
-      .map((markeeAddress, i) => ({
-        address: markeeAddress,
-        funds: topFunds[i] ?? 0n,
-      }))
-      .filter((entry) => entry.address !== ZERO_ADDRESS && entry.funds > 0n);
-  }, [topMarkeesData]);
-
-  const {
-    data: markeeDetails,
-    isError: isMarkeeDetailsError,
-    isLoading: isMarkeeDetailsLoading,
-  } = useReadContracts({
-    contracts: topMarkees.flatMap((entry) => [
-      {
-        chainId: base.id,
-        address: entry.address,
-        abi: markeeAbi,
-        functionName: "message",
-      },
-      {
-        chainId: base.id,
-        address: entry.address,
-        abi: markeeAbi,
-        functionName: "name",
-      },
-    ]),
-    query: { enabled: topMarkees.length > 0 },
-  });
-
-  const topFundsOnChain = topMarkees.reduce(
-    (max, entry) => (entry.funds > max ? entry.funds : max),
-    0n,
-  );
-  const topMarkeeOnChain =
-    topMarkees.find((entry) => entry.funds === topFundsOnChain)?.address ??
-    null;
-
-  const boostEntries = useMemo(
+  const entries = useMemo(
     () =>
-      topMarkees
-        .map((entry, i) => ({
-          ...entry,
-          message: (markeeDetails?.[i * 2]?.result as string | undefined) ?? "",
-          name:
-            (markeeDetails?.[i * 2 + 1]?.result as string | undefined) ?? "",
-        }))
-        .filter((entry) => !flagged.has(flaggedKey(entry.address))),
-    [topMarkees, markeeDetails, flagged],
+      board.entries.filter((entry) => !flagged.has(flaggedKey(entry.address))),
+    [board.entries, flagged],
   );
-
-  const selectedEntry =
-    boostEntries.find((entry) => entry.address === selectedMarkee) ?? null;
-  const isSelectedTop =
-    selectedEntry !== null && selectedEntry.address === topMarkeeOnChain;
-  const boostTakeTopSpotWei =
-    selectedEntry !== null && !isSelectedTop
-      ? topFundsOnChain - selectedEntry.funds + MIN_INCREMENT
-      : null;
-
-  const {
-    writeContract,
-    data: txHash,
-    isPending: isAwaitingWallet,
-    error: writeError,
-    reset: resetWrite,
-  } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash: txHash,
-    chainId: base.id,
-  });
+  const ownedEntries = useMemo(
+    () =>
+      address
+        ? entries.filter(
+            (entry) => entry.owner.toLowerCase() === address.toLowerCase(),
+          )
+        : [],
+    [entries, address],
+  );
+  const topEntry = board.topEntry;
+  const isBacking = backer.backerMarkee !== ZERO_ADDRESS;
 
   useEffect(() => {
-    if (isSuccess) {
-      onTxSuccess();
+    if (isBacking && selectedMarkee === null) {
+      setSelectedMarkee(backer.backerMarkee);
     }
-  }, [isSuccess, onTxSuccess]);
+  }, [isBacking, backer.backerMarkee, selectedMarkee]);
 
-  const buyAmountWei = parseEthInput(ethAmount);
-  const boostAmountWei = parseEthInput(boostAmount);
-  const isTxLoading = isAwaitingWallet || isConfirming;
-  const isLowBalance =
-    isConnected && minimumPrice !== null && balance < minimumPrice;
+  useEffect(() => {
+    if (ownedEntries.length > 0 && editMarkee === null) {
+      setEditMarkee(ownedEntries[0].address);
+      setEditText(ownedEntries[0].message);
+    }
+  }, [ownedEntries, editMarkee]);
 
+  const selectedEntry =
+    entries.find((entry) => entry.address === selectedMarkee) ?? null;
+  const editEntry =
+    ownedEntries.find((entry) => entry.address === editMarkee) ?? null;
+  const { data: selectedPool } = useReadContract({
+    chainId: MARKEE_CHAIN_ID,
+    address: FLOW_STATE_MARKEE_ADDRESS,
+    abi: markeeLeaderboardAbi,
+    functionName: "poolOf",
+    args: selectedMarkee ? [selectedMarkee] : undefined,
+    query: { enabled: isOpen && selectedMarkee !== null },
+  });
+
+  const minimumMonthlyRate = board.minimumMonthlyRate;
+  const minimumMonthly =
+    minimumMonthlyRate !== null
+      ? formatEthAmountInput(ceilToThousandthEth(minimumMonthlyRate))
+      : null;
+  const monthlyWei = parseEthInput(monthlyAmount);
+  const ratePerSec =
+    monthlyWei !== null && minimumMonthlyRate !== null
+      ? monthlyToRatePerSec(monthlyWei, minimumMonthlyRate)
+      : 0n;
+  const isBelowMinimum =
+    ratePerSec > 0n &&
+    minimumMonthlyRate !== null &&
+    isBelowMinimumRate(ratePerSec, minimumMonthlyRate);
+
+  const mode: StreamMode =
+    activeTab === "back" &&
+    selectedMarkee !== null &&
+    selectedMarkee === backer.backerMarkee
+      ? "update"
+      : isBacking
+        ? "move"
+        : "open";
+  const funding = computeStreamFunding({
+    ratePerSec,
+    ethxBalance: backer.ethxBalance,
+    ethBalance: backer.ethBalance,
+    existingDeposit: backer.backerDeposit,
+  });
+  const netOutflowAfter =
+    ratePerSec - backer.accountNetFlowRate - backer.flowRateToBoard;
+  const runway = runwaySeconds(funding.prefund, netOutflowAfter);
+
+  const spendable = backer.ethBalance + backer.ethxBalance;
+  const targetIsTop =
+    activeTab === "back" &&
+    topEntry !== null &&
+    selectedMarkee === topEntry.address;
+  const targetRate =
+    activeTab === "back"
+      ? (selectedEntry?.rate ?? 0n) -
+        (mode === "update" ? backer.flowRateToBoard : 0n)
+      : 0n;
+  const presets = [
+    ...(minimumMonthly !== null
+      ? [{ label: "MIN", value: minimumMonthly }]
+      : []),
+    ...(isConnected && spendable > GAS_RESERVE_WEI
+      ? [
+          {
+            label: "MAX",
+            value: formatEthAmountInput(
+              maxMonthlyFor(spendable - GAS_RESERVE_WEI),
+            ),
+          },
+        ]
+      : []),
+    ...(topEntry !== null && minimumMonthlyRate !== null && !targetIsTop
+      ? [
+          {
+            label: "WIN",
+            value: formatEthAmountInput(
+              monthlyToWin(topEntry.rate, targetRate, minimumMonthlyRate),
+            ),
+          },
+        ]
+      : []),
+  ];
+
+  const isPending = pendingLabel !== "";
+  const isStreamReady =
+    !!cfaAgreement && !!gdaAgreement && backer.isLoaded && !!publicClient;
+  const isRateInvalid =
+    ratePerSec <= 0n ||
+    isBelowMinimum ||
+    funding.isInsufficient ||
+    (mode === "update" && ratePerSec === backer.flowRateToBoard);
   const isBuyDisabled =
-    isTxLoading ||
+    isPending ||
+    (isOnBase && (!isStreamReady || !message.trim() || isRateInvalid));
+  const isBackDisabled =
+    isPending ||
     (isOnBase &&
-      (isLowBalance ||
-        !message.trim() ||
-        buyAmountWei === null ||
-        buyAmountWei > balance ||
-        (minimumPrice !== null && buyAmountWei < minimumPrice)));
-  const isBoostDisabled =
-    isTxLoading ||
+      (!isStreamReady ||
+        selectedEntry === null ||
+        !selectedPool ||
+        selectedPool === ZERO_ADDRESS ||
+        isRateInvalid));
+  const isEditDisabled =
+    isPending ||
     (isOnBase &&
-      (selectedEntry === null ||
-        boostAmountWei === null ||
-        boostAmountWei === 0n ||
-        boostAmountWei > balance));
-
-  const isBoostListLoading =
-    isTopMarkeesLoading || (topMarkees.length > 0 && isMarkeeDetailsLoading);
+      (editEntry === null ||
+        !editText.trim() ||
+        editText.trim() === editEntry.message));
 
   const handleSelectTab = (key: string | null) => {
-    if (key === "buy" || key === "boost") {
-      resetWrite();
-      onSelectTab(key);
+    if (key === "buy" || key === "back" || key === "edit") {
+      setFlowError("");
+      setActiveTab(key);
     }
   };
 
-  const handleBuy = () => {
-    if (buyAmountWei === null) {
-      return;
+  const handleMessageChange = (value: string) => {
+    createdRef.current = null;
+    setMessage(value);
+  };
+
+  const runFlow = async (flow: () => Promise<`0x${string}` | undefined>) => {
+    setFlowError("");
+
+    try {
+      const hash = await flow();
+
+      setSuccessHash(hash ?? null);
+      onTxSuccess();
+    } catch (err) {
+      console.error(err);
+
+      if (err instanceof MarkeeFlowError) {
+        setFlowError(err.message);
+      }
     }
 
-    writeContract({
-      chainId: base.id,
-      address: FLOW_STATE_MARKEE_ADDRESS,
-      abi: markeeLeaderboardAbi,
-      functionName: "createMarkee",
-      args: [message.trim(), buyerName.trim()],
-      value: buyAmountWei,
+    setPendingLabel("");
+  };
+
+  const handleStream = () =>
+    runFlow(async () => {
+      if (!address || !publicClient || !cfaAgreement || !gdaAgreement) {
+        return;
+      }
+
+      let markee = selectedMarkee;
+      let pool = selectedPool ?? null;
+
+      if (activeTab === "buy") {
+        if (!createdRef.current) {
+          setPendingLabel("Creating message");
+
+          const receipts = await executeTransactions([
+            buildCreateMarkeeCall(message.trim(), buyerName.trim()),
+          ]);
+          const created = parseCreatedMarkee(receipts);
+
+          if (!created) {
+            throw new MarkeeFlowError(
+              "Could not find the new message on-chain, try again",
+            );
+          }
+
+          createdRef.current = {
+            markee: created,
+            pool: await waitForPool(publicClient, created),
+          };
+        }
+
+        markee = createdRef.current.markee;
+        pool = createdRef.current.pool;
+      }
+
+      if (!markee || !pool || pool === ZERO_ADDRESS) {
+        throw new MarkeeFlowError(
+          "The refund pool is not ready yet, try again",
+        );
+      }
+
+      setPendingLabel(
+        funding.depositTopUp > backer.allowance
+          ? "Approving deposit"
+          : "Starting stream",
+      );
+
+      const receipts = await executeTransactions(
+        buildStreamCalls({
+          mode,
+          backer: address,
+          markee,
+          pool,
+          ratePerSec,
+          depositTopUp: funding.depositTopUp,
+          wrapValue: funding.wrapValue,
+          cfaAgreement,
+          gdaAgreement,
+          allowance: backer.allowance,
+        }),
+      );
+
+      return receipts[receipts.length - 1]?.transactionHash;
     });
-  };
 
-  const handleBoost = () => {
-    if (boostAmountWei === null || selectedEntry === null) {
-      return;
-    }
+  const handleUpdateMessage = () =>
+    runFlow(async () => {
+      if (!editEntry) {
+        return;
+      }
 
-    writeContract({
-      chainId: base.id,
-      address: FLOW_STATE_MARKEE_ADDRESS,
-      abi: markeeLeaderboardAbi,
-      functionName: "addFunds",
-      args: [selectedEntry.address],
-      value: boostAmountWei,
+      setPendingLabel("Updating message");
+
+      const receipts = await executeTransactions([
+        buildUpdateMessageCall(editEntry.address, editText.trim()),
+      ]);
+
+      return receipts[receipts.length - 1]?.transactionHash;
     });
-  };
 
-  const errorAlert = writeError ? (
-    <Alert variant="danger" className="rounded-4 fs-sm p-3 mt-3 mb-0">
-      {writeError instanceof BaseError
-        ? writeError.shortMessage
-        : writeError.message}
-    </Alert>
-  ) : null;
+  const handleStopStream = () =>
+    runFlow(async () => {
+      setPendingLabel("Stopping stream");
+
+      const receipts = await executeTransactions([buildStopStreamCall()]);
+
+      return receipts[receipts.length - 1]?.transactionHash;
+    });
+
+  const handleWithdrawDeposit = () =>
+    runFlow(async () => {
+      setPendingLabel("Withdrawing deposit");
+
+      const receipts = await executeTransactions([buildWithdrawDepositCall()]);
+
+      return receipts[receipts.length - 1]?.transactionHash;
+    });
+
+  const handleAction = (action: () => void) =>
+    !isConnected
+      ? onConnectWallet()
+      : !isOnBase
+        ? switchChain({ chainId: MARKEE_CHAIN_ID })
+        : action();
+
+  const errorAlert =
+    transactionError || flowError ? (
+      <Alert variant="danger" className="rounded-4 fs-sm p-3 mt-3 mb-0">
+        {transactionError || flowError}
+      </Alert>
+    ) : null;
+
+  const submitLabel = (label: string) =>
+    isPending ? (
+      <>
+        <Spinner size="sm" className="me-2" />
+        {pendingLabel}
+      </>
+    ) : (
+      label
+    );
+
+  const rateSection = (
+    <RateSection
+      amount={monthlyAmount}
+      onAmountChange={setMonthlyAmount}
+      presets={presets}
+      placeholder={minimumMonthly ?? "0.0"}
+      isConnected={isConnected}
+      ethBalance={backer.ethBalance}
+      ethxBalance={backer.ethxBalance}
+      ratePerSec={ratePerSec}
+      funding={funding}
+      runway={runway}
+      isBelowMinimum={isBelowMinimum}
+      minimumMonthly={minimumMonthly}
+    />
+  );
 
   return (
     <Stack direction="vertical" className="p-4">
@@ -397,7 +561,7 @@ export default function MarkeeModal(props: MarkeeModalProps) {
         </Stack>
         <CloseButton onClick={onClose} />
       </Stack>
-      {isSuccess ? (
+      {successHash !== null ? (
         <Stack
           direction="vertical"
           gap={3}
@@ -406,7 +570,7 @@ export default function MarkeeModal(props: MarkeeModalProps) {
           <Image src="/check-circle.svg" alt="" width={64} height={64} />
           <span className="fs-4 fw-semi-bold">Transaction confirmed!</span>
           <a
-            href={`https://basescan.org/tx/${txHash}`}
+            href={`https://basescan.org/tx/${successHash}`}
             target="_blank"
             rel="noopener noreferrer"
             className="fw-semi-bold"
@@ -417,7 +581,7 @@ export default function MarkeeModal(props: MarkeeModalProps) {
         </Stack>
       ) : (
         <>
-          {topMessage && (
+          {topEntry !== null && (
             <div className="border border-2 border-dark rounded-4 p-3 mb-4">
               <span
                 className="d-block"
@@ -429,20 +593,31 @@ export default function MarkeeModal(props: MarkeeModalProps) {
                   overflowWrap: "anywhere",
                 }}
               >
-                {topMessage}
+                {flagged.has(flaggedKey(topEntry.address))
+                  ? "Content unavailable"
+                  : topEntry.message}
               </span>
-              {topMessageOwner && (
-                <span className="d-block text-secondary fs-sm mt-1">
-                  — {displayOwnerName(topMessageOwner)}
+              <Stack
+                direction="horizontal"
+                className="justify-content-between mt-1"
+              >
+                <span className="text-secondary fs-sm">
+                  - {displayOwnerName(topEntry.name || topEntry.owner)}
                 </span>
-              )}
+                <span className="fs-sm fw-semi-bold">
+                  {formatMonthlyRate(topEntry.rate)} ETH/mo
+                </span>
+              </Stack>
             </div>
           )}
           <Tab.Container activeKey={activeTab} onSelect={handleSelectTab}>
             <Nav className="gap-2 mb-4 border-0 flex-nowrap">
               {[
                 { key: "buy", label: "Buy a Message" },
-                { key: "boost", label: "Boost Existing Message" },
+                { key: "back", label: "Back a Message" },
+                ...(ownedEntries.length > 0
+                  ? [{ key: "edit", label: "Edit Message" }]
+                  : []),
               ].map(({ key, label }) => (
                 <Nav.Item key={key} className="flex-grow-1">
                   <Nav.Link
@@ -466,15 +641,15 @@ export default function MarkeeModal(props: MarkeeModalProps) {
                     as="textarea"
                     rows={3}
                     value={message}
-                    maxLength={maxMessageLength ?? undefined}
+                    maxLength={board.maxMessageLength ?? undefined}
                     placeholder="Your message"
                     className="bg-white border border-2 border-dark rounded-4 py-2 px-3"
                     style={{ fontFamily: MONOSPACE_FONT, textAlign: "left" }}
-                    onChange={(e) => onMessageChange(e.target.value)}
+                    onChange={(e) => handleMessageChange(e.target.value)}
                   />
-                  {maxMessageLength !== null && (
+                  {board.maxMessageLength !== null && (
                     <div className="text-end text-secondary fs-sm mt-1">
-                      {message.length}/{maxMessageLength}
+                      {message.length}/{board.maxMessageLength}
                     </div>
                   )}
                 </Form.Group>
@@ -485,84 +660,49 @@ export default function MarkeeModal(props: MarkeeModalProps) {
                   <Form.Control
                     type="text"
                     value={buyerName}
+                    maxLength={board.maxNameLength ?? undefined}
                     placeholder="Shown with your message"
                     className="bg-white border border-2 border-dark rounded-4 py-2 px-3"
-                    onChange={(e) => onBuyerNameChange(e.target.value)}
+                    onChange={(e) => setBuyerName(e.target.value)}
                   />
                 </Form.Group>
-                <AmountSection
-                  title="ETH Amount"
-                  amount={ethAmount}
-                  onAmountChange={onEthAmountChange}
-                  presets={[
-                    ...(takeTopSpotWei !== null
-                      ? [
-                          {
-                            label: `Take top spot (${formatEthDisplay(takeTopSpotWei)} ETH)`,
-                            value: formatEther(takeTopSpotWei),
-                          },
-                        ]
-                      : []),
-                    ...(minimumPrice !== null
-                      ? [
-                          {
-                            label: `Minimum (${formatEther(minimumPrice)} ETH)`,
-                            value: formatEther(minimumPrice),
-                          },
-                        ]
-                      : []),
-                  ]}
-                  placeholder={
-                    minimumPrice !== null ? formatEther(minimumPrice) : "0.0"
-                  }
-                  isConnected={isConnected}
-                  balance={balance}
-                />
-                {isLowBalance && minimumPrice !== null && (
-                  <Alert
-                    variant="warning"
-                    className="rounded-4 fs-sm p-3 mt-3 mb-0"
-                  >
-                    Your ETH balance on Base is below the minimum price of{" "}
-                    {formatEther(minimumPrice)} ETH.
-                  </Alert>
+                {rateSection}
+                {isBacking && (
+                  <p className="fs-sm text-secondary mt-3 mb-0">
+                    Your current stream to another message will be closed and
+                    redirected to the new one.
+                  </p>
                 )}
                 {errorAlert}
                 <Button
                   className="w-100 rounded-4 py-3 fw-semi-bold mt-4"
                   disabled={isBuyDisabled}
-                  onClick={() =>
-                    !isConnected
-                      ? onConnectWallet()
-                      : !isOnBase
-                        ? switchChain({ chainId: base.id })
-                        : handleBuy()
-                  }
+                  onClick={() => handleAction(handleStream)}
                 >
-                  {isTxLoading ? <Spinner size="sm" /> : "Buy Message"}
+                  {submitLabel("Start Streaming")}
                 </Button>
               </Tab.Pane>
-              <Tab.Pane eventKey="boost">
-                {isTopMarkeesError || isMarkeeDetailsError ? (
+              <Tab.Pane eventKey="back">
+                {board.isError ? (
                   <Alert variant="danger" className="rounded-4 fs-sm p-3">
                     Couldn&apos;t load the current messages. Please try again
                     later.
                   </Alert>
-                ) : isBoostListLoading ? (
+                ) : board.isLoading ? (
                   <div className="text-center py-5">
                     <Spinner />
                   </div>
-                ) : boostEntries.length === 0 ? (
+                ) : entries.length === 0 ? (
                   <p className="text-secondary py-3">No messages available.</p>
                 ) : (
                   <>
                     <Stack
                       direction="vertical"
                       gap={2}
-                      className="mb-3"
+                      className="mb-4"
                       style={{ maxHeight: 280, overflowY: "auto" }}
                     >
-                      {boostEntries.map((entry) => (
+                      {entries.map((entry) => (
                         <button
                           key={entry.address}
                           type="button"
@@ -572,8 +712,8 @@ export default function MarkeeModal(props: MarkeeModalProps) {
                               : ""
                           }`}
                           onClick={() => {
-                            resetWrite();
-                            onSelectMarkee(entry.address);
+                            setFlowError("");
+                            setSelectedMarkee(entry.address);
                           }}
                         >
                           <Stack
@@ -595,11 +735,22 @@ export default function MarkeeModal(props: MarkeeModalProps) {
                             >
                               {entry.message}
                             </span>
-                            {entry.address === topMarkeeOnChain && (
-                              <span className="bg-primary text-white fw-semi-bold rounded-pill px-2 fs-sm flex-shrink-0">
-                                #1
-                              </span>
-                            )}
+                            <Stack
+                              direction="horizontal"
+                              gap={1}
+                              className="flex-shrink-0"
+                            >
+                              {entry.address === backer.backerMarkee && (
+                                <span className="bg-secondary text-white fw-semi-bold rounded-pill px-2 fs-sm">
+                                  Backing
+                                </span>
+                              )}
+                              {entry.address === topEntry?.address && (
+                                <span className="bg-primary text-white fw-semi-bold rounded-pill px-2 fs-sm">
+                                  #1
+                                </span>
+                              )}
+                            </Stack>
                           </Stack>
                           <Stack
                             direction="horizontal"
@@ -608,81 +759,130 @@ export default function MarkeeModal(props: MarkeeModalProps) {
                             <span className="text-secondary fs-sm">
                               {entry.name
                                 ? displayOwnerName(entry.name)
-                                : truncateAddress(entry.address)}
+                                : truncateAddress(entry.owner)}
                             </span>
                             <span className="fs-sm fw-semi-bold">
-                              {formatEthDisplay(entry.funds)} ETH
+                              {formatMonthlyRate(entry.rate)} ETH/mo
                             </span>
                           </Stack>
                         </button>
                       ))}
                     </Stack>
-                    <p className="fs-sm mb-4">
-                      <a
-                        href={FLOW_STATE_MARKEE_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {boostEntries.length > 5
-                          ? "See more messages and edit messages you own."
-                          : "Edit messages you own on the Markee app."}
-                      </a>
-                    </p>
-                    {isSelectedTop && (
-                      <p className="fs-sm text-secondary mb-2">
-                        This message has the top spot. Add more funds to make it
-                        harder to reach.
+                    {rateSection}
+                    {mode === "update" && (
+                      <p className="fs-sm text-secondary mt-3 mb-0">
+                        You currently stream{" "}
+                        {formatMonthlyRate(backer.flowRateToBoard)} ETH/mo to
+                        this message.{" "}
+                        <Button
+                          variant="link"
+                          className="p-0 fs-sm align-baseline"
+                          disabled={isPending}
+                          onClick={() => handleAction(handleStopStream)}
+                        >
+                          Stop streaming
+                        </Button>
                       </p>
                     )}
-                    <AmountSection
-                      title="Amount to Pay"
-                      amount={boostAmount}
-                      onAmountChange={onBoostAmountChange}
-                      presets={
-                        boostTakeTopSpotWei !== null
-                          ? [
-                              {
-                                label: `Take top spot (${formatEthDisplay(boostTakeTopSpotWei)} ETH)`,
-                                value: formatEther(boostTakeTopSpotWei),
-                              },
-                            ]
-                          : []
-                      }
-                      placeholder="0.0"
-                      isConnected={isConnected}
-                      balance={balance}
-                    />
+                    {backer.flowRateToBoard === 0n &&
+                      backer.backerDeposit > 0n && (
+                        <p className="fs-sm text-secondary mt-3 mb-0">
+                          {formatEther(backer.backerDeposit)} ETHx of deposit is
+                          no longer backing a stream.{" "}
+                          <Button
+                            variant="link"
+                            className="p-0 fs-sm align-baseline"
+                            disabled={isPending}
+                            onClick={() => handleAction(handleWithdrawDeposit)}
+                          >
+                            Withdraw it
+                          </Button>
+                        </p>
+                      )}
+                    {mode === "move" && selectedEntry !== null && (
+                      <p className="fs-sm text-secondary mt-3 mb-0">
+                        Your current stream to another message will be closed
+                        and redirected to this one.
+                      </p>
+                    )}
                     {errorAlert}
                     <Button
                       className="w-100 rounded-4 py-3 fw-semi-bold mt-4"
-                      disabled={isBoostDisabled}
-                      onClick={() =>
-                        !isConnected
-                          ? onConnectWallet()
-                          : !isOnBase
-                            ? switchChain({ chainId: base.id })
-                            : handleBoost()
-                      }
+                      disabled={isBackDisabled}
+                      onClick={() => handleAction(handleStream)}
                     >
-                      {isTxLoading ? (
-                        <Spinner size="sm" />
-                      ) : (
-                        "Add Funds to this Message"
+                      {submitLabel(
+                        mode === "update" ? "Update Rate" : "Start Streaming",
                       )}
                     </Button>
                   </>
                 )}
               </Tab.Pane>
+              <Tab.Pane eventKey="edit">
+                {ownedEntries.length > 1 && (
+                  <Form.Group className="mb-4">
+                    <Form.Label className="fw-semi-bold">
+                      Your message
+                    </Form.Label>
+                    <Form.Select
+                      value={editMarkee ?? ""}
+                      className="bg-white border border-2 border-dark rounded-4 py-2 px-3"
+                      onChange={(e) => {
+                        const entry = ownedEntries.find(
+                          (owned) => owned.address === e.target.value,
+                        );
+
+                        if (entry) {
+                          setEditMarkee(entry.address);
+                          setEditText(entry.message);
+                        }
+                      }}
+                    >
+                      {ownedEntries.map((entry) => (
+                        <option key={entry.address} value={entry.address}>
+                          {entry.message}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                )}
+                <Form.Group>
+                  <Form.Label className="fw-semi-bold">New message</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    value={editText}
+                    maxLength={board.maxMessageLength ?? undefined}
+                    className="bg-white border border-2 border-dark rounded-4 py-2 px-3"
+                    style={{ fontFamily: MONOSPACE_FONT, textAlign: "left" }}
+                    onChange={(e) => setEditText(e.target.value)}
+                  />
+                  {board.maxMessageLength !== null && (
+                    <div className="text-end text-secondary fs-sm mt-1">
+                      {editText.length}/{board.maxMessageLength}
+                    </div>
+                  )}
+                </Form.Group>
+                {errorAlert}
+                <Button
+                  className="w-100 rounded-4 py-3 fw-semi-bold mt-4"
+                  disabled={isEditDisabled}
+                  onClick={() => handleAction(handleUpdateMessage)}
+                >
+                  {submitLabel("Update Message")}
+                </Button>
+              </Tab.Pane>
             </Tab.Content>
           </Tab.Container>
           <p className="text-center text-secondary fs-sm mt-4 mb-0">
-            You&apos;ll receive MARKEE tokens with your purchase and co-own the{" "}
+            Streams are paid in ETHx and stop when your balance runs out. Manage
+            your stream on the{" "}
             <a
               href={MARKEE_NETWORK_URL}
               target="_blank"
               rel="noopener noreferrer"
             >
-              Markee Network
+              Markee app
             </a>
             .
           </p>

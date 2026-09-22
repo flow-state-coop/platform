@@ -2,64 +2,50 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Stack from "react-bootstrap/Stack";
-import { Address, formatEther } from "viem";
+import Image from "react-bootstrap/Image";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import MarkeeModal, { MarkeeTab } from "./MarkeeModal";
+import { useMediaQuery } from "@/hooks/mediaQuery";
+import MarkeeModal from "./MarkeeModal";
+import { useMarkeeBoard } from "../hooks/markee";
 import {
   DEFAULT_TOP_MESSAGE,
   FLOW_STATE_MARKEE_ADDRESS,
-  MIN_INCREMENT,
-  MONOSPACE_FONT,
-  MarkeeLeaderboard,
+  MARKEE_VIEWS_URL,
+  MARKEE_WATERMARK_URL,
   displayOwnerName,
   flaggedKey,
-  parseFlowStateLeaderboard,
+  formatEthAmountInput,
+  monthlyToWin,
 } from "../lib/markee";
 
 // Give the Markee API time to index the confirmed transaction before refetching
 const REFRESH_DELAY_MS = 3000;
 
+type ViewsResponse = {
+  totalViews?: number;
+  [address: string]: { totalViews?: number } | number | undefined;
+};
+
 export default function MarkeeSign() {
-  const [leaderboard, setLeaderboard] = useState<MarkeeLeaderboard | null>(
-    null,
-  );
-  const [isLoading, setIsLoading] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [pendingReopenModal, setPendingReopenModal] = useState(false);
   const [flagged, setFlagged] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<MarkeeTab>("buy");
-  const [message, setMessage] = useState("");
-  const [buyerName, setBuyerName] = useState("");
-  const [ethAmount, setEthAmount] = useState("");
-  const [boostAmount, setBoostAmount] = useState("");
-  const [selectedMarkee, setSelectedMarkee] = useState<Address | null>(null);
+  const [viewCount, setViewCount] = useState<number | null>(null);
+  const [modalKey, setModalKey] = useState(0);
 
   const dialogRef = useRef<HTMLDialogElement>(null);
   const pendingReopenRef = useRef(false);
   const hasTxSucceededRef = useRef(false);
   const trackedViewsRef = useRef<Set<string>>(new Set());
 
+  const board = useMarkeeBoard();
+  const { isMobile } = useMediaQuery();
   const { openConnectModal, connectModalOpen } = useConnectModal();
 
-  const fetchLeaderboard = useCallback(async () => {
-    const res = await fetch("/api/markee/leaderboards").catch(() => null);
-
-    if (res?.ok) {
-      const data = await res.json().catch(() => null);
-      const parsed = parseFlowStateLeaderboard(data);
-
-      if (parsed) {
-        setLeaderboard(parsed);
-      }
-    }
-
-    setIsLoading(false);
-  }, []);
-
-  useEffect(() => {
-    fetchLeaderboard();
-  }, [fetchLeaderboard]);
+  const topEntry = board.topEntry;
+  const topAddress = topEntry?.address ?? null;
+  const topMessage = topEntry?.message ?? null;
 
   useEffect(() => {
     fetch("/api/markee/moderation")
@@ -77,24 +63,42 @@ export default function MarkeeSign() {
   }, []);
 
   useEffect(() => {
-    if (
-      !leaderboard?.topMessage ||
-      !leaderboard.topMarkeeAddress ||
-      trackedViewsRef.current.has(leaderboard.topMarkeeAddress)
-    ) {
+    if (!topAddress || !topMessage) {
       return;
     }
 
-    trackedViewsRef.current.add(leaderboard.topMarkeeAddress);
-    fetch("/api/markee/views", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        address: leaderboard.topMarkeeAddress,
-        message: leaderboard.topMessage,
-      }),
-    }).catch(() => {});
-  }, [leaderboard]);
+    const key = topAddress.toLowerCase();
+    const applyCount = (data: ViewsResponse | null) => {
+      const count =
+        typeof data?.totalViews === "number"
+          ? data.totalViews
+          : typeof data?.[key] === "object"
+            ? data[key]?.totalViews
+            : undefined;
+
+      if (typeof count === "number") {
+        setViewCount(count);
+      }
+    };
+
+    const request = trackedViewsRef.current.has(key)
+      ? fetch(`${MARKEE_VIEWS_URL}?addresses=${key}`)
+      : fetch(MARKEE_VIEWS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            address: topAddress,
+            message: topMessage,
+            url: window.location.origin,
+          }),
+        });
+
+    trackedViewsRef.current.add(key);
+    request
+      .then((res) => (res.ok ? res.json() : null))
+      .then(applyCount)
+      .catch(() => {});
+  }, [topAddress, topMessage]);
 
   useEffect(() => {
     if (pendingReopenModal && !connectModalOpen) {
@@ -137,100 +141,142 @@ export default function MarkeeSign() {
 
     if (hasTxSucceededRef.current) {
       hasTxSucceededRef.current = false;
-      setActiveTab("buy");
-      setMessage("");
-      setBuyerName("");
-      setEthAmount("");
-      setBoostAmount("");
-      setSelectedMarkee(null);
-      setTimeout(fetchLeaderboard, REFRESH_DELAY_MS);
+      setModalKey((key) => key + 1);
+      setTimeout(board.refetch, REFRESH_DELAY_MS);
     }
   };
 
-  const hasTopMessage = leaderboard !== null && leaderboard.topMessage !== "";
   const isTopFlagged =
-    leaderboard !== null &&
-    leaderboard.topMarkeeAddress !== "" &&
-    flagged.has(flaggedKey(leaderboard.topMarkeeAddress));
-  const takeTopSpotWei =
-    leaderboard !== null
-      ? leaderboard.topFundsAdded > 0n
-        ? leaderboard.topFundsAdded + MIN_INCREMENT
-        : leaderboard.minimumPrice
-      : null;
-  const priceBadge =
-    leaderboard !== null && takeTopSpotWei !== null
-      ? hasTopMessage
-        ? `${parseFloat(formatEther(takeTopSpotWei)).toFixed(3)} ETH to change`
-        : "be first!"
-      : null;
+    topEntry !== null && flagged.has(flaggedKey(topEntry.address));
+  const priceBadge = board.isLoading
+    ? null
+    : topEntry !== null && board.minimumMonthlyRate !== null
+      ? `${formatEthAmountInput(
+          monthlyToWin(topEntry.rate, 0n, board.minimumMonthlyRate),
+        )} ETH/mo to back`
+      : "be first!";
   const displayMessage = isTopFlagged
     ? "Content unavailable"
-    : hasTopMessage
-      ? leaderboard.topMessage
-      : DEFAULT_TOP_MESSAGE;
+    : (topEntry?.message ?? DEFAULT_TOP_MESSAGE);
   const ownerName =
-    !isTopFlagged && hasTopMessage && leaderboard.topMessageOwner
-      ? displayOwnerName(leaderboard.topMessageOwner)
+    !isTopFlagged && topEntry !== null
+      ? displayOwnerName(topEntry.name || topEntry.owner)
       : null;
 
   return (
-    <div data-markee-address={FLOW_STATE_MARKEE_ADDRESS}>
+    <div data-markee-address={FLOW_STATE_MARKEE_ADDRESS} className="mb-8">
       <button
         type="button"
-        disabled={isLoading}
-        className="d-block w-100 text-start text-dark bg-transparent border border-2 border-dark rounded-4 shadow-sm px-3 py-2 mb-4"
+        disabled={board.isLoading}
+        className="d-block w-100 text-start text-dark bg-white border rounded-4 px-4 pt-3 pb-4"
+        style={{
+          position: "relative",
+          zIndex: 0,
+          borderColor: isHovered ? "var(--bs-primary)" : "rgba(3, 3, 3, 0.2)",
+          transform: isHovered ? "translateY(-2px)" : "none",
+          boxShadow: isHovered ? "var(--bs-box-shadow)" : "none",
+          transition: "border-color 220ms, transform 220ms, box-shadow 220ms",
+        }}
         onClick={handleOpenModal}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <Stack direction="vertical" gap={1}>
-          <Stack
-            direction="horizontal"
-            gap={2}
-            className="justify-content-between align-items-center"
-          >
-            <span className="fw-bold" style={{ fontSize: 13 }}>
-              <span className="me-1" style={{ fontSize: 15 }}>
-                📣
-              </span>
-              Flow State Markee
-            </span>
-            {priceBadge && (
-              <span
-                className="bg-primary text-white fw-semi-bold rounded-pill px-3 py-1 text-nowrap flex-shrink-0"
-                style={{
-                  fontSize: 12,
-                  opacity: isHovered ? 1 : 0,
-                  transition: "opacity 0.15s ease-in-out",
-                }}
-              >
-                {priceBadge}
-              </span>
-            )}
-          </Stack>
-          <span
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            overflow: "hidden",
+            borderRadius: "inherit",
+            pointerEvents: "none",
+            zIndex: -1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Image
+            src={MARKEE_WATERMARK_URL}
+            alt=""
+            aria-hidden
             style={{
-              fontFamily: MONOSPACE_FONT,
-              fontSize: 14,
-              lineHeight: 1.5,
-              display: "-webkit-box",
-              WebkitLineClamp: 4,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-              overflowWrap: "anywhere",
-              whiteSpace: "pre-wrap",
-              maxHeight: "6em",
+              height: "100%",
+              width: "auto",
+              opacity: isHovered ? 0.16 : 0,
+              transition: "opacity 220ms",
             }}
-          >
-            {displayMessage}
+          />
+        </div>
+        <Stack
+          direction="horizontal"
+          className="justify-content-between align-items-center"
+        >
+          <span className="fw-bold" style={{ fontSize: 13 }}>
+            <span className="me-1" style={{ fontSize: 15 }}>
+              📣
+            </span>
+            Flow State Markee
           </span>
-          {ownerName && (
-            <span className="text-secondary" style={{ fontSize: 12 }}>
-              — {ownerName}
+          {viewCount !== null && (
+            <span
+              className="d-flex align-items-center gap-1 text-secondary"
+              style={{ fontSize: 12 }}
+            >
+              <Image
+                src="/view.svg"
+                alt="views"
+                width={16}
+                height={16}
+                style={{ opacity: 0.6 }}
+              />
+              {viewCount}
             </span>
           )}
         </Stack>
+        <span
+          className="d-block fw-bold mt-2"
+          style={{
+            fontSize: isMobile ? 22 : 28,
+            lineHeight: 1.2,
+            backgroundImage:
+              "linear-gradient(90deg, var(--bs-dark), var(--bs-primary))",
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            color: "transparent",
+            display: "-webkit-box",
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            overflowWrap: "anywhere",
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {displayMessage}
+        </span>
+        {ownerName && (
+          <span
+            className="d-block text-end text-secondary mt-2"
+            style={{ fontSize: 13 }}
+          >
+            - {ownerName}
+          </span>
+        )}
+        {priceBadge && (
+          <span
+            className="bg-primary text-white fw-semi-bold rounded-pill px-3 py-1 text-nowrap"
+            style={{
+              position: "absolute",
+              left: "50%",
+              bottom: -14,
+              fontSize: 12,
+              opacity: isHovered ? 1 : 0,
+              transform: `translate(-50%, ${isHovered ? 0 : 6}px)`,
+              transition: "opacity 220ms, transform 220ms",
+              pointerEvents: "none",
+            }}
+          >
+            {priceBadge}
+          </span>
+        )}
       </button>
       <dialog
         ref={dialogRef}
@@ -238,29 +284,15 @@ export default function MarkeeSign() {
         className="markee-dialog border-0 rounded-4 p-0 shadow"
         style={{ width: "min(620px, 94vw)", maxHeight: "90vh" }}
       >
-        {isModalOpen && (
-          <MarkeeModal
-            topMessage={leaderboard?.topMessage ?? ""}
-            topMessageOwner={leaderboard?.topMessageOwner ?? ""}
-            takeTopSpotWei={hasTopMessage ? takeTopSpotWei : null}
-            activeTab={activeTab}
-            onSelectTab={setActiveTab}
-            message={message}
-            onMessageChange={setMessage}
-            buyerName={buyerName}
-            onBuyerNameChange={setBuyerName}
-            ethAmount={ethAmount}
-            onEthAmountChange={setEthAmount}
-            boostAmount={boostAmount}
-            onBoostAmountChange={setBoostAmount}
-            selectedMarkee={selectedMarkee}
-            onSelectMarkee={setSelectedMarkee}
-            flagged={flagged}
-            onConnectWallet={handleConnectWallet}
-            onClose={handleRequestClose}
-            onTxSuccess={handleTxSuccess}
-          />
-        )}
+        <MarkeeModal
+          key={modalKey}
+          isOpen={isModalOpen}
+          board={board}
+          flagged={flagged}
+          onConnectWallet={handleConnectWallet}
+          onClose={handleRequestClose}
+          onTxSuccess={handleTxSuccess}
+        />
       </dialog>
     </div>
   );
