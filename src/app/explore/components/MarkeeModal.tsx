@@ -232,7 +232,9 @@ export default function MarkeeModal(props: MarkeeModalProps) {
   const [flowError, setFlowError] = useState("");
   const [successHash, setSuccessHash] = useState<string | null>(null);
 
-  const createdRef = useRef<{ markee: Address; pool: Address } | null>(null);
+  const createdRef = useRef<{ markee: Address; pool: Address | null } | null>(
+    null,
+  );
 
   const { address, isConnected, chainId } = useAccount();
   const isOnBase = isConnected && chainId === MARKEE_CHAIN_ID;
@@ -437,10 +439,15 @@ export default function MarkeeModal(props: MarkeeModalProps) {
             );
           }
 
-          createdRef.current = {
-            markee: created,
-            pool: await waitForPool(publicClient, created),
-          };
+          createdRef.current = { markee: created, pool: null };
+        }
+
+        if (createdRef.current.pool === null) {
+          setPendingLabel("Creating message");
+          createdRef.current.pool = await waitForPool(
+            publicClient,
+            createdRef.current.markee,
+          );
         }
 
         markee = createdRef.current.markee;
