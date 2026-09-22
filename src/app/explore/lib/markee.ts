@@ -54,6 +54,7 @@ export const GAS_RESERVE_WEI = parseEther("0.001");
 const SECONDS_IN_MONTH_WEI = BigInt(SECONDS_IN_MONTH);
 const MICRO_ETH = parseEther("0.000001");
 const THOUSANDTH_ETH = parseEther("0.001");
+const SECONDS_IN_HOUR = 3600n;
 const SECONDS_IN_DAY = 86400n;
 
 export type MarkeeEntry = {
@@ -151,7 +152,13 @@ export function formatRunway(seconds: bigint | null) {
     return `~${days} day${days === 1n ? "" : "s"} at this rate`;
   }
 
-  return `~${seconds / 3600n} hours at this rate`;
+  const hours = seconds / SECONDS_IN_HOUR;
+
+  if (hours >= 1n) {
+    return `~${hours} hour${hours === 1n ? "" : "s"} at this rate`;
+  }
+
+  return "less than an hour at this rate";
 }
 
 export function formatEthAmountInput(wei: bigint) {

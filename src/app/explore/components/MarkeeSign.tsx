@@ -21,10 +21,10 @@ import {
 // Give the Markee API time to index the confirmed transaction before refetching
 const REFRESH_DELAY_MS = 3000;
 
-type ViewsResponse = {
-  totalViews?: number;
-  [address: string]: { totalViews?: number } | number | undefined;
-};
+// POST answers with the tracked markee's totals, GET keys them by address
+type ViewsTotal = { totalViews?: number };
+type ViewsByAddress = Record<string, ViewsTotal | undefined>;
+type ViewsResponse = ViewsTotal | ViewsByAddress;
 
 export default function MarkeeSign() {
   const [isHovered, setIsHovered] = useState(false);
@@ -69,15 +69,13 @@ export default function MarkeeSign() {
 
     const key = topAddress.toLowerCase();
     const applyCount = (data: ViewsResponse | null) => {
-      const count =
-        typeof data?.totalViews === "number"
-          ? data.totalViews
-          : typeof data?.[key] === "object"
-            ? data[key]?.totalViews
-            : undefined;
+      const totals =
+        data && key in data
+          ? (data as ViewsByAddress)[key]
+          : (data as ViewsTotal | null);
 
-      if (typeof count === "number") {
-        setViewCount(count);
+      if (typeof totals?.totalViews === "number") {
+        setViewCount(totals.totalViews);
       }
     };
 

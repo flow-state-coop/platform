@@ -398,8 +398,10 @@ export default function MarkeeModal(props: MarkeeModalProps) {
     try {
       const hash = await flow();
 
-      setSuccessHash(hash ?? null);
-      onTxSuccess();
+      if (hash) {
+        setSuccessHash(hash);
+        onTxSuccess();
+      }
     } catch (err) {
       console.error(err);
 
