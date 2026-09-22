@@ -410,9 +410,9 @@ export default function MarkeeModal(props: MarkeeModalProps) {
       if (err instanceof MarkeeFlowError) {
         setFlowError(err.message);
       }
+    } finally {
+      setPendingLabel("");
     }
-
-    setPendingLabel("");
   };
 
   const handleStream = () =>
