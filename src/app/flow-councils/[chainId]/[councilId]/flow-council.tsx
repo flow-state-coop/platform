@@ -14,6 +14,7 @@ import PoolConnectionButton from "@/components/PoolConnectionButton";
 import GranteeCard from "@/app/flow-councils/components/GranteeCard";
 import GranteeCardSkeleton from "@/app/flow-councils/components/GranteeCardSkeleton";
 import FeedTab from "@/app/flow-councils/components/FeedTab";
+import PastSeasonsTab from "@/app/flow-councils/components/PastSeasonsTab";
 import RoundBanner from "@/app/flow-councils/components/RoundBanner";
 import RoundBannerSkeleton from "@/app/flow-councils/components/RoundBannerSkeleton";
 import SupCampaignBanner from "@/app/flow-councils/components/SupCampaignBanner";
@@ -62,7 +63,7 @@ export default function FlowCouncil({
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
-  const { isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
+  const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
   const {
     currentBallot,
@@ -96,6 +97,10 @@ export default function FlowCouncil({
   const isGoodBuildersS4 =
     chainId === CELO_CHAIN_ID &&
     councilId.toLowerCase() === GOODBUILDERS_S4_COUNCIL_ADDRESS;
+  const isTabRowCompact = isGoodBuildersS4 && isMobile;
+  const tabItemClassName = isTabRowCompact ? "flex-fill" : "";
+  const tabLinkClassName = `py-3 rounded-4 fw-bold text-center border border-2 border-primary ${isTabRowCompact ? "px-2 fs-6" : "fs-lg"}`;
+  const tabLinkStyle = isTabRowCompact ? undefined : { minWidth: 140 };
 
   const getGrantee = useCallback(
     (recipient: {
@@ -350,25 +355,38 @@ export default function FlowCouncil({
           activeKey={selectedTab}
           onSelect={(key) => setSelectedTab(key ?? "grantees")}
         >
-          <Nav className="pt-8 pb-6 fs-6 gap-2">
-            <Nav.Item>
+          <Nav
+            className={`pt-8 pb-6 fs-6 gap-2 ${isTabRowCompact ? "flex-nowrap" : ""}`}
+          >
+            <Nav.Item className={tabItemClassName}>
               <Nav.Link
                 eventKey="grantees"
-                className={`py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${selectedTab === "grantees" ? "bg-primary text-white" : "bg-white text-primary"}`}
-                style={{ width: 140 }}
+                className={`${tabLinkClassName} ${selectedTab === "grantees" ? "bg-primary text-white" : "bg-white text-primary"}`}
+                style={tabLinkStyle}
               >
                 Grantees
               </Nav.Link>
             </Nav.Item>
-            <Nav.Item>
+            <Nav.Item className={tabItemClassName}>
               <Nav.Link
                 eventKey="feed"
-                className={`py-3 rounded-4 fs-lg fw-bold text-center border border-2 border-primary ${selectedTab === "feed" ? "bg-primary text-white" : "bg-white text-primary"}`}
-                style={{ width: 140 }}
+                className={`${tabLinkClassName} ${selectedTab === "feed" ? "bg-primary text-white" : "bg-white text-primary"}`}
+                style={tabLinkStyle}
               >
                 Feed
               </Nav.Link>
             </Nav.Item>
+            {isGoodBuildersS4 && (
+              <Nav.Item className={tabItemClassName}>
+                <Nav.Link
+                  eventKey="past-seasons"
+                  className={`${tabLinkClassName} ${selectedTab === "past-seasons" ? "bg-primary text-white" : "bg-white text-primary"}`}
+                  style={tabLinkStyle}
+                >
+                  Past seasons
+                </Nav.Link>
+              </Nav.Item>
+            )}
           </Nav>
           <Tab.Content>
             <Tab.Pane eventKey="grantees">
@@ -458,6 +476,11 @@ export default function FlowCouncil({
             <Tab.Pane eventKey="feed">
               <FeedTab chainId={chainId} councilId={councilId} />
             </Tab.Pane>
+            {isGoodBuildersS4 && (
+              <Tab.Pane eventKey="past-seasons" mountOnEnter>
+                <PastSeasonsTab chainId={chainId} tokenSymbol={token.symbol} />
+              </Tab.Pane>
+            )}
           </Tab.Content>
         </Tab.Container>
       </Stack>
