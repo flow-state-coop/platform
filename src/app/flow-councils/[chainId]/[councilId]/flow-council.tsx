@@ -330,6 +330,7 @@ export default function FlowCouncil({
       <Stack
         direction="vertical"
         className="px-2 pt-10 pb-30 px-lg-30 px-xxl-52"
+        style={{ minWidth: 0 }}
         onMouseUp={clearZeroVotes}
         onTouchEnd={clearZeroVotes}
       >
