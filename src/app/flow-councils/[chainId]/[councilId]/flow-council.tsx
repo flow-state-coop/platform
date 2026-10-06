@@ -345,10 +345,13 @@ export default function FlowCouncil({
             councilId={councilId}
             distributionTokenInfo={token}
             distributionPool={distributionPool}
-            showDistributionPoolFunding={() =>
-              address
-                ? setShowDistributionPoolFunding(true)
-                : openConnectModal?.()
+            showDistributionPoolFunding={
+              isGoodBuildersS4
+                ? undefined
+                : () =>
+                    address
+                      ? setShowDistributionPoolFunding(true)
+                      : openConnectModal?.()
             }
           />
         )}

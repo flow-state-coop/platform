@@ -24,7 +24,7 @@ type PoolInfoProps = {
   councilId: string;
   distributionTokenInfo: Token;
   distributionPool?: GDAPool;
-  showDistributionPoolFunding: () => void;
+  showDistributionPoolFunding?: () => void;
 };
 
 export default function PoolInfo(props: PoolInfoProps) {
@@ -157,14 +157,16 @@ export default function PoolInfo(props: PoolInfoProps) {
         gap={4}
         className="justify-content-end align-items-start w-100 mt-8"
       >
-        <Button
-          variant="secondary"
-          className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
-          style={{ width: isMobile ? "100%" : 240 }}
-          onClick={showDistributionPoolFunding}
-        >
-          Grow the Pie
-        </Button>
+        {showDistributionPoolFunding && (
+          <Button
+            variant="secondary"
+            className="py-4 text-light rounded-4 fs-lg fw-semi-bold"
+            style={{ width: isMobile ? "100%" : 240 }}
+            onClick={showDistributionPoolFunding}
+          >
+            Grow the Pie
+          </Button>
+        )}
         <VoterEligibility
           chainId={chainId}
           councilId={councilId}
