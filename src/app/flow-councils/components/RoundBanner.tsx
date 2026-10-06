@@ -1,5 +1,5 @@
 import { formatEther } from "viem";
-import { useAccount } from "wagmi";
+import { useAccount, useReadContract } from "wagmi";
 import removeMarkdown from "remove-markdown";
 import Stack from "react-bootstrap/Stack";
 import Card from "react-bootstrap/Card";
@@ -16,6 +16,7 @@ import { networks } from "@/lib/networks";
 import { formatNumber } from "@/lib/utils";
 import { SECONDS_IN_MONTH } from "@/lib/constants";
 import VoterEligibility from "./VoterEligibility";
+import { superAppSplitterAbi } from "@/lib/abi/superAppSplitter";
 
 type PoolInfoProps = {
   name: string;
@@ -43,9 +44,19 @@ export default function PoolInfo(props: PoolInfoProps) {
   const { isMobile } = useMediaQuery();
   const { address } = useAccount();
 
-  const poolFlowRate = superAppFunderData
-    ? BigInt(superAppFunderData.totalInflowRate)
-    : BigInt(distributionPool?.flowRate ?? 0);
+  const { data: isSplitterRoundClosed } = useReadContract({
+    chainId,
+    address: councilMetadata.superappSplitterAddress ?? undefined,
+    abi: superAppSplitterAbi,
+    functionName: "isRoundClosed",
+    query: { enabled: !!councilMetadata.superappSplitterAddress },
+  });
+
+  const poolFlowRate = isSplitterRoundClosed
+    ? BigInt(0)
+    : superAppFunderData
+      ? BigInt(superAppFunderData.totalInflowRate)
+      : BigInt(distributionPool?.flowRate ?? 0);
   const poolMonthly = poolFlowRate * BigInt(SECONDS_IN_MONTH);
   const poolTotal = useFlowingAmount(
     superAppFunderData
@@ -58,9 +69,11 @@ export default function PoolInfo(props: PoolInfoProps) {
       : (distributionPool?.updatedAtTimestamp ?? 0),
     poolFlowRate,
   );
-  const funderCount = superAppFunderData
-    ? superAppFunderData.funderCount
-    : (distributionPool?.poolDistributors.length ?? 0);
+  const funderCount = isSplitterRoundClosed
+    ? 0
+    : superAppFunderData
+      ? superAppFunderData.funderCount
+      : (distributionPool?.poolDistributors.length ?? 0);
   const recipient = council?.recipients.find(
     (recipient: { account: string }) =>
       recipient.account === address?.toLowerCase(),

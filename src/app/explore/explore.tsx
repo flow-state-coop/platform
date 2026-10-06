@@ -97,20 +97,6 @@ export default function Explore(props: ExploreProps) {
           }}
         >
           <RoundCard
-            name="GoodBuilders S4"
-            image="/good-dollar.png"
-            roundType="Flow Council"
-            totalStreamedUntilUpdatedAt={
-              goodBuildersS4FlowInfo.totalStreamedUntilUpdatedAt
-            }
-            flowRate={goodBuildersS4FlowInfo.flowRate}
-            updatedAt={goodBuildersS4FlowInfo.updatedAt}
-            activeStreamCount={goodBuildersS4FlowInfo.funderCount}
-            tokenSymbol="G$"
-            link="/goodbuilders-4"
-            showSupRewards
-          />
-          <RoundCard
             name="Core Contributors"
             image="/logo-blue.svg"
             roundType="Flow Guild"
@@ -159,6 +145,19 @@ export default function Explore(props: ExploreProps) {
                   : "",
           }}
         >
+          <RoundCard
+            name="GoodBuilders S4"
+            image="/good-dollar.png"
+            roundType="Flow Council"
+            totalStreamedUntilUpdatedAt={
+              goodBuildersS4FlowInfo.totalStreamedUntilUpdatedAt
+            }
+            flowRate="0"
+            updatedAt={goodBuildersS4FlowInfo.updatedAt}
+            activeStreamCount={0}
+            tokenSymbol="G$"
+            link="/goodbuilders-4"
+          />
           <RoundCard
             name="Guild Guild"
             image="/guild-guild.png"

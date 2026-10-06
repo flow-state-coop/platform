@@ -17,7 +17,6 @@ import FeedTab from "@/app/flow-councils/components/FeedTab";
 import PastSeasonsTab from "@/app/flow-councils/components/PastSeasonsTab";
 import RoundBanner from "@/app/flow-councils/components/RoundBanner";
 import RoundBannerSkeleton from "@/app/flow-councils/components/RoundBannerSkeleton";
-import SupCampaignBanner from "@/app/flow-councils/components/SupCampaignBanner";
 import GranteeDetails from "@/app/flow-councils/components/GranteeDetails";
 import Ballot from "@/app/flow-councils/components/Ballot";
 import DistributionPoolFunding from "@/app/flow-councils/components/DistributionPoolFunding";
@@ -334,7 +333,6 @@ export default function FlowCouncil({
         onMouseUp={clearZeroVotes}
         onTouchEnd={clearZeroVotes}
       >
-        {isGoodBuildersS4 && <SupCampaignBanner />}
         {isRoundLoading ? (
           <RoundBannerSkeleton />
         ) : (
