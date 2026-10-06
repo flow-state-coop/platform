@@ -5,6 +5,7 @@ import { useReadContracts } from "wagmi";
 import type { Address } from "viem";
 import { Network } from "@/types/network";
 import { getApolloClient } from "@/lib/apollo";
+import { CELO_CHAIN_ID } from "@/app/flow-councils/lib/constants";
 import {
   type IndexedSuperAppFunders,
   type SuperAppFunderData,
@@ -15,6 +16,8 @@ import {
 } from "@/lib/superAppFunders";
 
 export type { SuperAppFunderData };
+
+const UNRELIABLE_INDEXER_CHAIN_IDS = [CELO_CHAIN_ID];
 
 const SUPER_APP_FUNDERS_QUERY = gql`
   query SuperAppFundersQuery($superApp: ID!, $token: String!) {
@@ -63,6 +66,8 @@ export default function useSuperAppFundersQuery(
   pool?: SuperAppPoolTotals,
 ): SuperAppFunderData | undefined {
   const isEnabled = !!superAppAddress && !!tokenAddress && enabled;
+  const shouldVerifyOnChain =
+    isEnabled && UNRELIABLE_INDEXER_CHAIN_IDS.includes(network.id);
 
   const { data } = useApolloQuery(SUPER_APP_FUNDERS_QUERY, {
     client: getApolloClient("superfluid", network.id),
@@ -78,7 +83,7 @@ export default function useSuperAppFundersQuery(
     queryKey: ["superAppSenders", network.id, superAppAddress, tokenAddress],
     queryFn: () =>
       fetchExplorerSenders(network.id, superAppAddress!, tokenAddress!),
-    enabled: isEnabled,
+    enabled: shouldVerifyOnChain,
     staleTime: 60_000,
   });
 
@@ -117,7 +122,7 @@ export default function useSuperAppFundersQuery(
 
   const { data: reads } = useReadContracts({
     contracts:
-      isEnabled && superAppAddress && tokenAddress
+      shouldVerifyOnChain && superAppAddress && tokenAddress
         ? superAppFunderReads({
             network,
             splitterAddress: superAppAddress as Address,
@@ -125,7 +130,7 @@ export default function useSuperAppFundersQuery(
             senders,
           })
         : [],
-    query: { enabled: isEnabled, refetchInterval: 10000 },
+    query: { enabled: shouldVerifyOnChain, refetchInterval: 60_000 },
   });
 
   return useMemo(

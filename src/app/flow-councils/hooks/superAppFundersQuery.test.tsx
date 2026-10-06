@@ -103,6 +103,24 @@ describe("useSuperAppFundersQuery", () => {
     });
   });
 
+  it("trusts the index on chains where it is reliable", () => {
+    (useReadContracts as Mock).mockReturnValue({ data: undefined });
+    const base = networks.find((n) => n.id === 8453)!;
+
+    const { result } = renderHook(() =>
+      useSuperAppFundersQuery(base, splitter, token, true, pool),
+    );
+
+    expect((useFetchQuery as Mock).mock.calls.at(-1)![0].enabled).toBe(false);
+    expect((useReadContracts as Mock).mock.calls.at(-1)![0].query.enabled).toBe(
+      false,
+    );
+    expect(result.current).toMatchObject({
+      totalInflowRate: "10",
+      funderCount: 2,
+    });
+  });
+
   it("skips every query when disabled or the splitter is missing", () => {
     (useReadContracts as Mock).mockReturnValue({ data: undefined });
 
