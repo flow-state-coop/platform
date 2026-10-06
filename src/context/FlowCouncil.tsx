@@ -287,11 +287,25 @@ function FlowCouncilContextProviderInner({
     symbol: distributionPool?.token.symbol ?? "",
     icon: "",
   };
+  const poolTotalDistributed =
+    distributionPool?.totalAmountFlowedDistributedUntilUpdatedAt;
+  const poolUpdatedAt = distributionPool?.updatedAtTimestamp;
+  const superAppPoolTotals = useMemo(
+    () =>
+      poolTotalDistributed !== undefined && poolUpdatedAt !== undefined
+        ? {
+            totalAmountFlowedDistributedUntilUpdatedAt: poolTotalDistributed,
+            updatedAtTimestamp: Number(poolUpdatedAt),
+          }
+        : undefined,
+    [poolTotalDistributed, poolUpdatedAt],
+  );
   const superAppFunderData = useSuperAppFundersQuery(
     network,
     councilMetadata.superappSplitterAddress,
     token.address,
     isVotingPage,
+    superAppPoolTotals,
   );
 
   const [newBallot, dispatchNewBallot] = useReducer(newBallotReducer, {

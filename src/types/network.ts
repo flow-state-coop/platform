@@ -8,6 +8,7 @@ export type Network = {
   icon: string;
   rpcUrl: string;
   blockExplorer: string;
+  explorerApi: string;
   superfluidExplorer: string;
   superfluidDashboard: string;
   superfluidSubgraph: string;

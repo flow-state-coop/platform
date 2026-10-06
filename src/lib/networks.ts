@@ -61,6 +61,7 @@ const networks: Network[] = [
     icon: "/arb.svg",
     rpcUrl: "https://arb1.arbitrum.io/rpc",
     blockExplorer: "https://arbiscan.io/",
+    explorerApi: "https://arbitrum.blockscout.com/api",
     superfluidExplorer: "https://explorer.superfluid.finance/arbitrum-one",
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
@@ -111,6 +112,7 @@ const networks: Network[] = [
     label: "base",
     icon: "/base.svg",
     blockExplorer: "https://basescan.org",
+    explorerApi: "https://base.blockscout.com/api",
     // publicnode bills eth_getTransactionReceipt as an archive call and refuses
     // it without a token, even for a block mined seconds ago, which breaks
     // every receipt read on this chain. Any replacement must serve receipts.
@@ -155,6 +157,7 @@ const networks: Network[] = [
     label: "celo",
     icon: "/celo.svg",
     blockExplorer: "https://celoscan.io",
+    explorerApi: "https://celo.blockscout.com/api",
     rpcUrl: "https://forno.celo.org",
     superfluidExplorer: "https://explorer.superfluid.finance/celo",
     superfluidDashboard: "https://app.superfluid.finance",
@@ -195,6 +198,7 @@ const networks: Network[] = [
     icon: "/optimism.svg",
     rpcUrl: "https://optimism-rpc.publicnode.com",
     blockExplorer: "https://optimistic.etherscan.io",
+    explorerApi: "https://explorer.optimism.io/api",
     superfluidExplorer: "https://explorer.superfluid.finance/optimism-mainnet",
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
@@ -246,6 +250,7 @@ const networks: Network[] = [
     icon: "/optimism.svg",
     rpcUrl: "https://optimism-sepolia-rpc.publicnode.com",
     blockExplorer: "https://sepolia-optimism.etherscan.io",
+    explorerApi: "https://testnet-explorer.optimism.io/api",
     superfluidExplorer: "https://explorer.superfluid.finance/optimism-sepolia",
     superfluidDashboard: "https://app.superfluid.finance",
     superfluidSubgraph:
