@@ -24,7 +24,12 @@ const FLOW_COUNCIL_MANAGER_QUERY = gql`
   }
 `;
 
-type Council = { id: string; name: string; description: string };
+type Council = {
+  id: string;
+  name: string;
+  description: string;
+  isUnregistered: boolean;
+};
 
 const DIM_FILTER =
   "brightness(0) saturate(100%) invert(18%) sepia(52%) saturate(5005%) hue-rotate(181deg) brightness(95%) contrast(96%)";
@@ -161,6 +166,9 @@ function Sidebar() {
   const selectedCouncil = councils?.find(
     (council: { id: string }) => council.id === councilId?.toLowerCase(),
   );
+  const listedCouncils = councils.filter(
+    (council) => !council.isUnregistered || council.id === selectedCouncil?.id,
+  );
 
   const councilIdsKey = useMemo(
     () =>
@@ -183,6 +191,7 @@ function Sidebar() {
       const fetched = await Promise.all(
         ids.map(async (id: string) => {
           let roundName = "Flow Council";
+          let isUnregistered = false;
           try {
             const res = await fetch(
               `/api/flow-council/rounds?chainId=${selectedNetwork.id}&flowCouncilAddress=${id}`,
@@ -195,6 +204,7 @@ function Sidebar() {
                   : data.round.details;
               roundName = details?.name ?? "Flow Council";
             }
+            isUnregistered = data.success && !data.round;
           } catch (err) {
             console.error(err);
           }
@@ -202,6 +212,7 @@ function Sidebar() {
             id,
             name: roundName || "Flow Council",
             description: "N/A",
+            isUnregistered,
           };
         }),
       );
@@ -304,7 +315,7 @@ function Sidebar() {
         className="overflow-hidden border-4 border-dark lh-sm"
         style={{ width: isMobile || isTablet ? 300 : "auto" }}
       >
-        {councils?.map((council: Council) => (
+        {listedCouncils.map((council: Council) => (
           <Dropdown.Item
             key={council.id}
             className="text-truncate fw-semi-bold"

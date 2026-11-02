@@ -153,6 +153,11 @@ export default function FlowCouncils(props: FlowCouncilsProps) {
           selectedNetwork.id,
           flowCouncil.id,
         );
+
+        if (fetched.isUnregistered) {
+          return;
+        }
+
         const roundMetadata = {
           name: fetched.name,
           description: fetched.description || "N/A",

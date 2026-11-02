@@ -8,6 +8,7 @@ export type RoundMetadata = {
   superappSplitterAddress: Address | null;
   applicationsClosed: boolean;
   social: RoundSocialConfig | null;
+  isUnregistered: boolean;
 };
 
 const DEFAULT_METADATA: RoundMetadata = {
@@ -17,6 +18,7 @@ const DEFAULT_METADATA: RoundMetadata = {
   superappSplitterAddress: null,
   applicationsClosed: false,
   social: null,
+  isUnregistered: false,
 };
 
 export async function fetchRoundMetadata(
@@ -47,7 +49,12 @@ export async function fetchRoundMetadata(
         superappSplitterAddress: splitter,
         applicationsClosed: data.round.applicationsClosed ?? false,
         social: details?.social ?? null,
+        isUnregistered: false,
       };
+    }
+
+    if (data.success) {
+      return { ...DEFAULT_METADATA, isUnregistered: true };
     }
   } catch (err) {
     console.error(err);
