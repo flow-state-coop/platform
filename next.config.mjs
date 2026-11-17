@@ -14,6 +14,24 @@ const nextConfig = {
         permanent: true,
       },
       {
+        source: "/goodbuilders-5/app",
+        destination:
+          "/flow-councils/application/42220/0x889e0aadaa3f8b28a794ef70da147827c620a590",
+        permanent: true,
+      },
+      {
+        source: "/goodbuilders-5/admin",
+        destination:
+          "/flow-councils/review/42220/0x889e0aadaa3f8b28a794ef70da147827c620a590",
+        permanent: true,
+      },
+      {
+        source: "/goodbuilders-5",
+        destination:
+          "/flow-councils/42220/0x889e0aadaa3f8b28a794ef70da147827c620a590",
+        permanent: true,
+      },
+      {
         source: "/goodbuilders-4/app",
         destination:
           "/flow-councils/application/42220/0x582e3314d4ef56c18930acb10bb64313525e7820",

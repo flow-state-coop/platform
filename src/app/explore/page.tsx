@@ -73,6 +73,12 @@ const GOOD_BUILDERS_S4 = {
   token: "0x62b8b11039fcfe5ab0c56e502b1c372a3d2a9c7a",
 };
 
+const GOOD_BUILDERS_S5 = {
+  pool: "0x9ac1de32dc9f9883d06a427667918324456bf398",
+  superApp: "0xbbce40ed7773d1b6a9258bdabc42698f377b785f",
+  token: "0x62b8b11039fcfe5ab0c56e502b1c372a3d2a9c7a",
+};
+
 const MARKEE_CORE_SPLITTER_POOL = "0x55a182bc1d575b5a6521f672bc6abed04c1c8272";
 
 const FLOW_GUILD_ADDRESSES = {
@@ -169,6 +175,8 @@ export default async function Page() {
     goodBuildersS3QueryRes,
     goodBuildersS4QueryRes,
     goodBuildersS4FundersQueryRes,
+    goodBuildersS5QueryRes,
+    goodBuildersS5FundersQueryRes,
     markeeCoreQueryRes,
     flowCasterArbQueryRes,
     flowCasterArbTeamQueryRes,
@@ -205,6 +213,13 @@ export default async function Page() {
       superApp: GOOD_BUILDERS_S4.superApp,
       token: GOOD_BUILDERS_S4.token,
     }),
+    request<{ pool: GDAPool }>(celoSubgraph, GDA_POOL_QUERY, {
+      gdaPool: GOOD_BUILDERS_S5.pool,
+    }),
+    request<SuperAppFunders>(celoSubgraph, SUPER_APP_FUNDERS_QUERY, {
+      superApp: GOOD_BUILDERS_S5.superApp,
+      token: GOOD_BUILDERS_S5.token,
+    }),
     request<{ pool: GDAPool }>(baseSubgraph, GDA_POOL_QUERY, {
       gdaPool: MARKEE_CORE_SPLITTER_POOL,
     }),
@@ -225,6 +240,10 @@ export default async function Page() {
   const goodBuildersS4FlowInfo = computeFlowCouncilFlowInfo(
     goodBuildersS4FundersQueryRes,
     goodBuildersS4QueryRes.pool,
+  );
+  const goodBuildersS5FlowInfo = computeFlowCouncilFlowInfo(
+    goodBuildersS5FundersQueryRes,
+    goodBuildersS5QueryRes.pool,
   );
 
   const now = (Date.now() / 1000) | 0;
@@ -250,6 +269,7 @@ export default async function Page() {
         goodBuildersS3QueryRes.account.accountTokenSnapshots[0]
       }
       goodBuildersS4FlowInfo={goodBuildersS4FlowInfo}
+      goodBuildersS5FlowInfo={goodBuildersS5FlowInfo}
       markeeCorePool={markeeCoreQueryRes.pool}
       flowCasterArbFlowInfo={flowCasterArbFlowInfo}
       flowCasterFlowInfo={flowCasterFlowInfo}

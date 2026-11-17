@@ -30,6 +30,7 @@ type ExploreProps = {
   goodDollarPool: GDAPool;
   goodBuildersS3Inflow: Inflow;
   goodBuildersS4FlowInfo: FlowCouncilFlowInfo;
+  goodBuildersS5FlowInfo: FlowCouncilFlowInfo;
   markeeCorePool: GDAPool;
   flowCasterArbFlowInfo: PoolPairFlowInfo;
   flowCasterFlowInfo: PoolPairFlowInfo;
@@ -51,6 +52,7 @@ export default function Explore(props: ExploreProps) {
     goodDollarPool,
     goodBuildersS3Inflow,
     goodBuildersS4FlowInfo,
+    goodBuildersS5FlowInfo,
     markeeCorePool,
     flowCasterArbFlowInfo,
     flowCasterFlowInfo,
@@ -96,6 +98,20 @@ export default function Explore(props: ExploreProps) {
                   : "",
           }}
         >
+          <RoundCard
+            name="GoodBuilders S5"
+            image="/good-dollar.png"
+            roundType="Flow Council"
+            totalStreamedUntilUpdatedAt={
+              goodBuildersS5FlowInfo.totalStreamedUntilUpdatedAt
+            }
+            flowRate={goodBuildersS5FlowInfo.flowRate}
+            updatedAt={goodBuildersS5FlowInfo.updatedAt}
+            activeStreamCount={goodBuildersS5FlowInfo.funderCount}
+            tokenSymbol="G$"
+            link="/goodbuilders-5"
+            showSupRewards
+          />
           <RoundCard
             name="Core Contributors"
             image="/logo-blue.svg"
