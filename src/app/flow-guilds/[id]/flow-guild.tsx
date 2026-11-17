@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, useSwitchChain } from "wagmi";
-import { useAutoSwitchChain } from "@/hooks/useAutoSwitchChain";
 import { useQuery, gql } from "@apollo/client";
 import { usePostHog } from "posthog-js/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -286,8 +285,6 @@ export default function FlowGuild(props: FlowGuildProps) {
   }, [flowSplitter, pool, gdaPoolQueryRes, safeQueryRes]);
 
   const { ensByAddress } = useEnsResolution(ensAddresses);
-
-  useAutoSwitchChain(chainId);
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") {
