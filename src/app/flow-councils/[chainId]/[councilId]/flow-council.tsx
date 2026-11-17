@@ -4,7 +4,6 @@ import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Address } from "viem";
 import { useAccount } from "wagmi";
-import { useAutoSwitchChain } from "@/hooks/useAutoSwitchChain";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Stack from "react-bootstrap/Stack";
 import Modal from "react-bootstrap/Modal";
@@ -305,8 +304,6 @@ export default function FlowCouncil({
     sortingMethod,
     sortGrantees,
   ]);
-
-  useAutoSwitchChain(chainId);
 
   useEffect(() => {
     setGrantees((prev) => sortGrantees(prev));
