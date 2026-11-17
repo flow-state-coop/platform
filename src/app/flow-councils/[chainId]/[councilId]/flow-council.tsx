@@ -17,6 +17,7 @@ import FeedTab from "@/app/flow-councils/components/FeedTab";
 import PastSeasonsTab from "@/app/flow-councils/components/PastSeasonsTab";
 import RoundBanner from "@/app/flow-councils/components/RoundBanner";
 import RoundBannerSkeleton from "@/app/flow-councils/components/RoundBannerSkeleton";
+import SupCampaignBanner from "@/app/flow-councils/components/SupCampaignBanner";
 import GranteeDetails from "@/app/flow-councils/components/GranteeDetails";
 import Ballot from "@/app/flow-councils/components/Ballot";
 import DistributionPoolFunding from "@/app/flow-councils/components/DistributionPoolFunding";
@@ -30,6 +31,7 @@ import { networks } from "@/lib/networks";
 import {
   CELO_CHAIN_ID,
   GOODBUILDERS_S4_COUNCIL_ADDRESS,
+  GOODBUILDERS_S5_COUNCIL_ADDRESS,
 } from "@/app/flow-councils/lib/constants";
 import { shuffle, getPlaceholderImageSrc, generateColor } from "@/lib/utils";
 
@@ -93,10 +95,15 @@ export default function FlowCouncil({
   const granteeSkeletons = Array.from({ length: SKELETON_COUNT }, (_, i) => (
     <GranteeCardSkeleton key={i} />
   ));
-  const isGoodBuildersS4 =
+  const normalizedCouncilId = councilId.toLowerCase();
+  const isGoodBuildersS5 =
     chainId === CELO_CHAIN_ID &&
-    councilId.toLowerCase() === GOODBUILDERS_S4_COUNCIL_ADDRESS;
-  const isTabRowCompact = isGoodBuildersS4 && isMobile;
+    normalizedCouncilId === GOODBUILDERS_S5_COUNCIL_ADDRESS;
+  const isGoodBuildersSuperAppSeason =
+    isGoodBuildersS5 ||
+    (chainId === CELO_CHAIN_ID &&
+      normalizedCouncilId === GOODBUILDERS_S4_COUNCIL_ADDRESS);
+  const isTabRowCompact = isGoodBuildersS5 && isMobile;
   const tabItemClassName = isTabRowCompact ? "flex-fill" : "";
   const tabLinkClassName = `py-3 rounded-4 fw-bold text-center border border-2 border-primary ${isTabRowCompact ? "px-2 fs-6" : "fs-lg"}`;
   const tabLinkStyle = isTabRowCompact ? undefined : { minWidth: 140 };
@@ -333,6 +340,7 @@ export default function FlowCouncil({
         onMouseUp={clearZeroVotes}
         onTouchEnd={clearZeroVotes}
       >
+        {isGoodBuildersS5 && <SupCampaignBanner />}
         {isRoundLoading ? (
           <RoundBannerSkeleton />
         ) : (
@@ -344,7 +352,7 @@ export default function FlowCouncil({
             distributionTokenInfo={token}
             distributionPool={distributionPool}
             showDistributionPoolFunding={
-              isGoodBuildersS4
+              isGoodBuildersSuperAppSeason
                 ? undefined
                 : () =>
                     address
@@ -378,7 +386,7 @@ export default function FlowCouncil({
                 Feed
               </Nav.Link>
             </Nav.Item>
-            {isGoodBuildersS4 && (
+            {isGoodBuildersS5 && (
               <Nav.Item className={tabItemClassName}>
                 <Nav.Link
                   eventKey="past-seasons"
@@ -478,7 +486,7 @@ export default function FlowCouncil({
             <Tab.Pane eventKey="feed">
               <FeedTab chainId={chainId} councilId={councilId} />
             </Tab.Pane>
-            {isGoodBuildersS4 && (
+            {isGoodBuildersS5 && (
               <Tab.Pane eventKey="past-seasons" mountOnEnter>
                 <PastSeasonsTab chainId={chainId} tokenSymbol={token.symbol} />
               </Tab.Pane>
