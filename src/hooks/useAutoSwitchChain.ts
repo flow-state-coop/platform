@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
 
-function useVisibleSessionCount() {
-  const [count, setCount] = useState(0);
+function useIsDocumentVisible() {
+  const [isVisible, setIsVisible] = useState(
+    () =>
+      typeof document === "undefined" || document.visibilityState === "visible",
+  );
 
   useEffect(() => {
-    const update = () => {
-      if (document.visibilityState === "visible") {
-        setCount((prev) => prev + 1);
-      }
-    };
+    const update = () => setIsVisible(document.visibilityState === "visible");
 
     update();
     document.addEventListener("visibilitychange", update);
@@ -17,37 +16,39 @@ function useVisibleSessionCount() {
     return () => document.removeEventListener("visibilitychange", update);
   }, []);
 
-  return count;
+  return isVisible;
 }
 
 export function useAutoSwitchChain(chainId: number) {
   const { address, chain: connectedChain, status } = useAccount();
   const { switchChain } = useSwitchChain();
-  const visibleSessionCount = useVisibleSessionCount();
-  const attemptedKeyRef = useRef<string | null>(null);
+  const isDocumentVisible = useIsDocumentVisible();
+  const connectedChainId = connectedChain?.id;
+  const hasAttemptedRef = useRef(false);
 
   useEffect(() => {
-    if (!address || status !== "connected" || visibleSessionCount === 0) {
+    hasAttemptedRef.current = false;
+  }, [connectedChainId, isDocumentVisible, chainId]);
+
+  useEffect(() => {
+    if (
+      !address ||
+      status !== "connected" ||
+      !isDocumentVisible ||
+      hasAttemptedRef.current ||
+      connectedChainId === chainId
+    ) {
       return;
     }
 
-    const attemptKey = `${address}-${chainId}-${visibleSessionCount}`;
-
-    if (attemptedKeyRef.current === attemptKey) {
-      return;
-    }
-
-    attemptedKeyRef.current = attemptKey;
-
-    if (connectedChain?.id !== chainId) {
-      switchChain({ chainId });
-    }
+    hasAttemptedRef.current = true;
+    switchChain({ chainId });
   }, [
     address,
     status,
-    connectedChain,
+    connectedChainId,
     chainId,
-    visibleSessionCount,
+    isDocumentVisible,
     switchChain,
   ]);
 }
