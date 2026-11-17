@@ -236,6 +236,7 @@ function FlowCouncilContextProviderInner({
   const { staleVotes, isLoading: isLoadingStaleVotes } = useStaleVotesQuery(
     isGoodDollarCouncil ? councilId : "",
     isGoodDollarCouncil ? (address ?? "") : "",
+    network.id,
   );
   const staleVotesList = useMemo((): Vote[] => {
     if (!currentBallot?.votes || !council?.recipients) return [];

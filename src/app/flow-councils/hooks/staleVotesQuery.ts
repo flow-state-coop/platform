@@ -1,7 +1,11 @@
 import { useReadContract, useReadContracts } from "wagmi";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 
-export default function useStaleVotesQuery(councilId: string, address: string) {
+export default function useStaleVotesQuery(
+  councilId: string,
+  address: string,
+  chainId: number,
+) {
   const councilAddress = councilId as `0x${string}`;
   const voterAddress = address as `0x${string}`;
   const enabled = !!councilId && !!address;
@@ -11,6 +15,7 @@ export default function useStaleVotesQuery(councilId: string, address: string) {
     abi: flowCouncilAbi,
     functionName: "getVoter",
     args: [voterAddress],
+    chainId,
     query: {
       enabled,
     },
@@ -25,6 +30,7 @@ export default function useStaleVotesQuery(councilId: string, address: string) {
         abi: flowCouncilAbi,
         functionName: "recipientById" as const,
         args: [v.recipientId],
+        chainId,
       })),
       query: {
         enabled: votes.length > 0,
