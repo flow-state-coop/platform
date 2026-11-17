@@ -15,6 +15,12 @@ export type PastSeason = {
 
 export const GOODBUILDERS_PAST_SEASONS: PastSeason[] = [
   {
+    name: "Season 4",
+    period: "Jun–Sep 2026",
+    councilAddress: "0x582e3314d4ef56c18930acb10bb64313525e7820",
+    distributionPool: "0xe6cedec2bc4cd5a13744516f533a46dcb3e6c416",
+  },
+  {
     name: "Season 3",
     period: "Feb–May 2026",
     councilAddress: "0xfabef1abae4998146e8a8422813eb787caa26ec2",
