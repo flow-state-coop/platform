@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
 
-function useIsDocumentVisible() {
-  const [isVisible, setIsVisible] = useState(
-    () =>
-      typeof document === "undefined" || document.visibilityState === "visible",
-  );
+function useVisibleSessionCount() {
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
-    const update = () => setIsVisible(document.visibilityState === "visible");
+    const update = () => {
+      if (document.visibilityState === "visible") {
+        setCount((prev) => prev + 1);
+      }
+    };
 
     update();
     document.addEventListener("visibilitychange", update);
@@ -16,34 +17,37 @@ function useIsDocumentVisible() {
     return () => document.removeEventListener("visibilitychange", update);
   }, []);
 
-  return isVisible;
+  return count;
 }
 
 export function useAutoSwitchChain(chainId: number) {
-  const { address, chain: connectedChain } = useAccount();
+  const { address, chain: connectedChain, status } = useAccount();
   const { switchChain } = useSwitchChain();
-  const isDocumentVisible = useIsDocumentVisible();
-  const wasRejectedRef = useRef(false);
+  const visibleSessionCount = useVisibleSessionCount();
+  const attemptedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (connectedChain?.id === chainId) {
-      wasRejectedRef.current = false;
+    if (!address || status !== "connected" || visibleSessionCount === 0) {
       return;
     }
 
-    if (!address || !isDocumentVisible || wasRejectedRef.current) {
+    const attemptKey = `${address}-${chainId}-${visibleSessionCount}`;
+
+    if (attemptedKeyRef.current === attemptKey) {
       return;
     }
 
-    switchChain(
-      { chainId },
-      {
-        onError: (error) => {
-          if (error.name === "UserRejectedRequestError") {
-            wasRejectedRef.current = true;
-          }
-        },
-      },
-    );
-  }, [address, connectedChain, chainId, isDocumentVisible, switchChain]);
+    attemptedKeyRef.current = attemptKey;
+
+    if (connectedChain?.id !== chainId) {
+      switchChain({ chainId });
+    }
+  }, [
+    address,
+    status,
+    connectedChain,
+    chainId,
+    visibleSessionCount,
+    switchChain,
+  ]);
 }
