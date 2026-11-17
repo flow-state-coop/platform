@@ -1,17 +1,23 @@
 import { useState } from "react";
-import { usePublicClient, useWalletClient } from "wagmi";
+import { useAccount, useConfig, usePublicClient, useSwitchChain } from "wagmi";
+import { getWalletClient } from "@wagmi/core";
 import { flowCouncilAbi } from "@/lib/abi/flowCouncil";
 import { waitForReceipt } from "@/lib/utils";
 
-export default function useWriteBallot(council: `0x${string}`) {
+export default function useWriteBallot(
+  council: `0x${string}`,
+  chainId: number,
+) {
   const [transactionError, setTransactionError] = useState("");
   const [isVoting, setIsVoting] = useState(false);
 
-  const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient();
+  const config = useConfig();
+  const publicClient = usePublicClient({ chainId });
+  const { chain: connectedChain } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
 
   const vote = async (accounts: `0x${string}`[], amounts: bigint[]) => {
-    if (!walletClient || !publicClient) {
+    if (!publicClient) {
       throw new Error("Public client was not found");
     }
 
@@ -19,6 +25,11 @@ export default function useWriteBallot(council: `0x${string}`) {
     setTransactionError("");
 
     try {
+      if (connectedChain?.id !== chainId) {
+        await switchChainAsync({ chainId });
+      }
+
+      const walletClient = await getWalletClient(config, { chainId });
       const votes = accounts.map((recipient, i) => ({
         recipient,
         amount: amounts[i],

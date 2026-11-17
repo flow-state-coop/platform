@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
 
+const WALLET_REVERT_WINDOW_MS = 2000;
+
 function useIsDocumentVisible() {
   const [isVisible, setIsVisible] = useState(
     () =>
@@ -24,24 +26,46 @@ export function useAutoSwitchChain(chainId: number) {
   const { switchChain } = useSwitchChain();
   const isDocumentVisible = useIsDocumentVisible();
   const connectedChainId = connectedChain?.id;
-  const hasAttemptedRef = useRef(false);
+  const isSwitchRequestedRef = useRef(false);
+  const switchLandedAtRef = useRef<number | null>(null);
+  const hasGivenUpRef = useRef(false);
 
   useEffect(() => {
-    hasAttemptedRef.current = false;
-  }, [connectedChainId, isDocumentVisible, chainId]);
+    if (isDocumentVisible) {
+      isSwitchRequestedRef.current = false;
+      hasGivenUpRef.current = false;
+    }
+  }, [isDocumentVisible]);
+
+  useEffect(() => {
+    if (connectedChainId === chainId) {
+      switchLandedAtRef.current = isSwitchRequestedRef.current
+        ? Date.now()
+        : null;
+    } else if (
+      switchLandedAtRef.current !== null &&
+      Date.now() - switchLandedAtRef.current < WALLET_REVERT_WINDOW_MS
+    ) {
+      hasGivenUpRef.current = true;
+      switchLandedAtRef.current = null;
+    }
+
+    isSwitchRequestedRef.current = false;
+  }, [connectedChainId, chainId]);
 
   useEffect(() => {
     if (
       !address ||
       status !== "connected" ||
       !isDocumentVisible ||
-      hasAttemptedRef.current ||
+      isSwitchRequestedRef.current ||
+      hasGivenUpRef.current ||
       connectedChainId === chainId
     ) {
       return;
     }
 
-    hasAttemptedRef.current = true;
+    isSwitchRequestedRef.current = true;
     switchChain({ chainId });
   }, [
     address,

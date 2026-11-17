@@ -35,7 +35,10 @@ export default function Ballot({
     dispatchNewBallot,
   } = useFlowCouncil();
   const { isMobile } = useMediaQuery();
-  const { vote, isVoting, transactionError } = useWriteBallot(councilAddress);
+  const { vote, isVoting, transactionError } = useWriteBallot(
+    councilAddress,
+    Number(chainId),
+  );
 
   const votingPower = councilMember?.votingPower ?? 0;
   const totalVotes =
