@@ -3,7 +3,8 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Address } from "viem";
-import { useAccount, useSwitchChain } from "wagmi";
+import { useAccount } from "wagmi";
+import { useAutoSwitchChain } from "@/hooks/useAutoSwitchChain";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Stack from "react-bootstrap/Stack";
 import Modal from "react-bootstrap/Modal";
@@ -59,8 +60,7 @@ export default function FlowCouncil({
     networks.find((network) => network.id === Number(chainId)) ??
     networks.find((network) => network.label === "celo")!;
   useMediaQuery();
-  const { address, chain: connectedChain } = useAccount();
-  const { switchChain } = useSwitchChain();
+  const { address } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { isMobile, isTablet, isSmallScreen, isMediumScreen, isBigScreen } =
     useMediaQuery();
@@ -299,11 +299,7 @@ export default function FlowCouncil({
     sortGrantees,
   ]);
 
-  useEffect(() => {
-    if (address && connectedChain?.id !== chainId) {
-      switchChain({ chainId });
-    }
-  }, [address, connectedChain, chainId, switchChain]);
+  useAutoSwitchChain(chainId);
 
   useEffect(() => {
     setGrantees((prev) => sortGrantees(prev));
