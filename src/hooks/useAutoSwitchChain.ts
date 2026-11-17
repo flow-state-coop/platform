@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
 
 function useIsDocumentVisible() {
@@ -23,10 +23,27 @@ export function useAutoSwitchChain(chainId: number) {
   const { address, chain: connectedChain } = useAccount();
   const { switchChain } = useSwitchChain();
   const isDocumentVisible = useIsDocumentVisible();
+  const wasRejectedRef = useRef(false);
 
   useEffect(() => {
-    if (address && isDocumentVisible && connectedChain?.id !== chainId) {
-      switchChain({ chainId });
+    if (connectedChain?.id === chainId) {
+      wasRejectedRef.current = false;
+      return;
     }
+
+    if (!address || !isDocumentVisible || wasRejectedRef.current) {
+      return;
+    }
+
+    switchChain(
+      { chainId },
+      {
+        onError: (error) => {
+          if (error.name === "UserRejectedRequestError") {
+            wasRejectedRef.current = true;
+          }
+        },
+      },
+    );
   }, [address, connectedChain, chainId, isDocumentVisible, switchChain]);
 }
